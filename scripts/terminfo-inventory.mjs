@@ -4,7 +4,7 @@
 //   node scripts/terminfo-inventory.mjs --check              offline: the committed files must match a fresh derivation
 //   node scripts/terminfo-inventory.mjs --check --rederive   also re-run every suite's trusted rederivation and require it to pass
 import { readFileSync, writeFileSync } from 'node:fs';
-import { buildInventory, inventoryPaths, renderSummary, serialize, testDigest } from './terminfo/qualification-inventory.mjs';
+import { buildInventory, inventoryPaths, readText, renderSummary, serialize, testDigest } from './terminfo/qualification-inventory.mjs';
 
 const args = new Set(process.argv.slice(2));
 const unknown = [...args].filter(arg => !['--write', '--check', '--rederive'].includes(arg));
@@ -32,7 +32,7 @@ if (args.has('--write')) {
     const committed = JSON.parse(readFileSync(paths.json, 'utf8'));
     const problems = [];
     if (JSON.stringify(inventory) !== JSON.stringify(committed)) problems.push(`${paths.json} differs from a fresh derivation.`);
-    if (readFileSync(paths.markdown, 'utf8') !== `${renderSummary(committed)}\n`) problems.push(`${paths.markdown} is not the rendering of the committed JSON.`);
+    if (readText(paths.markdown) !== `${renderSummary(committed)}\n`) problems.push(`${paths.markdown} is not the rendering of the committed JSON.`);
     if (args.has('--rederive')) {
         const failed = [...inventory.suites, ...inventory.findings].filter(suite => suite.rederivation.status !== 'passed');
         if (failed.length) problems.push(`rederivation failed for ${failed.map(suite => suite.suite).join(', ')}.`);

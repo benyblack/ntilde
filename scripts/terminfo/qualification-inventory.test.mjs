@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
     assertInventory, benchmarkSuites, buildInventory, defaultQaRoot, effectVerdictOf, findingSuites, inventoryFiles, loadPublication, measuredLayersOf,
-    pinnedVerdictOf, receiptBinding, renderSummary, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
+    pinnedVerdictOf, readText, receiptBinding, renderSummary, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
 } from './qualification-inventory.mjs';
 
-const read = name => JSON.parse(readFileSync(join(defaultQaRoot, name)));
+const read = name => JSON.parse(readText(join(defaultQaRoot, name)));
 const committed = () => read(inventoryFiles.json);
 const baseline = () => read(stockBaselineFile);
 const clone = value => structuredClone(value);
@@ -21,8 +21,8 @@ test('the committed inventory is exactly what the merged contracts and retained 
     // and re-binds each result to the current test file digest.
     const fresh = await buildInventory({ rederivation: suite => ({ ...rederivations.get(suite.suite), testSha256: testDigest(suite) }) });
     assert.equal(JSON.stringify(fresh), JSON.stringify(stored));
-    assert.equal(readFileSync(join(defaultQaRoot, inventoryFiles.markdown), 'utf8'), `${renderSummary(stored)}\n`);
-    assert.equal(readFileSync(join(defaultQaRoot, inventoryFiles.json), 'utf8'), serialize(stored));
+    assert.equal(readText(join(defaultQaRoot, inventoryFiles.markdown)), `${renderSummary(stored)}\n`);
+    assert.equal(readText(join(defaultQaRoot, inventoryFiles.json)), serialize(stored));
     check(stored);
 });
 

@@ -5,7 +5,7 @@
 // test, which rebuilds the retained report from the retained journals and compares it byte for byte) passed. The inventory
 // is read-only over historical evidence: it never rewrites a grade, publication, journal, receipt or source policy.
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,6 +56,9 @@ export const findingSuites = Object.freeze([
 ]);
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Retained evidence is LF in git; a Windows checkout may add CR. Hash and size the LF form so the inventory is checkout-independent. */
+const lf = bytes => Buffer.from(bytes.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
+export const readText = path => readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
 const readJson = path => JSON.parse(readFileSync(path));
 const posix = path => path.split(sep).join('/');
 
@@ -71,8 +74,8 @@ function evidenceDigest(root, suite) {
     };
     if (suite.layout === 'single') files.push(join(root, suite.file));
     else walk(join(root, suite.dir));
-    const lines = files.map(path => `${posix(relative(root, path))} ${sha256(readFileSync(path))}`);
-    return { files: files.length, bytes: files.reduce((total, path) => total + statSync(path).size, 0), sha256: sha256(lines.join('\n')) };
+    const lines = files.map(path => `${posix(relative(root, path))} ${sha256(lf(readFileSync(path)))}`);
+    return { files: files.length, bytes: files.reduce((total, path) => total + lf(readFileSync(path)).length, 0), sha256: sha256(lines.join('\n')) };
 }
 
 /** Load one publication into `{ summary, report }` (cases fully materialized) whatever its retained layout. */
@@ -204,7 +207,7 @@ export function rederive(suite) {
 }
 
 /** The digest of the publication test that performs a suite's rederivation, so a result is bound to the test that produced it. */
-export const testDigest = suite => sha256(readFileSync(join(scriptsDir, suite.test)));
+export const testDigest = suite => sha256(lf(readFileSync(join(scriptsDir, suite.test))));
 
 const rederivationOf = (suite, options) => {
     if (options.rederive === false) return { status: 'not-run', command: `node --test scripts/terminfo/${suite.test}`, testSha256: testDigest(suite) };
