@@ -540,6 +540,28 @@ public sealed class CharacterProtectionStateTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    /// <summary>A wider checkpoint restored into a narrower buffer clips a protected wide glyph's anchor along with its continuation.</summary>
+    [Fact]
+    [Trait("Category", "Replay")]
+    public async Task Checkpoint_clipping_a_wide_pair_drops_the_anchor_protection()
+    {
+        var (source, sourceParser) = Create(10, 2);
+        sourceParser.Process(Esc + "[1;5H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        string path = Path.GetTempFileName();
+        try
+        {
+            using (var recorder = new PtyRecorder(path, 10, 2)) recorder.RecordSnapshot(source);
+            ReplaySnapshot? captured = null;
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask,
+                onSnapshotCallback: snapshot => { captured = snapshot; return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
+            var (narrow, narrowParser) = Create(5, 2);
+            narrow.ApplySnapshot(captured!);
+            Assert.DoesNotContain('P', Mask(narrow, 0));
+
+        }
+        finally { File.Delete(path); }
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

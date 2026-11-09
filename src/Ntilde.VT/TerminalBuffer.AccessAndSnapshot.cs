@@ -1244,11 +1244,11 @@ namespace Ntilde.VT
                 // DECSCA protection, absent in recordings made before it.
                 // Only cells this snapshot restored can carry its protection: a taller or wider buffer keeps everything else as it was.
                 if (legacyCells != null && legacyCells.Length / System.Runtime.CompilerServices.Unsafe.SizeOf<TerminalCell>() >= snapshot.Cols * snapshot.Rows
-                    && snapshot.ProtectedCells != null && snapshot.Cols > 0)
+                    && snapshot.Cols > 0)
                 {
                     int restoredRows = Math.Min(snapshot.Rows, _viewport.Length);
                     int restoredCols = Math.Min(snapshot.Cols, Cols);
-                    foreach (int key in snapshot.ProtectedCells)
+                    foreach (int key in snapshot.ProtectedCells ?? [])
                     {
                         if (key < 0) continue;
                         int r = key / snapshot.Cols;
@@ -1256,12 +1256,14 @@ namespace Ntilde.VT
                         if (r < restoredRows && c < restoredCols) _viewport[r].SetProtected(c, true);
                     }
 
-                    // Protected cells in the columns the snapshot did not replace are authored content: keep their extent.
                     for (int r = 0; r < restoredRows; r++)
                     {
-                        var kept = _viewport[r];
-                        if (!kept.HasProtectedCells) continue;
-                        for (int c = restoredCols; c < Cols; c++) if (kept.IsProtected(c)) kept.NoteColumnsWritten(c + 1);
+                        var restored = _viewport[r];
+                        // A checkpoint wider than this buffer clips a wide glyph at the last column: its protection goes with the lost half.
+                        restored.ClearProtectionOfClippedWideAnchor(restoredCols, snapshot.Cols);
+                        if (!restored.HasProtectedCells) continue;
+                        // Protected cells in the columns the snapshot did not replace are authored content: keep their extent.
+                        for (int c = restoredCols; c < Cols; c++) if (restored.IsProtected(c)) restored.NoteColumnsWritten(c + 1);
                     }
                 }
 
