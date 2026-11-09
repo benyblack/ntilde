@@ -155,23 +155,34 @@ public partial class TerminalBuffer
             EraseTextSizingRange(start, col, absolute, absolute + 1, blank);
             // DECERA counts what it erases as authored; ED does too, but a selective display erase over default-colored blanks adds
             // nothing the row did not already hold, and must not extend the extent reflow uses to tell typed spaces from wide padding.
-            if (!edShortcut || !blank.IsDefaultBackground) row.NoteColumnsWritten(col);
-            for (int c = start; c < col; c++)
-            {
-                row.Cells[c] = blank;
-                row.SetExtendedText(c, null);
-                row.SetHyperlink(c, null);
-                row.SetUnderline(c, null);
-            }
+            BlankRun(row, start, col, blank, noteExtent: !edShortcut || !blank.IsDefaultBackground);
         }
-        // A selective display erase of a row's tail over default blanks trims the authored extent back to what survives
-        // (the cells before the span and the protected cells), so a later wide pre-wrap still recognizes the erased tail as padding.
-        if (edShortcut && blank.IsDefaultBackground && to == Cols && row.WrittenColumns > from)
-        {
-            int kept = from;
-            for (int c = from; c < Cols; c++) if (row.IsProtected(c)) kept = c + 1;
-            row.WrittenColumns = Math.Min(row.WrittenColumns, kept);
-        }
+        if (edShortcut && blank.IsDefaultBackground && to == Cols) TrimErasedTailExtent(row, from);
         row.TouchRevision();
+    }
+
+    /// <summary>
+    /// A selective display erase of a row's tail over default blanks trims the authored extent back to what survives (the cells before
+    /// <paramref name="from"/> and the protected cells), so a later wide pre-wrap still recognizes the erased tail as padding.
+    /// </summary>
+    private static void TrimErasedTailExtent(TerminalRow row, int from)
+    {
+        if (row.WrittenColumns <= from) return;
+        int kept = from;
+        for (int c = from; c < row.Cells.Length; c++) if (row.IsProtected(c)) kept = c + 1;
+        row.WrittenColumns = Math.Min(row.WrittenColumns, kept);
+    }
+
+    /// <summary>Blanks [<paramref name="start"/>, <paramref name="end"/>) of one row with the ordinary erases' per-cell metadata cleanup.</summary>
+    private static void BlankRun(TerminalRow row, int start, int end, TerminalCell blank, bool noteExtent)
+    {
+        if (noteExtent) row.NoteColumnsWritten(end);
+        for (int c = start; c < end; c++)
+        {
+            row.Cells[c] = blank;
+            row.SetExtendedText(c, null);
+            row.SetHyperlink(c, null);
+            row.SetUnderline(c, null);
+        }
     }
 }

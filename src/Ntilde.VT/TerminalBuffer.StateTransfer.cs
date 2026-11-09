@@ -1022,15 +1022,18 @@ namespace Ntilde.VT
                 ValidateWrapTail(state, cells.Slice(row * cols, cols), row * cols, width, what);
             }
 
-            // Protection keyed into a wrap-padding tail would hide behind the boundary, like the other cell metadata.
-            if (state.ProtectedCells != null)
+            RejectProtectionInWrapPadding(state, widths, rows, cols, what);
+        }
+
+        /// <summary>Protection keyed into a wrap-padding tail would hide behind the boundary, like the other cell metadata.</summary>
+        private static void RejectProtectionInWrapPadding(TerminalScreenState state, int[] widths, int rows, int cols, string what)
+        {
+            if (state.ProtectedCells == null) return;
+            foreach (int key in state.ProtectedCells)
             {
-                foreach (int key in state.ProtectedCells)
-                {
-                    int row = key / cols;
-                    if (key >= 0 && row < rows && widths[row] >= 0 && key % cols >= widths[row])
-                        throw StateTransferValidation.Reject(what, "wrap padding carries protected cells");
-                }
+                int row = key / cols;
+                if (key >= 0 && row < rows && widths[row] >= 0 && key % cols >= widths[row])
+                    throw StateTransferValidation.Reject(what, "wrap padding carries protected cells");
             }
         }
 

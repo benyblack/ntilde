@@ -273,12 +273,7 @@ namespace Ntilde.VT
                                 // Ensure next cell is a continuation
                                 ref var nextCell = ref row.Cells[attachCol + 1];
                                 bool expandedIntoNextCell = false;
-                                if (nextCell.IsWideContinuation)
-                                {
-                                    // An existing continuation belongs to the glyph now, so it carries the glyph's protection.
-                                    row.SetProtected(attachCol + 1, row.IsProtected(attachCol));
-                                }
-                                else
+                                if (!nextCell.IsWideContinuation)
                                 {
                                     // The adjacent cell is overwritten: if it headed another wide glyph, that glyph's continuation is orphaned.
                                     ClearDisplacedWideProtection(row, attachCol + 1, attachCol + 2);
@@ -287,9 +282,11 @@ namespace Ntilde.VT
                                     row.SetExtendedText(attachCol + 1, null); // Ensure no old text remains
                                     row.SetHyperlink(attachCol + 1, row.GetHyperlink(attachCol));
                                     row.SetUnderline(attachCol + 1, UnderlineForWrite); // the continuation takes the pen's flags
-                                    row.SetProtected(attachCol + 1, row.IsProtected(attachCol)); // and the glyph's protection
                                     expandedIntoNextCell = true;
                                 }
+
+                                // The continuation, new or already there, is the glyph's own half and carries the glyph's protection.
+                                row.SetProtected(attachCol + 1, row.IsProtected(attachCol));
 
                                 // If the cursor was waiting at the next cell, and we just expanded into it, push the cursor forward.
                                 if (expandedIntoNextCell && _cursorCol == attachCol + 1)
