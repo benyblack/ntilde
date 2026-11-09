@@ -85,7 +85,7 @@ namespace Ntilde.VT
             }
             else if (c == '\b')
             {
-                StepCursorBack(Modes.IsReverseWrapMode && Modes.IsAutoWrapMode);
+                StepCursorBack(Modes.IsReverseWrapMode && Modes.IsAutoWrapMode, skipWideContinuation: true);
             }
             else if (c == '\t')
             {
@@ -112,20 +112,20 @@ namespace Ntilde.VT
 
                 for (int step = 0; step < count; step++)
                 {
-                    if (!StepCursorBack(reverseWrap: true)) break;
+                    if (!StepCursorBack(reverseWrap: true, skipWideContinuation: false)) break;
                 }
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         }
 
         /// <summary>
-        /// One backward step (BS, or one column of CUB). Returns false when the cursor could not move.
+        /// One backward step (BS, or one column of CUB). BS lands on the lead cell of a wide glyph (<paramref name="skipWideContinuation"/>); CUB counts physical columns. Returns false when the cursor could not move.
         /// Reverse-wraparound (xterm ?45, only with ?7 set): a pending wrap is consumed without moving, and at the
         /// left edge the cursor returns to the last column of the previous row, but only across a soft wrap. A hard
         /// line break, the top of the screen and the top margin of the scrolling region holding the cursor are
         /// never crossed. Without it a pending wrap is cleared by the usual one-cell move.
         /// </summary>
-        private bool StepCursorBack(bool reverseWrap)
+        private bool StepCursorBack(bool reverseWrap, bool skipWideContinuation)
         {
             if (reverseWrap && _isPendingWrap)
             {
@@ -138,7 +138,7 @@ namespace Ntilde.VT
             {
                 _cursorCol--;
 
-                if (_cursorRow >= 0 && _cursorRow < Rows)
+                if (skipWideContinuation && _cursorRow >= 0 && _cursorRow < Rows)
                 {
                     var row = _viewport[_cursorRow];
                     while (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation)
@@ -158,7 +158,7 @@ namespace Ntilde.VT
             _cursorRow--;
             _cursorCol = Cols - 1;
             var previous = _viewport[_cursorRow];
-            while (_cursorCol > 0 && previous.Cells[_cursorCol].IsWideContinuation)
+            while (skipWideContinuation && _cursorCol > 0 && previous.Cells[_cursorCol].IsWideContinuation)
             {
                 _cursorCol--;
             }

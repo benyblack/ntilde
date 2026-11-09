@@ -149,6 +149,15 @@ public class ReverseWrapModeTests
     }
 
     [Fact]
+    public void CUB_counts_physical_columns_over_wide_characters_in_reverse_wrap_mode()
+    {
+        var (buffer, parser, _) = Terminal();
+        parser.Process("\u001b[?45h\u001b[H\u4e16X\u001b[2D");
+
+        Assert.Equal((0, 1), (buffer.CursorRow, buffer.CursorCol));
+    }
+
+    [Fact]
     public void CUB_without_the_mode_still_clamps_at_the_left_edge()
     {
         var (buffer, parser, _) = Terminal();
