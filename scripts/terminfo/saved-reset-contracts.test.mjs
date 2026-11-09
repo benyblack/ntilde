@@ -116,6 +116,16 @@ test('exit: invalid setup or controls are inconclusive, never conclusive', () =>
     assert.equal(outcome(EXIT, reads => { reads.initial = { cells: [], cursor: [0, 0], buffer: { scrollTop: 1 } }; }), 'inconclusive');
 });
 
+test('exit: unrelated state corrupted only in the conditional controls (stale save, styled pen, second switch) is unsupported', () => {
+    for (const role of ['staleExited', 'styledExited', 'final', 'back']) {
+        for (const extra of [{ buffer: { scrollTop: 1 } }, { buffer: { originMode: true } }, { buffer: { insertMode: true } }, { history: ['stray'] }]) {
+            assert.equal(outcome(EXIT, reads => { reads[role] = { ...reads[role], ...extra }; }), 'unsupported', role + JSON.stringify(extra));
+        }
+    }
+    assert.equal(outcome(EXIT, reads => { reads.staleSeed = { ...reads.staleSeed, history: ['stray'] }; }), 'inconclusive');
+    assert.equal(outcome(M47, reads => { reads.back = { ...reads.back, buffer: { insertMode: true } }; }), 'unsupported');
+});
+
 test('exit: unrelated state changes during the roundtrip are unsupported', () => {
     assert.equal(outcome(EXIT, reads => { reads.exited = { ...primary(), buffer: { originMode: true } }; }), 'unsupported');
     assert.equal(outcome(EXIT, reads => { reads.exited = { ...primary(), history: ['stray'] }; }), 'unsupported');

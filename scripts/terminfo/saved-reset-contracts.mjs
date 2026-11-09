@@ -253,22 +253,22 @@ function gradeExit(observation) {
     }
     if (!marked.alt || !inkIs(marked, place(0, 0, altMark))) return inconclusive('Alternate marker was not measured on the alternate screen');
     if (!reentry.alt) return inconclusive('The ESC[?47h re-entry control did not switch to the alternate screen');
-    if (staleSeed.alt || !inkIs(staleSeed, staleInk) || !sameCursor(staleSeed, 4, 6)) {
+    if (staleSeed.alt || !inkIs(staleSeed, staleInk) || !sameCursor(staleSeed, 4, 6) || !quiet(staleSeed)) {
         return inconclusive('The stale saved-cursor decoy was not measured');
     }
-    if (styledSeed.alt || !styledInk(styledSeed) || !sameCursor(styledSeed, 4, 6)) return inconclusive('The styled main-screen seed was not measured');
+    if (styledSeed.alt || !styledInk(styledSeed) || !sameCursor(styledSeed, 4, 6) || !quiet(styledSeed)) return inconclusive('The styled main-screen seed was not measured');
     if (!inkIs(exited, exitSeedInk) || exited.alt || !sameCursor(exited, 4, 6) || !quiet(exited)) return unsupported(diagnoseExit(exited));
-    if (final.alt || !inkIs(final, exitSeedInk) || !sameCursor(final, 4, 6)) {
+    if (final.alt || !inkIs(final, exitSeedInk) || !sameCursor(final, 4, 6) || !quiet(final)) {
         return unsupported('The pinned trailing ESC[?1049l ESC[0m changed the restored main screen');
     }
     if (reentry.ink.map(cell => cell.char).join('').includes('PRIMARY')) {
         return unsupported('Both banks show the same contents: the alternate screen is not a separate buffer');
     }
-    if (back.alt || !inkIs(back, exitSeedInk)) return unsupported('The main screen was cleared or changed by a second screen switch');
-    if (staleExited.alt || !inkIs(staleExited, staleInk) || !sameCursor(staleExited, 4, 6)) {
+    if (back.alt || !inkIs(back, exitSeedInk) || !quiet(back)) return unsupported('The main screen was cleared or changed by a second screen switch');
+    if (staleExited.alt || !inkIs(staleExited, staleInk) || !sameCursor(staleExited, 4, 6) || !quiet(staleExited)) {
         return unsupported(`The saved cursor is stale: exit restored ${staleExited.cursor[0]},${staleExited.cursor[1]} instead of the cursor at entry`);
     }
-    if (styledExited.alt || !sameStored(styledExited, styledSeed) || !sameCursor(styledExited, 4, 6)) {
+    if (styledExited.alt || !sameStored(styledExited, styledSeed) || !sameCursor(styledExited, 4, 6) || !quiet(styledExited)) {
         return unsupported('The main screen lost stored text or attributes across the roundtrip (incomplete restoration)');
     }
     return { outcome: 'supported', layers: [{ name: 'main-contents-and-cursor', outcome: 'supported' }] };
@@ -292,7 +292,7 @@ function gradeSwap(mode, observation) {
     if (active.ink.length !== 0) return unsupported(`The alternate screen was not blank on first entry`);
     if (!marked.alt || !inkIs(marked, altInk)) return inconclusive('The alternate marker write was not measured');
     if (exited.alt) return unsupported(`ESC[?${mode}l did not return to the main screen`);
-    if (!inkIs(exited, mainInk)) {
+    if (!inkIs(exited, mainInk) || !quiet(exited)) {
         return unsupported(exited.ink.length === 0 ? 'The main screen was cleared by leaving the alternate screen'
             : 'The alternate contents leaked into, or altered, the main screen');
     }
@@ -301,7 +301,7 @@ function gradeSwap(mode, observation) {
         return unsupported(retains ? 'The alternate buffer was not retained across exit and re-entry (?47 swaps without clearing)'
             : 'The alternate buffer was not cleared on exit (?1047 clears it)');
     }
-    if (back.alt || !inkIs(back, mainInk)) return unsupported('The main screen was changed by a second screen switch');
+    if (back.alt || !inkIs(back, mainInk) || !quiet(back)) return unsupported('The main screen was changed by a second screen switch');
     return { outcome: 'supported', layers: [{ name: `visible-buffer-swap-${retains ? 'retain' : 'clear'}-on-exit`, outcome: 'supported' }] };
 }
 
