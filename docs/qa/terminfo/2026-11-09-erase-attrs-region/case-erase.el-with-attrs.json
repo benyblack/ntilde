@@ -1,0 +1,466 @@
+{
+  "caseId": "erase.el-with-attrs",
+  "pinnedCriterion": "after SGR 42 and XXXXX at the home cell with the cursor back at column 0, ESC[K leaves cell (0,0) blank with the same resolved background RGB the X had; the termless probe reads that one cell twice and compares resolved RGB only",
+  "pinnedFeeds": [
+    "\u001b[42m\u001b[1;1HXXXXX\u001b[1;1H",
+    "\u001b[K",
+    "\u001b[0m"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001b[1;1H\u001b[2K",
+      "\u001b[42m",
+      "XXXXX",
+      "\u001b[1;1H",
+      "\u001b[K",
+      "\u001b[0m"
+    ],
+    "demand": "cursor position report only (never a verdict)",
+    "minimum": {
+      "rows": 1,
+      "cols": 6
+    },
+    "note": "upstream terminal path is a cursor-query path (unmeasuredCellResult) and never a grade"
+  },
+  "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[42m\u001b[1;1HXXXXX\u001b[1;1H",
+    "\u001b[K",
+    "\u001b[0m",
+    "W",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[42m\u001b[1;1HXXXXX\u001b[1;1H",
+    "\u001b[0K",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[42m\u001b[1;1HXXXXX\u001b[1;1H",
+    "\u001b[K",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[42m\u001b[1;1HXXXXX\u001b[44m\u001b[1;1H",
+    "\u001b[K",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[42m\u001b[1;1HXXXXX\u001b[0m\u001b[1;1H",
+    "\u001b[K"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedSequence": "\u001b[K",
+    "initial": {
+      "ink": 0,
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    "setup": {
+      "row0": "XXXXX_____",
+      "cursor": [
+        0,
+        0
+      ],
+      "ink": [
+        {
+          "row": 0,
+          "char": "X",
+          "flags": 33024,
+          "fgIndex": -1,
+          "bgIndex": 2,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "cols": [
+            0,
+            4
+          ]
+        }
+      ]
+    },
+    "erased": {
+      "row0": "__________",
+      "cursor": [
+        0,
+        0
+      ],
+      "ink": [
+        {
+          "row": 0,
+          "char": " ",
+          "flags": 256,
+          "fgIndex": -1,
+          "bgIndex": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": 4278242560,
+          "cols": [
+            0,
+            139
+          ]
+        }
+      ]
+    },
+    "modesUnchanged": true,
+    "paletteGreen": {
+      "r": 0,
+      "g": 205,
+      "b": 0
+    },
+    "background": {
+      "policy": "required (the pinned criterion): the erased cell (0,0) reads blank with the same RESOLVED background RGB as the X it replaced; observed, not required: the stored representation, the rest of the erased row and which pen the fill follows",
+      "before": {
+        "bgIndex": 2,
+        "backgroundArgb": null,
+        "resolved": {
+          "r": 0,
+          "g": 205,
+          "b": 0
+        },
+        "source": "palette"
+      },
+      "after": {
+        "bgIndex": -1,
+        "backgroundArgb": 4278242560,
+        "resolved": {
+          "r": 0,
+          "g": 205,
+          "b": 0
+        },
+        "source": "literal"
+      },
+      "resolvedMatchesBefore": true,
+      "storedRepresentationMatches": false,
+      "erasedCells": 140,
+      "paintedCells": 140,
+      "sameResolvedAsBefore": 140,
+      "lastErased": {
+        "bgIndex": -1,
+        "backgroundArgb": 4278242560,
+        "resolved": {
+          "r": 0,
+          "g": 205,
+          "b": 0
+        },
+        "source": "literal"
+      }
+    },
+    "restoration": {
+      "policy": "the pinned finally feed (SGR 0) must leave a written cell with neutral storage",
+      "witness": {
+        "row0": "W_________",
+        "cursor": [
+          0,
+          1
+        ],
+        "ink": [
+          "0,0,W",
+          {
+            "row": 0,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278242560,
+            "cols": [
+              1,
+              139
+            ]
+          }
+        ]
+      },
+      "witnessNeutral": true
+    },
+    "spellingControls": {
+      "policy": "observed, not graded: the explicit-0 spelling of the same erase; the pinned fixture uses only the omitted spelling",
+      "explicit0": {
+        "sequence": "\u001b[0K",
+        "row0": "__________",
+        "cursor": [
+          0,
+          0
+        ],
+        "ink": [
+          {
+            "row": 0,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278242560,
+            "cols": [
+              0,
+              139
+            ]
+          }
+        ],
+        "sameAsPinned": true
+      }
+    },
+    "fullScreen": {
+      "policy": "graded: rows 1-39 carry a distinct marker each and must survive; row 0 holds only blanks",
+      "cursor": [
+        0,
+        0
+      ],
+      "before": {
+        "cursor": [
+          0,
+          0
+        ],
+        "row0": "XXXXX_____",
+        "seeded": true
+      },
+      "after": {
+        "cursor": [
+          0,
+          0
+        ],
+        "row0": "__________",
+        "markersKept": true
+      }
+    },
+    "penControls": {
+      "policy": "observed, not graded: the pinned fixture erases under the pen that wrote the X, so it cannot tell a fill that follows the current pen from a preserved cell background; here the pen changes (SGR 44) or resets (SGR 0) between the write and the erase",
+      "penChanged": {
+        "pen": "SGR 44",
+        "seeded": true,
+        "before": {
+          "row0": "XXXXX_____",
+          "cursor": [
+            0,
+            0
+          ],
+          "ink": [
+            {
+              "row": 0,
+              "char": "X",
+              "flags": 33024,
+              "fgIndex": -1,
+              "bgIndex": 2,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "cols": [
+                0,
+                4
+              ]
+            }
+          ]
+        },
+        "after": {
+          "row0": "__________",
+          "cursor": [
+            0,
+            0
+          ],
+          "ink": [
+            {
+              "row": 0,
+              "char": " ",
+              "flags": 256,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": 4278190318,
+              "cols": [
+                0,
+                139
+              ]
+            }
+          ]
+        },
+        "background": {
+          "before": {
+            "bgIndex": 2,
+            "backgroundArgb": null,
+            "resolved": {
+              "r": 0,
+              "g": 205,
+              "b": 0
+            },
+            "source": "palette"
+          },
+          "after": {
+            "bgIndex": -1,
+            "backgroundArgb": 4278190318,
+            "resolved": {
+              "r": 0,
+              "g": 0,
+              "b": 238
+            },
+            "source": "literal"
+          },
+          "resolvedMatchesBefore": false,
+          "storedRepresentationMatches": false,
+          "erasedCells": 140,
+          "paintedCells": 140,
+          "sameResolvedAsBefore": 0,
+          "lastErased": {
+            "bgIndex": -1,
+            "backgroundArgb": 4278190318,
+            "resolved": {
+              "r": 0,
+              "g": 0,
+              "b": 238
+            },
+            "source": "literal"
+          }
+        }
+      },
+      "penReset": {
+        "pen": "SGR 0",
+        "seeded": true,
+        "before": {
+          "row0": "XXXXX_____",
+          "cursor": [
+            0,
+            0
+          ],
+          "ink": [
+            {
+              "row": 0,
+              "char": "X",
+              "flags": 33024,
+              "fgIndex": -1,
+              "bgIndex": 2,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "cols": [
+                0,
+                4
+              ]
+            }
+          ]
+        },
+        "after": {
+          "row0": "__________",
+          "cursor": [
+            0,
+            0
+          ],
+          "ink": []
+        },
+        "background": {
+          "before": {
+            "bgIndex": 2,
+            "backgroundArgb": null,
+            "resolved": {
+              "r": 0,
+              "g": 205,
+              "b": 0
+            },
+            "source": "palette"
+          },
+          "after": null,
+          "resolvedMatchesBefore": false,
+          "storedRepresentationMatches": false,
+          "erasedCells": 140,
+          "paintedCells": 0,
+          "sameResolvedAsBefore": 0,
+          "lastErased": null
+        }
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":2,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\" \",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278242560}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "EL erases X while preserving its measured non-default background",
+        "observed": "{\"before\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":2,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\" \",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278242560}}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored cells and App-resolved background RGB only: the erased cell (0,0) is blank with the resolved background of the X it replaced; the stored representation (palette index versus literal) is observed, not required; rendered appearance is not claimed"
+  }
+}

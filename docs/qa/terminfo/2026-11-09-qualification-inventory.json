@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 63,
-    "suiteClaims": 65,
+    "uniqueBenchmarkIds": 65,
+    "suiteClaims": 67,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 63,
-    "pinnedAndEffectSupportedIds": 58,
+    "effectSupportedIds": 65,
+    "pinnedAndEffectSupportedIds": 60,
     "effectSupportedPinnedInconclusiveIds": [
       "modes.altscreen-1047",
       "modes.altscreen-47",
@@ -55,7 +55,7 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "pinnedSupportedIds": 58,
+    "pinnedSupportedIds": 60,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -64,8 +64,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 105,
-      "notPinnedSupported": 110
+      "effectUnqualified": 103,
+      "notPinnedSupported": 108
     }
   },
   "suites": [
@@ -1297,6 +1297,77 @@
         "command": "node --test scripts/terminfo/saved-reset-publication.test.mjs",
         "testSha256": "5d0aab5dc7133c4dd1a5c8f97a0c2c6369b36dcba4ff0d7ec4b539a80cda9f43"
       }
+    },
+    {
+      "suite": "erase-attrs-region",
+      "suiteId": "ntilde-owned-erase-attrs-region-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-09-erase-attrs-region/",
+      "doc": "2026-11-09-erase-attrs-region-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "erase.el-with-attrs",
+        "erase.ed-scroll-region"
+      ],
+      "evidence": {
+        "files": 23,
+        "bytes": 310366,
+        "sha256": "e84f4685b7ff042983f68381399ca2f85d807def1259eea6c972ecc05c1e9147"
+      },
+      "receipt": {
+        "schemaVersion": 32,
+        "runId": "a0ccee04218d948d660a065e6f23d734",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "f6807627de1b445c46c7f79b132d5c56b142da7ad519c55d75828f5268b500d8"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-erase-attrs-region-graded-v1",
+          "file": "erar-observations.json",
+          "sha256": "9541c335de01fdd238a57b1eb5f3d1d6d49a73948ba6e09db22339933e3a5a5f",
+          "runFile": "erar-run.json",
+          "runSha256": "9b629e99e4992d92aaab2def10c9bce1aa6a663ba0a47407a61e1831540935ca",
+          "counts": {
+            "supported": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "a0ccee04218d948d660a065e6f23d734",
+        "measuredAt": "2026-11-09T15:18:26.965Z",
+        "appRevision": "c16997c2007c65c2102a942a05b7404e1f800c2c",
+        "appVersion": "0.12.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "b5de1d8933a5a6a04d2aa9d7ba016327a64246a6",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "86ff4a17753bf7d9c3e6090ecff941ee4de7fb648e9264b9868e1eb1c899aa49",
+        "gradingAdapterId": "ntilde-owned-erase-attrs-region-grading-v1",
+        "gradingAdapterBundleSha256": "2d72fd06cad67d8171a613c83be318ab27f87ff2c1ea8fbd0c4fbb4a4eb6b5ed",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v26",
+        "sourceSnapshotManifestSha256": "876c4c89d0da941415bf5f9b976d55dcff295eb15824d11e6eae754f0004af35"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "2bbd5eb039bc6d66f5eabe7663a31254",
+        "counts": {
+          "inconclusive": 168,
+          "supported": 86,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "ec5f66875becf5975d71e5c39409541443cf5e1e95e7d4bd6573f782bc17ba9e",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/erase-attrs-region-publication.test.mjs",
+        "testSha256": "3d6c03178f5263f9f50203945422451dcc03ec6937c755421590311d1fe8ba6e"
+      }
     }
   ],
   "benchmark": [
@@ -1698,6 +1769,100 @@
         {
           "id": "editing.repeat-char",
           "suite": "char-edit",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "erase.ed-scroll-region",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "erase-attrs-region",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "erase-attrs-region",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "erase.ed-scroll-region",
+          "suite": "erase-attrs-region",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "erase.el-with-attrs",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "erase-attrs-region",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "erase-attrs-region",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "erase.el-with-attrs",
+          "suite": "erase-attrs-region",
           "status": "qualified",
           "pinned": {
             "verdict": "supported",

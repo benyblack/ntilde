@@ -1,0 +1,265 @@
+{
+  "caseId": "erase.ed-scroll-region",
+  "pinnedCriterion": "with KEEP! on row 0, ERASE on row 2, margins 3;10 and the cursor at row 2 column 0, ESC[J leaves row 0 reading KEEP! and the first five cells of row 2 blank; the termless probe reads rows 0 and 2 (first five cells) and the cursor before the erase only",
+  "pinnedFeeds": [
+    "\u001b[1;1HKEEP!\u001b[3;1HERASE\u001b[3;10r\u001b[3;1H",
+    "\u001b[J",
+    "\u001b[r"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001b[2J\u001b[H",
+      "KEEP_THIS\r\n",
+      "row1\r\n",
+      "\u001b[3;10r",
+      "\u001b[3;1H",
+      "\u001b[J",
+      "\u001b[r"
+    ],
+    "demand": "cursor position report only (never a verdict)",
+    "minimum": {
+      "rows": 10,
+      "cols": 10
+    },
+    "note": "upstream terminal path is a cursor-query path (unmeasuredCellResult) and never a grade"
+  },
+  "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HKEEP!\u001b[3;1HERASE\u001b[3;10r\u001b[3;1H",
+    "\u001b[J",
+    "\u001b[r",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HKEEP!\u001b[3;1HERASE\u001b[3;10r\u001b[3;1H",
+    "\u001b[0J",
+    "\u001b[r",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[3;10r\u001b[3;1H",
+    "\u001b[J"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedSequence": "\u001b[J",
+    "initial": {
+      "ink": 0,
+      "cursor": [
+        0,
+        0
+      ],
+      "margins": [
+        0,
+        39
+      ]
+    },
+    "setup": {
+      "text": [
+        "KEEP!_____",
+        "ERASE_____"
+      ],
+      "cursor": [
+        2,
+        0
+      ],
+      "margins": [
+        2,
+        9
+      ],
+      "ink": [
+        "0,0,K",
+        "0,1,E",
+        "0,2,E",
+        "0,3,P",
+        "0,4,!",
+        "2,0,E",
+        "2,1,R",
+        "2,2,A",
+        "2,3,S",
+        "2,4,E"
+      ],
+      "originMode": false
+    },
+    "erased": {
+      "text": [
+        "KEEP!_____",
+        "__________"
+      ],
+      "cursor": [
+        2,
+        0
+      ],
+      "margins": [
+        2,
+        9
+      ],
+      "ink": [
+        "0,0,K",
+        "0,1,E",
+        "0,2,E",
+        "0,3,P",
+        "0,4,!"
+      ],
+      "originMode": false
+    },
+    "modesUnchanged": true,
+    "preserved": {
+      "policy": "required (the pinned criterion): the preceding row KEEP! survives and the target cells ERASE read blank; graded stricter: the whole screen is exactly KEEP!",
+      "controlRow": "KEEP!_____",
+      "targetRow": "__________"
+    },
+    "restoration": {
+      "policy": "the pinned finally feed (ESC[r) must restore the margins to the full screen; the cursor after it is observed, not required",
+      "restored": {
+        "text": [
+          "KEEP!_____",
+          "__________"
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "ink": [
+          "0,0,K",
+          "0,1,E",
+          "0,2,E",
+          "0,3,P",
+          "0,4,!"
+        ]
+      },
+      "marginsRestored": true
+    },
+    "spellingControls": {
+      "policy": "observed, not graded: the explicit-0 spelling of the same erase; the pinned fixture uses only the omitted spelling",
+      "explicit0": {
+        "sequence": "\u001b[0J",
+        "text": [
+          "KEEP!_____",
+          "__________"
+        ],
+        "cursor": [
+          2,
+          0
+        ],
+        "margins": [
+          2,
+          9
+        ],
+        "ink": [
+          "0,0,K",
+          "0,1,E",
+          "0,2,E",
+          "0,3,P",
+          "0,4,!"
+        ],
+        "sameAsPinned": true
+      }
+    },
+    "boundary": {
+      "policy": "observed, not graded, no standards claim: where ED 0 stopped with the same margins (3;10) and cursor over a marker on every row; the pinned criterion only reads rows 0 and 2",
+      "seeded": true,
+      "cursor": [
+        2,
+        0
+      ],
+      "margins": [
+        2,
+        9
+      ],
+      "rowsKept": {
+        "first": 0,
+        "last": 1,
+        "count": 2
+      },
+      "keptAboveCursor": true,
+      "erasedInsideRegion": true,
+      "erasedBelowBottomMargin": true,
+      "inkAfter": 22,
+      "modesUnchanged": true
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\"E\",\"R\",\"A\",\"S\",\"E\"],\"cursor\":{\"x\":0,\"y\":2,\"visible\":true}},\"after\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\" \",\" \",\" \",\" \",\" \"]}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "ED0 erases measured cells below the cursor and preserves the preceding row",
+        "observed": "{\"before\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\"E\",\"R\",\"A\",\"S\",\"E\"],\"cursor\":{\"x\":0,\"y\":2,\"visible\":true}},\"after\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\" \",\" \",\" \",\" \",\" \"]}}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored cells, cursor, margins and mode flags only: the preceding row is preserved and the cells from the cursor read blank; whether ED is clipped to the margins is not claimed (a full-screen marker fill is observed separately); rendered appearance is not claimed"
+  }
+}

@@ -38,7 +38,7 @@
 // is added, and the pinned `ESC[r` restores the margins to the full screen. A full-screen marker fill with the same margins and cursor records
 // where ED stopped (inside the region, below its bottom margin) as a labeled observation: nothing here claims that ED must or must not be
 // clipped to the margins.
-import { planFeed, planRead, planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
+import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { briefInk } from './erase-line-contracts.mjs';
 import { sgrAttrsReset, sgrAttrsClear, sgrAttrsPredicates } from './sgr-attrs-contracts.mjs';
 import { eraseDisplayInk, eraseDisplayCellAt, eraseDisplayScrollback, validateEraseDisplayScreen } from './erase-display-contracts.mjs';
@@ -181,39 +181,58 @@ function diagnoseEl(setup, erased) {
     return 'The erased cell reads blank but its resolved background differs from the measured one';
 }
 
-function gradeEl(contract, observation) {
-    const { initial, setup, erased, restored, fillBefore, fill, reverseVideo } = observation;
-    if (setup.rows !== screenRows || setup.cols !== screenCols) return { outcome: 'inconclusive', note: contractGeometryNote };
-    if (reverseVideo !== false) {
-        return { outcome: 'inconclusive', note: 'DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it' };
+/** The first failing check's outcome, or null when every check passes. Each check returns an outcome object or null. */
+const firstOutcome = checks => {
+    for (const check of checks) {
+        const outcome = check();
+        if (outcome !== null) return outcome;
     }
-    if (initial.ink.length !== 0) return { outcome: 'inconclusive', note: 'Blank neutral screen control was not measured (the screen was not empty)' };
-    if (!seededGreen(setup) || !sameCursor(setup, elCursor)) return { outcome: 'inconclusive', note: pinnedElSetupNote };
-    if (!inkIs({ ink: fillBefore.ink.filter(cell => cell.row !== 0) }, elFillPlacements) || !seededGreen({ ...fillBefore, ink: fillBefore.ink.filter(cell => cell.row === 0) })
-        || !sameCursor(fillBefore, elCursor)) {
-        return { outcome: 'inconclusive', note: 'The full-screen control seed was not measured, so unaffected rows cannot be distinguished from an accidental whole-screen clear' };
-    }
-    const witnessCell = cellAt0(restored, 0);
-    if (witnessCell === undefined || witnessCell.char !== witness || !neutral(witnessCell)) {
-        return { outcome: 'inconclusive', note: 'The pinned finally feed did not restore the pen: a written cell still carried stored attributes' };
-    }
-    if (!rowZeroBlanksOnly(erased)) {
-        return { outcome: 'unsupported', note: diagnoseEl(setup, erased) };
-    }
+    return null;
+};
+const inconclusive = note => ({ outcome: 'inconclusive', note });
+const unsupported = note => ({ outcome: 'unsupported', note });
+/** An unrelated-state drift between two reads of one erase, named for the report. */
+const driftNote = 'A stored mode, margin, scrollback count or the cursor visibility changed during the erase';
+const withoutRowZero = state => ({ ink: state.ink.filter(cell => cell.row !== 0) });
+const onlyRowZero = state => ({ ...state, ink: state.ink.filter(cell => cell.row === 0) });
+
+/** Whether the pinned finally feed left a written cell with neutral storage. */
+const penRestored = state => {
+    const cell = cellAt0(state, 0);
+    return cell !== undefined && cell.char === witness && neutral(cell);
+};
+
+/** The preconditions of the pinned criterion: every one failing makes the grade inconclusive, never unsupported. */
+function elPreconditions({ initial, setup, restored, fillBefore, reverseVideo }) {
+    return [
+        () => (setup.rows === screenRows && setup.cols === screenCols ? null : inconclusive(contractGeometryNote)),
+        () => (reverseVideo === false ? null : inconclusive('DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it')),
+        () => (initial.ink.length === 0 ? null : inconclusive('Blank neutral screen control was not measured (the screen was not empty)')),
+        () => (seededGreen(setup) && sameCursor(setup, elCursor) ? null : inconclusive(pinnedElSetupNote)),
+        () => (inkIs(withoutRowZero(fillBefore), elFillPlacements) && seededGreen(onlyRowZero(fillBefore)) && sameCursor(fillBefore, elCursor) ? null
+            : inconclusive('The full-screen control seed was not measured, so unaffected rows cannot be distinguished from an accidental whole-screen clear')),
+        () => (penRestored(restored) ? null : inconclusive('The pinned finally feed did not restore the pen: a written cell still carried stored attributes')),
+    ];
+}
+
+/** The erase verdict: the pinned criterion on cell (0,0), then the strictly finer controls. */
+function elVerdict({ setup, erased, fillBefore, fill }) {
     const first = cellAt0(erased, 0);
-    if (!painted(first)) return { outcome: 'unsupported', note: diagnoseEl(setup, erased) };
-    if (!sameRgb(first.bg, setup.ink[0].bg)) return { outcome: 'unsupported', note: diagnoseEl(setup, erased) };
-    if (!sameCursor(erased, elCursor)) return { outcome: 'unsupported', note: 'The cursor moved during the erase: EL must leave it at its cell' };
-    if (!modesUnchanged(setup, erased)) return { outcome: 'unsupported', note: 'A stored mode, margin, scrollback count or the cursor visibility changed during the erase' };
-    if (!rowZeroBlanksOnly({ ink: fill.ink.filter(cell => cell.row === 0) }) || !inkIs({ ink: fill.ink.filter(cell => cell.row !== 0) }, elFillPlacements)
-        || !sameCursor(fill, elCursor) || !modesUnchanged(fillBefore, fill)) {
-        return { outcome: 'unsupported', note: 'The full-screen control differs: rows other than the erased line changed (an accidental whole-screen clear), or the cursor or a mode moved' };
-    }
-    return { outcome: 'supported' };
+    return [
+        () => (rowZeroBlanksOnly(erased) && painted(first) && sameRgb(first.bg, setup.ink[0].bg) ? null : unsupported(diagnoseEl(setup, erased))),
+        () => (sameCursor(erased, elCursor) ? null : unsupported('The cursor moved during the erase: EL must leave it at its cell')),
+        () => (modesUnchanged(setup, erased) ? null : unsupported(driftNote)),
+        () => (rowZeroBlanksOnly(onlyRowZero(fill)) && inkIs(withoutRowZero(fill), elFillPlacements) && sameCursor(fill, elCursor) && modesUnchanged(fillBefore, fill) ? null
+            : unsupported('The full-screen control differs: rows other than the erased line changed (an accidental whole-screen clear), or the cursor or a mode moved')),
+    ];
+}
+
+function gradeEl(observation) {
+    return firstOutcome([...elPreconditions(observation), ...elVerdict(observation)]) ?? { outcome: 'supported' };
 }
 
 /** The observed record of erase.el-with-attrs: every group's text, cursor and background, plus the labeled controls. */
-function briefEl(contract, observation) {
+function briefEl(observation) {
     const rowText = state => Array.from({ length: 10 }, (_, col) => { const cell = cellAt0(state, col); return cell === undefined || cell.char === ' ' ? '_' : cell.char; }).join('');
     const pinnedState = item => ({ row0: rowText(item), cursor: item.cursor, ink: briefInk(item.ink) });
     const { setup, erased } = observation;
@@ -227,7 +246,7 @@ function briefEl(contract, observation) {
             + 'observed, not required: the stored representation, the rest of the erased row and which pen the fill follows',
             ...elBackground(setup, erased) },
         restoration: { policy: 'the pinned finally feed (SGR 0) must leave a written cell with neutral storage', witness: pinnedState(observation.restored),
-            witnessNeutral: (() => { const cell = cellAt0(observation.restored, 0); return cell !== undefined && cell.char === witness && neutral(cell); })() },
+            witnessNeutral: penRestored(observation.restored) },
         spellingControls: { policy: 'observed, not graded: the explicit-0 spelling of the same erase; the pinned fixture uses only the omitted spelling',
             explicit0: { sequence: '\x1b[0K', ...pinnedState(observation.explicit0), sameAsPinned: JSON.stringify(observation.explicit0.ink) === JSON.stringify(erased.ink) } },
         fullScreen: { policy: 'graded: rows 1-39 carry a distinct marker each and must survive; row 0 holds only blanks', cursor: [...elCursor],
@@ -254,25 +273,31 @@ function diagnoseEd(setup, erased) {
     return 'The erased or retained cells differ from the contracted screen';
 }
 
-function gradeEd(contract, observation) {
-    const { initial, setup, erased, restored, reverseVideo } = observation;
-    if (setup.rows < 10 || setup.cols < 10) return { outcome: 'inconclusive', note: pinnedEdGeometryNote };
-    if (setup.rows !== screenRows || setup.cols !== screenCols) return { outcome: 'inconclusive', note: contractGeometryNote };
-    if (reverseVideo !== false) {
-        return { outcome: 'inconclusive', note: 'DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it' };
-    }
-    if (initial.ink.length !== 0 || !fullScreenMargins(initial)) return { outcome: 'inconclusive', note: 'Blank neutral screen control was not measured (the screen was not empty or margins were set)' };
-    if (!inkIs(setup, edPlacements) || !sameCursor(setup, edCursor) || !marginsAre(setup, edMargins) || setup.buffer.originMode !== false) {
-        return { outcome: 'inconclusive', note: pinnedEdSetupNote };
-    }
-    // Restoration: the pinned `ESC[r` returns the margins to the full screen without disturbing the stored text.
-    if (!fullScreenMargins(restored) || !inkIs(restored, edKept) || restored.buffer.originMode !== false) {
-        return { outcome: 'inconclusive', note: 'The pinned finally feed did not restore the margins to the full screen, or it changed the stored text' };
-    }
-    if (!inkIs(erased, edKept)) return { outcome: 'unsupported', note: diagnoseEd(setup, erased) };
-    if (!sameCursor(erased, edCursor)) return { outcome: 'unsupported', note: 'The cursor moved during the erase: ED must leave it at its cell' };
-    if (!modesUnchanged(setup, erased)) return { outcome: 'unsupported', note: 'A stored mode, the margins, the scrollback count or the cursor visibility changed during the erase' };
-    return { outcome: 'supported' };
+/** The preconditions of the pinned criterion: every one failing makes the grade inconclusive, never unsupported. */
+function edPreconditions({ initial, setup, restored, reverseVideo }) {
+    return [
+        () => (setup.rows >= 10 && setup.cols >= 10 ? null : inconclusive(pinnedEdGeometryNote)),
+        () => (setup.rows === screenRows && setup.cols === screenCols ? null : inconclusive(contractGeometryNote)),
+        () => (reverseVideo === false ? null : inconclusive('DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it')),
+        () => (initial.ink.length === 0 && fullScreenMargins(initial) ? null : inconclusive('Blank neutral screen control was not measured (the screen was not empty or margins were set)')),
+        () => (inkIs(setup, edPlacements) && sameCursor(setup, edCursor) && marginsAre(setup, edMargins) && setup.buffer.originMode === false ? null : inconclusive(pinnedEdSetupNote)),
+        // Restoration: the pinned `ESC[r` returns the margins to the full screen without disturbing the stored text.
+        () => (fullScreenMargins(restored) && inkIs(restored, edKept) && restored.buffer.originMode === false ? null
+            : inconclusive('The pinned finally feed did not restore the margins to the full screen, or it changed the stored text')),
+    ];
+}
+
+/** The erase verdict: the pinned criterion (KEEP! kept, target blank), then the strictly finer whole-screen, cursor and mode checks. */
+function edVerdict({ setup, erased }) {
+    return [
+        () => (inkIs(erased, edKept) ? null : unsupported(diagnoseEd(setup, erased))),
+        () => (sameCursor(erased, edCursor) ? null : unsupported('The cursor moved during the erase: ED must leave it at its cell')),
+        () => (modesUnchanged(setup, erased) ? null : unsupported('A stored mode, the margins, the scrollback count or the cursor visibility changed during the erase')),
+    ];
+}
+
+function gradeEd(observation) {
+    return firstOutcome([...edPreconditions(observation), ...edVerdict(observation)]) ?? { outcome: 'supported' };
 }
 
 /** Which rows of the marker fill an ED 0 left in place: the labeled boundary observation, never a grade. */
@@ -288,7 +313,7 @@ function boundaryObservation(before, after) {
         inkAfter: after.ink.length, modesUnchanged: modesUnchanged(before, after) };
 }
 
-function briefEd(contract, observation) {
+function briefEd(observation) {
     const pinnedState = item => ({ text: render(item, [0, 2]), cursor: item.cursor, margins: [item.buffer.scrollTop, item.buffer.scrollBottom], ink: briefInk(item.ink) });
     const { setup, erased } = observation;
     const boundary = boundaryObservation(observation.fillBefore, observation.fill);
@@ -347,9 +372,8 @@ const edGroups = [
     { role: 'fill', feeds: [edErase] },
 ];
 
-const contracts = [];
-const contract_ = caseId => contracts.find(item => item.caseId === caseId);
-contracts.push(
+/** The two pinned cases, in suite order. */
+export const eraseAttrsRegionContracts = Object.freeze([
     case_({ caseId: 'erase.el-with-attrs', groups: elGroups, pinnedFeeds: [elSetup, elErase, elFinally],
         // The early return of an unmeasured colored-X setup still runs the pinned `finally` feed.
         pinnedFeedPaths: [[elSetup, elErase, elFinally], [elSetup, elFinally]],
@@ -362,8 +386,7 @@ contracts.push(
             note: 'upstream terminal path is a cursor-query path (unmeasuredCellResult) and never a grade' },
         appearanceScope: 'stored cells and App-resolved background RGB only: the erased cell (0,0) is blank with the resolved background of the X it replaced; the stored '
             + 'representation (palette index versus literal) is observed, not required; rendered appearance is not claimed',
-        grade: observation => gradeEl(contract_('erase.el-with-attrs'), observation),
-        observed: observation => briefEl(contract_('erase.el-with-attrs'), observation) }),
+        grade: gradeEl, observed: briefEl }),
     case_({ caseId: 'erase.ed-scroll-region', groups: edGroups, pinnedFeeds: [edSetup, edErase, edFinally],
         // An unmeasured seed returns early but still runs the `finally` feed; a screen below the 10x10 floor feeds nothing.
         pinnedFeedPaths: [[edSetup, edErase, edFinally], [edSetup, edFinally], []],
@@ -375,11 +398,8 @@ contracts.push(
             note: 'upstream terminal path is a cursor-query path (unmeasuredCellResult) and never a grade' },
         appearanceScope: 'stored cells, cursor, margins and mode flags only: the preceding row is preserved and the cells from the cursor read blank; whether ED is clipped to the margins '
             + 'is not claimed (a full-screen marker fill is observed separately); rendered appearance is not claimed',
-        grade: observation => gradeEd(contract_('erase.ed-scroll-region'), observation),
-        observed: observation => briefEd(contract_('erase.ed-scroll-region'), observation) }),
-);
-/** The two pinned cases, in suite order. */
-export const eraseAttrsRegionContracts = Object.freeze(contracts);
+        grade: gradeEd, observed: briefEd }),
+]);
 /** Contract case ids in suite order. */
 export const eraseAttrsRegionCaseIds = Object.freeze(eraseAttrsRegionContracts.map(contract => contract.caseId));
 

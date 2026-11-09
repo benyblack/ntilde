@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-erase-attrs-region-grading-v1",
+  "probeIds": [
+    "erase.el-with-attrs",
+    "erase.ed-scroll-region"
+  ],
+  "cases": [
+    {
+      "caseId": "erase.el-with-attrs",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[42m\u001b[1;1HXXXXX\u001b[1;1H",
+        "\u001b[K",
+        "\u001b[0m",
+        "W",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[42m\u001b[1;1HXXXXX\u001b[1;1H",
+        "\u001b[0K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[42m\u001b[1;1HXXXXX\u001b[1;1H",
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[42m\u001b[1;1HXXXXX\u001b[44m\u001b[1;1H",
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[42m\u001b[1;1HXXXXX\u001b[0m\u001b[1;1H",
+        "\u001b[K"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "erase.el-with-attrs",
+        "pass": true,
+        "response": "{\"before\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":2,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\" \",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278242560}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "EL erases X while preserving its measured non-default background",
+            "observed": "{\"before\":{\"char\":\"X\",\"flags\":33024,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"palette\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":2,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\" \",\"flags\":256,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":{\"r\":0,\"g\":205,\"b\":0},\"fgSource\":\"default\",\"bgSource\":\"literal\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":4278242560}}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "erase.ed-scroll-region",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HKEEP!\u001b[3;1HERASE\u001b[3;10r\u001b[3;1H",
+        "\u001b[J",
+        "\u001b[r",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HKEEP!\u001b[3;1HERASE\u001b[3;10r\u001b[3;1H",
+        "\u001b[0J",
+        "\u001b[r",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[3;10r\u001b[3;1H",
+        "\u001b[J"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            2,
+            0
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "erase.ed-scroll-region",
+        "pass": true,
+        "response": "{\"before\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\"E\",\"R\",\"A\",\"S\",\"E\"],\"cursor\":{\"x\":0,\"y\":2,\"visible\":true}},\"after\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\" \",\" \",\" \",\" \",\" \"]}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "ED0 erases measured cells below the cursor and preserves the preceding row",
+            "observed": "{\"before\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\"E\",\"R\",\"A\",\"S\",\"E\"],\"cursor\":{\"x\":0,\"y\":2,\"visible\":true}},\"after\":{\"control\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"target\":[\" \",\" \",\" \",\" \",\" \"]}}"
+          }
+        ]
+      }
+    }
+  ]
+}
