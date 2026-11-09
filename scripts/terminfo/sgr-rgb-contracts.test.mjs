@@ -13,7 +13,7 @@ test('the two contracts mirror the pinned fixtures byte for byte', () => {
     assert.deepEqual(sgrRgbFeeds(sgrRgbContracts[0]), [sgrRgbReset, 'C\x1b[31mX\x1b[34mY']);
     assert.deepEqual(sgrRgbFeeds(sgrRgbContracts[1]), [sgrRgbReset, 'C\x1b[41mX\x1b[44mY']);
     // The fixture bytes are byte-identical to the stored-index batch's fixtures.
-    assert.equal('C\x1b[31mX\x1b[34mY', 'C' + '\x1b[31m' + 'X' + '\x1b[34m' + 'Y');
+    assert.equal('C' + '\x1b[31m' + 'X' + '\x1b[34m' + 'Y', 'C\x1b[31mX\x1b[34mY');
     assert.equal(sgrRgbContracts[0].pinnedCriterion, 'the two named colors select distinct exposed fg RGB values');
     assert.equal(sgrRgbContracts[1].pinnedCriterion, 'the two named colors select distinct exposed bg RGB values');
 });

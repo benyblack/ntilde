@@ -148,24 +148,39 @@ class PlanBuilder {
     alternative(readIndex, label, feedIndex, replacement) { this.roles[readIndex].alternatives.push({ label, feedIndex, replacement }); }
 }
 
+/**
+ * Split a line into its text and its trailing decimal number. Equivalent to matching /^(.*?)(\d+)$/ (the number is the longest
+ * all-digit tail, and the text may not contain a line terminator, which `.` refuses) without that expression's backtracking:
+ * the lazy prefix followed by a greedy digit run retries the digit run from every start, which is quadratic on long digit-rich
+ * lines. This scan is linear in the line length.
+ */
+export function splitTrailingNumber(text) {
+    let start = text.length;
+    while (start > 0 && text.charCodeAt(start - 1) >= 48 && text.charCodeAt(start - 1) <= 57) start--;
+    if (start === text.length) return null;
+    const prefix = text.slice(0, start);
+    if (/[\n\r\u2028\u2029]/.test(prefix)) return null;
+    return { prefix, digits: text.slice(start) };
+}
+
 /** Compact a list of rows or history lines: runs of consecutive numbered lines become one entry. */
 export function compactLines(lines, firstRow = 0) {
     const out = [];
     for (let index = 0; index < lines.length; index++) {
         const text = lines[index];
         if (text === '') continue;
-        const match = /^(.*?)(\d+)$/.exec(text);
-        let end = index;
-        if (match) {
+        const first = splitTrailingNumber(text);
+        let end = index, last = first;
+        if (first) {
             while (end + 1 < lines.length) {
-                const next = /^(.*?)(\d+)$/.exec(lines[end + 1]);
-                const last = /^(.*?)(\d+)$/.exec(lines[end]);
-                if (!next || next[1] !== match[1] || Number(next[2]) !== Number(last[2]) + 1) break;
+                const next = splitTrailingNumber(lines[end + 1]);
+                if (!next || next.prefix !== first.prefix || Number(next.digits) !== Number(last.digits) + 1) break;
                 end++;
+                last = next;
             }
         }
         out.push(end === index ? `${firstRow + index}: ${text}`
-            : `${firstRow + index}-${firstRow + end}: ${text}..${/^(.*?)(\d+)$/.exec(lines[end])[2]}`);
+            : `${firstRow + index}-${firstRow + end}: ${text}..${last.digits}`);
         index = end;
     }
     return out;
