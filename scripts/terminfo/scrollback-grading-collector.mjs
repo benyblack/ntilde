@@ -11,7 +11,7 @@
 import { createHash } from 'node:crypto';
 import { scrollbackCaseIds } from './scrollback-contracts.mjs';
 
-/** Identity of this thirteenth layered extension. */
+/** Identity of this fourteenth layered extension. */
 export const scrollbackAdapterId = 'ntilde-owned-scrollback-grading-v1';
 
 /** The verbatim pinned section markers and digest (terminfo.dev@4.0.0, bundle aa5f2bf9…d1f6). */
