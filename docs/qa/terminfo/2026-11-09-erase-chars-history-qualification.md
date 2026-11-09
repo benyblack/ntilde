@@ -106,6 +106,10 @@ App-observed underline-color resolution. **The stock collector was not re-run** 
 unchanged and this batch changes no stock behavior, so the carried counts (168 inconclusive, 86 supported, 1 unsupported) are labeled as carried; both ids are inconclusive there through
 the cursor-query path.
 
+**Integration after measurement:** main later gained reverse-wraparound (`c915c699`..`e1e379dd`, `CSI ? 45`), which routes CUB through `CursorBackward`. With the mode off (the default, and
+never enabled by these fixtures) that method is the previous `max(0, col - n)` with the pending wrap cleared, so the CUB in the right-edge seed behaves as measured; the ECH, ED and scrolling
+paths and the measured scripts are untouched and the measurement was not repeated. The merged tree was checked by the unchanged self-test list (the retained evidence still rederives byte for byte).
+
 ## Limits
 
 Stored ASCII state and the actual saved physical rows only: no wide-cell or combining-character erasure, no logical (wrapped-line) history, reflow, resize or
