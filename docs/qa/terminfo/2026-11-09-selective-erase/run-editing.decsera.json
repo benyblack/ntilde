@@ -1,0 +1,259 @@
+{
+  "caseId": "editing.decsera",
+  "feeds": [
+    "\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;1;1;5${",
+    "\u001b[0\"q",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;1;1;5$z",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;2;1;4${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;1;1;6${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;5;1;2${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qAB\u001b[0\"qCD",
+    "\u001b[1;1;1;5${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qAB\u001b[0\"q\u001b[1;1HX",
+    "\u001b[1;1;1;5${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1\"q",
+    "\u001b[0\"q",
+    "\u001b[1;1HQ",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qR\u001b[0\"qOW00\u001b[1\"q-\u001b[0\"qABCD\u001b[1;140H\u001b[1\"q|\u001b[0\"q\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03\u001b[1\"q-\u001b[0\"qABCD\u001b[4;140H|\u001b[5;1H\u001b[1\"qR\u001b[0\"qOW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06\u001b[1\"q-\u001b[0\"qABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1H\u001b[1\"qR\u001b[0\"qOW08-ABCD\u001b[9;140H|\u001b[10;1HROW09\u001b[1\"q-\u001b[0\"qABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1H\u001b[1\"qR\u001b[0\"qOW12\u001b[1\"q-\u001b[0\"qABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15\u001b[1\"q-\u001b[0\"qABCD\u001b[16;140H|\u001b[17;1H\u001b[1\"qR\u001b[0\"qOW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18\u001b[1\"q-\u001b[0\"qABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1H\u001b[1\"qR\u001b[0\"qOW20-ABCD\u001b[21;140H\u001b[1\"q|\u001b[0\"q\u001b[22;1HROW21\u001b[1\"q-\u001b[0\"qABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1H\u001b[1\"qR\u001b[0\"qOW24\u001b[1\"q-\u001b[0\"qABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27\u001b[1\"q-\u001b[0\"qABCD\u001b[28;140H|\u001b[29;1H\u001b[1\"qR\u001b[0\"qOW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30\u001b[1\"q-\u001b[0\"qABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1H\u001b[1\"qR\u001b[0\"qOW32-ABCD\u001b[33;140H|\u001b[34;1HROW33\u001b[1\"q-\u001b[0\"qABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1H\u001b[1\"qR\u001b[0\"qOW36\u001b[1\"q-\u001b[0\"qABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39\u001b[1\"q-\u001b[0\"qABCD\u001b[40;140H\u001b[1\"q|\u001b[0\"q\u001b[21;5H",
+    "\u001b[11;4;31;10${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qR\u001b[0\"qOW00\u001b[1\"q-\u001b[0\"qABCD\u001b[1;140H\u001b[1\"q|\u001b[0\"q\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03\u001b[1\"q-\u001b[0\"qABCD\u001b[4;140H|\u001b[5;1H\u001b[1\"qR\u001b[0\"qOW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06\u001b[1\"q-\u001b[0\"qABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1H\u001b[1\"qR\u001b[0\"qOW08-ABCD\u001b[9;140H|\u001b[10;1HROW09\u001b[1\"q-\u001b[0\"qABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1H\u001b[1\"qR\u001b[0\"qOW12\u001b[1\"q-\u001b[0\"qABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15\u001b[1\"q-\u001b[0\"qABCD\u001b[16;140H|\u001b[17;1H\u001b[1\"qR\u001b[0\"qOW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18\u001b[1\"q-\u001b[0\"qABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1H\u001b[1\"qR\u001b[0\"qOW20-ABCD\u001b[21;140H\u001b[1\"q|\u001b[0\"q\u001b[22;1HROW21\u001b[1\"q-\u001b[0\"qABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1H\u001b[1\"qR\u001b[0\"qOW24\u001b[1\"q-\u001b[0\"qABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27\u001b[1\"q-\u001b[0\"qABCD\u001b[28;140H|\u001b[29;1H\u001b[1\"qR\u001b[0\"qOW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30\u001b[1\"q-\u001b[0\"qABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1H\u001b[1\"qR\u001b[0\"qOW32-ABCD\u001b[33;140H|\u001b[34;1HROW33\u001b[1\"q-\u001b[0\"qABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1H\u001b[1\"qR\u001b[0\"qOW36\u001b[1\"q-\u001b[0\"qABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39\u001b[1\"q-\u001b[0\"qABCD\u001b[40;140H\u001b[1\"q|\u001b[0\"q\u001b[40;140H",
+    "\u001b[1;1;40;140${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1m\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ\u001b[0m\u001b[1;7H\u001b[44m",
+    "\u001b[1;1;1;5${",
+    "\u001b[?1049l\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[3J",
+    "HIST-A\r\nHIST-B\r\nHIST-C\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;1;1;5${",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        4
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        4
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        1
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        1
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        1
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        20,
+        4
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        20,
+        4
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        39,
+        139
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        39,
+        139
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        6
+      ]
+    }
+  ],
+  "pinnedFed": [
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;1;1;5${",
+    "\u001b[0\"q"
+  ],
+  "pinned": {
+    "probeId": "editing.decsera",
+    "pass": true,
+    "response": "{\"before\":[\"P\",\"A\",\"B\",\"C\",\"D\",\"Z\"],\"after\":[\"P\",\" \",\" \",\" \",\" \",\"Z\"]}",
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "DECSCA-protected P survives while selective erase clears ABCD",
+        "observed": "{\"before\":[\"P\",\"A\",\"B\",\"C\",\"D\",\"Z\"],\"after\":[\"P\",\" \",\" \",\" \",\" \",\"Z\"]}"
+      }
+    ]
+  }
+}

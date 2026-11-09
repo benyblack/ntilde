@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 74,
-    "suiteClaims": 76,
+    "uniqueBenchmarkIds": 76,
+    "suiteClaims": 78,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 74,
-    "pinnedAndEffectSupportedIds": 66,
+    "effectSupportedIds": 76,
+    "pinnedAndEffectSupportedIds": 68,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
@@ -58,12 +58,12 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 73,
-    "pinnedSupportedOfStockInconclusive": 65,
+    "effectSupportedOfStockInconclusive": 75,
+    "pinnedSupportedOfStockInconclusive": 67,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 66,
+    "pinnedSupportedIds": 68,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -72,8 +72,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 95,
-      "notPinnedSupported": 103
+      "effectUnqualified": 93,
+      "notPinnedSupported": 101
     }
   },
   "suites": [
@@ -1584,6 +1584,73 @@
         "command": "node --test scripts/terminfo/erase-chars-history-publication.test.mjs",
         "testSha256": "d6bdfd412b4e03d60ded7614427e29cb7e838f9d21114c45ddf1e2b91b56d344"
       }
+    },
+    {
+      "suite": "selective-erase",
+      "suiteId": "ntilde-owned-selective-erase-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-09-selective-erase/",
+      "doc": "2026-11-09-selective-erase-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "erase.selective",
+        "editing.decsera"
+      ],
+      "evidence": {
+        "files": 49,
+        "bytes": 697520,
+        "sha256": "de1acb1fafc9d14112a40466374d990bc6fd9cc4b63d3d01bfecfb67d6cd7f2f"
+      },
+      "receipt": {
+        "schemaVersion": 36,
+        "runId": "9cbce8ece66991681e2ccf76551b8881",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "de838443c0084c97f0436fb8142b1c887aff0662474b53fe28bdad3fdb46951e"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-selective-erase-graded-v1",
+          "file": "sels-observations.json",
+          "sha256": "0663e0c5660843a9c16dd1bc976c443363dedba9c759fb16ea5e9d5bd132d7a4",
+          "runFile": "sels-run.json",
+          "runSha256": "85671ba2fa9a8b9ed5acdc0855de480b5102e59931607a51ccfea896ca45b8e6",
+          "counts": {
+            "supported": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "9cbce8ece66991681e2ccf76551b8881",
+        "measuredAt": "2026-11-09T20:12:48.041Z",
+        "appRevision": "4a2c55ce305c2e3aa91a484ecb169c5aed018f57",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "32b776ff1e6bdcaa1a33ee987ef1650fefc52d4f",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "193342367746b42b9026aaa1c2c3a23129a0cca34937d84fffdd044519a665ee",
+        "gradingAdapterId": "ntilde-owned-selective-erase-grading-v1",
+        "gradingAdapterBundleSha256": "29e54f6fc684b08a944f1f1d0db2d829aa85702beb21bfc644208b4c3ef9f1d2",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v30",
+        "sourceSnapshotManifestSha256": "21dd6ac4e295529ca19fa72dd689e38ba6d5d839e3a06e86958c04f588b08769"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": null,
+        "counts": null,
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "The stock collector (scripts/terminfo-baseline.mjs) needs an interactive Ntilde tab and was not re-run for this batch. The pinned bundle (aa5f2bf9...), probeHash 16a690f34c0e and the pinned probes are unchanged since the retained stock baseline (168 inconclusive, 86 supported, 1 unsupported), so those counts are carried, not re-measured. The owned run raw.json is the pinned bundle executed through the owned adapter inside the owned worker, not the stock collector. No stock grade is changed by this batch."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/selective-erase-publication.test.mjs",
+        "testSha256": "80709061e9ca71288e2bc40e540248af0b94416e365243ab707f0a48acd0809a"
+      }
     }
   ],
   "benchmark": [
@@ -2113,6 +2180,53 @@
             "stored-state"
           ],
           "evidenceTag": "owned-stored-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.decsera",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "selective-erase",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "selective-erase",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.decsera",
+          "suite": "selective-erase",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
         }
       ]
     },
@@ -2817,6 +2931,53 @@
             "actual-scrollback"
           ],
           "evidenceTag": "owned-stored-cells-and-actual-scrollback"
+        }
+      ]
+    },
+    {
+      "id": "erase.selective",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "selective-erase",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "selective-erase",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "erase.selective",
+          "suite": "selective-erase",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
         }
       ]
     },

@@ -8,7 +8,7 @@ namespace Ntilde.AgentHost;
 internal static class CellDetailSnapshot
 {
     /// <summary>Capture a complete canonical viewport or refuse before returning any partial data.</summary>
-    internal static bool TryCapture(TerminalBuffer buffer, out CellDetailRunDto[]? details, bool includeOverline = false)
+    internal static bool TryCapture(TerminalBuffer buffer, out CellDetailRunDto[]? details, bool includeOverline = false, bool includeProtection = false)
     {
         details = null;
         if ((long)buffer.Rows * buffer.Cols > AgentHostProtocol.MaxCellDetailCells) return false;
@@ -19,7 +19,7 @@ internal static class CellDetailSnapshot
         {
             for (var col = 0; col < buffer.Cols; col++)
             {
-                var value = Project(row, col, includeOverline);
+                var value = Project(row, col, includeOverline, includeProtection);
                 if (value == previous)
                 {
                     count++;
@@ -37,7 +37,7 @@ internal static class CellDetailSnapshot
     }
 
     /// <summary>Copy stored attributes without resolving defaults, palette colors or renderer effects.</summary>
-    private static CellDetailRunDto Project(TerminalRow row, int col, bool includeOverline)
+    private static CellDetailRunDto Project(TerminalRow row, int col, bool includeOverline, bool includeProtection)
     {
         var cell = row.Cells[col];
         var decoration = cell.IsUnderline || includeOverline ? row.GetUnderline(col) : null;
@@ -54,6 +54,7 @@ internal static class CellDetailSnapshot
             UnderlineColorIndex = underline?.ColorIndex ?? -1,
             UnderlineArgb = underline?.Color?.ToUint(),
             Overline = includeOverline ? decoration?.Overline == true : null,
+            Protected = includeProtection ? row.IsProtected(col) : null,
         };
     }
 

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-selective-erase-grading-v1",
+  "probeIds": [
+    "erase.selective",
+    "editing.decsera"
+  ],
+  "caseIds": [
+    "erase.selective",
+    "editing.decsera"
+  ]
+}

@@ -938,3 +938,15 @@ app callbacks over parent-observed state, retained raw CPR exchanges (the fence 
 with a digest-checked geometry repair (`ntilde-owned-cursor-geometry-repair-v1`) for the undeclared-geometry defect of `cursor.reverse-wrap` and the latent
 one of `cursor.shape`; the original failures are retained. The measurement first found Ntilde ignoring DECSET 45 (preserved as the before-fix attempt) and
 led to the reverse-wraparound fix in #913. Receipt schema 34 and source policy v28 (221 files) bind it; earlier policies stay frozen.
+
+### Selective-erasure qualification (DECSED, DECSERA)
+
+The [selective-erasure batch](terminfo/2026-11-09-selective-erase-qualification.md) grades exactly `erase.selective` (DECSED `ESC[?2J`) and
+`editing.decsera` (DECSERA `ESC[1;1;1;5${`) through a twenty-third layered collector extension (`ntilde-owned-selective-erase-grading-v1`). Both pinned
+termless criteria are replayed byte-exactly over the seed `ESC[1;1H ESC[1"q P ESC[0"q ABCDZ` (DECSCA 1 protects `P`; DECSCA 0 leaves `ABCDZ`
+unprotected) and graded from parent-observed stored cells, per-cell DECSCA protection (read through the observer's opt-in `includeProtection`, never inferred
+from a surviving marker), the cursor, stored attributes, mode flags, buffer state and saved lines. Controls tell a selective erase apart from an ordinary
+erase of the same seed (protected text is not read-only), a no-op, a protection-off pen, an overwrite of a protected cell, whole-screen clearing, the page
+edges, bold seeding and incorrect rectangle bounds; the pinned finalizer must restore the unprotected pen. The pinned terminal pixel and cursor-query paths
+never carry a verdict and are not qualified; ASCII only; stored state, not rendered appearance. Receipt schema 36 and source policy v30 (231 files) bind it;
+earlier policies stay frozen.

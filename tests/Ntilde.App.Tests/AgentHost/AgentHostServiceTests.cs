@@ -244,6 +244,64 @@ public class AgentHostServiceTests : IDisposable
         Assert.Single(ReadDetails(buffer).CellDetails!);
     }
 
+    private ScreenSnapshotDto ReadProtection(TerminalBuffer buffer, bool includeProtection)
+    {
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        return ResultOf(Handle(service, RequestLine(AgentHostProtocol.Methods.ReadScreen,
+            paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeCellDetails = true, IncludeProtection = includeProtection })),
+            AgentHostJsonContext.Default.ScreenSnapshotDto);
+    }
+
+    [Fact]
+    public void ReadScreen_protection_is_explicitly_opted_in_and_preserves_legacy_run_boundaries()
+    {
+        var buffer = new TerminalBuffer(20, 3);
+        new AnsiParser(buffer).Process("\x1b[1;1H\x1b[1\"qAB\x1b[0\"qCD\x1b[1\"qE\x1b[0\"q");
+        var legacy = ReadProtection(buffer, includeProtection: false);
+        Assert.Single(legacy.CellDetails!);
+        Assert.Null(legacy.CellDetails![0].Protected);
+        Assert.DoesNotContain("protected", JsonSerializer.Serialize(legacy, AgentHostJsonContext.Default.ScreenSnapshotDto));
+        var details = ReadProtection(buffer, includeProtection: true);
+        var cells = ExpandDetails(details);
+        Assert.Equal(new bool?[] { true, true, false, false, true }, cells.Take(5).Select(cell => cell.Protected).ToArray());
+        Assert.All(cells.Skip(5), cell => Assert.False(cell.Protected));
+        // Protection is not an SGR attribute: the stored flags of a protected and an unprotected cell agree.
+        Assert.Equal(cells[0].Flags, cells[2].Flags);
+        Assert.All(cells, cell => Assert.Null(cell.Overline));
+    }
+
+    [Theory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public void ReadScreen_protection_respects_the_run_budget_without_fragmenting_legacy_details(int cols, bool allowed)
+    {
+        var buffer = new TerminalBuffer(cols, 16);
+        buffer.Lock.EnterWriteLock();
+        try
+        {
+            var index = 0;
+            foreach (var row in buffer.ViewportRows)
+                for (int col = 0; col < cols; col++)
+                    row.SetProtected(col, index++ % 2 == 0);
+        }
+        finally { buffer.Lock.ExitWriteLock(); }
+        var registry = new AgentSessionRegistry();
+        var registration = Register(registry, buffer);
+        using var service = NewService(registry);
+        var response = Handle(service, RequestLine(AgentHostProtocol.Methods.ReadScreen,
+            paramsObj: new ReadScreenParams { PaneId = registration.PaneId, IncludeCellDetails = true, IncludeProtection = true }));
+        if (allowed)
+            Assert.Equal(1024, ResultOf(response, AgentHostJsonContext.Default.ScreenSnapshotDto).CellDetails!.Length);
+        else
+        {
+            Assert.Equal(AgentHostProtocol.ErrorCodes.ScreenDetailsUnavailable, response.Error?.Code);
+            Assert.Null(response.Result);
+        }
+        Assert.Single(ReadProtection(buffer, includeProtection: false).CellDetails!);
+    }
+
     private static CellDetailRunDto[] ExpandDetails(ScreenSnapshotDto dto)
         => dto.CellDetails!.SelectMany(run => Enumerable.Repeat(run with { Count = 1 }, run.Count)).ToArray();
 

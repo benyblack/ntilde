@@ -146,6 +146,8 @@ The terminal engine is the **single source of truth** for terminal semantics. Th
   Windowless viewport imports report an explicitly unknown history count; imported
   empty storage cannot prove empty daemon history. This projection does not alter
   parser state or enable acting methods, and Contracts remains a leaf.
+  `includeProtection` (default off) additionally marks each run-length cell detail
+  with the stored DECSCA protection of its cells; it is a read-only projection too.
 - Owned QA controls PTY output processing outside VT: only the proved disposable
   worker's exact PTY is changed, with a parent-observed untranslated-output proof
   before cell observations and saved-mode restoration before stock collection.

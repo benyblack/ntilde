@@ -30,6 +30,7 @@ import { collectEraseAttrsRegionGrading } from './erase-attrs-region-collector.m
 import { collectAttrRectGrading } from './attr-rect-collector.mjs';
 import { collectCursorQualGrading } from './cursor-qual-collector.mjs';
 import { collectEraseCharsHistoryGrading } from './erase-chars-history-collector.mjs';
+import { collectSelectiveEraseGrading } from './selective-erase-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -265,6 +266,14 @@ try {
         const eraseCharsHistoryModule = await import(pathToFileURL(config.eraseCharsHistoryBundle).href);
         const eraseCharsHistoryRun = await collectEraseCharsHistoryGrading({ config, fence, owner, gradingModule: eraseCharsHistoryModule });
         writeFileSync(join(config.output, 'echh-run.json'), JSON.stringify(eraseCharsHistoryRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered selective-erasure qualification follows the erase-character/saved-lines suite on the same fence.
+        const selectiveEraseSource = readFileSync(config.selectiveEraseBundle);
+        if (createHash('sha256').update(selectiveEraseSource).digest('hex') !== config.selectiveEraseBundleSha256) {
+            throw new Error('Local selective-erasure adapter bundle changed.');
+        }
+        const selectiveEraseModule = await import(pathToFileURL(config.selectiveEraseBundle).href);
+        const selectiveEraseRun = await collectSelectiveEraseGrading({ config, fence, owner, gradingModule: selectiveEraseModule });
+        writeFileSync(join(config.output, 'sels-run.json'), JSON.stringify(selectiveEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

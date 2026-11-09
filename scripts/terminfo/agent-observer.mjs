@@ -116,7 +116,7 @@ function privateRequest(endpoint, method, params, timeoutMs, byteLimit) {
 }
 
 /** Copy and bound only requested state; absent or malformed evidence never becomes a successful snapshot. */
-export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false) {
+export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -127,7 +127,7 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
     const result = { rows: value.rows, cols: value.cols, lines: [...value.lines],
         cursorRow: value.cursorRow, cursorCol: value.cursorCol, cursorVisible: value.cursorVisible };
     if (includeAttributes) result.attributeRuns = copyAttributeRuns(value.attributeRuns, value.rows * value.cols);
-    if (includeCellDetails) result.cellDetails = copyCellDetails(value.cellDetails, value.rows * value.cols, includeOverline);
+    if (includeCellDetails) result.cellDetails = copyCellDetails(value.cellDetails, value.rows * value.cols, includeOverline, includeProtection);
     if (includeResolvedColors) {
         // The binding validates first; every resolved run must cohere with it.
         result.colorBinding = copyColorBinding(value.colorBinding);
@@ -151,8 +151,8 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, includeResolvedColors, includeResolvedUnderlineColors, prefix, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, includeResolvedColors, includeResolvedUnderlineColors, includeProtection, prefix, rpc, endpoint });
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -180,6 +180,7 @@ export class OwnedCellObserver {
             ...(this.includeCellDetails ? { includeCellDetails: true } : {}),
             ...(this.includeCursorMode ? { includeCursorMode: true } : {}),
             ...(this.includeOverline ? { includeOverline: true } : {}),
+            ...(this.includeProtection ? { includeProtection: true } : {}),
             ...(this.includeBufferState ? { includeBufferState: true } : {}),
             ...(this.includeResolvedColors ? { includeResolvedColors: true } : {}),
             ...(this.includeResolvedUnderlineColors ? { includeResolvedUnderlineColors: true } : {}) }, budget);
@@ -199,7 +200,7 @@ export class OwnedCellObserver {
             projection.history = copyHistory(await this.request('readScrollback', { paneId: before.paneId, startLine: 0, maxLines: 64 }, budget),
                 projection.bufferState.scrollbackLines, projection.cols);
         }
-        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline, this.includeBufferState, this.includeResolvedColors, this.includeResolvedUnderlineColors);
+        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline, this.includeBufferState, this.includeResolvedColors, this.includeResolvedUnderlineColors, this.includeProtection);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols

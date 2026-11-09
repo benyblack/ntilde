@@ -1,0 +1,544 @@
+{
+  "caseId": "erase.selective",
+  "pinnedCriterion": "after the seed \"PABCDZ\" (P written under DECSCA 1, ABCDZ under DECSCA 0) CSI ? 2 J must leave P in row 0 column 0 and read ABCDZ blank; a lost P is inconclusive, not unsupported",
+  "pinnedFeeds": [
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[?2J",
+    "\u001b[0\"q"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001b[1;1H\u001b[2K",
+      "ABCDE",
+      "\u001b[?2J"
+    ],
+    "demand": "cursor-position response only (never a verdict)",
+    "minimum": {
+      "rows": 1,
+      "cols": 6
+    },
+    "note": "upstream pixel path only queries the cursor position through unmeasuredCellResult and never carries a verdict"
+  },
+  "feeds": [
+    "\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[?2J",
+    "\u001b[0\"q",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[2J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;4H",
+    "\u001b[?0J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[1;4H",
+    "\u001b[?1J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qAB\u001b[0\"qCD",
+    "\u001b[?2J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qAB\u001b[0\"q\u001b[1;1HX",
+    "\u001b[?2J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1\"q",
+    "\u001b[0\"q",
+    "\u001b[1;1HQ",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qR\u001b[0\"qOW00\u001b[1\"q-\u001b[0\"qABCD\u001b[1;140H\u001b[1\"q|\u001b[0\"q\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03\u001b[1\"q-\u001b[0\"qABCD\u001b[4;140H|\u001b[5;1H\u001b[1\"qR\u001b[0\"qOW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06\u001b[1\"q-\u001b[0\"qABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1H\u001b[1\"qR\u001b[0\"qOW08-ABCD\u001b[9;140H|\u001b[10;1HROW09\u001b[1\"q-\u001b[0\"qABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1H\u001b[1\"qR\u001b[0\"qOW12\u001b[1\"q-\u001b[0\"qABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15\u001b[1\"q-\u001b[0\"qABCD\u001b[16;140H|\u001b[17;1H\u001b[1\"qR\u001b[0\"qOW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18\u001b[1\"q-\u001b[0\"qABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1H\u001b[1\"qR\u001b[0\"qOW20-ABCD\u001b[21;140H\u001b[1\"q|\u001b[0\"q\u001b[22;1HROW21\u001b[1\"q-\u001b[0\"qABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1H\u001b[1\"qR\u001b[0\"qOW24\u001b[1\"q-\u001b[0\"qABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27\u001b[1\"q-\u001b[0\"qABCD\u001b[28;140H|\u001b[29;1H\u001b[1\"qR\u001b[0\"qOW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30\u001b[1\"q-\u001b[0\"qABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1H\u001b[1\"qR\u001b[0\"qOW32-ABCD\u001b[33;140H|\u001b[34;1HROW33\u001b[1\"q-\u001b[0\"qABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1H\u001b[1\"qR\u001b[0\"qOW36\u001b[1\"q-\u001b[0\"qABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39\u001b[1\"q-\u001b[0\"qABCD\u001b[40;140H\u001b[1\"q|\u001b[0\"q\u001b[21;5H",
+    "\u001b[?2J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[1\"qR\u001b[0\"qOW00\u001b[1\"q-\u001b[0\"qABCD\u001b[1;140H\u001b[1\"q|\u001b[0\"q\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03\u001b[1\"q-\u001b[0\"qABCD\u001b[4;140H|\u001b[5;1H\u001b[1\"qR\u001b[0\"qOW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06\u001b[1\"q-\u001b[0\"qABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1H\u001b[1\"qR\u001b[0\"qOW08-ABCD\u001b[9;140H|\u001b[10;1HROW09\u001b[1\"q-\u001b[0\"qABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1H\u001b[1\"qR\u001b[0\"qOW12\u001b[1\"q-\u001b[0\"qABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15\u001b[1\"q-\u001b[0\"qABCD\u001b[16;140H|\u001b[17;1H\u001b[1\"qR\u001b[0\"qOW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18\u001b[1\"q-\u001b[0\"qABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1H\u001b[1\"qR\u001b[0\"qOW20-ABCD\u001b[21;140H\u001b[1\"q|\u001b[0\"q\u001b[22;1HROW21\u001b[1\"q-\u001b[0\"qABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1H\u001b[1\"qR\u001b[0\"qOW24\u001b[1\"q-\u001b[0\"qABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27\u001b[1\"q-\u001b[0\"qABCD\u001b[28;140H|\u001b[29;1H\u001b[1\"qR\u001b[0\"qOW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30\u001b[1\"q-\u001b[0\"qABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1H\u001b[1\"qR\u001b[0\"qOW32-ABCD\u001b[33;140H|\u001b[34;1HROW33\u001b[1\"q-\u001b[0\"qABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1H\u001b[1\"qR\u001b[0\"qOW36\u001b[1\"q-\u001b[0\"qABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39\u001b[1\"q-\u001b[0\"qABCD\u001b[40;140H\u001b[1\"q|\u001b[0\"q\u001b[40;140H",
+    "\u001b[?2J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1m\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ\u001b[0m\u001b[1;7H\u001b[44m",
+    "\u001b[?2J",
+    "\u001b[?1049l\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[3J",
+    "HIST-A\r\nHIST-B\r\nHIST-C\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "\u001b[1;1H\u001b[1\"qP\u001b[0\"qABCDZ",
+    "\u001b[?2J",
+    "\u001b[0\"q\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      0,
+      4
+    ],
+    [
+      0,
+      4
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      20,
+      4
+    ],
+    [
+      20,
+      4
+    ],
+    [
+      39,
+      139
+    ],
+    [
+      39,
+      139
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      0,
+      6
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedSequence": "\u001b[?2J",
+    "rectangular": false,
+    "initial": {
+      "ink": 0,
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    "seeded": {
+      "text": "PABCDZ______",
+      "protectedColumns": [
+        0
+      ],
+      "cursor": [
+        0,
+        6
+      ],
+      "scrollback": {
+        "alternateScreen": true,
+        "scrollbackLines": 0,
+        "history": []
+      }
+    },
+    "erased": {
+      "text": "P___________",
+      "protectedColumns": [
+        0
+      ],
+      "cursor": [
+        0,
+        6
+      ],
+      "scrollback": {
+        "alternateScreen": true,
+        "scrollbackLines": 0,
+        "history": []
+      }
+    },
+    "finalized": {
+      "text": "P___________",
+      "protectedColumns": [
+        0
+      ],
+      "cursor": [
+        0,
+        6
+      ]
+    },
+    "modesUnchanged": true,
+    "ordinaryControl": {
+      "policy": "the ordinary erase of the same seed must erase the protected P (protection is not read-only)",
+      "name": "ED 2",
+      "sequence": "\u001b[2J",
+      "after": {
+        "text": "____________",
+        "protectedColumns": [],
+        "cursor": [
+          0,
+          6
+        ]
+      }
+    },
+    "variants": {
+      "policy": "observed, not graded: DECSED modes 0 and 1 are other sequences than the pinned mode 2 and are not qualified here",
+      "mode0": {
+        "name": "DECSED 0 from column 3",
+        "feeds": [
+          "\u001b[1;4H",
+          "\u001b[?0J"
+        ],
+        "text": "PAB_________",
+        "protectedColumns": [
+          0
+        ],
+        "cursor": [
+          0,
+          3
+        ]
+      },
+      "mode1": {
+        "name": "DECSED 1 through column 3",
+        "feeds": [
+          "\u001b[1;4H",
+          "\u001b[?1J"
+        ],
+        "text": "P___DZ______",
+        "protectedColumns": [
+          0
+        ],
+        "cursor": [
+          0,
+          3
+        ]
+      }
+    },
+    "protectionOff": {
+      "policy": "DECSCA 0 changes later writes only: A and B written protected, C and D unprotected",
+      "before": {
+        "text": "ABCD________",
+        "protectedColumns": [
+          0,
+          1
+        ],
+        "cursor": [
+          0,
+          4
+        ]
+      },
+      "after": {
+        "text": "AB__________",
+        "protectedColumns": [
+          0,
+          1
+        ],
+        "cursor": [
+          0,
+          4
+        ]
+      }
+    },
+    "overwrite": {
+      "policy": "an unprotected X written over the protected A takes the pen: X erasable, B still protected",
+      "before": {
+        "text": "XB__________",
+        "protectedColumns": [
+          1
+        ],
+        "cursor": [
+          0,
+          1
+        ]
+      },
+      "after": {
+        "text": "_B__________",
+        "protectedColumns": [
+          1
+        ],
+        "cursor": [
+          0,
+          1
+        ]
+      }
+    },
+    "restoration": {
+      "policy": "after DECSCA 1 and the pinned finalizer a new character is unprotected",
+      "after": {
+        "text": "Q___________",
+        "protectedColumns": [],
+        "cursor": [
+          0,
+          1
+        ]
+      }
+    },
+    "fullScreen": {
+      "policy": "unprotected cells erased, protected cells and cells outside the region kept, cursor unmoved",
+      "erase": "\u001b[?2J",
+      "before": {
+        "inkCells": 440,
+        "protectedCells": 27,
+        "unprotectedCells": 413,
+        "first": [
+          0,
+          0
+        ],
+        "last": [
+          39,
+          139
+        ],
+        "cursor": [
+          20,
+          4
+        ]
+      },
+      "after": {
+        "inkCells": 27,
+        "protectedCells": 27,
+        "unprotectedCells": 0,
+        "first": [
+          0,
+          0
+        ],
+        "last": [
+          39,
+          139
+        ],
+        "cursor": [
+          20,
+          4
+        ]
+      }
+    },
+    "edge": {
+      "policy": "cursor unmoved at the bottom-right cell; the whole-page region reaches the last row and column",
+      "erase": "\u001b[?2J",
+      "before": {
+        "inkCells": 440,
+        "protectedCells": 27,
+        "unprotectedCells": 413,
+        "first": [
+          0,
+          0
+        ],
+        "last": [
+          39,
+          139
+        ],
+        "cursor": [
+          39,
+          139
+        ]
+      },
+      "after": {
+        "inkCells": 27,
+        "protectedCells": 27,
+        "unprotectedCells": 0,
+        "first": [
+          0,
+          0
+        ],
+        "last": [
+          39,
+          139
+        ],
+        "cursor": [
+          39,
+          139
+        ]
+      }
+    },
+    "attributes": {
+      "policy": "retained protected cells keep their bold-only stored tuple and protection (required); background-color erase is observed, not required",
+      "before": {
+        "text": "PABCDZ______",
+        "protectedColumns": [
+          0
+        ],
+        "cursor": [
+          0,
+          6
+        ]
+      },
+      "after": {
+        "text": "P___________",
+        "protectedColumns": [
+          0
+        ],
+        "cursor": [
+          0,
+          6
+        ]
+      },
+      "retainedKeepBold": true,
+      "backgroundColorErase": "erased cells carry the current background",
+      "backgroundColorEraseDetail": {
+        "erasedCells": 5599,
+        "paintedCells": 5599,
+        "firstPainted": {
+          "bgIndex": -1,
+          "backgroundArgb": 4278190318,
+          "resolved": {
+            "r": 0,
+            "g": 0,
+            "b": 238
+          }
+        }
+      }
+    },
+    "history": {
+      "policy": "main-screen control: a selective erase must not remove saved lines",
+      "before": {
+        "text": "PABCDZ______",
+        "protectedColumns": [
+          0
+        ],
+        "cursor": [
+          0,
+          6
+        ],
+        "scrollback": {
+          "alternateScreen": false,
+          "scrollbackLines": 4,
+          "history": [
+            "HIST-A",
+            "HIST-B",
+            "HIST-C",
+            ""
+          ]
+        }
+      },
+      "after": {
+        "text": "P___________",
+        "protectedColumns": [
+          0
+        ],
+        "cursor": [
+          0,
+          6
+        ],
+        "scrollback": {
+          "alternateScreen": false,
+          "scrollbackLines": 4,
+          "history": [
+            "HIST-A",
+            "HIST-B",
+            "HIST-C",
+            ""
+          ]
+        }
+      },
+      "seeded": true,
+      "linesKept": true,
+      "linesAdded": 0
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":[\"P\",\"A\",\"B\",\"C\",\"D\",\"Z\"],\"after\":[\"P\",\" \",\" \",\" \",\" \",\" \"]}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "DECSCA-protected P survives while selective erase clears ABCD",
+        "observed": "{\"before\":[\"P\",\"A\",\"B\",\"C\",\"D\",\"Z\"],\"after\":[\"P\",\" \",\" \",\" \",\" \",\" \"]}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored cells only: exact erased and retained characters, stored per-cell protection, neutral stored attributes, untouched cursor, modes and saved lines; background-color erase is observed, not required; the pinned pixel path is not claimed"
+  }
+}
