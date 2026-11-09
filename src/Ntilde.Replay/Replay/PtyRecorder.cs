@@ -283,16 +283,13 @@ namespace Ntilde.Replay
 
                         // Copy cells
                         Array.Copy(row.Cells, 0, allCells, r * cols, cols);
+                        AppendProtectedCells(row, r * cols, cols, ref protectedCells);
 
                         // Capture extended text
                         for (int c = 0; c < cols; c++)
                         {
                             if (row.Cells[c].HasExtendedText && row.GetExtendedText(c) is { } text)
                                 snapshot.ExtendedText[r * cols + c] = text;
-
-                            // DECSCA protection
-                            if (row.IsProtected(c))
-                                (protectedCells ??= new List<int>()).Add(r * cols + c);
 
                             // Underline style and color (#270)
                             if (row.GetUnderline(c) is { } underline)
@@ -325,6 +322,14 @@ namespace Ntilde.Replay
                 }
             }
             finally { buffer.Lock.ExitReadLock(); }
+        }
+
+        /// <summary>DECSCA protection of one row as ascending <c>row * cols + col</c> keys.</summary>
+        private static void AppendProtectedCells(TerminalRow row, int rowStart, int cols, ref List<int>? sink)
+        {
+            if (!row.HasProtectedCells) return;
+            for (int c = 0; c < cols; c++)
+                if (row.IsProtected(c)) (sink ??= new List<int>()).Add(rowStart + c);
         }
 
         private static List<TerminalTextSizingState>? LegacyTextSizing(TerminalBuffer buffer, TerminalStateSnapshot? state)

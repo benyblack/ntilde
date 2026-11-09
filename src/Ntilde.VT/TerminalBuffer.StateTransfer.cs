@@ -387,14 +387,7 @@ namespace Ntilde.VT
                     ref linkIds,
                     ref underlineIds);
 
-                if (row.GetProtectionMap() is { Count: > 0 } protection)
-                {
-                    int rowStart = r * cols;
-                    var columns = new List<int>(protection.Count);
-                    protection.ForEach((col, _) => { if (col < cols) columns.Add(rowStart + col); });
-                    columns.Sort();
-                    (protectedCells ??= []).AddRange(columns);
-                }
+                AppendProtectedCells(row, r * cols, cols, ref protectedCells);
             }
 
             return new TerminalScreenState
@@ -408,6 +401,22 @@ namespace Ntilde.VT
                 UnderlineIds = underlineIds,
                 ProtectedCells = protectedCells?.ToArray(),
             };
+        }
+
+        /// <summary>Appends one row's protected cells as ascending <c>row * cols + col</c> keys; ForEach order is not deterministic, so they are sorted.</summary>
+        private static void AppendProtectedCells(TerminalRow row, int rowStart, int cols, ref List<int>? sink)
+        {
+            if (row.GetProtectionMap() is not { Count: > 0 } protection) return;
+            var columns = new List<int>(protection.Count);
+            protection.ForEach((col, _) => AddProtectedKey(columns, rowStart, col, cols));
+            if (columns.Count == 0) return;
+            columns.Sort();
+            (sink ??= []).AddRange(columns);
+        }
+
+        private static void AddProtectedKey(List<int> keys, int rowStart, int col, int cols)
+        {
+            if (col < cols) keys.Add(rowStart + col);
         }
 
         private static void StoreWrappedColumns(ref int[]? values, int rows, int row, int? columns, int fullWidth)
