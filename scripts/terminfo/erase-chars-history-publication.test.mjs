@@ -41,7 +41,7 @@ test('the published erase-character / saved-lines evidence re-derives exactly fr
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, eraseCharsHistorySuiteId);
     assert.equal(report.adapter.id, eraseCharsHistoryAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-erase-attrs-region-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-attr-rect-grading-v1');
     assert.equal(report.snapshots.length, 3 + 15 + 10);
     assert.deepEqual(report.cases.map(item => item.caseId), [...eraseCharsHistoryCaseIds]);
     assert.deepEqual(report.cases.map(item => item.conclusion.outcome), ['supported', 'supported']);
@@ -161,7 +161,7 @@ test('ED 3 is told apart from ED 2, ordinary scrolling and an already-empty hist
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', async () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 33);
+    assert.equal(receipt.schemaVersion, 34);
     assert.equal(receipt.eraseCharsHistoryEvidence.suiteId, eraseCharsHistorySuiteId);
     assert.equal(receipt.eraseCharsHistoryEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.eraseCharsHistoryEvidence.counts, { supported: 2 });
@@ -174,7 +174,7 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.eraseCharsHistoryObservationsSha256, observationsHash);
     assert.equal(summary.retained.eraseCharsHistoryRunSha256, runHash);
     assert.equal(summary.retained.eraseCharsHistoryJournalSha256, journalHash);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v27');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v28');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.match(summary.scriptsRevision, /^[0-9a-f]{40}$/);
@@ -188,14 +188,17 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...new Set(expected)].sort());
     assert.equal(Object.keys(summary.sameRun).length, benchmarkSuites.findIndex(item => item.suite === 'erase-chars-history'), 'one same-run entry per merged predecessor suite');
+    // Suites whose pinned verdicts are inconclusive by design keep them beside separately identified, supported effect contracts.
+    const byDesign = new Set(['saved-reset', 'attr-rect']);
     for (const [name, suite] of Object.entries(summary.sameRun)) {
-        if (name === 'saved-reset') continue;
-        assert.ok(suite.cases.every(item => item.outcome === 'supported'), name);
+        if (byDesign.has(name)) assert.ok(suite.cases.every(item => item.effectContract === 'supported'), name);
+        else assert.ok(suite.cases.every(item => item.outcome === 'supported'), name);
     }
-    // modes.altscreen-47 and -1047 keep their preserved pinned-inconclusive verdicts beside their supported effect contracts.
     assert.deepEqual(summary.sameRun['saved-reset'].cases.map(item => [item.caseId, item.outcome, item.effectContract]), [
         ['modes.alt-screen.exit', 'supported', 'supported'], ['modes.altscreen-47', 'inconclusive', 'supported'], ['modes.altscreen-1047', 'inconclusive', 'supported'],
         ['reset.sgr', 'supported', 'supported'], ['reset.decaln', 'supported', 'supported']]);
+    assert.deepEqual(summary.sameRun['attr-rect'].cases.map(item => [item.caseId, item.outcome, item.effectContract]), [
+        ['editing.deccara', 'inconclusive', 'supported'], ['editing.decrara', 'inconclusive', 'supported'], ['editing.decsace', 'inconclusive', 'supported']]);
     assert.ok(!eraseCharsHistoryCaseIds.some(id => unique.has(id)), 'the two new cases are counted separately');
     assert.equal(summary.truecolorFinding.cases.length, 10);
     assert.ok(summary.truecolorFinding.cases.every(item => item.caseId.startsWith('finding.truecolor-literal.') && item.outcome === 'supported'));
@@ -223,16 +226,16 @@ test('every publication file stays small enough to review in one piece', () => {
 
 test('prior publications still rederive beside this batch, without this suite', () => {
     for (const [name, schema] of [['2026-11-08-erase-line', 25], ['2026-11-09-char-edit', 26], ['2026-11-09-erase-display', 27], ['2026-11-09-line-editing', 28],
-        ['2026-11-09-charsets', 29], ['2026-11-09-scrollback', 30], ['2026-11-09-saved-reset', 31], ['2026-11-09-erase-attrs-region', 32]]) {
+        ['2026-11-09-charsets', 29], ['2026-11-09-scrollback', 30], ['2026-11-09-saved-reset', 31], ['2026-11-09-erase-attrs-region', 32], ['2026-11-09-attr-rect', 33]]) {
         const published = JSON.parse(readFileSync(new URL(`../../docs/qa/terminfo/${name}/summary.json`, import.meta.url)));
         assert.equal(published.receipt.schemaVersion, schema, name);
         assert.equal(published.receipt.eraseCharsHistoryEvidence, undefined, name);
     }
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 7);
+    assert.equal(attempts.length, 8);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
-    // Four complete, superseded runs and three failed attempts that are not evidence.
-    for (const index of [0, 1, 2, 4]) {
+    // Five complete, superseded runs and three failed attempts that are not evidence.
+    for (const index of [0, 1, 2, 4, 7]) {
         assert.equal(attempts[index].receiptCompleted, true, String(index));
         assert.deepEqual(attempts[index].verdicts, { 'erase.character': 'supported', 'erase.screen.scrollback': 'supported' });
         assert.match(attempts[index].outcome, /superseded/);

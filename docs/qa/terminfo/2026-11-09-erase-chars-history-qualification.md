@@ -19,7 +19,7 @@ scrolls blank rows only, so it cannot tell ED 3 from "ED 3 that also clears the 
 
 ## Method
 
-Twentieth digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the erase-attributes/margins one, which in turn sits over saved-state/reset; it refuses derivation
+Twenty-first digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the attribute-rectangle one, which sits over erase-attributes/margins and saved-state/reset; it refuses derivation
 unless both registrations, with their termless **and** cursor-query paths, `eraseRowResult`, `isBlank`, `rowCells`, `parserStateResult` and
 `unmeasuredCellResult` are present verbatim once; the ED 0/1/2 registrations and `eraseScreenResult` are deliberately not seams), contracts v1, suite
 `ntilde-owned-erase-chars-history-graded-v1`, prefix `echh`, nonce `NTILDE_EH_`. One owned worker drives both cases on the disposable App's **main** screen
@@ -62,9 +62,8 @@ is recorded with both verdicts (`contract-stricter-than-pinned` and the like).
 
 ## Measurement
 
-Scripts `d99b2860` (the committed tree, measured from the private captured source snapshot); the App source is unchanged since `c16997c2` (the Release
-sidecar was built from this checkout with no App change). Owned run `75058e84cdb44ad5dcb3393c58bb0b88`, taken through the shared desktop lock, receipt
-schema 33, source policy v27 (inventory v34, 214 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
+Scripts `8fc5f751` (the committed tree, measured from the private captured source snapshot); the App source is that of `2bd4b0c0` (the Release sidecar was built from this checkout after merging main's DECCARA/DECRARA/DECSACE and rectangle work). Owned run `776907555d21bcf67fa5368aa43ce904`, taken through the shared desktop lock, receipt
+schema 34, source policy v28 (inventory v35, 219 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
 |---|---|---|---|
@@ -97,18 +96,15 @@ receipt 32, policy v26), complete, both cases supported, superseded because main
 batch was restacked as the twentieth extension and re-measured; (4) run `57427dd644d24dbfce145f1c8da881ab`, failed, not evidence: the owner stopped responding in the image suite after this
 batch's suite had completed its frames, no receipt, repeated unchanged; (5) run `f2fdd9890744a48faac76ae92380bca5` (scripts `366a7463`, receipt 33, policy v27), complete, both cases supported, superseded after CodeRabbit review because an oversized ECH
 count was only observed, so a spill past the line end could be masked by the next clear; it became a graded read; (6) and (7) two starts that failed before any collection
-(the disposable App aborted because the desktop display was asleep), retained as failed attempts and repeated unchanged with the display kept awake; (8) the final run above.
+(the disposable App aborted because the desktop display was asleep), retained as failed attempts and repeated unchanged with the display kept awake; (8) run `75058e84cdb44ad5dcb3393c58bb0b88` (scripts `d99b2860`, receipt 33, policy v27), complete, both cases supported, superseded because main meanwhile merged the attribute-rectangle layer
+on the same policy and schema and changed the App, so this batch was restacked as the twenty-first extension and re-measured on a sidecar built from the merged checkout; (9) the final run above.
 
-Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (65 unique ids, including the saved-state/reset suite with its
-two preserved pinned-inconclusive verdicts beside their supported effect contracts); the separate 10/10 truecolor-literal finding; the separate 3/3
-App-observed underline-color resolution. **The stock collector was not re-run** (it needs an interactive Ntilde tab): the pinned bundle, probeHash and the
-App are unchanged, so the carried counts (168 inconclusive, 86 supported, 1 unsupported) are labeled as carried; both ids are inconclusive there through
+
+Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (68 unique ids, including the saved-state/reset and attribute-rectangle suites with their
+preserved pinned-inconclusive verdicts beside their supported effect contracts); the separate 10/10 truecolor-literal finding; the separate 3/3
+App-observed underline-color resolution. **The stock collector was not re-run** (it needs an interactive Ntilde tab): the pinned bundle and probeHash are
+unchanged and this batch changes no stock behavior, so the carried counts (168 inconclusive, 86 supported, 1 unsupported) are labeled as carried; both ids are inconclusive there through
 the cursor-query path.
-
-**Integration after measurement:** main later gained DECFRA/DECCRA (`607f097d`, `5210c58d`: `src/Ntilde.VT` rectangle fill and copy). That merge changes the App source after
-the measured sidecar was built from `c16997c2`. Its only change to the parser dispatch is two new `$`-intermediate final bytes (`x`, `v`); the ECH (`X`) and ED (`J`)
-paths, the measured scripts and their evidence validation are untouched, so the measurement was not repeated. The merge was checked by the unchanged self-test list
-(the retained evidence still rederives byte for byte).
 
 ## Limits
 
