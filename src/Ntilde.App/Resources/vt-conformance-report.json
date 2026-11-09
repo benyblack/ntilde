@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "a7a87b24c10d2beb064c9bc4c2961aaa10c5c44829895c82eeaaea41fdfb0d93",
+  "matrixSha256": "97ec065b44cd096e50159e4f4515d4100f8218da01d99b6eb2ad361befd0b952",
   "summary": {
     "totalRows": 104,
     "supportedCount": 53,
@@ -549,7 +549,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Exact unprefixed identity; Pt;Pl;Pb;Pr default to the page and clip to it, DECOM offsets rows, margins do not clip. Selectors 0, 1, 4, 5, 7, 22, 24, 25, 27 set or clear bold, underline, blink and inverse in order; other selectors (including xterm\u0027s 8/28) are ignored and an omitted list is selector 0. Text, colors, hyperlinks, extended text, cursor and the SGR pen are untouched; clearing underline drops its style and color but keeps overline; a wide glyph changes as one unit. The default extent is the DECSACE stream (first row from Pl, whole middle rows, last row through Pr); Pl \u003E Pr or Pt \u003E Pb is ignored. The occupied/unoccupied cell distinction, protected-cell storage and OSC 66 block atomicity are not modelled.",
+      "knownDeviations": "Exact unprefixed identity; Pt;Pl;Pb;Pr default to the page and clip to it, DECOM offsets rows, margins do not clip. Selectors 0, 1, 4, 5, 7, 22, 24, 25, 27 set or clear bold, underline, blink and inverse in order; other selectors (including xterm\u0027s 8/28) are ignored and an omitted list is selector 0. Text, colors, hyperlinks, extended text, cursor and the SGR pen are untouched; clearing underline drops its style and color but keeps overline; a wide glyph changes as one unit. The default extent is the DECSACE stream (first row from Pl, whole middle rows, last row through Pr); Pl \u003E Pr or Pt \u003E Pb is ignored. In the stream extent cells past a row\u0027s written extent (unoccupied) are left alone while the rectangle changes and occupies them. Protected-cell storage and OSC 66 block atomicity are not modelled.",
       "sourceLine": 93
     },
     {
@@ -574,7 +574,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Same identity, borders and extent as DECCARA. Selectors 0, 1, 4, 5, 7 toggle the named attribute (0 or an omitted list toggles all four, a repeated selector cancels); 22/24/25/27 and other selectors are ignored. A second identical application restores the area. Toggling underline off drops its style and color. Occupancy and protected-cell storage are not modelled.",
+      "knownDeviations": "Same identity, borders and extent as DECCARA. Selectors 0, 1, 4, 5, 7 toggle the named attribute (0 or an omitted list toggles all four, a repeated selector cancels); 22/24/25/27 and other selectors are ignored. A second identical application restores the area. Toggling underline off drops its style and color. Unoccupied cells follow the same stream/rectangle rule. Protected-cell storage is not modelled.",
       "sourceLine": 94
     },
     {

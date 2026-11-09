@@ -227,7 +227,7 @@
       "key": "CSI:$r",
       "mnemonic": "DECCARA",
       "support": "partial",
-      "description": "Set or clear bold, underline, blink and inverse (selectors 0, 1, 4, 5, 7, 22, 24, 25, 27; other selectors are ignored) over a stored-cell stream or rectangle with omitted/zero borders, page clipping and DECOM row origin; text, colors, side tables, cursor and the SGR pen are untouched. Margins do not clip. The occupied/unoccupied cell distinction and protected-cell storage are not modelled.",
+      "description": "Set or clear bold, underline, blink and inverse (selectors 0, 1, 4, 5, 7, 22, 24, 25, 27; other selectors are ignored) over a stored-cell stream or rectangle with omitted/zero borders, page clipping and DECOM row origin; text, colors, side tables, cursor and the SGR pen are untouched. Margins do not clip. In the stream extent cells past a row's written extent are left alone while the rectangle changes them; protected-cell storage and OSC 66 block atomicity are not modelled.",
       "matrixFeature": "DECCARA ($ r)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularAttributeTests.cs",
       "contractCase": "change-attributes-rectangular-area"

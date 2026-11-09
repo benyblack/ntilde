@@ -58,7 +58,8 @@ public partial class TerminalBuffer
     /// DECCARA (<paramref name="reverse"/> false: set or clear) and DECRARA (true: toggle) over an inclusive zero-based
     /// rectangle, or over the stream from (top, left) to (bottom, right) unless DECSACE selected the rectangle.
     /// Only bold, underline, blink and inverse can change; text, colors, side tables, cursor, pen and protection are untouched.
-    /// Both halves of an intersected wide glyph change together. Reversed or off-page-after-clamp borders change nothing.
+    /// Both halves of an intersected wide glyph change together. Reversed borders change nothing. In the stream extent cells past a
+    /// row's written extent (unoccupied) are skipped; the rectangle changes and occupies them.
     /// </summary>
     internal void ChangeRectangularAttributes(int left, int top, int right, int bottom, ReadOnlySpan<int> selectors, bool reverse)
     {
@@ -78,7 +79,11 @@ public partial class TerminalBuffer
             {
                 int first = rectangle || rowIndex == top ? left : 0;
                 int last = rectangle || rowIndex == bottom ? right : Cols - 1;
-                changed |= ChangeRowAttributes(_viewport[rowIndex], first, last, set, clear, toggle);
+                var row = _viewport[rowIndex];
+                // DEC STD 070 (as xterm reads it): the stream leaves unoccupied cells alone, the rectangle fills them. A cell past
+                // the row's written extent is unoccupied; typed spaces inside it are not.
+                if (!rectangle) last = Math.Min(last, row.WrittenColumns - 1);
+                if (first <= last) changed |= ChangeRowAttributes(row, first, last, set, clear, toggle);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }

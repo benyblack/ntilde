@@ -525,4 +525,31 @@ public sealed class RectangularAttributeTests
         }
         finally { buffer.Lock.ExitReadLock(); }
     }
+
+    /// <summary>The stream skips unoccupied cells (past the written extent) while the rectangle changes them.</summary>
+    [Fact]
+    public void Stream_skips_unoccupied_cells_and_rectangle_fills_them()
+    {
+        var buffer = new TerminalBuffer(8, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("ab\r\ncd\r\nef");
+        parser.Process($"{Esc}[1;1;3;2;7$r");
+        Assert.Equal(new[] { "II......", "II......", "II......" }, Screen(buffer));
+        parser.Process($"{Esc}[2*x{Esc}[1;1;3;4;27$r{Esc}[1;1;3;4;7$r");
+        Assert.Equal(new[] { "IIII....", "IIII....", "IIII...." }, Screen(buffer));
+        parser.Process($"{Esc}[0*x{Esc}[1;3;3;4;27$r");
+        // The rectangle occupied columns 0..3, so the stream now reaches them: row 0 from column 3, rows 1 and 2 through column 4.
+        Assert.Equal(new[] { "II......", "........", "........" }, Screen(buffer));
+    }
+
+    /// <summary>Typed spaces inside the written extent are occupied; erased rows are unoccupied again after a full clear.</summary>
+    [Fact]
+    public void Typed_spaces_are_occupied()
+    {
+        var buffer = new TerminalBuffer(8, 2);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("a   b");
+        parser.Process($"{Esc}[1;1;1;8;7$r");
+        Assert.Equal("IIIII...", Marks(buffer, 0, 8));
+    }
 }

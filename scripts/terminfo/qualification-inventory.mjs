@@ -43,6 +43,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('charsets', '2026-11-09-charsets', '2026-11-09-charsets-qualification.md'), module: 'charsets-contracts.mjs', exports: ['charsetsSuiteId', 'charsetsContractsVersion', 'charsetsCaseIds'], test: 'charsets-publication.test.mjs' },
     { ...directory('scrollback', '2026-11-09-scrollback', '2026-11-09-scrollback-qualification.md'), module: 'scrollback-contracts.mjs', exports: ['scrollbackSuiteId', 'scrollbackContractsVersion', 'scrollbackCaseIds'], test: 'scrollback-publication.test.mjs' },
     { ...directory('saved-reset', '2026-11-09-saved-reset', '2026-11-09-saved-reset-qualification.md'), module: 'saved-reset-contracts.mjs', exports: ['savedResetSuiteId', 'savedResetContractsVersion', 'savedResetCaseIds'], test: 'saved-reset-publication.test.mjs' },
+    { ...directory('attr-rect', '2026-11-09-attr-rect', '2026-11-09-attr-rect-qualification.md'), module: 'attr-rect-contracts.mjs', exports: ['attrRectSuiteId', 'attrRectContractsVersion', 'attrRectCaseIds'], test: 'attr-rect-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */

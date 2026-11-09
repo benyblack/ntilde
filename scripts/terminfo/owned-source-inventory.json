@@ -202,5 +202,10 @@
     "savedResetCollectorSourceSha256": "saved-reset-collector.mjs",
     "savedResetGradingSourceSha256": "saved-reset-grading.mjs",
     "savedResetGradingCollectorSourceSha256": "saved-reset-grading-collector.mjs",
-    "savedResetReceiptSourceSha256": "saved-reset-receipt.mjs"
+    "savedResetReceiptSourceSha256": "saved-reset-receipt.mjs",
+    "attrRectContractsSourceSha256": "attr-rect-contracts.mjs",
+    "attrRectCollectorSourceSha256": "attr-rect-collector.mjs",
+    "attrRectGradingSourceSha256": "attr-rect-grading.mjs",
+    "attrRectGradingCollectorSourceSha256": "attr-rect-grading-collector.mjs",
+    "attrRectReceiptSourceSha256": "attr-rect-receipt.mjs"
 }
