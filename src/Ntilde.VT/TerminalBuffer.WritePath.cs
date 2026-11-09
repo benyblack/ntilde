@@ -669,7 +669,7 @@ namespace Ntilde.VT
             for (int col = Math.Max(0, from); col < last; col++)
             {
                 if (!row.IsProtected(col)) continue;
-                bool orphanHead = row.Cells[col].IsWide && !(col + 1 < row.Cells.Length && row.Cells[col + 1].IsWideContinuation);
+                bool orphanHead = row.Cells[col].IsWide && col + 1 < row.Cells.Length && !row.Cells[col + 1].IsWideContinuation;
                 bool orphanTail = row.Cells[col].IsWideContinuation && !(col > 0 && row.Cells[col - 1].IsWide);
                 if (orphanHead || orphanTail) row.SetProtected(col, false);
             }

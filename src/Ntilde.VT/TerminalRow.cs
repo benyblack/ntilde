@@ -202,6 +202,8 @@ namespace Ntilde.VT
             if (!HasProtectedCells) return;
             for (int col = 0; col < Cells.Length; col++)
             {
+                // A wide anchor on the last column has no continuation to pair with; with autowrap off the terminal produces it live.
+                if (Cells[col].IsWide && col == Cells.Length - 1) continue;
                 bool pair = Cells[col].IsWide && col + 1 < Cells.Length && Cells[col + 1].IsWideContinuation;
                 if (pair && IsProtected(col) != IsProtected(col + 1)) { SetProtected(col, false); SetProtected(col + 1, false); }
                 else if (!pair && IsProtected(col) && (Cells[col].IsWide || Cells[col].IsWideContinuation)
