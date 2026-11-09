@@ -2,12 +2,12 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-erase-display-graded-v1",
-    "runId": "0e662c8dd6490461cd95b495301c13a7",
+    "runId": "efcfc19ee30e807e02fb8c7a8a3e667e",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-erase-display-grading-v1",
-      "derivedFromAdapterId": "ntilde-owned-erase-line-grading-v1",
-      "bundleSha256": "1b3e36dba450a3ce881e71c04ff86f2bec4855588a42ddacdedfc00dfe5d26f7",
+      "derivedFromAdapterId": "ntilde-owned-char-edit-grading-v1",
+      "bundleSha256": "2542de0cfd00896bf37f2b9e545a87af150147cc6cbc46a36c4b7208cc9e424c",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 erase-in-display termless criteria (erase.screen.below with ED 0, erase.screen.above with ED 1 and erase.screen.all with ED 2, all with the explicit parameter spelling) replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored cells, the cursor, stored attribute details and buffer state, with controls for the unmodified seed (no-op), every other ED spelling (omitted, explicit 0, 1 and 2: wrong direction, accidental whole-screen clearing), a full-screen fill control for unaffected rows and columns and the cursor-cell boundary, a boundary control with the cursor on the first or last column, a bold-seeded attribute control (retained attributes required; background-color erase observed, not required) and a main-screen history control (saved lines must survive: ED 2 is not ED 3). Stored state only: the pinned terminal pixel path is capture-only upstream and is not qualified; CSI 3J is not graded; no stock grades.",
@@ -19,7 +19,7 @@
     "start": {
       "index": 0,
       "kind": "erdi-start",
-      "paneId": "da5a4dff-a4ba-4610-bbb6-bc042d5e11c4",
+      "paneId": "fa2c74b0-d3d7-4e98-ae46-22e6602cd5c2",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -397,13 +397,13 @@
     "bind": {
       "index": 1,
       "kind": "erdi-bind",
-      "paneId": "da5a4dff-a4ba-4610-bbb6-bc042d5e11c4",
+      "paneId": "fa2c74b0-d3d7-4e98-ae46-22e6602cd5c2",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_ED_0e662c8dd6490461cd95b495301c13a7",
+          "NTILDE_ED_efcfc19ee30e807e02fb8c7a8a3e667e",
           "",
           "",
           "",
@@ -770,12 +770,12 @@
           "lines": []
         }
       },
-      "sha256": "e243cd4d23aeb0c06373ce9caaf1e3c93775b712c0d64d6d493e35bf6e66f5ae"
+      "sha256": "2c297d300144e22623fff06d55bc2428c18d9a807c68ac419ca52004c7940128"
     },
     "finish": {
       "index": 47,
       "kind": "erdi-finish",
-      "paneId": "da5a4dff-a4ba-4610-bbb6-bc042d5e11c4",
+      "paneId": "fa2c74b0-d3d7-4e98-ae46-22e6602cd5c2",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,

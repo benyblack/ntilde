@@ -70,8 +70,8 @@ buffer state or history, stale or incoherent evidence or incomplete restoration 
 
 ## Measurement
 
-Scripts `c2a14801` (committed final scripts); the App source is unchanged since `c16997c2` (the sidecar `erase-display` was built from this checkout, no App
-change). Owned run `0e662c8dd6490461cd95b495301c13a7`, receipt schema 27, source policy v21 (inventory v28, 183 files), default theme, 40x140,
+Scripts `b0ca1025` (committed final scripts); the App source is unchanged since `c16997c2` (the sidecar `erase-display` was built from this checkout, no App
+change). Owned run `efcfc19ee30e807e02fb8c7a8a3e667e`, receipt schema 27, source policy v21 (inventory v28, 183 files), default theme, 40x140,
 disposable sidecar.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
@@ -89,18 +89,20 @@ stayed on its first/last/bottom-right cell and the cursor row was erased entirel
 representation difference is an Ntilde-specific observation, not a requirement and not a benchmark grade.
 **Viewport versus scrollback:** with four saved lines on the main screen, ED 0, ED 1 and ED 2 left all four lines unchanged and added none.
 
-Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (37 unique cases: the four ASCII cases, all 32 pinned
-SGR ids and the three erase-in-line cases; the inventory is derived from the merged contracts by the publication test); the separate 10/10
+Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (40 unique cases: the four ASCII cases, all 32 pinned
+SGR ids, the three erase-in-line cases and the three character-editing cases; the inventory is derived from the merged contracts by the publication test); the separate 10/10
 truecolor-literal finding; the separate 3/3 App-observed underline-color resolution; stock collector counts unchanged (86 supported, 1 unsupported,
 168 inconclusive).
 
-**Preserved attempts** (all five in the summary, with run ids and script revisions): (1) `d9fbd927…`, complete but superseded: Codex review found the
+**Preserved attempts** (all six in the summary, with run ids and script revisions): (1) `d9fbd927…`, complete but superseded: Codex review found the
 background-color observation skipped the 15 seeded letters that lie inside the erased region and that the attribute and history controls did not check
 mode preservation; the contract was fixed (all three graded supported both times); (2) `fe2c62b8…`, complete but superseded because shared fixture and
 projection code changed afterwards (test speed); (3) `7af1c733…`, complete but superseded: Codex review found blank cells skipped the attribute-run
-versus stored-detail consistency check, so the check now covers every cell and the final run measures the committed final scripts; (4) a failed start (EPERM creating the private
-fixture directory, no cell observed); (5) a run aborted with "Unexpected input during cell collection" while another session was also running desktop work
-and before this session held the shared desktop lock; no receipt. Attempts 4 and 5 are not evidence.
+versus stored-detail consistency check, so the check now covers every cell; (4) `3bb3d943…`, complete but superseded: the first run after restacking onto main's
+character-editing layer (receipt 27, policy v21, 183 files), before Sonar-driven cleanups of the measured scripts, so the final run measures the committed final
+scripts; (5) a failed start (EPERM creating the private
+fixture directory, no cell observed); (6) a run aborted with "Unexpected input during cell collection" while another session was also running desktop work
+and before this session held the shared desktop lock; no receipt. Attempts 5 and 6 are not evidence.
 
 ## Limits
 

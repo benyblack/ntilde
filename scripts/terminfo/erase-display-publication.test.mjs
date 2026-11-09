@@ -11,7 +11,7 @@ import { eraseDisplaySuiteId, eraseDisplayContracts } from './erase-display-cont
 
 /** The predecessor suites' contracts: each contracts module exports exactly one `...Contracts` array of cases. */
 const predecessorModules = ['ascii-sgr', 'sgr-colors', 'sgr-rgb', 'sgr-attrs', 'sgr-palette', 'sgr-truecolor', 'sgr-underline',
-    'sgr-underline-color', 'sgr-reset', 'sgr-closure', 'erase-line'];
+    'sgr-underline-color', 'sgr-reset', 'sgr-closure', 'erase-line', 'char-edit'];
 const predecessorContracts = (await Promise.all(predecessorModules.map(name => import(`./${name}-contracts.mjs`))))
     .flatMap(module => Object.entries(module).find(([key, value]) => key.endsWith('Contracts') && Array.isArray(value))[1]);
 
@@ -148,7 +148,7 @@ test('viewport erasure is distinct from scrollback removal: the saved lines surv
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 26);
+    assert.equal(receipt.schemaVersion, 27);
     assert.equal(receipt.eraseDisplayEvidence.suiteId, eraseDisplaySuiteId);
     assert.equal(receipt.eraseDisplayEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.eraseDisplayEvidence.counts, { supported: 3 });
@@ -162,16 +162,16 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.eraseDisplayObservationsSha256, observationsHash);
     assert.equal(summary.retained.eraseDisplayRunSha256, runHash);
     assert.equal(summary.retained.eraseDisplayJournalSha256, journalHash);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v20');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v21');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
-    // The predecessor inventory is derived from the merged contracts, not assumed; the erase-in-line batch is its own suite.
+    // The predecessor inventory is derived from the merged contracts, not assumed; the erase-in-line and character-editing batches are their own suites.
     const predecessors = predecessorContracts.map(contract => contract.caseId);
     const expected = new Set(predecessors);
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...expected].sort());
-    assert.equal(unique.size, 37, 'the 37 unique handoff cases (all 32 pinned SGR ids plus the ASCII and erase-in-line cases)');
+    assert.equal(unique.size, 40, 'the 40 unique handoff cases (all 32 pinned SGR ids plus the ASCII, erase-in-line and character-editing cases)');
     assert.equal([...unique].filter(id => id.startsWith('sgr.')).length, 32);
     for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));
     assert.ok(!ids.some(id => unique.has(id)), 'the three new cases are counted separately');
@@ -203,11 +203,12 @@ test('prior publications still rederive beside this batch and every failed and s
     assert.equal(line.receipt.schemaVersion, 25);
     assert.equal(line.receipt.eraseDisplayEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 5);
-    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, true, false, false]);
+    assert.equal(attempts.length, 6);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, true, true, false, false]);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
     const superseded = attempts.filter(attempt => attempt.verdicts);
-    assert.equal(superseded.length, 3);
+    assert.equal(superseded.length, 4);
+    assert.match(superseded[3].outcome, /post-integration run/);
     assert.match(superseded[2].outcome, /blank cells skipped/);
     assert.match(superseded[0].outcome, /excluded the 15 seeded letters/);
     assert.deepEqual(Object.values(superseded[0].verdicts), ['supported', 'supported', 'supported']);
