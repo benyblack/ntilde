@@ -20,7 +20,7 @@ const screenOf = value => {
 /** The suite's report spec: identities, pinned replay and scope. */
 const spec = Object.freeze({ label: 'Line-editing', prefix: 'ledt', noncePrefix: lineEditNoncePrefix,
     contracts: lineEditContracts, caseIds: lineEditCaseIds, suiteId: lineEditSuiteId, version: lineEditContractsVersion,
-    adapterId: lineEditAdapterId, derivedFrom: 'ntilde-owned-erase-line-grading-v1',
+    adapterId: lineEditAdapterId, derivedFrom: 'ntilde-owned-char-edit-grading-v1',
     screenOf,
     observation: lineEditObservation, grade: gradeLineEditCase,
     replayPinned: (contract, screens) => replayLineEditPinned(contract, screens),

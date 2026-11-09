@@ -160,7 +160,7 @@ test('tampered pinned results, run logs and identities are refused', () => {
     assert.throws(() => build(mutate(copy => { copy.run.cases.reverse(); })), /case order differs/);
     assert.throws(() => build(mutate(copy => { copy.run.probeIds = [...copy.run.probeIds].reverse(); })), /does not cover/);
     assert.throws(() => build(mutate(copy => { copy.adapter.id = 'other'; })), /Invalid Line-editing adapter identity/);
-    assert.throws(() => build(mutate(copy => { copy.adapter.derivedFromAdapterId = 'ntilde-owned-sgr-closure-grading-v1'; })), /Invalid Line-editing adapter identity/);
+    assert.throws(() => build(mutate(copy => { copy.adapter.derivedFromAdapterId = 'ntilde-owned-erase-line-grading-v1'; })), /Invalid Line-editing adapter identity/);
     assert.throws(() => build(mutate(copy => { copy.run.adapterId = 'other'; })), /Invalid Line-editing adapter identity/);
     assert.throws(() => buildLineEditGradingReport(evidence.frames, evidence.run, 'd'.repeat(32), evidence.adapter), /not bound to this run/);
 });

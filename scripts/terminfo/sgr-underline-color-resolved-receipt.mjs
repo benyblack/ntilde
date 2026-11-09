@@ -22,7 +22,7 @@ function present(path) {
 
 /** Any retained artifact or declaration requires the v22 suffix; a policy-v16 or v17 run always carries them. */
 export function includesUnderlineResolvedEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21'].includes(context.sourceSnapshotPolicy)
         || context.underlineResolvedSuiteId !== undefined || context.underlineResolvedContractsVersion !== undefined
         || evidence.underlineResolvedEvidence !== undefined
         || files.some(file => present(join(output, file)));

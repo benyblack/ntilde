@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-char-edit-grading-v1",
+  "probeIds": [
+    "editing.insert-chars",
+    "editing.delete-chars",
+    "editing.repeat-char"
+  ],
+  "cases": [
+    {
+      "caseId": "editing.insert-chars",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[0@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[2@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[999@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2K\u001b[999C\u001b[2DWXY\u001b[2D",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABC\u001b[1mDE\u001b[0mZQH\u001b[1;3H\u001b[44m",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            8
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            137
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            137
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.insert-chars",
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\" \",\"C\",\"D\",\"E\",\"Z\",\"Q\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "ICH inserts a blank cell at column 3 and shifts measured text right; prefix stays intact",
+            "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\" \",\"C\",\"D\",\"E\",\"Z\",\"Q\"]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "editing.delete-chars",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[0P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[2P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[999P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2K\u001b[999C\u001b[2DWXY\u001b[2D",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABC\u001b[1mDE\u001b[0mZQH\u001b[1;3H\u001b[44m",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            8
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            137
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            137
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.delete-chars",
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\"D\",\"E\",\"Z\",\"Q\",\"H\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DCH deletes the cell at column 3 and shifts measured text left; prefix stays intact",
+            "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\"D\",\"E\",\"Z\",\"Q\",\"H\"]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "editing.repeat-char",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X",
+        "\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[0b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[1b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[5b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HAX   ZQRST\u001b[3;1HBELOW-ROW!\u001b[2;2H",
+        "X\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z\u001b[1;2H\u001b[1m\u001b[44m",
+        "X\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1m\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            6
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            3
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            3
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            3
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            7
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.repeat-char",
+        "pass": true,
+        "response": "{\"seed\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"targetPosition\":{\"x\":1,\"y\":0,\"visible\":true},\"before\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"X\",\"X\",\"X\",\"X\",\"Z\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "REP repeats the immediately preceding X into three target cells without changing flank controls",
+            "observed": "{\"seed\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"targetPosition\":{\"x\":1,\"y\":0,\"visible\":true},\"before\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"X\",\"X\",\"X\",\"X\",\"Z\"]}"
+          }
+        ]
+      }
+    }
+  ]
+}

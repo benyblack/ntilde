@@ -72,7 +72,7 @@ export function syntheticLineEditReads(caseId) {
 }
 
 const lineEditSuite = Object.freeze({ noncePrefix: 'NTILDE_LE_', prefix: 'ledt', contracts: lineEditContracts,
-    adapterId: lineEditAdapterId, derivedFrom: 'ntilde-owned-erase-line-grading-v1', reset: lineEditReset,
+    adapterId: lineEditAdapterId, derivedFrom: 'ntilde-owned-char-edit-grading-v1', reset: lineEditReset,
     blankScreen: binding => syntheticLineEditScreen([], [0, 0], {}, binding),
     bindScreen: (binding, nonce) => ({ ...syntheticLineEditScreen([rowOf(nonce)], [0, nonce.length], {}, binding) }),
     screens: (caseId, binding, readsOf) => {
