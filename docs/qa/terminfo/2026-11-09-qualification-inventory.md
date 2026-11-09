@@ -56,7 +56,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `charsets` | 4 | v1 | passed | 29 | `4e32f6d9` | v23 | 54 | `dc1af2d4` |
 | `scrollback` | 9 | v1 | passed | 30 | `c16997c2` | v24 | 67 | `15fa0b19` |
 | `saved-reset` | 5 | v1 | passed | 31 | `4e32f6d9` | v25 | 54 | `566a16ef` |
-| `erase-chars-history` | 2 | v1 | passed | 32 | `c16997c2` | v26 | 33 | `893c50fc` |
+| `erase-attrs-region` | 2 | v1 | passed | 32 | `c16997c2` | v26 | 23 | `b24ceb69` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -83,7 +83,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `charsets` | collected-run-id-recorded | `3d8b2d87` | 168/86/1 | n/a |
 | `scrollback` | collected-run-id-recorded | `5cb90de3` | 168/86/1 | n/a |
 | `saved-reset` | collected-run-id-recorded | `02be5c60` | 168/86/1 | n/a |
-| `erase-chars-history` | carried-forward | n/a | carried (see note) | n/a |
+| `erase-attrs-region` | collected-run-id-recorded | `d400cb6d` | 168/86/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -101,14 +101,14 @@ The stock collector reports `suiteComplete=false` in every run.
 | `editing.insert-chars` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
 | `editing.insert-lines` | inconclusive | supported | supported | stored-state + app-resolved-color | line-edit | - |
 | `editing.repeat-char` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
-| `erase.character` | inconclusive | supported | supported | stored-state | erase-chars-history | - |
+| `erase.ed-scroll-region` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-attrs-region | - |
+| `erase.el-with-attrs` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-attrs-region | - |
 | `erase.line.all` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.line.left` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.line.right` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.screen.above` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
 | `erase.screen.all` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
 | `erase.screen.below` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
-| `erase.screen.scrollback` | inconclusive | supported | supported | stored-state + actual-scrollback | erase-chars-history | - |
 | `modes.alt-screen.exit` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |
 | `modes.altscreen-1047` | inconclusive | inconclusive | supported | stored-state + app-resolved-color | saved-reset | saved-reset: pinned-inconclusive-by-design |
 | `modes.altscreen-47` | inconclusive | inconclusive | supported | stored-state + app-resolved-color | saved-reset | saved-reset: pinned-inconclusive-by-design |

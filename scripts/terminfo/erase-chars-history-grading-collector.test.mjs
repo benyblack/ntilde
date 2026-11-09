@@ -72,7 +72,7 @@ test('refuses a pinned body whose fixture bytes, criteria or notes were substitu
 });
 
 test('the derivation appends after any earlier layer without rewriting it', () => {
-    const earlier = verbatim() + '// earlier layers\nexport const ntildeSavedResetAdapterLater = {};\n';
+    const earlier = verbatim() + '// earlier layers\nexport const ntildeEraseAttrsRegionAdapterLater = {};\n';
     const layered = adaptEraseCharsHistoryCollector(earlier);
     assert.ok(layered.startsWith(earlier));
     assert.ok(layered.includes(eraseCharsHistoryAdapterId));
@@ -103,6 +103,7 @@ test('the real pinned bundle derives through every layer and its termless probes
         import('./charsets-grading-collector.mjs').then(m => m.adaptCharsetsCollector),
         import('./scrollback-grading-collector.mjs').then(m => m.adaptScrollbackCollector),
         import('./saved-reset-grading-collector.mjs').then(m => m.adaptSavedResetCollector),
+        import('./erase-attrs-region-grading-collector.mjs').then(m => m.adaptEraseAttrsRegionCollector),
     ]);
     const { replayEraseCharsHistoryPinned } = await import('./erase-chars-history-grading.mjs');
     const { eraseCharsHistoryRecordingContext } = await import('./erase-chars-history-collector.mjs');

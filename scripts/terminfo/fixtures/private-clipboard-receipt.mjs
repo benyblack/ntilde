@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV33SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV34SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV33SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV34SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV33SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV34SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -441,15 +441,36 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'svrs-run.json', runSha256: hash(readFileSync(join(output, 'svrs-run.json'))),
                 adapterBundleSha256: hash(savedResetBytes), contractsVersion: savedResetContractsVersion,
                 ...savedResetCounts(savedResetReport), provisionalUntil: 'cell-receipt.json' };
-            // Policy v26 always carries the layered erase-character/saved-lines suffix as well.
+            // Policy v26 always carries the layered erase attributes / erase margins suffix as well.
+            const { syntheticEraseAttrsRegionEvidence } = await import('./erase-attrs-region-evidence.mjs');
+            const { buildEraseAttrsRegionGradingReport } = await import('../erase-attrs-region-grading.mjs');
+            const { adaptEraseAttrsRegionCollector, eraseAttrsRegionAdapterId } = await import('../erase-attrs-region-grading-collector.mjs');
+            const { eraseAttrsRegionSuiteId, eraseAttrsRegionContractsVersion } = await import('../erase-attrs-region-contracts.mjs');
+            const { eraseAttrsRegionCounts } = await import('../erase-attrs-region-receipt.mjs');
+            const eraseAttrsRegionBytes = Buffer.from(adaptEraseAttrsRegionCollector(savedResetBytes.toString()));
+            const eraseAttrsRegion = syntheticEraseAttrsRegionEvidence(context.runId, hash(eraseAttrsRegionBytes));
+            eraseAttrsRegion.adapter = { id: eraseAttrsRegionAdapterId, derivedFromAdapterId: savedResetAdapterId,
+                bundleSha256: hash(eraseAttrsRegionBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const eraseAttrsRegionReport = buildEraseAttrsRegionGradingReport(eraseAttrsRegion.frames, eraseAttrsRegion.run, context.runId, eraseAttrsRegion.adapter);
+            write('erar-observations.json', eraseAttrsRegionReport);
+            write('erar-run.json', eraseAttrsRegion.run);
+            writeFileSync(join(output, 'erar-snapshots.jsonl'), eraseAttrsRegion.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-erar.mjs'), eraseAttrsRegionBytes);
+            Object.assign(context, { eraseAttrsRegionAdapterId, eraseAttrsRegionSuiteId, eraseAttrsRegionBundleSha256: hash(eraseAttrsRegionBytes), eraseAttrsRegionContractsVersion });
+            evidence.eraseAttrsRegionEvidence = { runId: context.runId, suiteId: eraseAttrsRegionSuiteId,
+                file: 'erar-observations.json', sha256: hash(readFileSync(join(output, 'erar-observations.json'))),
+                runFile: 'erar-run.json', runSha256: hash(readFileSync(join(output, 'erar-run.json'))),
+                adapterBundleSha256: hash(eraseAttrsRegionBytes), contractsVersion: eraseAttrsRegionContractsVersion,
+                ...eraseAttrsRegionCounts(eraseAttrsRegionReport), provisionalUntil: 'cell-receipt.json' };
+            // Policy v27 always carries the layered erase-character/saved-lines suffix as well.
             const { syntheticEraseCharsHistoryEvidence } = await import('./erase-chars-history-evidence.mjs');
             const { buildEraseCharsHistoryGradingReport } = await import('../erase-chars-history-grading.mjs');
             const { adaptEraseCharsHistoryCollector, eraseCharsHistoryAdapterId } = await import('../erase-chars-history-grading-collector.mjs');
             const { eraseCharsHistorySuiteId, eraseCharsHistoryContractsVersion } = await import('../erase-chars-history-contracts.mjs');
             const { eraseCharsHistoryCounts } = await import('../erase-chars-history-receipt.mjs');
-            const eraseCharsHistoryBytes = Buffer.from(adaptEraseCharsHistoryCollector(savedResetBytes.toString()));
+            const eraseCharsHistoryBytes = Buffer.from(adaptEraseCharsHistoryCollector(eraseAttrsRegionBytes.toString()));
             const eraseCharsHistory = syntheticEraseCharsHistoryEvidence(context.runId, hash(eraseCharsHistoryBytes));
-            eraseCharsHistory.adapter = { id: eraseCharsHistoryAdapterId, derivedFromAdapterId: savedResetAdapterId,
+            eraseCharsHistory.adapter = { id: eraseCharsHistoryAdapterId, derivedFromAdapterId: eraseAttrsRegionAdapterId,
                 bundleSha256: hash(eraseCharsHistoryBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
             const eraseCharsHistoryReport = buildEraseCharsHistoryGradingReport(eraseCharsHistory.frames, eraseCharsHistory.run, context.runId, eraseCharsHistory.adapter);
             write('echh-observations.json', eraseCharsHistoryReport);

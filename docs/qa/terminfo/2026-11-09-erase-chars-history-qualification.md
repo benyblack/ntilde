@@ -19,7 +19,7 @@ scrolls blank rows only, so it cannot tell ED 3 from "ED 3 that also clears the 
 
 ## Method
 
-Nineteenth digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the saved-state/reset one; it refuses derivation
+Twentieth digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the erase-attributes/margins one; it refuses derivation
 unless both registrations, with their termless **and** cursor-query paths, `eraseRowResult`, `isBlank`, `rowCells`, `parserStateResult` and
 `unmeasuredCellResult` are present verbatim once; the ED 0/1/2 registrations and `eraseScreenResult` are deliberately not seams), contracts v1, suite
 `ntilde-owned-erase-chars-history-graded-v1`, prefix `echh`, nonce `NTILDE_EH_`. One owned worker drives both cases on the disposable App's **main** screen

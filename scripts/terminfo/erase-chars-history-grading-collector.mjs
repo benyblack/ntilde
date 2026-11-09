@@ -1,10 +1,10 @@
 // Explicitly versioned collector extension for the erase-character / saved-lines qualification
-// (erase.character with ECH `ESC[3X` and erase.screen.scrollback with ED 3 `ESC[3J`). This is a nineteenth digest-checked
-// derivation layered on top of the saved-state/reset grading extension: the pinned bundle, the owned adapter and every earlier grading extension
+// (erase.character with ECH `ESC[3X` and erase.screen.scrollback with ED 3 `ESC[3J`). This is a twentieth digest-checked
+// derivation layered on top of the erase-attributes/margins grading extension: the pinned bundle, the owned adapter and every earlier grading extension
 // stay byte-for-byte unchanged, and each graded result carries this extension's identity so it can never be presented as stock output.
 //
 // The extension adds no probe of its own. It exposes the PINNED termless probe definitions of the two contracted cases so live,
-// independently observed screens can be graded by the collector's own criteria. Derivation refuses unless the retained saved-state/reset
+// independently observed screens can be graded by the collector's own criteria. Derivation refuses unless the retained erase-attributes/margins
 // extension still contains the exact pinned registrations (each with its termless path and its separate cursor-query path, which never
 // returns a verdict), the eraseRowResult helper and the isBlank, rowCells, parserStateResult and unmeasuredCellResult helpers, each verbatim
 // and once. The ED 0/1/2 registrations (erase.screen.below, above and all) and eraseScreenResult are different cases and are not pinned here.
@@ -12,7 +12,7 @@ import { eraseCharsHistoryCaseIds } from './erase-chars-history-contracts.mjs';
 import { eraseLineSeams } from './erase-line-grading-collector.mjs';
 import { charEditSeams } from './char-edit-grading-collector.mjs';
 
-/** Identity of this nineteenth layered extension. */
+/** Identity of this twentieth layered extension. */
 export const eraseCharsHistoryAdapterId = 'ntilde-owned-erase-chars-history-grading-v1';
 
 /** A helper seam the earlier layers already pin, reused verbatim so one source of truth names it. */
@@ -22,7 +22,7 @@ const helper = (seams, start) => {
     return seam;
 };
 
-/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the saved-state/reset extension). Each must appear exactly once, in this
+/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the erase-attributes/margins extension). Each must appear exactly once, in this
  * order: erase.screen.scrollback registration; erase.character registration; eraseRowResult; isBlank, rowCells, parserStateResult and
  * unmeasuredCellResult (also pinned by earlier layers, which is harmless: each still occurs once); then the retained previous layer's exports. */
 const pinnedEraseCharsHistorySeams = Object.freeze([
@@ -34,16 +34,16 @@ const pinnedEraseCharsHistorySeams = Object.freeze([
     helper(charEditSeams, 'function parserStateResult('),
     helper(charEditSeams, 'function unmeasuredCellResult('),
     // the retained previous layer's exports
-    'export const ntildeSavedResetAdapter = Object.freeze({',
-    'export function ntildeRunSavedResetTermless(probeId, ctx) {',
+    'export const ntildeEraseAttrsRegionAdapter = Object.freeze({',
+    'export function ntildeRunEraseAttrsRegionTermless(probeId, ctx) {',
 ]);
 
 /** The pinned seams, exposed so portable tests can build a synthetic layered source. */
 export const eraseCharsHistorySeams = pinnedEraseCharsHistorySeams;
 
-/** Derive the erase-character / saved-lines grading extension from the saved-state/reset grading extension. */
-export function adaptEraseCharsHistoryCollector(savedResetSource) {
-    const source = String(savedResetSource);
+/** Derive the erase-character / saved-lines grading extension from the erase-attributes/margins grading extension. */
+export function adaptEraseCharsHistoryCollector(eraseAttrsRegionSource) {
+    const source = String(eraseAttrsRegionSource);
     for (const seam of pinnedEraseCharsHistorySeams) {
         if (source.split(seam).length !== 2) throw new Error('Pinned erase-character/saved-lines probe seam changed; refusing derivation.');
     }
@@ -51,7 +51,7 @@ export function adaptEraseCharsHistoryCollector(savedResetSource) {
     return source + `
 
 // Local erase-character / saved-lines grading extension ${JSON.stringify(eraseCharsHistoryAdapterId)}.
-// Derived from the saved-state/reset grading extension; probe definitions, policy
+// Derived from the erase-attributes/margins grading extension; probe definitions, policy
 // gates and stock grading remain intact.
 export const ntildeEraseCharsHistoryAdapter = Object.freeze({
   id: ${JSON.stringify(eraseCharsHistoryAdapterId)},

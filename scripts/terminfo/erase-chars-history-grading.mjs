@@ -68,7 +68,7 @@ function specFor(frames) {
     const contracts = makeEraseCharsHistoryContracts(start?.rows, start?.cols);
     return Object.freeze({ label: 'Erase-character/saved-lines', prefix: 'echh', noncePrefix: eraseCharsHistoryNoncePrefix,
         contracts, caseIds: eraseCharsHistoryCaseIds, suiteId: eraseCharsHistorySuiteId, version: eraseCharsHistoryContractsVersion,
-        adapterId: eraseCharsHistoryAdapterId, derivedFrom: 'ntilde-owned-saved-reset-grading-v1',
+        adapterId: eraseCharsHistoryAdapterId, derivedFrom: 'ntilde-owned-erase-attrs-region-grading-v1',
         screenOf: value => {
             const screen = screenSnapshot(value, true, true, false, true, true, true);
             validateEraseCharsHistoryScreen(screen);

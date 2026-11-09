@@ -855,13 +855,22 @@ The pinned `?47` and `?1047` verdicts are inconclusive by design and stay that w
 (`ntilde.saved-reset.effect/v1`) are graded and recorded separately. `reset.sgr` is a different case from `sgr.reset`. `reset.method`,
 RIS and the pinned DECALN pixel path are not claimed. Receipt schema 31 and source policy v25 (204 files) bind it; earlier policies stay frozen.
 
+### Erase with attributes and erase with margins qualification (EL over a background, ED under a scroll region)
+
+The [erase attributes/margins batch](terminfo/2026-11-09-erase-attrs-region-qualification.md) grades exactly `erase.el-with-attrs` and `erase.ed-scroll-region` (both omitted-parameter
+spellings) through a nineteenth layered collector extension (`ntilde-owned-erase-attrs-region-grading-v1`), replaying the pinned bytes and running the pinned termless criteria over
+parent-journaled stored cells, App-resolved colors, the cursor, the margins and mode flags. The pinned EL criterion compares resolved background RGB, so a palette seed and a literal
+ARGB erase of the same resolved color agree and the representation is only observed; the pen-at-erase-time controls and the ED-at-margins marker fill are observations, not requirements, and no
+claim is made that ED is or is not clipped to the margins. The pinned terminal cursor-query paths never carry a verdict and are not qualified. Receipt schema 32 and source policy v26 (209
+files) bind it; earlier policies stay frozen.
+
 ### Erase-character and saved-lines qualification (ECH, ED 3)
 
 The [erase-character/saved-lines batch](terminfo/2026-11-09-erase-chars-history-qualification.md) grades exactly `erase.character` (ECH `ESC[3X`) and
-`erase.screen.scrollback` (ED 3 `ESC[3J`) through a nineteenth layered collector extension (`ntilde-owned-erase-chars-history-grading-v1`). The cells,
+`erase.screen.scrollback` (ED 3 `ESC[3J`) through a twentieth layered collector extension (`ntilde-owned-erase-chars-history-grading-v1`). The cells,
 cursor, margins, modes, active buffer and the actual ordered saved lines are observed independently on a disposable App's main screen; ECH is told apart from
 DCH, whole-line erasure and a no-op, ED 3 from ED 2, ordinary scrolling and an already-empty history. Other ECH spellings are labeled observations. Physical
-rows only; the pinned pixel/query paths never carry a verdict and are not qualified. Receipt schema 32 and source policy v26 (209 files) bind it; earlier
+rows only; the pinned pixel/query paths never carry a verdict and are not qualified. Receipt schema 33 and source policy v27 (214 files) bind it; earlier
 policies stay frozen.
 
 ### Erase-in-display qualification (ED 0, ED 1, ED 2)
