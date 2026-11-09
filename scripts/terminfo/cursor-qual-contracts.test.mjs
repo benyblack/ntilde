@@ -29,6 +29,19 @@ test('cup-scroll-region replays the exact pinned bytes: termless fixture, app fi
     assert.equal(makeCursorQualContracts(128, 60)[0].groups[1].pinnedFeeds[4], '\x1b[999B');
 });
 
+test('every expected cursor position fits every accepted geometry, so a conforming terminal can qualify at the minimum size', () => {
+    for (const rows of [15, 16, 19, 20, 40, 128]) {
+        for (const contract of makeCursorQualContracts(rows, 48)) {
+            for (const entry of contract.groups) {
+                for (const read of entry.reads) {
+                    const cursor = read.expect.cursor;
+                    if (cursor) assert.ok(cursor[0] >= 0 && cursor[0] < rows && cursor[1] >= 0 && cursor[1] < 48, `${contract.caseId}/${entry.id}/${read.label} at ${rows} rows`);
+                }
+            }
+        }
+    }
+});
+
 test('every group starts from the measured reset and the plan counts are consistent', () => {
     for (const contract of contracts) {
         assert.equal(planFeeds(contract)[0], cursorQualReset);

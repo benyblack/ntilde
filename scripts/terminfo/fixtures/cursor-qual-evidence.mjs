@@ -23,7 +23,7 @@ export const syntheticBackground = 0xff000000, syntheticCursorColor = 0xffffffff
 /** The default behavior: a terminal that implements every contracted operation correctly. */
 export const correctBehavior = Object.freeze({ reverseWrap: true, cprRelativeUnderOrigin: true, cupFollowsOrigin: true, marginShift: 0, clampAtRegionBottom: true,
     hideStored: true, hidePaints: true, shapeOfFive: 'bar', paintsBar: true, blinkAware: true, rendersHidden: false,
-    zeroQIsExplicit: false, reverseWrapIgnoresMode: false, ignoreOriginReset: false, noCpr: false });
+    blanksSceneInHiddenPhase: false, zeroQIsExplicit: false, reverseWrapIgnoresMode: false, ignoreOriginReset: false, noCpr: false });
 
 /** A byte-interpreting terminal with just the operations the cursor fixtures use. */
 export class SimTerminal {
@@ -135,9 +135,10 @@ export class SimTerminal {
         const put = (offset, argb) => { pixels[offset] = (argb >>> 16) & 255; pixels[offset + 1] = (argb >>> 8) & 255; pixels[offset + 2] = argb & 255; pixels[offset + 3] = argb >>> 24; };
         for (let offset = 0; offset < pixels.length; offset += 4) put(offset, syntheticBackground);
         const paint = (x, y, color) => put((y * width + x) * 4, color);
+        const sceneVisible = !this.behavior.blanksSceneInHiddenPhase || Math.floor(timeMs / 530) % 2 === 0;
         for (const [row, line] of this.cells.entries()) {
             for (const [col, char] of line.entries()) {
-                if (char === ' ') continue;
+                if (char === ' ' || !sceneVisible) continue;
                 for (let y = 5; y < 14; y++) paint(col * cellWidth + 3, row * cellHeight + y, 0xff909090);
             }
         }
@@ -218,6 +219,7 @@ export function syntheticCursorEvidence(runId = 'a'.repeat(32), bundleSha256 = '
                 read.timeMs = wanted.timeMs; read.pixelSha256 = digest;
                 extra.pixel = { file: `cursor-pixels/frame-${String(frames.length).padStart(3, '0')}.png`, sha256: digest, byteCount: png.length, width: image.width, height: image.height,
                     rows: cursorRows, cols: cursorCols, mode: 'render', scale: 1, downscaled: false, inlineOmitted: false, presentationTimeMs: wanted.timeMs, renderDetails };
+                extra.afterScreen = structuredClone(screen); extra.afterSha256 = snapshotHash(screen);
                 images.set(frames.length, { image, details: renderDetails });
                 pngs.set(extra.pixel.file, png);
             }

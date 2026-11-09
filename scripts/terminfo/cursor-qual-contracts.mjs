@@ -194,16 +194,16 @@ function cupGroups(rows) {
         .read('cpr', 'control', state([0, 0], { margins }), { label: 'DECOM off: CUP 1;1 is the screen home' })
         .feed('\x1b[15;1H')
         .read('cpr', 'control', state([14, 0], { margins }), { label: 'DECOM off: CUP 15;1 is the last region row' })
-        .feed('\x1b[20;3H')
-        .read('cpr', 'control', state([19, 2], { margins }), { label: 'DECOM off: CUP 20;3 leaves the region' }).done());
+        .feed('\x1b[3;3H')
+        .read('cpr', 'control', state([2, 2], { margins }), { label: 'DECOM off: CUP 3;3 is above the region' }).done());
     groups.push(new GroupBuilder('origin-on', 'boundary').feed(cursorQualReset).feed('\x1b[5;15r').feed('\x1b[?6h').feed('\x1b[11;1H')
         .read('cpr', 'measured', state([14, 0], region), { label: 'DECOM on: CUP 11;1 is the last region row' })
         .feed('\x1b[12;1H')
         .read('cpr', 'measured', state([14, 0], region), { label: 'DECOM on: CUP 12;1 clamps at the region bottom' })
         .feed('\x1b[999A')
         .read('cpr', 'measured', state([4, 0], region), { label: 'DECOM on: CUU stops at the top margin' })
-        .feed('\x1b[?6l').feed('\x1b[r').feed('\x1b[20;5H')
-        .read('cpr', 'restoration', state([19, 4]), { label: 'DECOM and margins reset: CUP 20;5 is absolute again' }).done());
+        .feed('\x1b[?6l').feed('\x1b[r').feed('\x1b[3;5H')
+        .read('cpr', 'restoration', state([2, 4]), { label: 'DECOM and margins reset: CUP 3;5 is absolute again' }).done());
     return groups;
 }
 
@@ -321,7 +321,7 @@ const shapeChecks = [
     ['shape.reference-shapes', 'control', 'steady block, underline and bar references are distinct, show their shapes and differ from the hidden reference'],
     ['shape.default-visible-and-distinct', 'control', 'the host-default control paints a visible cursor that differs from the requested bar'],
     ['shape.target-is-bar', 'measured', 'the requested shape paints exactly the steady bar reference in the visible half-period'],
-    ['shape.target-blink-hidden-phase', 'measured', 'the same requested shape paints the page background in the hidden half-period (blink is separate from shape)'],
+    ['shape.target-blink-hidden-phase', 'measured', 'the same requested shape paints the page background in the hidden half-period (blink is separate from shape) and leaves every other pixel as in the visible half-period'],
     ['shape.unrelated-pixels-unchanged', 'measured', 'every pixel outside the cursor cell is identical in the control and requested-shape frames'],
 ];
 

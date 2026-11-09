@@ -85,8 +85,8 @@ test('CUP in the DECOM region: physical rows, actual margins and origin before a
         [[[4, 0], '\u001b[1;1R', [4, 14], true], [[5, 0], '\u001b[2;1R', [4, 14], true], [[14, 0], '\u001b[11;1R', [4, 14], true]]);
     assert.deepEqual([app[3].physicalCursor, app[3].margins, app[3].origin], [[0, 0], [0, 39], false], 'margins and origin restored');
     assert.ok(app.slice(0, 3).every(read => read.cprConsistentWithPhysicalCursor), 'the relative reply is consistent with the physical row, never read as it');
-    assert.deepEqual(reads(item, 'origin-off').map(read => [read.physicalCursor, read.rawCpr]), [[[0, 0], '\u001b[1;1R'], [[14, 0], '\u001b[15;1R'], [[19, 2], '\u001b[20;3R']], 'DECOM off: the same bytes report absolute rows');
-    assert.deepEqual(reads(item, 'origin-on').map(read => [read.physicalCursor, read.rawCpr]), [[[14, 0], '\u001b[11;1R'], [[14, 0], '\u001b[11;1R'], [[4, 0], '\u001b[1;1R'], [[19, 4], '\u001b[20;5R']]);
+    assert.deepEqual(reads(item, 'origin-off').map(read => [read.physicalCursor, read.rawCpr]), [[[0, 0], '\u001b[1;1R'], [[14, 0], '\u001b[15;1R'], [[2, 2], '\u001b[3;3R']], 'DECOM off: the same bytes report absolute rows');
+    assert.deepEqual(reads(item, 'origin-on').map(read => [read.physicalCursor, read.rawCpr]), [[[14, 0], '\u001b[11;1R'], [[14, 0], '\u001b[11;1R'], [[4, 0], '\u001b[1;1R'], [[2, 4], '\u001b[3;5R']]);
     assert.equal(reads(item, 'termless')[0].physicalCursor.join(), '4,0');
 });
 

@@ -96,6 +96,12 @@ test('blink stays separate from shape and visibility: a bar that never turns off
     assert.match(shape.contractResult.note, /shape.target-blink-hidden-phase/);
 });
 
+test('a renderer that blanks the whole scene in the hidden half-period is not accepted as correct cursor blinking', () => {
+    const shape = only(withBehavior({ blanksSceneInHiddenPhase: true }), 'cursor.shape');
+    assert.equal(shape.conclusion.outcome, 'unsupported');
+    assert.match(shape.contractResult.note, /shape.target-blink-hidden-phase/);
+});
+
 test('default versus explicit intent: CSI 0 q leaving an explicit copy of the default is a restoration failure the journal refuses', () => {
     assert.throws(() => withBehavior({ zeroQIsExplicit: true }), /fixture was not restored/);
 });
@@ -237,6 +243,22 @@ test('retained CPR exchanges are bound to their read frame and to their raw byte
     const stray = cloneEvidence(evidence);
     stray.frames[evidence.frames.findIndex(frame => frame.kind === 'curq-read' && !frame.cpr && !frame.pixel)].cpr = swapped.frames[index].cpr;
     assert.throws(() => build(stray), /Unexpected cursor.* cursor report|differs from its read frame/);
+});
+
+test('retained captures are only accepted with their complete state bracket and one shared render context', () => {
+    const evidence = syntheticCursorEvidence();
+    const index = evidence.frames.findIndex(frame => frame.pixel);
+    const unbracketed = cloneEvidence(evidence);
+    delete unbracketed.frames[index].afterScreen; delete unbracketed.frames[index].afterSha256;
+    assert.throws(() => build(unbracketed), /Invalid or changed controlled pixel capture/);
+    const changed = cloneEvidence(evidence);
+    changed.frames[index].afterScreen.cursorRow += 1;
+    assert.throws(() => build(changed), /Invalid or changed controlled pixel capture/);
+    const other = cloneEvidence(evidence);
+    const context = syntheticCursorEvidence();
+    for (const [key, value] of context.images) if (key !== index) value.details = { ...value.details, font: { ...value.details.font, primarySha256: 'b'.repeat(64) } };
+    other.imageOf = frame => context.images.get(frame.index);
+    assert.throws(() => build(other), /Invalid or changed controlled pixel capture/);
 });
 
 test('retained captures are bound to the recorded digest and presentation phase', () => {

@@ -9,9 +9,9 @@ import { cursorQualCaseIds, cursorQualContractsVersion, cursorQualNoncePrefix, c
 import { cursorQualAdapterId, cursorGeometryRepairId, cursorRepairedProbeIds } from './cursor-qual-grading-collector.mjs';
 import { cursorQualTermlessContext, cursorQualAppBackend, cursorQualGroupOffsets, runCursorQualPinned } from './cursor-qual-collector.mjs';
 import { validateGradedJournal, validateExactFeeds, planFeeds, planReads, requirePinnedAgreement } from './graded-plan.mjs';
-import { retainedCursorCapture } from './pixels-capture.mjs';
+import { retainedCursorCapture, stablePixelContext, defaultCursorPolicy } from './pixels-capture.mjs';
 import { regionPixels } from './pixels.mjs';
-import { screenSnapshot } from './agent-observer.mjs';
+import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
 import { validateCursorReport } from './cursor-report.mjs';
 
 /** The adapter this extension derives from. */
@@ -384,7 +384,8 @@ function pixelChecksFor(contract, captures) {
         const defaultCell = cell(defaultFrame), targetCell = cell(target);
         add('shape.default-visible-and-distinct', !solidBackground(defaultCell, background) && !defaultCell.equals(targetCell), 'the host-default control against the requested shape');
         add('shape.target-is-bar', targetCell.equals(bar) && cursorShapeOf(targetCell, grid, background) === 'bar', `the requested shape paints ${cursorShapeOf(targetCell, grid, background)}`);
-        add('shape.target-blink-hidden-phase', solidBackground(cell(hiddenPhase), background), 'the requested shape in the hidden half-period against the background');
+        add('shape.target-blink-hidden-phase', solidBackground(cell(hiddenPhase), background) && outsideCell(target, ...cursor).equals(outsideCell(hiddenPhase, ...cursor)),
+            'the requested shape in the hidden half-period against the background, with every other pixel as in the visible half-period');
         add('shape.unrelated-pixels-unchanged', outsideCell(defaultFrame, ...cursor).equals(outsideCell(target, ...cursor)), 'pixels outside the cursor cell in the control and requested-shape frames');
     }
     return results;
@@ -412,12 +413,26 @@ function requireRepairEvidence(contract, recorded, geometry) {
     return { derivationId: cursorGeometryRepairId, original: { threw: original.threw, writes: original.writes }, repair: expected };
 }
 
+/** A retained capture is only evidence when the observer's own preconditions still hold: the screen read after the render is the screen read before it, and one render
+ * context and default-cursor policy served every capture of the suite. The live observer enforces both; replay must not accept what it would have refused. */
+function requireCaptureBracket(frame, capture, baseline, shared) {
+    const refuse = () => { throw new Error('Invalid or changed controlled pixel capture.'); };
+    if (!frame.afterScreen || frame.afterSha256 !== frame.sha256 || snapshotHash(frame.afterScreen) !== frame.sha256) refuse();
+    screenOf(frame.afterScreen);
+    if (frame.screen.rows !== baseline.rows || frame.screen.cols !== baseline.cols) refuse();
+    const context = stablePixelContext(capture.details), policy = defaultCursorPolicy(frame.screen, capture.details);
+    if ((shared.context !== undefined && shared.context !== context) || (shared.policy && policy && shared.policy !== policy)) refuse();
+    shared.context ??= context;
+    shared.policy ??= policy;
+    return capture;
+}
+
 /** Re-derive and cross-check every case; throw on any disagreement. */
 export function buildCursorQualGradingReport(frames, run, runId, adapter, { contractsVersion = cursorQualContractsVersion, output, imageOf = frame => retainedCursorCapture(output, frame) } = {}) {
     const contracts = validateCursorQualEvidence(frames, run, runId, adapter);
     const baseline = cursorQualView(frames[0].screen);
     let frameIndex = 2;
-    const cases = [];
+    const cases = [], shared = {};
     for (const [position, contract] of contracts.entries()) {
         const recorded = run.cases[position];
         if (recorded.caseId !== contract.caseId) throw new Error('Cursor case order differs from the contracts.');
@@ -425,7 +440,7 @@ export function buildCursorQualGradingReport(frames, run, runId, adapter, { cont
         crossCheckCursorCapture(contract, recorded, readFrames);
         const screens = readFrames.map(frame => frame.screen);
         const captures = new Map();
-        readFrames.forEach((frame, index) => { if (frame.pixel) captures.set(index, imageOf(frame)); });
+        readFrames.forEach((frame, index) => { if (frame.pixel) captures.set(index, requireCaptureBracket(frame, imageOf(frame), baseline, shared)); });
         const extras = readFrames.map(frame => ({ report: frame.cpr?.reply ?? null }));
         const observation = { ...cursorQualObservation(contract, screens, extras), baseline, pixelChecks: pixelChecksFor(contract, captures) };
         const contractResult = gradeCursorQualCase(contract, observation, contractsVersion);
