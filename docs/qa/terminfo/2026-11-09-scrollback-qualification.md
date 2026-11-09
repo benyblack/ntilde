@@ -24,10 +24,10 @@ inconclusive for all nine (stock counts unchanged: 86 supported, 1 unsupported, 
 
 ## Method
 
-Fourteenth digest-checked collector extension `ntilde-owned-scrollback-grading-v1` (derived over the character-editing one; it refuses
+Fifteenth digest-checked collector extension `ntilde-owned-scrollback-grading-v1` (derived over the erase-in-display one; it refuses
 derivation unless the verbatim pinned scrollback section, pinned by one SHA-256, and the `parserStateResult`/`isBlank` helpers are present
 once), contracts v1, suite `ntilde-owned-scrollback-graded-v1`, prefix `scrl`, nonce `NTILDE_SB_`. The suite runs on the **main screen**
-(history is only observable there) after the character-editing suite, starting from a pristine main screen and restoring it exactly. Each plan
+(history is only observable there) after the erase-in-display suite, starting from a pristine main screen and restoring it exactly. Each plan
 begins with a measured reset (`?1049l`, DECSCNM/DECOM/margins/IRM/SGR off, `2J`, `3J`, home), feeds the pinned bytes one write each, and
 journals complete state reads: viewport text, **actual `readScrollback` lines and count**, margins, active screen, origin/insert/auto-wrap
 and pending wrap, cursor, and that no cell stores a non-default attribute (attribute runs and stored details must agree). Every expected
@@ -46,7 +46,7 @@ geometry is inconclusive.
 
 ## Measurement
 
-Owned run on a disposable sidecar built from this checkout, receipt schema 27, source policy v21 (inventory v28, 184 files), default theme,
+Owned run on a disposable sidecar built from this checkout, receipt schema 28, source policy v22 (inventory v29, 189 files), default theme,
 40x140. All nine cases graded **supported** by the contract. Six pinned verdicts agree (supported); three are inconclusive by construction.
 Observed: 50 lines overflow into exactly lines 0-10 of history (total lines 40 to 51) with `line 11`..`line 49` in rows 0-38; SU confined to
 rows 2-4 gave A,C,D,blank,E with no history; RI/SD inserted a blank top row; DECSTBM `5;10` observed as margins 4..9 (0-based) and restored to

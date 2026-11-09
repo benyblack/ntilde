@@ -21,6 +21,7 @@ import { sgrResetContracts } from './sgr-reset-contracts.mjs';
 import { sgrClosureContracts } from './sgr-closure-contracts.mjs';
 import { eraseLineContracts } from './erase-line-contracts.mjs';
 import { charEditContracts } from './char-edit-contracts.mjs';
+import { eraseDisplayContracts } from './erase-display-contracts.mjs';
 
 const dir = new URL('../../docs/qa/terminfo/2026-11-09-scrollback/', import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
@@ -54,7 +55,7 @@ test('the published scrolling/history evidence re-derives exactly from its retai
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, scrollbackSuiteId);
     assert.equal(report.adapter.id, scrollbackAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-char-edit-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-erase-display-grading-v1');
     assert.equal(report.snapshots.length, 3 + 45);
     assert.deepEqual(report.cases.map(item => item.caseId), [...scrollbackCaseIds]);
     assert.deepEqual(report.cases.map(item => item.conclusion.outcome), scrollbackCaseIds.map(() => 'supported'));
@@ -162,7 +163,7 @@ test('alternate screen: seeded main history, isolation while alternate, exact re
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 27);
+    assert.equal(receipt.schemaVersion, 28);
     assert.equal(receipt.scrollbackEvidence.suiteId, scrollbackSuiteId);
     assert.equal(receipt.scrollbackEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.scrollbackEvidence.counts, { supported: 9 });
@@ -175,14 +176,14 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.scrollbackObservationsSha256, observationsHash);
     assert.equal(summary.retained.scrollbackRunSha256, runHash);
     assert.equal(summary.retained.scrollbackJournalSha256, journalHash);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v21');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v22');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed.
     const expected = new Set([...asciiSgrContracts, ...sgrColorsContracts, ...sgrRgbContracts, ...sgrAttrsContracts, ...sgrPaletteContracts,
         ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts,
-        ...eraseLineContracts, ...charEditContracts].map(contract => contract.caseId));
+        ...eraseLineContracts, ...charEditContracts, ...eraseDisplayContracts].map(contract => contract.caseId));
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...expected].sort());
     for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));
@@ -216,6 +217,9 @@ test('prior publications still rederive beside this batch', () => {
     const chars = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-09-char-edit/summary.json', import.meta.url)));
     assert.equal(chars.receipt.schemaVersion, 26);
     assert.equal(chars.receipt.scrollbackEvidence, undefined);
+    const display = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-09-erase-display/summary.json', import.meta.url)));
+    assert.equal(display.receipt.schemaVersion, 27);
+    assert.equal(display.receipt.scrollbackEvidence, undefined);
     const { attempts, context } = load().summary;
     assert.equal(attempts.length, 1);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);

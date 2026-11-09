@@ -847,11 +847,21 @@ cursor and stored attributes. The contract adds cursor, unaffected-row/column, r
 spellings are labeled observations; background-color erase is observed, not required. The pinned terminal pixel path is capture-only
 upstream and is not qualified. Receipt schema 25 and source policy v19 (173 files) bind it; earlier policies stay frozen.
 
+### Erase-in-display qualification (ED 0, ED 1, ED 2)
+
+The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
+`erase.screen.all` (all explicit-parameter spellings) through a fourteenth layered collector extension (`ntilde-owned-erase-display-grading-v1`),
+replaying the geometry-dependent pinned setup (pinned here to the owned 40x140 screen) and erase bytes and running the pinned termless
+`eraseScreenResult` over parent-journaled stored cells, the cursor and the saved-line count. The contract adds whole-screen retained/erased,
+cursor, mode-flag, boundary, retained-attribute and main-screen history controls; the other ED spellings are labeled observations; background-color
+erase is observed, not required. The pinned pixel path is capture-only upstream and is not qualified; CSI 3J is not graded (it appears only as
+disposable-screen cleanup). Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.
+
 ### Scrolling and history qualification (nine scrollback cases)
 
 The [scrolling/history batch](terminfo/2026-11-09-scrollback-qualification.md) grades exactly `scrollback.accumulate`, `.total-lines`,
-`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a fourteenth layered
-collector extension (`ntilde-owned-scrollback-grading-v1`, the fourteenth) on the App's main screen. Viewport text, actual scrollback lines, margins, active
+`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a fifteenth layered
+collector extension (`ntilde-owned-scrollback-grading-v1`) on the App's main screen. Viewport text, actual scrollback lines, margins, active
 screen and cursor are observed independently and compared with a byte-interpreting model; the pinned code runs over the same observations.
 Three pinned probes are null by construction, so the contract measures beyond them and the divergence is recorded; stock grades stay
-inconclusive. Receipt schema 27 and source policy v21 (184 files) bind it; earlier policies stay frozen.
+inconclusive. Receipt schema 28 and source policy v22 (189 files) bind it; earlier policies stay frozen.

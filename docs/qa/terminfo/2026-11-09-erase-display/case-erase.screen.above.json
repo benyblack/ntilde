@@ -1,0 +1,1028 @@
+{
+  "caseId": "erase.screen.above",
+  "pinnedCriterion": "rows 0, 20 and 39 read \"     \", \"   BB\", \"CCCCC\" after ED 1 (explicit parameter spelling) with the cursor unmoved from column 2 of row 20",
+  "pinnedFeeds": [
+    "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+    "\u001b[1J"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+      "\u001b[1J"
+    ],
+    "demand": "erased region blank, retained cells and cursor unchanged",
+    "minimum": {
+      "rows": 3,
+      "cols": 6
+    },
+    "note": "upstream pixel path is capture-only (erases at the middle = floor((rows + 1) / 2) row) and never a grade"
+  },
+  "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+    "\u001b[1J",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+    "\u001b[J",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+    "\u001b[0J",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+    "\u001b[2J",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[21;5H",
+    "\u001b[1J",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[21;140H",
+    "\u001b[1J",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1m\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[0m\u001b[21;3H\u001b[44m",
+    "\u001b[1J",
+    "\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[44mX",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[3J",
+    "HIST-A\r\nHIST-B\r\nHIST-C\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+    "\u001b[1J",
+    "\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      20,
+      4
+    ],
+    [
+      20,
+      4
+    ],
+    [
+      20,
+      139
+    ],
+    [
+      20,
+      139
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      20,
+      2
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedSpelling": "explicit1",
+    "pinnedSequence": "\u001b[1J",
+    "pinnedRows": [
+      0,
+      20,
+      39
+    ],
+    "initial": {
+      "ink": 0,
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    "setup": {
+      "text": [
+        "AAAAA_____",
+        "BBBBB_____",
+        "CCCCC_____"
+      ],
+      "cursor": [
+        20,
+        2
+      ],
+      "ink": [
+        "0,0,A",
+        "0,1,A",
+        "0,2,A",
+        "0,3,A",
+        "0,4,A",
+        "20,0,B",
+        "20,1,B",
+        "20,2,B",
+        "20,3,B",
+        "20,4,B",
+        "39,0,C",
+        "39,1,C",
+        "39,2,C",
+        "39,3,C",
+        "39,4,C"
+      ],
+      "scrollback": {
+        "alternateScreen": true,
+        "scrollbackLines": 0,
+        "history": []
+      }
+    },
+    "erased": {
+      "text": [
+        "__________",
+        "___BB_____",
+        "CCCCC_____"
+      ],
+      "cursor": [
+        20,
+        2
+      ],
+      "ink": [
+        "20,3,B",
+        "20,4,B",
+        "39,0,C",
+        "39,1,C",
+        "39,2,C",
+        "39,3,C",
+        "39,4,C"
+      ],
+      "scrollback": {
+        "alternateScreen": true,
+        "scrollbackLines": 0,
+        "history": []
+      }
+    },
+    "modesUnchanged": true,
+    "spellingControls": {
+      "policy": "observed, not graded: separate spellings of the same screen; the pinned fixtures use only the explicit spelling",
+      "omitted": {
+        "sequence": "\u001b[J",
+        "mode": 0,
+        "text": [
+          "AAAAA_____",
+          "BB________",
+          "__________"
+        ],
+        "cursor": [
+          20,
+          2
+        ],
+        "ink": [
+          "0,0,A",
+          "0,1,A",
+          "0,2,A",
+          "0,3,A",
+          "0,4,A",
+          "20,0,B",
+          "20,1,B"
+        ],
+        "matchesEcma48": true,
+        "sameAsPinned": false
+      },
+      "explicit0": {
+        "sequence": "\u001b[0J",
+        "mode": 0,
+        "text": [
+          "AAAAA_____",
+          "BB________",
+          "__________"
+        ],
+        "cursor": [
+          20,
+          2
+        ],
+        "ink": [
+          "0,0,A",
+          "0,1,A",
+          "0,2,A",
+          "0,3,A",
+          "0,4,A",
+          "20,0,B",
+          "20,1,B"
+        ],
+        "matchesEcma48": true,
+        "sameAsPinned": false
+      },
+      "explicit2": {
+        "sequence": "\u001b[2J",
+        "mode": 2,
+        "text": [
+          "__________",
+          "__________",
+          "__________"
+        ],
+        "cursor": [
+          20,
+          2
+        ],
+        "ink": [],
+        "matchesEcma48": true,
+        "sameAsPinned": false
+      }
+    },
+    "fullScreen": {
+      "policy": "unaffected rows and columns: a distinct ten-character marker on every row, cursor inside the screen",
+      "cursor": [
+        20,
+        4
+      ],
+      "before": {
+        "text": [
+          "ROW00-ABCD",
+          "ROW01-ABCD",
+          "ROW02-ABCD",
+          "ROW03-ABCD",
+          "ROW04-ABCD",
+          "ROW05-ABCD",
+          "ROW06-ABCD",
+          "ROW07-ABCD",
+          "ROW08-ABCD",
+          "ROW09-ABCD",
+          "ROW10-ABCD",
+          "ROW11-ABCD",
+          "ROW12-ABCD",
+          "ROW13-ABCD",
+          "ROW14-ABCD",
+          "ROW15-ABCD",
+          "ROW16-ABCD",
+          "ROW17-ABCD",
+          "ROW18-ABCD",
+          "ROW19-ABCD",
+          "ROW20-ABCD",
+          "ROW21-ABCD",
+          "ROW22-ABCD",
+          "ROW23-ABCD",
+          "ROW24-ABCD",
+          "ROW25-ABCD",
+          "ROW26-ABCD",
+          "ROW27-ABCD",
+          "ROW28-ABCD",
+          "ROW29-ABCD",
+          "ROW30-ABCD",
+          "ROW31-ABCD",
+          "ROW32-ABCD",
+          "ROW33-ABCD",
+          "ROW34-ABCD",
+          "ROW35-ABCD",
+          "ROW36-ABCD",
+          "ROW37-ABCD",
+          "ROW38-ABCD",
+          "ROW39-ABCD"
+        ],
+        "cursor": [
+          20,
+          4
+        ]
+      },
+      "after": {
+        "text": [
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "_____-ABCD",
+          "ROW21-ABCD",
+          "ROW22-ABCD",
+          "ROW23-ABCD",
+          "ROW24-ABCD",
+          "ROW25-ABCD",
+          "ROW26-ABCD",
+          "ROW27-ABCD",
+          "ROW28-ABCD",
+          "ROW29-ABCD",
+          "ROW30-ABCD",
+          "ROW31-ABCD",
+          "ROW32-ABCD",
+          "ROW33-ABCD",
+          "ROW34-ABCD",
+          "ROW35-ABCD",
+          "ROW36-ABCD",
+          "ROW37-ABCD",
+          "ROW38-ABCD",
+          "ROW39-ABCD"
+        ],
+        "cursor": [
+          20,
+          4
+        ]
+      }
+    },
+    "boundary": {
+      "policy": "the cursor cell is erased at the first and last column",
+      "cursor": [
+        20,
+        139
+      ],
+      "before": {
+        "text": [
+          "ROW00-ABCD",
+          "ROW01-ABCD",
+          "ROW02-ABCD",
+          "ROW03-ABCD",
+          "ROW04-ABCD",
+          "ROW05-ABCD",
+          "ROW06-ABCD",
+          "ROW07-ABCD",
+          "ROW08-ABCD",
+          "ROW09-ABCD",
+          "ROW10-ABCD",
+          "ROW11-ABCD",
+          "ROW12-ABCD",
+          "ROW13-ABCD",
+          "ROW14-ABCD",
+          "ROW15-ABCD",
+          "ROW16-ABCD",
+          "ROW17-ABCD",
+          "ROW18-ABCD",
+          "ROW19-ABCD",
+          "ROW20-ABCD",
+          "ROW21-ABCD",
+          "ROW22-ABCD",
+          "ROW23-ABCD",
+          "ROW24-ABCD",
+          "ROW25-ABCD",
+          "ROW26-ABCD",
+          "ROW27-ABCD",
+          "ROW28-ABCD",
+          "ROW29-ABCD",
+          "ROW30-ABCD",
+          "ROW31-ABCD",
+          "ROW32-ABCD",
+          "ROW33-ABCD",
+          "ROW34-ABCD",
+          "ROW35-ABCD",
+          "ROW36-ABCD",
+          "ROW37-ABCD",
+          "ROW38-ABCD",
+          "ROW39-ABCD"
+        ],
+        "cursor": [
+          20,
+          139
+        ]
+      },
+      "after": {
+        "text": [
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "__________",
+          "ROW21-ABCD",
+          "ROW22-ABCD",
+          "ROW23-ABCD",
+          "ROW24-ABCD",
+          "ROW25-ABCD",
+          "ROW26-ABCD",
+          "ROW27-ABCD",
+          "ROW28-ABCD",
+          "ROW29-ABCD",
+          "ROW30-ABCD",
+          "ROW31-ABCD",
+          "ROW32-ABCD",
+          "ROW33-ABCD",
+          "ROW34-ABCD",
+          "ROW35-ABCD",
+          "ROW36-ABCD",
+          "ROW37-ABCD",
+          "ROW38-ABCD",
+          "ROW39-ABCD"
+        ],
+        "cursor": [
+          20,
+          139
+        ]
+      }
+    },
+    "attributes": {
+      "policy": "retained cells keep their bold-only stored tuple (required); background-color erase is observed, not required",
+      "before": {
+        "text": [
+          "AAAAA_____",
+          "BBBBB_____",
+          "CCCCC_____"
+        ],
+        "cursor": [
+          20,
+          2
+        ],
+        "ink": [
+          {
+            "row": 0,
+            "char": "A",
+            "flags": 769,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "cols": [
+              0,
+              4
+            ]
+          },
+          {
+            "row": 20,
+            "char": "B",
+            "flags": 769,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "cols": [
+              0,
+              4
+            ]
+          },
+          {
+            "row": 39,
+            "char": "C",
+            "flags": 769,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "cols": [
+              0,
+              4
+            ]
+          }
+        ]
+      },
+      "after": {
+        "text": [
+          "__________",
+          "___BB_____",
+          "CCCCC_____"
+        ],
+        "cursor": [
+          20,
+          2
+        ],
+        "ink": [
+          {
+            "row": 0,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 1,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 2,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 3,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 4,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 5,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 6,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 7,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 8,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 9,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 10,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 11,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 12,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 13,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 14,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 15,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 16,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 17,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 18,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 19,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              139
+            ]
+          },
+          {
+            "row": 20,
+            "char": " ",
+            "flags": 256,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": 4278190318,
+            "cols": [
+              0,
+              2
+            ]
+          },
+          {
+            "row": 20,
+            "char": "B",
+            "flags": 769,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "cols": [
+              3,
+              4
+            ]
+          },
+          {
+            "row": 39,
+            "char": "C",
+            "flags": 769,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "cols": [
+              0,
+              4
+            ]
+          }
+        ]
+      },
+      "penReference": {
+        "text": [
+          "X_________",
+          "__________",
+          "__________"
+        ],
+        "cursor": [
+          0,
+          1
+        ],
+        "ink": [
+          {
+            "row": 0,
+            "col": 0,
+            "char": "X",
+            "flags": 33024,
+            "fgIndex": -1,
+            "bgIndex": 4,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          }
+        ]
+      },
+      "retainedKeepBold": true,
+      "backgroundColorErase": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+      "backgroundColorEraseDetail": {
+        "pen": {
+          "bgIndex": 4,
+          "backgroundArgb": null,
+          "resolved": {
+            "r": 0,
+            "g": 0,
+            "b": 238
+          }
+        },
+        "firstErased": {
+          "bgIndex": -1,
+          "backgroundArgb": 4278190318,
+          "resolved": {
+            "r": 0,
+            "g": 0,
+            "b": 238
+          }
+        },
+        "lastErased": {
+          "bgIndex": -1,
+          "backgroundArgb": 4278190318,
+          "resolved": {
+            "r": 0,
+            "g": 0,
+            "b": 238
+          }
+        },
+        "erasedCells": 2803,
+        "paintedCells": 2803
+      }
+    },
+    "history": {
+      "policy": "main-screen control: saved lines must not be removed by ED (ED 3 is a different case and is not fed)",
+      "before": {
+        "text": [
+          "AAAAA_____",
+          "BBBBB_____",
+          "CCCCC_____"
+        ],
+        "cursor": [
+          20,
+          2
+        ],
+        "ink": [
+          "0,0,A",
+          "0,1,A",
+          "0,2,A",
+          "0,3,A",
+          "0,4,A",
+          "20,0,B",
+          "20,1,B",
+          "20,2,B",
+          "20,3,B",
+          "20,4,B",
+          "39,0,C",
+          "39,1,C",
+          "39,2,C",
+          "39,3,C",
+          "39,4,C"
+        ],
+        "scrollback": {
+          "alternateScreen": false,
+          "scrollbackLines": 4,
+          "history": [
+            "HIST-A",
+            "HIST-B",
+            "HIST-C",
+            ""
+          ]
+        }
+      },
+      "after": {
+        "text": [
+          "__________",
+          "___BB_____",
+          "CCCCC_____"
+        ],
+        "cursor": [
+          20,
+          2
+        ],
+        "ink": [
+          "20,3,B",
+          "20,4,B",
+          "39,0,C",
+          "39,1,C",
+          "39,2,C",
+          "39,3,C",
+          "39,4,C"
+        ],
+        "scrollback": {
+          "alternateScreen": false,
+          "scrollbackLines": 4,
+          "history": [
+            "HIST-A",
+            "HIST-B",
+            "HIST-C",
+            ""
+          ]
+        }
+      },
+      "seeded": true,
+      "linesKept": true,
+      "linesAdded": 0
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "rows 0,20,39:      /   BB/CCCCC; cursor preserved",
+        "observed": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored cells only: exact erased and retained characters on the whole screen, neutral stored attributes, untouched cursor and modes, scrollback not removed; background-color erase is observed, not required; the pinned pixel capture path is capture-only and is not claimed"
+  }
+}
