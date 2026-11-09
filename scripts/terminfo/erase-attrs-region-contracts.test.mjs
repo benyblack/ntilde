@@ -8,9 +8,15 @@ import { syntheticEraseAttrsRegionReads, syntheticEraseAttrsRegionScreens, synth
 
 const EL = 'erase.el-with-attrs', ED = 'erase.ed-scroll-region';
 const green = { bg: { kind: 'palette', index: 2 } };
+/** The pinned `ESC[r` leaves the erased screen's text untouched, so an edit of the ED erased read propagates to the restored read unless the edit sets that read itself. */
+const propagateRestored = (id, reads, edit) => {
+    const restored = reads.restored;
+    edit(reads);
+    if (id === 'erase.ed-scroll-region' && reads.restored === restored) reads.restored = { ...restored, cells: reads.erased.cells };
+};
 const grade = (caseId, edit, binding) => syntheticEraseAttrsRegionGrade(caseId, binding, id => {
     const reads = syntheticEraseAttrsRegionReads(id);
-    if (id === caseId && edit) edit(reads);
+    if (id === caseId && edit) propagateRestored(id, reads, edit);
     return reads;
 });
 const contractOf = caseId => eraseAttrsRegionContracts.find(item => item.caseId === caseId);
@@ -137,6 +143,14 @@ test('EL: a moved cursor or a changed mode is unsupported', () => {
     assert.match(grade(EL, reads => { reads.erased = { ...reads.erased, buffer: bufferOf({ scrollTop: 2, scrollBottom: 9 }) }; }).note, /margin/);
 });
 
+test('EL: a cursor moved by the erase stays unsupported: the restoration witness is positioned by its own feed, not by the erase result', () => {
+    const moved = grade(EL, reads => { reads.erased = { ...reads.erased, cursor: [0, 5] }; });
+    assert.equal(moved.outcome, 'unsupported');
+    assert.match(moved.note, /cursor moved/);
+    assert.ok(contractOf(EL).plan.some(step => step.feed === '\x1b[1;1HW'), 'the witness is written at an explicitly positioned (0,0)');
+    assert.deepEqual(contractOf(EL).plan.filter(step => step.feed).map(step => step.feed).slice(4, 6), [elFinally, '\x1b[1;1HW']);
+});
+
 test('EL: an invalid or incomplete setup, wrong geometry or reverse video is inconclusive, never supported or unsupported', () => {
     assert.deepEqual(grade(EL, reads => { reads.setup = { cells: textCells(0, 'XXXXX'), cursor: [0, 0] }; }), { outcome: 'inconclusive', note: pinnedElSetupNote });
     assert.equal(grade(EL, reads => { reads.setup = { cells: textCells(0, 'XXXX', green), cursor: [0, 0] }; }).outcome, 'inconclusive');
@@ -167,6 +181,20 @@ test('ED: a no-op, an erased preceding row, a retained target and a wrong-direct
     assert.match(grade(ED, reads => { reads.erased = { cells: [...keep(), ...textCells(2, 'ERASE')], cursor: [2, 0], buffer: margins }; }).outcome, /unsupported/);
     // ED 1 from (2,0): the rows above and the cursor cell go, so KEEP! is gone and "RASE" remains.
     assert.equal(grade(ED, reads => { reads.erased = { cells: textCells(2, 'RASE').map(([row, col, spec]) => [row, col + 1, spec]), cursor: [2, 0], buffer: margins }; }).outcome, 'unsupported');
+});
+
+test('ED: failures propagate through the restoration read: a no-op or wrong erase stays unsupported, never masked as inconclusive restoration', () => {
+    const full = { scrollTop: 0, scrollBottom: 39 };
+    const noop = grade(ED, reads => { reads.erased = reads.setup; reads.restored = { cells: reads.setup.cells, cursor: [0, 0], buffer: full }; });
+    assert.equal(noop.outcome, 'unsupported');
+    assert.match(noop.note, /no-op/);
+    const wrong = grade(ED, reads => { reads.erased = { cells: [], cursor: [2, 0], buffer: margins }; reads.restored = { cells: [], cursor: [0, 0], buffer: full }; });
+    assert.equal(wrong.outcome, 'unsupported');
+    assert.match(wrong.note, /preceding row was erased/);
+    const stray = grade(ED, reads => { reads.erased = { cells: [...keep(), [20, 4, colorCell('Z')]], cursor: [2, 0], buffer: margins }; reads.restored = { cells: [...keep(), [20, 4, colorCell('Z')]], cursor: [0, 0], buffer: full }; });
+    assert.equal(stray.outcome, 'unsupported');
+    // The restoration itself still must not disturb the erased screen.
+    assert.equal(grade(ED, reads => { reads.restored = { cells: [...keep(), [20, 4, colorCell('Z')]], cursor: [0, 0] }; }).outcome, 'inconclusive');
 });
 
 test('ED: erasing only part of the target or stray ink anywhere is unsupported (the contract compares the whole screen)', () => {

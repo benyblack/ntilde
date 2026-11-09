@@ -14,7 +14,12 @@ const green = { bg: { kind: 'palette', index: 2 } };
 const margins = { scrollTop: 2, scrollBottom: 9 };
 const evidenceWith = (caseId, edit, binding) => syntheticEraseAttrsRegionEvidence(runId, 'f'.repeat(64), binding, id => {
     const reads = syntheticEraseAttrsRegionReads(id);
-    if (id === caseId && edit) edit(reads);
+    if (id === caseId && edit) {
+        // The pinned `ESC[r` leaves the erased screen's text untouched, so an edit of the ED erased read propagates to the restored read unless the edit sets that read itself.
+        const restored = reads.restored;
+        edit(reads);
+        if (id === ED && reads.restored === restored) reads.restored = { ...restored, cells: reads.erased.cells };
+    }
     return reads;
 });
 const build = evidence => buildEraseAttrsRegionGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter);

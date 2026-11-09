@@ -42,7 +42,7 @@ The independent contract grader agrees with the pinned probe wherever semantics 
 
 - initial blank screen; the **colored-X seed proof** (five X, stored palette index 2, no other attribute, App-resolved green equal to the binding's palette entry 2, cursor (0,0));
 - erased read: row 0 holds only blanks and cell (0,0)'s resolved background equals the X's (required); cursor, every mode flag, margins and the saved-line count unchanged;
-- **restoration witness:** after the pinned `\x1b[0m` a written `W` must carry neutral storage, else the grade is inconclusive;
+- **restoration witness:** after the pinned `\x1b[0m` a `W` written at an explicitly positioned (0,0) (`\x1b[1;1HW`, so an erase that moved the cursor cannot move the witness) must carry neutral storage, else the grade is inconclusive;
 - **full-screen control** (graded): rows 1-39 carry a distinct marker each and must survive (accidental whole-screen clearing), row 0 holds only blanks;
 - observed, not graded: the explicit-0 spelling; the **pen controls** (X written under SGR 42, then SGR 44 or SGR 0 active when EL runs), because the pinned fixture erases under the
   pen that wrote the X and cannot tell a current-pen fill from a preserved cell background.
@@ -51,7 +51,7 @@ The independent contract grader agrees with the pinned probe wherever semantics 
 
 - initial blank screen with full-screen margins; setup read: `KEEP!` on row 0, `ERASE` on row 2, margins read from the App as 2..9 (zero-based), origin mode off, cursor (2,0);
 - erased read: the whole screen holds exactly `KEEP!`, cursor, margins and every mode flag unchanged, no saved line added (stricter than the pinned rows 0 and 2);
-- **restoration:** after the pinned `\x1b[r` the margins must read as the full screen (else inconclusive); the cursor after it is observed, not required;
+- **restoration:** after the pinned `\x1b[r` the margins must read as the full screen and the stored text must equal the erased screen's (else inconclusive; a wrong or missing erase stays the verdict's business, never masked as a restoration failure); the cursor after it is observed, not required;
 - observed, not graded: the explicit-0 spelling and the marker-fill boundary observation.
 
 Unsupported needs valid controls and an observed mismatch. An invalid or missing seed, reverse video not proven off, another geometry, a stale palette binding,
@@ -74,7 +74,7 @@ resolved to `(0,205,0)`, equal to the binding's palette entry 2. After `ESC[K` a
 **literal ARGB `4278242560` (0xFF00CD00), not index 2**: the same resolved color in another representation, which satisfies the pinned criterion and is recorded, not required.
 The cursor stayed at (0,0), every mode flag was unchanged and rows 1-39 kept their markers (no whole-screen clearing). The pen controls show the erase follows the pen active at
 erase time: with SGR 44 active the erased cells resolved to `(0,0,238)` (literal `4278190318`), not the green they replaced; with SGR 0 active they carried the default background (no
-painted cell). After the pinned `ESC[0m` the witness `W` was stored neutral. The explicit-0 spelling produced the identical result.
+painted cell). After the pinned `ESC[0m` the witness `W` (written at an explicitly positioned (0,0)) was stored neutral. The explicit-0 spelling produced the identical result.
 
 **ED, cursor, margins and preserved contents.** The setup read showed `KEEP!` (row 0), `ERASE` (row 2), cursor (2,0), margins 2..9 and origin mode off. After `ESC[J` the whole
 screen held exactly `KEEP!`, the cursor stayed at (2,0), margins stayed 2..9, every mode flag and the saved-line count were unchanged. After the pinned `ESC[r` the margins read 0..39 and

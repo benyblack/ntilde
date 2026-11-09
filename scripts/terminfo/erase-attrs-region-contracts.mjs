@@ -105,8 +105,10 @@ const edFillPlacements = Object.freeze(fillPlacementsFor(allRows));
 /** The pen controls: the X are written under SGR 42, then the pen changes (or resets) before the erase. */
 const penChangeSetup = '\x1B[42m\x1B[1;1HXXXXX\x1B[44m\x1B[1;1H';
 const penResetSetup = '\x1B[42m\x1B[1;1HXXXXX\x1B[0m\x1B[1;1H';
-/** The restoration witness: after the pinned `finally` feed a written cell must carry neutral storage. */
+/** The restoration witness: after the pinned `finally` feed a cell written at an explicitly positioned (0,0) must carry neutral storage. The
+ * position is set by the witness itself, so an erase that moved the cursor cannot move the witness away from the cell that is read. */
 const witness = 'W';
+const witnessFeed = at(0, 0) + witness;
 const margins = '\x1b[r';
 
 // ---- cell projections ---------------------------------------------------------------------------------------------
@@ -274,15 +276,16 @@ function diagnoseEd(setup, erased) {
 }
 
 /** The preconditions of the pinned criterion: every one failing makes the grade inconclusive, never unsupported. */
-function edPreconditions({ initial, setup, restored, reverseVideo }) {
+function edPreconditions({ initial, setup, erased, restored, reverseVideo }) {
     return [
         () => (setup.rows >= 10 && setup.cols >= 10 ? null : inconclusive(pinnedEdGeometryNote)),
         () => (setup.rows === screenRows && setup.cols === screenCols ? null : inconclusive(contractGeometryNote)),
         () => (reverseVideo === false ? null : inconclusive('DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it')),
         () => (initial.ink.length === 0 && fullScreenMargins(initial) ? null : inconclusive('Blank neutral screen control was not measured (the screen was not empty or margins were set)')),
         () => (inkIs(setup, edPlacements) && sameCursor(setup, edCursor) && marginsAre(setup, edMargins) && setup.buffer.originMode === false ? null : inconclusive(pinnedEdSetupNote)),
-        // Restoration: the pinned `ESC[r` returns the margins to the full screen without disturbing the stored text.
-        () => (fullScreenMargins(restored) && inkIs(restored, edKept) && restored.buffer.originMode === false ? null
+        // Restoration: the pinned `ESC[r` returns the margins to the full screen without disturbing the stored text of the erased screen (whatever the
+        // erase left there: a wrong or missing erase is the verdict's business, not a restoration failure).
+        () => (fullScreenMargins(restored) && JSON.stringify(restored.ink) === JSON.stringify(erased.ink) && restored.buffer.originMode === false ? null
             : inconclusive('The pinned finally feed did not restore the margins to the full screen, or it changed the stored text')),
     ];
 }
@@ -353,7 +356,7 @@ const elGroups = [
     { role: 'initial', feeds: [] },
     { role: 'setup', feeds: [clear, elSetup] },
     { role: 'erased', feeds: [elErase] },
-    { role: 'restored', feeds: [elFinally, witness] },
+    { role: 'restored', feeds: [elFinally, witnessFeed] },
     { role: 'explicit0', feeds: [clear, elSetup, '\x1b[0K'] },
     { role: 'fillBefore', feeds: [clear, elFillSeed + elSetup] },
     { role: 'fill', feeds: [elErase] },
