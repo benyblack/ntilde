@@ -375,6 +375,46 @@ public sealed class CharacterProtectionStateTests
         finally { File.Delete(path); }
     }
 
+    /// <summary>A narrower checkpoint restored directly into a wider buffer leaves the cells it did not replace, protection included.</summary>
+    [Fact]
+    [Trait("Category", "Replay")]
+    public async Task Narrow_checkpoint_restore_keeps_protection_of_untouched_columns()
+    {
+        var (source, sourceParser) = Create(5, 2);
+        sourceParser.Process(Esc + "[1;1HAB");
+        string path = Path.GetTempFileName();
+        try
+        {
+            using (var recorder = new PtyRecorder(path, 5, 2)) recorder.RecordSnapshot(source);
+            ReplaySnapshot? captured = null;
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask,
+                onSnapshotCallback: snapshot => { captured = snapshot; return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
+            var (wide, wideParser) = Create(10, 2);
+            wideParser.Process(Esc + "[1;10H" + Esc + "[1\"qZ" + Esc + "[0\"q" + Esc + "[1;3H" + Esc + "[1\"qP" + Esc + "[0\"q");
+            wide.ApplySnapshot(captured!);
+            Assert.Equal("........." + "P", Mask(wide, 0));
+        }
+        finally { File.Delete(path); }
+    }
+
+    /// <summary>Appending to a scaled block rebuilds it with the protection of the whole block, not of the one cell the cursor reads.</summary>
+    [Fact]
+    public void Resizing_an_attached_scaled_block_keeps_whole_block_protection()
+    {
+        var (buffer, parser) = Create(8, 4);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q" + Esc + "]66;s=2;\u2600\a" + Esc + "[0\"q");
+        parser.Process(Esc + "[?47h");
+        buffer.Resize(8, 3);
+        buffer.Resize(8, 4);
+        parser.Process(Esc + "[?47l");
+        Assert.NotEqual(Protection(buffer, 0)[0], Protection(buffer, 1)[0]); // mixed protection after the round trip
+        parser.Process("\uFE0F");
+        parser.Process(Esc + "[?2J");
+        buffer.Lock.EnterReadLock();
+        try { Assert.Equal('\u2600', buffer.GetCell(0, 0).Character); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     /// <summary>A narrow character over a protected wide glyph's head leaves no protected orphan behind.</summary>
     [Fact]
     public void Overwriting_a_protected_wide_head_does_not_leave_a_protected_orphan()

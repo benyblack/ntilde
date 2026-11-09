@@ -79,7 +79,7 @@ public partial class TerminalBuffer
     {
         if (replacement.Width > Cols || replacement.Height > Rows) return true;
         var row = _viewport[_cursorRow];
-        var style = new TextSizingCellStyle(row.Cells[col], row.GetHyperlink(col), row.GetUnderline(col), row.IsProtected(col));
+        var style = new TextSizingCellStyle(row.Cells[col], row.GetHyperlink(col), row.GetUnderline(col), IsProtectedOrInProtectedBlock(_cursorRow, col));
         int originalTop = y - TextSizingAbsoluteRow(0);
         bool followsEnd = _cursorRow == originalTop && _cursorCol == Math.Min(Cols - 1, x + piece.Block.Width)
             && _isPendingWrap == (Modes.IsAutoWrapMode && x + piece.Block.Width >= Cols);

@@ -1178,7 +1178,7 @@ namespace Ntilde.VT
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
-                            row.ClearProtection();
+                            for (int c = 0; c < colsToCopy; c++) row.SetProtected(c, false); // only the cells this snapshot replaced
                             row.ClearTextSizing();
                             if (snapshot.RowWrapColumns is { } widths && widths[r] >= 0)
                                 row.WrappedColumns = Math.Min(widths[r], colsToCopy);
