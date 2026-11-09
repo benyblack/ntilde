@@ -119,7 +119,7 @@ export function buildColorReport(spec, frames, run, runId, adapter, { contractsV
             pinned: { pass: pinned.pass, response: pinned.response, note: pinned.note ?? null,
                 observation: pinned.observation, assertions: pinned.assertions ?? null },
             contractResult, ...(divergence ? { divergence } : {}),
-            conclusion: { outcome: contractResult.outcome, evidence: spec.evidence ?? 'owned-stored-and-resolved-cells',
+            conclusion: { outcome: contractResult.outcome, evidence: contract.evidence ?? spec.evidence ?? 'owned-stored-and-resolved-cells',
                 grading: 'pinned-termless-plus-contract-v' + contractsVersion,
                 ...(contractResult.layers ? { layers: contractResult.layers } : {}),
                 ...(contractResult.note ? { note: contractResult.note } : {}),

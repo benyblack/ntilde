@@ -117,6 +117,8 @@ function finish(rows, cols, { caseId, builder, criterion, fixture, minimum, fami
         caseId, probeId: caseId, family, pinnedPath: 'termless', rows, cols, roles: Object.freeze(roles), pinnedReadAt: Object.freeze({ ...builder.readAt }),
         pinnedFeeds: Object.freeze([...builder.pinned]), pinnedCriterion: criterion, pinnedExpected: pinnedExpectedText[caseId],
         plan: Object.freeze(builder.steps),
+        // The measured layer of this case: ECH reads stored cells and attributes only (its saved-line checks are preserved-state controls).
+        evidence: family === 'erase-character' ? 'owned-stored-cells' : 'owned-stored-cells-and-actual-scrollback',
         terminalFixture: { writes: terminalWrites, demand: fixture, minimum,
             note: 'upstream pixel/query path writes different bytes and ends in a cursor-position query that never measures cells or saved lines: it carries no verdict and is not qualified' },
         appearanceScope: family === 'erase-character'
@@ -321,7 +323,7 @@ function briefCase(contract, observation) {
         const mismatch = mismatchOf(role, view);
         return [role.role, { kind: role.kind, matchesModel: mismatch === null, ...(mismatch ? { differs: mismatch.part } : {}),
             screen: view.alternate ? 'alternate' : 'main', margins: [view.top, view.bottom], cursor: view.cursor,
-            viewport: compactLines(view.lines), history: compactLines(view.history), historyCount: view.count }];
+            viewport: compactLines(view.lines), history: compactLines(view.history), historyCount: view.count, totalLines: view.rows + view.count }];
     }));
     const first = observation[contract.roles[0].role];
     const common = { geometry: { rows: first.rows, cols: first.cols }, reverseVideo: observation.reverseVideo,

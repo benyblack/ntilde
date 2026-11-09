@@ -351,6 +351,9 @@ test('ED 3 records physical rows, counts and the compact ordered contents of eve
     assert.deepEqual(brief.roles.before.history, []);          // blank rows have no content to list
     assert.equal(brief.roles.before.historyCount, 3);
     assert.equal(brief.roles.regrow.historyCount, 2);
+    // The pinned total is the screen rows plus the saved physical rows.
+    assert.deepEqual([brief.roles.initial.totalLines, brief.roles.before.totalLines, brief.roles.after.totalLines], [echRows, echRows + 3, echRows]);
+    assert.equal(brief.roles.seed.totalLines, echRows + 9);
     assert.ok(Object.values(brief.roles).every(role => role.matchesModel === true && role.screen === 'main'));
 });
 

@@ -34,7 +34,7 @@ test('a complete run rederives both cases: pinned and contract agree and nothing
         assert.equal(item.divergence, undefined);
         assert.equal(item.conclusion.grading, 'pinned-termless-plus-contract-v1');
         assert.equal(item.pinned.assertions[0].expected, [echContract, ed3Contract].find(contract => contract.caseId === item.caseId).pinnedExpected);
-        assert.equal(item.conclusion.evidence, 'owned-stored-cells-and-actual-scrollback');
+        assert.equal(item.conclusion.evidence, item.caseId === ECH ? 'owned-stored-cells' : 'owned-stored-cells-and-actual-scrollback');
     }
     assert.equal(report.snapshots.length, 3 + 15 + 10);
     assert.match(report.scope, /no wide-cell or combining-character erasure/);
