@@ -48,8 +48,8 @@ Unsupported needs valid controls and a measured mismatch; a missing or invalid s
 
 ## Measurement
 
-Scripts `2e3fdacb1c8942093c67f231f41b2f14793d9fca` (committed source: the merge of main with the erase-attrs/region and DECFRA/DECCRA changes); App source revision `2e3fdacb1c8942093c67f231f41b2f14793d9fca` (the Release sidecar `~/.ntilde-qa-sidecars/attr-rect`, built from this checkout; App and scripts revisions are the same commit because this batch changes
-App source). Owned run `7865160beae8b2e951c1b134ec725a36`, receipt schema 33, source policy v27 (inventory v34, 214 files), default theme, 40x140, taken through the shared desktop lock.
+Scripts `9ee16b381337241c2fa2575eae8c63b76a50f932` (committed source: the merge of main with the erase-attrs/region and DECFRA/DECCRA changes, plus the two Codex-review VT fixes); App source revision `9ee16b381337241c2fa2575eae8c63b76a50f932` (the Release sidecar `~/.ntilde-qa-sidecars/attr-rect`, built from this checkout; App and scripts revisions are the same commit because this batch changes
+App source). Owned run `6af895fbcdedae19c5682fee92717d57`, receipt schema 33, source policy v27 (inventory v34, 214 files), default theme, 40x140, taken through the shared desktop lock.
 
 | Case | Pinned (parent replay + live pinned code) | Effect contract | Divergence | Rectangle experiment (labeled) |
 |---|---|---|---|---|
@@ -64,7 +64,7 @@ Observed (stored cells, 40x140): the pinned DECCARA at the default extent marked
 and `..IIII..` on every row for the rectangle, for both DECCARA and DECRARA. Under DECOM with margins 2..4 the rectangle covered absolute rows 3..6 (offset by the top margin, past the bottom margin). The character written after DECCARA carried the unchanged pen (bold) and landed at the
 pre-operation cursor. An undefined DECSACE value left the rectangle in force (observed).
 
-**Preserved attempts** (all in the summary): (1) `e9933919…` (scripts `35380b41`, receipt 32, policy v26), complete and graded identically, superseded because main merged the erase-attrs/region layer (PR #909) and the DECFRA/DECCRA VT change, so this layer was restacked as the twentieth extension and the suite re-measured; (2) the run above. Review fixes that change measured behavior will add further entries.
+**Preserved attempts** (all in the summary): (1) `e9933919…` (scripts `35380b41`, receipt 32, policy v26), complete and graded identically, superseded because main merged the erase-attrs/region layer (PR #909) and the DECFRA/DECCRA VT change, so this layer was restacked as the twentieth extension and the suite re-measured; (2) `7865160b…` (scripts `2e3fdacb`, receipt 33, policy v27), complete and graded identically, superseded because Codex review found two VT defects (a rectangle that changed no attribute did not occupy its cells; ordered selectors such as `24;4` kept the underline style and color), so the VT was fixed and the suite re-measured; (3) the run above. CodeRabbit explicitly reported rate limiting on PR #911; the final-head Codex review is the review basis.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (inventory derived from the merged contracts; saved-reset keeps its pinned-inconclusive cases with supported effect contracts), 10/10 truecolor-literal finding, 3/3 App-observed
 underline-color resolution. **The stock collector was not re-run** (it needs an interactive Ntilde tab): the pinned bundle and probeHash are unchanged and the three pinned `term` paths never carry a verdict (cursor query, cursor query, not-attempted), so the carried counts
