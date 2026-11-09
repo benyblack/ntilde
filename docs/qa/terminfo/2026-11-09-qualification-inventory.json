@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 74,
-    "suiteClaims": 76,
+    "uniqueBenchmarkIds": 77,
+    "suiteClaims": 79,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 74,
-    "pinnedAndEffectSupportedIds": 66,
+    "effectSupportedIds": 77,
+    "pinnedAndEffectSupportedIds": 69,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
@@ -58,12 +58,12 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 73,
-    "pinnedSupportedOfStockInconclusive": 65,
+    "effectSupportedOfStockInconclusive": 76,
+    "pinnedSupportedOfStockInconclusive": 68,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 66,
+    "pinnedSupportedIds": 69,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -72,8 +72,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 95,
-      "notPinnedSupported": 103
+      "effectUnqualified": 92,
+      "notPinnedSupported": 100
     }
   },
   "suites": [
@@ -1584,6 +1584,78 @@
         "command": "node --test scripts/terminfo/erase-chars-history-publication.test.mjs",
         "testSha256": "d6bdfd412b4e03d60ded7614427e29cb7e838f9d21114c45ddf1e2b91b56d344"
       }
+    },
+    {
+      "suite": "rect-edit",
+      "suiteId": "ntilde-owned-rectangle-editing-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-09-rectangle-editing/",
+      "doc": "2026-11-09-rectangle-editing-qualification.md",
+      "caseCount": 3,
+      "caseIds": [
+        "editing.decfra",
+        "editing.decera",
+        "editing.deccra"
+      ],
+      "evidence": {
+        "files": 59,
+        "bytes": 699725,
+        "sha256": "cf2f397a07531979ae507ee0f9881aef6af10ff7b46c675a31ceb6d7ddd7f31a"
+      },
+      "receipt": {
+        "schemaVersion": 36,
+        "runId": "bf9252644d2532d7f0d603fc0c5bec73",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "701987ad24b74175b8159f26f6e9f8e3eadff58b9447207b28af8f3ac4489870"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-rectangle-editing-graded-v1",
+          "file": "rect-observations.json",
+          "sha256": "2b2861b5a6b3071c22bd56ad73fb57cfb4090d31f77c53b607030671f1f232b5",
+          "runFile": "rect-run.json",
+          "runSha256": "271a27f788beac2210eafecf91ac8e6b8adfc91bf0afb16c10ed60cbc9287906",
+          "counts": {
+            "supported": 3
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "bf9252644d2532d7f0d603fc0c5bec73",
+        "measuredAt": "2026-11-09T19:16:08.719Z",
+        "appRevision": "359417dd25a547a0c4f06373aa9c9d8cae221644",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "042587c2a00350e0f04ed051d81d2720454d2d78",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "9cf60afde327f7791c19182411bba4a0197aad51a3b3c9ed1db2bef1fc7a5ebc",
+        "gradingAdapterId": "ntilde-owned-rectangle-editing-grading-v1",
+        "gradingAdapterBundleSha256": "27b45aec71da7466bf3212ffa51a4f56773b8f938c29545847bb88ab5dcc332e",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v30",
+        "sourceSnapshotManifestSha256": "6dcfaf18eb1fb4e0583aaa49163c035b939610a712edcb2c890fabe12498c0b2"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "ae997cb82d2fd95be0ee28461ee9bf9d",
+        "counts": {
+          "inconclusive": 168,
+          "supported": 86,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "5d41a6ebd71322e4888b8fc342b4f99377611726ddb76b0e341fd84167ef6dd4",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/rect-edit-publication.test.mjs",
+        "testSha256": "ecc0750e21af07070bc2951f558cb24e9505d1cb5e65d014890c64e282454543"
+      }
     }
   ],
   "benchmark": [
@@ -2009,6 +2081,147 @@
             "stored-state"
           ],
           "evidenceTag": "owned-stored-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.deccra",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-edit",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-edit",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.deccra",
+          "suite": "rect-edit",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.decera",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-edit",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-edit",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.decera",
+          "suite": "rect-edit",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.decfra",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-edit",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-edit",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.decfra",
+          "suite": "rect-edit",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
         }
       ]
     },

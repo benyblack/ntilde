@@ -9,11 +9,11 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 74 |
-| Suite claims (an id covered by two suites has two claims) | 76 |
+| Unique benchmark ids with qualified effect evidence | 77 |
+| Suite claims (an id covered by two suites has two claims) | 79 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 74 |
-| Supported by both the pinned probe and the effect contract | 66 |
+| Effect contract supported | 77 |
+| Supported by both the pinned probe and the effect contract | 69 |
 | Effect supported, pinned verdict inconclusive | 8 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
@@ -26,12 +26,12 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Effect-unqualified (168 − 73) | 95 |
-| Not pinned-supported (168 − 65) | 103 |
+| Effect-unqualified (168 − 76) | 92 |
+| Not pinned-supported (168 − 68) | 100 |
 
 Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 103 not-pinned-supported inconclusive cases are the 104 cases outside the 86 stock-supported plus 65 pinned-supported ones.
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 100 not-pinned-supported inconclusive cases are the 101 cases outside the 86 stock-supported plus 68 pinned-supported ones.
 
 ### Ungraded diagnostic
 
@@ -62,6 +62,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `attr-rect` | 3 | v1 | passed | 33 | `9ee16b38` | v27 | 50 | `ef5af927` |
 | `cursor` | 4 | v1 | passed | 34 | `6b26a158` | v28 | 66 | `8f522422` |
 | `erase-chars-history` | 2 | v1 | passed | 35 | `359417dd` | v29 | 33 | `c9c8a0b2` |
+| `rect-edit` | 3 | v1 | passed | 36 | `359417dd` | v30 | 59 | `cf2f397a` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -92,6 +93,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `attr-rect` | carried-forward | n/a | carried (see note) | n/a |
 | `cursor` | collected-run-id-recorded | `f31a740c` | 168/86/1 | `cf7d8759` |
 | `erase-chars-history` | carried-forward | n/a | carried (see note) | n/a |
+| `rect-edit` | collected-run-id-recorded | `ae997cb8` | 168/86/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -109,6 +111,9 @@ The stock collector reports `suiteComplete=false` in every run.
 | `cursor.reverse-wrap` | ungraded | supported | supported | stored-state + cursor-position-report | cursor | - |
 | `cursor.shape` | inconclusive | supported | supported | stored-state + controlled-pixels | cursor | - |
 | `editing.deccara` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-fixture-assumes-rectangle-extent |
+| `editing.deccra` | inconclusive | supported | supported | stored-state + app-resolved-color | rect-edit | - |
+| `editing.decera` | inconclusive | supported | supported | stored-state + app-resolved-color | rect-edit | - |
+| `editing.decfra` | inconclusive | supported | supported | stored-state + app-resolved-color | rect-edit | - |
 | `editing.decrara` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-fixture-assumes-rectangle-extent |
 | `editing.decsace` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-inconclusive-by-design |
 | `editing.delete-chars` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
