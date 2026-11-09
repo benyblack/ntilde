@@ -107,6 +107,8 @@ const roleNames = Object.freeze(['initial', 'before', 'setup', 'edited', ...Obje
     'regionBefore', 'region', 'regionBig', 'regionAbove', 'regionBelow', 'originBefore', 'origin', 'attrBefore', 'attr', 'pen']);
 const regionRoles = new Set(['regionBefore', 'region', 'regionBig', 'regionAbove', 'regionBelow', 'originBefore', 'origin']);
 const originRoles = new Set(['originBefore', 'origin']);
+/** Observation-only reads: their stored state is reported but never gates a verdict. */
+const countRoles = new Set(Object.keys(countSpellings));
 
 /** The independent line-editing model. `rows` is indexed by screen row; the margins are zero-based and inclusive. An edit with the
  * cursor row outside the margins changes nothing; a count larger than the rows left in the region is clamped to them. */
@@ -238,7 +240,8 @@ function attributeState(contract, before, after, pen) {
     const sources = lineEditModel(Array.from({ length: rows }, (_, row) => row), contract.mode, at, 1, 0, rows - 1, null);
     const bySource = new Map();
     for (const cell of before.ink) bySource.set(cell.row, [...bySource.get(cell.row) ?? [], cell]);
-    const seedOk = before.ink.length === attrTexts.join('').length && attrTexts.every((text, row) => (bySource.get(row) ?? []).map(cell => cell.char).join('') === text)
+    const seedOk = before.ink.length === attrTexts.join('').length && attrTexts.every((text, row) => (bySource.get(row) ?? []).map(cell => cell.char).join('') === text
+            && (bySource.get(row) ?? []).every((cell, col) => cell.col === col))
         && (bySource.get(1) ?? []).every(cell => cell.bold === true && cell.bgIndex === -1 && cell.fgIndex === -1)
         && (bySource.get(2) ?? []).every(cell => cell.bold === false && cell.fgIndex === 1 && cell.bgIndex === 4)
         && [0, 3].every(row => (bySource.get(row) ?? []).every(neutral)) && sameCursor(before, 1, 0);
@@ -295,7 +298,7 @@ function gradeLineEdit(contract, observation) {
     if (setup.rows < minimum.rows || setup.cols < minimum.cols) return inconclusive(pinnedGeometryNote);
     if (reverseVideo !== false) return inconclusive('DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it');
     const rows = setup.rows;
-    const badState = contract.roles.find(role => !stateIsContracted(observation[role], role));
+    const badState = contract.roles.find(role => !countRoles.has(role) && !stateIsContracted(observation[role], role));
     if (badState !== undefined) {
         return inconclusive(`The observed margins, origin mode or insert mode differ from the contracted setup in the ${badState} read, so the edit cannot be attributed`);
     }

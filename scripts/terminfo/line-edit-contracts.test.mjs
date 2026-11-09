@@ -325,3 +325,22 @@ test('the observed record reports the exact before and after rows of the pinned 
     assert.deepEqual(observedDl.attributes.blankRows, [lineEditRows - 1]);
     assert.equal(observedIl.attributes.backgroundFill, 'new blank lines carry the current background color across the full line, stored differently from the pen cell (palette index versus literal ARGB)');
 });
+
+test('a shifted or gapped attribute seed is inconclusive: the moved-cell reference must sit at its columns', () => {
+    const bold = { attrs: ['bold'] };
+    for (const id of lineEditCaseIds) {
+        const shifted = reads => { reads.attrBefore = { ...reads.attrBefore, rows: reads.attrBefore.rows.map((row, index) => (index === 1 ? [colorCell(' '), ...rowOf('BOLD-ROW--', bold).slice(0, 9)] : row)) }; };
+        assert.match(note(id, shifted), /attribute control seed/);
+        const gapped = reads => { reads.attrBefore = { ...reads.attrBefore, rows: reads.attrBefore.rows.map((row, index) => (index === 0 ? rowOf('KEEP TOP--') : row)) }; };
+        assert.equal(outcome(id, gapped), 'inconclusive', id);
+    }
+});
+
+test('observation-only count reads never gate the verdict: odd margins there are reported, not graded', () => {
+    for (const id of lineEditCaseIds) {
+        const odd = reads => { for (const role of ['omitted', 'explicit0', 'explicit2', 'oversized']) reads[role] = { ...reads[role], state: { margins: [1, 5], insert: true } }; };
+        assert.deepEqual(grade(id, odd), { outcome: 'supported' }, id);
+        // The graded pinned read still gates.
+        assert.equal(outcome(id, reads => { reads.edited = { ...reads.edited, state: { margins: [1, 5] } }; }), 'inconclusive', id);
+    }
+});

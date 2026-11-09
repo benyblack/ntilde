@@ -4,7 +4,7 @@
 // controls. Every read is journaled by the parent observer; the pinned termless probe then runs over the
 // independently observed screens of its own fixture.
 import { collectGradedPlans, planFeeds, planReads } from './graded-plan.mjs';
-import { lineEditContracts, lineEditNoncePrefix, lineEditReset, lineEditCellAt, validateLineEditScreen } from './line-edit-contracts.mjs';
+import { lineEditContracts, lineEditNoncePrefix, lineEditReset, lineEditCellAt, validateLineEditScreen, pinnedNotes } from './line-edit-contracts.mjs';
 
 /** Serve the pre-captured screens of the pinned fixture to a pinned termless probe, cross-checking that the pinned
  * code itself replays exactly the contracted pinned fixture bytes (and nothing else): six feeds (four seed rows, the
@@ -41,6 +41,17 @@ export function lineEditRecordingContext(contract, screens) {
     };
 }
 
+/** How many pinned feeds a complete or validly cut-short pinned replay consumes: the geometry guard runs before any feed, an unread seed
+ * stops after the four seed feeds, a wrong setup cursor after the cursor feed, and every other result replays all six. */
+export function expectedFedCount(contract, pinned) {
+    const notes = pinnedNotes[contract.mode];
+    if (pinned.observation?.outcome !== 'inconclusive') return contract.pinnedFeeds.length;
+    if (pinned.note === notes.geometry) return 0;
+    if (pinned.note === notes.seed) return 4;
+    if (pinned.note === notes.cursor) return 5;
+    return contract.pinnedFeeds.length;
+}
+
 /** Run every contracted case serially with parent-journaled controls. */
 export async function collectLineEditGrading({ config, fence, owner, gradingModule }) {
     const adapter = gradingModule.ntildeLineEditAdapter;
@@ -53,7 +64,7 @@ export async function collectLineEditGrading({ config, fence, owner, gradingModu
         for (const screen of item.screens) validateLineEditScreen(screen);
         const context = lineEditRecordingContext(contract, item.screens);
         const pinned = gradingModule.ntildeRunLineEditTermless(contract.caseId, context);
-        if (context.fedCount !== contract.pinnedFeeds.length) throw new Error(`Pinned ${contract.caseId} did not replay its complete fixture.`);
+        if (context.fedCount !== expectedFedCount(contract, pinned)) throw new Error(`Pinned ${contract.caseId} did not replay its complete fixture.`);
         const { caseId, feeds, barriers, reads } = item;
         run.cases.push({ caseId, feeds, barriers, reads, pinned });
     }

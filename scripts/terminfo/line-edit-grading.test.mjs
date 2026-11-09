@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildLineEditGradingReport, replayLineEditPinned, validateLineEditEvidence } from './line-edit-grading.mjs';
 import { lineEditContracts, lineEditSuiteId, lineEditContractsVersion, pinnedNotes } from './line-edit-contracts.mjs';
-import { lineEditRecordingContext } from './line-edit-collector.mjs';
+import { lineEditRecordingContext, expectedFedCount } from './line-edit-collector.mjs';
 import { snapshotHash } from './agent-observer.mjs';
 import { syntheticLineEditEvidence, syntheticLineEditReads, syntheticLineEditScreens, rowsOfText, rowOf,
     paletteBinding } from './fixtures/line-edit-evidence.mjs';
@@ -285,4 +285,26 @@ test('contract-version pinning and evidence validation entry', () => {
 
 test('rowOf keeps spaces as plain blank cells so fixture rows are exactly their text', () => {
     assert.deepEqual(rowOf('A B').map(cell => cell.char), ['A', ' ', 'B']);
+});
+
+test('the pinned replay may stop early only where the pinned probe does: geometry, unread seed and wrong setup cursor', () => {
+    for (const contract of lineEditContracts) {
+        const notes = pinnedNotes[contract.mode];
+        const screens = syntheticLineEditScreens(contract.caseId);
+        const full = replayLineEditPinned(contract, screens);
+        assert.equal(expectedFedCount(contract, full), 6);
+        const seed = replayLineEditPinned(contract, syntheticLineEditScreens(contract.caseId, undefined, id => {
+            const reads = syntheticLineEditReads(id); texts(reads, 'before', ['AAAAA', 'BBBBB', 'CCCCC', 'DDDDX']); return reads; }));
+        assert.equal(seed.note, notes.seed);
+        assert.equal(expectedFedCount(contract, seed), 4);
+        const cursor = replayLineEditPinned(contract, syntheticLineEditScreens(contract.caseId, undefined, id => {
+            const reads = syntheticLineEditReads(id); reads.setup = { ...reads.setup, cursor: [1, 3] }; return reads; }));
+        assert.equal(expectedFedCount(contract, cursor), 5);
+        assert.equal(expectedFedCount(contract, replayLineEditPinned(contract, screens.map(screen => ({ ...screen, cols: 5 })))), 0);
+        // The first-row control failing is inconclusive after all six feeds.
+        const control = replayLineEditPinned(contract, syntheticLineEditScreens(contract.caseId, undefined, id => {
+            const reads = syntheticLineEditReads(id); texts(reads, 'edited', ['ZZZZZ', 'CCCCC', 'DDDDD']); return reads; }));
+        assert.equal(control.note, notes.controls);
+        assert.equal(expectedFedCount(contract, control), 6);
+    }
 });
