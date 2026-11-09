@@ -222,22 +222,6 @@
       "matrixFeature": "DECERA ($ z)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularEraseTests.cs",
       "contractCase": "erase-rectangular-area"
-    },
-    {
-      "key": "CSI:${",
-      "mnemonic": "DECSERA",
-      "support": "partial",
-      "description": "Selectively erase a bounded stored-text rectangle with DECERA's borders, clipping, DECOM translation and erase colors, sparing characters written under DECSCA 1; DECERA itself when nothing is protected. The image plane is untouched.",
-      "matrixFeature": "DECSERA ($ {)",
-      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveErasureTests.cs"
-    },
-    {
-      "key": "CSI:\"q",
-      "mnemonic": "DECSCA",
-      "support": "partial",
-      "description": "CSI 1 \" q protects later characters from DECSED and DECSERA; 0, 2 and an omitted value do not. A pen mode separate from SGR, saved by DECSC and reset by DECSTR and RIS.",
-      "matrixFeature": "DECSCA (\" q)",
-      "evidencePath": "tests/Ntilde.VT.Tests/CharacterProtectionStateTests.cs"
     }
   ]
 }
