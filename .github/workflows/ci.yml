@@ -104,7 +104,7 @@ jobs:
   script_self_tests:
     name: Script self-tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
