@@ -164,6 +164,14 @@ public partial class TerminalBuffer
                 row.SetUnderline(c, null);
             }
         }
+        // A selective display erase of a row's tail over default blanks trims the authored extent back to what survives
+        // (the cells before the span and the protected cells), so a later wide pre-wrap still recognizes the erased tail as padding.
+        if (edShortcut && blank.IsDefaultBackground && to == Cols && row.WrittenColumns > from)
+        {
+            int kept = from;
+            for (int c = from; c < Cols; c++) if (row.IsProtected(c)) kept = c + 1;
+            row.WrittenColumns = Math.Min(row.WrittenColumns, kept);
+        }
         row.TouchRevision();
     }
 }

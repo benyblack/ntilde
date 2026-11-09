@@ -562,6 +562,31 @@ public sealed class CharacterProtectionStateTests
         finally { File.Delete(path); }
     }
 
+    /// <summary>DCH across the tail of one glyph and the head of the next leaves neither surviving half protected, and nothing pairs them up.</summary>
+    [Fact]
+    public void Delete_characters_across_two_wide_glyphs_orphans_both_halves_unprotected()
+    {
+        var (buffer, parser) = Create(8, 2);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q界" + Esc + "[0\"q語");
+        parser.Process(Esc + "[1;2H" + Esc + "[2P");
+        Assert.DoesNotContain('P', Mask(buffer, 0));
+    }
+
+    /// <summary>The authored extent after a selective display erase excludes the erased default-blank tail but keeps protected cells.</summary>
+    [Fact]
+    public void Selective_display_erase_trims_the_erased_tail_extent_but_keeps_protected_cells()
+    {
+        var (buffer, parser) = Create(5, 2);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"qP" + Esc + "[0\"qxxxx" + Esc + "[?2J");
+        buffer.Lock.EnterReadLock();
+        try { Assert.Equal(1, buffer.GetRowAbsolute(buffer.Scrollback.Count)!.WrittenColumns); }
+        finally { buffer.Lock.ExitReadLock(); }
+        parser.Process(Esc + "[1;4H" + Esc + "[1\"qQ" + Esc + "[0\"q" + Esc + "[?2J");
+        buffer.Lock.EnterReadLock();
+        try { Assert.Equal(4, buffer.GetRowAbsolute(buffer.Scrollback.Count)!.WrittenColumns); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

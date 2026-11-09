@@ -734,6 +734,9 @@ namespace Ntilde.VT
             int endCol = Cols - count;
             EraseTextSizingForShift(insert: false, count);
             var row = _viewport[_cursorRow];
+            // The deleted range [cursor, cursor + count) cuts glyphs at both ends; their surviving halves are orphans, not parts of the
+            // glyphs that happen to shift against them, so they lose protection before the cells move.
+            ClearDisplacedWideProtection(row, _cursorCol, _cursorCol + count);
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;
 
