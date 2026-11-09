@@ -1,282 +1,94 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { checkCharsetsEvidence, includesCharsetsEvidence } from './charsets-receipt.mjs';
-import { adaptCharEditCollector, charEditAdapterId, charEditSeams } from './char-edit-grading-collector.mjs';
-import { charEditSuiteId, charEditContractsVersion } from './char-edit-contracts.mjs';
-import { buildCharEditGradingReport } from './char-edit-grading.mjs';
-import { syntheticCharEditEvidence } from './fixtures/char-edit-evidence.mjs';
-import { checkCharEditEvidence } from './char-edit-receipt.mjs';
-import { adaptEraseLineCollector, eraseLineAdapterId, eraseLineSeams } from './erase-line-grading-collector.mjs';
-import { eraseLineSuiteId, eraseLineContractsVersion } from './erase-line-contracts.mjs';
-import { buildEraseLineGradingReport } from './erase-line-grading.mjs';
-import { syntheticEraseLineEvidence } from './fixtures/erase-line-evidence.mjs';
+import { checkEraseDisplayEvidence } from './erase-display-receipt.mjs';
 import { checkEraseLineEvidence } from './erase-line-receipt.mjs';
 import { checkSgrResetEvidence } from './sgr-reset-receipt.mjs';
 import { checkSgrClosureEvidence } from './sgr-closure-receipt.mjs';
-import { adaptSgrClosureCollector, sgrClosureAdapterId, sgrClosureSeams } from './sgr-closure-grading-collector.mjs';
-import { sgrClosureSuiteId, sgrClosureContractsVersion } from './sgr-closure-contracts.mjs';
-import { buildSgrClosureGradingReport } from './sgr-closure-grading.mjs';
-import { syntheticSgrClosureEvidence } from './fixtures/sgr-closure-evidence.mjs';
 import { checkSgrUnderlineColorEvidence } from './sgr-underline-color-receipt.mjs';
-import { checkSgrUnderlineEvidence, includesSgrUnderlineEvidence } from './sgr-underline-receipt.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
-import { adaptSgrResetCollector, sgrResetAdapterId, sgrResetSeams } from './sgr-reset-grading-collector.mjs';
-import { adaptCharsetsCollector, charsetsAdapterId, charsetsSeams } from './charsets-grading-collector.mjs';
-import { adaptSgrUnderlineColorCollector, sgrUnderlineColorAdapterId, sgrUnderlineColorSeams } from './sgr-underline-color-grading-collector.mjs';
-import { adaptSgrUnderlineCollector, sgrUnderlineAdapterId, sgrUnderlineSeams } from './sgr-underline-grading-collector.mjs';
-import { adaptSgrTruecolorCollector, sgrTruecolorAdapterId, sgrTruecolorSeams } from './sgr-truecolor-grading-collector.mjs';
-import { adaptSgrPaletteCollector, sgrPaletteAdapterId, sgrPaletteSeams } from './sgr-palette-grading-collector.mjs';
-import { adaptSgrAttrsCollector, sgrAttrsAdapterId } from './sgr-attrs-grading-collector.mjs';
-import { adaptSgrRgbCollector, sgrRgbAdapterId } from './sgr-rgb-grading-collector.mjs';
-import { adaptSgrColorsCollector } from './sgr-colors-grading-collector.mjs';
-import { adaptGradingCollector } from './grading-collector.mjs';
-import { sgrTruecolorSuiteId, sgrTruecolorContractsVersion } from './sgr-truecolor-contracts.mjs';
-import { buildSgrTruecolorGradingReport } from './sgr-truecolor-grading.mjs';
-import { sgrUnderlineSuiteId, sgrUnderlineContractsVersion } from './sgr-underline-contracts.mjs';
-import { buildSgrUnderlineGradingReport } from './sgr-underline-grading.mjs';
-import { sgrUnderlineColorSuiteId, sgrUnderlineColorContractsVersion } from './sgr-underline-color-contracts.mjs';
-import { buildSgrUnderlineColorGradingReport } from './sgr-underline-color-grading.mjs';
-import { syntheticSgrUnderlineColorEvidence } from './fixtures/sgr-underline-color-evidence.mjs';
-import { syntheticSgrResetEvidence } from './fixtures/sgr-reset-evidence.mjs';
-import { sgrResetSuiteId, sgrResetContractsVersion } from './sgr-reset-contracts.mjs';
-import { buildSgrResetGradingReport } from './sgr-reset-grading.mjs';
+import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
+import { adaptCharEditCollector, charEditAdapterId } from './char-edit-grading-collector.mjs';
+import { charEditSuiteId, charEditContractsVersion } from './char-edit-contracts.mjs';
+import { buildCharEditGradingReport } from './char-edit-grading.mjs';
+import { syntheticCharEditEvidence } from './fixtures/char-edit-evidence.mjs';
+import { adaptEraseDisplayCollector, eraseDisplayAdapterId } from './erase-display-grading-collector.mjs';
+import { eraseDisplaySuiteId, eraseDisplayContractsVersion } from './erase-display-contracts.mjs';
+import { buildEraseDisplayGradingReport } from './erase-display-grading.mjs';
+import { syntheticEraseDisplayEvidence } from './fixtures/erase-display-evidence.mjs';
+import { adaptCharsetsCollector, charsetsAdapterId } from './charsets-grading-collector.mjs';
 import { charsetsSuiteId, charsetsContractsVersion } from './charsets-contracts.mjs';
 import { buildCharsetsGradingReport } from './charsets-grading.mjs';
 import { syntheticCharsetsEvidence } from './fixtures/charsets-evidence.mjs';
-import { syntheticSgrUnderlineEvidence } from './fixtures/sgr-underline-evidence.mjs';
-import { sgrPaletteSuiteId, sgrPaletteContractsVersion } from './sgr-palette-contracts.mjs';
-import { buildSgrPaletteGradingReport } from './sgr-palette-grading.mjs';
-import { syntheticSgrPaletteEvidence } from './fixtures/sgr-palette-evidence.mjs';
-import { sgrAttrsSuiteId, sgrAttrsContractsVersion } from './sgr-attrs-contracts.mjs';
-import { buildSgrAttrsGradingReport } from './sgr-attrs-grading.mjs';
-import { sgrRgbSuiteId, sgrRgbContractsVersion } from './sgr-rgb-contracts.mjs';
-import { buildSgrRgbGradingReport } from './sgr-rgb-grading.mjs';
-import { sgrColorsSuiteId, sgrColorsContractsVersion } from './sgr-colors-contracts.mjs';
-import { buildSgrColorsGradingReport } from './sgr-colors-grading.mjs';
-import { syntheticSgrTruecolorEvidence } from './fixtures/sgr-truecolor-evidence.mjs';
-import { syntheticSgrAttrsEvidence } from './fixtures/sgr-attrs-evidence.mjs';
-import { syntheticSgrRgbEvidence } from './fixtures/sgr-rgb-evidence.mjs';
-import { syntheticSgrColorsEvidence } from './fixtures/sgr-colors-evidence.mjs';
-import { syntheticGradingEvidence } from './fixtures/ascii-sgr-evidence.mjs';
-import { buildAsciiSgrGradingReport } from './ascii-sgr-grading.mjs';
-import { asciiSgrSuiteId, asciiSgrContractsVersion } from './ascii-sgr-contracts.mjs';
+import { fixture as chainFixture, hash, runId, syntheticOwnedAdapter, syntheticUnderlineColorExtension, syntheticUnderlineExtension,
+    syntheticPaletteExtension, syntheticClosureExtension, syntheticResetExtension } from './fixtures/receipt-chain.mjs';
 
-const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const runId = 'e'.repeat(32);
-// Deterministic synthetic adapters: the full nine-layer derivation chain (owned
-// adapter -> first grading extension -> SGR-colors -> SGR-RGB -> SGR-attributes ->
-// SGR-palette -> SGR-truecolor -> SGR-underline -> SGR-underline-color) over a synthetic source carrying every pinned seam of the layers.
-const firstSeams = [
-    'probe("text.basic", (ctx) => {\n        ctx.feed("\\x1B[2J\\x1B[H");',
-    '"Hello appears after a measured empty control"',
-    'probe("text.overwrite", (ctx) => {\n        ctx.feed("AB");',
-    '"C overwrites A while B remains"',
-    'sgrProbe("sgr.bold", "\\x1B[1m", (cell) => cell.bold === true)',
-    'sgrProbe("sgr.italic", "\\x1B[3m", (cell) => cell.italic === true)',
-    'var init_src = __esm(() => {',
-];
-const colorSeams = [
-    'namedColorProbe("sgr.fg.standard", "fg", 31, 34)',
-    'namedColorProbe("sgr.bg.standard", "bg", 41, 44)',
-    'resetProbe("sgr.selective-reset.bold", "\\x1B[1;2;3m", "\\x1B[22m", ["bold", "dim"], ["italic"])',
-    'resetProbe("sgr.selective-reset.italic", "\\x1B[1;3m", "\\x1B[23m", ["italic"], ["bold"])',
-    'resetProbe("sgr.reset", "\\x1B[1;3;4m", "\\x1B[0m", ["bold", "italic", "underline"])',
-    'function measuredReset(ctx, id, setup, reset, set, preserve) {',
-    'function namedColorProbe(id, channel, firstCode, secondCode) {',
-    // 'the two named colors select distinct exposed ' is supplied once by the palette layer's full note seam below.
-    'measured setup attributes clear on Y and unrelated attributes remain set',
-];
-const attributeSeams = [
-    'sgrProbe("sgr.faint", "\\x1B[2m", (cell) => cell.dim === true)',
-    'sgrProbe("sgr.underline.single", "\\x1B[4m", (cell) => !!cell.underline)',
-    'sgrProbe("sgr.inverse", "\\x1B[7m", (cell) => cell.inverse === true)',
-    'sgrProbe("sgr.hidden", "\\x1B[8m", (cell) => cell.hidden === true)',
-    'sgrProbe("sgr.strikethrough", "\\x1B[9m", (cell) => cell.strikethrough === true)',
-    'function sgrProbe(id, sequence, check, noObservableWhen) {',
-    '      ctx.feed(sequence + "X");\n      const cell = ctx.getCell(0, 0);',
-    'const measured = cell.char === "X" && check(cell) === true;',
-    '`${id}: attribute applied to the rendered X cell`',
-    '"No rendered X cell to evaluate"',
-    'Cell readback cannot distinguish unsupported styling from unreported attributes or collapsed styles; a negative needs rendering review',
-];
-// The seams that live in the pinned bundle itself; exports of earlier layers are appended by their own derivations.
-const paletteSeams = sgrPaletteSeams.filter(seam => !seam.startsWith('export '));
-const truecolorSeams = sgrTruecolorSeams.filter(seam => !seam.startsWith('export '));
-const underlineSeams = sgrUnderlineSeams.filter(seam => !seam.startsWith('export '));
-const underlineColorSeams = sgrUnderlineColorSeams.filter(seam => !seam.startsWith('export '));
-// A seam that is a substring of another (the closure layer's complete sgrProbe body contains the attribute layer's smaller seams) is carried once, inside the larger one.
-const template = lines => [...new Set(lines)].filter(line => ![...new Set(lines)].some(other => other !== line && other.includes(line))).map((seam, index) => `const seam${index} = \`${seam}\`;`).join('\n');
-const resetSeams = sgrResetSeams.filter(seam => !seam.startsWith('export '));
-const closureSeams = sgrClosureSeams.filter(seam => !seam.startsWith('export '));
-const eraseSeams = eraseLineSeams.filter(seam => !seam.startsWith('export '));
-const editSeams = charEditSeams.filter(seam => !seam.startsWith('export '));
-const charsetsOwnSeams = charsetsSeams.filter(seam => !seam.startsWith('export '));
-// The reset layer's complete measuredReset body already carries the colors layer's two measuredReset seams once.
-const colorSeamsWithoutReset = colorSeams.filter(seam => seam !== 'function measuredReset(ctx, id, setup, reset, set, preserve) {'
-    && seam !== 'measured setup attributes clear on Y and unrelated attributes remain set');
-const syntheticOwnedAdapter = template([...firstSeams, ...colorSeamsWithoutReset, ...attributeSeams, ...paletteSeams, ...truecolorSeams, ...underlineSeams, ...underlineColorSeams, ...resetSeams, ...closureSeams, ...eraseSeams, ...editSeams, ...charsetsOwnSeams])
-    + '\nexport async function collectNtildeRun(assertion) {\n  return collectProbeRun({ ntildeOwner: assertion });\n}\n';
-const syntheticFirstExtension = adaptGradingCollector(syntheticOwnedAdapter);
-const syntheticColorsExtension = adaptSgrColorsCollector(syntheticFirstExtension);
-const syntheticRgbExtension = adaptSgrRgbCollector(syntheticColorsExtension);
-const syntheticAttrsExtension = adaptSgrAttrsCollector(syntheticRgbExtension);
-const syntheticPaletteExtension = adaptSgrPaletteCollector(syntheticAttrsExtension);
-const syntheticTruecolorExtension = adaptSgrTruecolorCollector(syntheticPaletteExtension);
-const syntheticUnderlineExtension = adaptSgrUnderlineCollector(syntheticTruecolorExtension);
-const syntheticUnderlineColorExtension = adaptSgrUnderlineColorCollector(syntheticUnderlineExtension);
-const syntheticResetExtension = adaptSgrResetCollector(syntheticUnderlineColorExtension);
-const syntheticClosureExtension = adaptSgrClosureCollector(syntheticResetExtension);
-const syntheticEraseExtension = adaptEraseLineCollector(syntheticClosureExtension);
-const syntheticEditExtension = adaptCharEditCollector(syntheticEraseExtension);
+const syntheticEraseLineExtension = adaptEraseLineCollector(syntheticClosureExtension);
+// The erase-in-display suite is built once: it is deterministic, and each fixture gets its own copy of the report to mutate.
+const syntheticCharEditExtension = adaptCharEditCollector(syntheticEraseLineExtension);
+const charEditBytes = Buffer.from(syntheticCharEditExtension);
+const charEditEvidence = syntheticCharEditEvidence(runId, hash(charEditBytes));
+charEditEvidence.adapter = { ...charEditEvidence.adapter, id: charEditAdapterId, derivedFromAdapterId: 'ntilde-owned-erase-line-grading-v1' };
+const charEditReportText = JSON.stringify(buildCharEditGradingReport(charEditEvidence.frames, charEditEvidence.run, runId, charEditEvidence.adapter));
+const syntheticDisplayExtension = adaptEraseDisplayCollector(syntheticCharEditExtension);
+const displayBytes = Buffer.from(syntheticDisplayExtension);
+const displayEvidence = syntheticEraseDisplayEvidence(runId, hash(displayBytes));
+const displayReportText = JSON.stringify(buildEraseDisplayGradingReport(displayEvidence.frames, displayEvidence.run, runId, displayEvidence.adapter));
+const charsetsBytes = Buffer.from(adaptCharsetsCollector(syntheticDisplayExtension));
+const charsetsEvidence = syntheticCharsetsEvidence(runId, hash(charsetsBytes));
+const charsetsReportText = JSON.stringify(buildCharsetsGradingReport(charsetsEvidence.frames, charsetsEvidence.run, runId, charsetsEvidence.adapter));
 
+/** The shared predecessor chain (through erase-in-line, policy v19) plus character editing and erase-in-display as predecessors, and this suite's retained files, declarations and binding at policy v22. */
 function fixture(action) {
-    const output = mkdtempSync(join(tmpdir(), 'nt-chrs-receipt-'));
-    const scratch = join(output, 'removed-fixture');
-    const ownedAdapterBytes = Buffer.from(syntheticOwnedAdapter);
-    const firstExtensionBytes = Buffer.from(syntheticFirstExtension);
-    const colorsBytes = Buffer.from(syntheticColorsExtension);
-    const rgbBytes = Buffer.from(syntheticRgbExtension);
-    const attrsBytes = Buffer.from(syntheticAttrsExtension);
-    const paletteBytes = Buffer.from(syntheticPaletteExtension);
-    const truecolorBytes = Buffer.from(syntheticTruecolorExtension);
-    const underlineBytes = Buffer.from(syntheticUnderlineExtension);
-    const underlineColorBytes = Buffer.from(syntheticUnderlineColorExtension);
-    const resetBytes = Buffer.from(syntheticResetExtension);
-    const closureBytes = Buffer.from(syntheticClosureExtension);
-    const eraseBytes = Buffer.from(syntheticEraseExtension);
-    const editBytes = Buffer.from(syntheticEditExtension);
-    const charsetsBytes = Buffer.from(adaptCharsetsCollector(syntheticEditExtension));
-    const upstream = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
-    const grading = syntheticGradingEvidence(runId, hash(firstExtensionBytes));
-    grading.adapter = { id: 'ntilde-owned-ascii-sgr-grading-v1', derivedFromAdapterId: 'ntilde-owned-macos-v1',
-        bundleSha256: hash(firstExtensionBytes), upstreamBundleSha256: upstream };
-    const gradingReport = buildAsciiSgrGradingReport(grading.frames, grading.run, grading.runId, grading.adapter);
-    const colors = syntheticSgrColorsEvidence(runId, hash(colorsBytes));
-    const colorsReport = buildSgrColorsGradingReport(colors.frames, colors.run, runId, colors.adapter);
-    const rgbEvidence = syntheticSgrRgbEvidence(runId, hash(rgbBytes));
-    const rgbReport = buildSgrRgbGradingReport(rgbEvidence.frames, rgbEvidence.run, runId, rgbEvidence.adapter);
-    const attrsEvidence = syntheticSgrAttrsEvidence(runId, hash(attrsBytes));
-    const attrsReport = buildSgrAttrsGradingReport(attrsEvidence.frames, attrsEvidence.run, runId, attrsEvidence.adapter);
-    const paletteEvidence = syntheticSgrPaletteEvidence(runId, hash(paletteBytes));
-    const paletteReport = buildSgrPaletteGradingReport(paletteEvidence.frames, paletteEvidence.run, runId, paletteEvidence.adapter);
-    const truecolorEvidence = syntheticSgrTruecolorEvidence(runId, hash(truecolorBytes));
-    const truecolorReport = buildSgrTruecolorGradingReport(truecolorEvidence.frames, truecolorEvidence.run, runId, truecolorEvidence.adapter);
-    const underlineEvidence = syntheticSgrUnderlineEvidence(runId, hash(underlineBytes));
-    const underlineReport = buildSgrUnderlineGradingReport(underlineEvidence.frames, underlineEvidence.run, runId, underlineEvidence.adapter);
-    const ucEvidence = syntheticSgrUnderlineColorEvidence(runId, hash(underlineColorBytes));
-    const ucReport = buildSgrUnderlineColorGradingReport(ucEvidence.frames, ucEvidence.run, runId, ucEvidence.adapter);
-    const resetEvidence = syntheticSgrResetEvidence(runId, hash(resetBytes));
-    const resetReport = buildSgrResetGradingReport(resetEvidence.frames, resetEvidence.run, runId, resetEvidence.adapter);
-    const closureEvidence = syntheticSgrClosureEvidence(runId, hash(closureBytes));
-    const closureReport = buildSgrClosureGradingReport(closureEvidence.frames, closureEvidence.run, runId, closureEvidence.adapter);
-    const eraseEvidence = syntheticEraseLineEvidence(runId, hash(eraseBytes));
-    const eraseReport = buildEraseLineGradingReport(eraseEvidence.frames, eraseEvidence.run, runId, eraseEvidence.adapter);
-    const editEvidence = syntheticCharEditEvidence(runId, hash(editBytes));
-    const editReport = buildCharEditGradingReport(editEvidence.frames, editEvidence.run, runId, editEvidence.adapter);
-    const evidence = syntheticCharsetsEvidence(runId, hash(charsetsBytes));
-    const report = buildCharsetsGradingReport(evidence.frames, evidence.run, runId, evidence.adapter);
-    const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value) + '\n');
-    const journal = (file, frames) => writeFileSync(join(output, file), frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
-    const context = { runId, sourceSnapshotPolicy: 'readonly-owned-source-graph-v21',
-        gradingAdapterId: 'ntilde-owned-ascii-sgr-grading-v1', asciiSgrSuiteId,
-        gradingBundleSha256: hash(firstExtensionBytes), gradingContractsVersion: asciiSgrContractsVersion,
-        sgrColorsAdapterId: 'ntilde-owned-sgr-colors-grading-v1', sgrColorsSuiteId, sgrColorsBundleSha256: hash(colorsBytes),
-        sgrColorsContractsVersion, sgrRgbAdapterId, sgrRgbSuiteId, sgrRgbBundleSha256: hash(rgbBytes), sgrRgbContractsVersion,
-        sgrAttrsAdapterId, sgrAttrsSuiteId, sgrAttrsBundleSha256: hash(attrsBytes), sgrAttrsContractsVersion,
-        sgrPaletteAdapterId, sgrPaletteSuiteId, sgrPaletteBundleSha256: hash(paletteBytes), sgrPaletteContractsVersion,
-        sgrTruecolorAdapterId, sgrTruecolorSuiteId, sgrTruecolorBundleSha256: hash(truecolorBytes), sgrTruecolorContractsVersion,
-        sgrUnderlineAdapterId, sgrUnderlineSuiteId, sgrUnderlineBundleSha256: hash(underlineBytes), sgrUnderlineContractsVersion,
-        sgrUnderlineColorAdapterId, sgrUnderlineColorSuiteId, sgrUnderlineColorBundleSha256: hash(underlineColorBytes), sgrUnderlineColorContractsVersion,
-        sgrResetAdapterId, sgrResetSuiteId, sgrResetBundleSha256: hash(resetBytes), sgrResetContractsVersion,
-        sgrClosureAdapterId, sgrClosureSuiteId, sgrClosureBundleSha256: hash(closureBytes), sgrClosureContractsVersion,
-        eraseLineAdapterId, eraseLineSuiteId, eraseLineBundleSha256: hash(eraseBytes), eraseLineContractsVersion,
-        charEditAdapterId, charEditSuiteId, charEditBundleSha256: hash(editBytes), charEditContractsVersion,
-        charsetsAdapterId, charsetsSuiteId, charsetsBundleSha256: hash(charsetsBytes), charsetsContractsVersion,
-        upstreamBundleSha256: upstream };
-    try {
-        write('grading-observations.json', gradingReport); write('grading-run.json', grading.run);
-        journal('grading-snapshots.jsonl', grading.frames);
-        write('sgcolors-observations.json', colorsReport); write('sgcolors-run.json', colors.run);
-        journal('sgcolors-snapshots.jsonl', colors.frames);
-        write('sgrgb-observations.json', rgbReport); write('sgrgb-run.json', rgbEvidence.run);
-        journal('sgrgb-snapshots.jsonl', rgbEvidence.frames);
-        write('sgattr-observations.json', attrsReport); write('sgattr-run.json', attrsEvidence.run);
-        journal('sgattr-snapshots.jsonl', attrsEvidence.frames);
-        write('sgpal-observations.json', paletteReport); write('sgpal-run.json', paletteEvidence.run);
-        journal('sgpal-snapshots.jsonl', paletteEvidence.frames);
-        write('sgtc-observations.json', truecolorReport); write('sgtc-run.json', truecolorEvidence.run);
-        journal('sgtc-snapshots.jsonl', truecolorEvidence.frames);
-        write('sgus-observations.json', underlineReport); write('sgus-run.json', underlineEvidence.run);
-        journal('sgus-snapshots.jsonl', underlineEvidence.frames);
-        write('sguc-observations.json', ucReport); write('sguc-run.json', ucEvidence.run);
-        journal('sguc-snapshots.jsonl', ucEvidence.frames);
-        write('sgsr-observations.json', resetReport); write('sgsr-run.json', resetEvidence.run);
-        journal('sgsr-snapshots.jsonl', resetEvidence.frames);
-        write('sgcl-observations.json', closureReport); write('sgcl-run.json', closureEvidence.run);
-        journal('sgcl-snapshots.jsonl', closureEvidence.frames);
-        write('erln-observations.json', eraseReport); write('erln-run.json', eraseEvidence.run);
-        journal('erln-snapshots.jsonl', eraseEvidence.frames);
-        write('ched-observations.json', editReport); write('ched-run.json', editEvidence.run);
-        journal('ched-snapshots.jsonl', editEvidence.frames);
-        write('chrs-observations.json', report); write('chrs-run.json', evidence.run);
-        journal('chrs-snapshots.jsonl', evidence.frames);
-        writeFileSync(join(output, 'collector-adapter.mjs'), ownedAdapterBytes);
-        writeFileSync(join(output, 'collector-grading.mjs'), firstExtensionBytes);
-        writeFileSync(join(output, 'collector-sgcolors.mjs'), colorsBytes);
-        writeFileSync(join(output, 'collector-sgrgb.mjs'), rgbBytes);
-        writeFileSync(join(output, 'collector-sgattr.mjs'), attrsBytes);
-        writeFileSync(join(output, 'collector-sgpal.mjs'), paletteBytes);
-        writeFileSync(join(output, 'collector-sgtc.mjs'), truecolorBytes);
-        writeFileSync(join(output, 'collector-sgus.mjs'), underlineBytes);
-        writeFileSync(join(output, 'collector-sguc.mjs'), underlineColorBytes);
-        writeFileSync(join(output, 'collector-sgsr.mjs'), resetBytes);
-        writeFileSync(join(output, 'collector-sgcl.mjs'), closureBytes);
-        writeFileSync(join(output, 'collector-erln.mjs'), eraseBytes);
-        writeFileSync(join(output, 'collector-ched.mjs'), editBytes);
-        writeFileSync(join(output, 'collector-chrs.mjs'), charsetsBytes);
-        write('ownership-proof.json', { completed: true, cleanedUpAt: '2026-11-08T00:00:00Z', cleanupError: null });
-        write('context.json', context);
-        write('raw.json', { observations: [] });
-        const bind = (suiteId, prefix, bytes, version, counts) => ({ runId, suiteId, file: `${prefix}-observations.json`,
-            sha256: hash(readFileSync(join(output, `${prefix}-observations.json`))),
-            runFile: `${prefix}-run.json`, runSha256: hash(readFileSync(join(output, `${prefix}-run.json`))),
-            adapterBundleSha256: hash(bytes), contractsVersion: version, counts, provisionalUntil: 'cell-receipt.json' });
-        const resetBinding = bind(sgrResetSuiteId, 'sgsr', resetBytes, sgrResetContractsVersion, { supported: 2 });
-        const closureBinding = bind(sgrClosureSuiteId, 'sgcl', closureBytes, sgrClosureContractsVersion, { supported: 3 });
-        const eraseBinding = bind(eraseLineSuiteId, 'erln', eraseBytes, eraseLineContractsVersion, { supported: 3 });
-        const editBinding = bind(charEditSuiteId, 'ched', editBytes, charEditContractsVersion, { supported: 3 });
-        const binding = bind(charsetsSuiteId, 'chrs', charsetsBytes, charsetsContractsVersion, { supported: 4 });
-        const underlineColorBinding = bind(sgrUnderlineColorSuiteId, 'sguc', underlineColorBytes, sgrUnderlineColorContractsVersion, { supported: 3 });
-        const underlineBinding = bind(sgrUnderlineSuiteId, 'sgus', underlineBytes, sgrUnderlineContractsVersion, { supported: 4 });
-        const truecolorBinding = bind(sgrTruecolorSuiteId, 'sgtc', truecolorBytes, sgrTruecolorContractsVersion, { supported: 2 });
-        const paletteBinding = bind(sgrPaletteSuiteId, 'sgpal', paletteBytes, sgrPaletteContractsVersion, { supported: 6 });
-        const attrsBinding = bind(sgrAttrsSuiteId, 'sgattr', attrsBytes, sgrAttrsContractsVersion, { supported: 5 });
-        const rgbBinding = bind(sgrRgbSuiteId, 'sgrgb', rgbBytes, sgrRgbContractsVersion, { supported: 2 });
-        const colorsBinding = bind(sgrColorsSuiteId, 'sgcolors', colorsBytes, sgrColorsContractsVersion, { supported: 5 });
-        const gradingBinding = bind(gradingReport.suiteId, 'grading', firstExtensionBytes, gradingReport.contractsVersion, { supported: 4 });
-        action({ output, scratch, evidence, report, context, binding, editBinding, eraseBinding, closureBinding, resetBinding, underlineColorBinding, underlineBinding, truecolorBinding, paletteBinding, attrsBinding, rgbBinding, colorsBinding, gradingBinding, write });
-    } finally { rmSync(output, { recursive: true, force: true }); }
+    chainFixture(f => {
+        f.write('ched-observations.json', JSON.parse(charEditReportText)); f.write('ched-run.json', charEditEvidence.run);
+        writeFileSync(join(f.output, 'ched-snapshots.jsonl'), charEditEvidence.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+        writeFileSync(join(f.output, 'collector-ched.mjs'), charEditBytes);
+        const charEditBinding = { runId, suiteId: charEditSuiteId, file: 'ched-observations.json',
+            sha256: hash(readFileSync(join(f.output, 'ched-observations.json'))),
+            runFile: 'ched-run.json', runSha256: hash(readFileSync(join(f.output, 'ched-run.json'))),
+            adapterBundleSha256: hash(charEditBytes), contractsVersion: charEditContractsVersion, counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
+        const displayReport = JSON.parse(displayReportText);
+        f.write('erdi-observations.json', displayReport); f.write('erdi-run.json', displayEvidence.run);
+        writeFileSync(join(f.output, 'erdi-snapshots.jsonl'), displayEvidence.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+        writeFileSync(join(f.output, 'collector-erdi.mjs'), displayBytes);
+        const charsetsReport = JSON.parse(charsetsReportText);
+        f.write('chrs-observations.json', charsetsReport); f.write('chrs-run.json', charsetsEvidence.run);
+        writeFileSync(join(f.output, 'chrs-snapshots.jsonl'), charsetsEvidence.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+        writeFileSync(join(f.output, 'collector-chrs.mjs'), charsetsBytes);
+        Object.assign(f.context, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v22', charsetsAdapterId, charsetsSuiteId,
+            charsetsBundleSha256: hash(charsetsBytes), charsetsContractsVersion, charEditAdapterId, charEditSuiteId,
+            charEditBundleSha256: hash(charEditBytes), charEditContractsVersion, eraseDisplayAdapterId, eraseDisplaySuiteId,
+            eraseDisplayBundleSha256: hash(displayBytes), eraseDisplayContractsVersion });
+        f.write('context.json', f.context);
+        const displayBinding = { runId, suiteId: eraseDisplaySuiteId, file: 'erdi-observations.json',
+            sha256: hash(readFileSync(join(f.output, 'erdi-observations.json'))),
+            runFile: 'erdi-run.json', runSha256: hash(readFileSync(join(f.output, 'erdi-run.json'))),
+            adapterBundleSha256: hash(displayBytes), contractsVersion: eraseDisplayContractsVersion, counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
+        const binding = { runId, suiteId: charsetsSuiteId, file: 'chrs-observations.json',
+            sha256: hash(readFileSync(join(f.output, 'chrs-observations.json'))),
+            runFile: 'chrs-run.json', runSha256: hash(readFileSync(join(f.output, 'chrs-run.json'))),
+            adapterBundleSha256: hash(charsetsBytes), contractsVersion: charsetsContractsVersion, counts: { supported: 4 }, provisionalUntil: 'cell-receipt.json' };
+        action({ ...f, eraseLineBinding: f.binding, binding, report: charsetsReport, displayEvidence, displayReport, displayBinding, charEditBinding });
+    });
 }
 
-const predecessors = f => ({ charsetsEvidence: f.binding, charEditEvidence: f.editBinding, eraseLineEvidence: f.eraseBinding, sgrClosureEvidence: f.closureBinding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
+const predecessors = f => ({ charsetsEvidence: f.binding, eraseDisplayEvidence: f.displayBinding, charEditEvidence: f.charEditBinding, eraseLineEvidence: f.eraseLineBinding, sgrClosureEvidence: f.closureBinding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
 
-const reasons = /Charsets|character-editing|erase-in-line|SGR closure|charsets|SGR selective-reset|SGR-underline|Invalid|Missing|bytes|report|journal|counts|identity|derivation|contracts|differs|predecessor|ENOENT/i;
+const reasons = /Charsets|erase-in-display|Erase-in-display|erase-in-line|SGR closure|erase-in-display|SGR selective-reset|SGR-underline|Invalid|Missing|bytes|report|journal|counts|identity|derivation|contracts|differs|predecessor|ENOENT/i;
 
-test('the charsets receipt binding re-derives the whole report from retained bytes', () => fixture(f => {
+test('the erase-in-display receipt binding re-derives the whole report from retained bytes', () => fixture(f => {
     assert.equal(includesCharsetsEvidence(f.output, {}, f.context), true);
     assert.doesNotThrow(() => checkCharsetsEvidence(f.output, predecessors(f), runId, f.context));
-    assert.doesNotThrow(() => checkCharEditEvidence(f.output, predecessors(f), runId, f.context));
-    assert.doesNotThrow(() => checkEraseLineEvidence(f.output, predecessors(f), runId, f.context));
+    assert.doesNotThrow(() => checkEraseDisplayEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkSgrClosureEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkSgrResetEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkSgrUnderlineColorEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
-test('the shared finalizer publishes receipt schema 27 beside every predecessor suite', () => fixture(f => {
+test('the shared finalizer publishes receipt schema 28 beside every predecessor suite', () => fixture(f => {
     const { output, scratch, write, context } = f;
     const { sourceSnapshotPolicy, ...lightContext } = context;
     void sourceSnapshotPolicy;
@@ -288,35 +100,39 @@ test('the shared finalizer publishes receipt schema 27 beside every predecessor 
         rgbEvidence: entry('rgb-observations.json'), renditionEvidence: entry('rendition-observations.json'),
         cursorEvidence: entry('cursor-observations.json'), gradingEvidence: f.gradingBinding, ...predecessors(f) };
     const receipt = completeOwnedReceipt(output, scratch, evidence);
-    assert.equal(receipt.schemaVersion, 27);
+    assert.equal(receipt.schemaVersion, 28);
     assert.equal(receipt.charsetsEvidence, f.binding);
-    assert.equal(receipt.charEditEvidence, f.editBinding);
-    assert.equal(receipt.eraseLineEvidence, f.eraseBinding);
+    assert.equal(receipt.eraseDisplayEvidence, f.displayBinding);
+    assert.equal(receipt.eraseLineEvidence, f.eraseLineBinding);
+    assert.equal(receipt.charEditEvidence, f.charEditBinding);
     assert.equal(receipt.sgrClosureEvidence, f.closureBinding);
     assert.equal(receipt.sgrResetEvidence, f.resetBinding);
     assert.equal(receipt.sgrUnderlineColorEvidence, f.underlineColorBinding);
     assert.equal(receipt.sgrUnderlineEvidence, f.underlineBinding);
 }));
 
+/** Every predecessor layer: its label, declaration key, receipt binding key and, where the test holds its synthetic extension, the text whose digest is declared. */
+const layers = [
+    ['erase-in-display', 'eraseDisplay', 'displayBinding', syntheticDisplayExtension, 'ntilde-owned-erase-display-grading-v1'],
+    ['character-editing', 'charEdit', 'charEditBinding', syntheticCharEditExtension, 'ntilde-owned-char-edit-grading-v1'],
+    ['erase-in-line', 'eraseLine', 'binding', syntheticEraseLineExtension, 'ntilde-owned-erase-line-grading-v1'],
+    ['SGR closure', 'sgrClosure', 'closureBinding', syntheticClosureExtension, 'ntilde-owned-sgr-closure-grading-v1'],
+    ['SGR selective-reset', 'sgrReset', 'resetBinding', syntheticResetExtension, 'ntilde-owned-sgr-selective-reset-grading-v1'],
+    ['SGR-underline-color', 'sgrUnderlineColor', 'underlineColorBinding', syntheticUnderlineColorExtension, 'ntilde-owned-sgr-underline-color-grading-v1'],
+    ['SGR-underline', 'sgrUnderline', 'underlineBinding', syntheticUnderlineExtension, 'ntilde-owned-sgr-underline-grading-v1'],
+    ['SGR-palette', 'sgrPalette', 'paletteBinding', syntheticPaletteExtension, 'ntilde-owned-sgr-palette-grading-v1'],
+    ['SGR-truecolor', 'sgrTruecolor', 'truecolorBinding'], ['SGR-attributes', 'sgrAttrs', 'attrsBinding'],
+    ['SGR-RGB', 'sgrRgb', 'rgbBinding'], ['SGR-colors', 'sgrColors', 'colorsBinding'],
+];
+const rewriteDisplayReport = (f, edit) => {
+    edit(f.report);
+    f.write('chrs-observations.json', f.report);
+    f.binding.sha256 = hash(readFileSync(join(f.output, 'chrs-observations.json')));
+};
 for (const [name, mutate] of [
     ['changed observation bytes', f => f.write('chrs-observations.json', { changed: true })],
     ['changed run log bytes', f => f.write('chrs-run.json', { changed: true })],
     ['changed adapter bytes', f => writeFileSync(join(f.output, 'collector-chrs.mjs'), Buffer.from('tampered'))],
-    ['declared SGR-underline-color layer digest drift', f => {
-        const renamed = Buffer.from(syntheticUnderlineColorExtension.replace('ntilde-owned-sgr-underline-color-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrUnderlineColorBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['declared SGR-underline layer digest drift', f => {
-        const renamed = Buffer.from(syntheticUnderlineExtension.replace('ntilde-owned-sgr-underline-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrUnderlineBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['declared SGR-palette layer digest drift', f => {
-        const renamed = Buffer.from(syntheticPaletteExtension.replace('ntilde-owned-sgr-palette-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrPaletteBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
     ['foreign layered derivation', f => {
         writeFileSync(join(f.output, 'collector-adapter.mjs'), Buffer.concat([Buffer.from(syntheticOwnedAdapter), Buffer.from('// doctored\n')]));
     }],
@@ -328,53 +144,17 @@ for (const [name, mutate] of [
     ['declared contracts drift', f => { f.context.charsetsContractsVersion = 2; f.write('context.json', f.context); }],
     ['missing adapter declaration', f => { delete f.context.charsetsAdapterId; f.write('context.json', f.context); }],
     ['missing suite declaration', f => { delete f.context.charsetsSuiteId; f.write('context.json', f.context); }],
-    ['missing SGR selective-reset predecessor declaration', f => { delete f.context.sgrResetAdapterId; f.write('context.json', f.context); }],
-    ['missing character-editing predecessor evidence', f => { delete f.editBinding; }],
-    ['missing character-editing predecessor declaration', f => { delete f.context.charEditAdapterId; f.write('context.json', f.context); }],
-    ['declared character-editing layer digest drift', f => {
-        const renamed = Buffer.from(syntheticEditExtension.replace('ntilde-owned-char-edit-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.charEditBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['missing erase-in-line predecessor evidence', f => { delete f.eraseBinding; }],
-    ['missing erase-in-line predecessor declaration', f => { delete f.context.eraseLineAdapterId; f.write('context.json', f.context); }],
-    ['declared erase-in-line layer digest drift', f => {
-        const renamed = Buffer.from(syntheticEraseExtension.replace('ntilde-owned-erase-line-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.eraseLineBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['missing SGR closure predecessor evidence', f => { delete f.closureBinding; }],
-    ['missing SGR closure predecessor declaration', f => { delete f.context.sgrClosureAdapterId; f.write('context.json', f.context); }],
-    ['declared SGR closure layer digest drift', f => {
-        const renamed = Buffer.from(syntheticClosureExtension.replace('ntilde-owned-sgr-closure-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrClosureBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['missing SGR selective-reset predecessor evidence', f => { delete f.resetBinding; }],
-    ['declared SGR selective-reset layer digest drift', f => {
-        const renamed = Buffer.from(syntheticResetExtension.replace('ntilde-owned-sgr-selective-reset-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrResetBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['missing SGR-underline-color predecessor declaration', f => { delete f.context.sgrUnderlineColorAdapterId; f.write('context.json', f.context); }],
-    ['missing SGR-underline-color predecessor evidence', f => { delete f.underlineColorBinding; }],
-    ['missing SGR-underline predecessor evidence', f => { delete f.underlineBinding; }],
-    ['missing SGR-truecolor predecessor evidence', f => { delete f.truecolorBinding; }],
-    ['missing SGR-palette predecessor evidence', f => { delete f.paletteBinding; }],
-    ['missing SGR-attributes predecessor evidence', f => { delete f.attrsBinding; }],
-    ['missing SGR-RGB predecessor evidence', f => { delete f.rgbBinding; }],
-    ['missing SGR-colors predecessor evidence', f => { delete f.colorsBinding; }],
-    ['report adapter digest drift', f => {
-        f.report.adapter.bundleSha256 = 'a'.repeat(64);
-        f.write('chrs-observations.json', f.report);
-        f.binding.sha256 = hash(readFileSync(join(f.output, 'chrs-observations.json')));
-    }],
-    ['report identity drift', f => {
-        f.report.cases[0].conclusion.outcome = 'inconclusive';
-        f.write('chrs-observations.json', f.report);
-        f.binding.sha256 = hash(readFileSync(join(f.output, 'chrs-observations.json')));
-    }],
-    ['charsets artifact removal downgrade', f => {
+    ...layers.flatMap(([label, key, binding, extension, id]) => [
+        [`missing ${label} predecessor evidence`, f => { delete f[binding]; }],
+        [`missing ${label} predecessor declaration`, f => { delete f.context[`${key}AdapterId`]; f.write('context.json', f.context); }],
+        ...(extension === undefined ? [] : [[`declared ${label} layer digest drift`, f => {
+            f.context[`${key}BundleSha256`] = hash(Buffer.from(extension.replace(id, 'ntilde-owned-renamed-v1')));
+            f.write('context.json', f.context);
+        }]]),
+    ]),
+    ['report adapter digest drift', f => rewriteDisplayReport(f, report => { report.adapter.bundleSha256 = 'a'.repeat(64); })],
+    ['report identity drift', f => rewriteDisplayReport(f, report => { report.cases[0].conclusion.outcome = 'inconclusive'; })],
+    ['erase-in-display artifact removal downgrade', f => {
         for (const file of ['chrs-observations.json', 'chrs-run.json', 'chrs-snapshots.jsonl', 'collector-chrs.mjs'])
             rmSync(join(f.output, file));
     }],
@@ -384,10 +164,10 @@ for (const [name, mutate] of [
     assert.equal(existsSync(join(f.output, 'cell-receipt.json')), false);
 }));
 
-test('policy v21 requires the charsets binding even without artifacts', () => fixture(f => {
+test('policy v22 requires the charsets binding even without artifacts', () => fixture(f => {
     for (const file of ['chrs-observations.json', 'chrs-run.json', 'chrs-snapshots.jsonl', 'collector-chrs.mjs'])
         rmSync(join(f.output, file));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v21' };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v22' };
     assert.equal(includesCharsetsEvidence(f.output, {}, context), true);
     assert.throws(() => checkCharsetsEvidence(f.output, predecessors(f), runId, context), /Missing or changed charsets adapter declaration/);
 }));
@@ -413,11 +193,11 @@ test('a symlinked retained artifact is refused even when it points at valid evid
     assert.doesNotThrow(() => checkCharsetsEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
-test('historical receipts stay valid without any charsets artifacts (policies v10-v20)', () => {
+test('historical receipts stay valid without any charsets artifacts (policies v10-v21)', () => {
     const publication = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-sgr-attributes-qualification.json', import.meta.url)));
     assert.equal(publication.receipt.schemaVersion, 16);
-    assert.equal(publication.receipt.charsetsEvidence, undefined);
-    for (const version of [10, 11, 13, 14, 15, 16, 17, 18, 19, 20]) {
+    assert.equal(publication.receipt.eraseDisplayEvidence, undefined);
+    for (const version of [10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21]) {
         assert.equal(includesCharsetsEvidence('/nonexistent', {}, { sourceSnapshotPolicy: `readonly-owned-source-graph-v${version}` }), false, `v${version}`);
     }
     assert.equal(includesCharsetsEvidence('/nonexistent', {}, {}), false);

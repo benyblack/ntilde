@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v21';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v22';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -330,9 +330,19 @@ export const capturedV27SourceFiles = Object.freeze({
     charEditReceiptSourceSha256: "char-edit-receipt.mjs",
 });
 
-// Frozen v28 charsets (charsets.utf8, .dec-special, .dec-line-drawing, .g0-g1-switching) grading scope; future experiments must create a distinct policy and map.
+// Frozen v28 erase-in-display (erase.screen.below, .above, .all) grading scope; future experiments must create a distinct policy and map.
 export const capturedV28SourceFiles = Object.freeze({
     ...capturedV27SourceFiles,
+    eraseDisplayContractsSourceSha256: "erase-display-contracts.mjs",
+    eraseDisplayCollectorSourceSha256: "erase-display-collector.mjs",
+    eraseDisplayGradingSourceSha256: "erase-display-grading.mjs",
+    eraseDisplayGradingCollectorSourceSha256: "erase-display-grading-collector.mjs",
+    eraseDisplayReceiptSourceSha256: "erase-display-receipt.mjs",
+});
+
+// Frozen v29 charsets (charsets.utf8, .dec-special, .dec-line-drawing, .g0-g1-switching) grading scope; future experiments must create a distinct policy and map.
+export const capturedV29SourceFiles = Object.freeze({
+    ...capturedV28SourceFiles,
     charsetsContractsSourceSha256: "charsets-contracts.mjs",
     charsetsCollectorSourceSha256: "charsets-collector.mjs",
     charsetsGradingSourceSha256: "charsets-grading.mjs",
@@ -340,11 +350,11 @@ export const capturedV28SourceFiles = Object.freeze({
     charsetsReceiptSourceSha256: "charsets-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v28 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v29 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV28SourceFiles)) throw new Error('Invalid current v28 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV29SourceFiles)) throw new Error('Invalid current v29 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

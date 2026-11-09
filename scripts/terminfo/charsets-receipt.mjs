@@ -1,7 +1,7 @@
 // Receipt binding for the charsets qualification. The graded
 // evidence stays provisional until the shared cleanup receipt exists, and the
 // check re-derives the whole report from retained bytes without the collector.
-// A run carrying charsets evidence must also carry its character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color,
+// A run carrying charsets evidence must also carry its erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color,
 // SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors
 // predecessors: these conclusions sit beside theirs, never replace them.
 import { lstatSync, readFileSync } from 'node:fs';
@@ -11,6 +11,7 @@ import { charsetsSuiteId, charsetsContractsVersion } from './charsets-contracts.
 import { adaptCharsetsCollector, charsetsAdapterId } from './charsets-grading-collector.mjs';
 import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
 import { adaptCharEditCollector } from './char-edit-grading-collector.mjs';
+import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
 import { adaptSgrResetCollector } from './sgr-reset-grading-collector.mjs';
 import { adaptSgrClosureCollector } from './sgr-closure-grading-collector.mjs';
 import { adaptSgrUnderlineColorCollector } from './sgr-underline-color-grading-collector.mjs';
@@ -36,11 +37,11 @@ function present(path) {
     }
 }
 
-/** Any retained charsets artifact or declaration requires the v27 suffix, and a
- * policy-v21 run always carries them, because the current worker collects this suite
- * unconditionally after the character-editing suite. */
+/** Any retained charsets artifact or declaration requires the v28 suffix, and a
+ * policy-v22 run always carries them, because the current worker collects this suite
+ * unconditionally after the erase-in-display suite. */
 export function includesCharsetsEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v21'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v22'
         || context.charsetsAdapterId !== undefined || context.charsetsSuiteId !== undefined
         || context.charsetsBundleSha256 !== undefined || context.charsetsContractsVersion !== undefined
         || evidence.charsetsEvidence !== undefined
@@ -60,7 +61,8 @@ export function checkCharsetsEvidence(output, evidence, runId, context) {
     if (context.charsetsAdapterId !== charsetsAdapterId || context.charsetsSuiteId !== charsetsSuiteId) {
         throw new Error('Missing or changed charsets adapter declaration.');
     }
-    if (context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
+    if (context.eraseDisplayAdapterId === undefined || evidence.eraseDisplayEvidence === undefined
+        || context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
         || context.eraseLineAdapterId === undefined || evidence.eraseLineEvidence === undefined
         || context.sgrClosureAdapterId === undefined || evidence.sgrClosureEvidence === undefined
         || context.sgrResetAdapterId === undefined || evidence.sgrResetEvidence === undefined
@@ -71,7 +73,7 @@ export function checkCharsetsEvidence(output, evidence, runId, context) {
         || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
         || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
         || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
-        throw new Error('charsets evidence requires its character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
+        throw new Error('charsets evidence requires its erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.charsetsEvidence;
     if (binding === undefined) throw new Error('Missing charsets suite receipt binding.');
@@ -94,7 +96,7 @@ export function checkCharsetsEvidence(output, evidence, runId, context) {
         throw new Error('charsets adapter bytes changed.');
     }
     // The retained extension must be exactly the layered derivation of the retained
-    // character-editing extension over the erase-in-line extension over the SGR closure extension over the SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette,
+    // erase-in-display extension over the character-editing extension over the erase-in-line extension over the SGR closure extension over the SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette,
     // SGR-attributes, SGR-RGB and SGR-colors extensions over the retained first grading
     // extension over the retained owned adapter.
     const asciiSgrBytes = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
@@ -109,7 +111,8 @@ export function checkCharsetsEvidence(output, evidence, runId, context) {
     const sgrClosureBytes = Buffer.from(adaptSgrClosureCollector(sgrResetBytes.toString()));
     const eraseLineBytes = Buffer.from(adaptEraseLineCollector(sgrClosureBytes.toString()));
     const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
-    const derivedBytes = Buffer.from(adaptCharsetsCollector(charEditBytes.toString()));
+    const eraseDisplayBytes = Buffer.from(adaptEraseDisplayCollector(charEditBytes.toString()));
+    const derivedBytes = Buffer.from(adaptCharsetsCollector(eraseDisplayBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('charsets adapter is not the retained layered derivation.');
     }
@@ -118,8 +121,8 @@ export function checkCharsetsEvidence(output, evidence, runId, context) {
         || hash(sgrTruecolorBytes) !== context.sgrTruecolorBundleSha256 || hash(sgrUnderlineBytes) !== context.sgrUnderlineBundleSha256
         || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256
         || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256
-        || hash(charEditBytes) !== context.charEditBundleSha256) {
-        throw new Error('charsets adapter is not derived from the retained character-editing, erase-in-line, SGR closure and earlier extensions.');
+        || hash(charEditBytes) !== context.charEditBundleSha256 || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256) {
+        throw new Error('charsets adapter is not derived from the retained erase-in-display, character-editing, erase-in-line, SGR closure and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256

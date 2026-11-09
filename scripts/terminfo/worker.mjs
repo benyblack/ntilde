@@ -21,6 +21,7 @@ import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
+import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
@@ -185,7 +186,15 @@ try {
         const charEditModule = await import(pathToFileURL(config.charEditBundle).href);
         const charEditRun = await collectCharEditGrading({ config, fence, owner, gradingModule: charEditModule });
         writeFileSync(join(config.output, 'ched-run.json'), JSON.stringify(charEditRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered charset qualification follows the character-editing suite on the same fence.
+        // The layered erase-in-display qualification follows the character-editing suite on the same fence.
+        const eraseDisplaySource = readFileSync(config.eraseDisplayBundle);
+        if (createHash('sha256').update(eraseDisplaySource).digest('hex') !== config.eraseDisplayBundleSha256) {
+            throw new Error('Local erase-in-display adapter bundle changed.');
+        }
+        const eraseDisplayModule = await import(pathToFileURL(config.eraseDisplayBundle).href);
+        const eraseDisplayRun = await collectEraseDisplayGrading({ config, fence, owner, gradingModule: eraseDisplayModule });
+        writeFileSync(join(config.output, 'erdi-run.json'), JSON.stringify(eraseDisplayRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered charset qualification follows the erase-in-display suite on the same fence.
         const charsetsSource = readFileSync(config.charsetsBundle);
         if (createHash('sha256').update(charsetsSource).digest('hex') !== config.charsetsBundleSha256) {
             throw new Error('Local charsets adapter bundle changed.');

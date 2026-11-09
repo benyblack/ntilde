@@ -67,13 +67,13 @@ test('refuses a pinned body whose fixture bytes, criteria, expected cells or not
 });
 
 test('the derivation appends after any earlier layer without rewriting it', () => {
-    const earlier = verbatim() + '// earlier layers\nexport const ntildeCharEditAdapterLater = {};\n';
+    const earlier = verbatim() + '// earlier layers\nexport const ntildeEraseDisplayAdapterLater = {};\n';
     const layered = adaptCharsetsCollector(earlier);
     assert.ok(layered.startsWith(earlier));
     assert.ok(layered.includes(charsetsAdapterId));
 });
 
-// The real pinned bundle, derived through all thirteen layers and EXECUTED over synthetic observed cells: the pinned probe
+// The real pinned bundle, derived through all fourteen layers and EXECUTED over synthetic observed cells: the pinned probe
 // code must agree with the independent replay and contract. Skipped when the collector cache is absent.
 const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
 const haveBundle = existsSync(bundleUrl);
@@ -90,6 +90,7 @@ const layers = async () => Promise.all([
     import('./sgr-closure-grading-collector.mjs').then(m => m.adaptSgrClosureCollector),
     import('./erase-line-grading-collector.mjs').then(m => m.adaptEraseLineCollector),
     import('./char-edit-grading-collector.mjs').then(m => m.adaptCharEditCollector),
+    import('./erase-display-grading-collector.mjs').then(m => m.adaptEraseDisplayCollector),
 ]);
 /** The real layered bundle written beside the pinned one so its package imports resolve, as the runner places derived bundles. */
 async function realModule() {

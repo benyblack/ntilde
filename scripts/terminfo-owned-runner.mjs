@@ -48,6 +48,9 @@ import { buildEraseLineGradingReport } from './terminfo/erase-line-grading.mjs';
 import { adaptCharEditCollector, charEditAdapterId } from './terminfo/char-edit-grading-collector.mjs';
 import { charEditContractsVersion, charEditSuiteId } from './terminfo/char-edit-contracts.mjs';
 import { buildCharEditGradingReport } from './terminfo/char-edit-grading.mjs';
+import { adaptEraseDisplayCollector, eraseDisplayAdapterId } from './terminfo/erase-display-grading-collector.mjs';
+import { eraseDisplayContractsVersion, eraseDisplaySuiteId } from './terminfo/erase-display-contracts.mjs';
+import { buildEraseDisplayGradingReport } from './terminfo/erase-display-grading.mjs';
 import { adaptCharsetsCollector, charsetsAdapterId } from './terminfo/charsets-grading-collector.mjs';
 import { charsetsContractsVersion, charsetsSuiteId } from './terminfo/charsets-contracts.mjs';
 import { buildCharsetsGradingReport } from './terminfo/charsets-grading.mjs';
@@ -582,9 +585,39 @@ async function retainCharEditEvidence(output, runId, charEditBundle, upstream) {
         contractsVersion: charEditContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
-/** Derive and lock the layered charsets grading extension over the character-editing one. */
-function prepareCharsetsCollector(tool, charEditBundle, output) {
-    const adapted = adaptCharsetsCollector(readFileSync(charEditBundle));
+/** Derive and lock the layered erase-in-display grading extension over the character-editing one. */
+function prepareEraseDisplayCollector(tool, charEditBundle, output) {
+    const adapted = adaptEraseDisplayCollector(readFileSync(charEditBundle));
+    const eraseDisplayBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-erdi-${eraseDisplayBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== eraseDisplayBundleSha256) throw new Error('Derived erase-in-display bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-erdi.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, eraseDisplayBundleSha256 };
+}
+
+/** Re-derive the erase-in-display report parent-side with the layered pinned replay. */
+async function retainEraseDisplayEvidence(output, runId, eraseDisplayBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'erdi-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'erdi-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-erdi.mjs'));
+    const adapter = { id: eraseDisplayAdapterId, derivedFromAdapterId: charEditAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(eraseDisplayBundle).href);
+    const report = buildEraseDisplayGradingReport(frames, run, runId, adapter, { replayModule });
+    writeJson(join(output, 'erdi-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: eraseDisplaySuiteId, file: 'erdi-observations.json',
+        sha256: hash(readFileSync(join(output, 'erdi-observations.json'))),
+        runFile: 'erdi-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: eraseDisplayContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
+}
+
+/** Derive and lock the layered charsets grading extension over the erase-in-display one. */
+function prepareCharsetsCollector(tool, eraseDisplayBundle, output) {
+    const adapted = adaptCharsetsCollector(readFileSync(eraseDisplayBundle));
     const charsetsBundleSha256 = hash(adapted);
     const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-chrs-${charsetsBundleSha256}.mjs`);
     writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
@@ -599,7 +632,7 @@ async function retainCharsetsEvidence(output, runId, charsetsBundle, upstream) {
     const run = JSON.parse(runBytes);
     const frames = readFileSync(join(output, 'chrs-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
     const adapterBytes = readFileSync(join(output, 'collector-chrs.mjs'));
-    const adapter = { id: charsetsAdapterId, derivedFromAdapterId: charEditAdapterId,
+    const adapter = { id: charsetsAdapterId, derivedFromAdapterId: eraseDisplayAdapterId,
         bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
     const replayModule = await import(pathToFileURL(charsetsBundle).href);
     const report = buildCharsetsGradingReport(frames, run, runId, adapter, { replayModule });
@@ -788,6 +821,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let sgrClosureEvidence;
     let eraseLineEvidence;
     let charEditEvidence;
+    let eraseDisplayEvidence;
     let charsetsEvidence;
     let rgbEvidence;
     let renditionEvidence;
@@ -829,7 +863,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: sgrClosureBundle, sgrClosureBundleSha256 } = prepareSgrClosureCollector(privateTool, sgrResetBundle, output);
         const { bundle: eraseLineBundle, eraseLineBundleSha256 } = prepareEraseLineCollector(privateTool, sgrClosureBundle, output);
         const { bundle: charEditBundle, charEditBundleSha256 } = prepareCharEditCollector(privateTool, eraseLineBundle, output);
-        const { bundle: charsetsBundle, charsetsBundleSha256 } = prepareCharsetsCollector(privateTool, charEditBundle, output);
+        const { bundle: eraseDisplayBundle, eraseDisplayBundleSha256 } = prepareEraseDisplayCollector(privateTool, charEditBundle, output);
+        const { bundle: charsetsBundle, charsetsBundleSha256 } = prepareCharsetsCollector(privateTool, eraseDisplayBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -839,7 +874,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
-            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, charsetsBundle, charsetsBundleSha256,
+            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, charsetsBundle, charsetsBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -880,6 +915,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let sgrClosureObserver;
         let eraseLineObserver;
         let charEditObserver;
+        let eraseDisplayObserver;
         let charsetsObserver;
         let pixelObserver;
         let pixelUnavailable;
@@ -936,9 +972,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrClosure: 'layered versioned collector extension; pinned termless criteria sgr.blink, sgr.overline and sgr.underline.color replayed byte-exactly on parent-observed stored blink flag, explicit overline boolean and stored underline color with reset, decoy, independence and sibling-shared color controls; sgr.underline.color is graded from its own reads, never from the sibling sgr.underline-color-rgb verdict; no blink timing, rendering or App-resolved color; not stock output',
             eraseLineAdapterId, eraseLineSuiteId, eraseLineBundleSha256, eraseLineContractsVersion,
             charEditAdapterId, charEditSuiteId, charEditBundleSha256, charEditContractsVersion,
+            charEdit: 'layered versioned collector extension; pinned character-editing termless criteria (editing.insert-chars with the explicit-1 ICH spelling, editing.delete-chars with the explicit-1 DCH spelling, editing.repeat-char with REP count 3) replayed on parent-observed stored ASCII cells, cursor and stored attribute details, with unmodified-seed, other-count-spelling, wide-row, right-edge, REP-after-barrier and attribute controls; REP graphic and repeat sent in one fenced write; created-blank and repeated-cell attributes observed not required; the pinned pixel/query paths never measure cells and are not qualified; no Unicode, wide-cell or combining editing; not stock output',
+            eraseDisplayAdapterId, eraseDisplaySuiteId, eraseDisplayBundleSha256, eraseDisplayContractsVersion,
             charsetsAdapterId, charsetsSuiteId, charsetsBundleSha256, charsetsContractsVersion,
             charsets: 'layered versioned collector extension; pinned charset termless criteria (charsets.utf8, charsets.dec-special, charsets.dec-line-drawing, charsets.g0-g1-switching) replayed byte-exactly (UTF-8 text, escape designations and shift controls untouched) on parent-observed decoded physical cells from complete stored cell details (never attribute strings or UTF-16 offsets), the cursor and neutral stored attributes, with ASCII, designation, invocation, uppercase and lowercase restoration-witness controls; the pinned terminal pixel capture and cursor-query paths are never verdicts and are not qualified; no glyph, pixel, font, keyboard, locale or platform claim',
-            charEdit: 'layered versioned collector extension; pinned character-editing termless criteria (editing.insert-chars with the explicit-1 ICH spelling, editing.delete-chars with the explicit-1 DCH spelling, editing.repeat-char with REP count 3) replayed on parent-observed stored ASCII cells, cursor and stored attribute details, with unmodified-seed, other-count-spelling, wide-row, right-edge, REP-after-barrier and attribute controls; REP graphic and repeat sent in one fenced write; created-blank and repeated-cell attributes observed not required; the pinned pixel/query paths never measure cells and are not qualified; no Unicode, wide-cell or combining editing; not stock output',
+            eraseDisplay: 'layered versioned collector extension; pinned erase-in-display termless criteria (erase.screen.below with ED 0, erase.screen.above with ED 1, erase.screen.all with ED 2, all explicit-parameter) replayed byte-exactly on parent-observed stored cells, cursor, stored attribute details, buffer state and saved lines, with unmodified-seed, other-spelling (omitted, explicit 0/1/2), full-screen fill, boundary, bold-seeded attribute and main-screen history controls; background-color erase observed not required; the pinned pixel capture path is capture-only upstream and not qualified; CSI 3J not graded; not stock output',
             eraseLine: 'layered versioned collector extension; pinned erase-in-line termless criteria (erase.line.right with the omitted-parameter spelling, erase.line.left with EL 1, erase.line.all with EL 2) replayed byte-exactly on parent-observed stored cells, cursor and stored attribute details, with unmodified-seed, other-spelling (omitted, explicit 0/1/2), wide-row and bold-seeded attribute controls; background-color erase observed not required; the pinned pixel capture path is capture-only upstream and not qualified; not stock output',
             sgrReset: 'layered versioned collector extension; pinned selective-reset termless criteria (sgr.selective-reset.underline via SGR 24 and sgr.selective-reset.inverse via SGR 27) replayed byte-exactly on parent-observed stored flags, exact underline style, stored colors and overline, with no-op, full-reset, wrong-reset and DECSCNM controls; underline-color behavior observed not required; rendered appearance not claimed; not stock output',
             underlineResolved: 'Ntilde extension controls (not terminfo.dev cases, no pinned probe, no collector extension): the opt-in App-reported resolved underline color (readScreen includeResolvedUnderlineColors) compared with an independent expectation derived from stored underline state, the recorded palette binding and contracted OSC 4 constants, for indexed, literal and default-inheritance underlines with an OSC 4 mutation and its OSC 104 restoration; theme-resolution stage only; rendered appearance is not claimed',
@@ -974,6 +1012,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'sgcl-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'erln-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ched-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'erdi-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'chrs-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
@@ -1572,10 +1611,20 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'ched-snapshots.jsonl'), JSON.stringify(charEditObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'erdi') {
+                // The erase-in-display suite runs after the character-editing suite and adds its conclusions beside the earlier ones.
+                if (!charEditObserver?.restored) throw new Error('Character-editing suite must restore before erase-in-display observations.');
+                eraseDisplayObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_ED_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeBufferState: true, includeResolvedColors: true, prefix: 'erdi', expectedPaneId: cellObserver.paneId });
+                const result = await eraseDisplayObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'erdi-snapshots.jsonl'), JSON.stringify(eraseDisplayObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             if (prefix === 'chrs') {
-                // The charsets suite runs after the character-editing suite. It requests stored cell details only: attribute
+                // The charsets suite runs after the erase-in-display suite. It requests stored cell details only: attribute
                 // strings omit wide-continuation cells and would refuse any row holding a wide character.
-                if (!charEditObserver?.restored) throw new Error('Character-editing suite must restore before charset observations.');
+                if (!eraseDisplayObserver?.restored) throw new Error('Erase-in-display suite must restore before charset observations.');
                 charsetsObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `NTILDE_CS_${runId}`, includeCellDetails: true, prefix: 'chrs', expectedPaneId: cellObserver.paneId });
                 const result = await charsetsObserver.handle(request.kind, budget, request.barrier);
@@ -1633,7 +1682,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|sgsr|sgcl|erln|ched|chrs|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|sgsr|sgcl|erln|ched|erdi|chrs|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -1749,6 +1798,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrClosureEvidence = await retainSgrClosureEvidence(output, runId, sgrClosureBundle, upstreamBundleSha256);
             eraseLineEvidence = await retainEraseLineEvidence(output, runId, eraseLineBundle, upstreamBundleSha256);
             charEditEvidence = await retainCharEditEvidence(output, runId, charEditBundle, upstreamBundleSha256);
+            eraseDisplayEvidence = await retainEraseDisplayEvidence(output, runId, eraseDisplayBundle, upstreamBundleSha256);
             charsetsEvidence = await retainCharsetsEvidence(output, runId, charsetsBundle, upstreamBundleSha256);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
@@ -1800,6 +1850,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.sgrClosureEvidence = sgrClosureEvidence;
             summary.eraseLineEvidence = eraseLineEvidence;
             summary.charEditEvidence = charEditEvidence;
+            summary.eraseDisplayEvidence = eraseDisplayEvidence;
             summary.charsetsEvidence = charsetsEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
@@ -1840,7 +1891,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, charsetsEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, charsetsEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

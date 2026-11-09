@@ -1,12 +1,12 @@
 // Explicitly versioned collector extension for the charset qualification
-// (charsets.utf8, charsets.dec-special, charsets.dec-line-drawing and charsets.g0-g1-switching). This is a fourteenth
-// digest-checked derivation layered on top of the character-editing grading extension: the pinned bundle, the owned adapter
+// (charsets.utf8, charsets.dec-special, charsets.dec-line-drawing and charsets.g0-g1-switching). This is a fifteenth
+// digest-checked derivation layered on top of the erase-in-display grading extension: the pinned bundle, the owned adapter
 // and every earlier grading extension stay byte-for-byte unchanged, and each graded result carries this extension's
 // identity so it can never be presented as stock output.
 //
 // The extension adds no probe of its own. It exposes the PINNED termless probe definitions of the four contracted cases
 // so live, independently observed cells can be graded by the collector's own criteria. Derivation refuses unless the
-// retained character-editing extension still contains the exact pinned registrations (each with its capture-only terminal
+// retained erase-in-display extension still contains the exact pinned registrations (each with its capture-only terminal
 // path and its cursor-query path, neither of which ever carries a verdict) and the parserStateResult helper they share,
 // each verbatim and once.
 import { charsetsCaseIds } from './charsets-contracts.mjs';
@@ -23,16 +23,16 @@ const pinnedCharsetsSeams = Object.freeze([
     "      ...probe(\"charsets.g0-g1-switching\", (ctx) => {\n        const expected = \"G0 ASCII l, SO-selected G1 DEC l\\u2192U+250C, then SI-selected G0 ASCII l, within A/Z controls\";\n        if (!Number.isSafeInteger(ctx.cols) || ctx.cols < 5) {\n          return parserStateResult(null, expected, { cols: ctx.cols }, \"Need at least five measured columns for G0/G1 controls\");\n        }\n        try {\n          ctx.feed(\"\\x0F\\x1B(B\\x1B)B\\x1B[1;1H\\x1B[2KAlllZ\");\n          const before = Array.from({ length: 5 }, (_, col) => ctx.getCell(0, col).char);\n          if (before.join(\"\") !== \"AlllZ\") {\n            return parserStateResult(null, expected, { before }, \"ASCII seed was not measured before G0/G1 switching\");\n          }\n          ctx.feed(\"\\x1B[1;2H\");\n          const cursor = ctx.getCursor();\n          const setup = [{ x: cursor.x, y: cursor.y }];\n          if (cursor.x !== 1 || cursor.y !== 0) {\n            return parserStateResult(null, expected, { before, setup }, \"Target CUP did not reach G0/G1 switching cells\");\n          }\n          ctx.feed(\"\\x1B(B\\x1B)0l\\x0El\\x0Fl\");\n          const after = Array.from({ length: 5 }, (_, col) => ctx.getCell(0, col).char);\n          const controlsValid = after[0] === \"A\" && after[4] === \"Z\";\n          return parserStateResult(controlsValid ? after[1] === \"l\" && after[2] === \"\\u250C\" && after[3] === \"l\" : null, expected, { before, setup, after }, controlsValid ? undefined : \"ASCII A/Z control changed after G0/G1 switching\");\n        } finally {\n          ctx.feed(\"\\x0F\\x1B(B\\x1B)B\");\n        }\n      }, async (ctx) => {\n        if (!Number.isSafeInteger(ctx.rows) || !Number.isSafeInteger(ctx.cols) || ctx.rows < 1 || ctx.cols < 2) {\n          return {\n            pass: false,\n            observation: {\n              outcome: \"inconclusive\",\n              reason: \"insufficient-evidence\",\n              evidence: \"none\",\n              note: `Charset fixture needs at least 1x2, measured ${ctx.rows}x${ctx.cols}`\n            }\n          };\n        }\n        ctx.write(\"\\x1B[1;1H\\x1B[2K\");\n        ctx.write(\"\\x1B(0\");\n        ctx.write(\"l\");\n        ctx.write(\"\\x1B(B\");\n        const pos = await ctx.queryCursorPosition();\n        if (!pos) {\n          return {\n            pass: false,\n            note: \"No cursor response\",\n            observation: { outcome: \"inconclusive\", reason: \"no-response\", evidence: \"query\" }\n          };\n        }\n        return {\n          pass: false,\n          response: JSON.stringify(pos),\n          note: \"Cursor movement does not verify charset glyph rendering or mapping\",\n          observation: {\n            outcome: \"inconclusive\",\n            reason: \"insufficient-evidence\",\n            evidence: \"consumed\",\n            note: \"Cursor movement does not verify charset glyph rendering or mapping\"\n          }\n        };\n      }),\n      termNeedsGeometry: true,\n      termlessObservationEvidence: \"parser-state\"",
     "      ...probe(\"charsets.dec-line-drawing\", (ctx) => {\n        const expected = \"DEC jklmqx map exactly to \\u2518\\u2510\\u250C\\u2514\\u2500\\u2502 while trailing ASCII j remains unchanged\";\n        if (!Number.isSafeInteger(ctx.cols) || ctx.cols < 7) {\n          return parserStateResult(null, expected, { cols: ctx.cols }, \"Need at least seven measured columns for line-drawing controls\");\n        }\n        try {\n          ctx.feed(\"\\x0F\\x1B(B\\x1B)B\\x1B[1;1H\\x1B[2Kjklmqxj\");\n          const before = Array.from({ length: 7 }, (_, col) => ctx.getCell(0, col).char);\n          if (before.join(\"\") !== \"jklmqxj\") {\n            return parserStateResult(null, expected, { before }, \"ASCII seed was not measured before line drawing\");\n          }\n          ctx.feed(\"\\x1B[1;1H\");\n          const cursor = ctx.getCursor();\n          const setup = [{ x: cursor.x, y: cursor.y }];\n          if (cursor.x !== 0 || cursor.y !== 0) {\n            return parserStateResult(null, expected, { before, setup }, \"Target CUP did not reach line-drawing start cell\");\n          }\n          ctx.feed(\"\\x1B(0jklmqx\\x1B(B\");\n          const after = Array.from({ length: 7 }, (_, col) => ctx.getCell(0, col).char);\n          const controlsValid = after[6] === \"j\";\n          return parserStateResult(controlsValid ? after.slice(0, 6).join(\"\") === \"\\u2518\\u2510\\u250C\\u2514\\u2500\\u2502\" : null, expected, { before, setup, after }, controlsValid ? undefined : \"Trailing ASCII j control changed after DEC line drawing\");\n        } finally {\n          ctx.feed(\"\\x0F\\x1B(B\\x1B)B\");\n        }\n      }, async (ctx) => {\n        if (!Number.isSafeInteger(ctx.rows) || !Number.isSafeInteger(ctx.cols) || ctx.rows < 1 || ctx.cols < 7) {\n          return {\n            pass: false,\n            observation: {\n              outcome: \"inconclusive\",\n              reason: \"insufficient-evidence\",\n              evidence: \"none\",\n              note: `Charset fixture needs at least 1x7, measured ${ctx.rows}x${ctx.cols}`\n            }\n          };\n        }\n        ctx.write(\"\\x1B[1;1H\\x1B[2K\");\n        ctx.write(\"\\x1B(0\");\n        ctx.write(\"jklmqx\");\n        ctx.write(\"\\x1B(B\");\n        const pos = await ctx.queryCursorPosition();\n        if (!pos) {\n          return {\n            pass: false,\n            note: \"No cursor response\",\n            observation: { outcome: \"inconclusive\", reason: \"no-response\", evidence: \"query\" }\n          };\n        }\n        return {\n          pass: false,\n          response: JSON.stringify(pos),\n          note: \"Cursor movement does not verify charset glyph rendering or mapping\",\n          observation: {\n            outcome: \"inconclusive\",\n            reason: \"insufficient-evidence\",\n            evidence: \"consumed\",\n            note: \"Cursor movement does not verify charset glyph rendering or mapping\"\n          }\n        };\n      }),\n      termNeedsGeometry: true,\n      termlessObservationEvidence: \"parser-state\"",
     // the retained previous layer's exports
-    'export const ntildeCharEditAdapter = Object.freeze({',
-    'export function ntildeRunCharEditTermless(probeId, ctx) {',
+    'export const ntildeEraseDisplayAdapter = Object.freeze({',
+    'export function ntildeRunEraseDisplayTermless(probeId, ctx) {',
 ]);
 
 /** The pinned seams, exposed so portable tests can build a synthetic layered source. */
 export const charsetsSeams = pinnedCharsetsSeams;
 
-/** Derive the charsets grading extension from the character-editing grading extension. */
-export function adaptCharsetsCollector(charEditSource) {
-    const source = String(charEditSource);
+/** Derive the charsets grading extension from the erase-in-display grading extension. */
+export function adaptCharsetsCollector(eraseDisplaySource) {
+    const source = String(eraseDisplaySource);
     for (const seam of pinnedCharsetsSeams) {
         if (source.split(seam).length !== 2) throw new Error('Pinned charsets probe seam changed; refusing derivation.');
     }
@@ -40,7 +40,7 @@ export function adaptCharsetsCollector(charEditSource) {
     return source + `
 
 // Local charsets grading extension ${JSON.stringify(charsetsAdapterId)}.
-// Derived from the character-editing grading extension; probe definitions, policy
+// Derived from the erase-in-display grading extension; probe definitions, policy
 // gates and stock grading remain intact.
 export const ntildeCharsetsAdapter = Object.freeze({
   id: ${JSON.stringify(charsetsAdapterId)},
