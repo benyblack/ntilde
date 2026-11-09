@@ -202,5 +202,10 @@
     "savedResetCollectorSourceSha256": "saved-reset-collector.mjs",
     "savedResetGradingSourceSha256": "saved-reset-grading.mjs",
     "savedResetGradingCollectorSourceSha256": "saved-reset-grading-collector.mjs",
-    "savedResetReceiptSourceSha256": "saved-reset-receipt.mjs"
+    "savedResetReceiptSourceSha256": "saved-reset-receipt.mjs",
+    "eraseAttrsRegionContractsSourceSha256": "erase-attrs-region-contracts.mjs",
+    "eraseAttrsRegionCollectorSourceSha256": "erase-attrs-region-collector.mjs",
+    "eraseAttrsRegionGradingSourceSha256": "erase-attrs-region-grading.mjs",
+    "eraseAttrsRegionGradingCollectorSourceSha256": "erase-attrs-region-grading-collector.mjs",
+    "eraseAttrsRegionReceiptSourceSha256": "erase-attrs-region-receipt.mjs"
 }
