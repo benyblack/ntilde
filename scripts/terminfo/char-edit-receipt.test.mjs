@@ -126,6 +126,7 @@ const syntheticResetExtension = adaptSgrResetCollector(syntheticUnderlineColorEx
 const syntheticClosureExtension = adaptSgrClosureCollector(syntheticResetExtension);
 const syntheticEraseExtension = adaptEraseLineCollector(syntheticClosureExtension);
 
+/** Build a complete synthetic run directory (every predecessor layer plus this suite), hand it to `action`, then remove it. */
 function fixture(action) {
     const output = mkdtempSync(join(tmpdir(), 'nt-ched-receipt-'));
     const scratch = join(output, 'removed-fixture');

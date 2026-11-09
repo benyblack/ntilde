@@ -332,6 +332,7 @@ function gradeCharEdit(contract, observation) {
     return contract.family === 'repeat' ? gradeRepeat(contract, observation) : gradeShift(contract, observation);
 }
 
+/** Grade an ICH/DCH case: validate every control seed first (inconclusive on a bad seed), then the pinned edit and each control (unsupported on a measured mismatch). */
 function gradeShift(contract, observation) {
     const { seed, cursor, edited, wideBefore, wide, edgeBefore, edge, attrBefore, attr, pen } = observation;
     const width = seed.cols, notes = contract.notes;
@@ -365,6 +366,7 @@ function gradeShift(contract, observation) {
     return { outcome: 'supported' };
 }
 
+/** Grade the REP case: validate the seed, cursor and X setup and every control seed first, then the repeated row, cursor, wide row and attribute control. */
 function gradeRepeat(contract, observation) {
     const { seed, target, before, repeated, wideBefore, wide, attrBefore, attr, pen } = observation;
     const width = seed.cols, notes = contract.notes;
