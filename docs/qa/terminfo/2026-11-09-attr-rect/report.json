@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-attr-rect-graded-v1",
+  "runId": "7865160beae8b2e951c1b134ec725a36",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-attr-rect-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-erase-attrs-region-grading-v1",
+    "bundleSha256": "fd4ffee6c7a817b2c0cf143a80585986a13df42d3844f2958d933bcc2d436bd9",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 termless criteria for editing.deccara (`ESC[1;1;3;5;7$r` over aaaaaZ/bbbbbY/cccccX), editing.decrara (`ESC[1;1;3;5;7$t` over the inverse-seeded rows) and editing.decsace (`ESC[1;1H ESC[2*x`, inconclusive by design in the pinned probe) replayed byte-exactly on a disposable App and graded on parent-journaled readScreen stored cells, cursor, attribute details and buffer facts. The pinned DECCARA/DECRARA fixtures run at the default extent, which the VT510 reference makes the stream, so their right-flank control is expected to fail there; those pinned verdicts are preserved and the separately identified effect contracts (ntilde.attr-rect.effect/v1) are graded from an independent oracle: stream and rectangle extents on the pinned fixtures, set-versus-replace, clear, toggle and restoration, selector tables, inclusive bounds, DECOM and margins, the unchanged cursor and SGR pen, and a restoration witness. The same pinned code over the pinned bytes with the rectangle extent selected first is recorded as a labeled experiment. The DECSACE setting is never read directly. Stored state only: no resolved-color, rendered-appearance, protection or pixel claim; no stock grades.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 45,
+  "cases": [
+    "editing.deccara",
+    "editing.decrara",
+    "editing.decsace"
+  ]
+}
