@@ -193,6 +193,22 @@ namespace Ntilde.VT
             if (copiedCols > 0 && copiedCols < sourceCols && Cells[copiedCols - 1].IsWide) SetProtected(copiedCols - 1, false);
         }
 
+        /// <summary>
+        /// A wide glyph is protected as a unit. After protection arrives from outside (state import, checkpoint), a pair marked on only
+        /// one half is not a state the terminal can produce, so neither half keeps the mark; a protected half with no partner loses it.
+        /// </summary>
+        internal void NormalizeImportedWideProtection()
+        {
+            if (!HasProtectedCells) return;
+            for (int col = 0; col < Cells.Length; col++)
+            {
+                bool pair = Cells[col].IsWide && col + 1 < Cells.Length && Cells[col + 1].IsWideContinuation;
+                if (pair && IsProtected(col) != IsProtected(col + 1)) { SetProtected(col, false); SetProtected(col + 1, false); }
+                else if (!pair && IsProtected(col) && (Cells[col].IsWide || Cells[col].IsWideContinuation)
+                    && !(Cells[col].IsWideContinuation && col > 0 && Cells[col - 1].IsWide)) SetProtected(col, false);
+            }
+        }
+
         public void ClearProtection()
         {
             _protected = null;

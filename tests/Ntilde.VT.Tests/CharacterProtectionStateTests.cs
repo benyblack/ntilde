@@ -620,6 +620,21 @@ public sealed class CharacterProtectionStateTests
         finally { File.Delete(path); }
     }
 
+    /// <summary>A payload that marks one half of a wide pair, or a half with no partner, imports without any protected half.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void Imported_half_marked_wide_pairs_are_not_protected(int markedColumn)
+    {
+        var (live, parser) = Create(10, 4);
+        parser.Process(Esc + "[1;1H界X");
+        var state = live.ExportState(int.MaxValue);
+        state.Main.ProtectedCells = [markedColumn, 2];   // one half of the pair, and the unrelated X
+        var restored = new TerminalBuffer(10, 4);
+        restored.ImportState(state);
+        Assert.Equal("..P.......", Mask(restored, 0));
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

@@ -1263,6 +1263,7 @@ namespace Ntilde.VT
                         var restored = _viewport[r];
                         // A checkpoint wider than this buffer clips a wide glyph at the last column: its protection goes with the lost half.
                         restored.ClearProtectionOfClippedWideAnchor(restoredCols, snapshot.Cols);
+                        restored.NormalizeImportedWideProtection();
                         if (!restored.HasProtectedCells) continue;
                         // Protected cells in the columns the snapshot did not replace are authored content: keep their extent.
                         for (int c = restoredCols; c < Cols; c++) if (restored.IsProtected(c)) restored.NoteColumnsWritten(c + 1);
