@@ -62,8 +62,8 @@ is recorded with both verdicts (`contract-stricter-than-pinned` and the like).
 
 ## Measurement
 
-Scripts `366a7463` (the committed tree, measured from the private captured source snapshot); the App source is unchanged since `c16997c2` (the Release
-sidecar was built from this checkout with no App change). Owned run `f2fdd9890744a48faac76ae92380bca5`, taken through the shared desktop lock, receipt
+Scripts `d99b2860` (the committed tree, measured from the private captured source snapshot); the App source is unchanged since `c16997c2` (the Release
+sidecar was built from this checkout with no App change). Owned run `75058e84cdb44ad5dcb3393c58bb0b88`, taken through the shared desktop lock, receipt
 schema 33, source policy v27 (inventory v34, 214 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
@@ -95,7 +95,9 @@ conclusion named actual scrollback as a measured layer although only its preserv
 were fixed with behavior-preserving refactors, so the measurement was repeated on the exact scripts; (3) run `699523bf75e5c19de68e6fcd71258660` (scripts `70aa8518`,
 receipt 32, policy v26), complete, both cases supported, superseded because main meanwhile merged the erase-attributes/margins layer on the same policy and schema, so this
 batch was restacked as the twentieth extension and re-measured; (4) run `57427dd644d24dbfce145f1c8da881ab`, failed, not evidence: the owner stopped responding in the image suite after this
-batch's suite had completed its frames, no receipt, repeated unchanged; (5) the final run above.
+batch's suite had completed its frames, no receipt, repeated unchanged; (5) run `f2fdd9890744a48faac76ae92380bca5` (scripts `366a7463`, receipt 33, policy v27), complete, both cases supported, superseded after CodeRabbit review because an oversized ECH
+count was only observed, so a spill past the line end could be masked by the next clear; it became a graded read; (6) and (7) two starts that failed before any collection
+(the disposable App aborted because the desktop display was asleep), retained as failed attempts and repeated unchanged with the display kept awake; (8) the final run above.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (65 unique ids, including the saved-state/reset suite with its
 two preserved pinned-inconclusive verdicts beside their supported effect contracts); the separate 10/10 truecolor-literal finding; the separate 3/3

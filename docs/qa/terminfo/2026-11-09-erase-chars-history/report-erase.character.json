@@ -323,7 +323,7 @@
         "totalLines": 40
       },
       "wideOversized": {
-        "kind": "observed",
+        "kind": "measured",
         "matchesModel": true,
         "screen": "main",
         "margins": [
@@ -440,13 +440,12 @@
       }
     },
     "spellingControls": {
-      "policy": "observed, not graded: separate ECH spellings and counts, kept distinct from the pinned explicit-3 spelling",
+      "policy": "observed, not graded: separate ECH spellings, kept distinct from the pinned explicit-3 spelling",
       "names": [
         "omitted",
         "explicit0",
         "explicit1",
-        "explicit5",
-        "wideOversized"
+        "explicit5"
       ]
     },
     "attributes": {

@@ -229,14 +229,16 @@ test('prior publications still rederive beside this batch, without this suite', 
         assert.equal(published.receipt.eraseCharsHistoryEvidence, undefined, name);
     }
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 4);
+    assert.equal(attempts.length, 7);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
-    // Three complete, superseded runs and one failed attempt that is not evidence.
-    for (const attempt of attempts.slice(0, 3)) {
-        assert.equal(attempt.receiptCompleted, true);
-        assert.deepEqual(attempt.verdicts, { 'erase.character': 'supported', 'erase.screen.scrollback': 'supported' });
-        assert.match(attempt.outcome, /superseded/);
+    // Four complete, superseded runs and three failed attempts that are not evidence.
+    for (const index of [0, 1, 2, 4]) {
+        assert.equal(attempts[index].receiptCompleted, true, String(index));
+        assert.deepEqual(attempts[index].verdicts, { 'erase.character': 'supported', 'erase.screen.scrollback': 'supported' });
+        assert.match(attempts[index].outcome, /superseded/);
     }
-    assert.equal(attempts[3].receiptCompleted, false);
-    assert.match(attempts[3].outcome, /failed, not evidence/);
+    for (const index of [3, 5, 6]) {
+        assert.equal(attempts[index].receiptCompleted, false, String(index));
+        assert.match(attempts[index].outcome, /failed/);
+    }
 });

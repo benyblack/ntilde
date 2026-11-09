@@ -3,7 +3,7 @@
     "start": {
       "index": 0,
       "kind": "echh-start",
-      "paneId": "acecc350-c9c3-4f46-ad4f-914df4410b3c",
+      "paneId": "4d841cf1-6fd5-49b2-9932-caab409719f2",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -381,13 +381,13 @@
     "bind": {
       "index": 1,
       "kind": "echh-bind",
-      "paneId": "acecc350-c9c3-4f46-ad4f-914df4410b3c",
+      "paneId": "4d841cf1-6fd5-49b2-9932-caab409719f2",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_EH_f2fdd9890744a48faac76ae92380bca5",
+          "NTILDE_EH_75058e84cdb44ad5dcb3393c58bb0b88",
           "",
           "",
           "",
@@ -754,12 +754,12 @@
           "lines": []
         }
       },
-      "sha256": "166923f3fba0f92ea6beb6f078d2878cf2beb768f40d35e027de3db23043e613"
+      "sha256": "2b1a0237b9ce3b60aa595e83b22c46e27ae008c38116a6bc4d8bd07880d76286"
     },
     "finish": {
       "index": 27,
       "kind": "echh-finish",
-      "paneId": "acecc350-c9c3-4f46-ad4f-914df4410b3c",
+      "paneId": "4d841cf1-6fd5-49b2-9932-caab409719f2",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,

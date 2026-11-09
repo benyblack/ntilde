@@ -1383,20 +1383,20 @@
       ],
       "evidence": {
         "files": 33,
-        "bytes": 357522,
-        "sha256": "b8be22c4a88e3b06b1336e86cd54a73f9746c2b7eb321cadf9a54cddc7d1c61a"
+        "bytes": 359001,
+        "sha256": "fdf45370d0e11f050b5ecc47e4b3b8421d5d06c62be0b1e9fea304acc52dbc48"
       },
       "receipt": {
         "schemaVersion": 33,
-        "runId": "f2fdd9890744a48faac76ae92380bca5",
+        "runId": "75058e84cdb44ad5dcb3393c58bb0b88",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "a40047e08d380b75a6b2fb1f2d1c2032447cc85c184929330bc94259766a1874"
+          "sha256": "c6319cad2f048d49b4b016195f6692676d543ed8c46a9b2efc191698d3a770bf"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-erase-chars-history-graded-v1",
           "file": "echh-observations.json",
-          "sha256": "0088cc9b0c045d5e749dfbb5d58f0f7ea4ff9afd028c28d91139b8b9ed133118",
+          "sha256": "4a8f473c0bc8500fdf1892b4b4560906c80e8c34455bf3a33a90fab20230e35b",
           "runFile": "echh-run.json",
           "runSha256": "63ba07b338e322b1d4298994cfc380f589ec394c56768da228320004f081f113",
           "counts": {
@@ -1406,19 +1406,19 @@
         }
       },
       "run": {
-        "ownedRunId": "f2fdd9890744a48faac76ae92380bca5",
-        "measuredAt": "2026-11-09T16:07:06.909Z",
+        "ownedRunId": "75058e84cdb44ad5dcb3393c58bb0b88",
+        "measuredAt": "2026-11-09T16:46:36.618Z",
         "appRevision": "c16997c2007c65c2102a942a05b7404e1f800c2c",
         "appVersion": "0.12.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "366a746358492fe4fcdf4882a95b7056336d2c3a",
+        "scriptsRevision": "d99b28609c56c9b9479e7fdc34b7efd37ee04c24",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "f200cd6c26279d33eb93f7f89b461bb170cae6ee691bd38d0e9b26a423057c4b",
+        "collectorAdapterBundleSha256": "b7d4b188b26375002c783463e8384b0085ffde0f571a09f2cfc6dd72083e59c1",
         "gradingAdapterId": "ntilde-owned-erase-chars-history-grading-v1",
-        "gradingAdapterBundleSha256": "cf0be66bc4a21a6957b1f6da5233d3f2eab1c66b8b61cb897bfd2c52662fca09",
+        "gradingAdapterBundleSha256": "31292743551c48050bec799fe87154a8c473f50e1e4db336ce8abd363a4d8670",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v27",
-        "sourceSnapshotManifestSha256": "be69ebc19ea1931a7b658147584f9314e1a63a93935777e85b653eb5eb605868"
+        "sourceSnapshotManifestSha256": "03f442139bf50feeb988bdb06af8601abbc7f94b195c6ae8e6b908479ad405c0"
       },
       "stock": {
         "basis": "carried-forward",
@@ -1433,7 +1433,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/erase-chars-history-publication.test.mjs",
-        "testSha256": "e22ab96f2ad645e62cb544ee1cf0dc8d74b4aa6da34508eee17ab2c22b2d4623"
+        "testSha256": "52a6a3331ba7cb9d089c7293b991be10e25e0f75c2186da26232d3135bb925fd"
       }
     }
   ],
