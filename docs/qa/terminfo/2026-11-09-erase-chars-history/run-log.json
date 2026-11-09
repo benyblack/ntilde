@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-erase-chars-history-grading-v1",
+  "probeIds": [
+    "erase.character",
+    "erase.screen.scrollback"
+  ],
+  "caseIds": [
+    "erase.character",
+    "erase.screen.scrollback"
+  ]
+}

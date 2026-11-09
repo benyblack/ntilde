@@ -61,6 +61,9 @@ test('the published erase-character / saved-lines evidence re-derives exactly fr
     assert.equal(report.snapshots.length, 3 + 15 + 10);
     assert.deepEqual(report.cases.map(item => item.caseId), [...eraseCharsHistoryCaseIds]);
     assert.deepEqual(report.cases.map(item => item.conclusion.outcome), ['supported', 'supported']);
+    // Each case names the layer it measured: ECH stored cells and attributes; ED 3 stored cells plus the actual saved lines.
+    assert.equal(byId(report, 'erase.character').conclusion.evidence, 'owned-stored-cells');
+    assert.equal(byId(report, 'erase.screen.scrollback').conclusion.evidence, 'owned-stored-cells-and-actual-scrollback');
 });
 
 test('the pinned probes and the contract agree on both exact ids; nothing diverges', () => {
@@ -135,6 +138,8 @@ test('ED 3: nonempty ordered saved lines before, empty after; viewport, cursor, 
     assert.deepEqual(roleOf(report, id, 'before').cursor, [39, 0]);
     assert.equal(roleOf(report, id, 'after').historyCount, 0);
     assert.deepEqual(roleOf(report, id, 'after').cursor, [39, 0]);
+    // The pinned total is the screen rows plus the saved physical rows.
+    assert.deepEqual(['initial', 'before', 'after'].map(role => roleOf(report, id, role).totalLines), [40, 43, 40]);
     // The marked control: nine ordered rows, known by their source-written contents, are gone afterwards while everything else stays.
     const seed = roleOf(report, id, 'seed'), erased = roleOf(report, id, 'erase3');
     assert.deepEqual(seed.history, ['0-8: HIST-0..8']);
@@ -236,6 +241,10 @@ test('prior publications still rederive beside this batch, without this suite', 
         assert.equal(published.receipt.eraseCharsHistoryEvidence, undefined, name);
     }
     const { attempts, context } = load().summary;
-    assert.ok(Array.isArray(attempts));
-    for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
+    assert.equal(attempts.length, 1);
+    for (const attempt of attempts) {
+        assert.notEqual(attempt.runId, context.runId);
+        assert.deepEqual(attempt.verdicts, { 'erase.character': 'supported', 'erase.screen.scrollback': 'supported' });
+        assert.match(attempt.outcome, /superseded before review/);
+    }
 });

@@ -9,11 +9,11 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 63 |
-| Suite claims (an id covered by two suites has two claims) | 65 |
+| Unique benchmark ids with qualified effect evidence | 65 |
+| Suite claims (an id covered by two suites has two claims) | 67 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 63 |
-| Supported by both the pinned probe and the effect contract | 58 |
+| Effect contract supported | 65 |
+| Supported by both the pinned probe and the effect contract | 60 |
 | Effect supported, pinned verdict inconclusive | 5 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
@@ -26,10 +26,10 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Effect-unqualified (168 − 63) | 105 |
-| Not pinned-supported (168 − 58) | 110 |
+| Effect-unqualified (168 − 65) | 103 |
+| Not pinned-supported (168 − 60) | 108 |
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 110 not-pinned-supported inconclusive cases are the 111 cases outside the 86 stock-supported plus 58 pinned-supported ones.
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 108 not-pinned-supported inconclusive cases are the 109 cases outside the 86 stock-supported plus 60 pinned-supported ones.
 
 ### Ungraded diagnostic
 
@@ -56,6 +56,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `charsets` | 4 | v1 | passed | 29 | `4e32f6d9` | v23 | 54 | `dc1af2d4` |
 | `scrollback` | 9 | v1 | passed | 30 | `c16997c2` | v24 | 67 | `15fa0b19` |
 | `saved-reset` | 5 | v1 | passed | 31 | `4e32f6d9` | v25 | 54 | `566a16ef` |
+| `erase-chars-history` | 2 | v1 | passed | 32 | `c16997c2` | v26 | 33 | `19ae7fbe` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -82,6 +83,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `charsets` | collected-run-id-recorded | `3d8b2d87` | 168/86/1 | n/a |
 | `scrollback` | collected-run-id-recorded | `5cb90de3` | 168/86/1 | n/a |
 | `saved-reset` | collected-run-id-recorded | `02be5c60` | 168/86/1 | n/a |
+| `erase-chars-history` | carried-forward | n/a | carried (see note) | n/a |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -99,12 +101,14 @@ The stock collector reports `suiteComplete=false` in every run.
 | `editing.insert-chars` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
 | `editing.insert-lines` | inconclusive | supported | supported | stored-state + app-resolved-color | line-edit | - |
 | `editing.repeat-char` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
+| `erase.character` | inconclusive | supported | supported | stored-state | erase-chars-history | - |
 | `erase.line.all` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.line.left` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.line.right` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.screen.above` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
 | `erase.screen.all` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
 | `erase.screen.below` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
+| `erase.screen.scrollback` | inconclusive | supported | supported | stored-state + actual-scrollback | erase-chars-history | - |
 | `modes.alt-screen.exit` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |
 | `modes.altscreen-1047` | inconclusive | inconclusive | supported | stored-state + app-resolved-color | saved-reset | saved-reset: pinned-inconclusive-by-design |
 | `modes.altscreen-47` | inconclusive | inconclusive | supported | stored-state + app-resolved-color | saved-reset | saved-reset: pinned-inconclusive-by-design |

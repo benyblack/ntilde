@@ -855,6 +855,15 @@ The pinned `?47` and `?1047` verdicts are inconclusive by design and stay that w
 (`ntilde.saved-reset.effect/v1`) are graded and recorded separately. `reset.sgr` is a different case from `sgr.reset`. `reset.method`,
 RIS and the pinned DECALN pixel path are not claimed. Receipt schema 31 and source policy v25 (204 files) bind it; earlier policies stay frozen.
 
+### Erase-character and saved-lines qualification (ECH, ED 3)
+
+The [erase-character/saved-lines batch](terminfo/2026-11-09-erase-chars-history-qualification.md) grades exactly `erase.character` (ECH `ESC[3X`) and
+`erase.screen.scrollback` (ED 3 `ESC[3J`) through a nineteenth layered collector extension (`ntilde-owned-erase-chars-history-grading-v1`). The cells,
+cursor, margins, modes, active buffer and the actual ordered saved lines are observed independently on a disposable App's main screen; ECH is told apart from
+DCH, whole-line erasure and a no-op, ED 3 from ED 2, ordinary scrolling and an already-empty history. Other ECH spellings are labeled observations. Physical
+rows only; the pinned pixel/query paths never carry a verdict and are not qualified. Receipt schema 32 and source policy v26 (209 files) bind it; earlier
+policies stay frozen.
+
 ### Erase-in-display qualification (ED 0, ED 1, ED 2)
 
 The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
