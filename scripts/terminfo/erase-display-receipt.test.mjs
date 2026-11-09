@@ -73,25 +73,26 @@ test('the shared finalizer publishes receipt schema 26 beside every predecessor 
     assert.equal(receipt.sgrUnderlineEvidence, f.underlineBinding);
 }));
 
+/** Every predecessor layer: its label, declaration key, receipt binding key and, where the test holds its synthetic extension, the text whose digest is declared. */
+const layers = [
+    ['erase-in-line', 'eraseLine', 'binding', syntheticEraseLineExtension, 'ntilde-owned-erase-line-grading-v1'],
+    ['SGR closure', 'sgrClosure', 'closureBinding', syntheticClosureExtension, 'ntilde-owned-sgr-closure-grading-v1'],
+    ['SGR selective-reset', 'sgrReset', 'resetBinding', syntheticResetExtension, 'ntilde-owned-sgr-selective-reset-grading-v1'],
+    ['SGR-underline-color', 'sgrUnderlineColor', 'underlineColorBinding', syntheticUnderlineColorExtension, 'ntilde-owned-sgr-underline-color-grading-v1'],
+    ['SGR-underline', 'sgrUnderline', 'underlineBinding', syntheticUnderlineExtension, 'ntilde-owned-sgr-underline-grading-v1'],
+    ['SGR-palette', 'sgrPalette', 'paletteBinding', syntheticPaletteExtension, 'ntilde-owned-sgr-palette-grading-v1'],
+    ['SGR-truecolor', 'sgrTruecolor', 'truecolorBinding'], ['SGR-attributes', 'sgrAttrs', 'attrsBinding'],
+    ['SGR-RGB', 'sgrRgb', 'rgbBinding'], ['SGR-colors', 'sgrColors', 'colorsBinding'],
+];
+const rewriteDisplayReport = (f, edit) => {
+    edit(f.displayReport);
+    f.write('erdi-observations.json', f.displayReport);
+    f.displayBinding.sha256 = hash(readFileSync(join(f.output, 'erdi-observations.json')));
+};
 for (const [name, mutate] of [
     ['changed observation bytes', f => f.write('erdi-observations.json', { changed: true })],
     ['changed run log bytes', f => f.write('erdi-run.json', { changed: true })],
     ['changed adapter bytes', f => writeFileSync(join(f.output, 'collector-erdi.mjs'), Buffer.from('tampered'))],
-    ['declared SGR-underline-color layer digest drift', f => {
-        const renamed = Buffer.from(syntheticUnderlineColorExtension.replace('ntilde-owned-sgr-underline-color-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrUnderlineColorBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['declared SGR-underline layer digest drift', f => {
-        const renamed = Buffer.from(syntheticUnderlineExtension.replace('ntilde-owned-sgr-underline-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrUnderlineBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['declared SGR-palette layer digest drift', f => {
-        const renamed = Buffer.from(syntheticPaletteExtension.replace('ntilde-owned-sgr-palette-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrPaletteBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
     ['foreign layered derivation', f => {
         writeFileSync(join(f.output, 'collector-adapter.mjs'), Buffer.concat([Buffer.from(syntheticOwnedAdapter), Buffer.from('// doctored\n')]));
     }],
@@ -103,45 +104,16 @@ for (const [name, mutate] of [
     ['declared contracts drift', f => { f.context.eraseDisplayContractsVersion = 2; f.write('context.json', f.context); }],
     ['missing adapter declaration', f => { delete f.context.eraseDisplayAdapterId; f.write('context.json', f.context); }],
     ['missing suite declaration', f => { delete f.context.eraseDisplaySuiteId; f.write('context.json', f.context); }],
-    ['missing erase-in-line predecessor evidence', f => { delete f.binding; }],
-    ['missing erase-in-line predecessor declaration', f => { delete f.context.eraseLineAdapterId; f.write('context.json', f.context); }],
-    ['declared erase-in-line layer digest drift', f => {
-        const renamed = Buffer.from(syntheticEraseLineExtension.replace('ntilde-owned-erase-line-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.eraseLineBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['missing SGR selective-reset predecessor declaration', f => { delete f.context.sgrResetAdapterId; f.write('context.json', f.context); }],
-    ['missing SGR closure predecessor evidence', f => { delete f.closureBinding; }],
-    ['missing SGR closure predecessor declaration', f => { delete f.context.sgrClosureAdapterId; f.write('context.json', f.context); }],
-    ['declared SGR closure layer digest drift', f => {
-        const renamed = Buffer.from(syntheticClosureExtension.replace('ntilde-owned-sgr-closure-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrClosureBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['missing SGR selective-reset predecessor evidence', f => { delete f.resetBinding; }],
-    ['declared SGR selective-reset layer digest drift', f => {
-        const renamed = Buffer.from(syntheticResetExtension.replace('ntilde-owned-sgr-selective-reset-grading-v1', 'ntilde-owned-renamed-v1'));
-        f.context.sgrResetBundleSha256 = hash(renamed);
-        f.write('context.json', f.context);
-    }],
-    ['missing SGR-underline-color predecessor declaration', f => { delete f.context.sgrUnderlineColorAdapterId; f.write('context.json', f.context); }],
-    ['missing SGR-underline-color predecessor evidence', f => { delete f.underlineColorBinding; }],
-    ['missing SGR-underline predecessor evidence', f => { delete f.underlineBinding; }],
-    ['missing SGR-truecolor predecessor evidence', f => { delete f.truecolorBinding; }],
-    ['missing SGR-palette predecessor evidence', f => { delete f.paletteBinding; }],
-    ['missing SGR-attributes predecessor evidence', f => { delete f.attrsBinding; }],
-    ['missing SGR-RGB predecessor evidence', f => { delete f.rgbBinding; }],
-    ['missing SGR-colors predecessor evidence', f => { delete f.colorsBinding; }],
-    ['report adapter digest drift', f => {
-        f.displayReport.adapter.bundleSha256 = 'a'.repeat(64);
-        f.write('erdi-observations.json', f.displayReport);
-        f.displayBinding.sha256 = hash(readFileSync(join(f.output, 'erdi-observations.json')));
-    }],
-    ['report identity drift', f => {
-        f.displayReport.cases[0].conclusion.outcome = 'inconclusive';
-        f.write('erdi-observations.json', f.displayReport);
-        f.displayBinding.sha256 = hash(readFileSync(join(f.output, 'erdi-observations.json')));
-    }],
+    ...layers.flatMap(([label, key, binding, extension, id]) => [
+        [`missing ${label} predecessor evidence`, f => { delete f[binding]; }],
+        [`missing ${label} predecessor declaration`, f => { delete f.context[`${key}AdapterId`]; f.write('context.json', f.context); }],
+        ...(extension === undefined ? [] : [[`declared ${label} layer digest drift`, f => {
+            f.context[`${key}BundleSha256`] = hash(Buffer.from(extension.replace(id, 'ntilde-owned-renamed-v1')));
+            f.write('context.json', f.context);
+        }]]),
+    ]),
+    ['report adapter digest drift', f => rewriteDisplayReport(f, report => { report.adapter.bundleSha256 = 'a'.repeat(64); })],
+    ['report identity drift', f => rewriteDisplayReport(f, report => { report.cases[0].conclusion.outcome = 'inconclusive'; })],
     ['erase-in-display artifact removal downgrade', f => {
         for (const file of ['erdi-observations.json', 'erdi-run.json', 'erdi-snapshots.jsonl', 'collector-erdi.mjs'])
             rmSync(join(f.output, file));

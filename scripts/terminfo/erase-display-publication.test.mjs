@@ -8,17 +8,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { buildEraseDisplayGradingReport } from './erase-display-grading.mjs';
 import { eraseDisplayAdapterId } from './erase-display-grading-collector.mjs';
 import { eraseDisplaySuiteId, eraseDisplayContracts } from './erase-display-contracts.mjs';
-import { asciiSgrContracts } from './ascii-sgr-contracts.mjs';
-import { sgrColorsContracts } from './sgr-colors-contracts.mjs';
-import { sgrRgbContracts } from './sgr-rgb-contracts.mjs';
-import { sgrAttrsContracts } from './sgr-attrs-contracts.mjs';
-import { sgrPaletteContracts } from './sgr-palette-contracts.mjs';
-import { sgrTruecolorContracts } from './sgr-truecolor-contracts.mjs';
-import { sgrUnderlineContracts } from './sgr-underline-contracts.mjs';
-import { sgrUnderlineColorContracts } from './sgr-underline-color-contracts.mjs';
-import { sgrResetContracts } from './sgr-reset-contracts.mjs';
-import { sgrClosureContracts } from './sgr-closure-contracts.mjs';
-import { eraseLineContracts } from './erase-line-contracts.mjs';
+
+/** The predecessor suites' contracts: each contracts module exports exactly one `...Contracts` array of cases. */
+const predecessorModules = ['ascii-sgr', 'sgr-colors', 'sgr-rgb', 'sgr-attrs', 'sgr-palette', 'sgr-truecolor', 'sgr-underline',
+    'sgr-underline-color', 'sgr-reset', 'sgr-closure', 'erase-line'];
+const predecessorContracts = (await Promise.all(predecessorModules.map(name => import(`./${name}-contracts.mjs`))))
+    .flatMap(module => Object.entries(module).find(([key, value]) => key.endsWith('Contracts') && Array.isArray(value))[1]);
 
 const dir = new URL('../../docs/qa/terminfo/2026-11-09-erase-display/', import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
@@ -172,9 +167,7 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed; the erase-in-line batch is its own suite.
-    const predecessors = [...asciiSgrContracts, ...sgrColorsContracts, ...sgrRgbContracts, ...sgrAttrsContracts, ...sgrPaletteContracts,
-        ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts, ...eraseLineContracts]
-        .map(contract => contract.caseId);
+    const predecessors = predecessorContracts.map(contract => contract.caseId);
     const expected = new Set(predecessors);
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...expected].sort());
@@ -210,11 +203,12 @@ test('prior publications still rederive beside this batch and every failed and s
     assert.equal(line.receipt.schemaVersion, 25);
     assert.equal(line.receipt.eraseDisplayEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 4);
-    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, false, false]);
+    assert.equal(attempts.length, 5);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, true, false, false]);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
     const superseded = attempts.filter(attempt => attempt.verdicts);
-    assert.equal(superseded.length, 2);
+    assert.equal(superseded.length, 3);
+    assert.match(superseded[2].outcome, /blank cells skipped/);
     assert.match(superseded[0].outcome, /excluded the 15 seeded letters/);
     assert.deepEqual(Object.values(superseded[0].verdicts), ['supported', 'supported', 'supported']);
 });

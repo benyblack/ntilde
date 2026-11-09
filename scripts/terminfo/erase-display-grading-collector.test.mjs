@@ -80,19 +80,11 @@ const haveBundle = existsSync(bundleUrl);
 test('the real pinned bundle derives through every layer and its eraseScreenResult agrees with the replay', { skip: haveBundle ? false : 'collector cache not installed' }, async () => {
     const { createHash } = await import('node:crypto');
     const { adaptCollector, upstreamBundleSha256 } = await import('./collector.mjs');
-    const layers = await Promise.all([
-        import('./grading-collector.mjs').then(m => m.adaptGradingCollector),
-        import('./sgr-colors-grading-collector.mjs').then(m => m.adaptSgrColorsCollector),
-        import('./sgr-rgb-grading-collector.mjs').then(m => m.adaptSgrRgbCollector),
-        import('./sgr-attrs-grading-collector.mjs').then(m => m.adaptSgrAttrsCollector),
-        import('./sgr-palette-grading-collector.mjs').then(m => m.adaptSgrPaletteCollector),
-        import('./sgr-truecolor-grading-collector.mjs').then(m => m.adaptSgrTruecolorCollector),
-        import('./sgr-underline-grading-collector.mjs').then(m => m.adaptSgrUnderlineCollector),
-        import('./sgr-underline-color-grading-collector.mjs').then(m => m.adaptSgrUnderlineColorCollector),
-        import('./sgr-reset-grading-collector.mjs').then(m => m.adaptSgrResetCollector),
-        import('./sgr-closure-grading-collector.mjs').then(m => m.adaptSgrClosureCollector),
-        import('./erase-line-grading-collector.mjs').then(m => m.adaptEraseLineCollector),
-    ]);
+    // Every earlier layer, in derivation order: a grading-collector module per suite, each exporting one adapt...Collector function.
+    const layerModules = ['grading', 'sgr-colors-grading', 'sgr-rgb-grading', 'sgr-attrs-grading', 'sgr-palette-grading', 'sgr-truecolor-grading',
+        'sgr-underline-grading', 'sgr-underline-color-grading', 'sgr-reset-grading', 'sgr-closure-grading', 'erase-line-grading'];
+    const layers = await Promise.all(layerModules.map(name => import(`./${name}-collector.mjs`)
+        .then(module => Object.entries(module).find(([key]) => /^adapt\w+Collector$/.test(key))[1])));
     const { replayEraseDisplayPinned } = await import('./erase-display-grading.mjs');
     const { eraseDisplayRecordingContext } = await import('./erase-display-collector.mjs');
     const { eraseDisplayContracts } = await import('./erase-display-contracts.mjs');
