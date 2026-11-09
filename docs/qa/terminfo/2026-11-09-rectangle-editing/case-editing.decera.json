@@ -1,0 +1,685 @@
+{
+  "caseId": "editing.decera",
+  "pinnedCriterion": "DECERA (ESC[1;1;3;5$z) blanks columns 1-5 of rows 1-3 and leaves column 6 unchanged, after a setup cursor of 0,0",
+  "pinnedFeeds": [
+    "\u001b[1;1HaaaaaZ\u001b[2;1HbbbbbY\u001b[3;1HcccccX",
+    "\u001b[1;1H",
+    "\u001b[1;1;3;5$z"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001b[1;1HaaaaaZ\u001b[2;1HbbbbbY\u001b[3;1HcccccX",
+      "\u001b[1;1H",
+      "\u001b[1;1;3;5$z"
+    ],
+    "demand": "every cell of the rectangle blank; everything else unchanged",
+    "minimum": {
+      "rows": 3,
+      "cols": 6
+    },
+    "note": "upstream pixel path (ESC[1;1H then the edit, then a cursor position report) is never a verdict and is not qualified"
+  },
+  "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HaaaaaZ\u001b[2;1HbbbbbY\u001b[3;1HcccccX",
+    "\u001b[1;1H",
+    "\u001b[1;1;3;5$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[2;2;2;2$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[2;3;4;6$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[0;0;0;0$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[5;7;999;999$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[4;3;2;6$z\u001b[2;6;4;3$z\u001b[1;1;7;10;1$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[1;2;2;4$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[6;3H\u001b[2;2;6;4$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1\"q\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[0\"q\u001b[4;6H\u001b[2;3;4;6$z",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-",
+    "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-\u001b[12;1H\u001b[44m\u001b[2;3;3;8$zP"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      6
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      6,
+      10
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      2
+    ],
+    [
+      5,
+      2
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      10
+    ],
+    [
+      11,
+      1
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedSequence": "\u001b[1;1;3;5$z",
+    "pinnedFeeds": [
+      "\u001b[1;1HaaaaaZ\u001b[2;1HbbbbbY\u001b[3;1HcccccX",
+      "\u001b[1;1H",
+      "\u001b[1;1;3;5$z"
+    ],
+    "initial": {
+      "ink": 0,
+      "cursor": [
+        0,
+        0
+      ],
+      "margins": [
+        0,
+        39
+      ]
+    },
+    "before": {
+      "text": [
+        "aaaaaZ__________",
+        "bbbbbY__________",
+        "cccccX__________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________"
+      ],
+      "lastRow": "________________",
+      "lastColumn": "___",
+      "ink": 18,
+      "cursor": [
+        2,
+        6
+      ],
+      "margins": [
+        0,
+        39
+      ],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "setup": {
+      "text": [
+        "aaaaaZ__________",
+        "bbbbbY__________",
+        "cccccX__________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________"
+      ],
+      "lastRow": "________________",
+      "lastColumn": "___",
+      "ink": 18,
+      "cursor": [
+        0,
+        0
+      ],
+      "margins": [
+        0,
+        39
+      ],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "edited": {
+      "text": [
+        "_____Z__________",
+        "_____Y__________",
+        "_____X__________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________"
+      ],
+      "lastRow": "________________",
+      "lastColumn": "___",
+      "ink": 3,
+      "cursor": [
+        0,
+        0
+      ],
+      "margins": [
+        0,
+        39
+      ],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "blockSeed": {
+      "text": [
+        "ABCDEFGHIJ______",
+        "KLMNOPQRST______",
+        "UVWXYZabcd______",
+        "efghijklmn______",
+        "opqrstuvwx______",
+        "yz01234567______",
+        "89!@#$%^&*______",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________"
+      ],
+      "lastRow": "________________",
+      "lastColumn": "___",
+      "ink": 70,
+      "cursor": [
+        6,
+        10
+      ],
+      "margins": [
+        0,
+        39
+      ],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "controls": {
+      "policy": "graded controls: each is one fenced write over the measured block seed, compared with the independent rectangle model over the whole screen",
+      "one": {
+        "sequences": [
+          "\u001b[2;2;2;2$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "ABCDEFGHIJ______",
+          "K_MNOPQRST______",
+          "UVWXYZabcd______",
+          "efghijklmn______",
+          "opqrstuvwx______",
+          "yz01234567______",
+          "89!@#$%^&*______",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 69,
+        "cursor": [
+          3,
+          5
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "box": {
+        "sequences": [
+          "\u001b[2;3;4;6$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "ABCDEFGHIJ______",
+          "KL____QRST______",
+          "UV____abcd______",
+          "ef____klmn______",
+          "opqrstuvwx______",
+          "yz01234567______",
+          "89!@#$%^&*______",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 58,
+        "cursor": [
+          3,
+          5
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "defaults": {
+        "sequences": [
+          "\u001b[$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 0,
+        "cursor": [
+          3,
+          5
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "zero": {
+        "sequences": [
+          "\u001b[0;0;0;0$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 0,
+        "cursor": [
+          3,
+          5
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "clip": {
+        "sequences": [
+          "\u001b[5;7;999;999$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "ABCDEFGHIJ______",
+          "KLMNOPQRST______",
+          "UVWXYZabcd______",
+          "efghijklmn______",
+          "opqrst__________",
+          "yz0123__________",
+          "89!@#$__________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 58,
+        "cursor": [
+          3,
+          5
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "noop": {
+        "sequences": [
+          "\u001b[4;3;2;6$z",
+          "\u001b[2;6;4;3$z",
+          "\u001b[1;1;7;10;1$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "ABCDEFGHIJ______",
+          "KLMNOPQRST______",
+          "UVWXYZabcd______",
+          "efghijklmn______",
+          "opqrstuvwx______",
+          "yz01234567______",
+          "89!@#$%^&*______",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 70,
+        "cursor": [
+          3,
+          5
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "origin": {
+        "sequences": [
+          "\u001b[1;2;2;4$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "ABCDEFGHIJ______",
+          "KLMNOPQRST______",
+          "U___YZabcd______",
+          "e___ijklmn______",
+          "opqrstuvwx______",
+          "yz01234567______",
+          "89!@#$%^&*______",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 64,
+        "cursor": [
+          3,
+          2
+        ],
+        "margins": [
+          2,
+          4
+        ],
+        "origin": true,
+        "insert": false,
+        "scrollback": 0
+      },
+      "margins": {
+        "sequences": [
+          "\u001b[2;2;6;4$z"
+        ],
+        "matchesModel": true,
+        "text": [
+          "ABCDEFGHIJ______",
+          "K___OPQRST______",
+          "U___YZabcd______",
+          "e___ijklmn______",
+          "o___stuvwx______",
+          "y___234567______",
+          "89!@#$%^&*______",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 55,
+        "cursor": [
+          5,
+          2
+        ],
+        "margins": [
+          2,
+          4
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      }
+    },
+    "attributes": {
+      "policy": "erased cells carry no stored attribute but a background color and cells outside keep their stored tuples (required); background fill is observed, not required",
+      "before": {
+        "text": [
+          "KEEP-TOP--______",
+          "BOLD-ROW--______",
+          "RED-ON-BLU______",
+          "PLAIN-ROW-______",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 40,
+        "cursor": [
+          3,
+          10
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "after": {
+        "text": [
+          "KEEP-TOP--______",
+          "BO______--______",
+          "RE______LU______",
+          "PLAIN-ROW-______",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "________________",
+          "P_______________"
+        ],
+        "lastRow": "________________",
+        "lastColumn": "___",
+        "ink": 41,
+        "cursor": [
+          11,
+          1
+        ],
+        "margins": [
+          0,
+          39
+        ],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "referenceMeasured": true,
+      "penMeasured": true,
+      "changedOk": true,
+      "cursorOk": true,
+      "backgroundFill": "erased cells carry the current background color"
+    },
+    "history": {
+      "policy": "observed, not graded: no pinned criterion requires scrollback behavior and the reads run on the alternate screen",
+      "scrollbackLines": [
+        0
+      ],
+      "historyLines": 0
+    },
+    "protectedText": {
+      "policy": "graded control: ordinary rectangular erase is unconditional; character protection is not exercised by DECERA and DECSERA is not claimed",
+      "text": [
+        "ABCDEFGHIJ______",
+        "KL____QRST______",
+        "UV____abcd______",
+        "ef____klmn______",
+        "opqrstuvwx______",
+        "yz01234567______",
+        "89!@#$%^&*______",
+        "________________",
+        "________________",
+        "________________",
+        "________________",
+        "________________"
+      ],
+      "lastRow": "________________",
+      "lastColumn": "___",
+      "ink": 58,
+      "cursor": [
+        3,
+        5
+      ],
+      "margins": [
+        0,
+        39
+      ],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":[[\"a\",\"a\",\"a\",\"a\",\"a\",\"Z\"],[\"b\",\"b\",\"b\",\"b\",\"b\",\"Y\"],[\"c\",\"c\",\"c\",\"c\",\"c\",\"X\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\" \",\" \",\" \",\" \",\" \",\"Z\"],[\" \",\" \",\" \",\" \",\" \",\"Y\"],[\" \",\" \",\" \",\" \",\" \",\"X\"]]}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "DECERA blanks measured 3x5 cells and preserves their measured right flank",
+        "observed": "{\"before\":[[\"a\",\"a\",\"a\",\"a\",\"a\",\"Z\"],[\"b\",\"b\",\"b\",\"b\",\"b\",\"Y\"],[\"c\",\"c\",\"c\",\"c\",\"c\",\"X\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\" \",\" \",\" \",\" \",\" \",\"Z\"],[\" \",\" \",\" \",\" \",\" \",\"Y\"],[\" \",\" \",\" \",\" \",\" \",\"X\"]]}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored ASCII cells only: exact contents of the whole screen, the cursor, observed margins, origin and insert mode, stored attribute tuples of the rectangle and the cells around it; the pen, the pinned pixel path, Unicode and wide cells, the image plane, protected-cell storage, other pages and rendered appearance are not claimed"
+  }
+}

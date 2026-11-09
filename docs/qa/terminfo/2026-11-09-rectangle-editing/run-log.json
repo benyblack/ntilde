@@ -1,0 +1,563 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-rectangle-editing-grading-v1",
+  "probeIds": [
+    "editing.decfra",
+    "editing.decera",
+    "editing.deccra"
+  ],
+  "cases": [
+    {
+      "caseId": "editing.decfra",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HaaaaaZ\u001b[2;1HbbbbbY\u001b[3;1HcccccW",
+        "\u001b[1;1H",
+        "\u001b[88;1;1;3;5$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[43;2;2;2;2$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[43;2;3;4;6$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[43$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[43;0;0;0;0$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[43;5;7;999;999$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[31;1;1;7;10$x\u001b[127;1;1;7;10$x\u001b[0;1;1;7;10$x\u001b[256;1;1;7;10$x\u001b[43;4;3;2;6$x\u001b[43;2;6;4;3$x\u001b[43;1;1;7;10;1$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[43;1;2;2;4$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[6;3H\u001b[43;2;2;6;4$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4h\u001b[4;6H\u001b[43;2;3;4;6$x",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-\u001b[12;1H\u001b[3;33;42m\u001b[43;2;3;3;8$xP",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[12;1H\u001b[38;2;10;20;30;48;2;40;50;60m\u001b[43;2;3;4;6$xP"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            2,
+            6
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            6,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            5,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            11,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            11,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.decfra",
+        "pass": true,
+        "response": "{\"before\":[\"aaaaaZ\",\"bbbbbY\",\"cccccW\"],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[\"XXXXXZ\",\"XXXXXY\",\"XXXXXW\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DECFRA fills the measured 3x5 area and preserves its measured right flank",
+            "observed": "{\"before\":[\"aaaaaZ\",\"bbbbbY\",\"cccccW\"],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[\"XXXXXZ\",\"XXXXXY\",\"XXXXXW\"]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "editing.decera",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HaaaaaZ\u001b[2;1HbbbbbY\u001b[3;1HcccccX",
+        "\u001b[1;1H",
+        "\u001b[1;1;3;5$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[2;2;2;2$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[2;3;4;6$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[0;0;0;0$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[5;7;999;999$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[4;3;2;6$z\u001b[2;6;4;3$z\u001b[1;1;7;10;1$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[1;2;2;4$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[6;3H\u001b[2;2;6;4$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1\"q\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[0\"q\u001b[4;6H\u001b[2;3;4;6$z",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-\u001b[12;1H\u001b[44m\u001b[2;3;3;8$zP"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            2,
+            6
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            6,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            5,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            11,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.decera",
+        "pass": true,
+        "response": "{\"before\":[[\"a\",\"a\",\"a\",\"a\",\"a\",\"Z\"],[\"b\",\"b\",\"b\",\"b\",\"b\",\"Y\"],[\"c\",\"c\",\"c\",\"c\",\"c\",\"X\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\" \",\" \",\" \",\" \",\" \",\"Z\"],[\" \",\" \",\" \",\" \",\" \",\"Y\"],[\" \",\" \",\" \",\" \",\" \",\"X\"]]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DECERA blanks measured 3x5 cells and preserves their measured right flank",
+            "observed": "{\"before\":[[\"a\",\"a\",\"a\",\"a\",\"a\",\"Z\"],[\"b\",\"b\",\"b\",\"b\",\"b\",\"Y\"],[\"c\",\"c\",\"c\",\"c\",\"c\",\"X\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\" \",\" \",\" \",\" \",\" \",\"Z\"],[\" \",\" \",\" \",\" \",\" \",\"Y\"],[\" \",\" \",\" \",\" \",\" \",\"X\"]]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "editing.deccra",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABCDE.........\u001b[2;1HFGHIJ.........\u001b[3;1H..............\u001b[4;1H..............\u001b[5;1H.........12345\u001b[6;1H.........67890",
+        "\u001b[1;1H",
+        "\u001b[1;1;2;5;1;5;10$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[1;1;2;4;1;5;6$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[1;1;1;6;1;1;3$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[2;3;2;8;1;2;1$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[1;1;4;5;1;2;1$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[3;1;6;5;1;2;1$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[1;1;3;5;1;2;2$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[$v\u001b[0;0;0;0;0;0;0;0$v\u001b[1;1;999;999;1;1;1;1$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[1;1;2;3;1;999;1$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[1;1;2;3;1;1;999$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[3;1;2;5;1;1;1$v\u001b[1;5;2;4;1;1;1$v\u001b[1;1;2;5;1;5;10;1;1$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[4;6H\u001b[1;1;2;5;2;5;6$v\u001b[1;1;2;5;1;5;6;2$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[1;1;2;3;1;3;5$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[2;1HKLMNOPQRST\u001b[3;1HUVWXYZabcd\u001b[4;1Hefghijklmn\u001b[5;1Hopqrstuvwx\u001b[6;1Hyz01234567\u001b[7;1H89!@#$%^&*\u001b[3;5r\u001b[6;3H\u001b[2;2;6;4;1;3;1$v",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-",
+        "\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-\u001b[12;1H\u001b[3;33;42m\u001b[1;1;4;10;1;7;1$vP"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            5,
+            14
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            6,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            5,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            11,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.deccra",
+        "pass": true,
+        "response": "{\"before\":[\"ABCDE.........\",\"FGHIJ.........\",\"..............\",\"..............\",\".........12345\",\".........67890\"],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[\"ABCDE.........\",\"FGHIJ.........\",\"..............\",\"..............\",\".........ABCDE\",\".........FGHIJ\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DECCRA copies measured 2x5 source cells to row 5 column 10 without changing the source",
+            "observed": "{\"before\":[\"ABCDE.........\",\"FGHIJ.........\",\"..............\",\"..............\",\".........12345\",\".........67890\"],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[\"ABCDE.........\",\"FGHIJ.........\",\"..............\",\"..............\",\".........ABCDE\",\".........FGHIJ\"]}"
+          }
+        ]
+      }
+    }
+  ]
+}

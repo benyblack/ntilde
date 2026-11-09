@@ -23,7 +23,7 @@ helper bodies, so an upstream change that gave one a verdict would be refused. I
 
 ## Method
 
-Twenty-third digest-checked collector extension `ntilde-owned-rectangle-editing-grading-v1` (derived over the erase-character/saved-lines one, `derivedFromAdapterId` `ntilde-owned-erase-chars-history-grading-v1`, which is itself layered over the cursor, attribute-rectangle and erase attributes/margins ones), contracts v1, suite
+Twenty-fourth digest-checked collector extension `ntilde-owned-rectangle-editing-grading-v1` (derived over the selective-erasure one, `derivedFromAdapterId` `ntilde-owned-selective-erase-grading-v1`, which is itself layered over the erase-character/saved-lines, cursor, attribute-rectangle and erase attributes/margins ones), contracts v1, suite
 `ntilde-owned-rectangle-editing-graded-v1`, prefix `rect`, nonce `NTILDE_RC_`, minimum geometry 12x16 (the measured screen is 40x140). The pinned bytes are fed byte-exactly, one write each, on a
 measured reset screen; the pinned probe runs over the parent-journaled screens and the parent re-executes it. The independent contract grader compares every cell of the whole
 screen with a rectangle model written for this suite and never grades more permissively than the pinned probe (recorded divergences: none).
@@ -45,9 +45,9 @@ missing buffer state, a margin or mode the App did not confirm, an unmeasured pe
 
 ## Measurement
 
-Scripts (adapter) revision `0f9c1c2814744224a2cd6f59cc7fdbbc9af8217c`; App source revision `80425d73f3ccec62171a61d1758e6ee50a5a0559` (the last commit that touched `src/`, from PR 907, DECSCA protection: on this tree filled cells take the live DECSCA pen and a copy carries protection; PR 908's DECFRA/DECCRA, PR 913's reverse-wraparound and the attribute-rectangle work are inside it); the Release sidecar
-was built from this merged checkout with the repository wrappers. Owned run `b057258dc450021de905ce44d00e4ae3`, receipt schema 36, source policy v30 (inventory v37, 231 files), default theme, 40x140, App version
-0.13.0 (operator supplied; not independently verified), disposable sidecar `artifacts/sidecar-rect-edit-23`, stock collector run `49958a9f34000d2f3742ae12d7319034`, measured 2026-11-09T20:38Z on macOS with Node 24.
+Scripts (adapter) revision `3f43fa0ac0cc50ba50dab1c18463c599f4a71aaa`; App source revision `4a2c55ce305c2e3aa91a484ecb169c5aed018f57` (the last commit that touched `src/`, the agent-host protection flag of PR 915; PR 907's DECSCA protection (filled cells take the live DECSCA pen, a copy carries protection), PR 908's DECFRA/DECCRA, PR 913's reverse-wraparound and the attribute-rectangle work are inside it); the Release sidecar
+was built from this merged checkout with the repository wrappers. Owned run `fe38a66e3836aa36359af7487a413029`, receipt schema 37, source policy v31 (inventory v38, 236 files), default theme, 40x140, App version
+0.13.0 (operator supplied; not independently verified), disposable sidecar `artifacts/sidecar-rect-edit-24`, stock collector run `ff25a08119a7dbb18679d113514f303e`, measured 2026-11-09T21:26Z on macOS with Node 24.
 One owned collection was started on the final scripts and it completed; the earlier attempts are listed under Preserved attempts.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Stock grade |
@@ -75,10 +75,11 @@ merged on the same policy and schema and changed the scripts and the collector c
 (3) run `51e52a34af07a480d49b4791e5f37b91` (scripts `042587c2`), aborted during cell collection before any suite with the collector refusal `Unexpected input during cell collection`
 (retained under `artifacts/terminfo/owned-9Na9v7`, no evidence used); the cause is not understood (the shared desktop lock was held, the App log is empty), and it was retried once with identical inputs;
 (4) run `bf9252644d2532d7f0d603fc0c5bec73` (scripts `042587c2`, App source `359417dd`, sidecar `artifacts/sidecar-rect-edit-22`, stock run `ae997cb82d2fd95be0ee28461ee9bf9d`), the retry of (3), complete, all three cases supported (stock inconclusive, query), superseded
-because #907 (DECSCA protection) then changed `src/`, including the DECFRA/DECCRA files, and the scripts were refactored for SonarCloud, so the measurement was repeated on the merged tree and the final scripts. Only (3), (4) and the published run are recorded in `summary.json` `attempts`; (1) and (2) are recorded here because
+because #907 (DECSCA protection) then changed `src/`, including the DECFRA/DECCRA files, and the scripts were refactored for SonarCloud, so the measurement was repeated on the merged tree and the final scripts. (5) run `b057258dc450021de905ce44d00e4ae3` (scripts `0f9c1c28`, App source `80425d73`, sidecar `artifacts/sidecar-rect-edit-23`, stock run `49958a9f34000d2f3742ae12d7319034`), the first collection on the merged tree after the Sonar refactor, complete, all three cases supported (stock inconclusive, query), superseded
+because the dispatch predicate and fixture were then changed again after the Sonar re-review and #915 (selective erasure) merged on the same policy and schema, so the layer was restacked as the twenty-fourth extension and measured again. Only (3), (4), (5) and the published run are recorded in `summary.json` `attempts`; (1) and (2) are recorded here because
 they were measured on bases that no longer exist.
 
-The consolidated inventory's reviewability cap on the generated JSON was raised from 160 KiB to 176 KiB (`qualification-inventory.test.mjs`): the 77-id inventory is about 164 KB, 230 bytes over the old cap.
+The consolidated inventory's reviewability cap on the generated JSON was first raised on this branch from 160 KiB to 176 KiB (the 77-id inventory was about 164 KB), and then superseded: #915 landed a larger LF-measured cap (192 KiB, `qualification-inventory.test.mjs`), so this branch no longer changes that test and the current 80-id inventory fits under main's cap.
 
 ## Boundaries
 
