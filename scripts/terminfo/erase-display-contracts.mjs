@@ -29,7 +29,7 @@
 // not remove scrollback lines (ED 2 is not ED 3). Whether erased cells take the current background color (BCE) is OBSERVED, not required: no
 // pinned criterion constrains it.
 import { planFeed, planRead, planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
-import { sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen, sgrAttrsPredicates, sgrAttrsCellAt, sgrAttrsExpand } from './sgr-attrs-contracts.mjs';
+import { sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen, sgrAttrsPredicates, sgrAttrsCellAt, sgrAttrsExpand, sgrAttrsFlagBits } from './sgr-attrs-contracts.mjs';
 
 const { neutral } = sgrAttrsPredicates;
 
@@ -197,7 +197,12 @@ export function eraseDisplayInk(screen) {
     for (let position = 0; position < screen.rows * screen.cols; position++) {
         const row = Math.floor(position / screen.cols), col = position % screen.cols;
         const char = (screen.lines[row] ?? '')[col] ?? ' ';
-        if (char === ' ' && defaultDetail(expanded.details[position])) continue;
+        // The attribute runs and the stored details are two projections of one cell: they must agree for every cell, blank ones included.
+        const detail = expanded.details[position];
+        if (detail.flags !== expanded.flags[position] || Boolean(detail.flags & sgrAttrsFlagBits.underline) !== Boolean(detail.underlineStyle)) {
+            throw new Error(`Contradictory stored cell projections at ${row},${col}.`);
+        }
+        if (char === ' ' && defaultDetail(detail)) continue;
         ink.push({ row, col, ...sgrAttrsCellAt(screen, row, col, expanded) });
     }
     return ink;

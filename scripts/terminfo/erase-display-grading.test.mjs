@@ -208,6 +208,28 @@ test('inconsistent flags and details: attribute runs that contradict the stored 
     assert.throws(() => build(colors));
 });
 
+test('a blank cell whose attribute run contradicts its stored details is refused, not skipped', () => {
+    const evidence = syntheticEraseDisplayEvidence(runId);
+    const copy = clone(evidence);
+    const frame = copy.frames[4];
+    // Split the long default run so exactly one blank cell (10,10) claims bold in the attribute runs while its stored details stay default.
+    const runs = [];
+    let position = 0;
+    for (const run of frame.screen.attributeRuns) {
+        const end = position + run.count;
+        if (position <= 10 * 140 + 10 && 10 * 140 + 10 < end) {
+            const before = 10 * 140 + 10 - position, after = end - (10 * 140 + 11);
+            if (before > 0) runs.push({ ...run, count: before });
+            runs.push({ ...run, count: 1, flags: run.flags | 0x01 });
+            if (after > 0) runs.push({ ...run, count: after });
+        } else runs.push(run);
+        position = end;
+    }
+    frame.screen.attributeRuns = runs;
+    frame.sha256 = snapshotHash(frame.screen);
+    assert.throws(() => build(copy), /Contradictory stored cell projections at 10,10/);
+});
+
 test('screens without buffer state or with an incomplete history are refused', () => {
     const evidence = syntheticEraseDisplayEvidence(runId);
     const noState = clone(evidence);
