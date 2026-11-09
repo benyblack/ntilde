@@ -273,8 +273,15 @@ namespace Ntilde.VT
                                 // Ensure next cell is a continuation
                                 ref var nextCell = ref row.Cells[attachCol + 1];
                                 bool expandedIntoNextCell = false;
-                                if (!nextCell.IsWideContinuation)
+                                if (nextCell.IsWideContinuation)
                                 {
+                                    // An existing continuation belongs to the glyph now, so it carries the glyph's protection.
+                                    row.SetProtected(attachCol + 1, row.IsProtected(attachCol));
+                                }
+                                else
+                                {
+                                    // The adjacent cell is overwritten: if it headed another wide glyph, that glyph's continuation is orphaned.
+                                    ClearDisplacedWideProtection(row, attachCol + 1, attachCol + 2);
                                     SyncPackedState();
                                     nextCell = new TerminalCell(' ', _packedFg, _packedBg, (ushort)(_packedFlags | (ushort)TerminalCellFlags.WideContinuation));
                                     row.SetExtendedText(attachCol + 1, null); // Ensure no old text remains

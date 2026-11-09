@@ -477,6 +477,19 @@ public sealed class CharacterProtectionStateTests
         Assert.False(buffer.HasProtectedCharacters());
     }
 
+    /// <summary>Widening a glyph by attaching a mark gives its continuation the glyph's protection and orphans nothing protected.</summary>
+    [Fact]
+    public void Attaching_a_widening_mark_keeps_protection_consistent_across_the_pair()
+    {
+        var (buffer, parser) = Create();
+        // a protected narrow sun, then VS16 widens it into the (unprotected) cell after it
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q\u2600" + Esc + "[0\"qX");
+        parser.Process("\u001b[1;2H\uFE0F");
+        Assert.True(Protection(buffer, 0)[0]);
+        parser.Process(Esc + "[2J" + Esc + "[1;2H" + Esc + "[1\"q界" + Esc + "[0\"q" + Esc + "[1;1H\u2600\uFE0F");
+        Assert.False(Protection(buffer, 0)[2], "the displaced glyph's continuation must not stay protected");
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()
