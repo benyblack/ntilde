@@ -21,6 +21,7 @@ import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
+import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -184,6 +185,14 @@ try {
         const charEditModule = await import(pathToFileURL(config.charEditBundle).href);
         const charEditRun = await collectCharEditGrading({ config, fence, owner, gradingModule: charEditModule });
         writeFileSync(join(config.output, 'ched-run.json'), JSON.stringify(charEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered erase-in-display qualification follows the character-editing suite on the same fence.
+        const eraseDisplaySource = readFileSync(config.eraseDisplayBundle);
+        if (createHash('sha256').update(eraseDisplaySource).digest('hex') !== config.eraseDisplayBundleSha256) {
+            throw new Error('Local erase-in-display adapter bundle changed.');
+        }
+        const eraseDisplayModule = await import(pathToFileURL(config.eraseDisplayBundle).href);
+        const eraseDisplayRun = await collectEraseDisplayGrading({ config, fence, owner, gradingModule: eraseDisplayModule });
+        writeFileSync(join(config.output, 'erdi-run.json'), JSON.stringify(eraseDisplayRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
