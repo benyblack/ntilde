@@ -19,6 +19,8 @@ const scriptsDir = fileURLToPath(new URL('.', import.meta.url));
 export const defaultQaRoot = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 
 export const verdicts = Object.freeze(['supported', 'unsupported', 'inconclusive']);
+/** Every layer an owned suite can measure; a claim naming anything else is refused. */
+export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels']);
 /** Suites whose ids are terminfo.dev benchmark ids; the two findings are Ntilde-specific and never counted as benchmark ids. */
 const sgrAttrsFile = '2026-11-08-sgr-attributes-qualification.json';
 
@@ -45,6 +47,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('saved-reset', '2026-11-09-saved-reset', '2026-11-09-saved-reset-qualification.md'), module: 'saved-reset-contracts.mjs', exports: ['savedResetSuiteId', 'savedResetContractsVersion', 'savedResetCaseIds'], test: 'saved-reset-publication.test.mjs' },
     { ...directory('erase-attrs-region', '2026-11-09-erase-attrs-region', '2026-11-09-erase-attrs-region-qualification.md'), module: 'erase-attrs-region-contracts.mjs', exports: ['eraseAttrsRegionSuiteId', 'eraseAttrsRegionContractsVersion', 'eraseAttrsRegionCaseIds'], test: 'erase-attrs-region-publication.test.mjs' },
     { ...directory('attr-rect', '2026-11-09-attr-rect', '2026-11-09-attr-rect-qualification.md'), module: 'attr-rect-contracts.mjs', exports: ['attrRectSuiteId', 'attrRectContractsVersion', 'attrRectCaseIds'], test: 'attr-rect-publication.test.mjs' },
+    { ...directory('cursor', '2026-11-09-cursor', '2026-11-09-cursor-qualification.md'), module: 'cursor-qual-contracts.mjs', exports: ['cursorQualSuiteId', 'cursorQualContractsVersion', 'cursorQualCaseIds'], test: 'cursor-qual-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */
@@ -132,6 +135,9 @@ export function measuredLayersOf(evidence, scope) {
     if (/resolved/.test(text)) {
         layers.push(/derived parent-side|parent-derived/i.test(scope ?? '') ? 'parent-derived-resolution' : 'app-resolved-color');
     }
+    // Retained CPR exchanges and controlled synthetic-phase captures are their own layers, never folded into stored state.
+    if (/cpr/.test(text)) layers.push('cursor-position-report');
+    if (/controlled-pixels/.test(text)) layers.push('controlled-pixels');
     if (layers.length === 0) throw new Error(`Cannot classify the measured layer of evidence "${text}".`);
     return layers;
 }
@@ -283,6 +289,8 @@ export function totalsOf(rows, baseline) {
     const pinnedSupported = qualified.filter(row => row.pinned.best === 'supported');
     const pinnedInconclusive = qualified.filter(row => row.pinned.best !== 'supported');
     const inconclusiveBaseline = Object.values(baseline.outcomes).filter(outcome => outcome === 'inconclusive').length;
+    // The remaining counts are against the stock-inconclusive baseline: an id the stock collector never graded is neither in it nor remaining from it.
+    const ofStockInconclusive = list => list.filter(row => baseline.outcomes[row.id] === 'inconclusive').length;
     const total = Object.keys(baseline.outcomes).length;
     return {
         uniqueBenchmarkIds: qualified.length,
@@ -291,6 +299,9 @@ export function totalsOf(rows, baseline) {
         effectSupportedIds: effectSupported.length,
         pinnedAndEffectSupportedIds: effectSupported.filter(row => row.pinned.best === 'supported').length,
         effectSupportedPinnedInconclusiveIds: pinnedInconclusive.filter(row => row.effect.verdict === 'supported').map(row => row.id),
+        effectSupportedOfStockInconclusive: ofStockInconclusive(effectSupported),
+        pinnedSupportedOfStockInconclusive: ofStockInconclusive(pinnedSupported),
+        ungradedStockIdsWithEvidence: qualified.filter(row => !(row.id in baseline.outcomes)).map(row => row.id),
         pinnedSupportedIds: pinnedSupported.length,
         baseline: {
             description: 'stock terminfo.dev@4.0.0 collector run, graded cases only',
@@ -300,8 +311,8 @@ export function totalsOf(rows, baseline) {
             stockInconclusive: inconclusiveBaseline,
         },
         remainingAgainstStockInconclusive: {
-            effectUnqualified: inconclusiveBaseline - effectSupported.length,
-            notPinnedSupported: inconclusiveBaseline - pinnedSupported.length,
+            effectUnqualified: inconclusiveBaseline - ofStockInconclusive(effectSupported),
+            notPinnedSupported: inconclusiveBaseline - ofStockInconclusive(pinnedSupported),
         },
     };
 }
@@ -319,7 +330,8 @@ export async function buildInventory({ root = defaultQaRoot, ...options } = {}) 
             claimsById.get(item.caseId).push(claimOf(suite, entry.report, item, entry.record.rederivation.status));
         }
     }
-    const benchmark = [...claimsById].sort(([a], [b]) => byText(a, b)).map(([id, claims]) => ({ id, kind: 'benchmark', stockOutcome: baseline.outcomes[id] ?? null, ...rollup(claims), claims }));
+    const benchmark = [...claimsById].sort(([a], [b]) => byText(a, b)).map(([id, claims]) => ({ id, kind: 'benchmark', stockOutcome: baseline.outcomes[id] ?? null,
+        ...(Object.hasOwn(baseline.ungradedDiagnostics ?? {}, id) ? { stockStatus: 'ungraded-collector-error' } : {}), ...rollup(claims), claims }));
     const findings = await Promise.all(findingSuites.map(suite => {
         const publication = suite.suite === 'truecolor-literal-finding' ? null : loadPublication(root, { layout: 'directory', dir: suite.dir });
         return findingRecord(root, suite, publication, options);
@@ -373,7 +385,7 @@ function claimProblems(inventory, row, claim, suiteNames, seenClaims) {
     seenClaims.add(key);
     if (!suiteNames.has(claim.suite)) problems.push(`${row.id}: claim names unknown suite ${claim.suite}.`);
     if (!verdicts.includes(claim.pinned.verdict) || !verdicts.includes(claim.effect.verdict)) problems.push(`${row.id}: unknown verdict.`);
-    if (claim.measuredLayers.includes('pixels')) problems.push(`${row.id}: no benchmark claim here measures pixels.`);
+    for (const layer of claim.measuredLayers) if (!measuredLayerNames.includes(layer)) problems.push(`${row.id}: unknown measured layer ${layer}.`);
     const agree = claim.pinned.verdict === claim.effect.verdict;
     if (agree && claim.divergence) problems.push(`${row.id}: a divergence is recorded for agreeing verdicts.`);
     if (!agree && !claim.divergence) problems.push(`${row.id} (${claim.suite}): pinned and effect verdicts differ but no divergence is recorded; they must not be collapsed.`);
@@ -388,11 +400,14 @@ function claimProblems(inventory, row, claim, suiteNames, seenClaims) {
 function rowProblems(inventory, row, baseline, suiteNames, seenClaims) {
     const problems = [];
     if (row.claims.length === 0) problems.push(`${row.id}: no claim.`);
-    if (!(row.id in baseline.outcomes)) problems.push(`${row.id}: not a case of the pinned stock baseline.`);
+    // An id the stock collector could not grade (an ungraded collector diagnostic) may carry repaired-probe and effect evidence, but never a stock outcome.
+    const ungraded = Object.hasOwn(baseline.ungradedDiagnostics ?? {}, row.id);
+    if (!(row.id in baseline.outcomes) && !ungraded) problems.push(`${row.id}: not a case of the pinned stock baseline.`);
+    if (ungraded && (row.stockOutcome !== null || row.stockStatus !== 'ungraded-collector-error')) problems.push(`${row.id}: an ungraded stock diagnostic has no stock outcome and must say so.`);
+    if (!ungraded && row.stockStatus !== undefined) problems.push(`${row.id}: only an ungraded stock diagnostic carries a stock status.`);
     if (/^(?:finding|ntilde)\./.test(row.id)) problems.push(`${row.id}: an Ntilde-specific id cannot be a benchmark id.`);
-    if (row.id === 'cursor.reverse-wrap') problems.push('cursor.reverse-wrap is an ungraded diagnostic, not a qualified or unsupported case.');
-    if (row.stockOutcome !== baseline.outcomes[row.id]) problems.push(`${row.id}: stock outcome differs from the baseline.`);
-    if (row.stockOutcome !== 'inconclusive') problems.push(`${row.id}: qualification evidence can only cover stock-inconclusive cases (stock: ${row.stockOutcome}).`);
+    if (row.stockOutcome !== (baseline.outcomes[row.id] ?? null)) problems.push(`${row.id}: stock outcome differs from the baseline.`);
+    if (row.stockOutcome !== 'inconclusive' && !ungraded) problems.push(`${row.id}: qualification evidence can only cover stock-inconclusive cases (stock: ${row.stockOutcome}).`);
     for (const claim of row.claims) problems.push(...claimProblems(inventory, row, claim, suiteNames, seenClaims));
     const derived = rollup(row.claims);
     if (JSON.stringify(derived.pinned) !== JSON.stringify(row.pinned) || JSON.stringify(derived.effect) !== JSON.stringify(row.effect)) problems.push(`${row.id}: the pinned/effect roll-up differs from its claims.`);
@@ -463,8 +478,9 @@ function totalsSection(inventory) {
         `Effect supported but pinned inconclusive: ${codeList(totals.effectSupportedPinnedInconclusiveIds)}.`, '',
         '## Remaining cases against an explicit baseline', '', baselineLine, '',
         '| Remaining | Count |', '|---|---:|',
-        `| Effect-unqualified (${allBaseline.stockInconclusive} − ${totals.effectSupportedIds}) | ${remaining.effectUnqualified} |`,
-        `| Not pinned-supported (${allBaseline.stockInconclusive} − ${totals.pinnedSupportedIds}) | ${remaining.notPinnedSupported} |`, '',
+        `| Effect-unqualified (${allBaseline.stockInconclusive} − ${totals.effectSupportedOfStockInconclusive}) | ${remaining.effectUnqualified} |`,
+        `| Not pinned-supported (${allBaseline.stockInconclusive} − ${totals.pinnedSupportedOfStockInconclusive}) | ${remaining.notPinnedSupported} |`, '',
+        ...(totals.ungradedStockIdsWithEvidence.length ? [`Ungraded stock diagnostics with qualified repaired-probe and effect evidence: ${codeList(totals.ungradedStockIdsWithEvidence)}. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.`, ''] : []),
         unsupportedLine, '', '### Ungraded diagnostic', '',
         ...inventory.ungradedDiagnostics.map(diagnosticLine)];
 }
