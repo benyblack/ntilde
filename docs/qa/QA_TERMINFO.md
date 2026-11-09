@@ -864,6 +864,16 @@ ARGB erase of the same resolved color agree and the representation is only obser
 claim is made that ED is or is not clipped to the margins. The pinned terminal cursor-query paths never carry a verdict and are not qualified. Receipt schema 32 and source policy v26 (209
 files) bind it; earlier policies stay frozen.
 
+### Rectangle-editing qualification (DECFRA, DECERA, DECCRA)
+
+The [rectangle-editing batch](terminfo/2026-11-09-rectangle-editing-qualification.md) grades exactly `editing.decfra`, `editing.decera` and `editing.deccra`
+through a twentieth layered collector extension (`ntilde-owned-rectangle-editing-grading-v1`), replaying the pinned bytes and running the pinned termless code over
+parent-journaled stored cells of the whole screen, the cursor, the App-stored margins, origin and insert mode and stored attribute tuples. Controls cover bounds,
+defaults, clipping, no-ops, margins, origin mode, insert mode, the live pen (including a literal-RGB pen), attributed seed cells, DECERA over DECSCA-marked text and, for
+DECCRA, overlap in every direction, a page copied onto itself, destination clipping and attribute preservation. DECCRA's unsupported pages are an Ntilde policy that is
+observed and never graded. The pinned terminal cursor-query paths never carry a verdict and are not qualified; DECSERA, DECCARA/DECRARA, DECSACE, checksums, Unicode,
+the image plane and rendered appearance are not claimed. Receipt schema 33 and source policy v27 (214 files) bind it; earlier policies stay frozen.
+
 ### Erase-in-display qualification (ED 0, ED 1, ED 2)
 
 The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
