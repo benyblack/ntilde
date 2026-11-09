@@ -229,6 +229,11 @@ public sealed class VtTools
                 return ExplainRectangularErase(prefix[..^1]) + note;
             }
 
+            if (finalByte is 'x' or 'v' && qualifiers == "$")
+            {
+                return ExplainRectangleCopyFill(finalByte, prefix[..^1]) + note;
+            }
+
             // XTSMGRAPHICS shares 'S' with SU but never scrolls (#274); it is answered (#872).
             if (finalByte == 'S' && qualifiers == "?")
             {
@@ -464,6 +469,17 @@ public sealed class VtTools
             || parameters.Any(c => c != ';' && (c < '0' || c > '9')))
             return "CSI rectangular erase form: only up to four plain borders are admitted; Ntilde's parser ignores this form.";
         return "CSI sequence, final byte 'z': " + ContractSequenceTable["CSI:$z"];
+    }
+
+    /// <summary>Names the Partial DECFRA (up to five) or DECCRA (up to eight) plain-parameter contract; any other shape is ignored by the parser.</summary>
+    private static string ExplainRectangleCopyFill(char finalByte, string parameters)
+    {
+        int limit = finalByte == 'x' ? 5 : 8;
+        string form = finalByte == 'x' ? "fill" : "copy";
+        if (parameters.Count(c => c == ';') >= limit
+            || parameters.Any(c => c != ';' && (c < '0' || c > '9')))
+            return $"CSI rectangular {form} form: only up to {limit} plain parameters are admitted; Ntilde's parser ignores this form.";
+        return $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable["CSI:$" + finalByte];
     }
 
     /// <summary>
