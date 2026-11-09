@@ -158,14 +158,9 @@ test('the grader refuses malformed observations and unknown revisions', () => {
 });
 
 test('the owner request allowlist admits every journal kind this suite emits', async () => {
-    const { readFileSync } = await import('node:fs');
-    const runner = readFileSync(new URL('../terminfo-owned-runner.mjs', import.meta.url), 'utf8');
-    const match = /\/\^\(\?:([a-z|]+)\)-\(\?:start\|bind\|read\|finish\)\$\//.exec(runner);
-    assert.ok(match, 'allowlist regex present');
-    assert.ok(match[1].split('|').includes('sgattr'));
-    for (const kind of ['start', 'bind', 'read', 'finish']) {
-        assert.match(`sgattr-${kind}`, new RegExp(`^(?:${match[1]})-(?:start|bind|read|finish)$`));
-    }
+    const { untranslatedCellKind, untranslatedCellPrefixes } = await import('./fixtures/runner-dispatch.mjs');
+    assert.ok(untranslatedCellPrefixes.has('sgattr'));
+    for (const kind of ['start', 'bind', 'read', 'finish']) assert.ok(untranslatedCellKind(`sgattr-${kind}`));
 });
 
 test('contradictory attribute-run and cell-detail projections are refused, not graded', () => {
