@@ -71,3 +71,21 @@ test('overline is validated only on explicit opt-in and splits canonical runs wi
     for (const value of [undefined, null, 1, 'false'])
         assert.throws(() => copyCellDetails([{ ...plain, overline: value }], 90, true), /overline/);
 });
+
+test('protection is validated only on explicit opt-in and splits canonical runs without changing legacy copies', () => {
+    const plain = { ...normal(90), protected: false }, guarded = { ...normal(90), protected: true };
+    assert.deepEqual(copyCellDetails([guarded], 90), copyCellDetails([normal(90)], 90));
+    const runs = copyCellDetails([plain, guarded], 180, false, true);
+    assert.equal(runs[0].protected, false);
+    assert.equal(runs[1].protected, true);
+    assert.throws(() => copyCellDetails([plain, guarded], 180), /Noncanonical/);
+    for (const value of [undefined, null, 1, 'false'])
+        assert.throws(() => copyCellDetails([{ ...plain, protected: value }], 90, false, true), /protection/);
+    // independent of the overline opt-in: both booleans ride together when both are requested
+    const both = copyCellDetails([{ ...plain, overline: false }, { ...guarded, overline: true }], 180, true, true);
+    assert.deepEqual(both.map(run => [run.overline, run.protected]), [[false, false], [true, true]]);
+    assert.equal(expandCellDetails([guarded], 90, false, true).every(cell => cell.protected === true), true);
+    // expansion detects the opt-in itself, so protection-split runs stay canonical for readers that predate protection
+    assert.equal(expandCellDetails([plain, guarded], 180).filter(cell => cell.protected).length, 90);
+    assert.equal(expandCellDetails([normal(90)], 90).every(cell => !('protected' in cell)), true);
+});

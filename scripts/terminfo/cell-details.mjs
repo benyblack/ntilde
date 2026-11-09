@@ -14,7 +14,7 @@ function colorValid(flags, defaultFlag, paletteFlag, paletteIndex, argb) {
 }
 
 /** Validate one complete stored attribute tuple and normalize omitted optional ARGB values. */
-function copyRun(run, includeOverline) {
+function copyRun(run, includeOverline, includeProtection) {
     if (!run || !Number.isSafeInteger(run.count) || run.count < 1
         || !Number.isSafeInteger(run.flags) || run.flags < 0 || run.flags > 65535 || (run.flags & 1024)
         || !colorValid(run.flags, 256, 16384, run.fg, run.foregroundArgb)
@@ -27,18 +27,19 @@ function copyRun(run, includeOverline) {
         throw new Error('Invalid stored cell detail run.');
     }
     if (includeOverline && typeof run.overline !== 'boolean') throw new Error('Missing stored overline state.');
-    return { ...(includeOverline ? { overline: run.overline } : {}), count: run.count, flags: run.flags, fg: run.fg, bg: run.bg,
+    if (includeProtection && typeof run.protected !== 'boolean') throw new Error('Missing stored protection state.');
+    return { ...(includeOverline ? { overline: run.overline } : {}), ...(includeProtection ? { protected: run.protected } : {}), count: run.count, flags: run.flags, fg: run.fg, bg: run.bg,
         foregroundArgb: run.foregroundArgb ?? null, backgroundArgb: run.backgroundArgb ?? null,
         underlineStyle: run.underlineStyle, underlineColorIndex: run.underlineColorIndex, underlineArgb: run.underlineArgb ?? null };
 }
 
 /** Require a canonical, complete physical viewport within both App API budgets. */
-export function copyCellDetails(runs, cells, includeOverline = false) {
+export function copyCellDetails(runs, cells, includeOverline = false, includeProtection = false) {
     if (!Number.isSafeInteger(cells) || cells < 1 || cells > 8192
         || !Array.isArray(runs) || !runs.length || runs.length > Math.min(cells, 1024)) throw new Error('Invalid cell detail budget.');
     let total = 0, previous;
     const result = runs.map(value => {
-        const run = copyRun(value, includeOverline);
+        const run = copyRun(value, includeOverline, includeProtection);
         total += run.count;
         if (total > cells || (previous && same(previous, run))) throw new Error('Noncanonical cell detail viewport.');
         previous = run;
@@ -48,7 +49,10 @@ export function copyCellDetails(runs, cells, includeOverline = false) {
     return result;
 }
 
-/** Expand only validated bounded runs into independent per-cell objects. */
-export function expandCellDetails(runs, cells, includeOverline = false) {
-    return copyCellDetails(runs, cells, includeOverline).flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ ...value })));
+/** Expand only validated bounded runs into independent per-cell objects. Runs that carry the opt-in protection state
+ * (a screen the observer read with includeProtection) keep it by default, so a reader that never heard of protection
+ * still validates them canonically instead of mistaking protection-split runs for duplicates. */
+export function expandCellDetails(runs, cells, includeOverline = false,
+    includeProtection = Array.isArray(runs) && runs.some(run => run?.protected !== undefined)) {
+    return copyCellDetails(runs, cells, includeOverline, includeProtection).flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ ...value })));
 }

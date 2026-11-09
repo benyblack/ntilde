@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV36SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV37SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV36SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV37SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV36SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV37SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -506,7 +506,7 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'curq-run.json', runSha256: hash(readFileSync(join(output, 'curq-run.json'))),
                 adapterBundleSha256: hash(cursorQualBytes), contractsVersion: cursorQualContractsVersion,
                 counts: cursorQualCounts, provisionalUntil: 'cell-receipt.json' };
-            // Policy v29 always carries the layered erase-character/saved-lines suffix as well.
+            // Policy v30 always carries the layered erase-character/saved-lines suffix as well.
             const { syntheticEraseCharsHistoryEvidence } = await import('./erase-chars-history-evidence.mjs');
             const { buildEraseCharsHistoryGradingReport } = await import('../erase-chars-history-grading.mjs');
             const { adaptEraseCharsHistoryCollector, eraseCharsHistoryAdapterId } = await import('../erase-chars-history-grading-collector.mjs');
@@ -527,6 +527,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'echh-run.json', runSha256: hash(readFileSync(join(output, 'echh-run.json'))),
                 adapterBundleSha256: hash(eraseCharsHistoryBytes), contractsVersion: eraseCharsHistoryContractsVersion,
                 counts: eraseCharsHistoryCounts(eraseCharsHistoryReport), provisionalUntil: 'cell-receipt.json' };
+            // Policy v30 also always carries the layered selective-erasure suffix.
+            const { syntheticSelectiveEraseEvidence } = await import('./selective-erase-evidence.mjs');
+            const { buildSelectiveEraseGradingReport } = await import('../selective-erase-grading.mjs');
+            const { adaptSelectiveEraseCollector, selectiveEraseAdapterId } = await import('../selective-erase-grading-collector.mjs');
+            const { selectiveEraseSuiteId, selectiveEraseContractsVersion } = await import('../selective-erase-contracts.mjs');
+            const { selectiveEraseCounts } = await import('../selective-erase-receipt.mjs');
+            const selectiveEraseBytes = Buffer.from(adaptSelectiveEraseCollector(eraseCharsHistoryBytes.toString()));
+            const selectiveErase = syntheticSelectiveEraseEvidence(context.runId, hash(selectiveEraseBytes));
+            selectiveErase.adapter = { id: selectiveEraseAdapterId, derivedFromAdapterId: eraseCharsHistoryAdapterId,
+                bundleSha256: hash(selectiveEraseBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const selectiveEraseReport = buildSelectiveEraseGradingReport(selectiveErase.frames, selectiveErase.run, context.runId, selectiveErase.adapter);
+            write('sels-observations.json', selectiveEraseReport);
+            write('sels-run.json', selectiveErase.run);
+            writeFileSync(join(output, 'sels-snapshots.jsonl'), selectiveErase.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-sels.mjs'), selectiveEraseBytes);
+            Object.assign(context, { selectiveEraseAdapterId, selectiveEraseSuiteId, selectiveEraseBundleSha256: hash(selectiveEraseBytes), selectiveEraseContractsVersion });
+            evidence.selectiveEraseEvidence = { runId: context.runId, suiteId: selectiveEraseSuiteId,
+                file: 'sels-observations.json', sha256: hash(readFileSync(join(output, 'sels-observations.json'))),
+                runFile: 'sels-run.json', runSha256: hash(readFileSync(join(output, 'sels-run.json'))),
+                adapterBundleSha256: hash(selectiveEraseBytes), contractsVersion: selectiveEraseContractsVersion,
+                counts: selectiveEraseCounts(selectiveEraseReport), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

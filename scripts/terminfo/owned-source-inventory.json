@@ -224,5 +224,10 @@
     "eraseCharsHistoryCollectorSourceSha256": "erase-chars-history-collector.mjs",
     "eraseCharsHistoryGradingSourceSha256": "erase-chars-history-grading.mjs",
     "eraseCharsHistoryGradingCollectorSourceSha256": "erase-chars-history-grading-collector.mjs",
-    "eraseCharsHistoryReceiptSourceSha256": "erase-chars-history-receipt.mjs"
+    "eraseCharsHistoryReceiptSourceSha256": "erase-chars-history-receipt.mjs",
+    "selectiveEraseContractsSourceSha256": "selective-erase-contracts.mjs",
+    "selectiveEraseCollectorSourceSha256": "selective-erase-collector.mjs",
+    "selectiveEraseGradingSourceSha256": "selective-erase-grading.mjs",
+    "selectiveEraseGradingCollectorSourceSha256": "selective-erase-grading-collector.mjs",
+    "selectiveEraseReceiptSourceSha256": "selective-erase-receipt.mjs"
 }

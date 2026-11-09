@@ -280,6 +280,43 @@ test('overline observer opts in explicitly, retains booleans and includes them i
     assert.equal(observer.restored, true);
 });
 
+test('protection observer opts in explicitly, journals the stored booleans and includes them in restoration proof', async () => {
+    const initial = { ...blank(), cellDetails: [{ count: 180, flags: 768, fg: -1, bg: -1, underlineStyle: 0, underlineColorIndex: -1, protected: false }] };
+    let value = structuredClone(initial);
+    const requests = [];
+    const observer = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeCellDetails: true, includeProtection: true, prefix: 'selective', expectedPaneId: paneId, endpoint: () => 'fixture-only',
+        rpc: async (_, method, params) => {
+            if (method === 'listSessions') return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+            requests.push(params);
+            assert.equal(params.includeProtection, true);
+            assert.equal(params.includeOverline, undefined);
+            return value;
+        } });
+    await observer.handle('selective-start', () => 1000);
+    value = { ...structuredClone(initial), lines: ['nonce', '', ''], cursorCol: 5 };
+    await observer.handle('selective-bind', () => 1000, barrier);
+    value = structuredClone(initial);
+    value.cellDetails[0].protected = true;
+    await observer.handle('selective-read', () => 1000, barrier);
+    value.cellDetails[0].protected = false;
+    assert.equal(observer.frames.at(-1).screen.cellDetails[0].protected, true);
+    value.cellDetails[0].protected = true;
+    await assert.rejects(observer.handle('selective-finish', () => 1000, barrier), /restoration failed/);
+    value = initial;
+    await observer.handle('selective-finish', () => 1000, barrier);
+    assert.equal(observer.restored, true);
+    // an observer that never asked for protection sends no such parameter
+    const plain = new OwnedCellObserver({ appData: '/never/discover', ownerPid: 42, profileName: 'fixture', nonce: 'nonce',
+        includeCellDetails: true, prefix: 'cell', expectedPaneId: paneId, endpoint: () => 'fixture-only',
+        rpc: async (_, method, params) => {
+            if (method === 'listSessions') return { sessions: [{ paneId, profileName: 'fixture', kind: 'local', rows: 3, cols: 60 }] };
+            assert.equal('includeProtection' in params, false);
+            return { ...blank(), cellDetails: [{ count: 180, flags: 768, fg: -1, bg: -1, underlineStyle: 0, underlineColorIndex: -1 }] };
+        } });
+    await plain.handle('cell-start', () => 1000);
+});
+
 test('only the image-specific capture wrapper opts in while default render request bytes stay unchanged', async () => {
     assert.equal(typeof observerApi.imageCaptureRequest, 'function');
     const params = [];

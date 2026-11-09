@@ -90,6 +90,8 @@ export function sgrAttrsCellAt(screen, row, col, expanded = sgrAttrsExpand(scree
         underlineColorIndex: detail.underlineColorIndex, underlineArgb: detail.underlineArgb ?? null,
         fgIndex: detail.fg, bgIndex: detail.bg,
         foregroundArgb: detail.foregroundArgb ?? null, backgroundArgb: detail.backgroundArgb ?? null,
+        // The opt-in DECSCA protection of the cell, only when the observer was asked for it.
+        ...(detail.protected === undefined ? {} : { protected: detail.protected }),
     };
 }
 
