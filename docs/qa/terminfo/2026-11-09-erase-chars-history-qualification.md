@@ -102,6 +102,11 @@ App-observed underline-color resolution. **The stock collector was not re-run** 
 App are unchanged, so the carried counts (168 inconclusive, 86 supported, 1 unsupported) are labeled as carried; both ids are inconclusive there through
 the cursor-query path.
 
+**Integration after measurement:** main later gained DECFRA/DECCRA (`607f097d`, `5210c58d`: `src/Ntilde.VT` rectangle fill and copy). That merge changes the App source after
+the measured sidecar was built from `c16997c2`. Its only change to the parser dispatch is two new `$`-intermediate final bytes (`x`, `v`); the ECH (`X`) and ED (`J`)
+paths, the measured scripts and their evidence validation are untouched, so the measurement was not repeated. The merge was checked by the unchanged self-test list
+(the retained evidence still rederives byte for byte).
+
 ## Limits
 
 Stored ASCII state and the actual saved physical rows only: no wide-cell or combining-character erasure, no logical (wrapped-line) history, reflow, resize or
