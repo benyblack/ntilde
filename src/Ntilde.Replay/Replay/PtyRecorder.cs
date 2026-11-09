@@ -259,6 +259,7 @@ namespace Ntilde.Replay
                         IsItalic = buffer.IsItalic,
                         IsUnderline = buffer.IsUnderline,
                         IsOverline = buffer.IsOverline,
+                        IsCharacterProtected = buffer.IsCharacterProtected,
                         UnderlineStyle = (byte)buffer.UnderlineStyle,
                         UnderlineColor = buffer.UnderlineColor?.ToUint(),
                         UnderlineColorIndex = buffer.UnderlineColorIndex,
@@ -269,6 +270,8 @@ namespace Ntilde.Replay
                         RowWraps = new bool[rowCount],
                         RowWrittenColumns = new int[rowCount]
                     };
+
+                    List<int>? protectedCells = null;
 
                     // Allocate a single array for all cells in viewport
                     TerminalCell[] allCells = new TerminalCell[cols * rowCount];
@@ -282,6 +285,7 @@ namespace Ntilde.Replay
 
                         // Copy cells
                         Array.Copy(row.Cells, 0, allCells, r * cols, cols);
+                        AppendProtectedCells(row, r * cols, cols, ref protectedCells);
 
                         // Capture extended text
                         for (int c = 0; c < cols; c++)
@@ -303,6 +307,8 @@ namespace Ntilde.Replay
                         }
                     }
 
+                    snapshot.ProtectedCells = protectedCells?.ToArray();
+
                     // Convert allCells to Base64 using zero-copy casting
                     var byteSpan = MemoryMarshal.AsBytes(allCells.AsSpan());
                     snapshot.CellsBase64 = Convert.ToBase64String(byteSpan);
@@ -318,6 +324,14 @@ namespace Ntilde.Replay
                 }
             }
             finally { buffer.Lock.ExitReadLock(); }
+        }
+
+        /// <summary>DECSCA protection of one row as ascending <c>row * cols + col</c> keys.</summary>
+        private static void AppendProtectedCells(TerminalRow row, int rowStart, int cols, ref List<int>? sink)
+        {
+            if (!row.HasProtectedCells) return;
+            for (int c = 0; c < cols; c++)
+                if (row.IsProtected(c)) (sink ??= new List<int>()).Add(rowStart + c);
         }
 
         private static List<TerminalTextSizingState>? LegacyTextSizing(TerminalBuffer buffer, TerminalStateSnapshot? state)

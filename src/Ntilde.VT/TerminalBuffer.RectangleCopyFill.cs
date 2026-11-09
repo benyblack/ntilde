@@ -36,6 +36,7 @@ public partial class TerminalBuffer
                     row.SetExtendedText(col, null);
                     row.SetHyperlink(col, null);
                     row.SetUnderline(col, decoration);
+                    row.SetProtected(col, _state.IsCharacterProtected); // filled characters are written under the live DECSCA pen
                 }
                 row.TouchRevision();
             }
@@ -71,6 +72,7 @@ public partial class TerminalBuffer
             var text = new string?[height][];
             var links = new Links.Hyperlink?[height][];
             var underlines = new CellUnderline?[height][];
+            var guarded = new bool[height][];
             for (int y = 0; y < height; y++)
             {
                 var source = _viewport[top + y];
@@ -78,6 +80,7 @@ public partial class TerminalBuffer
                 text[y] = new string?[width];
                 links[y] = new Links.Hyperlink?[width];
                 underlines[y] = new CellUnderline?[width];
+                guarded[y] = new bool[width];
                 for (int x = 0; x < width; x++)
                 {
                     int col = left + x;
@@ -85,8 +88,12 @@ public partial class TerminalBuffer
                     text[y][x] = source.GetExtendedText(col);
                     links[y][x] = source.GetHyperlink(col);
                     underlines[y][x] = source.GetUnderline(col);
+                    guarded[y][x] = source.IsProtected(col); // protection travels with the copied character
                 }
+                bool firstCut = cells[y][0].IsWideContinuation, lastCut = cells[y][width - 1].IsWide;
                 BlankCutWideHalves(cells[y], text[y]);
+                if (firstCut) guarded[y][0] = false;       // a half cut off its glyph copies as a plain, unprotected blank
+                if (lastCut) guarded[y][width - 1] = false;
             }
 
             var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground,
@@ -107,6 +114,7 @@ public partial class TerminalBuffer
                     row.SetExtendedText(col, text[y][x]);
                     row.SetHyperlink(col, links[y][x]);
                     row.SetUnderline(col, underlines[y][x]);
+                    row.SetProtected(col, guarded[y][x]);
                 }
                 row.TouchRevision();
             }
@@ -128,6 +136,7 @@ public partial class TerminalBuffer
         row.SetExtendedText(col, null);
         row.SetHyperlink(col, null);
         row.SetUnderline(col, null);
+        row.SetProtected(col, false);
     }
 
     /// <summary>Turns a leading continuation or a trailing lead cell of a copied row into a plain blank that keeps its colors and attributes.</summary>

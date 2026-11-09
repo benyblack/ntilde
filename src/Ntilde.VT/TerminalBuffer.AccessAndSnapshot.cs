@@ -282,6 +282,7 @@ namespace Ntilde.VT
             target.IsItalic = IsItalic;
             target.IsUnderline = IsUnderline;
             target.IsOverline = IsOverline;
+            target.IsCharacterProtected = IsCharacterProtected;
             target.UnderlineStyle = UnderlineStyle;
             target.UnderlineColor = UnderlineColor;
             target.UnderlineColorIndex = UnderlineColorIndex;
@@ -307,6 +308,7 @@ namespace Ntilde.VT
             IsItalic = source.IsItalic;
             IsUnderline = source.IsUnderline;
             IsOverline = source.IsOverline;
+            IsCharacterProtected = source.IsCharacterProtected;
             UnderlineStyle = source.UnderlineStyle;
             UnderlineColor = source.UnderlineColor;
             UnderlineColorIndex = source.UnderlineColorIndex;
@@ -344,6 +346,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearProtection();
                 row.ClearTextSizing();
                 row.TouchRevision();
             }
@@ -366,6 +369,7 @@ namespace Ntilde.VT
             IsItalic = false;
             IsUnderline = false;
             IsOverline = false;
+            IsCharacterProtected = false;
             UnderlineStyle = UnderlineStyle.Single;
             UnderlineColor = null;
             UnderlineColorIndex = -1;
@@ -396,6 +400,7 @@ namespace Ntilde.VT
             state.IsItalic = false;
             state.IsUnderline = false;
             state.IsOverline = false;
+            state.IsCharacterProtected = false;
             state.UnderlineStyle = UnderlineStyle.Single;
             state.UnderlineColor = null;
             state.UnderlineColorIndex = -1;
@@ -446,6 +451,7 @@ namespace Ntilde.VT
                 // Detached buffers are not reflowed either, so the side tables transfer by column
                 // (#164). Copying Cells and IsWrapped alone lost extended graphemes and links.
                 resized[i].CopyRowMetadataFrom(source[i], copyCols);
+                resized[i].ClearProtectionOfClippedWideAnchor(copyCols, source[i].Cells.Length);
             }
 
             return resized;
@@ -509,6 +515,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
                     row.SetUnderline(i, null);
+                    row.SetProtected(i, false);
                 }
                 row.TouchRevision();
             }
@@ -535,6 +542,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
                     row.SetUnderline(i, null);
+                    row.SetProtected(i, false);
                 }
                 row.TouchRevision();
             }
@@ -583,6 +591,7 @@ namespace Ntilde.VT
             row.ClearExtendedText();
             row.ClearHyperlinks();
             row.ClearUnderlines();
+            row.ClearProtection();
             row.ClearTextSizing();
             row.TouchRevision();
         }
@@ -607,6 +616,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(col, null);
                     row.SetHyperlink(col, null);
                     row.SetUnderline(col, null);
+                    row.SetProtected(col, false);
                 }
                 row.TouchRevision();
             }
@@ -832,7 +842,10 @@ namespace Ntilde.VT
                 if (clearAlt)
                 {
                     ClearAltScreenNoLock();
+                    // Entering the alternate screen starts a fresh pen, but DECSCA is one flag for the terminal, as in xterm: it carries over.
+                    bool protectedPen = IsCharacterProtected;
                     ResetCursorStateToDefaultsNoLock();
+                    IsCharacterProtected = protectedPen;
                     CaptureCursorStateNoLock(_screenCursorStates.Alt);
                 }
                 else
@@ -1060,7 +1073,8 @@ namespace Ntilde.VT
                     RowWraps = snapshot.RowWraps,
                     RowWrapColumns = widths,
                     RowWrittenColumns = snapshot.RowWrittenColumns,
-                    ExtendedText = snapshot.ExtendedText
+                    ExtendedText = snapshot.ExtendedText,
+                    ProtectedCells = snapshot.ProtectedCells
                 }, snapshot.Rows, snapshot.Cols, cells, "legacy replay");
                 if (snapshot.Underlines != null)
                     foreach (int key in snapshot.Underlines.Keys)
@@ -1139,6 +1153,7 @@ namespace Ntilde.VT
                 IsItalic = snapshot.IsItalic;
                 IsUnderline = snapshot.IsUnderline;
                 IsOverline = snapshot.IsOverline;
+                IsCharacterProtected = snapshot.IsCharacterProtected;
                 // A recording is read from disk, so a value no SGR could have set falls back to the default.
                 UnderlineStyle = snapshot.UnderlineStyle is >= 1 and <= 5 ? (UnderlineStyle)snapshot.UnderlineStyle : UnderlineStyle.Single;
                 UnderlineColor = snapshot.UnderlineColor is { } penColor ? TermColor.FromUint(penColor) : null;
@@ -1170,6 +1185,7 @@ namespace Ntilde.VT
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
+                            for (int c = 0; c < colsToCopy; c++) row.SetProtected(c, false); // only the cells this snapshot replaced
                             row.ClearTextSizing();
                             if (snapshot.RowWrapColumns is { } widths && widths[r] >= 0)
                                 row.WrappedColumns = Math.Min(widths[r], colsToCopy);
@@ -1222,6 +1238,32 @@ namespace Ntilde.VT
                         }
 
                         _viewport[r].SetUnderline(c, underline);
+                    }
+                }
+
+                // DECSCA protection, absent in recordings made before it.
+                // Only cells this snapshot restored can carry its protection: a taller or wider buffer keeps everything else as it was.
+                if (legacyCells != null && legacyCells.Length / System.Runtime.CompilerServices.Unsafe.SizeOf<TerminalCell>() >= snapshot.Cols * snapshot.Rows
+                    && snapshot.Cols > 0)
+                {
+                    int restoredRows = Math.Min(snapshot.Rows, _viewport.Length);
+                    int restoredCols = Math.Min(snapshot.Cols, Cols);
+                    foreach (int key in snapshot.ProtectedCells ?? [])
+                    {
+                        if (key < 0) continue;
+                        int r = key / snapshot.Cols;
+                        int c = key % snapshot.Cols;
+                        if (r < restoredRows && c < restoredCols) _viewport[r].SetProtected(c, true);
+                    }
+
+                    for (int r = 0; r < restoredRows; r++)
+                    {
+                        var restored = _viewport[r];
+                        // A checkpoint wider than this buffer clips a wide glyph at the last column: its protection goes with the lost half.
+                        restored.ClearProtectionOfClippedWideAnchor(restoredCols, snapshot.Cols);
+                        if (!restored.HasProtectedCells) continue;
+                        // Protected cells in the columns the snapshot did not replace are authored content: keep their extent.
+                        for (int c = restoredCols; c < Cols; c++) if (restored.IsProtected(c)) restored.NoteColumnsWritten(c + 1);
                     }
                 }
 

@@ -404,6 +404,9 @@ namespace Ntilde.VT
 
                 SyncPackedState();
 
+                // Protection is only touched when the pen protects or the row already holds records: plain output pays one null check.
+                bool tracksProtection = _state.IsCharacterProtected || row.HasProtectionEntries;
+
                 // Clear continuations and old extended text
                 for (int i = 0; i < width && _cursorCol + i < Cols; i++)
                 {
@@ -411,6 +414,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(_cursorCol + i, null);
                     row.SetHyperlink(_cursorCol + i, null);
                     row.SetUnderline(_cursorCol + i, null);
+                    if (tracksProtection) row.SetProtected(_cursorCol + i, false);
                 }
 
                 ushort flags = _packedFlags;
@@ -424,6 +428,7 @@ namespace Ntilde.VT
                 }
                 row.SetHyperlink(_cursorCol, _currentHyperlink);
                 row.SetUnderline(_cursorCol, UnderlineForWrite);
+                if (tracksProtection) row.SetProtected(_cursorCol, _state.IsCharacterProtected); // a wide glyph's protection lives on its anchor
 
                 if (width >= 2 && _cursorCol + 1 < Cols)
                 {
@@ -697,6 +702,9 @@ namespace Ntilde.VT
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;
 
+            // A glyph pushed against the right edge loses its continuation off the end; its anchor must not stay protected there.
+            // (A glyph that is already an edge anchor keeps its record: nothing was cut.)
+            bool edgeCut = Cols - 1 - count >= _cursorCol && row.Cells[Cols - 1 - count].IsWide;
             // Shift characters to right
             // Start from end, move char at (c - count) to c
             for (int c = Cols - 1; c >= endCol; c--)
@@ -709,6 +717,7 @@ namespace Ntilde.VT
             // string stays behind at the old column (#164). Insert mode reaches this per printable
             // character, hence the HasRowMetadata guard.
             if (row.HasRowMetadata) row.ShiftRowMetadata(_cursorCol, count, Cols);
+            if (edgeCut) row.SetProtected(Cols - 1, false);
 
             // Fill gap with default empty cells
             var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex, false, false, false, false, false, false);
@@ -744,6 +753,9 @@ namespace Ntilde.VT
             int endCol = Cols - count;
             EraseTextSizingForShift(insert: false, count);
             var row = _viewport[_cursorRow];
+            // Deleting a continuation leaves its anchor beside whatever shifts in next, which could be another glyph's continuation:
+            // the anchor's record must go with the half that is deleted, or the two would read as one protected glyph.
+            if (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation && row.Cells[_cursorCol - 1].IsWide) row.SetProtected(_cursorCol - 1, false);
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;
 

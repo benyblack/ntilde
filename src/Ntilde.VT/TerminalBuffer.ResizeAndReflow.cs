@@ -201,6 +201,7 @@ namespace Ntilde.VT
                             // tables come straight across. Copying only Cells left the extended
                             // graphemes and OSC 8 links behind (#164).
                             _viewport[i].CopyRowMetadataFrom(oldAlt[i], copyCols);
+                            _viewport[i].ClearProtectionOfClippedWideAnchor(copyCols, oldCols);
                             _viewport[i].WrittenColumns = Math.Min(oldAlt[i].WrittenColumns, newCols);
                             if (oldAlt[i].IsWrapped)
                                 _viewport[i].SetSoftWrap(Math.Min(oldAlt[i].WrappedColumns ?? oldCols, newCols));
@@ -409,7 +410,7 @@ namespace Ntilde.VT
         /// </remarks>
         private static bool IsRowPadding(TerminalRow row)
         {
-            if (row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 }) return false;
+            if (row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells) return false;
             bool rowHasLinks = row.GetHyperlinkMap() is { Count: > 0 };
             var cells = row.Cells;
 

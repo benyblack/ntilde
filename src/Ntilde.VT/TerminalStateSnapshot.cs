@@ -289,6 +289,10 @@ namespace Ntilde.VT
         /// Index into <see cref="TerminalStateSnapshot.Underlines"/> keyed by <c>row * cols + col</c> (#270).
         /// </summary>
         [JsonPropertyName("ul")] public Dictionary<int, int>? UnderlineIds { get; set; }
+
+        /// <summary>DECSCA-protected cells as ascending <c>row * cols + col</c> keys; absent when none.</summary>
+        [JsonPropertyName("prot"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int[]? ProtectedCells { get; set; }
     }
 
     /// <summary>A DECSC-style saved cursor, mirroring <see cref="CursorState"/>.</summary>
@@ -318,6 +322,9 @@ namespace Ntilde.VT
         [JsonPropertyName("italic")] public bool IsItalic { get; set; }
         [JsonPropertyName("ul")] public bool IsUnderline { get; set; }
         [JsonPropertyName("ol"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsOverline { get; set; }
+
+        /// <summary>DECSCA protection of newly written characters; absent (false) in snapshots made before it.</summary>
+        [JsonPropertyName("dsca"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsCharacterProtected { get; set; }
 
         /// <summary>The underline's style (#270), an <c>UnderlineStyle</c> value; 1 (straight) when absent.</summary>
         [JsonPropertyName("uls")] public byte UnderlineStyle { get; set; } = 1;
