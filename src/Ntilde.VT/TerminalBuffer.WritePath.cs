@@ -346,9 +346,7 @@ namespace Ntilde.VT
 
                 SyncPackedState();
 
-                // A narrower character over a wide glyph's head orphans its continuation cell; that cell is no longer part of any
-                // protected glyph, so it cannot keep the old glyph's protection.
-                if (width < 2 && row.Cells[_cursorCol].IsWide && _cursorCol + 1 < Cols) row.SetProtected(_cursorCol + 1, false);
+                ClearDisplacedWideProtection(row, _cursorCol, Math.Min(Cols, _cursorCol + Math.Max(1, width)));
 
                 // Clear continuations and old extended text
                 for (int i = 0; i < width && _cursorCol + i < Cols; i++)
@@ -633,6 +631,21 @@ namespace Ntilde.VT
                 ExitWriteLockIfNeeded(Lock, lockTaken);
             }
             Invalidate();
+        }
+
+        /// <summary>
+        /// A write over part of a wide glyph orphans its other half. That half is no longer part of any protected glyph, so it must
+        /// not keep the old glyph's protection: the continuation of an overwritten head and the anchor of an overwritten tail lose it
+        /// when they lie outside the written range [<paramref name="start"/>, <paramref name="end"/>).
+        /// </summary>
+        private static void ClearDisplacedWideProtection(TerminalRow row, int start, int end)
+        {
+            if (!row.HasProtectedCells) return;
+            for (int col = start; col < end; col++)
+            {
+                if (row.Cells[col].IsWide && col + 1 >= end && col + 1 < row.Cells.Length) row.SetProtected(col + 1, false);
+                if (row.Cells[col].IsWideContinuation && col - 1 < start && col > 0) row.SetProtected(col - 1, false);
+            }
         }
 
         private void InsertCharactersInternal(int count)

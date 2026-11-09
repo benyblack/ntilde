@@ -426,6 +426,30 @@ public sealed class CharacterProtectionStateTests
         Assert.Equal("..........", Mask(buffer, 0));
     }
 
+    /// <summary>An unprotected write over the tail of a protected wide glyph, or a wide write straddling its head, leaves nothing protected behind.</summary>
+    [Theory]
+    [InlineData("[1;2HX")]    // over the continuation: the anchor loses protection too
+    [InlineData("[1;1H界")]   // an identical wide write replaces the unit; the pen decides (unprotected here)
+    public void Overwriting_any_half_of_a_protected_wide_glyph_unprotects_the_other_half(string write)
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        parser.Process(Esc + write);
+        Assert.DoesNotContain('P', Mask(buffer, 0));
+    }
+
+    /// <summary>A wide write that straddles the head of a protected wide glyph orphans its continuation, which must not stay protected.</summary>
+    [Fact]
+    public void A_straddling_wide_write_does_not_leave_a_protected_orphan()
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Esc + "[1;2H" + Esc + "[1\"q界" + Esc + "[0\"q");   // protected glyph on columns 2-3
+        Assert.Equal(".PP.......", Mask(buffer, 0));
+        parser.Process(Esc + "[1;1H界");                                    // unprotected glyph on columns 1-2
+        Assert.Equal("..........", Mask(buffer, 0));
+        Assert.False(buffer.HasProtectedCharacters());
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()
