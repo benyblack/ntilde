@@ -215,6 +215,16 @@ test('attributes: moved cells must keep their stored tuple; dropped bold, smeare
     assert.equal(outcome(REP, reads => { reads.attr = { rows: [[plainCell('A'), ...Array.from({ length: 4 }, () => plainCell('X')), plainCell('Z')]], cursor: [0, 5] }; }), 'supported');
 });
 
+test('REP attribute-control flanks must stay on their own row, not only in their own column', () => {
+    const edit = reads => {
+        // Z moved from (0,5) to (1,5) while the four X cells stay put.
+        reads.attr = { rows: [[plainCell('A'), ...Array.from({ length: 4 }, () => colorCell('X', { attrs: ['bold'], bg: { kind: 'palette', index: 4 } }))],
+            [plainCell(' '), plainCell(' '), plainCell(' '), plainCell(' '), plainCell(' '), plainCell('Z')]], cursor: [0, 5] };
+    };
+    assert.equal(outcome(REP, edit), 'unsupported');
+    assert.match(note(REP, edit), /flank cell lost/);
+});
+
 test('background of created cells is observed against the same-pen reference, separately from the stored representation', () => {
     const paint = (index, extra = {}) => colorCell(' ', { bg: { kind: 'palette', index }, ...extra });
     const plain = ['A', 'B', 'C', 'D', 'E', 'Z', 'Q', 'H'].map(char => plainCell(char));

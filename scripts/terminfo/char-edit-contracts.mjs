@@ -284,7 +284,8 @@ function repeatAttributes(before, after, pen) {
     const seeded = inkIs(before, [[0, 0, 'A'], [0, 1, 'X'], [0, 5, 'Z']]) && sameCursor(before, 0, 1);
     const penCell = pen.ink.find(cell => cell.char === 'X');
     const cells = after.ink;
-    const flanksOk = cells.length === 6 && cells[0].col === 0 && cells[0].char === 'A' && neutral(cells[0]) && cells[5].col === 5 && cells[5].char === 'Z' && neutral(cells[5]);
+    const flankAt = (cell, col, char) => cell.row === 0 && cell.col === col && cell.char === char && neutral(cell);
+    const flanksOk = cells.length === 6 && flankAt(cells[0], 0, 'A') && flankAt(cells[5], 5, 'Z');
     const middle = cells.slice(1, 5);
     const textOk = flanksOk && middle.every((cell, index) => cell.row === 0 && cell.col === index + 1 && cell.char === 'X');
     const sameTuple = cell => penCell !== undefined && cell.flags === penCell.flags && cell.bgIndex === penCell.bgIndex && cell.fgIndex === penCell.fgIndex
