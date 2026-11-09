@@ -857,11 +857,21 @@ cursor, mode-flag, boundary, retained-attribute and main-screen history controls
 erase is observed, not required. The pinned pixel path is capture-only upstream and is not qualified; CSI 3J is not graded (it appears only as
 disposable-screen cleanup). Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.
 
+### Line-editing qualification (IL, DL)
+
+The [line-editing batch](terminfo/2026-11-09-line-editing-qualification.md) grades exactly `editing.insert-lines` (`ESC[1L`) and
+`editing.delete-lines` (`ESC[1M`) through a fifteenth layered collector extension (`ntilde-owned-line-editing-grading-v1`),
+replaying the pinned seed, cursor and edit bytes and running the pinned termless probes over parent-journaled stored cells of the whole
+screen, the cursor and the App's stored margins, origin and insert mode. The contract adds full-screen line contents, a full-height boundary,
+a DECSTBM scroll-region control (cursor inside, above and below), origin mode and moved-cell attribute controls; count spellings, new-line
+background fill, cursor column and scrollback are observations. The pinned terminal pixel path never carries a verdict and is not qualified.
+Receipt schema 28 and source policy v22 (188 files) bind it; earlier policies stay frozen.
+
 ### Charset qualification (UTF-8, DEC special graphics, DEC line drawing, G0/G1 switching)
 
 The [charset batch](terminfo/2026-11-09-charsets-qualification.md) grades exactly `charsets.utf8`, `charsets.dec-special`,
-`charsets.dec-line-drawing` and `charsets.g0-g1-switching` through a fifteenth layered collector extension
+`charsets.dec-line-drawing` and `charsets.g0-g1-switching` through a sixteenth layered collector extension
 (`ntilde-owned-charsets-grading-v1`), replaying the pinned bytes untouched and running the pinned termless probes over parent-journaled
 physical cells derived from complete stored cell details (never attribute strings or UTF-16 offsets). Controls cover the ASCII
 same-source seed, designation versus invocation, persistence past SI and lowercase restoration witnesses. The pinned pixel and
-cursor-query paths are not qualified. Receipt schema 28 and source policy v22 (188 files) bind it; earlier policies stay frozen.
+cursor-query paths are not qualified. Receipt schema 29 and source policy v23 (193 files) bind it; earlier policies stay frozen.

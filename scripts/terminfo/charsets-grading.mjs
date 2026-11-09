@@ -27,7 +27,7 @@ export function validateCharsetsEvidence(frames, run, runId, adapter) {
     validateGradedJournal(frames, { frameCount, prefix: 'chrs', noncePrefix: charsetsNoncePrefix, runId, label, screenOf });
     if (!adapter || adapter.id !== charsetsAdapterId || run.adapterId !== charsetsAdapterId
         || !/^[a-f\d]{64}$/.test(adapter.bundleSha256 ?? '') || !/^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? '')
-        || adapter.derivedFromAdapterId !== 'ntilde-owned-erase-display-grading-v1') {
+        || adapter.derivedFromAdapterId !== 'ntilde-owned-line-editing-grading-v1') {
         throw new Error(`Invalid ${label} adapter identity.`);
     }
     if (JSON.stringify(run.probeIds) !== JSON.stringify([...charsetsCaseIds])

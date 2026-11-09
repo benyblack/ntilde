@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-line-editing-graded-v1",
+  "runId": "05b14f48fd26fd3860418c6e506ac1f7",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-line-editing-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-erase-display-grading-v1",
+    "bundleSha256": "ad0c518472f2064713aca735743e111ddeea5d0d5048ed8e1e5439c41859c59c",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 line-editing termless criteria (editing.insert-lines with ESC[1L and editing.delete-lines with ESC[1M, each at row 2 column 1 over four seeded rows) replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored cells of the whole screen, the cursor, the App's stored margins, origin mode and insert mode, and stored attribute details, with controls for the unmodified seed (no-op), the omitted, zero, two and oversized counts (observed), a full-height boundary at the second-to-last row, a DECSTBM scroll region with the cursor inside, above and below it, origin mode inside the region, and an attribute control (moved cells keep their stored tuple; new blank lines carry no attribute but a background; background fill observed, not required). Stored ASCII state only: the pinned terminal pixel path never carries a verdict and is not qualified; scrollback is observed on the alternate screen only; no Unicode, wide-cell or history qualification; no stock grades.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 42,
+  "caseFiles": [
+    "report-editing.insert-lines.json",
+    "report-editing.delete-lines.json"
+  ]
+}

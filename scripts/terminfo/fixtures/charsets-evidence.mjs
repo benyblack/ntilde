@@ -143,7 +143,7 @@ export function syntheticCharsetsEvidence(runId = 'a'.repeat(32), bundleSha256 =
     });
     frames.push(frame(frames.length, 'chrs-finish', blank, deviceAttribute));
     const run = { schemaVersion: 1, adapterId: charsetsAdapterId, probeIds: charsetsContracts.map(contract => contract.caseId), cases };
-    const adapter = { id: charsetsAdapterId, derivedFromAdapterId: 'ntilde-owned-erase-display-grading-v1', bundleSha256,
+    const adapter = { id: charsetsAdapterId, derivedFromAdapterId: 'ntilde-owned-line-editing-grading-v1', bundleSha256,
         upstreamBundleSha256: 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6' };
     return { frames, run, runId, adapter };
 }
