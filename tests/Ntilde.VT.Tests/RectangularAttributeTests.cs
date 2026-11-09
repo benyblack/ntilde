@@ -614,4 +614,45 @@ public sealed class RectangularAttributeTests
         Assert.Equal($"True/Curly/5", Detail($"{Esc}[1;1;1;1;4;4$r"));
         Assert.Equal("True//", Detail($"{Esc}[1;1;1;1;4$t{Esc}[1;1;1;1;4$t"));
     }
+
+    /// <summary>The legacy replay checkpoint carries the extent (absent reads as the stream) and applying one replaces the previous selection.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "Replay")]
+    public async Task Recorded_and_applied_legacy_snapshots_carry_the_extent(bool parserState)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            var live = new TerminalBuffer(8, 3);
+            var parser = new AnsiParser(live, forceConPtyFiltering: false);
+            parser.Process($"AAAAAAAA\r\nBBBBBBBB\r\nCCCCCCCC{Esc}[2*x");
+            using (var recorder = new PtyRecorder(path, 8, 3)) recorder.RecordSnapshot(live, parserState ? parser : null);
+            var restored = new TerminalBuffer(8, 3);
+            var restoredParser = new AnsiParser(restored, forceConPtyFiltering: false);
+            bool applied = false;
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask, onSnapshotCallback: snapshot =>
+            {
+                Assert.True(snapshot.IsRectangularAttributeExtent);
+                ReplayRunner.ApplySnapshot(restored, restoredParser, snapshot);
+                applied = true;
+                return Task.CompletedTask;
+            }, ct: TestContext.Current.CancellationToken);
+            Assert.True(applied);
+            restoredParser.Process($"{Esc}[1;3;2;4;7$r");
+            Assert.Equal("..II....", Marks(restored, 0, 8));
+            Assert.Equal("..II....", Marks(restored, 1, 8));
+
+            // A snapshot without the field (every legacy recording) restores the stream, replacing a previous rectangle selection.
+            var other = new TerminalBuffer(8, 3);
+            var otherParser = new AnsiParser(other, forceConPtyFiltering: false);
+            otherParser.Process($"AAAAAAAA\r\nBBBBBBBB\r\nCCCCCCCC{Esc}[2*x");
+            other.ApplySnapshot(new ReplaySnapshot { Cols = 8, Rows = 3, ScrollBottom = 2 });
+            otherParser.Process($"{Esc}[1;3;2;4;7$r");
+            Assert.Equal("..IIIIII", Marks(other, 0, 8));
+        }
+        finally { File.Delete(path); }
+    }
 }
+
