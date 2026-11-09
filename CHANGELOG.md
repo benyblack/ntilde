@@ -86,6 +86,10 @@ and dark/light reporting.
 - **XTVERSION** (`CSI > q`) answers `Ntilde <version>`; **DECSTR** (`CSI ! p`) soft-resets the
   terminal; mode 1048 saves and restores the cursor; and a program's blinking or steady cursor
   is honored whatever the *Cursor blink* setting.
+- **Reverse-wraparound** (`CSI ? 45 h`). With auto-wrap also on, Backspace at the left edge now returns
+  to the last column of the previous row when that row ended by a soft wrap, as in xterm. It is off
+  by default, never crosses a hard line break, the top of the screen or a scrolling region's top
+  margin, and is cleared by RIS and DECSTR.
 - **fish 4** commands are no longer marked twice, which had doubled long-command notifications,
   Fix mode runs and agents' `CommandFinished` events.
 

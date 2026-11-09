@@ -92,6 +92,8 @@ namespace Ntilde.VT
         [JsonPropertyName("sb")] public int ScrollBottom { get; set; }
 
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; }
+        /// <summary>Reverse-wraparound (?45). Absent in older recordings, which reads as off.</summary>
+        [JsonPropertyName("rwm")] public bool IsReverseWrapMode { get; set; }
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("m9")] public bool MouseModeX10PressOnly { get; set; }

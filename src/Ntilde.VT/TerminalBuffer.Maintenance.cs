@@ -390,6 +390,7 @@ namespace Ntilde.VT
                 ScrollBottom = Rows - 1;
                 Modes.IsOriginMode = false;
                 Modes.IsAutoWrapMode = true;
+                Modes.IsReverseWrapMode = false;
                 Modes.IsApplicationCursorKeys = false;
                 Modes.IsApplicationKeypad = false;
                 Modes.IsInsertMode = false;
@@ -421,6 +422,7 @@ namespace Ntilde.VT
                     MarkRenderThemeChangedNoLock();
                 }
                 Modes.IsAutoWrapMode = true;
+                Modes.IsReverseWrapMode = false;
                 Modes.IsApplicationCursorKeys = false;
                 Modes.IsApplicationKeypad = false;
                 Modes.IsClipboardPasteMode = false;

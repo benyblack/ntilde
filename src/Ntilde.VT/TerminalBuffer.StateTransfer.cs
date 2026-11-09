@@ -810,6 +810,7 @@ namespace Ntilde.VT
             IsApplicationCursorKeys = modes.IsApplicationCursorKeys,
             IsApplicationKeypad = modes.IsApplicationKeypad,
             IsAutoWrapMode = modes.IsAutoWrapMode,
+            IsReverseWrapMode = modes.IsReverseWrapMode,
             IsOriginMode = modes.IsOriginMode,
             IsReverseVideo = modes.IsReverseVideo,
             IsSixelDisplayMode = modes.IsSixelDisplayMode,
@@ -838,6 +839,7 @@ namespace Ntilde.VT
             target.IsApplicationCursorKeys = source.IsApplicationCursorKeys;
             target.IsApplicationKeypad = source.IsApplicationKeypad;
             target.IsAutoWrapMode = source.IsAutoWrapMode;
+            target.IsReverseWrapMode = source.IsReverseWrapMode;
             target.IsOriginMode = source.IsOriginMode;
             target.IsReverseVideo = source.IsReverseVideo;
             target.IsSixelDisplayMode = source.IsSixelDisplayMode;

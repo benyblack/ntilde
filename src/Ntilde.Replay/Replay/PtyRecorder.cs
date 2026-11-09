@@ -232,6 +232,7 @@ namespace Ntilde.Replay
                         ScrollBottom = buffer.ScrollBottom,
 
                         IsAutoWrapMode = buffer.Modes.IsAutoWrapMode,
+                        IsReverseWrapMode = buffer.Modes.IsReverseWrapMode,
                         IsApplicationCursorKeys = buffer.Modes.IsApplicationCursorKeys,
                         IsApplicationKeypad = buffer.Modes.IsApplicationKeypad,
                         MouseModeX10PressOnly = buffer.Modes.MouseModeX10PressOnly,
