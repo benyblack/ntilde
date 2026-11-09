@@ -85,6 +85,11 @@ namespace Ntilde.VT
         // text color. Cells written with one pen share one CellUnderline instance.
         private Storage.SmallMap<CellUnderline>? _underlines;
 
+        // DECSCA: which columns hold characters DECSED/DECSERA must not erase. Sparse like the other
+        // side tables - a row that never saw protected text carries no map at all - and deliberately not a
+        // TerminalCellFlags bit: protection is not SGR styling, and every flag bit is already taken.
+        private Storage.SmallMap<CellProtection>? _protected;
+
         public string? GetExtendedText(int col)
         {
             if (_extendedText == null) return null;
@@ -159,6 +164,37 @@ namespace Ntilde.VT
             _underlines = null;
         }
 
+        /// <summary>Whether the character at <paramref name="col"/> was written under DECSCA 1 and is still protected.</summary>
+        public bool IsProtected(int col)
+            => _protected != null && _protected.TryGet(col, out _);
+
+        /// <summary>True when any column of this row is protected.</summary>
+        public bool HasProtectedCells => _protected is { Count: > 0 };
+
+        /// <summary>Marks or unmarks one column; unmarking a row that never had protection is free.</summary>
+        public void SetProtected(int col, bool isProtected)
+        {
+            if (!isProtected)
+            {
+                if (_protected == null) return;
+                _protected.Remove(col);
+                if (_protected.Count == 0) _protected = null;
+                return;
+            }
+
+            _protected ??= new Storage.SmallMap<CellProtection>();
+            _protected.Set(col, CellProtection.Instance);
+            NoteColumnsWritten(col + 1);
+        }
+
+        public void ClearProtection()
+        {
+            _protected = null;
+        }
+
+        /// <summary>The raw protected-column map; for state export, not for mutation.</summary>
+        public Storage.SmallMap<CellProtection>? GetProtectionMap() => _protected;
+
         /// <summary>
         /// Returns the raw SmallMap backing extended text (grapheme clusters) for this row.
         /// This is intended for preservation into paged scrollback — do not cache or mutate.
@@ -182,7 +218,7 @@ namespace Ntilde.VT
         /// (insert mode runs per printable character) skip metadata maintenance entirely for
         /// the overwhelmingly common plain-ASCII, no-hyperlink row.
         /// </summary>
-        public bool HasRowMetadata => _extendedText != null || _hyperlinks != null || _underlines != null || _textSizing != null;
+        public bool HasRowMetadata => _extendedText != null || _hyperlinks != null || _underlines != null || _textSizing != null || _protected != null;
 
         /// <summary>
         /// Moves side-table entries to follow a horizontal cell shift, so extended graphemes and
@@ -205,6 +241,7 @@ namespace Ntilde.VT
             _hyperlinks = ShiftMap(_hyperlinks, startCol, delta, cols);
             _underlines = ShiftMap(_underlines, startCol, delta, cols);
             _textSizing = ShiftMap(_textSizing, startCol, delta, cols);
+            _protected = ShiftMap(_protected, startCol, delta, cols);
         }
 
         // Generic over the value type so the extended-text and hyperlink maps share one implementation:
@@ -282,6 +319,10 @@ namespace Ntilde.VT
             {
                 if (col < columnLimit) SetTextSizing(col, value);
             });
+            source._protected?.ForEach((col, _) =>
+            {
+                if (col < columnLimit) SetProtected(col, true);
+            });
         }
 
         /// <summary>
@@ -294,12 +335,14 @@ namespace Ntilde.VT
             Storage.SmallMap<string>? extendedText,
             Storage.SmallMap<Links.Hyperlink>? hyperlinks,
             Storage.SmallMap<CellUnderline>? underlines,
-            Storage.SmallMap<CellTextSizing>? textSizing = null)
+            Storage.SmallMap<CellTextSizing>? textSizing = null,
+            Storage.SmallMap<CellProtection>? protectedCells = null)
         {
             _extendedText = extendedText is { Count: > 0 } ? extendedText : null;
             _hyperlinks = hyperlinks is { Count: > 0 } ? hyperlinks : null;
             _underlines = underlines is { Count: > 0 } ? underlines : null;
             _textSizing = textSizing is { Count: > 0 } ? textSizing : null;
+            _protected = protectedCells is { Count: > 0 } ? protectedCells : null;
         }
 
         public TerminalRow(int cols)

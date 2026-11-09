@@ -272,7 +272,7 @@ public sealed class AnsiParserHardeningTests
         ('c', '>'), // DA2 - secondary device attributes, answered.
         ('h', '?'), // DEC private mode set.
         ('l', '?'), // DEC private mode reset.
-        ('J', '?'), // DECSED - deliberately aliased to ED while DECSCA is unimplemented.
+        ('J', '?'), // DECSED - selective: spares DECSCA-protected characters, exactly ED while none are protected.
         ('K', '?'), // DECSEL - deliberately aliased to EL for the same reason.
         ('n', '?'), // DECXCPR - answered in the private form.
         ('u', '?'), // Kitty keyboard query - answers CSI ? Ps u. The '>', '<' and '=' kitty
@@ -679,7 +679,7 @@ public sealed class AnsiParserHardeningTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
-    /// <summary>DECSED/DECSEL stay aliased to ED/EL while DECSCA is unimplemented.</summary>
+    /// <summary>With nothing protected, DECSED is exactly ED (and DECSEL, not yet selective, is still EL).</summary>
     [Fact]
     public void Decsed_StillErases_WhileNothingIsProtected()
     {

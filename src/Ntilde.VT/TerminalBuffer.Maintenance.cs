@@ -349,6 +349,7 @@ namespace Ntilde.VT
                     {
                         row.Cells[c] = cell;
                     }
+                    row.ClearProtection(); // the filled E cells are fresh characters, never protected ones
                     row.TouchRevision();
                 }
 
@@ -495,6 +496,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearProtection();
                 row.ClearTextSizing();
                 row.TouchRevision();
             }

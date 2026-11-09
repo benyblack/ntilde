@@ -280,6 +280,7 @@ namespace Ntilde.VT
                                     row.SetExtendedText(attachCol + 1, null); // Ensure no old text remains
                                     row.SetHyperlink(attachCol + 1, row.GetHyperlink(attachCol));
                                     row.SetUnderline(attachCol + 1, UnderlineForWrite); // the continuation takes the pen's flags
+                                    row.SetProtected(attachCol + 1, row.IsProtected(attachCol)); // and the glyph's protection
                                     expandedIntoNextCell = true;
                                 }
 
@@ -352,6 +353,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(_cursorCol + i, null);
                     row.SetHyperlink(_cursorCol + i, null);
                     row.SetUnderline(_cursorCol + i, null);
+                    row.SetProtected(_cursorCol + i, false);
                 }
 
                 ushort flags = _packedFlags;
@@ -365,6 +367,7 @@ namespace Ntilde.VT
                 }
                 row.SetHyperlink(_cursorCol, _currentHyperlink);
                 row.SetUnderline(_cursorCol, UnderlineForWrite);
+                row.SetProtected(_cursorCol, _state.IsCharacterProtected);
 
                 if (width >= 2 && _cursorCol + 1 < Cols)
                 {
@@ -375,6 +378,7 @@ namespace Ntilde.VT
                         row.SetExtendedText(_cursorCol + i, null);
                         row.SetHyperlink(_cursorCol + i, _currentHyperlink);
                         row.SetUnderline(_cursorCol + i, UnderlineForWrite);
+                        row.SetProtected(_cursorCol + i, _state.IsCharacterProtected);
                     }
                 }
 

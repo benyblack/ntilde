@@ -202,15 +202,15 @@
       "key": "CSI:?J",
       "mnemonic": "DECSED",
       "support": "partial",
-      "description": "Modes 0, 1 and 2 alias ordinary erase while protected-cell storage (DECSCA) is unsupported. Undefined mode 3 is ignored; it never clears scrollback.",
+      "description": "Modes 0, 1 and 2 erase their ED region except DECSCA-protected characters, and are ordinary ED while nothing is protected. Undefined mode 3 is ignored; it never clears scrollback.",
       "matrixFeature": "DECSED (? J)",
-      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveEraseHistoryTests.cs"
+      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveErasureTests.cs"
     },
     {
       "key": "CSI:?K",
       "mnemonic": "DECSEL",
       "support": "partial",
-      "description": "Modes 0, 1 and 2 alias ordinary erase while protected-cell storage (DECSCA) is unsupported. Undefined mode 3 is ignored; it never clears scrollback.",
+      "description": "Modes 0, 1 and 2 alias ordinary line erase; DECSEL does not yet spare DECSCA-protected characters. Undefined mode 3 is ignored; it never clears scrollback.",
       "matrixFeature": "DECSEL (? K)",
       "evidencePath": "tests/Ntilde.VT.Tests/SelectiveEraseHistoryTests.cs"
     },
@@ -218,10 +218,26 @@
       "key": "CSI:$z",
       "mnemonic": "DECERA",
       "support": "partial",
-      "description": "Erase a bounded stored-text rectangle with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Wide/scaled text follows existing atomic erasure. Image-plane erasure and protected-cell storage remain unqualified.",
+      "description": "Erase a bounded stored-text rectangle with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Wide/scaled text follows existing atomic erasure. Image-plane erasure remains unqualified; protected characters are erased too.",
       "matrixFeature": "DECERA ($ z)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularEraseTests.cs",
       "contractCase": "erase-rectangular-area"
+    },
+    {
+      "key": "CSI:${",
+      "mnemonic": "DECSERA",
+      "support": "partial",
+      "description": "Selectively erase a bounded stored-text rectangle with DECERA's borders, clipping, DECOM translation and erase colors, sparing characters written under DECSCA 1; DECERA itself when nothing is protected. The image plane is untouched.",
+      "matrixFeature": "DECSERA ($ {)",
+      "evidencePath": "tests/Ntilde.VT.Tests/SelectiveErasureTests.cs"
+    },
+    {
+      "key": "CSI:\"q",
+      "mnemonic": "DECSCA",
+      "support": "partial",
+      "description": "CSI 1 \" q protects later characters from DECSED and DECSERA; 0, 2 and an omitted value do not. A pen mode separate from SGR, saved by DECSC and reset by DECSTR and RIS.",
+      "matrixFeature": "DECSCA (\" q)",
+      "evidencePath": "tests/Ntilde.VT.Tests/CharacterProtectionStateTests.cs"
     }
   ]
 }

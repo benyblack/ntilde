@@ -257,6 +257,7 @@ namespace Ntilde.Replay
                         IsItalic = buffer.IsItalic,
                         IsUnderline = buffer.IsUnderline,
                         IsOverline = buffer.IsOverline,
+                        IsCharacterProtected = buffer.IsCharacterProtected,
                         UnderlineStyle = (byte)buffer.UnderlineStyle,
                         UnderlineColor = buffer.UnderlineColor?.ToUint(),
                         UnderlineColorIndex = buffer.UnderlineColorIndex,
@@ -267,6 +268,8 @@ namespace Ntilde.Replay
                         RowWraps = new bool[rowCount],
                         RowWrittenColumns = new int[rowCount]
                     };
+
+                    List<int>? protectedCells = null;
 
                     // Allocate a single array for all cells in viewport
                     TerminalCell[] allCells = new TerminalCell[cols * rowCount];
@@ -287,6 +290,10 @@ namespace Ntilde.Replay
                             if (row.Cells[c].HasExtendedText && row.GetExtendedText(c) is { } text)
                                 snapshot.ExtendedText[r * cols + c] = text;
 
+                            // DECSCA protection
+                            if (row.IsProtected(c))
+                                (protectedCells ??= new List<int>()).Add(r * cols + c);
+
                             // Underline style and color (#270)
                             if (row.GetUnderline(c) is { } underline)
                             {
@@ -300,6 +307,8 @@ namespace Ntilde.Replay
                             }
                         }
                     }
+
+                    snapshot.ProtectedCells = protectedCells?.ToArray();
 
                     // Convert allCells to Base64 using zero-copy casting
                     var byteSpan = MemoryMarshal.AsBytes(allCells.AsSpan());

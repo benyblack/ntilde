@@ -42,6 +42,7 @@ public partial class TerminalBuffer
             row.SetExtendedText(col, null);
             row.SetHyperlink(col, null);
             row.SetUnderline(col, null);
+            row.SetProtected(col, false);
         }
         row.TouchRevision();
     }

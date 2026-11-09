@@ -106,6 +106,19 @@ invariant changes.
   existing row decoration side table, preserving the 12-byte cell layout. Saved pens, reflow,
   history, state transfer, replay and ANSI exports retain it. App paints it in the resolved
   foreground; SGR 58 remains underline-only. AgentHost exposes it only through explicit opt-in.
+- **Character protection (DECSCA) belongs to VT as sparse screen metadata.** `CSI 1 " q` sets a pen
+  mode, separate from SGR (SGR resets never touch it), that marks later characters protected in a
+  per-row side table; `TerminalCellFlags` and the 12-byte cell layout are unchanged. Writes set or
+  clear it with the cell (wide glyphs mark both halves, OSC 66 blocks mark the whole unit);
+  ICH/DCH/insert mode, scrolling, resize/reflow, both screen banks, full-state export (`prot`,
+  `dsca`) and recording checkpoints (`prot_cells`, `dsca`) carry it; every ordinary erase and
+  overwrite clears it. DECSC/DECRC save the mode per screen and DECSTR/RIS reset it. DECSED
+  (`CSI ? Ps J`) and DECSERA (`CSI Pt;Pl;Pb;Pr $ {`) erase only unprotected characters with
+  ED's/DECERA's blanks and cleanup, and are exactly ED/DECERA while nothing in the region is
+  protected; with protected text present they leave the image plane untouched. Protection is
+  screen state: rows that scroll into history lose it, and ANSI text export, render snapshots and
+  the mux text client do not carry it. DECSEL stays an EL alias and ISO SPA/EPA is unsupported;
+  both are separate contracts.
 - **DECSCNM reverse video is presented by VT as data.** `ModeState.IsReverseVideo` (?5) is
   screen-wide state; the render snapshot's theme already carries the xterm swap (default
   foreground/background exchanged, a cursor color equal to a default following it, derived

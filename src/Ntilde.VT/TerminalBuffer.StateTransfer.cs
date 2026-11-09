@@ -358,6 +358,7 @@ namespace Ntilde.VT
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
+            List<int>? protectedCells = null;
 
             for (int r = 0; r < rowCount && r < rows.Length; r++)
             {
@@ -385,6 +386,15 @@ namespace Ntilde.VT
                     ref extendedText,
                     ref linkIds,
                     ref underlineIds);
+
+                if (row.GetProtectionMap() is { Count: > 0 } protection)
+                {
+                    int rowStart = r * cols;
+                    var columns = new List<int>(protection.Count);
+                    protection.ForEach((col, _) => { if (col < cols) columns.Add(rowStart + col); });
+                    columns.Sort();
+                    (protectedCells ??= []).AddRange(columns);
+                }
             }
 
             return new TerminalScreenState
@@ -396,6 +406,7 @@ namespace Ntilde.VT
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
+                ProtectedCells = protectedCells?.ToArray(),
             };
         }
 
@@ -427,6 +438,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearProtection();
                 row.ClearTextSizing();
                 for (int c = 0; c < row.Cells.Length; c++)
                 {
@@ -510,6 +522,19 @@ namespace Ntilde.VT
                     {
                         rows[r].SetUnderline(c, underlines[kv.Value]);
                     }
+                }
+            }
+
+            if (state.ProtectedCells != null)
+            {
+                foreach (int key in state.ProtectedCells)
+                {
+                    if (!TrySplitKey(key, sourceCols, rowsToCopy, colsToCopy, out int r, out int c))
+                    {
+                        continue;
+                    }
+
+                    rows[r].SetProtected(c, true);
                 }
             }
         }
@@ -711,6 +736,7 @@ namespace Ntilde.VT
                 IsItalic = cursor.IsItalic,
                 IsUnderline = cursor.IsUnderline,
                 IsOverline = cursor.IsOverline,
+                IsCharacterProtected = cursor.IsCharacterProtected,
                 UnderlineStyle = (byte)cursor.UnderlineStyle,
                 UnderlineColor = cursor.UnderlineColor?.ToUint(),
                 UnderlineColorIndex = cursor.UnderlineColorIndex,
@@ -741,6 +767,7 @@ namespace Ntilde.VT
             target.IsItalic = sgr.IsItalic;
             target.IsUnderline = sgr.IsUnderline;
             target.IsOverline = sgr.IsOverline;
+            target.IsCharacterProtected = sgr.IsCharacterProtected;
             target.UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
             target.UnderlineColor = sgr.UnderlineColor is { } targetColor ? TermColor.FromUint(targetColor) : null;
             target.UnderlineColorIndex = sgr.UnderlineColorIndex;
@@ -763,6 +790,7 @@ namespace Ntilde.VT
             IsItalic = _isItalic,
             IsUnderline = _isUnderline,
             IsOverline = IsOverline,
+            IsCharacterProtected = IsCharacterProtected,
             UnderlineStyle = (byte)_state.UnderlineStyle,
             UnderlineColor = _state.UnderlineColor?.ToUint(),
             UnderlineColorIndex = _state.UnderlineColorIndex,
@@ -792,6 +820,7 @@ namespace Ntilde.VT
             _isItalic = sgr.IsItalic;
             _isUnderline = sgr.IsUnderline;
             IsOverline = sgr.IsOverline;
+            IsCharacterProtected = sgr.IsCharacterProtected;
             UnderlineStyle = (UnderlineStyle)sgr.UnderlineStyle;
             UnderlineColor = sgr.UnderlineColor is { } liveColor ? TermColor.FromUint(liveColor) : null;
             UnderlineColorIndex = sgr.UnderlineColorIndex;

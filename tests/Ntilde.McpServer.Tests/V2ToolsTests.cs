@@ -191,7 +191,7 @@ public class ExplainEscapeSequenceTests
     [InlineData("CSI ?1049l", "DECRST")]
     [InlineData("CSI >c", "DA")]
     [InlineData("CSI 6 q", "DECSCUSR")]
-    [InlineData("CSI ?2J", "ED")]      // DECSED, still aliased to ED while DECSCA is unimplemented
+    [InlineData("CSI ?2J", "ED")]      // DECSED; the explainer names the nearest ordinary erase
     [InlineData("CSI ?6n", "DSR")]     // DECXCPR
     public void DefinedQualifiedForms_StillResolve(string sequence, string expected)
     {

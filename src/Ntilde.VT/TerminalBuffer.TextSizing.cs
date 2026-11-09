@@ -109,6 +109,7 @@ public partial class TerminalBuffer
         row.SetExtendedText(col, null);
         row.SetHyperlink(col, null);
         row.SetUnderline(col, null);
+        row.SetProtected(col, false);
     }
 
     private static CellTextSizing? ReadSizingMap(Storage.SmallMap<CellTextSizing>? map, int col)
@@ -170,6 +171,7 @@ public partial class TerminalBuffer
             row.SetExtendedText(col, anchor && block.Text.Length > 1 ? block.Text : null);
             row.SetHyperlink(col, _currentHyperlink);
             row.SetUnderline(col, UnderlineForWrite);
+            row.SetProtected(col, _state.IsCharacterProtected);
             row.SetTextSizing(col, new(block, dx, dy));
         }
         row.TouchRevision();
@@ -406,6 +408,7 @@ public partial class TerminalBuffer
         target.SetExtendedText(col, null);
         target.SetHyperlink(col, null);
         target.SetUnderline(col, null);
+        target.SetProtected(col, false);
         target.SetTextSizing(col, null);
         target.TouchRevision();
     }

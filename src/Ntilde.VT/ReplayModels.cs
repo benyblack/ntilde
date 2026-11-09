@@ -126,6 +126,7 @@ namespace Ntilde.VT
         [JsonPropertyName("italic")] public bool IsItalic { get; set; }
         [JsonPropertyName("ul")] public bool IsUnderline { get; set; }
         [JsonPropertyName("ol"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsOverline { get; set; }
+        [JsonPropertyName("dsca"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsCharacterProtected { get; set; }
         [JsonPropertyName("blink")] public bool IsBlink { get; set; }
         [JsonPropertyName("strike")] public bool IsStrikethrough { get; set; }
         [JsonPropertyName("hidden")] public bool IsHidden { get; set; }
@@ -163,6 +164,11 @@ namespace Ntilde.VT
         /// <summary>Underline styles and colors (#270) keyed by <c>row * cols + col</c>; absent when none.</summary>
         [JsonPropertyName("ul_cells")]
         public System.Collections.Generic.Dictionary<int, TerminalUnderlineEntry>? Underlines { get; set; }
+
+        /// <summary>DECSCA-protected cells as <c>row * cols + col</c> keys; absent when none.</summary>
+        [JsonPropertyName("prot_cells")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int[]? ProtectedCells { get; set; }
     }
 
     [JsonSourceGenerationOptions(WriteIndented = false, AllowDuplicateProperties = false)]

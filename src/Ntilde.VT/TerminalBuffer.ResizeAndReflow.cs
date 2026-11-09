@@ -409,7 +409,7 @@ namespace Ntilde.VT
         /// </remarks>
         private static bool IsRowPadding(TerminalRow row)
         {
-            if (row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 }) return false;
+            if (row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells) return false;
             bool rowHasLinks = row.GetHyperlinkMap() is { Count: > 0 };
             var cells = row.Cells;
 

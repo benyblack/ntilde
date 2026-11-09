@@ -282,6 +282,7 @@ namespace Ntilde.VT
             target.IsItalic = IsItalic;
             target.IsUnderline = IsUnderline;
             target.IsOverline = IsOverline;
+            target.IsCharacterProtected = IsCharacterProtected;
             target.UnderlineStyle = UnderlineStyle;
             target.UnderlineColor = UnderlineColor;
             target.UnderlineColorIndex = UnderlineColorIndex;
@@ -307,6 +308,7 @@ namespace Ntilde.VT
             IsItalic = source.IsItalic;
             IsUnderline = source.IsUnderline;
             IsOverline = source.IsOverline;
+            IsCharacterProtected = source.IsCharacterProtected;
             UnderlineStyle = source.UnderlineStyle;
             UnderlineColor = source.UnderlineColor;
             UnderlineColorIndex = source.UnderlineColorIndex;
@@ -344,6 +346,7 @@ namespace Ntilde.VT
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
                 row.ClearUnderlines();
+                row.ClearProtection();
                 row.ClearTextSizing();
                 row.TouchRevision();
             }
@@ -366,6 +369,7 @@ namespace Ntilde.VT
             IsItalic = false;
             IsUnderline = false;
             IsOverline = false;
+            IsCharacterProtected = false;
             UnderlineStyle = UnderlineStyle.Single;
             UnderlineColor = null;
             UnderlineColorIndex = -1;
@@ -396,6 +400,7 @@ namespace Ntilde.VT
             state.IsItalic = false;
             state.IsUnderline = false;
             state.IsOverline = false;
+            state.IsCharacterProtected = false;
             state.UnderlineStyle = UnderlineStyle.Single;
             state.UnderlineColor = null;
             state.UnderlineColorIndex = -1;
@@ -509,6 +514,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
                     row.SetUnderline(i, null);
+                    row.SetProtected(i, false);
                 }
                 row.TouchRevision();
             }
@@ -535,6 +541,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
                     row.SetUnderline(i, null);
+                    row.SetProtected(i, false);
                 }
                 row.TouchRevision();
             }
@@ -583,6 +590,7 @@ namespace Ntilde.VT
             row.ClearExtendedText();
             row.ClearHyperlinks();
             row.ClearUnderlines();
+            row.ClearProtection();
             row.ClearTextSizing();
             row.TouchRevision();
         }
@@ -607,6 +615,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(col, null);
                     row.SetHyperlink(col, null);
                     row.SetUnderline(col, null);
+                    row.SetProtected(col, false);
                 }
                 row.TouchRevision();
             }
@@ -1137,6 +1146,7 @@ namespace Ntilde.VT
                 IsItalic = snapshot.IsItalic;
                 IsUnderline = snapshot.IsUnderline;
                 IsOverline = snapshot.IsOverline;
+                IsCharacterProtected = snapshot.IsCharacterProtected;
                 // A recording is read from disk, so a value no SGR could have set falls back to the default.
                 UnderlineStyle = snapshot.UnderlineStyle is >= 1 and <= 5 ? (UnderlineStyle)snapshot.UnderlineStyle : UnderlineStyle.Single;
                 UnderlineColor = snapshot.UnderlineColor is { } penColor ? TermColor.FromUint(penColor) : null;
@@ -1168,6 +1178,7 @@ namespace Ntilde.VT
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
+                            row.ClearProtection();
                             row.ClearTextSizing();
                             if (snapshot.RowWrapColumns is { } widths && widths[r] >= 0)
                                 row.WrappedColumns = Math.Min(widths[r], colsToCopy);
@@ -1220,6 +1231,18 @@ namespace Ntilde.VT
                         }
 
                         _viewport[r].SetUnderline(c, underline);
+                    }
+                }
+
+                // DECSCA protection, absent in recordings made before it.
+                if (snapshot.ProtectedCells != null && snapshot.Cols > 0)
+                {
+                    foreach (int key in snapshot.ProtectedCells)
+                    {
+                        if (key < 0) continue;
+                        int r = key / snapshot.Cols;
+                        int c = key % snapshot.Cols;
+                        if (r < _viewport.Length && c < Cols) _viewport[r].SetProtected(c, true);
                     }
                 }
 

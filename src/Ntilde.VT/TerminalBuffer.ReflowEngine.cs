@@ -182,6 +182,7 @@ namespace Ntilde.VT
                     result.SetExtendedText(col, null);
                     result.SetHyperlink(col, null);
                     result.SetUnderline(col, null);
+                    result.SetProtected(col, false);
                     result.SetTextSizing(col, null);
                 }
                 if (cols > 0 && result.Cells[cols - 1].IsWide)
@@ -257,7 +258,7 @@ namespace Ntilde.VT
                                 break;
                             }
                         }
-                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
+                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
                     }
 
                     int vpRowsToTake = lastActiveVpRow + 1;
@@ -280,7 +281,7 @@ namespace Ntilde.VT
                     // 3. Metadata-Aware Logical Reconstruction
                     // The hyperlink travels alongside the extended grapheme, not separately: both are
                     // column-keyed side tables, and reflow re-columns everything (#164 item 2a).
-                    var line = new (TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline)[Math.Max(oldCols, newCols) * 2 + 16];
+                    var line = new (TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)[Math.Max(oldCols, newCols) * 2 + 16];
                     int lineLen = 0;
                     int lineStartPhys = -1;
                     int logicalIdx = 0;
@@ -336,6 +337,7 @@ namespace Ntilde.VT
                             row.ClearExtendedText();
                             row.ClearHyperlinks();
                             row.ClearUnderlines();
+                            row.ClearProtection();
                             row.ClearTextSizing();
                             row.IsWrapped = false;
                         }
@@ -467,6 +469,7 @@ namespace Ntilde.VT
                                     row.SetExtendedText(c, entry.ExtendedText);
                                     row.SetHyperlink(c, entry.Hyperlink);
                                     row.SetUnderline(c, entry.Underline);
+                                    row.SetProtected(c, entry.Protected);
                                 }
 
                                 // Style-Aware Padding
@@ -677,12 +680,14 @@ namespace Ntilde.VT
                             // colored underline (#270): drawn on blanks too, an editor squiggle on trailing whitespace.
                             bool rowHasLinks = physRow.GetHyperlinkMap() is { Count: > 0 };
                             bool rowHasUnderlines = physRow.GetUnderlineMap() is { Count: > 0 };
+                            bool rowHasProtection = physRow.HasProtectedCells; // DECSCA text survives the trim like a styled underline
                             for (int scan = 0; scan < physRow.Cells.Length; scan++)
                             {
                                 var cell = physRow.Cells[scan];
                                 if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
                                     || (rowHasLinks && physRow.GetHyperlink(scan) != null)
-                                    || (rowHasUnderlines && physRow.GetUnderline(scan) != null))
+                                    || (rowHasUnderlines && physRow.GetUnderline(scan) != null)
+                                    || (rowHasProtection && physRow.IsProtected(scan)))
                                 {
                                     lastContentIdx = scan;
                                 }
@@ -814,7 +819,7 @@ namespace Ntilde.VT
                                 // Extract Left+Middle
                                 for (int k = 0; k < gapStart; k++)
                                 {
-                                    line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
+                                    line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k), physRow.IsProtected(k));
                                 }
 
                                 // Calculate new position
@@ -829,20 +834,20 @@ namespace Ntilde.VT
                                     var spaceFill = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
                                     for (int s = currentPos; s < newRightPos; s++)
                                     {
-                                        line[lineLen++] = (spaceFill, null, null, null);
+                                        line[lineLen++] = (spaceFill, null, null, null, false);
                                     }
                                     // Add right content
                                     for (int k = rightStart; k <= rightEnd; k++)
                                     {
-                                        line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
+                                        line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k), physRow.IsProtected(k));
                                     }
                                 }
                                 else
                                 {
                                     // Truncate/Squish
                                     var spaceFill = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
-                                    line[lineLen++] = (spaceFill, null, null, null);
-                                    line[lineLen++] = (spaceFill, null, null, null);
+                                    line[lineLen++] = (spaceFill, null, null, null, false);
+                                    line[lineLen++] = (spaceFill, null, null, null, false);
 
                                     int available = newCols - lineLen;
                                     if (available > 0)
@@ -850,7 +855,7 @@ namespace Ntilde.VT
                                         int take = Math.Min(available, rightBlockWidth);
                                         int startOffset = rightBlockWidth - take;
                                         for (int k = rightStart + startOffset; k <= rightEnd; k++)
-                                            line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
+                                            line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k), physRow.IsProtected(k));
                                     }
                                 }
                                 isSparseRowRepositioned = true;
@@ -862,7 +867,7 @@ namespace Ntilde.VT
                         if (!isSparseRowRepositioned)
                         {
                             for (int k = 0; k < validLen; k++)
-                                line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k));
+                                line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k), physRow.GetUnderline(k), physRow.IsProtected(k));
                         }
 
                         if (!physRow.IsWrapped || ignoreWrap)
