@@ -208,6 +208,21 @@ test('guard: unsupported evidence cannot be promoted into the benchmark totals',
     assert.throws(() => check(complete), /suiteComplete=false/);
 });
 
+test('a failed suite lends no verdict to the totals of an id another suite still qualifies', () => {
+    const stored = committed();
+    const failed = clone(stored);
+    failed.suites.find(suite => suite.suite === 'sgr-rgb').rederivation.status = 'failed';
+    for (const item of failed.benchmark) for (const claim of item.claims) if (claim.suite === 'sgr-rgb') claim.status = 'declared-not-rederived';
+    const totals = totalsOf(failed.benchmark, baseline());
+    // sgr.fg/bg.standard stay qualified through sgr-colors, whose pinned probe was inconclusive; sgr-rgb's pinned-supported must not count.
+    assert.equal(totals.pinnedSupportedIds, stored.totals.pinnedSupportedIds - 2);
+    assert.equal(totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds);
+    assert.equal(totals.suiteClaims, stored.totals.suiteClaims - 2);
+    assert.deepEqual(totals.effectSupportedPinnedInconclusiveIds.filter(id => id.endsWith('.standard')).sort(), ['sgr.bg.standard', 'sgr.fg.standard']);
+    failed.totals = totals;
+    check(failed);
+});
+
 test('guard: recorded totals must match the recomputed ones', () => {
     const inflated = committed();
     inflated.totals.effectSupportedIds += 1;

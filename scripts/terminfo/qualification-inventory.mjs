@@ -272,7 +272,10 @@ const rollup = claims => {
 
 /** Aggregate counts, computed only from qualified claims; every consumer reads these instead of recounting. */
 export function totalsOf(rows, baseline) {
-    const qualified = rows.filter(row => row.claims.some(claim => claim.status === 'qualified'));
+    // Only qualified claims count, and a row's aggregate verdicts are re-derived from them alone: a failed suite must not lend its verdicts.
+    const counted = rows.map(row => ({ row, claims: row.claims.filter(claim => claim.status === 'qualified') })).filter(entry => entry.claims.length > 0)
+        .map(({ row, claims }) => ({ id: row.id, claims, ...rollup(claims) }));
+    const qualified = counted;
     const effectSupported = qualified.filter(row => row.effect.verdict === 'supported');
     const pinnedSupported = qualified.filter(row => row.pinned.best === 'supported');
     const pinnedInconclusive = qualified.filter(row => row.pinned.best !== 'supported');
@@ -280,7 +283,7 @@ export function totalsOf(rows, baseline) {
     const total = Object.keys(baseline.outcomes).length;
     return {
         uniqueBenchmarkIds: qualified.length,
-        suiteClaims: rows.reduce((count, row) => count + row.claims.filter(claim => claim.status === 'qualified').length, 0),
+        suiteClaims: qualified.reduce((count, row) => count + row.claims.length, 0),
         idsWithMultipleClaims: qualified.filter(row => row.claims.length > 1).map(row => row.id),
         effectSupportedIds: effectSupported.length,
         pinnedAndEffectSupportedIds: effectSupported.filter(row => row.pinned.best === 'supported').length,
