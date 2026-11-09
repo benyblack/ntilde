@@ -34,7 +34,9 @@ export const textCells = (row, text, attrs = []) => [...text].flatMap((char, col
 /** A synthetic 40x140 screen. `cells` are [row, col, spec] triples (later ones win); every other cell is a plain blank.
  * The lines are the right-trimmed text of each row, as the App reports them. */
 export function syntheticDisplayScreen(cells, cursor, { binding = paletteBinding(), buffer = bufferOf(), history = [], cursorVisible = true } = {}) {
-    const grid = Array.from({ length: ROWS * COLS }, () => plainCell(' '));
+    // One shared blank spec: the screen builder computes each distinct spec object once.
+    const blank = plainCell(' ');
+    const grid = Array.from({ length: ROWS * COLS }, () => blank);
     for (const [row, col, spec] of cells) grid[row * COLS + col] = spec;
     const screen = syntheticSgrPaletteScreen(grid, binding, displayGeometry);
     const lines = Array.from({ length: ROWS }, (_, row) => grid.slice(row * COLS, (row + 1) * COLS).map(spec => spec.char).join('').trimEnd());
