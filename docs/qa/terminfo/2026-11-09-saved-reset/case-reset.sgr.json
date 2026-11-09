@@ -1,0 +1,256 @@
+{
+  "caseId": "reset.sgr",
+  "pinnedCriterion": "ESC[1;3;7m X ESC[0m Y: X is bold, italic and inverse, Y is none of them (a separate case from sgr.reset)",
+  "pinnedFeeds": [
+    "\u001b[1;3;7mX\u001b[0mY"
+  ],
+  "pinnedFed": 1,
+  "terminalFixture": {
+    "writes": [
+      "\u001b[1;1H\u001b[2K",
+      "\u001b[1m",
+      "\u001b[0m",
+      "X"
+    ],
+    "demand": "cursor advance only (always inconclusive)",
+    "minimum": {
+      "rows": 1,
+      "cols": 2
+    },
+    "note": "upstream terminal path is a consumed-byte cursor query that never carries a verdict"
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;3;7mX\u001b[0mY",
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;3;7mXY",
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;2;3;4;5;7;8;9;53;38;2;1;2;3;48;2;4;5;6;58;2;7;8;9mX\u001b[0mY",
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;3;7mX\u001b[mY"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [0, 0],
+    [0, 2],
+    [0, 2],
+    [0, 2],
+    [0, 2]
+  ],
+  "observed": {
+    "roles": {
+      "initial": {
+        "alt": false,
+        "cursor": [0, 0],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": []
+      },
+      "pinned": {
+        "alt": false,
+        "cursor": [0, 2],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 0],
+            "text": "X",
+            "stored": {
+              "flags": 775,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          },
+          {
+            "row": 0,
+            "cols": [1, 1],
+            "text": "Y",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "persist": {
+        "alt": false,
+        "cursor": [0, 2],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 1],
+            "text": "XY",
+            "stored": {
+              "flags": 775,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          }
+        ]
+      },
+      "full": {
+        "alt": false,
+        "cursor": [0, 2],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 0],
+            "text": "X",
+            "stored": {
+              "flags": 255,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": 4278256131,
+              "backgroundArgb": 4278453510,
+              "underlineStyle": 1,
+              "underlineColorIndex": -1,
+              "underlineArgb": 4278650889,
+              "overline": true
+            }
+          },
+          {
+            "row": 0,
+            "cols": [1, 1],
+            "text": "Y",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "omitted": {
+        "alt": false,
+        "cursor": [0, 2],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 0],
+            "text": "X",
+            "stored": {
+              "flags": 775,
+              "fgIndex": -1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          },
+          {
+            "row": 0,
+            "cols": [1, 1],
+            "text": "Y",
+            "stored": "neutral"
+          }
+        ]
+      }
+    },
+    "observations": {
+      "policy": "observed, not graded: the omitted-parameter reset spelling (ESC[m) against the pinned explicit ESC[0m",
+      "omittedSpellingClearsY": true
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":{\"char\":\"X\",\"flags\":775,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "SGR 0 clears measured bold, italic, and inverse styling on Y",
+        "observed": "{\"before\":{\"char\":\"X\",\"flags\":775,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+      }
+    ]
+  },
+  "effectContract": {
+    "id": "ntilde.saved-reset.effect/v1",
+    "version": 1,
+    "outcome": "supported",
+    "layers": [
+      {
+        "name": "styles-active-on-x-cleared-on-y",
+        "outcome": "supported"
+      }
+    ],
+    "attribution": "finer grader over the pinned fixture"
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      {
+        "name": "styles-active-on-x-cleared-on-y",
+        "outcome": "supported"
+      }
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": [
+      {
+        "name": "styles-active-on-x-cleared-on-y",
+        "outcome": "supported"
+      }
+    ],
+    "scope": "stored attribute flags, color storage and underline color of X and Y, the cursor and unrelated state; no resolved-color or pixel claim"
+  }
+}

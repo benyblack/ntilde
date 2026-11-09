@@ -846,3 +846,11 @@ replaying the pinned setup and erase bytes and running the pinned termless `eras
 cursor and stored attributes. The contract adds cursor, unaffected-row/column, retained-attribute and wide-row controls; the other EL
 spellings are labeled observations; background-color erase is observed, not required. The pinned terminal pixel path is capture-only
 upstream and is not qualified. Receipt schema 25 and source policy v19 (173 files) bind it; earlier policies stay frozen.
+
+### Saved-state and reset qualification (alternate screen, SGR 0, DECALN)
+
+The [saved-state/reset batch](terminfo/2026-11-09-saved-reset-qualification.md) grades exactly `modes.alt-screen.exit`, `modes.altscreen-47`,
+`modes.altscreen-1047`, `reset.sgr` and `reset.decaln` through a thirteenth layered collector extension (`ntilde-owned-saved-reset-grading-v1`).
+The pinned `?47` and `?1047` verdicts are inconclusive by design and stay that way; their visible-buffer effect contracts
+(`ntilde.saved-reset.effect/v1`) are graded and recorded separately. `reset.sgr` is a different case from `sgr.reset`. `reset.method`,
+RIS and the pinned DECALN pixel path are not claimed. Receipt schema 26 and source policy v20 (178 files) bind it; earlier policies stay frozen.

@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-saved-reset-grading-v1",
+  "probeIds": [
+    "modes.alt-screen.exit",
+    "modes.altscreen-47",
+    "modes.altscreen-1047",
+    "reset.sgr",
+    "reset.decaln"
+  ],
+  "cases": [
+    {
+      "caseId": "modes.alt-screen.exit",
+      "feeds": [
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[2J\u001b[1;1HPRIMARY-A",
+        "\u001b[3;1HPRIMARY-B",
+        "\u001b[5;7H",
+        "\u001b[?1049h",
+        "\u001b[1;1HALT-MARK",
+        "\u001b[?1049l",
+        "\u001b[?1049l\u001b[0m",
+        "\u001b[?47h",
+        "\u001b[?47l",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;1HPRIMARY-A\u001b[3;1HPRIMARY-B\u001b[2;2H\u001b7\u001b[5;7H",
+        "\u001b[?1049h",
+        "\u001b[1;1HALT-MARK",
+        "\u001b[?1049l",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;1H\u001b[1;31mSTYLED-A\u001b[0m\u001b[3;1H\u001b[4;32mSTYLED-B\u001b[0m\u001b[5;7H\u001b[1;34m",
+        "\u001b[?1049h",
+        "\u001b[0m\u001b[1;1HALT-MARK",
+        "\u001b[?1049l",
+        "W"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 8]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 8]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [4, 7]
+        }
+      ],
+      "pinnedFed": 7,
+      "pinned": {
+        "probeId": "modes.alt-screen.exit",
+        "pass": true,
+        "response": "{\"before\":{\"x\":6,\"y\":4,\"visible\":true},\"seedA\":\"PRIMARY-A\",\"seedB\":\"PRIMARY-B\",\"mark\":\"ALT-MARK\",\"restoredA\":\"PRIMARY-A\",\"restoredB\":\"PRIMARY-B\",\"leaked\":false,\"after\":{\"x\":6,\"y\":4,\"visible\":true}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+            "observed": "{\"before\":{\"x\":6,\"y\":4,\"visible\":true},\"seedA\":\"PRIMARY-A\",\"seedB\":\"PRIMARY-B\",\"mark\":\"ALT-MARK\",\"restoredA\":\"PRIMARY-A\",\"restoredB\":\"PRIMARY-B\",\"leaked\":false,\"after\":{\"x\":6,\"y\":4,\"visible\":true}}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "modes.altscreen-47",
+      "feeds": [
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[?47h",
+        "\u001b[?47l",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;1HMAIN-47\u001b[3;5H",
+        "\u001b[?47h",
+        "\u001b[2;2HALT-47",
+        "\u001b[?47l",
+        "\u001b[?47h",
+        "\u001b[?47l"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 4]
+        }
+      ],
+      "pinnedFed": 2,
+      "pinned": {
+        "probeId": "modes.altscreen-47",
+        "pass": false,
+        "response": "{\"entered\":true,\"exited\":true}",
+        "note": "Mode metadata does not measure the buffer",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "parser-state",
+          "note": "Mode metadata does not measure the buffer"
+        }
+      }
+    },
+    {
+      "caseId": "modes.altscreen-1047",
+      "feeds": [
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[?1047h",
+        "\u001b[?1047l",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;1HMAIN-1047\u001b[3;5H",
+        "\u001b[?1047h",
+        "\u001b[2;2HALT-1047",
+        "\u001b[?1047l",
+        "\u001b[?47h",
+        "\u001b[?47l",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[?47h\u001b[1;1HPRE-ALT\u001b[?47l",
+        "\u001b[?1047h",
+        "\u001b[?1047l"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 9]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 9]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        }
+      ],
+      "pinnedFed": 2,
+      "pinned": {
+        "probeId": "modes.altscreen-1047",
+        "pass": false,
+        "response": "{\"entered\":true,\"exited\":true}",
+        "note": "Mode metadata does not measure the buffer",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "parser-state",
+          "note": "Mode metadata does not measure the buffer"
+        }
+      }
+    },
+    {
+      "caseId": "reset.sgr",
+      "feeds": [
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;3;7mX\u001b[0mY",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;3;7mXY",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;2;3;4;5;7;8;9;53;38;2;1;2;3;48;2;4;5;6;58;2;7;8;9mX\u001b[0mY",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;3;7mX\u001b[mY"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        }
+      ],
+      "pinnedFed": 1,
+      "pinned": {
+        "probeId": "reset.sgr",
+        "pass": true,
+        "response": "{\"before\":{\"char\":\"X\",\"flags\":775,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "SGR 0 clears measured bold, italic, and inverse styling on Y",
+            "observed": "{\"before\":{\"char\":\"X\",\"flags\":775,\"bold\":true,\"dim\":false,\"italic\":true,\"underline\":false,\"inverse\":true,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\"Y\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "reset.decaln",
+      "feeds": [
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b#8",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;1HABABABABABAB\u001b[2;1HBABABABABABA\u001b[3;1HABABABABABAB\u001b[1;1H",
+        "\u001b#8",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[3;6r\u001b#8",
+        "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+        "\u001b[1;4;44m\u001b#8"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        }
+      ],
+      "pinnedFed": 1,
+      "pinned": {
+        "probeId": "reset.decaln",
+        "pass": true,
+        "response": "{\"cell\":{\"char\":\"E\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DECALN fills the measured cell (0,0) with E",
+            "observed": "{\"cell\":{\"char\":\"E\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+          }
+        ]
+      }
+    }
+  ]
+}
