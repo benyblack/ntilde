@@ -4,7 +4,7 @@
   "frame": {
     "index": 10,
     "kind": "curq-read",
-    "paneId": "0ddaaf22-8ac9-441c-aec6-b002d58d2a8d",
+    "paneId": "f4ccc355-365a-4b6d-9fe6-acd045e6ca19",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
       "rows": 40,
@@ -51,7 +51,7 @@
         "",
         ""
       ],
-      "cursorRow": 19,
+      "cursorRow": 2,
       "cursorCol": 2,
       "cursorVisible": true,
       "attributeRuns": [
@@ -97,12 +97,12 @@
         "lines": []
       }
     },
-    "sha256": "4c1fff2d5f192f483b42521c3029ce446aacda6f0779959f8560e53c40a95af7",
+    "sha256": "9b59ce559461fce87fe85d4e51e098af9bfda105b73d9bf94ce36f415e565576",
     "cpr": {
       "barrier": "\u001b[?62;4;22c",
       "reply": {
-        "raw": "\u001b[20;3R",
-        "row": 20,
+        "raw": "\u001b[3;3R",
+        "row": 3,
         "col": 3
       }
     }

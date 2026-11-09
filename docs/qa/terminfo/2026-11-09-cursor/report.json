@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-cursor-qualification-graded-v1",
-  "runId": "fee697030728f13d8298eff854bdde73",
+  "runId": "ce7cf5bb73e2ff346e571cb261fe156b",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-cursor-qualification-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-attr-rect-grading-v1",
-    "bundleSha256": "b755e0afe76845ad894b2032214b4c982c3a02a416d13aa237b2ff7a6cdfa770",
+    "bundleSha256": "2285e1072f9c3ae4eb219c1f9b2485b54c618f1dce92211632581b5de5120dfa",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 cursor criteria (cursor.cup-scroll-region, cursor.hide, cursor.shape, cursor.reverse-wrap): the termless callbacks, the app callbacks (replayed over retained CPR replies and controlled captures, with the geometry-repaired derivation for cursor.reverse-wrap and cursor.shape and the original UndeclaredTerminalGeometry failures retained), graded from parent-journaled readScreen viewport text, physical cursor, margins, origin and wrap state, stored cursor mode and visibility, raw CPR exchanges and controlled synthetic-phase render captures, with controls for DECOM off/on, region boundaries, restoration, visible and hidden references, steady shape references, blink phase and the mode-off reverse-wrap fixture. ASCII fixtures only; no desktop blink cadence, focus, Unicode, reflow or resize claim; no stock grades.",

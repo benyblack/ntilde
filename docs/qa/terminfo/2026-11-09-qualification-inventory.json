@@ -1461,22 +1461,22 @@
       ],
       "evidence": {
         "files": 66,
-        "bytes": 458265,
-        "sha256": "ce0638b47454ca7aa885b45da44227d0185f4754694f8ce2e5f2d97aa7e9cf0e"
+        "bytes": 459324,
+        "sha256": "8f522422248d49d73a53c017407f9c960f769938b2dc8de224cab906ba259bce"
       },
       "receipt": {
         "schemaVersion": 34,
-        "runId": "fee697030728f13d8298eff854bdde73",
+        "runId": "ce7cf5bb73e2ff346e571cb261fe156b",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "1fa5a7772672fccfb9e1db7847372eafd705fce146aa456498afa1f84dc6b861"
+          "sha256": "8f65b80101abfc541716d9ecb98c70804426c89abb266ad1bc1993f14af9e7d5"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-cursor-qualification-graded-v1",
           "file": "curq-observations.json",
-          "sha256": "f434411b58bb2180402d55c02f15f57d057836b574e7e0a9b2fe94d6bbbd42e2",
+          "sha256": "199d66cf705e9830e1b7498b86498a7800faef922e023a9079650f4c68e19700",
           "runFile": "curq-run.json",
-          "runSha256": "b5b6d23fb54521bbeadf2a1dbd0676dc86572c3cf9e32c728c60f8bd0f138326",
+          "runSha256": "dd181b639561c31b93793b3922d8674fc12d53c1b151430ba1cb307c28429dfc",
           "counts": {
             "supported": 4
           },
@@ -1484,23 +1484,23 @@
         }
       },
       "run": {
-        "ownedRunId": "fee697030728f13d8298eff854bdde73",
-        "measuredAt": "2026-11-09T17:08:42.158Z",
+        "ownedRunId": "ce7cf5bb73e2ff346e571cb261fe156b",
+        "measuredAt": "2026-11-09T17:22:46.486Z",
         "appRevision": "6b26a158dbf16d7b07be106f2c3cf3fab5341dfc",
         "appVersion": "0.13.0+6b26a158",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "a9ec1e3065d4c53104a2aaf54c95269c800c4872",
+        "scriptsRevision": "de1a63d1",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "36dc235bb8b6ebdf75762a486d3be0b73f8f8cc7e1f914e49104c6dc270e4565",
+        "collectorAdapterBundleSha256": "3fc92aa8224a61e3a31216a95e048a6eba271c305f6fafb4230547b84be76b38",
         "gradingAdapterId": "ntilde-owned-cursor-qualification-grading-v1",
-        "gradingAdapterBundleSha256": "b755e0afe76845ad894b2032214b4c982c3a02a416d13aa237b2ff7a6cdfa770",
+        "gradingAdapterBundleSha256": "2285e1072f9c3ae4eb219c1f9b2485b54c618f1dce92211632581b5de5120dfa",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v28",
-        "sourceSnapshotManifestSha256": "2399bbf4034bbbae73197fa55a297831c05753b9ec445611634b4e6550c9ab1e"
+        "sourceSnapshotManifestSha256": "006d421b9e476458ca1e4fc2fad0be87acc1f72f5ec782e00d1761a490764192"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "0bdfae4fe1c46b31e0ffe4730bf9942e",
+        "runId": "f31a740c5625a30faf09a7f5fd52adad",
         "counts": {
           "inconclusive": 168,
           "supported": 86,
@@ -1508,14 +1508,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "e531a31e18ec2d774108142b898901059ae942492b91fc9b1adce6972004b39e",
+        "rawSha256": "778e6c541824583a402ece5650bd767940e37c30d830e4753c9d39282d6c3b6d",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock cursor.cup-scroll-region, cursor.hide and cursor.shape are inconclusive and stock cursor.reverse-wrap is an ungraded UndeclaredTerminalGeometry collector error (suiteComplete=false); all unchanged by this run. The stock hide and shape app callbacks end inconclusive because the owned stock run supplies no capture adapter."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/cursor-qual-publication.test.mjs",
-        "testSha256": "9894ca4ca0708c33af1f968874236a81ea9cb6855060acc91fa941f2ab3e1cc3"
+        "testSha256": "bc65715efbe88b9a273c0e9faee8f15fe8fccaf9b329958f47a5b08e322e439c"
       }
     }
   ],

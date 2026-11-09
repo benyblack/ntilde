@@ -47,7 +47,7 @@
     "\u001b[5;15r",
     "\u001b[1;1H",
     "\u001b[15;1H",
-    "\u001b[20;3H",
+    "\u001b[3;3H",
     "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
     "\u001b[5;15r",
     "\u001b[?6h",
@@ -56,7 +56,7 @@
     "\u001b[999A",
     "\u001b[?6l",
     "\u001b[r",
-    "\u001b[20;5H"
+    "\u001b[3;5H"
   ],
   "barriers": [
     "\u001b[?62;4;22c",
@@ -153,10 +153,10 @@
     {
       "kind": "cpr",
       "cursor": [
-        19,
+        2,
         2
       ],
-      "rawCpr": "\u001b[20;3R"
+      "rawCpr": "\u001b[3;3R"
     },
     {
       "kind": "cpr",
@@ -185,10 +185,10 @@
     {
       "kind": "cpr",
       "cursor": [
-        19,
+        2,
         4
       ],
-      "rawCpr": "\u001b[20;5R"
+      "rawCpr": "\u001b[3;5R"
     }
   ],
   "observed": {
@@ -396,13 +396,13 @@
             "rawCpr": "\u001b[15;1R"
           },
           {
-            "label": "DECOM off: CUP 20;3 leaves the region",
+            "label": "DECOM off: CUP 3;3 is above the region",
             "kind": "cpr",
             "role": "control",
             "matchesExpectation": true,
             "cprConsistentWithPhysicalCursor": true,
             "physicalCursor": [
-              19,
+              2,
               2
             ],
             "margins": [
@@ -416,7 +416,7 @@
               "blink": true,
               "isDefault": true
             },
-            "rawCpr": "\u001b[20;3R"
+            "rawCpr": "\u001b[3;3R"
           }
         ]
       },
@@ -494,13 +494,13 @@
             "rawCpr": "\u001b[1;1R"
           },
           {
-            "label": "DECOM and margins reset: CUP 20;5 is absolute again",
+            "label": "DECOM and margins reset: CUP 3;5 is absolute again",
             "kind": "cpr",
             "role": "restoration",
             "matchesExpectation": true,
             "cprConsistentWithPhysicalCursor": true,
             "physicalCursor": [
-              19,
+              2,
               4
             ],
             "margins": [
@@ -514,7 +514,7 @@
               "blink": true,
               "isDefault": true
             },
-            "rawCpr": "\u001b[20;5R"
+            "rawCpr": "\u001b[3;5R"
           }
         ]
       }

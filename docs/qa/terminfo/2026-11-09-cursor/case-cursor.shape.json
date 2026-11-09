@@ -451,7 +451,7 @@
         "id": "shape.target-blink-hidden-phase",
         "role": "measured",
         "passed": true,
-        "note": "the requested shape in the hidden half-period against the background"
+        "note": "the requested shape in the hidden half-period against the background, with every other pixel as in the visible half-period"
       },
       {
         "id": "shape.unrelated-pixels-unchanged",

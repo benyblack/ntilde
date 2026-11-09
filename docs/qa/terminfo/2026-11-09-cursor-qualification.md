@@ -49,7 +49,7 @@ The historical `CSI 0 q` negatives that expected `isDefault=false` are supersede
 
 ## Measurement
 
-Scripts `a9ec1e30` (committed; merge of main with attribute-rectangle and the reverse-wraparound fix), App from main `6b26a158` (sidecar `sidecar-cursor-qual-final`), run `fee69703…` (stock run `0bdfae4f…`), receipt schema 34, source policy v28 (inventory v35, 221 files), default theme, 40×140.
+Scripts `de1a63d1` (committed; main with attribute-rectangle and the reverse-wraparound fix, plus three Codex-review fixes), App from main `6b26a158` (sidecar `sidecar-cursor-qual-final`), run `ce7cf5bb…` (stock run `f31a740c…`), receipt schema 34, source policy v28 (inventory v35, 221 files), default theme, 40×140.
 
 | Case | Pinned termless | Pinned app (repaired where marked) | Effect contract | Divergence |
 |---|---|---|---|---|
@@ -61,7 +61,7 @@ Scripts `a9ec1e30` (committed; merge of main with attribute-rectangle and the re
 Counts: 4 supported. Stock grades are unchanged (86 supported, 1 unsupported, 168 inconclusive; `cursor.reverse-wrap` remains the ungraded `UndeclaredTerminalGeometry` diagnostic, `suiteComplete=false`).
 Observed: CUP physical rows 4/5/14 with CPR `1;1`/`2;1`/`11;1`; hide painted 171 cursor pixels and then exactly the background; the bar paints one 1-px column, the underline two rows, the block the whole 9×19 cell; reverse-wrap moved `(1,1)` → `(0,139)` with CPR `2;2` → `1;140`, and `2;1` at `(1,0)` without `?45`.
 
-**Preserved attempts** (in the summary): an aborted launch (display asleep; Avalonia render timer error, nothing collected), and the **before-fix run** (`0e972801…`, App `bd802f67`, scripts `159ceecd`): the three other cases graded identically, but `cursor.reverse-wrap` was **unsupported with valid controls** (CPR `1;1`, `2;2`, `2;1`; termless fixture ended at `(1,0)`; the mode-off control behaved identically): Ntilde ignored DECSET 45. That was a genuine terminal gap, fixed with a failing regression first in [#913](https://github.com/benyblack/ntilde/pull/913) (reverse-wraparound for BS and CUB, xterm semantics; merged as `6b26a158`), then re-measured above. Its case file is retained in `before-fix/`.
+**Preserved attempts** (in the summary): the first complete run on the fixed App (`fee69703…`, scripts `a9ec1e30`, also four supported), superseded when Codex review changed three controls/checks and the measurement was repeated; an aborted launch (display asleep; Avalonia render timer error, nothing collected), and the **before-fix run** (`0e972801…`, App `bd802f67`, scripts `159ceecd`): the three other cases graded identically, but `cursor.reverse-wrap` was **unsupported with valid controls** (CPR `1;1`, `2;2`, `2;1`; termless fixture ended at `(1,0)`; the mode-off control behaved identically): Ntilde ignored DECSET 45. That was a genuine terminal gap, fixed with a failing regression first in [#913](https://github.com/benyblack/ntilde/pull/913) (reverse-wraparound for BS and CUB, xterm semantics; merged as `6b26a158`), then re-measured above. Its case file is retained in `before-fix/`.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification suite supported in the same run (the receipt re-derives each, including the attribute-rectangle suite), 10/10 truecolor-literal finding, 3/3 App-observed underline-colour resolution.
 
