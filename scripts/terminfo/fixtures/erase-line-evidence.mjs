@@ -48,7 +48,7 @@ export function syntheticEraseLineReads(caseId) {
 }
 
 const eraseLineSuite = Object.freeze({ noncePrefix: 'NTILDE_EL_', prefix: 'erln', contracts: eraseLineContracts,
-    adapterId: eraseLineAdapterId, derivedFrom: 'ntilde-owned-sgr-selective-reset-grading-v1', reset: eraseLineReset,
+    adapterId: eraseLineAdapterId, derivedFrom: 'ntilde-owned-sgr-closure-grading-v1', reset: eraseLineReset,
     screens: (caseId, binding, readsOf) => {
         const reads = readsOf?.(caseId) ?? syntheticEraseLineReads(caseId);
         const contract = eraseLineContracts.find(item => item.caseId === caseId);

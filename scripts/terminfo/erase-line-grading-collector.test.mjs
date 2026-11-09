@@ -67,7 +67,7 @@ test('refuses a pinned body whose fixture bytes, criteria or notes were substitu
 });
 
 test('the derivation appends after any earlier layer without rewriting it', () => {
-    const earlier = verbatim() + '// earlier layers\nexport const ntildeSgrResetAdapter = {};\n';
+    const earlier = verbatim() + '// earlier layers\nexport const ntildeSgrClosureAdapterLater = {};\n';
     const layered = adaptEraseLineCollector(earlier);
     assert.ok(layered.startsWith(earlier));
     assert.ok(layered.includes(eraseLineAdapterId));
@@ -90,6 +90,7 @@ test('the real pinned bundle derives through every layer and its eraseRowResult 
         import('./sgr-underline-grading-collector.mjs').then(m => m.adaptSgrUnderlineCollector),
         import('./sgr-underline-color-grading-collector.mjs').then(m => m.adaptSgrUnderlineColorCollector),
         import('./sgr-reset-grading-collector.mjs').then(m => m.adaptSgrResetCollector),
+        import('./sgr-closure-grading-collector.mjs').then(m => m.adaptSgrClosureCollector),
     ]);
     const { replayEraseLinePinned } = await import('./erase-line-grading.mjs');
     const { eraseLineRecordingContext } = await import('./erase-line-collector.mjs');

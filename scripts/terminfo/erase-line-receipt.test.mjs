@@ -6,6 +6,11 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { checkEraseLineEvidence, includesEraseLineEvidence } from './erase-line-receipt.mjs';
 import { checkSgrResetEvidence } from './sgr-reset-receipt.mjs';
+import { checkSgrClosureEvidence } from './sgr-closure-receipt.mjs';
+import { adaptSgrClosureCollector, sgrClosureAdapterId, sgrClosureSeams } from './sgr-closure-grading-collector.mjs';
+import { sgrClosureSuiteId, sgrClosureContractsVersion } from './sgr-closure-contracts.mjs';
+import { buildSgrClosureGradingReport } from './sgr-closure-grading.mjs';
+import { syntheticSgrClosureEvidence } from './fixtures/sgr-closure-evidence.mjs';
 import { checkSgrUnderlineColorEvidence } from './sgr-underline-color-receipt.mjs';
 import { checkSgrUnderlineEvidence, includesSgrUnderlineEvidence } from './sgr-underline-receipt.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
@@ -93,13 +98,15 @@ const paletteSeams = sgrPaletteSeams.filter(seam => !seam.startsWith('export '))
 const truecolorSeams = sgrTruecolorSeams.filter(seam => !seam.startsWith('export '));
 const underlineSeams = sgrUnderlineSeams.filter(seam => !seam.startsWith('export '));
 const underlineColorSeams = sgrUnderlineColorSeams.filter(seam => !seam.startsWith('export '));
-const template = lines => [...new Set(lines)].map((seam, index) => `const seam${index} = \`${seam}\`;`).join('\n');
+// A seam that is a substring of another (the closure layer's complete sgrProbe body contains the attribute layer's smaller seams) is carried once, inside the larger one.
+const template = lines => [...new Set(lines)].filter(line => ![...new Set(lines)].some(other => other !== line && other.includes(line))).map((seam, index) => `const seam${index} = \`${seam}\`;`).join('\n');
 const resetSeams = sgrResetSeams.filter(seam => !seam.startsWith('export '));
+const closureSeams = sgrClosureSeams.filter(seam => !seam.startsWith('export '));
 const eraseSeams = eraseLineSeams.filter(seam => !seam.startsWith('export '));
 // The reset layer's complete measuredReset body already carries the colors layer's two measuredReset seams once.
 const colorSeamsWithoutReset = colorSeams.filter(seam => seam !== 'function measuredReset(ctx, id, setup, reset, set, preserve) {'
     && seam !== 'measured setup attributes clear on Y and unrelated attributes remain set');
-const syntheticOwnedAdapter = template([...firstSeams, ...colorSeamsWithoutReset, ...attributeSeams, ...paletteSeams, ...truecolorSeams, ...underlineSeams, ...underlineColorSeams, ...resetSeams, ...eraseSeams])
+const syntheticOwnedAdapter = template([...firstSeams, ...colorSeamsWithoutReset, ...attributeSeams, ...paletteSeams, ...truecolorSeams, ...underlineSeams, ...underlineColorSeams, ...resetSeams, ...closureSeams, ...eraseSeams])
     + '\nexport async function collectNtildeRun(assertion) {\n  return collectProbeRun({ ntildeOwner: assertion });\n}\n';
 const syntheticFirstExtension = adaptGradingCollector(syntheticOwnedAdapter);
 const syntheticColorsExtension = adaptSgrColorsCollector(syntheticFirstExtension);
@@ -110,6 +117,7 @@ const syntheticTruecolorExtension = adaptSgrTruecolorCollector(syntheticPaletteE
 const syntheticUnderlineExtension = adaptSgrUnderlineCollector(syntheticTruecolorExtension);
 const syntheticUnderlineColorExtension = adaptSgrUnderlineColorCollector(syntheticUnderlineExtension);
 const syntheticResetExtension = adaptSgrResetCollector(syntheticUnderlineColorExtension);
+const syntheticClosureExtension = adaptSgrClosureCollector(syntheticResetExtension);
 
 function fixture(action) {
     const output = mkdtempSync(join(tmpdir(), 'nt-erln-receipt-'));
@@ -124,7 +132,8 @@ function fixture(action) {
     const underlineBytes = Buffer.from(syntheticUnderlineExtension);
     const underlineColorBytes = Buffer.from(syntheticUnderlineColorExtension);
     const resetBytes = Buffer.from(syntheticResetExtension);
-    const eraseBytes = Buffer.from(adaptEraseLineCollector(syntheticResetExtension));
+    const closureBytes = Buffer.from(syntheticClosureExtension);
+    const eraseBytes = Buffer.from(adaptEraseLineCollector(syntheticClosureExtension));
     const upstream = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
     const grading = syntheticGradingEvidence(runId, hash(firstExtensionBytes));
     grading.adapter = { id: 'ntilde-owned-ascii-sgr-grading-v1', derivedFromAdapterId: 'ntilde-owned-macos-v1',
@@ -146,11 +155,13 @@ function fixture(action) {
     const ucReport = buildSgrUnderlineColorGradingReport(ucEvidence.frames, ucEvidence.run, runId, ucEvidence.adapter);
     const resetEvidence = syntheticSgrResetEvidence(runId, hash(resetBytes));
     const resetReport = buildSgrResetGradingReport(resetEvidence.frames, resetEvidence.run, runId, resetEvidence.adapter);
+    const closureEvidence = syntheticSgrClosureEvidence(runId, hash(closureBytes));
+    const closureReport = buildSgrClosureGradingReport(closureEvidence.frames, closureEvidence.run, runId, closureEvidence.adapter);
     const evidence = syntheticEraseLineEvidence(runId, hash(eraseBytes));
     const report = buildEraseLineGradingReport(evidence.frames, evidence.run, runId, evidence.adapter);
     const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value) + '\n');
     const journal = (file, frames) => writeFileSync(join(output, file), frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
-    const context = { runId, sourceSnapshotPolicy: 'readonly-owned-source-graph-v18',
+    const context = { runId, sourceSnapshotPolicy: 'readonly-owned-source-graph-v19',
         gradingAdapterId: 'ntilde-owned-ascii-sgr-grading-v1', asciiSgrSuiteId,
         gradingBundleSha256: hash(firstExtensionBytes), gradingContractsVersion: asciiSgrContractsVersion,
         sgrColorsAdapterId: 'ntilde-owned-sgr-colors-grading-v1', sgrColorsSuiteId, sgrColorsBundleSha256: hash(colorsBytes),
@@ -161,6 +172,7 @@ function fixture(action) {
         sgrUnderlineAdapterId, sgrUnderlineSuiteId, sgrUnderlineBundleSha256: hash(underlineBytes), sgrUnderlineContractsVersion,
         sgrUnderlineColorAdapterId, sgrUnderlineColorSuiteId, sgrUnderlineColorBundleSha256: hash(underlineColorBytes), sgrUnderlineColorContractsVersion,
         sgrResetAdapterId, sgrResetSuiteId, sgrResetBundleSha256: hash(resetBytes), sgrResetContractsVersion,
+        sgrClosureAdapterId, sgrClosureSuiteId, sgrClosureBundleSha256: hash(closureBytes), sgrClosureContractsVersion,
         eraseLineAdapterId, eraseLineSuiteId, eraseLineBundleSha256: hash(eraseBytes), eraseLineContractsVersion,
         upstreamBundleSha256: upstream };
     try {
@@ -182,6 +194,8 @@ function fixture(action) {
         journal('sguc-snapshots.jsonl', ucEvidence.frames);
         write('sgsr-observations.json', resetReport); write('sgsr-run.json', resetEvidence.run);
         journal('sgsr-snapshots.jsonl', resetEvidence.frames);
+        write('sgcl-observations.json', closureReport); write('sgcl-run.json', closureEvidence.run);
+        journal('sgcl-snapshots.jsonl', closureEvidence.frames);
         write('erln-observations.json', report); write('erln-run.json', evidence.run);
         journal('erln-snapshots.jsonl', evidence.frames);
         writeFileSync(join(output, 'collector-adapter.mjs'), ownedAdapterBytes);
@@ -194,6 +208,7 @@ function fixture(action) {
         writeFileSync(join(output, 'collector-sgus.mjs'), underlineBytes);
         writeFileSync(join(output, 'collector-sguc.mjs'), underlineColorBytes);
         writeFileSync(join(output, 'collector-sgsr.mjs'), resetBytes);
+        writeFileSync(join(output, 'collector-sgcl.mjs'), closureBytes);
         writeFileSync(join(output, 'collector-erln.mjs'), eraseBytes);
         write('ownership-proof.json', { completed: true, cleanedUpAt: '2026-11-08T00:00:00Z', cleanupError: null });
         write('context.json', context);
@@ -203,6 +218,7 @@ function fixture(action) {
             runFile: `${prefix}-run.json`, runSha256: hash(readFileSync(join(output, `${prefix}-run.json`))),
             adapterBundleSha256: hash(bytes), contractsVersion: version, counts, provisionalUntil: 'cell-receipt.json' });
         const resetBinding = bind(sgrResetSuiteId, 'sgsr', resetBytes, sgrResetContractsVersion, { supported: 2 });
+        const closureBinding = bind(sgrClosureSuiteId, 'sgcl', closureBytes, sgrClosureContractsVersion, { supported: 3 });
         const binding = bind(eraseLineSuiteId, 'erln', eraseBytes, eraseLineContractsVersion, { supported: 3 });
         const underlineColorBinding = bind(sgrUnderlineColorSuiteId, 'sguc', underlineColorBytes, sgrUnderlineColorContractsVersion, { supported: 3 });
         const underlineBinding = bind(sgrUnderlineSuiteId, 'sgus', underlineBytes, sgrUnderlineContractsVersion, { supported: 4 });
@@ -212,22 +228,23 @@ function fixture(action) {
         const rgbBinding = bind(sgrRgbSuiteId, 'sgrgb', rgbBytes, sgrRgbContractsVersion, { supported: 2 });
         const colorsBinding = bind(sgrColorsSuiteId, 'sgcolors', colorsBytes, sgrColorsContractsVersion, { supported: 5 });
         const gradingBinding = bind(gradingReport.suiteId, 'grading', firstExtensionBytes, gradingReport.contractsVersion, { supported: 4 });
-        action({ output, scratch, evidence, report, context, binding, resetBinding, underlineColorBinding, underlineBinding, truecolorBinding, paletteBinding, attrsBinding, rgbBinding, colorsBinding, gradingBinding, write });
+        action({ output, scratch, evidence, report, context, binding, closureBinding, resetBinding, underlineColorBinding, underlineBinding, truecolorBinding, paletteBinding, attrsBinding, rgbBinding, colorsBinding, gradingBinding, write });
     } finally { rmSync(output, { recursive: true, force: true }); }
 }
 
-const predecessors = f => ({ eraseLineEvidence: f.binding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
+const predecessors = f => ({ eraseLineEvidence: f.binding, sgrClosureEvidence: f.closureBinding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
 
-const reasons = /Erase-in-line|erase-in-line|SGR selective-reset|SGR-underline|Invalid|Missing|bytes|report|journal|counts|identity|derivation|contracts|differs|predecessor|ENOENT/i;
+const reasons = /Erase-in-line|SGR closure|erase-in-line|SGR selective-reset|SGR-underline|Invalid|Missing|bytes|report|journal|counts|identity|derivation|contracts|differs|predecessor|ENOENT/i;
 
 test('the erase-in-line receipt binding re-derives the whole report from retained bytes', () => fixture(f => {
     assert.equal(includesEraseLineEvidence(f.output, {}, f.context), true);
     assert.doesNotThrow(() => checkEraseLineEvidence(f.output, predecessors(f), runId, f.context));
+    assert.doesNotThrow(() => checkSgrClosureEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkSgrResetEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkSgrUnderlineColorEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
-test('the shared finalizer publishes receipt schema 24 beside every predecessor suite', () => fixture(f => {
+test('the shared finalizer publishes receipt schema 25 beside every predecessor suite', () => fixture(f => {
     const { output, scratch, write, context } = f;
     const { sourceSnapshotPolicy, ...lightContext } = context;
     void sourceSnapshotPolicy;
@@ -239,8 +256,9 @@ test('the shared finalizer publishes receipt schema 24 beside every predecessor 
         rgbEvidence: entry('rgb-observations.json'), renditionEvidence: entry('rendition-observations.json'),
         cursorEvidence: entry('cursor-observations.json'), gradingEvidence: f.gradingBinding, ...predecessors(f) };
     const receipt = completeOwnedReceipt(output, scratch, evidence);
-    assert.equal(receipt.schemaVersion, 24);
+    assert.equal(receipt.schemaVersion, 25);
     assert.equal(receipt.eraseLineEvidence, f.binding);
+    assert.equal(receipt.sgrClosureEvidence, f.closureBinding);
     assert.equal(receipt.sgrResetEvidence, f.resetBinding);
     assert.equal(receipt.sgrUnderlineColorEvidence, f.underlineColorBinding);
     assert.equal(receipt.sgrUnderlineEvidence, f.underlineBinding);
@@ -277,6 +295,13 @@ for (const [name, mutate] of [
     ['missing adapter declaration', f => { delete f.context.eraseLineAdapterId; f.write('context.json', f.context); }],
     ['missing suite declaration', f => { delete f.context.eraseLineSuiteId; f.write('context.json', f.context); }],
     ['missing SGR selective-reset predecessor declaration', f => { delete f.context.sgrResetAdapterId; f.write('context.json', f.context); }],
+    ['missing SGR closure predecessor evidence', f => { delete f.closureBinding; }],
+    ['missing SGR closure predecessor declaration', f => { delete f.context.sgrClosureAdapterId; f.write('context.json', f.context); }],
+    ['declared SGR closure layer digest drift', f => {
+        const renamed = Buffer.from(syntheticClosureExtension.replace('ntilde-owned-sgr-closure-grading-v1', 'ntilde-owned-renamed-v1'));
+        f.context.sgrClosureBundleSha256 = hash(renamed);
+        f.write('context.json', f.context);
+    }],
     ['missing SGR selective-reset predecessor evidence', f => { delete f.resetBinding; }],
     ['declared SGR selective-reset layer digest drift', f => {
         const renamed = Buffer.from(syntheticResetExtension.replace('ntilde-owned-sgr-selective-reset-grading-v1', 'ntilde-owned-renamed-v1'));
@@ -311,10 +336,10 @@ for (const [name, mutate] of [
     assert.equal(existsSync(join(f.output, 'cell-receipt.json')), false);
 }));
 
-test('policy v18 requires the erase-in-line binding even without artifacts', () => fixture(f => {
+test('policy v19 requires the erase-in-line binding even without artifacts', () => fixture(f => {
     for (const file of ['erln-observations.json', 'erln-run.json', 'erln-snapshots.jsonl', 'collector-erln.mjs'])
         rmSync(join(f.output, file));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v18' };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v19' };
     assert.equal(includesEraseLineEvidence(f.output, {}, context), true);
     assert.throws(() => checkEraseLineEvidence(f.output, predecessors(f), runId, context), /Missing or changed erase-in-line adapter declaration/);
 }));
@@ -340,11 +365,11 @@ test('a symlinked retained artifact is refused even when it points at valid evid
     assert.doesNotThrow(() => checkEraseLineEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
-test('historical receipts stay valid without any erase-in-line artifacts (policies v10-v16)', () => {
+test('historical receipts stay valid without any erase-in-line artifacts (policies v10-v18)', () => {
     const publication = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-sgr-attributes-qualification.json', import.meta.url)));
     assert.equal(publication.receipt.schemaVersion, 16);
     assert.equal(publication.receipt.eraseLineEvidence, undefined);
-    for (const version of [10, 11, 13, 14, 15, 16]) {
+    for (const version of [10, 11, 13, 14, 15, 16, 17, 18]) {
         assert.equal(includesEraseLineEvidence('/nonexistent', {}, { sourceSnapshotPolicy: `readonly-owned-source-graph-v${version}` }), false, `v${version}`);
     }
     assert.equal(includesEraseLineEvidence('/nonexistent', {}, {}), false);

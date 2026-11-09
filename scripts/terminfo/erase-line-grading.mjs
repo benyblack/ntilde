@@ -13,7 +13,7 @@ import { eraseLineRecordingContext } from './erase-line-collector.mjs';
 /** The suite's report spec: identities, pinned replay and scope. */
 const spec = Object.freeze({ label: 'Erase-in-line', prefix: 'erln', noncePrefix: eraseLineNoncePrefix,
     contracts: eraseLineContracts, caseIds: eraseLineCaseIds, suiteId: eraseLineSuiteId, version: eraseLineContractsVersion,
-    adapterId: eraseLineAdapterId, derivedFrom: 'ntilde-owned-sgr-selective-reset-grading-v1',
+    adapterId: eraseLineAdapterId, derivedFrom: 'ntilde-owned-sgr-closure-grading-v1',
     screenOf: colorScreenOf(validateEraseLineScreen),
     observation: eraseLineObservation, grade: gradeEraseLineCase,
     replayPinned: (contract, screens) => replayEraseLinePinned(contract, screens),

@@ -36,7 +36,7 @@ function present(path) {
  * policy-v17 or v18 run always carries them, because the current worker collects this suite
  * unconditionally after the SGR-underline-color suite. */
 export function includesSgrResetEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19'].includes(context.sourceSnapshotPolicy)
         || context.sgrResetAdapterId !== undefined || context.sgrResetSuiteId !== undefined
         || context.sgrResetBundleSha256 !== undefined || context.sgrResetContractsVersion !== undefined
         || evidence.sgrResetEvidence !== undefined

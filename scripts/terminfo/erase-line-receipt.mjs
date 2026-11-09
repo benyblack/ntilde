@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { eraseLineSuiteId, eraseLineContractsVersion } from './erase-line-contracts.mjs';
 import { adaptEraseLineCollector, eraseLineAdapterId } from './erase-line-grading-collector.mjs';
 import { adaptSgrResetCollector } from './sgr-reset-grading-collector.mjs';
+import { adaptSgrClosureCollector } from './sgr-closure-grading-collector.mjs';
 import { adaptSgrUnderlineColorCollector } from './sgr-underline-color-grading-collector.mjs';
 import { adaptSgrUnderlineCollector } from './sgr-underline-grading-collector.mjs';
 import { adaptSgrTruecolorCollector } from './sgr-truecolor-grading-collector.mjs';
@@ -33,11 +34,11 @@ function present(path) {
     }
 }
 
-/** Any retained erase-in-line artifact or declaration requires the v24 suffix, and a
- * policy-v18 run always carries them, because the current worker collects this suite
- * unconditionally after the SGR selective-reset suite. */
+/** Any retained erase-in-line artifact or declaration requires the v25 suffix, and a
+ * policy-v19 run always carries them, because the current worker collects this suite
+ * unconditionally after the SGR closure suite. */
 export function includesEraseLineEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v18'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v19'
         || context.eraseLineAdapterId !== undefined || context.eraseLineSuiteId !== undefined
         || context.eraseLineBundleSha256 !== undefined || context.eraseLineContractsVersion !== undefined
         || evidence.eraseLineEvidence !== undefined
@@ -57,7 +58,8 @@ export function checkEraseLineEvidence(output, evidence, runId, context) {
     if (context.eraseLineAdapterId !== eraseLineAdapterId || context.eraseLineSuiteId !== eraseLineSuiteId) {
         throw new Error('Missing or changed erase-in-line adapter declaration.');
     }
-    if (context.sgrResetAdapterId === undefined || evidence.sgrResetEvidence === undefined
+    if (context.sgrClosureAdapterId === undefined || evidence.sgrClosureEvidence === undefined
+        || context.sgrResetAdapterId === undefined || evidence.sgrResetEvidence === undefined
         || context.sgrUnderlineColorAdapterId === undefined || evidence.sgrUnderlineColorEvidence === undefined
         || context.sgrUnderlineAdapterId === undefined || evidence.sgrUnderlineEvidence === undefined
         || context.sgrTruecolorAdapterId === undefined || evidence.sgrTruecolorEvidence === undefined
@@ -65,7 +67,7 @@ export function checkEraseLineEvidence(output, evidence, runId, context) {
         || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
         || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
         || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
-        throw new Error('erase-in-line evidence requires its SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
+        throw new Error('erase-in-line evidence requires its SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.eraseLineEvidence;
     if (binding === undefined) throw new Error('Missing erase-in-line suite receipt binding.');
@@ -88,7 +90,7 @@ export function checkEraseLineEvidence(output, evidence, runId, context) {
         throw new Error('erase-in-line adapter bytes changed.');
     }
     // The retained extension must be exactly the layered derivation of the retained
-    // SGR selective-reset extension over the SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette,
+    // SGR closure extension over the SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette,
     // SGR-attributes, SGR-RGB and SGR-colors extensions over the retained first grading
     // extension over the retained owned adapter.
     const asciiSgrBytes = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
@@ -100,15 +102,17 @@ export function checkEraseLineEvidence(output, evidence, runId, context) {
     const sgrUnderlineBytes = Buffer.from(adaptSgrUnderlineCollector(sgrTruecolorBytes.toString()));
     const sgrUnderlineColorBytes = Buffer.from(adaptSgrUnderlineColorCollector(sgrUnderlineBytes.toString()));
     const sgrResetBytes = Buffer.from(adaptSgrResetCollector(sgrUnderlineColorBytes.toString()));
-    const derivedBytes = Buffer.from(adaptEraseLineCollector(sgrResetBytes.toString()));
+    const sgrClosureBytes = Buffer.from(adaptSgrClosureCollector(sgrResetBytes.toString()));
+    const derivedBytes = Buffer.from(adaptEraseLineCollector(sgrClosureBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('erase-in-line adapter is not the retained layered derivation.');
     }
     if (hash(sgrColorsBytes) !== context.sgrColorsBundleSha256 || hash(sgrRgbBytes) !== context.sgrRgbBundleSha256
         || hash(sgrAttrsBytes) !== context.sgrAttrsBundleSha256 || hash(sgrPaletteBytes) !== context.sgrPaletteBundleSha256
         || hash(sgrTruecolorBytes) !== context.sgrTruecolorBundleSha256 || hash(sgrUnderlineBytes) !== context.sgrUnderlineBundleSha256
-        || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256) {
-        throw new Error('erase-in-line adapter is not derived from the retained SGR selective-reset and earlier extensions.');
+        || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256
+        || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256) {
+        throw new Error('erase-in-line adapter is not derived from the retained SGR closure and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256

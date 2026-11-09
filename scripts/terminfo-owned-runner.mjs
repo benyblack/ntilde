@@ -39,6 +39,9 @@ import { buildUnderlineResolvedReport } from './terminfo/sgr-underline-color-res
 import { adaptSgrResetCollector, sgrResetAdapterId } from './terminfo/sgr-reset-grading-collector.mjs';
 import { sgrResetContractsVersion, sgrResetSuiteId } from './terminfo/sgr-reset-contracts.mjs';
 import { buildSgrResetGradingReport } from './terminfo/sgr-reset-grading.mjs';
+import { adaptSgrClosureCollector, sgrClosureAdapterId } from './terminfo/sgr-closure-grading-collector.mjs';
+import { sgrClosureContractsVersion, sgrClosureSuiteId } from './terminfo/sgr-closure-contracts.mjs';
+import { buildSgrClosureGradingReport } from './terminfo/sgr-closure-grading.mjs';
 import { adaptEraseLineCollector, eraseLineAdapterId } from './terminfo/erase-line-grading-collector.mjs';
 import { eraseLineContractsVersion, eraseLineSuiteId } from './terminfo/erase-line-contracts.mjs';
 import { buildEraseLineGradingReport } from './terminfo/erase-line-grading.mjs';
@@ -464,6 +467,36 @@ function prepareSgrResetCollector(tool, sgrUnderlineColorBundle, output) {
     return { bundle, sgrResetBundleSha256 };
 }
 
+/** Derive and lock the layered SGR closure grading extension over the SGR selective-reset one. */
+function prepareSgrClosureCollector(tool, sgrResetBundle, output) {
+    const adapted = adaptSgrClosureCollector(readFileSync(sgrResetBundle));
+    const sgrClosureBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-sgcl-${sgrClosureBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== sgrClosureBundleSha256) throw new Error('Derived SGR closure bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-sgcl.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, sgrClosureBundleSha256 };
+}
+
+/** Re-derive the SGR closure report parent-side with the layered pinned replay. */
+async function retainSgrClosureEvidence(output, runId, sgrClosureBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'sgcl-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'sgcl-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-sgcl.mjs'));
+    const adapter = { id: sgrClosureAdapterId, derivedFromAdapterId: sgrResetAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(sgrClosureBundle).href);
+    const report = buildSgrClosureGradingReport(frames, run, runId, adapter, { replayModule });
+    writeJson(join(output, 'sgcl-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: sgrClosureSuiteId, file: 'sgcl-observations.json',
+        sha256: hash(readFileSync(join(output, 'sgcl-observations.json'))),
+        runFile: 'sgcl-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: sgrClosureContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the SGR selective-reset report parent-side with the layered pinned replay. */
 async function retainSgrResetEvidence(output, runId, sgrResetBundle, upstream) {
     const runBytes = readFileSync(join(output, 'sgsr-run.json'));
@@ -483,9 +516,9 @@ async function retainSgrResetEvidence(output, runId, sgrResetBundle, upstream) {
         contractsVersion: sgrResetContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
-/** Derive and lock the layered erase-in-line grading extension over the SGR selective-reset one. */
-function prepareEraseLineCollector(tool, sgrResetBundle, output) {
-    const adapted = adaptEraseLineCollector(readFileSync(sgrResetBundle));
+/** Derive and lock the layered erase-in-line grading extension over the SGR closure one. */
+function prepareEraseLineCollector(tool, sgrClosureBundle, output) {
+    const adapted = adaptEraseLineCollector(readFileSync(sgrClosureBundle));
     const eraseLineBundleSha256 = hash(adapted);
     const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-erln-${eraseLineBundleSha256}.mjs`);
     writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
@@ -500,7 +533,7 @@ async function retainEraseLineEvidence(output, runId, eraseLineBundle, upstream)
     const run = JSON.parse(runBytes);
     const frames = readFileSync(join(output, 'erln-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
     const adapterBytes = readFileSync(join(output, 'collector-erln.mjs'));
-    const adapter = { id: eraseLineAdapterId, derivedFromAdapterId: sgrResetAdapterId,
+    const adapter = { id: eraseLineAdapterId, derivedFromAdapterId: sgrClosureAdapterId,
         bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
     const replayModule = await import(pathToFileURL(eraseLineBundle).href);
     const report = buildEraseLineGradingReport(frames, run, runId, adapter, { replayModule });
@@ -686,6 +719,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let sgrUnderlineColorEvidence;
     let underlineResolvedEvidence;
     let sgrResetEvidence;
+    let sgrClosureEvidence;
     let eraseLineEvidence;
     let rgbEvidence;
     let renditionEvidence;
@@ -724,7 +758,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: sgrUnderlineBundle, sgrUnderlineBundleSha256 } = prepareSgrUnderlineCollector(privateTool, sgrTruecolorBundle, output);
         const { bundle: sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256 } = prepareSgrUnderlineColorCollector(privateTool, sgrUnderlineBundle, output);
         const { bundle: sgrResetBundle, sgrResetBundleSha256 } = prepareSgrResetCollector(privateTool, sgrUnderlineColorBundle, output);
-        const { bundle: eraseLineBundle, eraseLineBundleSha256 } = prepareEraseLineCollector(privateTool, sgrResetBundle, output);
+        const { bundle: sgrClosureBundle, sgrClosureBundleSha256 } = prepareSgrClosureCollector(privateTool, sgrResetBundle, output);
+        const { bundle: eraseLineBundle, eraseLineBundleSha256 } = prepareEraseLineCollector(privateTool, sgrClosureBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -734,7 +769,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
-            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, eraseLineBundle, eraseLineBundleSha256,
+            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -772,6 +807,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let sgrUnderlineColorObserver;
         let underlineResolvedObserver;
         let sgrResetObserver;
+        let sgrClosureObserver;
         let eraseLineObserver;
         let pixelObserver;
         let pixelUnavailable;
@@ -824,6 +860,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrUnderlineColorAdapterId, sgrUnderlineColorSuiteId, sgrUnderlineColorBundleSha256, sgrUnderlineColorContractsVersion,
             underlineResolvedSuiteId, underlineResolvedContractsVersion,
             sgrResetAdapterId, sgrResetSuiteId, sgrResetBundleSha256, sgrResetContractsVersion,
+            sgrClosureAdapterId, sgrClosureSuiteId, sgrClosureBundleSha256, sgrClosureContractsVersion,
+            sgrClosure: 'layered versioned collector extension; pinned termless criteria sgr.blink, sgr.overline and sgr.underline.color replayed byte-exactly on parent-observed stored blink flag, explicit overline boolean and stored underline color with reset, decoy, independence and sibling-shared color controls; sgr.underline.color is graded from its own reads, never from the sibling sgr.underline-color-rgb verdict; no blink timing, rendering or App-resolved color; not stock output',
             eraseLineAdapterId, eraseLineSuiteId, eraseLineBundleSha256, eraseLineContractsVersion,
             eraseLine: 'layered versioned collector extension; pinned erase-in-line termless criteria (erase.line.right with the omitted-parameter spelling, erase.line.left with EL 1, erase.line.all with EL 2) replayed byte-exactly on parent-observed stored cells, cursor and stored attribute details, with unmodified-seed, other-spelling (omitted, explicit 0/1/2), wide-row and bold-seeded attribute controls; background-color erase observed not required; the pinned pixel capture path is capture-only upstream and not qualified; not stock output',
             sgrReset: 'layered versioned collector extension; pinned selective-reset termless criteria (sgr.selective-reset.underline via SGR 24 and sgr.selective-reset.inverse via SGR 27) replayed byte-exactly on parent-observed stored flags, exact underline style, stored colors and overline, with no-op, full-reset, wrong-reset and DECSCNM controls; underline-color behavior observed not required; rendered appearance not claimed; not stock output',
@@ -857,6 +895,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'sguc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgur-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sgsr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'sgcl-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'erln-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
@@ -1425,9 +1464,19 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'sgsr-snapshots.jsonl'), JSON.stringify(sgrResetObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'sgcl') {
+                // The closure suite runs after the selective-reset suite and adds its conclusions beside the earlier ones.
+                if (!sgrResetObserver?.restored) throw new Error('SGR selective-reset suite must restore before SGR closure observations.');
+                sgrClosureObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_CL_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeResolvedColors: true, prefix: 'sgcl', expectedPaneId: cellObserver.paneId });
+                const result = await sgrClosureObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'sgcl-snapshots.jsonl'), JSON.stringify(sgrClosureObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             if (prefix === 'erln') {
-                // The erase-in-line suite runs after the selective-reset suite and adds its conclusions beside the earlier ones.
-                if (!sgrResetObserver?.restored) throw new Error('SGR selective-reset suite must restore before erase-in-line observations.');
+                // The erase-in-line suite runs after the SGR closure suite and adds its conclusions beside the earlier ones.
+                if (!sgrClosureObserver?.restored) throw new Error('SGR SGR closure suite must restore before erase-in-line observations.');
                 eraseLineObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `NTILDE_EL_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
                     includeResolvedColors: true, prefix: 'erln', expectedPaneId: cellObserver.paneId });
@@ -1486,7 +1535,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|sgsr|erln|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|sgsr|sgcl|erln|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -1599,6 +1648,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             sgrUnderlineColorEvidence = await retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstreamBundleSha256);
             underlineResolvedEvidence = retainUnderlineResolvedEvidence(output, runId);
             sgrResetEvidence = await retainSgrResetEvidence(output, runId, sgrResetBundle, upstreamBundleSha256);
+            sgrClosureEvidence = await retainSgrClosureEvidence(output, runId, sgrClosureBundle, upstreamBundleSha256);
             eraseLineEvidence = await retainEraseLineEvidence(output, runId, eraseLineBundle, upstreamBundleSha256);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
@@ -1647,6 +1697,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.sgrUnderlineColorEvidence = sgrUnderlineColorEvidence;
             summary.underlineResolvedEvidence = underlineResolvedEvidence;
             summary.sgrResetEvidence = sgrResetEvidence;
+            summary.sgrClosureEvidence = sgrClosureEvidence;
             summary.eraseLineEvidence = eraseLineEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
@@ -1687,7 +1738,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, eraseLineEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

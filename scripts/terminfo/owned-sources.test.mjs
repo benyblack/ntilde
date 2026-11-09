@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 168 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 168); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 173 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 173); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,8 +79,10 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v25 fixed168 source scope adds the five erase-in-line scripts to v24 fixed163 (five SGR selective-reset scripts), v23 fixed158 (four App-observed underline-resolution scripts), v22 fixed154 (five SGR-underline-color scripts), v21 fixed149 (five SGR-underline scripts), v20 fixed144 (four truecolor-finding scripts) and v19 fixed140 (five truecolor scripts and two shared color cores) while v18 remains fixed133, v17 fixed128, v16 fixed123 and v15 fixed114', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV25SourceFiles);
+test('private v26 fixed173 source scope adds the five erase-in-line scripts to v25 fixed168 (five SGR closure scripts), v24 fixed163 (five SGR selective-reset scripts), v23 fixed158 (four App-observed underline-resolution scripts), v22 fixed154 (five SGR-underline-color scripts), v21 fixed149 (five SGR-underline scripts), v20 fixed144 (four truecolor-finding scripts) and v19 fixed140 (five truecolor scripts and two shared color cores) while v18 remains fixed133, v17 fixed128, v16 fixed123 and v15 fixed114', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV26SourceFiles);
+    assert.equal(Object.keys(capturedV25SourceFiles).length, 168);
+    assert.deepEqual(Object.keys(capturedV26SourceFiles).slice(0, 168), Object.keys(capturedV25SourceFiles));
     assert.equal(Object.keys(capturedV24SourceFiles).length, 163);
     assert.deepEqual(Object.keys(capturedV25SourceFiles).slice(0, 163), Object.keys(capturedV24SourceFiles));
     assert.equal(Object.keys(capturedV23SourceFiles).length, 158);
