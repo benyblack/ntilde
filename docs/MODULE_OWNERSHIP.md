@@ -161,7 +161,8 @@ invariant changes.
   and local retained history count under the same VT read lock as text/cell details.
   Contracts remain a leaf. Windowless viewport imports report unknown history count
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
-  does not alter parser state or enable acting methods.
+  does not alter parser state or enable acting methods. The opt-in `includeProtection`
+  adds a `protected` boolean to run-length cell details (stored DECSCA protection); off by default.
 - **DECRQSS margin reports use exact complete requests.** VT answers only `$qr`
   with standard ST, validated absolute one-based current margins and xterm's
   1-success/0-failure status. The existing batch write lock protects the read;

@@ -1,6 +1,6 @@
 // Frozen real-App publication. Synthetic fixtures do not replace this measurement; every digest below is checked against the
-// committed evidence. The publication is split into reviewable files (summary, run log, common frames with the report header, one
-// file per case and one file per read frame); the test reassembles the exact journal order.
+// committed evidence. The publication is split into reviewable files (summary, report header and per-case reports, run-log header and per-case runs,
+// common frames and one file per read frame); the test reassembles the exact journal order.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -14,7 +14,7 @@ const dir = new URL('../../docs/qa/terminfo/2026-11-09-selective-erase/', import
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
 const ids = ['erase.selective', 'editing.decsera'];
 const load = () => {
-    const summary = read('summary.json'), run = read('run-log.json'), common = read('journal-common.json'), header = common.reportHeader;
+    const summary = read('summary.json'), header = read('report.json'), runHeader = read('run-log.json'), common = read('journal-common.json');
     const snapshots = [common.frames.start, common.frames.bind];
     for (const contract of selectiveEraseContracts) {
         for (let index = 0; index < contract.roles.length; index++) {
@@ -25,9 +25,11 @@ const load = () => {
         }
     }
     snapshots.push(common.frames.finish);
-    // The report header keeps the position of `cases` (null); the case files fill it in the contracted order.
-    const cases = ids.map(id => read(`case-${id}.json`));
-    return { summary, run, report: { ...header, cases, snapshots } };
+    const { caseIds, ...rest } = header;
+    const report = { ...rest, cases: caseIds.map(id => read(`report-${id}.json`)), snapshots };
+    const { caseIds: runIds, ...runRest } = runHeader;
+    const run = { ...runRest, cases: runIds.map(id => read(`run-${id}.json`)) };
+    return { summary, run, report };
 };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const observed = () => load().report.cases.map(item => item.observed);
@@ -222,5 +224,6 @@ test('prior publications still rederive beside this batch and every failed and s
     assert.ok(attempts.length >= 2);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
     assert.equal(attempts[0].receiptCompleted, false);
-    assert.match(attempts[0].outcome, /Oversized owner response/);
+    assert.ok(attempts.some(attempt => /Oversized owner response/.test(attempt.outcome)), 'the failed oversized-response trial is preserved');
+    assert.ok(attempts.some(attempt => /contract-stricter-than-pinned/.test(attempt.outcome)), 'the superseded contract-defect trial is preserved');
 });

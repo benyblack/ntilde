@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-selective-erase-graded-v1",
+  "runId": "9cbce8ece66991681e2ccf76551b8881",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-selective-erase-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-erase-chars-history-grading-v1",
+    "bundleSha256": "29e54f6fc684b08a944f1f1d0db2d829aa85702beb21bfc644208b4c3ef9f1d2",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 selective-erasure termless criteria (erase.selective with DECSED CSI ? 2 J and editing.decsera with DECSERA CSI 1;1;1;5 $ {, both over the seed ESC[1;1H ESC[1\"q P ESC[0\"q ABCDZ and finalized with ESC[0\"q) replayed byte-exactly on a disposable App and graded off parent-journaled readScreen stored cells, the cursor, stored attribute details, opt-in per-cell protection and buffer state, with controls for the unmodified seed (no-op), an ordinary erase of the same seed (protected text is not read-only), a protection-off control (DECSCA 0 changes later writes only), an overwrite control, a restoration control for the pinned finalizer, a full-screen fill control (accidental whole-screen clearing), an edge control, a bold-seeded attribute control (retained stored tuple required; background-color erase observed, not required), a main-screen history control, and rectangle-bounds controls for DECSERA (observed DECSED mode 0 and 1 for DECSED). Stored state only: the pinned terminal pixel paths only query the cursor and never carry a verdict and are not qualified; ASCII only; no stock grades.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 43,
+  "caseIds": [
+    "erase.selective",
+    "editing.decsera"
+  ]
+}
