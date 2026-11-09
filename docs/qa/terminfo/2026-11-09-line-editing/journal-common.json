@@ -3,7 +3,7 @@
     "start": {
       "index": 0,
       "kind": "ledt-start",
-      "paneId": "4ca39af4-2ac2-4f5c-8f18-080df570dacc",
+      "paneId": "4019b333-efc9-46a2-9230-0d33c7ea1464",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -381,13 +381,13 @@
     "bind": {
       "index": 1,
       "kind": "ledt-bind",
-      "paneId": "4ca39af4-2ac2-4f5c-8f18-080df570dacc",
+      "paneId": "4019b333-efc9-46a2-9230-0d33c7ea1464",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_LE_99d87f21f77f9b8bfc77451c80cf06e8",
+          "NTILDE_LE_05b14f48fd26fd3860418c6e506ac1f7",
           "",
           "",
           "",
@@ -754,12 +754,12 @@
           "lines": []
         }
       },
-      "sha256": "f685756051ffe3e9301d0e691f3b4dff5a66058bb5c1143bf56a148c50c0e785"
+      "sha256": "93249c158aa3985138f566e1bc813fd1a4eca23f9969f07cb90fcae6b2b42d97"
     },
     "finish": {
       "index": 42,
       "kind": "ledt-finish",
-      "paneId": "4ca39af4-2ac2-4f5c-8f18-080df570dacc",
+      "paneId": "4019b333-efc9-46a2-9230-0d33c7ea1464",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
