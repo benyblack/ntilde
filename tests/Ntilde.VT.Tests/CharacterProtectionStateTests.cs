@@ -461,6 +461,22 @@ public sealed class CharacterProtectionStateTests
         Assert.True(Protection(buffer, 0)[0], "P is not part of any wide pair and stays protected");
     }
 
+    /// <summary>A partial ordinary erase of a protected wide glyph leaves no protected half behind.</summary>
+    [Theory]
+    [InlineData("\u001b[1;1H\u001b[X")]      // ECH over the head
+    [InlineData("\u001b[1;2H\u001b[X")]      // ECH over the continuation
+    [InlineData("\u001b[1;1H\u001b[K")]      // EL from the head (whole tail)
+    [InlineData("\u001b[1;2H\u001b[K")]      // EL from the continuation
+    [InlineData("\u001b[1;1H\u001b[1K")]     // EL to the head (leaves the continuation)
+    public void Partial_ordinary_erases_clear_protection_from_the_orphaned_half(string erase)
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        parser.Process(erase);
+        Assert.DoesNotContain('P', Mask(buffer, 0));
+        Assert.False(buffer.HasProtectedCharacters());
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()
