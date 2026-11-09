@@ -40,10 +40,10 @@ function present(path) {
 }
 
 /** Any retained scrolling/history artifact or declaration requires the v30 suffix, and a
- * policy-v24 run always carries them, because the current worker collects this suite
+ * policy-v24 or v25 run always carries them, because the current worker collects this suite
  * unconditionally after the charsets suite. */
 export function includesScrollbackEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v24'
+    return ['readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25'].includes(context.sourceSnapshotPolicy)
         || context.scrollbackAdapterId !== undefined || context.scrollbackSuiteId !== undefined
         || context.scrollbackBundleSha256 !== undefined || context.scrollbackContractsVersion !== undefined
         || evidence.scrollbackEvidence !== undefined

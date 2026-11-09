@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV31SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV32SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV31SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV32SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV31SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV32SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -420,6 +420,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'scrl-run.json', runSha256: hash(readFileSync(join(output, 'scrl-run.json'))),
                 adapterBundleSha256: hash(scrollbackBytes), contractsVersion: scrollbackContractsVersion,
                 counts: { supported: 9 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v25 always carries the layered saved-state/reset suffix as well.
+            const { syntheticSavedResetEvidence } = await import('./saved-reset-evidence.mjs');
+            const { buildSavedResetGradingReport } = await import('../saved-reset-grading.mjs');
+            const { adaptSavedResetCollector, savedResetAdapterId } = await import('../saved-reset-grading-collector.mjs');
+            const { savedResetSuiteId, savedResetContractsVersion } = await import('../saved-reset-contracts.mjs');
+            const { savedResetCounts } = await import('../saved-reset-receipt.mjs');
+            const savedResetBytes = Buffer.from(adaptSavedResetCollector(scrollbackBytes.toString()));
+            const savedReset = syntheticSavedResetEvidence(context.runId, hash(savedResetBytes));
+            savedReset.adapter = { id: savedResetAdapterId, derivedFromAdapterId: scrollbackAdapterId,
+                bundleSha256: hash(savedResetBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const savedResetReport = buildSavedResetGradingReport(savedReset.frames, savedReset.run, context.runId, savedReset.adapter);
+            write('svrs-observations.json', savedResetReport);
+            write('svrs-run.json', savedReset.run);
+            writeFileSync(join(output, 'svrs-snapshots.jsonl'), savedReset.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-svrs.mjs'), savedResetBytes);
+            Object.assign(context, { savedResetAdapterId, savedResetSuiteId, savedResetBundleSha256: hash(savedResetBytes), savedResetContractsVersion });
+            evidence.savedResetEvidence = { runId: context.runId, suiteId: savedResetSuiteId,
+                file: 'svrs-observations.json', sha256: hash(readFileSync(join(output, 'svrs-observations.json'))),
+                runFile: 'svrs-run.json', runSha256: hash(readFileSync(join(output, 'svrs-run.json'))),
+                adapterBundleSha256: hash(savedResetBytes), contractsVersion: savedResetContractsVersion,
+                ...savedResetCounts(savedResetReport), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

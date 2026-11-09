@@ -1,0 +1,250 @@
+{
+  "caseId": "modes.altscreen-47",
+  "pinnedCriterion": "getMode(\"altScreen\") after ?47h and ?47l; the pinned verdict is always inconclusive (\"Mode metadata does not measure the buffer\")",
+  "pinnedFeeds": [
+    "\u001b[?47h",
+    "\u001b[?47l"
+  ],
+  "pinnedFed": 2,
+  "terminalFixture": {
+    "writes": [],
+    "demand": "none (always inconclusive)",
+    "minimum": {
+      "rows": 1,
+      "cols": 1
+    },
+    "note": "upstream terminal path leaves the alternate buffer unchanged"
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[?47h",
+    "\u001b[?47l",
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1HMAIN-47\u001b[3;5H",
+    "\u001b[?47h",
+    "\u001b[2;2HALT-47",
+    "\u001b[?47l",
+    "\u001b[?47h",
+    "\u001b[?47l"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [2, 4],
+    [0, 0],
+    [1, 7],
+    [2, 4],
+    [1, 7],
+    [2, 4]
+  ],
+  "observed": {
+    "roles": {
+      "initial": {
+        "alt": false,
+        "cursor": [0, 0],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": []
+      },
+      "pinnedEntered": {
+        "alt": true,
+        "cursor": [0, 0],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": []
+      },
+      "pinnedExited": {
+        "alt": false,
+        "cursor": [0, 0],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": []
+      },
+      "seed": {
+        "alt": false,
+        "cursor": [2, 4],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 6],
+            "text": "MAIN-47",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "active": {
+        "alt": true,
+        "cursor": [0, 0],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": []
+      },
+      "marked": {
+        "alt": true,
+        "cursor": [1, 7],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 1,
+            "cols": [1, 6],
+            "text": "ALT-47",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "exited": {
+        "alt": false,
+        "cursor": [2, 4],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 6],
+            "text": "MAIN-47",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "reentry": {
+        "alt": true,
+        "cursor": [1, 7],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 1,
+            "cols": [1, 6],
+            "text": "ALT-47",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "back": {
+        "alt": false,
+        "cursor": [2, 4],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 6],
+            "text": "MAIN-47",
+            "stored": "neutral"
+          }
+        ]
+      }
+    },
+    "observations": {
+      "policy": "observed, not required: cursor positions across the swaps",
+      "cursorAfterExit": [2, 4],
+      "cursorAfterBack": [2, 4]
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"entered\":true,\"exited\":true}",
+    "note": "Mode metadata does not measure the buffer",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "parser-state",
+      "note": "Mode metadata does not measure the buffer"
+    },
+    "assertions": null
+  },
+  "effectContract": {
+    "id": "ntilde.saved-reset.effect/v1",
+    "version": 1,
+    "outcome": "supported",
+    "layers": [
+      {
+        "name": "visible-buffer-swap-retain-on-exit",
+        "outcome": "supported"
+      }
+    ],
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      {
+        "name": "visible-buffer-swap-retain-on-exit",
+        "outcome": "supported"
+      }
+    ]
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-preserved-by-design",
+    "note": "Mode metadata does not measure the buffer",
+    "scope": "visible active-screen contents across ?47 entry, writes, exit and re-entry; separately identified effect contract, not the pinned probe"
+  }
+}

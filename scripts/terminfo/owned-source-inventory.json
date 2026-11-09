@@ -197,5 +197,10 @@
     "scrollbackCollectorSourceSha256": "scrollback-collector.mjs",
     "scrollbackGradingSourceSha256": "scrollback-grading.mjs",
     "scrollbackGradingCollectorSourceSha256": "scrollback-grading-collector.mjs",
-    "scrollbackReceiptSourceSha256": "scrollback-receipt.mjs"
+    "scrollbackReceiptSourceSha256": "scrollback-receipt.mjs",
+    "savedResetContractsSourceSha256": "saved-reset-contracts.mjs",
+    "savedResetCollectorSourceSha256": "saved-reset-collector.mjs",
+    "savedResetGradingSourceSha256": "saved-reset-grading.mjs",
+    "savedResetGradingCollectorSourceSha256": "saved-reset-grading-collector.mjs",
+    "savedResetReceiptSourceSha256": "saved-reset-receipt.mjs"
 }

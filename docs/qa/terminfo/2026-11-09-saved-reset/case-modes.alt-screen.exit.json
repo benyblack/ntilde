@@ -1,0 +1,510 @@
+{
+  "caseId": "modes.alt-screen.exit",
+  "pinnedCriterion": "PRIMARY-A/B restored, ALT-MARK not leaked and cursor back at 6,4 after a seeded ?1049 roundtrip (supported or inconclusive, never unsupported)",
+  "pinnedFeeds": [
+    "\u001b[2J\u001b[1;1HPRIMARY-A",
+    "\u001b[3;1HPRIMARY-B",
+    "\u001b[5;7H",
+    "\u001b[?1049h",
+    "\u001b[1;1HALT-MARK",
+    "\u001b[?1049l",
+    "\u001b[?1049l\u001b[0m"
+  ],
+  "pinnedFed": 7,
+  "terminalFixture": {
+    "writes": [
+      "\u001b[?1049h",
+      "\u001b[3;3H",
+      "\u001b[?1049l"
+    ],
+    "demand": "cursor responsiveness after exit only (always inconclusive)",
+    "minimum": {
+      "rows": 3,
+      "cols": 3
+    },
+    "note": "upstream terminal path is a cursor-position query that never carries a verdict"
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[2J\u001b[1;1HPRIMARY-A",
+    "\u001b[3;1HPRIMARY-B",
+    "\u001b[5;7H",
+    "\u001b[?1049h",
+    "\u001b[1;1HALT-MARK",
+    "\u001b[?1049l",
+    "\u001b[?1049l\u001b[0m",
+    "\u001b[?47h",
+    "\u001b[?47l",
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1HPRIMARY-A\u001b[3;1HPRIMARY-B\u001b[2;2H\u001b7\u001b[5;7H",
+    "\u001b[?1049h",
+    "\u001b[1;1HALT-MARK",
+    "\u001b[?1049l",
+    "\u001b[?1049l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?47l\u001b[!p\u001b[?5l\u001b[?6l\u001b[?7h\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1H\u001b[1;31mSTYLED-A\u001b[0m\u001b[3;1H\u001b[4;32mSTYLED-B\u001b[0m\u001b[5;7H\u001b[1;34m",
+    "\u001b[?1049h",
+    "\u001b[0m\u001b[1;1HALT-MARK",
+    "\u001b[?1049l",
+    "W"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [0, 0],
+    [4, 6],
+    [0, 0],
+    [0, 8],
+    [4, 6],
+    [4, 6],
+    [0, 8],
+    [4, 6],
+    [4, 6],
+    [4, 6],
+    [4, 6],
+    [4, 6],
+    [4, 7]
+  ],
+  "observed": {
+    "roles": {
+      "initial": {
+        "alt": false,
+        "cursor": [0, 0],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": []
+      },
+      "seed": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 8],
+            "text": "PRIMARY-A",
+            "stored": "neutral"
+          },
+          {
+            "row": 2,
+            "cols": [0, 8],
+            "text": "PRIMARY-B",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "entered": {
+        "alt": true,
+        "cursor": [0, 0],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": []
+      },
+      "marked": {
+        "alt": true,
+        "cursor": [0, 8],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 7],
+            "text": "ALT-MARK",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "exited": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 8],
+            "text": "PRIMARY-A",
+            "stored": "neutral"
+          },
+          {
+            "row": 2,
+            "cols": [0, 8],
+            "text": "PRIMARY-B",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "final": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 8],
+            "text": "PRIMARY-A",
+            "stored": "neutral"
+          },
+          {
+            "row": 2,
+            "cols": [0, 8],
+            "text": "PRIMARY-B",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "reentry": {
+        "alt": true,
+        "cursor": [0, 8],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 7],
+            "text": "ALT-MARK",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "back": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 8],
+            "text": "PRIMARY-A",
+            "stored": "neutral"
+          },
+          {
+            "row": 2,
+            "cols": [0, 8],
+            "text": "PRIMARY-B",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "staleSeed": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 8],
+            "text": "PRIMARY-A",
+            "stored": "neutral"
+          },
+          {
+            "row": 2,
+            "cols": [0, 8],
+            "text": "PRIMARY-B",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "staleExited": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 8],
+            "text": "PRIMARY-A",
+            "stored": "neutral"
+          },
+          {
+            "row": 2,
+            "cols": [0, 8],
+            "text": "PRIMARY-B",
+            "stored": "neutral"
+          }
+        ]
+      },
+      "styledSeed": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 7],
+            "text": "STYLED-A",
+            "stored": {
+              "flags": 16897,
+              "fgIndex": 1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          },
+          {
+            "row": 2,
+            "cols": [0, 7],
+            "text": "STYLED-B",
+            "stored": {
+              "flags": 16904,
+              "fgIndex": 2,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 1,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          }
+        ]
+      },
+      "styledExited": {
+        "alt": false,
+        "cursor": [4, 6],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 7],
+            "text": "STYLED-A",
+            "stored": {
+              "flags": 16897,
+              "fgIndex": 1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          },
+          {
+            "row": 2,
+            "cols": [0, 7],
+            "text": "STYLED-B",
+            "stored": {
+              "flags": 16904,
+              "fgIndex": 2,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 1,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          }
+        ]
+      },
+      "styledWitness": {
+        "alt": false,
+        "cursor": [4, 7],
+        "margins": [0, 39],
+        "origin": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "scrollbackLines": 0,
+        "ink": [
+          {
+            "row": 0,
+            "cols": [0, 7],
+            "text": "STYLED-A",
+            "stored": {
+              "flags": 16897,
+              "fgIndex": 1,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          },
+          {
+            "row": 2,
+            "cols": [0, 7],
+            "text": "STYLED-B",
+            "stored": {
+              "flags": 16904,
+              "fgIndex": 2,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 1,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          },
+          {
+            "row": 4,
+            "cols": [6, 6],
+            "text": "W",
+            "stored": {
+              "flags": 16897,
+              "fgIndex": 4,
+              "bgIndex": -1,
+              "foregroundArgb": null,
+              "backgroundArgb": null,
+              "underlineStyle": 0,
+              "underlineColorIndex": -1,
+              "underlineArgb": null,
+              "overline": false
+            }
+          }
+        ]
+      }
+    },
+    "observations": {
+      "policy": "observed, not required: whether the alternate bank is retained after ESC[?1049l, and whether the saved pen is restored",
+      "alternateRetainedAfter1049Exit": true,
+      "savedPenWitness": {
+        "char": "W",
+        "bold": true,
+        "fgIndex": 4,
+        "restored": true
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":{\"x\":6,\"y\":4,\"visible\":true},\"seedA\":\"PRIMARY-A\",\"seedB\":\"PRIMARY-B\",\"mark\":\"ALT-MARK\",\"restoredA\":\"PRIMARY-A\",\"restoredB\":\"PRIMARY-B\",\"leaked\":false,\"after\":{\"x\":6,\"y\":4,\"visible\":true}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+        "observed": "{\"before\":{\"x\":6,\"y\":4,\"visible\":true},\"seedA\":\"PRIMARY-A\",\"seedB\":\"PRIMARY-B\",\"mark\":\"ALT-MARK\",\"restoredA\":\"PRIMARY-A\",\"restoredB\":\"PRIMARY-B\",\"leaked\":false,\"after\":{\"x\":6,\"y\":4,\"visible\":true}}"
+      }
+    ]
+  },
+  "effectContract": {
+    "id": "ntilde.saved-reset.effect/v1",
+    "version": 1,
+    "outcome": "supported",
+    "layers": [
+      {
+        "name": "main-contents-and-cursor",
+        "outcome": "supported"
+      }
+    ],
+    "attribution": "finer grader over the pinned fixture"
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      {
+        "name": "main-contents-and-cursor",
+        "outcome": "supported"
+      }
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": [
+      {
+        "name": "main-contents-and-cursor",
+        "outcome": "supported"
+      }
+    ],
+    "scope": "stored main-screen cells and attributes, the saved cursor and the active-buffer flag, observed through active-screen reads; the alternate bank is never read directly"
+  }
+}
