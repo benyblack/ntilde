@@ -225,6 +225,23 @@ test('REP attribute-control flanks must stay on their own row, not only in their
     assert.match(note(REP, edit), /flank cell lost/);
 });
 
+test('the REP pen observation compares the whole stored tuple: overline and underline on the repeated cells only are reported as not carrying the pen', () => {
+    const pen = { kind: 'palette', index: 4 };
+    const observe = repeatedCell => byId(REP).observed(charEditObservation(byId(REP), syntheticCharEditScreens(REP, undefined, id => {
+        const reads = syntheticCharEditReads(id);
+        // The written X (column 1) carries the pen; the three repeated cells carry `repeatedCell`.
+        reads.attr = { rows: [[plainCell('A'), colorCell('X', { attrs: ['bold'], bg: pen }), repeatedCell, repeatedCell, repeatedCell, plainCell('Z')]], cursor: [0, 5] };
+        return reads;
+    }))).attributes;
+    assert.equal(observe(colorCell('X', { attrs: ['bold'], bg: pen })).repeatedCells, 'repeated cells carry the current pen attributes');
+    assert.equal(observe(colorCell('X', { attrs: ['bold', 'overline'], bg: pen })).repeatedCells, 'the written X carries the pen but the repeated cells do not');
+    assert.equal(observe(colorCell('X', { attrs: ['bold', 'underline'], bg: pen, underlineStyle: 1 })).repeatedCells, 'the written X carries the pen but the repeated cells do not');
+    // Observation only: the verdict is unchanged.
+    assert.equal(outcome(REP, reads => {
+        reads.attr = { rows: [[plainCell('A'), colorCell('X', { attrs: ['bold'], bg: pen }), ...Array.from({ length: 3 }, () => colorCell('X', { attrs: ['bold', 'overline'], bg: pen })), plainCell('Z')]], cursor: [0, 5] };
+    }), 'supported');
+});
+
 test('background of created cells is observed against the same-pen reference, separately from the stored representation', () => {
     const paint = (index, extra = {}) => colorCell(' ', { bg: { kind: 'palette', index }, ...extra });
     const plain = ['A', 'B', 'C', 'D', 'E', 'Z', 'Q', 'H'].map(char => plainCell(char));

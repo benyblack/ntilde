@@ -288,8 +288,10 @@ function repeatAttributes(before, after, pen) {
     const flanksOk = cells.length === 6 && flankAt(cells[0], 0, 'A') && flankAt(cells[5], 5, 'Z');
     const middle = cells.slice(1, 5);
     const textOk = flanksOk && middle.every((cell, index) => cell.row === 0 && cell.col === index + 1 && cell.char === 'X');
+    // The whole stored tuple: overline, underline style and underline color are stored apart from the flags.
     const sameTuple = cell => penCell !== undefined && cell.flags === penCell.flags && cell.bgIndex === penCell.bgIndex && cell.fgIndex === penCell.fgIndex
-        && cell.backgroundArgb === penCell.backgroundArgb && cell.foregroundArgb === penCell.foregroundArgb;
+        && cell.backgroundArgb === penCell.backgroundArgb && cell.foregroundArgb === penCell.foregroundArgb && cell.overline === penCell.overline
+        && cell.underlineStyle === penCell.underlineStyle && cell.underlineColorIndex === penCell.underlineColorIndex && cell.underlineArgb === penCell.underlineArgb;
     const repeatedPen = !textOk ? null : middle.every(sameTuple) ? 'repeated cells carry the current pen attributes'
         : middle.slice(0, 1).every(sameTuple) ? 'the written X carries the pen but the repeated cells do not' : 'the written X does not carry the pen';
     return { seeded, textOk, cursorOk: sameCursor(after, 0, 5), repeatedPen,
