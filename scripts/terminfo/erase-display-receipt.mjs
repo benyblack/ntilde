@@ -45,7 +45,7 @@ function present(path) {
  * policy-v21 or v22 run always carries them, because the current worker collects this suite
  * unconditionally after the character-editing suite. */
 export function includesEraseDisplayEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31'].includes(context.sourceSnapshotPolicy)
         || context.eraseDisplayAdapterId !== undefined || context.eraseDisplaySuiteId !== undefined
         || context.eraseDisplayBundleSha256 !== undefined || context.eraseDisplayContractsVersion !== undefined
         || evidence.eraseDisplayEvidence !== undefined

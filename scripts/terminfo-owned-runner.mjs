@@ -84,6 +84,10 @@ import { adaptSelectiveEraseCollector, selectiveEraseAdapterId } from './terminf
 import { selectiveEraseContractsVersion, selectiveEraseSuiteId } from './terminfo/selective-erase-contracts.mjs';
 import { buildSelectiveEraseGradingReport } from './terminfo/selective-erase-grading.mjs';
 import { selectiveEraseCounts } from './terminfo/selective-erase-receipt.mjs';
+import { adaptRectEditCollector, rectEditAdapterId } from './terminfo/rect-edit-grading-collector.mjs';
+import { rectEditContractsVersion, rectEditSuiteId } from './terminfo/rect-edit-contracts.mjs';
+import { buildRectEditGradingReport } from './terminfo/rect-edit-grading.mjs';
+import { rectEditCounts } from './terminfo/rect-edit-receipt.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
@@ -128,6 +132,19 @@ import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMo
 import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateClipboardEvidenceJson } from './terminfo/private-clipboard.mjs';
 import { OwnedPrivateClipboardObserver, privateClipboardScreen } from './terminfo/private-clipboard-capture.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './terminfo/private-clipboard-worker.mjs';
+
+/** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
+const untranslatedCellPrefixes = new Set([
+    'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
+    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'history', 'saved', 'metadata',
+]);
+const untranslatedCellSteps = new Set(['start', 'bind', 'read', 'finish']);
+/** Whether a request kind is exactly `<prefix>-<step>` for one of the cell observation prefixes and steps. */
+function untranslatedCellKind(kind) {
+    const parts = typeof kind === 'string' ? kind.split('-') : [];
+    return parts.length === 2 && untranslatedCellPrefixes.has(parts[0]) && untranslatedCellSteps.has(parts[1]);
+}
 
 const sourceRepo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = process.env.NTILDE_TERMINFO_ORIGINAL_REPO ?? sourceRepo;
@@ -908,6 +925,34 @@ async function retainSelectiveEraseEvidence(output, runId, selectiveEraseBundle,
         contractsVersion: selectiveEraseContractsVersion, counts: selectiveEraseCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered rectangle-editing grading extension over the selective-erasure one. */
+function prepareRectEditCollector(tool, selectiveEraseBundle, output) {
+    const adapted = adaptRectEditCollector(readFileSync(selectiveEraseBundle));
+    const rectEditBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-rect-${rectEditBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== rectEditBundleSha256) throw new Error('Derived rectangle-editing bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-rect.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, rectEditBundleSha256 };
+}
+
+/** Re-derive the rectangle-editing report parent-side with the layered pinned replay. */
+async function retainRectEditEvidence(output, runId, rectEditBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'rect-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'rect-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-rect.mjs'));
+    const adapter = { id: rectEditAdapterId, derivedFromAdapterId: selectiveEraseAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(rectEditBundle).href);
+    const report = buildRectEditGradingReport(frames, run, runId, adapter, { replayModule });
+    writeJson(join(output, 'rect-observations.json'), report);
+    return { runId, suiteId: rectEditSuiteId, file: 'rect-observations.json',
+        sha256: hash(readFileSync(join(output, 'rect-observations.json'))),
+        runFile: 'rect-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: rectEditContractsVersion, counts: rectEditCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the SGR-underline-color report parent-side with the layered pinned replay. */
 async function retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstream) {
     const runBytes = readFileSync(join(output, 'sguc-run.json'));
@@ -1094,6 +1139,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let cursorQualEvidence;
     let eraseCharsHistoryEvidence;
     let selectiveEraseEvidence;
+    let rectEditEvidence;
     let rgbEvidence;
     let renditionEvidence;
     let cursorEvidence;
@@ -1144,6 +1190,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: cursorQualBundle, cursorQualBundleSha256 } = prepareCursorQualCollector(privateTool, attrRectBundle, output);
         const { bundle: eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256 } = prepareEraseCharsHistoryCollector(privateTool, cursorQualBundle, output);
         const { bundle: selectiveEraseBundle, selectiveEraseBundleSha256 } = prepareSelectiveEraseCollector(privateTool, eraseCharsHistoryBundle, output);
+        const { bundle: rectEditBundle, rectEditBundleSha256 } = prepareRectEditCollector(privateTool, selectiveEraseBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -1153,7 +1200,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
-            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256,
+            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -1204,6 +1251,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let cursorQualObserver;
         let eraseCharsHistoryObserver;
         let selectiveEraseObserver;
+        let rectEditObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
@@ -1273,6 +1321,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             eraseCharsHistoryAdapterId, eraseCharsHistorySuiteId, eraseCharsHistoryBundleSha256, eraseCharsHistoryContractsVersion,
             selectiveEraseAdapterId, selectiveEraseSuiteId, selectiveEraseBundleSha256, selectiveEraseContractsVersion,
             selectiveErase: 'layered versioned collector extension; pinned termless criteria erase.selective (DECSED, ESC[?2J) and editing.decsera (DECSERA, ESC[1;1;1;5${) replayed byte-exactly over the seeded DECSCA-protected P and unprotected ABCDZ and graded from parent-observed stored cells, per-cell DECSCA protection (observed, never inferred from a surviving marker), cursor, stored attributes, mode flags, buffer state and saved lines, with ordinary-erase, protection-off, overwrite, restoration, full-screen, edge, bold-attribute, history and incorrect-bounds or other-mode controls; the pinned terminal pixel and cursor-query paths never carry a verdict and are not qualified; ASCII only; not stock output',
+            rectEditAdapterId, rectEditSuiteId, rectEditBundleSha256, rectEditContractsVersion,
+            rectEdit: 'layered versioned collector extension; pinned termless criteria editing.decfra (ESC[88;1;1;3;5$x), editing.decera (ESC[1;1;3;5$z) and editing.deccra (ESC[1;1;2;5;1;5;10$v) replayed byte-exactly on a disposable App and graded from parent-observed stored cells of the whole screen, the cursor, App-stored margins, origin and insert mode and stored attribute tuples, with single-cell, inclusive-border, omitted, zero, clipped, no-op, origin, margin, insert-mode, live-pen, literal-pen and attributed-seed controls, unconditional erasure over DECSCA-marked text, and for DECCRA non-overlapping, overlapping (every direction), self, clipped, attribute-preserving and unsupported-page controls (pages are an observed Ntilde policy, never graded); stored ASCII state only, the pinned pixel path never carries a verdict and is not qualified; no Unicode, wide-cell, scaled-text, image-plane, protected-cell, DECSERA, DECCARA/DECRARA, DECSACE, checksum or rendered-appearance claim; not stock output',
             eraseCharsHistory: 'layered versioned collector extension; pinned termless criteria erase.character (ECH ESC[3X, explicit count 3, over ABCDE at column 0) and erase.screen.scrollback (ED 3 ESC[3J after rows+2 line feeds) replayed byte-exactly on the disposable App main screen and graded from parent-observed viewport text, stored cells and attributes, cursor, margins, modes, active buffer and the actual ordered saved lines and count, with erased-range, retained-cell, wide-row, oversized-count, right-edge, attribute, ordered-history, CSI 2J, ordinary-scrolling, empty-history and regrowth controls; ECH spellings other than the pinned one are observed, not graded; physical rows only; the pinned pixel/query paths never carry a verdict and are not qualified; ASCII only; not stock output',
             cursorQual: 'layered versioned collector extension; the four pinned cursor criteria (cursor.cup-scroll-region, cursor.hide, cursor.shape, cursor.reverse-wrap): the termless AND app callbacks replayed byte-exactly on a measured reset alternate screen over parent-observed stored state, physical cursor, margins, origin and cursor mode, raw CPR exchanges and controlled synthetic-phase render captures, with controls for DECOM off/on, region boundaries, restoration, visible and hidden references, steady shapes, blink phase and the mode-off reverse-wrap fixture; the geometry-repaired derivation for cursor.reverse-wrap and cursor.shape keeps the original callbacks and retains the original UndeclaredTerminalGeometry failures',
             attrRectAdapterId, attrRectSuiteId, attrRectBundleSha256, attrRectContractsVersion,
@@ -1325,6 +1375,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'curq-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'echh-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'sels-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'rect-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -2021,6 +2072,16 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'sels-snapshots.jsonl'), JSON.stringify(selectiveEraseObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'rect') {
+                // The rectangle-editing suite runs after the selective-erasure suite and adds its conclusions beside the earlier ones.
+                if (!selectiveEraseObserver?.restored) throw new Error('Selective-erasure suite must restore before rectangle-editing observations.');
+                rectEditObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_RC_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeBufferState: true, includeResolvedColors: true, prefix: 'rect', expectedPaneId: cellObserver.paneId });
+                const result = await rectEditObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'rect-snapshots.jsonl'), JSON.stringify(rectEditObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -2072,7 +2133,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|sgsr|sgcl|erln|ched|erdi|ledt|chrs|scrl|svrs|erar|atrc|curq|echh|sels|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (untranslatedCellKind(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -2198,6 +2259,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             cursorQualEvidence = await retainCursorQualEvidence(output, runId, cursorQualBundle, upstreamBundleSha256);
             eraseCharsHistoryEvidence = await retainEraseCharsHistoryEvidence(output, runId, eraseCharsHistoryBundle, upstreamBundleSha256);
             selectiveEraseEvidence = await retainSelectiveEraseEvidence(output, runId, selectiveEraseBundle, upstreamBundleSha256);
+            rectEditEvidence = await retainRectEditEvidence(output, runId, rectEditBundle, upstreamBundleSha256);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -2258,6 +2320,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.cursorQualEvidence = cursorQualEvidence;
             summary.eraseCharsHistoryEvidence = eraseCharsHistoryEvidence;
             summary.selectiveEraseEvidence = selectiveEraseEvidence;
+            summary.rectEditEvidence = rectEditEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -2297,7 +2360,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
