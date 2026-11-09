@@ -41,7 +41,7 @@ public partial class TerminalBuffer
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
-        OnInvalidate?.Invoke();
+        Invalidate();
     }
 
     /// <summary>
@@ -112,7 +112,7 @@ public partial class TerminalBuffer
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
-        OnInvalidate?.Invoke();
+        Invalidate();
     }
 
     /// <summary>Blanks a wide glyph half left outside <paramref name="left"/>..<paramref name="right"/> so no orphan survives an overwrite.</summary>

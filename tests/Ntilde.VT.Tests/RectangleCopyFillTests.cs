@@ -495,6 +495,25 @@ public sealed class RectangleCopyFillTests
         Assert.Equal((before.CursorRow, before.CursorCol), (after.CursorRow, after.CursorCol));
     }
 
+    /// <summary>Repaint notifications follow synchronized output: nothing is raised until the frame ends.</summary>
+    [Theory]
+    [InlineData("88;1;1;2;2$x")]
+    [InlineData("1;1;2;2;1;3;3$v")]
+    public void Rectangle_operations_defer_repaint_during_synchronized_output(string body)
+    {
+        var (buffer, parser) = Seeded();
+        int raised = 0;
+        buffer.OnInvalidate += () => raised++;
+        parser.Process($"{Esc}[?2026h");
+        raised = 0;
+        parser.Process($"{Esc}[{body}");
+        Assert.True(buffer.IsSynchronizedOutput);
+        Assert.Equal(0, raised);
+        parser.Process($"{Esc}[?2026l");
+        Assert.False(buffer.IsSynchronizedOutput);
+        Assert.True(raised > 0);
+    }
+
     // ------------------------------------------------------------------ Sequence-level behavior
 
     /// <summary>Split input and a stored-state round trip produce the same buffer as one chunk.</summary>
