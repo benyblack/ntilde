@@ -224,6 +224,12 @@ public sealed class VtTools
                 return ExplainTertiaryDeviceAttributes(prefix);
             }
 
+            // DECSED shares 'J' with ED; the catalogue's own entry says what it does (it spares protected characters).
+            if (finalByte == 'J' && qualifiers == "?" && ContractSequenceTable.TryGetValue("CSI:?J", out string? decsed))
+            {
+                return $"CSI sequence, final byte 'J'{note}: {decsed}";
+            }
+
             if (finalByte == 'z' && qualifiers == "$")
             {
                 return ExplainRectangularErase(prefix[..^1]) + note;

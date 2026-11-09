@@ -331,6 +331,45 @@ public sealed class CharacterProtectionStateTests
         finally { File.Delete(path); }
     }
 
+    /// <summary>A checkpoint's protection keys only reach cells the checkpoint restored: a taller destination keeps its other rows as they were.</summary>
+    [Fact]
+    [Trait("Category", "Replay")]
+    public async Task Buffer_only_checkpoint_protection_never_marks_cells_it_did_not_restore()
+    {
+        var (source, sourceParser) = Create(10, 2);
+        sourceParser.Process(Esc + "[1;1H" + Esc + "[1\"qPQ");
+        string path = Path.GetTempFileName();
+        try
+        {
+            using (var recorder = new PtyRecorder(path, 10, 2)) recorder.RecordSnapshot(source);
+            ReplaySnapshot? captured = null;
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask,
+                onSnapshotCallback: snapshot => { captured = snapshot; return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            Assert.NotNull(captured);
+            // a corrupt or foreign key beyond the two restored rows and one beyond the restored columns
+            captured!.ProtectedCells = [.. captured.ProtectedCells ?? [], 3 * 10 + 0, 2 * 10 + 5];
+            var (taller, tallerParser) = Create(10, 4);
+            tallerParser.Process(Esc + "[4;1Hkeep" + Esc + "[3;6Hkeep");
+            taller.ApplySnapshot(captured);   // directly, so the 10x2 checkpoint lands on a 10x4 buffer without any resize
+            Assert.Equal("PP........", Mask(taller, 0));
+            Assert.Equal("..........", Mask(taller, 2));
+            Assert.Equal("..........", Mask(taller, 3));
+        }
+        finally { File.Delete(path); }
+    }
+
+    /// <summary>A narrow character over a protected wide glyph's head leaves no protected orphan behind.</summary>
+    [Fact]
+    public void Overwriting_a_protected_wide_head_does_not_leave_a_protected_orphan()
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        Assert.Equal("PP........", Mask(buffer, 0));
+        parser.Process(Esc + "[1;1HX");
+        Assert.Equal("..........", Mask(buffer, 0));
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

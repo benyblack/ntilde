@@ -455,6 +455,19 @@ public class ExplainEscapeSequenceTests
         }
     }
 
+    [Theory]
+    [InlineData("CSI ?2J")]
+    [InlineData("ESC[?0J")]
+    [InlineData("CSI ? 1 J")]
+    public void ParameterizedDecsed_IsExplainedAsSelectiveErase(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+
+        Assert.Contains("DECSED", result, System.StringComparison.Ordinal);
+        Assert.Contains("protected", result, System.StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("scrollback", VtTools.ExplainEscapeSequence("CSI ?2J").Replace("never clears scrollback", string.Empty), System.StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void CsiIntermediateBytes_AreSurfaced()
     {

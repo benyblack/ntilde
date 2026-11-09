@@ -1235,14 +1235,17 @@ namespace Ntilde.VT
                 }
 
                 // DECSCA protection, absent in recordings made before it.
-                if (snapshot.ProtectedCells != null && snapshot.Cols > 0)
+                // Only cells this snapshot restored can carry its protection: a taller or wider buffer keeps everything else as it was.
+                if (legacyCells != null && snapshot.ProtectedCells != null && snapshot.Cols > 0)
                 {
+                    int restoredRows = Math.Min(snapshot.Rows, _viewport.Length);
+                    int restoredCols = Math.Min(snapshot.Cols, Cols);
                     foreach (int key in snapshot.ProtectedCells)
                     {
                         if (key < 0) continue;
                         int r = key / snapshot.Cols;
                         int c = key % snapshot.Cols;
-                        if (r < _viewport.Length && c < Cols) _viewport[r].SetProtected(c, true);
+                        if (r < restoredRows && c < restoredCols) _viewport[r].SetProtected(c, true);
                     }
                 }
 

@@ -346,6 +346,10 @@ namespace Ntilde.VT
 
                 SyncPackedState();
 
+                // A narrower character over a wide glyph's head orphans its continuation cell; that cell is no longer part of any
+                // protected glyph, so it cannot keep the old glyph's protection.
+                if (width < 2 && row.Cells[_cursorCol].IsWide && _cursorCol + 1 < Cols) row.SetProtected(_cursorCol + 1, false);
+
                 // Clear continuations and old extended text
                 for (int i = 0; i < width && _cursorCol + i < Cols; i++)
                 {
