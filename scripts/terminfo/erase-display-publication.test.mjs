@@ -205,11 +205,16 @@ test('every publication file stays small enough to review in one piece', () => {
     }
 });
 
-test('prior publications still rederive beside this batch and the attempts are preserved', () => {
+test('prior publications still rederive beside this batch and every failed and superseded attempt is preserved', () => {
     const line = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-erase-line/summary.json', import.meta.url)));
     assert.equal(line.receipt.schemaVersion, 25);
     assert.equal(line.receipt.eraseDisplayEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.ok(Array.isArray(attempts));
+    assert.equal(attempts.length, 4);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, false, false]);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
+    const superseded = attempts.filter(attempt => attempt.verdicts);
+    assert.equal(superseded.length, 2);
+    assert.match(superseded[0].outcome, /excluded the 15 seeded letters/);
+    assert.deepEqual(Object.values(superseded[0].verdicts), ['supported', 'supported', 'supported']);
 });

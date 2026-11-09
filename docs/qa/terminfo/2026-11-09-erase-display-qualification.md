@@ -70,8 +70,8 @@ buffer state or history, stale or incoherent evidence or incomplete restoration 
 
 ## Measurement
 
-Scripts `33f4ac02` (committed); the App source is unchanged since `c16997c2` (the sidecar `erase-display` was built from this checkout, no App
-change). Owned run `d9fbd927cc63874e7bbeecc74723c668`, receipt schema 26, source policy v20 (inventory v27, 178 files), default theme, 40x140,
+Scripts `04eabc83` (committed final scripts); the App source is unchanged since `c16997c2` (the sidecar `erase-display` was built from this checkout, no App
+change). Owned run `7af1c73318379005311633a21267fdae`, receipt schema 26, source policy v20 (inventory v27, 178 files), default theme, 40x140,
 disposable sidecar.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
@@ -93,6 +93,13 @@ Same-run reconfirmation (kept separate): every merged predecessor qualification 
 SGR ids and the three erase-in-line cases; the inventory is derived from the merged contracts by the publication test); the separate 10/10
 truecolor-literal finding; the separate 3/3 App-observed underline-color resolution; stock collector counts unchanged (86 supported, 1 unsupported,
 168 inconclusive).
+
+**Preserved attempts** (all four in the summary, with run ids and script revisions): (1) `d9fbd927…`, complete but superseded: Codex review found the
+background-color observation skipped the 15 seeded letters that lie inside the erased region and that the attribute and history controls did not check
+mode preservation; the contract was fixed (all three graded supported both times); (2) `fe2c62b8…`, complete but superseded because shared fixture and
+projection code changed afterwards (test speed) and the final run measures the committed final scripts; (3) a failed start (EPERM creating the private
+fixture directory, no cell observed); (4) a run aborted with "Unexpected input during cell collection" while another session was also running desktop work
+and before this session held the shared desktop lock; no receipt. Attempts 3 and 4 are not evidence.
 
 ## Limits
 
