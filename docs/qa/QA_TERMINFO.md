@@ -938,3 +938,14 @@ app callbacks over parent-observed state, retained raw CPR exchanges (the fence 
 with a digest-checked geometry repair (`ntilde-owned-cursor-geometry-repair-v1`) for the undeclared-geometry defect of `cursor.reverse-wrap` and the latent
 one of `cursor.shape`; the original failures are retained. The measurement first found Ntilde ignoring DECSET 45 (preserved as the before-fix attempt) and
 led to the reverse-wraparound fix in #913. Receipt schema 34 and source policy v28 (221 files) bind it; earlier policies stay frozen.
+
+### Rectangle-editing qualification (DECFRA, DECERA, DECCRA)
+
+The [rectangle-editing batch](terminfo/2026-11-09-rectangle-editing-qualification.md) grades exactly `editing.decfra`, `editing.decera` and `editing.deccra`
+through a twenty-third layered collector extension (`ntilde-owned-rectangle-editing-grading-v1`) over the erase-character/saved-lines one, replaying the pinned bytes and running the
+pinned termless code over parent-journaled stored cells of the whole screen, the cursor, the App-stored margins, origin and insert mode and stored attribute tuples.
+Controls cover bounds, defaults, clipping, no-ops, margins, origin mode, insert mode, the live pen (including a literal-RGB pen), attributed seed cells, DECERA over
+DECSCA-marked text and, for DECCRA, overlap in every direction, a page copied onto itself, destination clipping and attribute preservation. DECCRA's unsupported
+pages are an Ntilde policy that is observed and never graded. The pinned terminal cursor-query paths never carry a verdict and are not qualified. DECSERA, checksums,
+Unicode, the image plane and rendered appearance are not claimed; DECCARA, DECRARA and DECSACE are graded by the attribute-rectangle batch, not here. Receipt schema 36
+and source policy v30 (231 files) bind it; earlier policies stay frozen.

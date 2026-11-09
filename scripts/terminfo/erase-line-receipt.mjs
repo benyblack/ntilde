@@ -38,7 +38,7 @@ function present(path) {
  * policy-v19 or later run always carries them, because the current worker collects this suite
  * unconditionally after the SGR closure suite. */
 export function includesEraseLineEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30'].includes(context.sourceSnapshotPolicy)
         || context.eraseLineAdapterId !== undefined || context.eraseLineSuiteId !== undefined
         || context.eraseLineBundleSha256 !== undefined || context.eraseLineContractsVersion !== undefined
         || evidence.eraseLineEvidence !== undefined

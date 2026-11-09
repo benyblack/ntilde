@@ -224,5 +224,10 @@
     "eraseCharsHistoryCollectorSourceSha256": "erase-chars-history-collector.mjs",
     "eraseCharsHistoryGradingSourceSha256": "erase-chars-history-grading.mjs",
     "eraseCharsHistoryGradingCollectorSourceSha256": "erase-chars-history-grading-collector.mjs",
-    "eraseCharsHistoryReceiptSourceSha256": "erase-chars-history-receipt.mjs"
+    "eraseCharsHistoryReceiptSourceSha256": "erase-chars-history-receipt.mjs",
+    "rectEditContractsSourceSha256": "rect-edit-contracts.mjs",
+    "rectEditCollectorSourceSha256": "rect-edit-collector.mjs",
+    "rectEditGradingSourceSha256": "rect-edit-grading.mjs",
+    "rectEditGradingCollectorSourceSha256": "rect-edit-grading-collector.mjs",
+    "rectEditReceiptSourceSha256": "rect-edit-receipt.mjs"
 }

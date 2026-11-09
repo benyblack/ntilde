@@ -34,7 +34,7 @@ function present(path) {
  * policy-v14 run always carries them, because the current worker collects this
  * suite unconditionally after the truecolor-finding suite. */
 export function includesSgrUnderlineEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15', 'readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15', 'readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30'].includes(context.sourceSnapshotPolicy)
         || context.sgrUnderlineAdapterId !== undefined || context.sgrUnderlineSuiteId !== undefined
         || context.sgrUnderlineBundleSha256 !== undefined || context.sgrUnderlineContractsVersion !== undefined
         || evidence.sgrUnderlineEvidence !== undefined
