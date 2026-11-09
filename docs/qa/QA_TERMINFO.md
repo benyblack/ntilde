@@ -846,3 +846,12 @@ replaying the pinned setup and erase bytes and running the pinned termless `eras
 cursor and stored attributes. The contract adds cursor, unaffected-row/column, retained-attribute and wide-row controls; the other EL
 spellings are labeled observations; background-color erase is observed, not required. The pinned terminal pixel path is capture-only
 upstream and is not qualified. Receipt schema 25 and source policy v19 (173 files) bind it; earlier policies stay frozen.
+
+### Scrolling and history qualification (nine scrollback cases)
+
+The [scrolling/history batch](terminfo/2026-11-09-scrollback-qualification.md) grades exactly `scrollback.accumulate`, `.total-lines`,
+`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a thirteenth layered
+collector extension (`ntilde-owned-scrollback-grading-v1`) on the App's main screen. Viewport text, actual scrollback lines, margins, active
+screen and cursor are observed independently and compared with a byte-interpreting model; the pinned code runs over the same observations.
+Three pinned probes are null by construction, so the contract measures beyond them and the divergence is recorded; stock grades stay
+inconclusive. Receipt schema 26 and source policy v20 (179 files) bind it; earlier policies stay frozen.

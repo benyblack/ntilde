@@ -1,0 +1,225 @@
+{
+  "caseId": "scrollback.reverse-index",
+  "pinnedCriterion": "RI at the top margin inserts a blank row above the measured A marker",
+  "pinnedFeeds": [
+    "A\r\nB\r\nC",
+    "\u001b[H\u001bM"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "A\r\nB\r\nC",
+      "\u001b[H\u001bM"
+    ],
+    "demand": "blank row inserted at the top margin, rows below shifted down, no history growth",
+    "minimum": {
+      "rows": 12,
+      "cols": 48
+    }
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "A\r\nB\r\nC",
+    "\u001b[H\u001bM",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "A\r\nB\r\nC",
+    "\u001b[2;1H\u001bM",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1HA\u001b[2;1HB\u001b[3;1HC\u001b[4;1HD\u001b[5;1HE",
+    "\u001b[2;4r",
+    "\u001b[2;1H",
+    "\u001bM"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      2,
+      1
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "roles": {
+      "before": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          2,
+          1
+        ],
+        "viewport": [
+          "0: A",
+          "1: B",
+          "2: C"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "after": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "1: A",
+          "2: B",
+          "3: C"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "moveOnly": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0: A",
+          "1: B",
+          "2: C"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "regionBefore": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          1,
+          3
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0: A",
+          "1: B",
+          "2: C",
+          "3: D",
+          "4: E"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "regionAfter": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          1,
+          3
+        ],
+        "cursor": [
+          1,
+          0
+        ],
+        "viewport": [
+          "0: A",
+          "2: B",
+          "3: C",
+          "4: E"
+        ],
+        "history": [],
+        "historyCount": 0
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":{\"char\":\"A\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\" \",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "RI inserts a blank row above the measured A marker",
+        "observed": "{\"before\":{\"char\":\"A\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"after\":{\"char\":\" \",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      "stored cells",
+      "actual scrollback",
+      "margins and modes",
+      "cursor"
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-and-actual-scrollback",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": [
+      "stored cells",
+      "actual scrollback",
+      "margins and modes",
+      "cursor"
+    ],
+    "scope": "stored cells, actual local scrollback, margins and cursor of ASCII fixtures at the measured geometry; no Unicode, wide-cell, wrapped-line, reflow, resize or pixel claim"
+  }
+}
