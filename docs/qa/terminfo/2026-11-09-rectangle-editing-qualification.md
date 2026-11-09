@@ -3,7 +3,7 @@
 Qualifies exactly three pinned terminfo.dev@4.0.0 cases (bundle SHA-256 `aa5f2bf9…d1f6`, probeHash `16a690f34c0e`): `editing.decfra`, `editing.decera` and
 `editing.deccra`. `editing.decsera` (selective erasure), `editing.deccara` and `editing.decrara` (attribute rectangles), DECSACE, rectangle checksums, Unicode and
 wide-cell editing, the inline-image plane, rendered appearance and any platform other than the macOS owned sidecar are different cases and are not substituted.
-The implementation under test is the stored-text DECFRA/DECCRA of [PR 908](rectangle-copy-fill.md); DECERA is the bounded stored-text implementation of
+The implementation under test is the stored-text DECFRA/DECCRA of [PR 908](rectangle-copy-fill.md), as amended by PR 907 (character protection: filled cells take the live DECSCA pen, a copy carries protection); DECERA is the bounded stored-text implementation of
 [PR 875](decera-text-erase.md), unchanged.
 
 ## Pinned definitions
@@ -45,10 +45,10 @@ missing buffer state, a margin or mode the App did not confirm, an unmeasured pe
 
 ## Measurement
 
-Scripts (adapter) revision `042587c2a00350e0f04ed051d81d2720454d2d78`; App source revision `359417dd25a547a0c4f06373aa9c9d8cae221644` (the last commit that touched `src/`: the merge of PR 913, reverse-wraparound, over the attribute-rectangle work; PR 908's DECFRA/DECCRA and its review fix are inside it); the Release sidecar
-was built from this merged checkout with the repository wrappers. Owned run `bf9252644d2532d7f0d603fc0c5bec73`, receipt schema 36, source policy v30 (inventory v37, 231 files), default theme, 40x140, App version
-0.13.0 (operator supplied; not independently verified), disposable sidecar `artifacts/sidecar-rect-edit-22`, stock collector run `ae997cb82d2fd95be0ee28461ee9bf9d`, measured 2026-11-09T19:16Z on macOS with Node 24.
-The published `summary.json` records both owned collections that were started on these scripts; the first did not complete (see Preserved attempts).
+Scripts (adapter) revision `0f9c1c2814744224a2cd6f59cc7fdbbc9af8217c`; App source revision `80425d73f3ccec62171a61d1758e6ee50a5a0559` (the last commit that touched `src/`, from PR 907, DECSCA protection: on this tree filled cells take the live DECSCA pen and a copy carries protection; PR 908's DECFRA/DECCRA, PR 913's reverse-wraparound and the attribute-rectangle work are inside it); the Release sidecar
+was built from this merged checkout with the repository wrappers. Owned run `b057258dc450021de905ce44d00e4ae3`, receipt schema 36, source policy v30 (inventory v37, 231 files), default theme, 40x140, App version
+0.13.0 (operator supplied; not independently verified), disposable sidecar `artifacts/sidecar-rect-edit-23`, stock collector run `49958a9f34000d2f3742ae12d7319034`, measured 2026-11-09T20:38Z on macOS with Node 24.
+One owned collection was started on the final scripts and it completed; the earlier attempts are listed under Preserved attempts.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Stock grade |
 |---|---|---|---|
@@ -73,8 +73,10 @@ extension; superseded because the attribute-rectangle, reverse-wrap and cursor w
 `3412e154c7ecf4aa22c2ab57c8f3b00c` (policy v29, receipt 35, as the twenty-second extension over the cursor layer), complete, all three cases supported, discarded because #910 (erase-character/saved-lines)
 merged on the same policy and schema and changed the scripts and the collector chain before this branch merged, so the layer was restacked as the twenty-third extension and measured again;
 (3) run `51e52a34af07a480d49b4791e5f37b91` (scripts `042587c2`), aborted during cell collection before any suite with the collector refusal `Unexpected input during cell collection`
-(retained under `artifacts/terminfo/owned-9Na9v7`, no evidence used); the cause is not understood (the shared desktop lock was held, the App log is empty), and it was retried once with identical inputs, which
-produced the published run above. Only (3) and the published run are recorded in `summary.json` `attempts`; (1) and (2) are recorded here because they were measured on bases that no longer exist.
+(retained under `artifacts/terminfo/owned-9Na9v7`, no evidence used); the cause is not understood (the shared desktop lock was held, the App log is empty), and it was retried once with identical inputs;
+(4) run `bf9252644d2532d7f0d603fc0c5bec73` (scripts `042587c2`, App source `359417dd`, sidecar `artifacts/sidecar-rect-edit-22`, stock run `ae997cb82d2fd95be0ee28461ee9bf9d`), the retry of (3), complete, all three cases supported (stock inconclusive, query), superseded
+because #907 (DECSCA protection) then changed `src/`, including the DECFRA/DECCRA files, and the scripts were refactored for SonarCloud, so the measurement was repeated on the merged tree and the final scripts. Only (3), (4) and the published run are recorded in `summary.json` `attempts`; (1) and (2) are recorded here because
+they were measured on bases that no longer exist.
 
 The consolidated inventory's reviewability cap on the generated JSON was raised from 160 KiB to 176 KiB (`qualification-inventory.test.mjs`): the 77-id inventory is about 164 KB, 230 bytes over the old cap.
 

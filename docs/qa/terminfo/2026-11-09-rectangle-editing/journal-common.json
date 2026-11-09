@@ -2,12 +2,12 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-rectangle-editing-graded-v1",
-    "runId": "bf9252644d2532d7f0d603fc0c5bec73",
+    "runId": "b057258dc450021de905ce44d00e4ae3",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-rectangle-editing-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-erase-chars-history-grading-v1",
-      "bundleSha256": "27b45aec71da7466bf3212ffa51a4f56773b8f938c29545847bb88ab5dcc332e",
+      "bundleSha256": "09c61163b78ddc3a12de7e0992d22b8c454851a4dcaf026a767199fd5d94e273",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 rectangle-editing termless criteria (editing.decfra with ESC[88;1;1;3;5$x, editing.decera with ESC[1;1;3;5$z and editing.deccra with ESC[1;1;2;5;1;5;10$v, each over its pinned seed) replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored cells of the whole screen, the cursor, the App's stored margins, origin mode and insert mode, and stored attribute tuples, with controls for the single-cell, inclusive-border, omitted, zero and oversized (clipped) rectangles, combined no-op groups (invalid fill codes, reversed borders, extra parameters), origin mode and scroll margins, insert mode, the live pen (filled cells carry the stored tuple of a reference cell printed under the same pen, including a literal-RGB pen), attributed seed cells, unconditional erasure over DECSCA-marked text, and for DECCRA a non-overlapping copy, overlap in every direction (a smeared incremental copy is a mismatch), a page-onto-itself copy, destination clipping and source attribute preservation. Unsupported DECCRA pages are an Ntilde policy that is observed, never graded. Stored ASCII state only: the pinned terminal pixel path never carries a verdict and is not qualified; no Unicode, wide-cell, scaled-text, image-plane, protected-cell, DECSERA, DECCARA/DECRARA, DECSACE, checksum or rendered-appearance claim; no stock grades.",
@@ -19,7 +19,7 @@
     "start": {
       "index": 0,
       "kind": "rect-start",
-      "paneId": "c99b6011-da50-4ec4-bbc6-7a480ac6f9c6",
+      "paneId": "cdd4480c-f41e-42ec-95cb-c9184059ff67",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -397,13 +397,13 @@
     "bind": {
       "index": 1,
       "kind": "rect-bind",
-      "paneId": "c99b6011-da50-4ec4-bbc6-7a480ac6f9c6",
+      "paneId": "cdd4480c-f41e-42ec-95cb-c9184059ff67",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_RC_bf9252644d2532d7f0d603fc0c5bec73",
+          "NTILDE_RC_b057258dc450021de905ce44d00e4ae3",
           "",
           "",
           "",
@@ -770,12 +770,12 @@
           "lines": []
         }
       },
-      "sha256": "939c9558db0d2f91f99387a4b07543c99dafe4f4a6206fb368055d80d8452e39"
+      "sha256": "0debd914eb47bd1d0c15d6c3e507e856f652ba0ad7670b0f297e4c3972e81d32"
     },
     "finish": {
       "index": 55,
       "kind": "rect-finish",
-      "paneId": "c99b6011-da50-4ec4-bbc6-7a480ac6f9c6",
+      "paneId": "cdd4480c-f41e-42ec-95cb-c9184059ff67",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
