@@ -133,40 +133,45 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
     if (report.snapshots) validateOutputGeometry(mode.description, report.snapshots[0].screen.rows, report.snapshots[0].screen.cols);
 }
 
+/** The optional evidence suffixes in schema order: the first is schema 4, each later one the next schema. */
+const receiptSuffixOrder = Object.freeze([
+    'includesEditing',
+    'includesHistory',
+    'includesResize',
+    'includesSaved',
+    'includesMetadata',
+    'includesInput',
+    'includesImages',
+    'includesQueries',
+    'includesPrivateClipboard',
+    'includesAsciiSgr',
+    'includesSgrColors',
+    'includesSgrRgb',
+    'includesSgrAttrs',
+    'includesSgrPalette',
+    'includesSgrTruecolor',
+    'includesTruecolorFinding',
+    'includesSgrUnderline',
+    'includesSgrUnderlineColor',
+    'includesUnderlineResolved',
+    'includesSgrReset',
+    'includesSgrClosure',
+    'includesEraseLine',
+    'includesCharEdit',
+    'includesEraseDisplay',
+    'includesLineEdit',
+    'includesCharsets',
+    'includesScrollback',
+    'includesSavedReset',
+    'includesEraseCharsHistory',
+]);
+
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseCharsHistory }) {
+function ownedReceiptVersion(context, suffixes) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
-    if (includesEditing) schemaVersion = 4;
-    if (includesHistory) schemaVersion = 5;
-    if (includesResize) schemaVersion = 6;
-    if (includesSaved) schemaVersion = 7;
-    if (includesMetadata) schemaVersion = 8;
-    if (includesInput) schemaVersion = 9;
-    if (includesImages) schemaVersion = 10;
-    if (includesQueries) schemaVersion = 11;
-    if (includesPrivateClipboard) schemaVersion = 12;
-    if (includesAsciiSgr) schemaVersion = 13;
-    if (includesSgrColors) schemaVersion = 14;
-    if (includesSgrRgb) schemaVersion = 15;
-    if (includesSgrAttrs) schemaVersion = 16;
-    if (includesSgrPalette) schemaVersion = 17;
-    if (includesSgrTruecolor) schemaVersion = 18;
-    if (includesTruecolorFinding) schemaVersion = 19;
-    if (includesSgrUnderline) schemaVersion = 20;
-    if (includesSgrUnderlineColor) schemaVersion = 21;
-    if (includesUnderlineResolved) schemaVersion = 22;
-    if (includesSgrReset) schemaVersion = 23;
-    if (includesSgrClosure) schemaVersion = 24;
-    if (includesEraseLine) schemaVersion = 25;
-    if (includesCharEdit) schemaVersion = 26;
-    if (includesEraseDisplay) schemaVersion = 27;
-    if (includesLineEdit) schemaVersion = 28;
-    if (includesCharsets) schemaVersion = 29;
-    if (includesScrollback) schemaVersion = 30;
-    if (includesSavedReset) schemaVersion = 31;
-    if (includesEraseCharsHistory) schemaVersion = 32;
+    for (const [index, name] of receiptSuffixOrder.entries()) if (suffixes[name]) schemaVersion = index + 4;
     return schemaVersion;
 }
 

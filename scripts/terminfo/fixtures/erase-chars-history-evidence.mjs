@@ -54,10 +54,11 @@ export function syntheticEchScreen(state, binding = paletteBinding(), details = 
 export function echStates() {
     const edgeRow = ' '.repeat(echCols - 3) + 'WXY';
     const wideRows = { 0: 'ABOVE-ROW!', 1: 'ABCDEFGHIJ', 2: 'BELOW-ROW!' };
-    const attrText = 'ABCDEFG', boldAt = [0, 1, 3, 4];
-    const attrCells = Object.fromEntries([...attrText].map((char, col) => [`0,${col}`, boldAt.includes(col) ? bold(char) : plainCell(char)]));
+    const attrText = 'ABCDEFG', boldAt = new Set([0, 1, 3, 4]);
+    const retained = (char, col) => (boldAt.has(col) ? bold(char) : plainCell(char));
+    const attrCells = Object.fromEntries([...attrText].map((char, col) => [`0,${col}`, retained(char, col)]));
     const afterCells = Object.fromEntries([...attrText].map((char, col) => [`0,${col}`,
-        [2, 3, 4].includes(col) ? colorCell(' ', { bg: pen }) : boldAt.includes(col) ? bold(char) : plainCell(char)]));
+        [2, 3, 4].includes(col) ? colorCell(' ', { bg: pen }) : retained(char, col)]));
     return {
         initial: stateOf({}, [0, 0]),
         seed: stateOf({ 0: 'ABCDE' }, [0, 0]),
@@ -105,13 +106,18 @@ const frame = (index, kind, screen, barrier) => ({ index, kind, paneId, barrier,
 export const syntheticEraseCharsHistoryContracts = () => makeEraseCharsHistoryContracts(echRows, echCols);
 
 /** The observed screens of one case; `edit(role, state)` may return a replacement state (negative evidence). */
-export function syntheticEraseCharsHistoryScreens(contract, binding = paletteBinding(), edit = (_role, state) => state) {
+export function syntheticEraseCharsHistoryScreens(contract, binding, edit) {
+    binding ??= paletteBinding();
+    edit ??= (_role, state) => state;
     const states = contract.family === 'erase-character' ? echStates() : historyStates();
     return contract.roles.map(role => syntheticEchScreen(edit(role.role, structuredClone(states[role.role])), binding));
 }
 
 /** A complete valid synthetic run: frames, worker run log and adapter facts. `edit(caseId, role, state)` builds negative evidence. */
-export function syntheticEraseCharsHistoryEvidence(runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), binding = paletteBinding(), edit) {
+export function syntheticEraseCharsHistoryEvidence(runId, bundleSha256, binding, edit) {
+    runId ??= 'a'.repeat(32);
+    bundleSha256 ??= 'f'.repeat(64);
+    binding ??= paletteBinding();
     const contracts = syntheticEraseCharsHistoryContracts();
     const nonce = eraseCharsHistoryNoncePrefix + runId;
     const blank = syntheticEchScreen(blankState(), binding);
@@ -134,6 +140,6 @@ export function syntheticEraseCharsHistoryEvidence(runId = 'a'.repeat(32), bundl
 }
 
 /** The independent contract verdict for one synthetic case. */
-export function syntheticEraseCharsHistoryGrade(contract, binding = paletteBinding(), edit) {
+export function syntheticEraseCharsHistoryGrade(contract, binding, edit) {
     return gradeEraseCharsHistoryCase(contract, eraseCharsHistoryObservation(contract, syntheticEraseCharsHistoryScreens(contract, binding, edit)));
 }

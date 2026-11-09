@@ -40,9 +40,8 @@
 //
 // SCOPE. ASCII fixtures at the measured geometry only. ASCII evidence does not establish wide-cell or combining-character erasure, selective
 // erasure, rectangles, wrapped-line or reflow history, resize, alternate-screen history or pixel appearance.
-import { planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
-import { PlanBuilder, scrollbackReset, scrollbackMinimum, scrollbackMismatch, scrollbackView, compactLines, validateScrollbackScreen,
-    scrollbackCellAt } from './scrollback-contracts.mjs';
+import { validateExactFeeds } from './graded-plan.mjs';
+import { PlanBuilder, scrollbackReset, scrollbackMinimum, scrollbackMismatch, scrollbackView, compactLines } from './scrollback-contracts.mjs';
 import { modelPlanStates } from './scrollback-model.mjs';
 import { eraseLineInk } from './erase-line-contracts.mjs';
 import { sgrAttrsClear, sgrAttrsPredicates } from './sgr-attrs-contracts.mjs';
@@ -61,10 +60,8 @@ export const eraseCharsHistoryReset = scrollbackReset;
 export const eraseCharsHistoryCaseIds = Object.freeze(['erase.character', 'erase.screen.scrollback']);
 /** The smallest geometry the contracts accept (the observer admits at most 128 rows and 256 columns). */
 export const eraseCharsHistoryMinimum = scrollbackMinimum;
-/** The shared screen validation: attribute runs, stored details, resolved colors, buffer state and actual history must agree. */
-export const validateEraseCharsHistoryScreen = validateScrollbackScreen;
-/** The pinned getCell projection over a stored screen. */
-export const eraseCharsHistoryCellAt = scrollbackCellAt;
+// The shared screen validation (attribute runs, stored details, resolved colors, buffer state and actual history must agree) and the pinned getCell projection.
+export { validateScrollbackScreen as validateEraseCharsHistoryScreen, scrollbackCellAt as eraseCharsHistoryCellAt } from './scrollback-contracts.mjs';
 
 /** The pinned fixture notes, byte for byte. */
 export const pinnedEraseCharsHistoryNotes = Object.freeze({
@@ -228,13 +225,19 @@ export function makeEraseCharsHistoryContracts(rows, cols) {
 /** A group's observation: the state view, and the stored ink of the cell groups. */
 const viewOf = (screen, withInk) => ({ ...scrollbackView(screen), ...(withInk ? { ink: eraseLineInk(screen) } : {}) });
 
+/** Whether DECSCNM was off in every read (false), on in any read (true), or not proven either way (null). */
+function reverseVideoOf(values) {
+    if (values.every(value => value === false)) return false;
+    return values.includes(true) ? true : null;
+}
+
 /** Group the read screens of one case by role. */
 export function eraseCharsHistoryObservation(contract, screens) {
     if (!Array.isArray(screens) || screens.length !== contract.roles.length) throw new Error('Missing erase-character/saved-lines read captures.');
     const withInk = contract.family === 'erase-character';
     const observation = Object.fromEntries(contract.roles.map((entry, index) => [entry.role, viewOf(screens[index], withInk)]));
     const binding = screens.map(screen => screen.colorBinding.reverseVideo);
-    observation.reverseVideo = binding.every(value => value === false) ? false : binding.some(value => value === true) ? true : null;
+    observation.reverseVideo = reverseVideoOf(binding);
     return observation;
 }
 
@@ -268,16 +271,48 @@ function characterAttributes(observation) {
     const noStale = blanks.every(textNeutral);
     const cells = [2, 3, 4].map(col => blanks.find(cell => cell.col === col));
     const penMeasured = painted(penCell);
+    const storedOf = cell => (cell === undefined ? null : { bgIndex: cell.bgIndex, backgroundArgb: cell.backgroundArgb, resolved: cell.bg });
+    return { seeded, retainedOk, blanksOk, noStale, cursorOk: sameCursor(after, 0, 2), background: backgroundObservation(cells, penCell, penMeasured),
+        detail: { pen: penMeasured ? storedOf(penCell) : null, firstErased: storedOf(cells[0]) } };
+}
+
+/** Compare the stored background of the erased cells with a same-pen reference: resolved color and stored representation separately. */
+function backgroundObservation(cells, penCell, penMeasured) {
+    if (cells.every(cell => cell === undefined)) return 'erased cells keep the default background';
+    if (!penMeasured) return 'unmeasured: the reference pen cell was not stored with a background';
     const sameResolved = cell => painted(cell) && JSON.stringify(cell.bg) === JSON.stringify(penCell.bg);
     const sameStored = cell => sameResolved(cell) && cell.bgIndex === penCell.bgIndex && cell.backgroundArgb === penCell.backgroundArgb;
-    const background = cells.every(cell => cell === undefined) ? 'erased cells keep the default background'
-        : !penMeasured ? 'unmeasured: the reference pen cell was not stored with a background'
-            : cells.every(sameStored) ? 'erased cells carry the current background'
-                : cells.every(sameResolved) ? 'erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)'
-                    : cells.every(painted) && !cells.some(sameResolved) ? 'erased cells carry a different non-default background color than the current pen' : 'mixed';
-    const storedOf = cell => (cell === undefined ? null : { bgIndex: cell.bgIndex, backgroundArgb: cell.backgroundArgb, resolved: cell.bg });
-    return { seeded, retainedOk, blanksOk, noStale, cursorOk: sameCursor(after, 0, 2), background,
-        detail: { pen: penMeasured ? storedOf(penCell) : null, firstErased: storedOf(cells[0]) } };
+    if (cells.every(sameStored)) return 'erased cells carry the current background';
+    if (cells.every(sameResolved)) return 'erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)';
+    if (cells.every(painted) && !cells.some(sameResolved)) return 'erased cells carry a different non-default background color than the current pen';
+    return 'mixed';
+}
+
+/** The attribute control's verdict once its seed and the measured roles held: a failure, or null. */
+function attributeVerdict(attributes) {
+    if (!attributes.retainedOk || !attributes.blanksOk) {
+        return { outcome: 'unsupported', note: 'attr: retained cells lost their stored text or attributes, or a blank appeared outside the erased range' };
+    }
+    if (!attributes.noStale) return { outcome: 'unsupported', note: 'attr: an erased cell kept a stale text attribute of the character it replaced' };
+    if (!attributes.cursorOk) return { outcome: 'unsupported', note: 'attr: the cursor moved during the erase' };
+    return null;
+}
+
+/** One stage: its controls (inconclusive when one fails), then its measured roles and the attribute control (unsupported when one fails), or null. */
+function gradeStage(contract, observation, stage, attributes) {
+    const inStage = contract.roles.filter(entry => (entry.options.stage ?? 'pinned') === stage);
+    for (const role of inStage.filter(entry => entry.kind === 'control')) {
+        const mismatch = mismatchOf(role, observation[role.role]);
+        if (mismatch) return { outcome: 'inconclusive', note: `Control ${role.role} was not established (${mismatch.note}), so the operation cannot be graded` };
+    }
+    if (attributes && !attributes.seeded) {
+        return { outcome: 'inconclusive', note: 'The attribute control seed was not measured, so retained and erased attributes cannot be distinguished' };
+    }
+    for (const role of inStage.filter(entry => entry.kind === 'measured')) {
+        const mismatch = mismatchOf(role, observation[role.role]);
+        if (mismatch) return { outcome: 'unsupported', note: diagnose(role, observation[role.role], mismatch) };
+    }
+    return attributes ? attributeVerdict(attributes) : null;
 }
 
 /** Grade one case: geometry and DECSCNM, the controls of each stage, then the measured roles of that stage. */
@@ -292,25 +327,8 @@ function gradeCase(contract, observation) {
     }
     const attributes = contract.family === 'erase-character' ? characterAttributes(observation) : null;
     for (const stage of ['pinned', 'extra']) {
-        const inStage = contract.roles.filter(entry => (entry.options.stage ?? 'pinned') === stage);
-        for (const role of inStage.filter(entry => entry.kind === 'control')) {
-            const mismatch = mismatchOf(role, observation[role.role]);
-            if (mismatch) return { outcome: 'inconclusive', note: `Control ${role.role} was not established (${mismatch.note}), so the operation cannot be graded` };
-        }
-        if (attributes && stage === 'pinned' && !attributes.seeded) {
-            return { outcome: 'inconclusive', note: 'The attribute control seed was not measured, so retained and erased attributes cannot be distinguished' };
-        }
-        for (const role of inStage.filter(entry => entry.kind === 'measured')) {
-            const mismatch = mismatchOf(role, observation[role.role]);
-            if (mismatch) return { outcome: 'unsupported', note: diagnose(role, observation[role.role], mismatch) };
-        }
-        if (attributes && stage === 'pinned') {
-            if (!attributes.retainedOk || !attributes.blanksOk) {
-                return { outcome: 'unsupported', note: 'attr: retained cells lost their stored text or attributes, or a blank appeared outside the erased range' };
-            }
-            if (!attributes.noStale) return { outcome: 'unsupported', note: 'attr: an erased cell kept a stale text attribute of the character it replaced' };
-            if (!attributes.cursorOk) return { outcome: 'unsupported', note: 'attr: the cursor moved during the erase' };
-        }
+        const verdict = gradeStage(contract, observation, stage, stage === 'pinned' ? attributes : null);
+        if (verdict) return verdict;
     }
     return { outcome: 'supported', layers: contract.family === 'erase-character' ? ['stored cells', 'cursor', 'stored attributes', 'margins and modes']
         : ['actual scrollback', 'stored cells', 'cursor', 'margins and modes', 'active buffer'] };

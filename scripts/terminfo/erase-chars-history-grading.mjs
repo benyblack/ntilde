@@ -33,7 +33,7 @@ function replayCharacter(contract, screens) {
     const after = rowCells(erased);
     const response = JSON.stringify({ before, cursorBefore: { x: cursorBefore.x, y: cursorBefore.y }, after });
     const fixtureReady = before.join('') === 'ABCDE' && cursorBefore.x === 0 && cursorBefore.y === 0;
-    if (!fixtureReady || after.some(char => char === null)) {
+    if (!fixtureReady || after.includes(null)) {
         return { pass: false, response, note: pinnedEraseCharsHistoryNotes.fixture,
             observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'parser-state' } };
     }
