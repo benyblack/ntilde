@@ -850,9 +850,9 @@ upstream and is not qualified. Receipt schema 25 and source policy v19 (173 file
 ### Line-editing qualification (IL, DL)
 
 The [line-editing batch](terminfo/2026-11-09-line-editing-qualification.md) grades exactly `editing.insert-lines` (`ESC[1L`) and
-`editing.delete-lines` (`ESC[1M`) through a thirteenth layered collector extension (`ntilde-owned-line-editing-grading-v1`),
+`editing.delete-lines` (`ESC[1M`) through a fourteenth layered collector extension (`ntilde-owned-line-editing-grading-v1`),
 replaying the pinned seed, cursor and edit bytes and running the pinned termless probes over parent-journaled stored cells of the whole
 screen, the cursor and the App's stored margins, origin and insert mode. The contract adds full-screen line contents, a full-height boundary,
 a DECSTBM scroll-region control (cursor inside, above and below), origin mode and moved-cell attribute controls; count spellings, new-line
 background fill, cursor column and scrollback are observations. The pinned terminal pixel path never carries a verdict and is not qualified.
-Receipt schema 26 and source policy v20 (178 files) bind it; earlier policies stay frozen.
+Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.

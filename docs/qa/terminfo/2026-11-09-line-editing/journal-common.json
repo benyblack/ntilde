@@ -3,7 +3,7 @@
     "start": {
       "index": 0,
       "kind": "ledt-start",
-      "paneId": "04b4c8f4-7229-4d30-9808-ade757553b23",
+      "paneId": "4ca39af4-2ac2-4f5c-8f18-080df570dacc",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -381,13 +381,13 @@
     "bind": {
       "index": 1,
       "kind": "ledt-bind",
-      "paneId": "04b4c8f4-7229-4d30-9808-ade757553b23",
+      "paneId": "4ca39af4-2ac2-4f5c-8f18-080df570dacc",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_LE_019d692960ca636bf95886d53ab2ada1",
+          "NTILDE_LE_99d87f21f77f9b8bfc77451c80cf06e8",
           "",
           "",
           "",
@@ -754,12 +754,12 @@
           "lines": []
         }
       },
-      "sha256": "abac31ddafbf902a5b0066710e930474568145bdf7c9f2aca463fe65139e334a"
+      "sha256": "f685756051ffe3e9301d0e691f3b4dff5a66058bb5c1143bf56a148c50c0e785"
     },
     "finish": {
       "index": 42,
       "kind": "ledt-finish",
-      "paneId": "04b4c8f4-7229-4d30-9808-ade757553b23",
+      "paneId": "4ca39af4-2ac2-4f5c-8f18-080df570dacc",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,

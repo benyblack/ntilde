@@ -26,7 +26,7 @@ verbatim so an upstream change that gave it a verdict would be refused. In the s
 
 ## Method
 
-Thirteenth digest-checked collector extension `ntilde-owned-line-editing-grading-v1` (derived over the erase-in-line one; it refuses derivation unless
+Fourteenth digest-checked collector extension `ntilde-owned-line-editing-grading-v1` (derived over the character-editing one; it refuses derivation unless
 the two registrations and the `parserStateResult`, `isBlank` and `unmeasuredCellResult` bodies are present verbatim once), contracts v1, suite
 `ntilde-owned-line-editing-graded-v1`, prefix `ledt`, nonce `NTILDE_LE_`. The pinned bytes are fed exactly, one write each, on a measured reset
 screen; the pinned probes run over the parent-journaled screens at the points where they read, and the parent re-executes them. The independent
@@ -48,8 +48,8 @@ setup, missing evidence, stale or incoherent frames or incomplete restoration ar
 
 ## Measurement
 
-Scripts `1f57efa5` (before integration with the other terminfo batches), App source unchanged since `c16997c2`; disposable sidecar `line-edit`
-built from this checkout; default theme, 40x140, receipt schema 26, source policy v20 (inventory v27, 178 files).
+Scripts `604b1802` (this layer merged with current main, including the character-editing layer), App source unchanged since `c16997c2` (the sidecar was built there); owned run
+`99d87f21f77f9b8bfc77451c80cf06e8`, disposable sidecar `line-edit` built from this checkout; default theme, 40x140, receipt schema 27, source policy v21 (inventory v28, 183 files).
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
 |---|---|---|---|
@@ -63,8 +63,7 @@ the model. Moved cells kept their stored tuples. **New blank lines keep the defa
 does not move to column 1**: after an edit with the cursor at column 11 it stays at column 11. Both are Ntilde observations, not requirements and not benchmark grades.
 Scrollback stayed 0 in every read; the reads run on the alternate screen, so nothing is claimed about history.
 
-**Preserved attempts** are listed in the summary. The first attempt completed this suite (both supported) but a later static-image stage failed with "owner did
-not respond", so no receipt was finalized; the suite was measured again.
+**Preserved attempts** (both in the summary, with run ids and script revisions): (1) the line-editing suite completed (both supported) but a later static-image stage failed with "owner did not respond", so no receipt was finalized; (2) a complete pre-integration run (receipt 26, policy v20, 178 files, both supported), superseded because main merged the character-editing layer (#901) and this layer was restacked and the whole suite re-measured. Both graded the two cases supported.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (the inventory is derived from the merged contracts by the
 publication test); the separate 10/10 truecolor-literal finding; the separate 3/3 App-observed underline-color resolution; stock collector counts unchanged

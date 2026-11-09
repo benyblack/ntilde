@@ -8,6 +8,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { buildLineEditGradingReport } from './line-edit-grading.mjs';
 import { lineEditAdapterId } from './line-edit-grading-collector.mjs';
 import { lineEditSuiteId, lineEditContracts } from './line-edit-contracts.mjs';
+import { charEditContracts } from './char-edit-contracts.mjs';
 import { eraseLineContracts } from './erase-line-contracts.mjs';
 import { asciiSgrContracts } from './ascii-sgr-contracts.mjs';
 import { sgrColorsContracts } from './sgr-colors-contracts.mjs';
@@ -48,7 +49,7 @@ test('the published line-editing evidence re-derives exactly from its retained j
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, lineEditSuiteId);
     assert.equal(report.adapter.id, lineEditAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-erase-line-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-char-edit-grading-v1');
     assert.equal(report.snapshots.length, 3 + 2 * 20);
     assert.deepEqual(report.cases.map(item => item.caseId), ids);
     assert.deepEqual(report.cases.map(item => [item.conclusion.outcome, item.pinned.observation.outcome]), ids.map(() => ['supported', 'supported']));
@@ -122,7 +123,7 @@ test('moved cells keep their stored tuple; background fill and cursor column are
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 26);
+    assert.equal(receipt.schemaVersion, 27);
     assert.equal(receipt.lineEditEvidence.suiteId, lineEditSuiteId);
     assert.equal(receipt.lineEditEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.lineEditEvidence.counts, { supported: 2 });
@@ -135,14 +136,14 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.lineEditObservationsSha256, observationsHash);
     assert.equal(summary.retained.lineEditRunSha256, runHash);
     assert.equal(summary.retained.lineEditJournalSha256, journalHash);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v20');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v21');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed.
     const expected = new Set([...asciiSgrContracts, ...sgrColorsContracts, ...sgrRgbContracts, ...sgrAttrsContracts, ...sgrPaletteContracts,
         ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts,
-        ...eraseLineContracts].map(contract => contract.caseId));
+        ...eraseLineContracts, ...charEditContracts].map(contract => contract.caseId));
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...expected].sort());
     for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));
@@ -175,8 +176,9 @@ test('prior publications still rederive beside this batch and failed attempts ar
     const erase = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-erase-line/summary.json', import.meta.url)));
     assert.equal(erase.receipt.schemaVersion, 25);
     assert.equal(erase.receipt.lineEditEvidence, undefined);
+    assert.equal(erase.receipt.charEditEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.ok(attempts.length >= 1);
+    assert.equal(attempts.length, 2);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
-    assert.equal(attempts[0].receiptCompleted, false);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, true]);
 });
