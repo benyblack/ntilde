@@ -98,6 +98,11 @@ public sealed record ReadScreenParams
     [JsonPropertyName("includeOverline")]
     public bool IncludeOverline { get; init; }
 
+    /// <summary>Include each cell's stored DECSCA protection boolean in cell details; only effective with
+    /// IncludeCellDetails. Explicit opt-in preserves canonical run boundaries for older clients.</summary>
+    [JsonPropertyName("includeProtection")]
+    public bool IncludeProtection { get; init; }
+
     /// <summary>Include stored cursor style/blink/default modes, without resolving host preferences or blink phase.</summary>
     [JsonPropertyName("includeCursorMode")]
     public bool IncludeCursorMode { get; init; }
@@ -245,6 +250,10 @@ public sealed record CellDetailRunDto
     /// <summary>Stored SGR 53 state, present only when includeOverline was requested.</summary>
     [JsonPropertyName("overline"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? Overline { get; init; }
+
+    /// <summary>Stored DECSCA protection of the cell, present only when includeProtection was requested.</summary>
+    [JsonPropertyName("protected"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Protected { get; init; }
 }
 
 /// <summary>
