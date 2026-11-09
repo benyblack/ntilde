@@ -19,7 +19,7 @@ scrolls blank rows only, so it cannot tell ED 3 from "ED 3 that also clears the 
 
 ## Method
 
-Twentieth digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the erase-attributes/margins one; it refuses derivation
+Twentieth digest-checked collector extension `ntilde-owned-erase-chars-history-grading-v1` (derived over the erase-attributes/margins one, which in turn sits over saved-state/reset; it refuses derivation
 unless both registrations, with their termless **and** cursor-query paths, `eraseRowResult`, `isBlank`, `rowCells`, `parserStateResult` and
 `unmeasuredCellResult` are present verbatim once; the ED 0/1/2 registrations and `eraseScreenResult` are deliberately not seams), contracts v1, suite
 `ntilde-owned-erase-chars-history-graded-v1`, prefix `echh`, nonce `NTILDE_EH_`. One owned worker drives both cases on the disposable App's **main** screen
@@ -61,9 +61,9 @@ is recorded with both verdicts (`contract-stricter-than-pinned` and the like).
 
 ## Measurement
 
-Scripts `70aa8518` (the committed tree, measured from the private captured source snapshot); the App source is unchanged since `c16997c2` (the Release
-sidecar was built from this checkout with no App change). Owned run `699523bf75e5c19de68e6fcd71258660`, taken through the shared desktop lock, receipt
-schema 32, source policy v26 (inventory v33, 209 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
+Scripts `366a7463` (the committed tree, measured from the private captured source snapshot); the App source is unchanged since `c16997c2` (the Release
+sidecar was built from this checkout with no App change). Owned run `f2fdd9890744a48faac76ae92380bca5`, taken through the shared desktop lock, receipt
+schema 33, source policy v27 (inventory v34, 214 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-erase-chars-history`, macOS, Node 24.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
 |---|---|---|---|
@@ -89,12 +89,14 @@ the rows above and below untouched. Every spelling matched ECMA-48.
 | ED 3 then 2 scrolled rows | 9 rows | 2 rows `HIST-9..10` | `HIST-11..47` / (39,0) |
 
 **Preserved attempts:** (1) run `6c190bf0011e78895f46eb4b04580d20` (scripts `4e1fb402`), complete, both cases supported, superseded before review because the ECH
-conclusion named actual scrollback as a measured layer although only its preserved-state controls read saved lines and the pinned total was not recorded
-per read; (2) run `f3353296aafbe75f8c5ff7a91447c213` (scripts `9c4ff3dc`), complete, both cases supported, superseded after review because the Sonar findings this
-PR introduced were fixed with behavior-preserving refactors of the contracts, grading, receipt schema selection and fixtures, so the measurement was repeated on
-the exact merged scripts; (3) the final run above.
+conclusion named actual scrollback as a measured layer although only its preserved-state controls read saved lines and the pinned total was not recorded per read;
+(2) run `f3353296aafbe75f8c5ff7a91447c213` (scripts `9c4ff3dc`), complete, both cases supported, superseded after review because the Sonar findings this PR introduced
+were fixed with behavior-preserving refactors, so the measurement was repeated on the exact scripts; (3) run `699523bf75e5c19de68e6fcd71258660` (scripts `70aa8518`,
+receipt 32, policy v26), complete, both cases supported, superseded because main meanwhile merged the erase-attributes/margins layer on the same policy and schema, so this
+batch was restacked as the twentieth extension and re-measured; (4) run `57427dd644d24dbfce145f1c8da881ab`, failed, not evidence: the owner stopped responding in the image suite after this
+batch's suite had completed its frames, no receipt, repeated unchanged; (5) the final run above.
 
-Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (63 unique ids, including the saved-state/reset suite with its
+Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (65 unique ids, including the saved-state/reset suite with its
 two preserved pinned-inconclusive verdicts beside their supported effect contracts); the separate 10/10 truecolor-literal finding; the separate 3/3
 App-observed underline-color resolution. **The stock collector was not re-run** (it needs an interactive Ntilde tab): the pinned bundle, probeHash and the
 App are unchanged, so the carried counts (168 inconclusive, 86 supported, 1 unsupported) are labeled as carried; both ids are inconclusive there through
