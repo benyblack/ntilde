@@ -203,9 +203,10 @@ async function loadContract(suite) {
 export function rederive(suite) {
     const test = join(scriptsDir, suite.test);
     // NODE_OPTIONS could filter or redirect the run; the reporter summary must also show tests that ran, passed and none that failed.
-    const { NODE_OPTIONS: _ignored, ...env } = process.env;
+    const env = { ...process.env };
+    delete env.NODE_OPTIONS;
     const run = spawnSync(process.execPath, ['--test', '--test-reporter=tap', test], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 26, env });
-    const count = name => Number(new RegExp(`^# ${name} (\\d+)$`, 'm').exec(run.stdout ?? '')?.[1] ?? Number.NaN);
+    const count = name => Number(new RegExp(String.raw`^# ${name} (\d+)$`, 'm').exec(run.stdout ?? '')?.[1] ?? Number.NaN);
     const ran = run.status === 0 && count('tests') > 0 && count('pass') === count('tests') && count('fail') === 0 && count('skipped') === 0;
     const result = { status: ran ? 'passed' : 'failed', command: `node --test scripts/terminfo/${suite.test}`, testSha256: testDigest(suite) };
     // Diagnostics for the CLI only: non-enumerable, so they are never serialized into the inventory.
