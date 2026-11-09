@@ -92,7 +92,8 @@ function csi(model, prefix, params, final) {
 
 /** Feed one byte string through the model. */
 export function feedScrollbackModel(model, text) {
-    const pattern = /\x1b\[([?]?)([\d;]*)([@-~])|\x1bM|([\s\S])/gy;
+    const escape = String.fromCharCode(0x1b);
+    const pattern = new RegExp(`${escape}\\[([?]?)([\\d;]*)([@-~])|${escape}M|([\\s\\S])`, 'y');
     let index = 0;
     while (index < text.length) {
         pattern.lastIndex = index;
