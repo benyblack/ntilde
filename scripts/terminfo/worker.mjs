@@ -21,6 +21,8 @@ import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
+import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
+import { collectLineEditGrading } from './line-edit-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
@@ -185,7 +187,23 @@ try {
         const charEditModule = await import(pathToFileURL(config.charEditBundle).href);
         const charEditRun = await collectCharEditGrading({ config, fence, owner, gradingModule: charEditModule });
         writeFileSync(join(config.output, 'ched-run.json'), JSON.stringify(charEditRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered saved-state/reset qualification follows the character-editing suite on the same fence.
+        // The layered erase-in-display qualification follows the character-editing suite on the same fence.
+        const eraseDisplaySource = readFileSync(config.eraseDisplayBundle);
+        if (createHash('sha256').update(eraseDisplaySource).digest('hex') !== config.eraseDisplayBundleSha256) {
+            throw new Error('Local erase-in-display adapter bundle changed.');
+        }
+        const eraseDisplayModule = await import(pathToFileURL(config.eraseDisplayBundle).href);
+        const eraseDisplayRun = await collectEraseDisplayGrading({ config, fence, owner, gradingModule: eraseDisplayModule });
+        writeFileSync(join(config.output, 'erdi-run.json'), JSON.stringify(eraseDisplayRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered line-editing qualification follows the erase-in-display suite on the same fence.
+        const lineEditSource = readFileSync(config.lineEditBundle);
+        if (createHash('sha256').update(lineEditSource).digest('hex') !== config.lineEditBundleSha256) {
+            throw new Error('Local line-editing adapter bundle changed.');
+        }
+        const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
+        const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
+        writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered saved-state/reset qualification follows the line-editing suite on the same fence.
         const savedResetSource = readFileSync(config.savedResetBundle);
         if (createHash('sha256').update(savedResetSource).digest('hex') !== config.savedResetBundleSha256) {
             throw new Error('Local saved-state/reset adapter bundle changed.');

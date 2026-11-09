@@ -21,6 +21,8 @@ import { sgrResetContracts } from './sgr-reset-contracts.mjs';
 import { sgrClosureContracts } from './sgr-closure-contracts.mjs';
 import { eraseLineContracts } from './erase-line-contracts.mjs';
 import { charEditContracts } from './char-edit-contracts.mjs';
+import { eraseDisplayContracts } from './erase-display-contracts.mjs';
+import { lineEditContracts } from './line-edit-contracts.mjs';
 
 const dir = new URL('../../docs/qa/terminfo/2026-11-09-saved-reset/', import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
@@ -49,7 +51,7 @@ test('the published saved-state/reset evidence re-derives exactly from its retai
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, savedResetSuiteId);
     assert.equal(report.adapter.id, savedResetAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-char-edit-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-line-editing-grading-v1');
     assert.equal(report.snapshots.length, 3 + 13 + 9 + 12 + 5 + 6);
     assert.deepEqual(report.cases.map(item => item.caseId), ids);
 });
@@ -143,7 +145,7 @@ test('reset.decaln filled the stored grid with E, homed the cursor and kept the 
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 27);
+    assert.equal(receipt.schemaVersion, 29);
     assert.equal(receipt.savedResetEvidence.suiteId, savedResetSuiteId);
     assert.equal(receipt.savedResetEvidence.runId, summary.context.runId);
     const { counts, effectCounts } = savedResetCounts(report);
@@ -160,13 +162,13 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.savedResetObservationsSha256, observationsHash);
     assert.equal(summary.retained.savedResetRunSha256, runHash);
     assert.equal(summary.retained.savedResetJournalSha256, journalHash);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v21');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v23');
     assert.equal(receipt.fixtureRemoved, true);
     assert.equal(summary.ownedRunId, summary.context.runId);
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed.
     const expected = new Set([...asciiSgrContracts, ...sgrColorsContracts, ...sgrRgbContracts, ...sgrAttrsContracts, ...sgrPaletteContracts,
-        ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts, ...eraseLineContracts, ...charEditContracts].map(contract => contract.caseId));
+        ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts, ...eraseLineContracts, ...charEditContracts, ...eraseDisplayContracts, ...lineEditContracts].map(contract => contract.caseId));
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...expected].sort());
     for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));
@@ -194,8 +196,8 @@ test('every publication file stays small enough to review in one piece', () => {
 });
 
 test('prior publications still rederive beside this batch and the attempt record is preserved', () => {
-    const earlier = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-09-char-edit/summary.json', import.meta.url)));
-    assert.equal(earlier.receipt.schemaVersion, 26);
+    const earlier = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-09-line-editing/summary.json', import.meta.url)));
+    assert.equal(earlier.receipt.schemaVersion, 28);
     assert.equal(earlier.receipt.savedResetEvidence, undefined);
     const { attempts, context } = load().summary;
     assert.equal(attempts.length, 3);

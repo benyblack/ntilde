@@ -1,0 +1,575 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-erase-display-grading-v1",
+  "probeIds": [
+    "erase.screen.below",
+    "erase.screen.above",
+    "erase.screen.all"
+  ],
+  "cases": [
+    {
+      "caseId": "erase.screen.below",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[0J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[1J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[2J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[21;5H",
+        "\u001b[0J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[21;1H",
+        "\u001b[0J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1m\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[0m\u001b[21;3H\u001b[44m",
+        "\u001b[0J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX",
+        "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[3J",
+        "HIST-A\r\nHIST-B\r\nHIST-C\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[0J",
+        "\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            4
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            4
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "erase.screen.below",
+        "pass": true,
+        "response": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\" \",\" \",\" \"],[\" \",\" \",\" \",\" \",\" \"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "rows 0,20,39: AAAAA/BB   /     ; cursor preserved",
+            "observed": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\" \",\" \",\" \"],[\" \",\" \",\" \",\" \",\" \"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "erase.screen.above",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[1J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[0J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[2J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[21;5H",
+        "\u001b[1J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[21;140H",
+        "\u001b[1J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1m\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[0m\u001b[21;3H\u001b[44m",
+        "\u001b[1J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX",
+        "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[3J",
+        "HIST-A\r\nHIST-B\r\nHIST-C\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[1J",
+        "\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            4
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            4
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            139
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            139
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "erase.screen.above",
+        "pass": true,
+        "response": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "rows 0,20,39:      /   BB/CCCCC; cursor preserved",
+            "observed": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "erase.screen.all",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[2J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[0J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[1J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[21;5H",
+        "\u001b[2J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HROW00-ABCD\u001b[1;140H|\u001b[2;1HROW01-ABCD\u001b[2;140H|\u001b[3;1HROW02-ABCD\u001b[3;140H|\u001b[4;1HROW03-ABCD\u001b[4;140H|\u001b[5;1HROW04-ABCD\u001b[5;140H|\u001b[6;1HROW05-ABCD\u001b[6;140H|\u001b[7;1HROW06-ABCD\u001b[7;140H|\u001b[8;1HROW07-ABCD\u001b[8;140H|\u001b[9;1HROW08-ABCD\u001b[9;140H|\u001b[10;1HROW09-ABCD\u001b[10;140H|\u001b[11;1HROW10-ABCD\u001b[11;140H|\u001b[12;1HROW11-ABCD\u001b[12;140H|\u001b[13;1HROW12-ABCD\u001b[13;140H|\u001b[14;1HROW13-ABCD\u001b[14;140H|\u001b[15;1HROW14-ABCD\u001b[15;140H|\u001b[16;1HROW15-ABCD\u001b[16;140H|\u001b[17;1HROW16-ABCD\u001b[17;140H|\u001b[18;1HROW17-ABCD\u001b[18;140H|\u001b[19;1HROW18-ABCD\u001b[19;140H|\u001b[20;1HROW19-ABCD\u001b[20;140H|\u001b[21;1HROW20-ABCD\u001b[21;140H|\u001b[22;1HROW21-ABCD\u001b[22;140H|\u001b[23;1HROW22-ABCD\u001b[23;140H|\u001b[24;1HROW23-ABCD\u001b[24;140H|\u001b[25;1HROW24-ABCD\u001b[25;140H|\u001b[26;1HROW25-ABCD\u001b[26;140H|\u001b[27;1HROW26-ABCD\u001b[27;140H|\u001b[28;1HROW27-ABCD\u001b[28;140H|\u001b[29;1HROW28-ABCD\u001b[29;140H|\u001b[30;1HROW29-ABCD\u001b[30;140H|\u001b[31;1HROW30-ABCD\u001b[31;140H|\u001b[32;1HROW31-ABCD\u001b[32;140H|\u001b[33;1HROW32-ABCD\u001b[33;140H|\u001b[34;1HROW33-ABCD\u001b[34;140H|\u001b[35;1HROW34-ABCD\u001b[35;140H|\u001b[36;1HROW35-ABCD\u001b[36;140H|\u001b[37;1HROW36-ABCD\u001b[37;140H|\u001b[38;1HROW37-ABCD\u001b[38;140H|\u001b[39;1HROW38-ABCD\u001b[39;140H|\u001b[40;1HROW39-ABCD\u001b[40;140H|\u001b[40;140H",
+        "\u001b[2J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1m\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[0m\u001b[21;3H\u001b[44m",
+        "\u001b[2J",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX",
+        "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[3J",
+        "HIST-A\r\nHIST-B\r\nHIST-C\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+        "\u001b[1;1HAAAAA\u001b[21;1HBBBBB\u001b[40;1HCCCCC\u001b[21;3H",
+        "\u001b[2J",
+        "\u001b[0m\u001b[2J\u001b[3J\u001b[H\u001b[?1049h"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            4
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            4
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            39,
+            139
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            39,
+            139
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            20,
+            2
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "erase.screen.all",
+        "pass": true,
+        "response": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\" \",\" \"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "rows 0,20,39:      /     /     ; cursor preserved",
+            "observed": "{\"rows\":[0,20,39],\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]],\"cursorBefore\":{\"x\":2,\"y\":20},\"scrollbackBefore\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"after\":[[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\" \",\" \"],[\" \",\" \",\" \",\" \",\" \"]],\"cursorAfter\":{\"x\":2,\"y\":20},\"scrollbackAfter\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}"
+          }
+        ]
+      }
+    }
+  ]
+}

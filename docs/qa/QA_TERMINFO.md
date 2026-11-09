@@ -850,7 +850,27 @@ upstream and is not qualified. Receipt schema 25 and source policy v19 (173 file
 ### Saved-state and reset qualification (alternate screen, SGR 0, DECALN)
 
 The [saved-state/reset batch](terminfo/2026-11-09-saved-reset-qualification.md) grades exactly `modes.alt-screen.exit`, `modes.altscreen-47`,
-`modes.altscreen-1047`, `reset.sgr` and `reset.decaln` through a fourteenth layered collector extension (`ntilde-owned-saved-reset-grading-v1`).
+`modes.altscreen-1047`, `reset.sgr` and `reset.decaln` through a sixteenth layered collector extension (`ntilde-owned-saved-reset-grading-v1`).
 The pinned `?47` and `?1047` verdicts are inconclusive by design and stay that way; their visible-buffer effect contracts
 (`ntilde.saved-reset.effect/v1`) are graded and recorded separately. `reset.sgr` is a different case from `sgr.reset`. `reset.method`,
-RIS and the pinned DECALN pixel path are not claimed. Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.
+RIS and the pinned DECALN pixel path are not claimed. Receipt schema 29 and source policy v23 (193 files) bind it; earlier policies stay frozen.
+
+### Erase-in-display qualification (ED 0, ED 1, ED 2)
+
+The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
+`erase.screen.all` (all explicit-parameter spellings) through a fourteenth layered collector extension (`ntilde-owned-erase-display-grading-v1`),
+replaying the geometry-dependent pinned setup (pinned here to the owned 40x140 screen) and erase bytes and running the pinned termless
+`eraseScreenResult` over parent-journaled stored cells, the cursor and the saved-line count. The contract adds whole-screen retained/erased,
+cursor, mode-flag, boundary, retained-attribute and main-screen history controls; the other ED spellings are labeled observations; background-color
+erase is observed, not required. The pinned pixel path is capture-only upstream and is not qualified; CSI 3J is not graded (it appears only as
+disposable-screen cleanup). Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.
+
+### Line-editing qualification (IL, DL)
+
+The [line-editing batch](terminfo/2026-11-09-line-editing-qualification.md) grades exactly `editing.insert-lines` (`ESC[1L`) and
+`editing.delete-lines` (`ESC[1M`) through a fifteenth layered collector extension (`ntilde-owned-line-editing-grading-v1`),
+replaying the pinned seed, cursor and edit bytes and running the pinned termless probes over parent-journaled stored cells of the whole
+screen, the cursor and the App's stored margins, origin and insert mode. The contract adds full-screen line contents, a full-height boundary,
+a DECSTBM scroll-region control (cursor inside, above and below), origin mode and moved-cell attribute controls; count spellings, new-line
+background fill, cursor column and scrollback are observations. The pinned terminal pixel path never carries a verdict and is not qualified.
+Receipt schema 28 and source policy v22 (188 files) bind it; earlier policies stay frozen.

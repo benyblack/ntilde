@@ -31,8 +31,10 @@ code.set(new URL('sgr-underline-color-resolved-collector.mjs', root).href, log +
 code.set(new URL('sgr-reset-collector.mjs', root).href, log + `export async function collectSgrResetGrading() { record('SgrReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('sgr-closure-collector.mjs', root).href, log + `export async function collectSgrClosureGrading() { record('SgrClosure'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('erase-line-collector.mjs', root).href, log + `export async function collectEraseLineGrading() { record('EraseLine'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
-code.set(new URL('saved-reset-collector.mjs', root).href, log + `export async function collectSavedResetGrading() { record('SavedReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('char-edit-collector.mjs', root).href, log + `export async function collectCharEditGrading() { record('CharEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('erase-display-collector.mjs', root).href, log + `export async function collectEraseDisplayGrading() { record('EraseDisplay'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('saved-reset-collector.mjs', root).href, log + `export async function collectSavedResetGrading() { record('SavedReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('line-edit-collector.mjs', root).href, log + `export async function collectLineEditGrading() { record('LineEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);
