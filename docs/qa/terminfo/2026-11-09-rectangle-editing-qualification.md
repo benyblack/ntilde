@@ -79,7 +79,7 @@ because #907 (DECSCA protection) then changed `src/`, including the DECFRA/DECCR
 because the dispatch predicate and fixture were then changed again after the Sonar re-review and #915 (selective erasure) merged on the same policy and schema, so the layer was restacked as the twenty-fourth extension and measured again. Only (3), (4), (5) and the published run are recorded in `summary.json` `attempts`; (1) and (2) are recorded here because
 they were measured on bases that no longer exist.
 
-The consolidated inventory's reviewability cap on the generated JSON was first raised on this branch from 160 KiB to 176 KiB (the 77-id inventory was about 164 KB), and then superseded: #915 landed a larger LF-measured cap (192 KiB, `qualification-inventory.test.mjs`), so this branch no longer changes that test and the current 80-id inventory fits under main's cap.
+The consolidated inventory's reviewability cap on the generated JSON was first raised on this branch from 160 KiB to 176 KiB (the 77-id inventory was about 164 KB), and then superseded: #915 landed a larger LF-measured cap (192 KiB, `qualification-inventory.test.mjs`), so this branch no longer changes that test and the current 79-id inventory fits under main's cap.
 
 ## Boundaries
 
