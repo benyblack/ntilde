@@ -2,12 +2,12 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-erase-attrs-region-graded-v1",
-    "runId": "a0ccee04218d948d660a065e6f23d734",
+    "runId": "9417a60257946f1528864f1448132196",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-erase-attrs-region-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-saved-reset-grading-v1",
-      "bundleSha256": "2d72fd06cad67d8171a613c83be318ab27f87ff2c1ea8fbd0c4fbb4a4eb6b5ed",
+      "bundleSha256": "d97216ae3d8b2ea3f31ea1cba011b2a154c2d906f447d693f44adce469af290b",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 termless criteria erase.el-with-attrs (EL, omitted parameter, over a measured SGR 42 background: the erased cell (0,0) is blank with the same resolved background RGB) and erase.ed-scroll-region (ED, omitted parameter, with margins 3;10 and the cursor at row 2: the preceding row KEEP! survives and the target cells read blank) replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored cells, App-resolved colors, the cursor, the margins and buffer state, with a colored-X seed proof, a restoration witness (pen and margins), a full-screen control against accidental whole-screen clearing, a stored-representation versus resolved-color comparison, current-pen versus preserved-background controls (observed, not required) and a marker fill that records where ED stopped relative to the margins (observed, not graded: no claim that ED is or is not clipped). Stored state and App-resolved color only: the pinned terminal cursor-query paths never carry a verdict and are not qualified; rendered appearance is not claimed; no stock grades.",
@@ -19,7 +19,7 @@
     "start": {
       "index": 0,
       "kind": "erar-start",
-      "paneId": "c05ad763-f61e-4e42-a4a4-4ad873260648",
+      "paneId": "9e490d0f-56a3-4a4f-b83e-ba4b1b2da893",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -397,13 +397,13 @@
     "bind": {
       "index": 1,
       "kind": "erar-bind",
-      "paneId": "c05ad763-f61e-4e42-a4a4-4ad873260648",
+      "paneId": "9e490d0f-56a3-4a4f-b83e-ba4b1b2da893",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_EA_a0ccee04218d948d660a065e6f23d734",
+          "NTILDE_EA_9417a60257946f1528864f1448132196",
           "",
           "",
           "",
@@ -770,12 +770,12 @@
           "lines": []
         }
       },
-      "sha256": "e67af1a4ec286ffe4aef7e0d6b28dbc115a790434da520b87a1f6f4c790ac871"
+      "sha256": "36e0c324b5dce0c6dc73ca40f376c072b1b71c4d1ec657445493ef389e6c325a"
     },
     "finish": {
       "index": 20,
       "kind": "erar-finish",
-      "paneId": "c05ad763-f61e-4e42-a4a4-4ad873260648",
+      "paneId": "9e490d0f-56a3-4a4f-b83e-ba4b1b2da893",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,

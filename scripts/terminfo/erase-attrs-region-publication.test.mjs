@@ -203,13 +203,16 @@ test('every publication file stays small enough to review in one piece', () => {
     }
 });
 
-test('prior publications still rederive beside this batch and the attempt record is preserved', () => {
+test('prior publications still rederive beside this batch and every superseded attempt is preserved', () => {
     const earlier = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-09-saved-reset/summary.json', import.meta.url)));
     assert.equal(earlier.receipt.schemaVersion, 31);
     assert.equal(earlier.receipt.eraseAttrsRegionEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.ok(attempts.length >= 1);
-    assert.equal(attempts.at(-1).runId, context.runId);
-    assert.ok(attempts.slice(0, -1).every(attempt => attempt.runId !== context.runId));
-    assert.equal(attempts.at(-1).receiptCompleted, true);
+    assert.equal(attempts.length, 2);
+    assert.equal(attempts[1].runId, context.runId);
+    assert.notEqual(attempts[0].runId, context.runId);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true]);
+    assert.deepEqual(Object.values(attempts[0].verdicts), ['supported', 'supported']);
+    assert.match(attempts[0].outcome, /masked as an inconclusive restoration failure/);
+    assert.match(attempts[0].outcome, /pen witness was written wherever the erase left the cursor/);
 });

@@ -1312,22 +1312,22 @@
       ],
       "evidence": {
         "files": 23,
-        "bytes": 310366,
-        "sha256": "e84f4685b7ff042983f68381399ca2f85d807def1259eea6c972ecc05c1e9147"
+        "bytes": 311198,
+        "sha256": "b24ceb69ac17fbdc45e8e566b3a601d4729f4ecdb1649ac286b3aceb0f040f88"
       },
       "receipt": {
         "schemaVersion": 32,
-        "runId": "a0ccee04218d948d660a065e6f23d734",
+        "runId": "9417a60257946f1528864f1448132196",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "f6807627de1b445c46c7f79b132d5c56b142da7ad519c55d75828f5268b500d8"
+          "sha256": "415205daffee4a4194644652d3188f0d9f157b5ee3950b4c0c8bb611a8b1cdbf"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-erase-attrs-region-graded-v1",
           "file": "erar-observations.json",
-          "sha256": "9541c335de01fdd238a57b1eb5f3d1d6d49a73948ba6e09db22339933e3a5a5f",
+          "sha256": "be52f8a9599224910f6e65118d459ec650714dc5c3c0a43c6387deca025bb4eb",
           "runFile": "erar-run.json",
-          "runSha256": "9b629e99e4992d92aaab2def10c9bce1aa6a663ba0a47407a61e1831540935ca",
+          "runSha256": "01007aae885783efd037f2fa533106aca6e079964c8c484af966cde02219ef72",
           "counts": {
             "supported": 2
           },
@@ -1335,23 +1335,23 @@
         }
       },
       "run": {
-        "ownedRunId": "a0ccee04218d948d660a065e6f23d734",
-        "measuredAt": "2026-11-09T15:18:26.965Z",
+        "ownedRunId": "9417a60257946f1528864f1448132196",
+        "measuredAt": "2026-11-09T15:32:20.781Z",
         "appRevision": "c16997c2007c65c2102a942a05b7404e1f800c2c",
         "appVersion": "0.12.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "b5de1d8933a5a6a04d2aa9d7ba016327a64246a6",
+        "scriptsRevision": "1d7a161c4ccfabb0c4abfb0b749589b3419bb475",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "86ff4a17753bf7d9c3e6090ecff941ee4de7fb648e9264b9868e1eb1c899aa49",
+        "collectorAdapterBundleSha256": "1476897342e05a1256af298d3666d7abd59148dc3fa9552c5fdf0e4ff1b62e4b",
         "gradingAdapterId": "ntilde-owned-erase-attrs-region-grading-v1",
-        "gradingAdapterBundleSha256": "2d72fd06cad67d8171a613c83be318ab27f87ff2c1ea8fbd0c4fbb4a4eb6b5ed",
+        "gradingAdapterBundleSha256": "d97216ae3d8b2ea3f31ea1cba011b2a154c2d906f447d693f44adce469af290b",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v26",
-        "sourceSnapshotManifestSha256": "876c4c89d0da941415bf5f9b976d55dcff295eb15824d11e6eae754f0004af35"
+        "sourceSnapshotManifestSha256": "2ad47b146a3fb74e78383582c175fa4f82ea61b2f089fcc1a06109fa75e4dbc3"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "2bbd5eb039bc6d66f5eabe7663a31254",
+        "runId": "d400cb6d9ed7870da74725fe3d61f4fe",
         "counts": {
           "inconclusive": 168,
           "supported": 86,
@@ -1359,14 +1359,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "ec5f66875becf5975d71e5c39409541443cf5e1e95e7d4bd6573f782bc17ba9e",
+        "rawSha256": "06cdb48a39dc3bf004061920ab4adf3bd43d7a7cf7de52d04b8c716e5ecab026",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/erase-attrs-region-publication.test.mjs",
-        "testSha256": "3d6c03178f5263f9f50203945422451dcc03ec6937c755421590311d1fe8ba6e"
+        "testSha256": "a2ea5f4c44bee76872437a022816551dfab3536b34dde87f0eb12af167efc4f8"
       }
     }
   ],

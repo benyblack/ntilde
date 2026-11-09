@@ -60,9 +60,9 @@ background is a measured mismatch the pinned probe cannot see (it grades it inco
 
 ## Measurement
 
-Scripts `b5de1d8933a5a6a04d2aa9d7ba016327a64246a6` (committed source); App source unchanged since `c16997c2` (the Release sidecar was built from this checkout, no App
-change; recorded separately from the scripts revision). Owned run `a0ccee04218d948d660a065e6f23d734`, receipt schema 32, source policy v26 (inventory v33, 209
-files), default theme, 40x140, disposable sidecar, stock collector run `2bbd5eb039bc6d66f5eabe7663a31254`.
+Scripts `1d7a161c4ccfabb0c4abfb0b749589b3419bb475` (committed source); App source unchanged since `c16997c2` (the Release sidecar was built from this checkout, no App
+change; recorded separately from the scripts revision). Owned run `9417a60257946f1528864f1448132196`, receipt schema 32, source policy v26 (inventory v33, 209
+files), default theme, 40x140, disposable sidecar, stock collector run `d400cb6d9ed7870da74725fe3d61f4fe`.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
 |---|---|---|---|
@@ -85,8 +85,10 @@ Same-run reconfirmation (kept separate): every merged predecessor qualification 
 pinned-inconclusive cases with their separately identified effect contracts supported; counts are derived from the merged contracts by the publication test); the separate 10/10 truecolor-literal
 finding; the separate 3/3 App-observed underline-color resolution; stock collector counts unchanged (86 supported, 1 unsupported, 168 inconclusive).
 
-**Preserved attempts** (in the summary): (1) `a0ccee04…`, complete, receipt finalized; the final measurement. The receipt was independently re-derived from a copy of the retained run directory
-and is identical to the retained one.
+**Preserved attempts** (both in the summary, with run ids and script revisions): (1) `a0ccee04…`, complete but superseded: local Codex review found that the ED restoration check compared the restored
+screen with the expected KEEP!-only screen (a no-op or wrong erase would have been masked as an inconclusive restoration failure) and that the EL pen witness was written wherever the erase left the
+cursor; the contract and the witness feed (now `ESC[1;1HW`) changed, so the suite was re-measured (both cases graded identically); (2) `9417a602…`, complete, receipt finalized; the final measurement. The
+final receipt was independently re-derived from a copy of the retained run directory and is identical to the retained one.
 
 ## Limits
 
