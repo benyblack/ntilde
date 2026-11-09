@@ -855,6 +855,16 @@ The pinned `?47` and `?1047` verdicts are inconclusive by design and stay that w
 (`ntilde.saved-reset.effect/v1`) are graded and recorded separately. `reset.sgr` is a different case from `sgr.reset`. `reset.method`,
 RIS and the pinned DECALN pixel path are not claimed. Receipt schema 31 and source policy v25 (204 files) bind it; earlier policies stay frozen.
 
+### Attribute-rectangle qualification (DECCARA, DECRARA, DECSACE)
+
+The [attribute-rectangle batch](terminfo/2026-11-09-attr-rect-qualification.md) grades exactly `editing.deccara` (`ESC[1;1;3;5;7$r`), `editing.decrara`
+(`ESC[1;1;3;5;7$t`) and `editing.decsace` through a nineteenth layered collector extension (`ntilde-owned-attr-rect-grading-v1`). The pinned fixtures never
+select an extent, and the VT510 reference makes the default the stream, so a conforming terminal changes the right-flank cells the pinned DECCARA/DECRARA control
+requires to stay untouched: those pinned verdicts stay inconclusive and are never promoted. `editing.decsace` is inconclusive by design in the pinned probe. The
+separately identified effect contracts (`ntilde.attr-rect.effect/v1`) are graded from an independent oracle, and the same pinned code over the same pinned bytes with
+the rectangle extent selected first is a labeled experiment, not a pinned grade. The DECSACE setting is not readable, so it is inferred from the cells changed and
+restored with a stream witness. Receipt schema 32 and source policy v26 (209 files) bind it; earlier policies stay frozen.
+
 ### Erase-in-display qualification (ED 0, ED 1, ED 2)
 
 The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
