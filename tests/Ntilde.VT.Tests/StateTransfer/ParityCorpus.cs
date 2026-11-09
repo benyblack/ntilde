@@ -267,6 +267,12 @@ internal static class ParityCorpus
             "\u001b[?1049h\u001b[?5l\u001b[?5halt\u001b[?1049l\u001b[!p" +
             "\u001bc\u001b[?5hafter reset"));
 
+        yield return ("reverse-wrap-mode", Utf8(
+            // The mode is carried through a wrap and a BS across it, survives the alternate screen, is cleared
+            // by DECSTR and RIS, and is left set at the end so the snapshot carries it.
+            "\u001b[?45h" + new string('A', 200) + "\b\b\b" +
+            "\u001b[?1049h\u001b[?45h\u001b[?1049l" + "\u001b[!p" + "\u001b[?45h" + "\u001bc" + "after reset" + "\u001b[?45h"));
+
         yield return ("mixed-modes", Utf8(
             "\u001b[?1h\u001b[?7l\u001b[?6h\u001b[?25l\u001b[?2004h\u001b[?1000h\u001b[?1006h" +
             "\u001b[4h\u001b[20h" +

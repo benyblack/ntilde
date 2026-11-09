@@ -333,7 +333,7 @@ namespace Ntilde.VT
                 case 'D': // Cursor Back
                     if (bare)
                     {
-                        _buffer.CursorCol = Math.Max(0, _buffer.CursorCol - Math.Max(1, arg0));
+                        _buffer.CursorBackward(Math.Max(1, arg0));
                         _buffer.Invalidate();
                     }
                     break;
@@ -962,6 +962,7 @@ namespace Ntilde.VT
                 case 7: return _buffer.Modes.IsAutoWrapMode ? 1 : 2;             // DECAWM
                 case 9: return _buffer.Modes.MouseModeX10PressOnly ? 1 : 2;     // X10 compatibility
                 case 25: return _buffer.Modes.IsCursorVisible ? 1 : 2;           // DECTCEM
+                case 45: return _buffer.Modes.IsReverseWrapMode ? 1 : 2;         // Reverse-wraparound (xterm)
                 case 47: return _buffer.IsAltScreenActive ? 1 : 2;               // Alt screen (legacy)
                 case 66: return _buffer.Modes.IsApplicationKeypad ? 1 : 2;        // DECNKM
                 case 80: return _buffer.Modes.IsSixelDisplayMode ? 1 : 2;        // DECSDM
@@ -1025,6 +1026,9 @@ namespace Ntilde.VT
                         break;
                     case 7: // DECAWM - Auto Wrap Mode
                         _buffer.Modes.IsAutoWrapMode = enable;
+                        break;
+                    case 45: // Reverse-wraparound (xterm): BS may cross a soft wrap while ?7 is also set
+                        _buffer.Modes.IsReverseWrapMode = enable;
                         break;
                     case 66: // DECNKM - Numeric/application keypad
                         _buffer.Modes.IsApplicationKeypad = enable;
