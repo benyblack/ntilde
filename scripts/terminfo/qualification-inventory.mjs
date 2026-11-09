@@ -455,7 +455,7 @@ const codeList = ids => ids.map(code).join(', ');
 
 function diagnosticLine(diagnostic) {
     const complete = code(`suiteComplete=${diagnostic.suiteComplete}`);
-    return `- ${code(diagnostic.id)}: ${diagnostic.kind} (${diagnostic.name}). Ungraded, ${complete}. It is not a graded unsupported case and is counted in none of the totals above.`;
+    return `- ${code(diagnostic.id)}: ${diagnostic.kind} (${diagnostic.name}). Ungraded, ${complete}. It is not a graded stock case: it has no stock outcome and is in no stock count or remaining count. Where a repaired-probe suite qualifies it, that is a separate claim of that suite.`;
 }
 
 function totalsSection(inventory) {
@@ -464,9 +464,9 @@ function totalsSection(inventory) {
     const allBaseline = totals.baseline;
     const multi = `${totals.idsWithMultipleClaims.length} (${codeList(totals.idsWithMultipleClaims)})`;
     const freshness = stockBaseline.freshness.split(';')[0];
-    const baselineLine = `Baseline: stock run ${code(stockBaseline.stockCollectorRunId)} (${stockBaseline.measuredAt}, ${freshness}), ${allBaseline.allCases} graded cases: ${allBaseline.stockSupported} supported, ${allBaseline.stockUnsupported} unsupported, ${allBaseline.stockInconclusive} inconclusive. Every qualified id is a stock-inconclusive case, so the remaining counts are taken against the ${allBaseline.stockInconclusive} inconclusive ones.`;
+    const baselineLine = `Baseline: stock run ${code(stockBaseline.stockCollectorRunId)} (${stockBaseline.measuredAt}, ${freshness}), ${allBaseline.allCases} graded cases: ${allBaseline.stockSupported} supported, ${allBaseline.stockUnsupported} unsupported, ${allBaseline.stockInconclusive} inconclusive. Every qualified id that has a stock outcome is a stock-inconclusive case (an ungraded diagnostic has none), so the remaining counts are taken against the ${allBaseline.stockInconclusive} inconclusive ones.`;
     const outside = allBaseline.stockUnsupported + remaining.notPinnedSupported;
-    const unsupportedLine = `The baseline's single stock-unsupported case (${codeList(stockBaseline.stockUnsupported)}) is graded and separate from both remaining counts. The ${allBaseline.stockUnsupported} unsupported plus the ${remaining.notPinnedSupported} not-pinned-supported inconclusive cases are the ${outside} cases outside the ${allBaseline.stockSupported} stock-supported plus ${totals.pinnedSupportedIds} pinned-supported ones.`;
+    const unsupportedLine = `The baseline's single stock-unsupported case (${codeList(stockBaseline.stockUnsupported)}) is graded and separate from both remaining counts. The ${allBaseline.stockUnsupported} unsupported plus the ${remaining.notPinnedSupported} not-pinned-supported inconclusive cases are the ${outside} cases outside the ${allBaseline.stockSupported} stock-supported plus ${totals.pinnedSupportedOfStockInconclusive} pinned-supported ones.`;
     return ['## Totals', '', '| Measure | Value |', '|---|---:|',
         `| Unique benchmark ids with qualified effect evidence | ${totals.uniqueBenchmarkIds} |`,
         `| Suite claims (an id covered by two suites has two claims) | ${totals.suiteClaims} |`,
@@ -528,7 +528,7 @@ function benchmarkSection(inventory) {
             return `${claim.suite}: ${claim.divergence.kind}${derived}`;
         }).join('; ') || '-';
         const pinned = row.pinned.byClaim.length > 1 ? row.pinned.byClaim.map(entry => `${entry.suite}=${entry.verdict}`).join(', ') : row.pinned.best;
-        lines.push(`| ${code(row.id)} | ${row.stockOutcome} | ${pinned} | ${row.effect.verdict} | ${layers} | ${row.claims.map(claim => claim.suite).join(', ')} | ${divergence} |`);
+        lines.push(`| ${code(row.id)} | ${row.stockOutcome ?? 'ungraded'} | ${pinned} | ${row.effect.verdict} | ${layers} | ${row.claims.map(claim => claim.suite).join(', ')} | ${divergence} |`);
     }
     return lines;
 }

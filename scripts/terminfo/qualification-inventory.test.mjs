@@ -249,7 +249,7 @@ test('guard: recorded totals must match the recomputed ones', () => {
 test('the generated summary states its baseline and keeps the diagnostic out of the counts', () => {
     const text = renderSummary(committed());
     assert.match(text, /Baseline: stock run `[0-9a-f]{32}`/);
-    assert.match(text, /cursor\.reverse-wrap.*suiteComplete=false.*not a graded unsupported case/);
+    assert.match(text, /cursor\.reverse-wrap.*suiteComplete=false.*not a graded stock case/);
     assert.match(text, /Ntilde-specific findings \(not benchmark ids\)/);
     assert.ok(Buffer.byteLength(text) < 40 * 1024 && readFileSync(join(defaultQaRoot, inventoryFiles.json)).length < 160 * 1024, 'the generated files stay reviewable');
 });

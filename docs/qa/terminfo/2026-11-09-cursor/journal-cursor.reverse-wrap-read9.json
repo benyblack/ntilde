@@ -1,0 +1,102 @@
+{
+  "caseId": "cursor.reverse-wrap",
+  "read": 9,
+  "frame": {
+    "index": 45,
+    "kind": "curq-read",
+    "paneId": "0ddaaf22-8ac9-441c-aec6-b002d58d2a8d",
+    "barrier": "\u001b[?62;4;22c",
+    "screen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": [
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "B",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "cursorRow": 0,
+      "cursorCol": 139,
+      "cursorVisible": true,
+      "attributeRuns": [
+        {
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1
+        }
+      ],
+      "cellDetails": [
+        {
+          "overline": false,
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
+      "bufferState": {
+        "scrollTop": 0,
+        "scrollBottom": 39,
+        "originMode": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "alternateScreen": true,
+        "scrollbackLines": 0
+      },
+      "history": {
+        "startLine": 0,
+        "totalLines": 0,
+        "lines": []
+      }
+    },
+    "sha256": "661fc33c391b31151689bf0597598e0d0f75d8bf04301754abfe055f120c7439"
+  }
+}

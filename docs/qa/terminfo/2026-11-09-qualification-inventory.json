@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 68,
-    "suiteClaims": 70,
+    "uniqueBenchmarkIds": 72,
+    "suiteClaims": 74,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 68,
-    "pinnedAndEffectSupportedIds": 60,
+    "effectSupportedIds": 72,
+    "pinnedAndEffectSupportedIds": 64,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
@@ -58,7 +58,12 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "pinnedSupportedIds": 60,
+    "effectSupportedOfStockInconclusive": 71,
+    "pinnedSupportedOfStockInconclusive": 63,
+    "ungradedStockIdsWithEvidence": [
+      "cursor.reverse-wrap"
+    ],
+    "pinnedSupportedIds": 64,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -67,8 +72,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 100,
-      "notPinnedSupported": 108
+      "effectUnqualified": 97,
+      "notPinnedSupported": 105
     }
   },
   "suites": [
@@ -1369,7 +1374,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/erase-attrs-region-publication.test.mjs",
-        "testSha256": "7567e4502e6a4d2f45fc0b1186202b026ab428fa82135dc548f64ae97f39e861"
+        "testSha256": "ac4abfa4e551ce7adfcd0f6dbd64d012bee6d395c3ed06b01c6285c294c15c8d"
       }
     },
     {
@@ -1437,7 +1442,80 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/attr-rect-publication.test.mjs",
-        "testSha256": "3756ca92e85f658697bd42c2beb166ba39fb9dd51ab8fe3da532d943b4380321"
+        "testSha256": "31bd00264ee80e81c8097a6d3d0a3a103e0a9879fe6e53e454010657d0eca97e"
+      }
+    },
+    {
+      "suite": "cursor",
+      "suiteId": "ntilde-owned-cursor-qualification-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-09-cursor/",
+      "doc": "2026-11-09-cursor-qualification.md",
+      "caseCount": 4,
+      "caseIds": [
+        "cursor.cup-scroll-region",
+        "cursor.hide",
+        "cursor.shape",
+        "cursor.reverse-wrap"
+      ],
+      "evidence": {
+        "files": 66,
+        "bytes": 458265,
+        "sha256": "ce0638b47454ca7aa885b45da44227d0185f4754694f8ce2e5f2d97aa7e9cf0e"
+      },
+      "receipt": {
+        "schemaVersion": 34,
+        "runId": "fee697030728f13d8298eff854bdde73",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "1fa5a7772672fccfb9e1db7847372eafd705fce146aa456498afa1f84dc6b861"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-cursor-qualification-graded-v1",
+          "file": "curq-observations.json",
+          "sha256": "f434411b58bb2180402d55c02f15f57d057836b574e7e0a9b2fe94d6bbbd42e2",
+          "runFile": "curq-run.json",
+          "runSha256": "b5b6d23fb54521bbeadf2a1dbd0676dc86572c3cf9e32c728c60f8bd0f138326",
+          "counts": {
+            "supported": 4
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "fee697030728f13d8298eff854bdde73",
+        "measuredAt": "2026-11-09T17:08:42.158Z",
+        "appRevision": "6b26a158dbf16d7b07be106f2c3cf3fab5341dfc",
+        "appVersion": "0.13.0+6b26a158",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "a9ec1e3065d4c53104a2aaf54c95269c800c4872",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "36dc235bb8b6ebdf75762a486d3be0b73f8f8cc7e1f914e49104c6dc270e4565",
+        "gradingAdapterId": "ntilde-owned-cursor-qualification-grading-v1",
+        "gradingAdapterBundleSha256": "b755e0afe76845ad894b2032214b4c982c3a02a416d13aa237b2ff7a6cdfa770",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v28",
+        "sourceSnapshotManifestSha256": "2399bbf4034bbbae73197fa55a297831c05753b9ec445611634b4e6550c9ab1e"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "0bdfae4fe1c46b31e0ffe4730bf9942e",
+        "counts": {
+          "inconclusive": 168,
+          "supported": 86,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "e531a31e18ec2d774108142b898901059ae942492b91fc9b1adce6972004b39e",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock cursor.cup-scroll-region, cursor.hide and cursor.shape are inconclusive and stock cursor.reverse-wrap is an ungraded UndeclaredTerminalGeometry collector error (suiteComplete=false); all unchanged by this run. The stock hide and shape app callbacks end inconclusive because the owned stock run supplies no capture adapter."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/cursor-qual-publication.test.mjs",
+        "testSha256": "9894ca4ca0708c33af1f968874236a81ea9cb6855060acc91fa941f2ab3e1cc3"
       }
     }
   ],
@@ -1623,6 +1701,195 @@
             "stored-state"
           ],
           "evidenceTag": "owned-stored-physical-cells"
+        }
+      ]
+    },
+    {
+      "id": "cursor.cup-scroll-region",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "cursor.cup-scroll-region",
+          "suite": "cursor",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "cursor-position-report"
+          ],
+          "evidenceTag": "owned-stored-physical-cursor-and-cpr"
+        }
+      ]
+    },
+    {
+      "id": "cursor.hide",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "cursor.hide",
+          "suite": "cursor",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": "Parser visibility state only; display pixels were not captured"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-stored-cursor-and-controlled-pixels"
+        }
+      ]
+    },
+    {
+      "id": "cursor.reverse-wrap",
+      "kind": "benchmark",
+      "stockOutcome": null,
+      "stockStatus": "ungraded-collector-error",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "cursor.reverse-wrap",
+          "suite": "cursor",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "cursor-position-report"
+          ],
+          "evidenceTag": "owned-stored-physical-cursor-and-cpr"
+        }
+      ]
+    },
+    {
+      "id": "cursor.shape",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "cursor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "cursor.shape",
+          "suite": "cursor",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-stored-cursor-and-controlled-pixels"
         }
       ]
     },

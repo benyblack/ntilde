@@ -1,0 +1,595 @@
+{
+  "caseId": "cursor.reverse-wrap",
+  "pinnedCriterion": "with ?7 and ?45 set, A x cols then B wraps to row 2 column 2 and two BS return to row 1, last column",
+  "appCriterion": "the same movement observed physically and by CPR (1;1, 2;2, 1;cols), geometry proven before and after, with the ?45-off control staying on row 2",
+  "pinnedFeeds": [
+    "\u001b[?7h",
+    "\u001b[?45h",
+    "\u001b[H",
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+    "\b\b",
+    "\u001b[?45l",
+    "\u001b[?7h"
+  ],
+  "terminalFixture": {
+    "termless": [
+      "\u001b[?7h",
+      "\u001b[?45h",
+      "\u001b[H",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      "\b\b",
+      "\u001b[?45l",
+      "\u001b[?7h"
+    ],
+    "app": [
+      "\u001b[?45h",
+      "\u001b[?7h",
+      "\u001b[H",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      "\b\b",
+      "\u001b[?45l"
+    ],
+    "demand": "the physical cursor and CPR across the wrap boundary with and without the mode, and the declared geometry before and after the callback"
+  },
+  "feeds": [
+    "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+    "\u001b[?7h",
+    "\u001b[?45h",
+    "\u001b[H",
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+    "\b\b",
+    "\u001b[?45l",
+    "\u001b[?7h",
+    "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+    "\u001b[?45h",
+    "\u001b[?7h",
+    "\u001b[H",
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+    "\b\b",
+    "\u001b[?45l",
+    "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+    "\u001b[?7h",
+    "\u001b[H",
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+    "\b\b",
+    "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        1,
+        1
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        1,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        1,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "cpr",
+      "cursor": [
+        0,
+        0
+      ],
+      "rawCpr": "\u001b[1;1R"
+    },
+    {
+      "kind": "cpr",
+      "cursor": [
+        1,
+        1
+      ],
+      "rawCpr": "\u001b[2;2R"
+    },
+    {
+      "kind": "cpr",
+      "cursor": [
+        1,
+        0
+      ],
+      "rawCpr": "\u001b[2;1R"
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        1,
+        0
+      ]
+    },
+    {
+      "kind": "cpr",
+      "cursor": [
+        1,
+        1
+      ],
+      "rawCpr": "\u001b[2;2R"
+    },
+    {
+      "kind": "cpr",
+      "cursor": [
+        1,
+        0
+      ],
+      "rawCpr": "\u001b[2;1R"
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    }
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "hostDefaultMode": {
+      "style": 2,
+      "blink": true
+    },
+    "groups": [
+      {
+        "id": "termless",
+        "kind": "pinned-termless",
+        "reads": [
+          {
+            "label": "measured grid and initial auto-wrap",
+            "kind": "state",
+            "role": "control",
+            "matchesExpectation": true,
+            "physicalCursor": [
+              0,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          },
+          {
+            "label": "home-position control",
+            "kind": "state",
+            "role": "control",
+            "matchesExpectation": true,
+            "physicalCursor": [
+              0,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          },
+          {
+            "label": "second-row displacement",
+            "kind": "state",
+            "role": "control",
+            "matchesExpectation": true,
+            "physicalCursor": [
+              1,
+              1
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          },
+          {
+            "label": "two BS reverse the wrap to the last column of row 1",
+            "kind": "state",
+            "role": "measured",
+            "matchesExpectation": false,
+            "differs": "cursor",
+            "physicalCursor": [
+              1,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          },
+          {
+            "label": "reverse-wrap off, auto-wrap restored, fixture state unchanged",
+            "kind": "state",
+            "role": "restoration",
+            "matchesExpectation": true,
+            "physicalCursor": [
+              1,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          }
+        ]
+      },
+      {
+        "id": "app",
+        "kind": "pinned-app-repaired",
+        "reads": [
+          {
+            "label": "geometry before the callback",
+            "kind": "state",
+            "role": "control",
+            "matchesExpectation": true,
+            "physicalCursor": [
+              0,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          },
+          {
+            "label": "home",
+            "kind": "cpr",
+            "role": "control",
+            "matchesExpectation": true,
+            "cprConsistentWithPhysicalCursor": true,
+            "physicalCursor": [
+              0,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            },
+            "rawCpr": "\u001b[1;1R"
+          },
+          {
+            "label": "wrapped",
+            "kind": "cpr",
+            "role": "control",
+            "matchesExpectation": true,
+            "cprConsistentWithPhysicalCursor": true,
+            "physicalCursor": [
+              1,
+              1
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            },
+            "rawCpr": "\u001b[2;2R"
+          },
+          {
+            "label": "reverted",
+            "kind": "cpr",
+            "role": "measured",
+            "matchesExpectation": false,
+            "differs": "cursor",
+            "cprConsistentWithPhysicalCursor": true,
+            "physicalCursor": [
+              1,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            },
+            "rawCpr": "\u001b[2;1R"
+          },
+          {
+            "label": "geometry after the callback and reverse-wrap off",
+            "kind": "state",
+            "role": "restoration",
+            "matchesExpectation": true,
+            "physicalCursor": [
+              1,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          }
+        ]
+      },
+      {
+        "id": "mode-off",
+        "kind": "control",
+        "reads": [
+          {
+            "label": "the same fixture without ?45: wrapped",
+            "kind": "cpr",
+            "role": "control",
+            "matchesExpectation": true,
+            "cprConsistentWithPhysicalCursor": true,
+            "physicalCursor": [
+              1,
+              1
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            },
+            "rawCpr": "\u001b[2;2R"
+          },
+          {
+            "label": "without ?45 the second BS stops at column 1 of row 2",
+            "kind": "cpr",
+            "role": "control",
+            "matchesExpectation": true,
+            "cprConsistentWithPhysicalCursor": true,
+            "physicalCursor": [
+              1,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            },
+            "rawCpr": "\u001b[2;1R"
+          },
+          {
+            "label": "fixture reset",
+            "kind": "state",
+            "role": "restoration",
+            "matchesExpectation": true,
+            "physicalCursor": [
+              0,
+              0
+            ],
+            "margins": [
+              0,
+              39
+            ],
+            "origin": false,
+            "visible": true,
+            "cursorMode": {
+              "style": 2,
+              "blink": true,
+              "isDefault": true
+            }
+          }
+        ]
+      }
+    ],
+    "pixelChecks": []
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"cols\":140,\"start\":{\"x\":0,\"y\":0,\"visible\":true,\"style\":\"underline\"},\"wrapped\":{\"x\":1,\"y\":1,\"visible\":true,\"style\":\"underline\"},\"cursor\":{\"x\":0,\"y\":1,\"visible\":true,\"style\":\"underline\"}}",
+    "note": null,
+    "observation": {
+      "outcome": "unsupported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "negative",
+        "expected": "Backspace reverses a wrap across the measured row width",
+        "observed": "{\"cols\":140,\"start\":{\"x\":0,\"y\":0,\"visible\":true,\"style\":\"underline\"},\"wrapped\":{\"x\":1,\"y\":1,\"visible\":true,\"style\":\"underline\"},\"cursor\":{\"x\":0,\"y\":1,\"visible\":true,\"style\":\"underline\"}}"
+      }
+    ]
+  },
+  "pinnedApp": {
+    "repaired": true,
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "writes": [
+      "\u001b[?45h",
+      "\u001b[?7h",
+      "\u001b[H",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      "\b\b",
+      "\u001b[?45l"
+    ],
+    "pass": false,
+    "response": "{\"measured\":[{\"step\":\"home\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"wrapped\",\"report\":{\"row\":2,\"col\":2}},{\"step\":\"reverted\",\"report\":{\"row\":2,\"col\":1}}]}",
+    "note": null,
+    "observation": {
+      "outcome": "unsupported",
+      "evidence": "query",
+      "note": "Measured wrap was not reversed to row 1 column 140"
+    },
+    "assertions": [
+      {
+        "kind": "negative",
+        "expected": "Backspace from column 1 of row 2 reverses the wrap to the last column of row 1",
+        "observed": "{\"measured\":[{\"step\":\"home\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"wrapped\",\"report\":{\"row\":2,\"col\":2}},{\"step\":\"reverted\",\"report\":{\"row\":2,\"col\":1}}]}"
+      }
+    ]
+  },
+  "geometryRepair": {
+    "derivationId": "ntilde-owned-cursor-geometry-repair-v1",
+    "original": {
+      "threw": {
+        "name": "UndeclaredTerminalGeometry",
+        "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+      },
+      "writes": []
+    },
+    "repair": {
+      "derivationId": "ntilde-owned-cursor-geometry-repair-v1",
+      "probeId": "cursor.reverse-wrap",
+      "originalKeys": [
+        "id",
+        "termless",
+        "term"
+      ],
+      "repairedKeys": [
+        "id",
+        "termless",
+        "term",
+        "termNeedsGeometry"
+      ],
+      "originalTermNeedsGeometry": null,
+      "repairedTermNeedsGeometry": true,
+      "sameTermless": true,
+      "sameTerm": true,
+      "termlessSha256": "e826f4d412828757bab79786f121ae25e288febc77d8ef61219f27981f2439d8",
+      "termSha256": "9a064034a510d62a3b76b7b81852200ddb48b7bb769cb4760ea755b45b4f61f6",
+      "metadataChange": "termNeedsGeometry: true added to the cursor.reverse-wrap probe record; both callbacks are the original function objects"
+    },
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "geometryBefore": {
+      "rows": 40,
+      "cols": 140
+    },
+    "geometryAfter": {
+      "rows": 40,
+      "cols": 140
+    }
+  },
+  "contractResult": {
+    "outcome": "unsupported",
+    "note": "termless/two BS reverse the wrap to the last column of row 1: The physical cursor is at 1,0 instead of the contracted 0,139"
+  },
+  "conclusion": {
+    "outcome": "unsupported",
+    "evidence": "owned-stored-physical-cursor-and-cpr",
+    "grading": "pinned-termless-plus-contract-v1",
+    "note": "termless/two BS reverse the wrap to the last column of row 1: The physical cursor is at 1,0 instead of the contracted 0,139",
+    "scope": "stored state, physical cursor, retained CPR replies and controlled synthetic render phases of ASCII fixtures at the measured geometry; no desktop blink cadence, focus, Unicode, wide-cell, reflow or resize claim"
+  }
+}
