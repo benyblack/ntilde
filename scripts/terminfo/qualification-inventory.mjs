@@ -202,8 +202,15 @@ async function loadContract(suite) {
 /** Run one suite's trusted rederivation: its publication test rebuilds the retained report from the retained journals. */
 export function rederive(suite) {
     const test = join(scriptsDir, suite.test);
-    const run = spawnSync(process.execPath, ['--test', test], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 26 });
-    return { status: run.status === 0 ? 'passed' : 'failed', command: `node --test scripts/terminfo/${suite.test}`, testSha256: testDigest(suite) };
+    // NODE_OPTIONS could filter or redirect the run; the reporter summary must also show tests that ran, passed and none that failed.
+    const { NODE_OPTIONS: _ignored, ...env } = process.env;
+    const run = spawnSync(process.execPath, ['--test', '--test-reporter=tap', test], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 26, env });
+    const count = name => Number(new RegExp(`^# ${name} (\\d+)$`, 'm').exec(run.stdout ?? '')?.[1] ?? Number.NaN);
+    const ran = run.status === 0 && count('tests') > 0 && count('pass') === count('tests') && count('fail') === 0 && count('skipped') === 0;
+    const result = { status: ran ? 'passed' : 'failed', command: `node --test scripts/terminfo/${suite.test}`, testSha256: testDigest(suite) };
+    // Diagnostics for the CLI only: non-enumerable, so they are never serialized into the inventory.
+    Object.defineProperty(result, 'output', { value: `${run.stdout ?? ''}${run.stderr ?? ''}${run.error ? String(run.error) : ''}` });
+    return result;
 }
 
 /** The digest of the publication test that performs a suite's rederivation, so a result is bound to the test that produced it. */

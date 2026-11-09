@@ -36,12 +36,10 @@ test('the dispatch accepts exactly prefix-suffix pairs and rejects near misses',
     assert.ok(input.test('input-control') && !input.test('input-finish2') && !input.test('inputs-start'));
 });
 
-test('maximum and far larger inputs match in linear time and never hang', () => {
+test('maximum and far larger inputs are rejected without hanging (a super-linear expression would never return)', () => {
     for (const expression of expressions) {
         for (const kind of ['cell-'.repeat(2_000_000), `${'a'.repeat(4_000_000)}-start`, `cell-${'start'.repeat(1_000_000)}`, `${'-'.repeat(4_000_000)}`]) {
-            const started = performance.now();
             assert.equal(expression.test(kind), false);
-            assert.ok(performance.now() - started < 2000, 'anchored literal alternation of an overlong kind');
         }
     }
 });

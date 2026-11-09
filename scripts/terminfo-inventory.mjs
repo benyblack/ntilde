@@ -23,6 +23,7 @@ if (args.has('--write')) {
     const failed = [...inventory.suites, ...inventory.findings].filter(suite => suite.rederivation.status !== 'passed');
     if (failed.length) {
         console.error(`Refusing to write: rederivation did not pass for ${failed.map(suite => suite.suite).join(', ')}.`);
+        for (const suite of failed) console.error(`--- ${suite.suite}\n${suite.rederivation.output ?? '(no output)'}`);
         process.exit(1);
     }
     writeFileSync(paths.json, serialize(inventory));
@@ -35,7 +36,7 @@ if (args.has('--write')) {
     if (readText(paths.markdown) !== `${renderSummary(committed)}\n`) problems.push(`${paths.markdown} is not the rendering of the committed JSON.`);
     if (args.has('--rederive')) {
         const failed = [...inventory.suites, ...inventory.findings].filter(suite => suite.rederivation.status !== 'passed');
-        if (failed.length) problems.push(`rederivation failed for ${failed.map(suite => suite.suite).join(', ')}.`);
+        if (failed.length) problems.push(`rederivation failed for ${failed.map(suite => suite.suite).join(', ')}.`, ...failed.map(suite => `--- ${suite.suite}\n${suite.rederivation.output ?? '(no output)'}`));
     }
     if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
     console.log(`Inventory OK: ${inventory.totals.uniqueBenchmarkIds} benchmark ids, ${inventory.totals.suiteClaims} claims.`);
