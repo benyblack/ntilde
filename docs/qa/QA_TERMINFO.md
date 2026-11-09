@@ -850,7 +850,7 @@ upstream and is not qualified. Receipt schema 25 and source policy v19 (173 file
 ### Scrolling and history qualification (nine scrollback cases)
 
 The [scrolling/history batch](terminfo/2026-11-09-scrollback-qualification.md) grades exactly `scrollback.accumulate`, `.total-lines`,
-`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a thirteenth layered
+`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a fourteenth layered
 collector extension (`ntilde-owned-scrollback-grading-v1`, the fourteenth) on the App's main screen. Viewport text, actual scrollback lines, margins, active
 screen and cursor are observed independently and compared with a byte-interpreting model; the pinned code runs over the same observations.
 Three pinned probes are null by construction, so the contract measures beyond them and the divergence is recorded; stock grades stay
