@@ -166,5 +166,10 @@
     "sgrClosureCollectorSourceSha256": "sgr-closure-collector.mjs",
     "sgrClosureGradingSourceSha256": "sgr-closure-grading.mjs",
     "sgrClosureGradingCollectorSourceSha256": "sgr-closure-grading-collector.mjs",
-    "sgrClosureReceiptSourceSha256": "sgr-closure-receipt.mjs"
+    "sgrClosureReceiptSourceSha256": "sgr-closure-receipt.mjs",
+    "eraseLineContractsSourceSha256": "erase-line-contracts.mjs",
+    "eraseLineCollectorSourceSha256": "erase-line-collector.mjs",
+    "eraseLineGradingSourceSha256": "erase-line-grading.mjs",
+    "eraseLineGradingCollectorSourceSha256": "erase-line-grading-collector.mjs",
+    "eraseLineReceiptSourceSha256": "erase-line-receipt.mjs"
 }

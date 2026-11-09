@@ -837,3 +837,12 @@ The [closure batch](terminfo/2026-11-08-sgr-closure-qualification.md) grades `sg
 collector extension (`ntilde-owned-sgr-closure-grading-v1`). `sgr.underline.color` shares the rgbUnderlineProbe helper with `sgr.underline-color-rgb` and is
 graded from its own reads; the overline guard's unavailable-versus-false distinction is preserved. Receipt schema 24, source policy v18 (168 files). The
 [pinned-SGR inventory](terminfo/2026-11-08-sgr-pinned-inventory.json) shows all 32 pinned `sgr.*` ids with extension evidence (coverage, not a stock score).
+
+### Erase-in-line qualification (EL 0, EL 1, EL 2)
+
+The [erase-in-line batch](terminfo/2026-11-08-erase-line-qualification.md) grades exactly `erase.line.right` (omitted-parameter spelling),
+`erase.line.left` and `erase.line.all` through a twelfth layered collector extension (`ntilde-owned-erase-line-grading-v1`),
+replaying the pinned setup and erase bytes and running the pinned termless `eraseRowResult` over parent-journaled stored cells, the
+cursor and stored attributes. The contract adds cursor, unaffected-row/column, retained-attribute and wide-row controls; the other EL
+spellings are labeled observations; background-color erase is observed, not required. The pinned terminal pixel path is capture-only
+upstream and is not qualified. Receipt schema 25 and source policy v19 (173 files) bind it; earlier policies stay frozen.

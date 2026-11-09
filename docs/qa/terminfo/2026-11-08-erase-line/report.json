@@ -1,0 +1,1456 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-erase-line-graded-v1",
+  "runId": "be21c8c78a42205d3be915a1a44ebd79",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-erase-line-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-sgr-closure-grading-v1",
+    "bundleSha256": "bcf5198edc0ee819606670f5a22681b73dfa0944ac31758d679d2693866289fa",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 erase-in-line termless criteria (erase.line.right with the omitted-parameter spelling, erase.line.left with EL 1 and erase.line.all with EL 2) replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored cells, the cursor and stored attribute details, with controls for the unmodified seed (no-op), every other EL spelling (omitted, explicit 0, 1 and 2: wrong direction, accidental whole-line clearing), a wide-row control for unaffected rows and columns past column 5 and the cursor-cell boundary, and a bold-seeded attribute control (retained attributes required; background-color erase observed, not required). Stored state only: the pinned terminal pixel path is capture-only upstream and is not qualified; no stock grades.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 35,
+  "cases": [
+    {
+      "caseId": "erase.line.right",
+      "pinnedCriterion": "row 0 EL 0 (omitted parameter) erases the contracted cells after a setup cursor of 2,0",
+      "pinnedFeeds": [
+        "ABCDE\u001b[3G",
+        "\u001b[K"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "ABCDE\u001b[3G",
+          "\u001b[K"
+        ],
+        "demand": "erased cells blank, retained cells unchanged",
+        "minimum": {
+          "rows": 2,
+          "cols": 6
+        },
+        "note": "upstream pixel path is capture-only (explicit 0 spelling for the right case) and never a grade"
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[0K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[1K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[2K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1mABCDE\u001b[0m\u001b[1;3H\u001b[44m",
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "reverseVideo": false,
+        "pinnedSpelling": "omitted",
+        "pinnedSequence": "\u001b[K",
+        "initial": {
+          "ink": 0,
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        "setup": {
+          "text": [
+            "ABCDE_____"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B",
+            "0,2,C",
+            "0,3,D",
+            "0,4,E"
+          ]
+        },
+        "erased": {
+          "text": [
+            "AB________"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B"
+          ]
+        },
+        "spellingControls": {
+          "policy": "observed, not graded: separate spellings of the same row, kept distinct from the pinned spelling",
+          "explicit0": {
+            "sequence": "\u001b[0K",
+            "mode": 0,
+            "text": [
+              "AB________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": true
+          },
+          "explicit1": {
+            "sequence": "\u001b[1K",
+            "mode": 1,
+            "text": [
+              "___DE_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,3,D",
+              "0,4,E"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit2": {
+            "sequence": "\u001b[2K",
+            "mode": 2,
+            "text": [
+              "__________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          }
+        },
+        "wideRow": {
+          "policy": "unaffected rows and columns: ten-column middle row between two full rows",
+          "before": {
+            "text": [
+              "ABOVE-ROW!",
+              "ABCDEFGHIJ",
+              "BELOW-ROW!"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "1,2,C",
+              "1,3,D",
+              "1,4,E",
+              "1,5,F",
+              "1,6,G",
+              "1,7,H",
+              "1,8,I",
+              "1,9,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          },
+          "after": {
+            "text": [
+              "ABOVE-ROW!",
+              "AB________",
+              "BELOW-ROW!"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          }
+        },
+        "attributes": {
+          "policy": "retained cells keep their bold-only stored tuple (required); background-color erase is observed, not required",
+          "before": {
+            "text": [
+              "ABCDE_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "A",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 1,
+                "char": "B",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 2,
+                "char": "C",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 3,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 4,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "after": {
+            "text": [
+              "AB________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "A",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 1,
+                "char": "B",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "char": " ",
+                "flags": 256,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": 4278190318,
+                "cols": [
+                  2,
+                  139
+                ]
+              }
+            ]
+          },
+          "penReference": {
+            "text": [
+              "X_________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "retainedKeepBold": true,
+          "backgroundColorErase": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+          "backgroundColorEraseDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "firstErased": {
+              "bgIndex": -1,
+              "backgroundArgb": 4278190318,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
+        }
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":2,\"y\":0},\"after\":[\"A\",\"B\",\" \",\" \",\" \"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "row 0 A,B,blank,blank,blank; cursor before 2,0",
+            "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":2,\"y\":0},\"after\":[\"A\",\"B\",\" \",\" \",\" \"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored cells only: exact erased and retained characters, neutral stored attributes, untouched cursor and unaffected rows/columns; background-color erase is observed, not required; the pinned pixel capture path is capture-only and is not claimed"
+      }
+    },
+    {
+      "caseId": "erase.line.left",
+      "pinnedCriterion": "row 0 EL 1 erases the contracted cells after a setup cursor of 2,0",
+      "pinnedFeeds": [
+        "ABCDE\u001b[3G",
+        "\u001b[1K"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "ABCDE\u001b[3G",
+          "\u001b[1K"
+        ],
+        "demand": "erased cells blank, retained cells unchanged",
+        "minimum": {
+          "rows": 2,
+          "cols": 6
+        },
+        "note": "upstream pixel path is capture-only (explicit 0 spelling for the right case) and never a grade"
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[1K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[0K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\u001b[3G",
+        "\u001b[2K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+        "\u001b[1K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1mABCDE\u001b[0m\u001b[1;3H\u001b[44m",
+        "\u001b[1K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "reverseVideo": false,
+        "pinnedSpelling": "explicit1",
+        "pinnedSequence": "\u001b[1K",
+        "initial": {
+          "ink": 0,
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        "setup": {
+          "text": [
+            "ABCDE_____"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B",
+            "0,2,C",
+            "0,3,D",
+            "0,4,E"
+          ]
+        },
+        "erased": {
+          "text": [
+            "___DE_____"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,3,D",
+            "0,4,E"
+          ]
+        },
+        "spellingControls": {
+          "policy": "observed, not graded: separate spellings of the same row, kept distinct from the pinned spelling",
+          "omitted": {
+            "sequence": "\u001b[K",
+            "mode": 0,
+            "text": [
+              "AB________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit0": {
+            "sequence": "\u001b[0K",
+            "mode": 0,
+            "text": [
+              "AB________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit2": {
+            "sequence": "\u001b[2K",
+            "mode": 2,
+            "text": [
+              "__________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          }
+        },
+        "wideRow": {
+          "policy": "unaffected rows and columns: ten-column middle row between two full rows",
+          "before": {
+            "text": [
+              "ABOVE-ROW!",
+              "ABCDEFGHIJ",
+              "BELOW-ROW!"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "1,2,C",
+              "1,3,D",
+              "1,4,E",
+              "1,5,F",
+              "1,6,G",
+              "1,7,H",
+              "1,8,I",
+              "1,9,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          },
+          "after": {
+            "text": [
+              "ABOVE-ROW!",
+              "___DEFGHIJ",
+              "BELOW-ROW!"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,3,D",
+              "1,4,E",
+              "1,5,F",
+              "1,6,G",
+              "1,7,H",
+              "1,8,I",
+              "1,9,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          }
+        },
+        "attributes": {
+          "policy": "retained cells keep their bold-only stored tuple (required); background-color erase is observed, not required",
+          "before": {
+            "text": [
+              "ABCDE_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "A",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 1,
+                "char": "B",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 2,
+                "char": "C",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 3,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 4,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "after": {
+            "text": [
+              "___DE_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "char": " ",
+                "flags": 256,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": 4278190318,
+                "cols": [
+                  0,
+                  2
+                ]
+              },
+              {
+                "row": 0,
+                "col": 3,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 4,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "penReference": {
+            "text": [
+              "X_________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "retainedKeepBold": true,
+          "backgroundColorErase": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+          "backgroundColorEraseDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "firstErased": {
+              "bgIndex": -1,
+              "backgroundArgb": 4278190318,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
+        }
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":2,\"y\":0},\"after\":[\" \",\" \",\" \",\"D\",\"E\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "row 0 blank,blank,blank,D,E; cursor before 2,0",
+            "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"cursorBefore\":{\"x\":2,\"y\":0},\"after\":[\" \",\" \",\" \",\"D\",\"E\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored cells only: exact erased and retained characters, neutral stored attributes, untouched cursor and unaffected rows/columns; background-color erase is observed, not required; the pinned pixel capture path is capture-only and is not claimed"
+      }
+    },
+    {
+      "caseId": "erase.line.all",
+      "pinnedCriterion": "row 0 EL 2 erases the contracted cells while row 1 keeps KEEP!",
+      "pinnedFeeds": [
+        "ABCDE\r\nKEEP!\u001b[1;3H",
+        "\u001b[2K"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "ABCDE\r\nKEEP!\u001b[1;3H",
+          "\u001b[2K"
+        ],
+        "demand": "erased cells blank, retained cells unchanged",
+        "minimum": {
+          "rows": 2,
+          "cols": 6
+        },
+        "note": "upstream pixel path is capture-only (explicit 0 spelling for the right case) and never a grade"
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\r\nKEEP!\u001b[1;3H",
+        "\u001b[2K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\r\nKEEP!\u001b[1;3H",
+        "\u001b[K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\r\nKEEP!\u001b[1;3H",
+        "\u001b[0K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "ABCDE\r\nKEEP!\u001b[1;3H",
+        "\u001b[1K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+        "\u001b[2K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1mABCDE\u001b[0m\u001b[1;3H\u001b[44m",
+        "\u001b[2K",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "reverseVideo": false,
+        "pinnedSpelling": "explicit2",
+        "pinnedSequence": "\u001b[2K",
+        "initial": {
+          "ink": 0,
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        "setup": {
+          "text": [
+            "ABCDE_____",
+            "KEEP!_____"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B",
+            "0,2,C",
+            "0,3,D",
+            "0,4,E",
+            "1,0,K",
+            "1,1,E",
+            "1,2,E",
+            "1,3,P",
+            "1,4,!"
+          ]
+        },
+        "erased": {
+          "text": [
+            "__________",
+            "KEEP!_____"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "1,0,K",
+            "1,1,E",
+            "1,2,E",
+            "1,3,P",
+            "1,4,!"
+          ]
+        },
+        "spellingControls": {
+          "policy": "observed, not graded: separate spellings of the same row, kept distinct from the pinned spelling",
+          "omitted": {
+            "sequence": "\u001b[K",
+            "mode": 0,
+            "text": [
+              "AB________",
+              "KEEP!_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "1,0,K",
+              "1,1,E",
+              "1,2,E",
+              "1,3,P",
+              "1,4,!"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit0": {
+            "sequence": "\u001b[0K",
+            "mode": 0,
+            "text": [
+              "AB________",
+              "KEEP!_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "1,0,K",
+              "1,1,E",
+              "1,2,E",
+              "1,3,P",
+              "1,4,!"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit1": {
+            "sequence": "\u001b[1K",
+            "mode": 1,
+            "text": [
+              "___DE_____",
+              "KEEP!_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,3,D",
+              "0,4,E",
+              "1,0,K",
+              "1,1,E",
+              "1,2,E",
+              "1,3,P",
+              "1,4,!"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          }
+        },
+        "wideRow": {
+          "policy": "unaffected rows and columns: ten-column middle row between two full rows",
+          "before": {
+            "text": [
+              "ABOVE-ROW!",
+              "ABCDEFGHIJ",
+              "BELOW-ROW!"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "1,2,C",
+              "1,3,D",
+              "1,4,E",
+              "1,5,F",
+              "1,6,G",
+              "1,7,H",
+              "1,8,I",
+              "1,9,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          },
+          "after": {
+            "text": [
+              "ABOVE-ROW!",
+              "__________",
+              "BELOW-ROW!"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          }
+        },
+        "attributes": {
+          "policy": "retained cells keep their bold-only stored tuple (required); background-color erase is observed, not required",
+          "before": {
+            "text": [
+              "ABCDE_____",
+              "__________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "A",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 1,
+                "char": "B",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 2,
+                "char": "C",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 3,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 4,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "after": {
+            "text": [
+              "__________",
+              "__________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "char": " ",
+                "flags": 256,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": 4278190318,
+                "cols": [
+                  0,
+                  139
+                ]
+              }
+            ]
+          },
+          "penReference": {
+            "text": [
+              "X_________",
+              "__________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "retainedKeepBold": true,
+          "backgroundColorErase": "erased cells carry the current background color, stored differently from the pen cell (palette index versus literal ARGB)",
+          "backgroundColorEraseDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "firstErased": {
+              "bgIndex": -1,
+              "backgroundArgb": 4278190318,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
+        }
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"after\":[\" \",\" \",\" \",\" \",\" \"],\"neighborBefore\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"neighborAfter\":[\"K\",\"E\",\"E\",\"P\",\"!\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "row 0 blank,blank,blank,blank,blank; row 1 KEEP!",
+            "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"after\":[\" \",\" \",\" \",\" \",\" \"],\"neighborBefore\":[\"K\",\"E\",\"E\",\"P\",\"!\"],\"neighborAfter\":[\"K\",\"E\",\"E\",\"P\",\"!\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored cells only: exact erased and retained characters, neutral stored attributes, untouched cursor and unaffected rows/columns; background-color erase is observed, not required; the pinned pixel capture path is capture-only and is not claimed"
+      }
+    }
+  ]
+}

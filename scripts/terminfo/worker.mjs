@@ -19,6 +19,7 @@ import { collectSgrUnderlineColorGrading } from './sgr-underline-color-collector
 import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-collector.mjs';
 import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
+import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -166,6 +167,14 @@ try {
         const sgrClosureModule = await import(pathToFileURL(config.sgrClosureBundle).href);
         const sgrClosureRun = await collectSgrClosureGrading({ config, fence, owner, gradingModule: sgrClosureModule });
         writeFileSync(join(config.output, 'sgcl-run.json'), JSON.stringify(sgrClosureRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered erase-in-line qualification follows the SGR closure suite on the same fence.
+        const eraseLineSource = readFileSync(config.eraseLineBundle);
+        if (createHash('sha256').update(eraseLineSource).digest('hex') !== config.eraseLineBundleSha256) {
+            throw new Error('Local erase-in-line adapter bundle changed.');
+        }
+        const eraseLineModule = await import(pathToFileURL(config.eraseLineBundle).href);
+        const eraseLineRun = await collectEraseLineGrading({ config, fence, owner, gradingModule: eraseLineModule });
+        writeFileSync(join(config.output, 'erln-run.json'), JSON.stringify(eraseLineRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
