@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v21';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v22';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -340,11 +340,21 @@ export const capturedV28SourceFiles = Object.freeze({
     eraseDisplayReceiptSourceSha256: "erase-display-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v28 inventory and manifest environment pin before trusting any captured source. */
+// Frozen v29 line-editing (editing.insert-lines, editing.delete-lines) grading scope; future experiments must create a distinct policy and map.
+export const capturedV29SourceFiles = Object.freeze({
+    ...capturedV28SourceFiles,
+    lineEditContractsSourceSha256: "line-edit-contracts.mjs",
+    lineEditCollectorSourceSha256: "line-edit-collector.mjs",
+    lineEditGradingSourceSha256: "line-edit-grading.mjs",
+    lineEditGradingCollectorSourceSha256: "line-edit-grading-collector.mjs",
+    lineEditReceiptSourceSha256: "line-edit-receipt.mjs",
+});
+
+/** Bind the private temporary root, exact v29 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV28SourceFiles)) throw new Error('Invalid current v28 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV29SourceFiles)) throw new Error('Invalid current v29 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

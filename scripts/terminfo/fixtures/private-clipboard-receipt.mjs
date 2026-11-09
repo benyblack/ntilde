@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV28SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV29SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV28SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV29SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV28SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV29SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -360,6 +360,26 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'erdi-run.json', runSha256: hash(readFileSync(join(output, 'erdi-run.json'))),
                 adapterBundleSha256: hash(eraseDisplayBytes), contractsVersion: eraseDisplayContractsVersion,
                 counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v22 always carries the layered line-editing suffix as well.
+            const { syntheticLineEditEvidence } = await import('./line-edit-evidence.mjs');
+            const { buildLineEditGradingReport } = await import('../line-edit-grading.mjs');
+            const { adaptLineEditCollector, lineEditAdapterId } = await import('../line-edit-grading-collector.mjs');
+            const { lineEditSuiteId, lineEditContractsVersion } = await import('../line-edit-contracts.mjs');
+            const lineEditBytes = Buffer.from(adaptLineEditCollector(eraseDisplayBytes.toString()));
+            const lineEdit = syntheticLineEditEvidence(context.runId, hash(lineEditBytes));
+            lineEdit.adapter = { id: lineEditAdapterId, derivedFromAdapterId: eraseDisplayAdapterId,
+                bundleSha256: hash(lineEditBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const lineEditReport = buildLineEditGradingReport(lineEdit.frames, lineEdit.run, context.runId, lineEdit.adapter);
+            write('ledt-observations.json', lineEditReport);
+            write('ledt-run.json', lineEdit.run);
+            writeFileSync(join(output, 'ledt-snapshots.jsonl'), lineEdit.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-ledt.mjs'), lineEditBytes);
+            Object.assign(context, { lineEditAdapterId, lineEditSuiteId, lineEditBundleSha256: hash(lineEditBytes), lineEditContractsVersion });
+            evidence.lineEditEvidence = { runId: context.runId, suiteId: lineEditSuiteId,
+                file: 'ledt-observations.json', sha256: hash(readFileSync(join(output, 'ledt-observations.json'))),
+                runFile: 'ledt-run.json', runSha256: hash(readFileSync(join(output, 'ledt-run.json'))),
+                adapterBundleSha256: hash(lineEditBytes), contractsVersion: lineEditContractsVersion,
+                counts: { supported: 2 }, provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

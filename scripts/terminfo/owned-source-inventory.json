@@ -181,5 +181,10 @@
     "eraseDisplayCollectorSourceSha256": "erase-display-collector.mjs",
     "eraseDisplayGradingSourceSha256": "erase-display-grading.mjs",
     "eraseDisplayGradingCollectorSourceSha256": "erase-display-grading-collector.mjs",
-    "eraseDisplayReceiptSourceSha256": "erase-display-receipt.mjs"
+    "eraseDisplayReceiptSourceSha256": "erase-display-receipt.mjs",
+    "lineEditContractsSourceSha256": "line-edit-contracts.mjs",
+    "lineEditCollectorSourceSha256": "line-edit-collector.mjs",
+    "lineEditGradingSourceSha256": "line-edit-grading.mjs",
+    "lineEditGradingCollectorSourceSha256": "line-edit-grading-collector.mjs",
+    "lineEditReceiptSourceSha256": "line-edit-receipt.mjs"
 }

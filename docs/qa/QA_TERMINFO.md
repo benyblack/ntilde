@@ -856,3 +856,13 @@ replaying the geometry-dependent pinned setup (pinned here to the owned 40x140 s
 cursor, mode-flag, boundary, retained-attribute and main-screen history controls; the other ED spellings are labeled observations; background-color
 erase is observed, not required. The pinned pixel path is capture-only upstream and is not qualified; CSI 3J is not graded (it appears only as
 disposable-screen cleanup). Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.
+
+### Line-editing qualification (IL, DL)
+
+The [line-editing batch](terminfo/2026-11-09-line-editing-qualification.md) grades exactly `editing.insert-lines` (`ESC[1L`) and
+`editing.delete-lines` (`ESC[1M`) through a fifteenth layered collector extension (`ntilde-owned-line-editing-grading-v1`),
+replaying the pinned seed, cursor and edit bytes and running the pinned termless probes over parent-journaled stored cells of the whole
+screen, the cursor and the App's stored margins, origin and insert mode. The contract adds full-screen line contents, a full-height boundary,
+a DECSTBM scroll-region control (cursor inside, above and below), origin mode and moved-cell attribute controls; count spellings, new-line
+background fill, cursor column and scrollback are observations. The pinned terminal pixel path never carries a verdict and is not qualified.
+Receipt schema 28 and source policy v22 (188 files) bind it; earlier policies stay frozen.

@@ -45,7 +45,7 @@ function pathFor(root, file) {
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
     return join(root, 'scripts', relative);
 }
-const policy = 'readonly-owned-source-graph-v21';
+const policy = 'readonly-owned-source-graph-v22';
 function setDirectoryModes(root, mode) {
     for (const entry of readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) setDirectoryModes(join(root, entry.name), mode);
     chmodSync(root, mode);
