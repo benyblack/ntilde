@@ -223,6 +223,14 @@ test('unrelated state drift: stray ink, a moved cursor or a non-neutral attribut
     }
 });
 
+test('a four-row pane holds every planned row and is graded; three rows cannot and stay inconclusive', () => {
+    for (const contract of charsetsContracts) {
+        const grade = rows => gradeCharsetsCase(contract, charsetsObservation(contract, syntheticCharsetsScreens(contract.caseId, null, rows)));
+        assert.deepEqual(grade(4), { outcome: 'supported' }, contract.caseId);
+        assert.deepEqual(grade(3), { outcome: 'inconclusive', note: contract.pinnedGeometryNote }, contract.caseId);
+    }
+});
+
 test('missing or unusable control evidence is inconclusive, never unsupported', () => {
     for (const id of charsetsCaseIds) {
         assert.equal(gradeWith(id, reads => { reads.initial.rows = ['x']; }).outcome, 'inconclusive', `${id} dirty initial screen`);

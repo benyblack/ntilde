@@ -71,8 +71,8 @@ export const charsetsClear = '\x0f\x1b(B\x1b)B\x1b[0m\x1b[2J\x1b[H';
 /** The pinned restoration bytes (the termless `finally` of the three DEC/switching cases). */
 export const charsetsPinnedFinally = '\x0F\x1B(B\x1B)B';
 
-/** The measured geometry the plans need (rows 0-3 carry the fixture and witness rows; the pinned probes need far less). */
-export const charsetsMinimum = Object.freeze({ rows: 5, cols: 12 });
+/** The measured geometry the plans need (rows 0-3 carry the fixture and witness rows, so four rows suffice; the pinned probes need far less). */
+export const charsetsMinimum = Object.freeze({ rows: 4, cols: 12 });
 
 /** TerminalCellFlags bits this suite reads from the stored cell details. */
 export const charsetsFlagBits = Object.freeze({ defaultColors: 0x300, wide: 0x800, continuation: 0x1000, extended: 0x2000 });

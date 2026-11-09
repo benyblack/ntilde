@@ -47,16 +47,16 @@ function coalesce(runs) {
 }
 
 /** A complete valid observation screen: `rows` are row strings, `cursor` is [row, col]; `edit(details)` may tamper with the per-cell flags. */
-export function syntheticCharsetsScreen(rows, cursor, edit = null) {
+export function syntheticCharsetsScreen(rows, cursor, edit = null, rowCount = charsetsRows) {
     const details = [];
     const lines = [];
-    for (let row = 0; row < charsetsRows; row++) {
+    for (let row = 0; row < rowCount; row++) {
         const cells = rowCells(rows[row] ?? '');
         lines.push(cells.filter(cell => cell.flags !== (flagBits.defaultColors | flagBits.continuation)).map(cell => cell.text).join('').trimEnd());
         for (let col = 0; col < charsetsCols; col++) details.push(detailOf(cells[col]?.flags ?? flagBits.defaultColors));
     }
     if (edit) edit(details);
-    return { rows: charsetsRows, cols: charsetsCols, lines, cursorRow: cursor[0], cursorCol: cursor[1], cursorVisible: true,
+    return { rows: rowCount, cols: charsetsCols, lines, cursorRow: cursor[0], cursorCol: cursor[1], cursorVisible: true,
         cellDetails: coalesce(details.map(detail => ({ count: 1, ...detail }))) };
 }
 
@@ -113,13 +113,13 @@ export function syntheticCharsetsReads(caseId) {
 }
 
 /** The screens of every read group of one synthetic case; `readsOf(caseId)` may override the groups to build negative evidence. */
-export function syntheticCharsetsScreens(caseId, readsOf = null) {
+export function syntheticCharsetsScreens(caseId, readsOf = null, rowCount = charsetsRows) {
     const reads = readsOf?.(caseId) ?? syntheticCharsetsReads(caseId);
     const contract = charsetsContracts.find(item => item.caseId === caseId);
     return contract.roles.map(role => {
         const read = reads[role];
         if (!read) throw new Error(`Synthetic ${caseId} has no ${role} group.`);
-        return syntheticCharsetsScreen(read.rows, read.cursor, read.edit ?? null);
+        return syntheticCharsetsScreen(read.rows, read.cursor, read.edit ?? null, rowCount);
     });
 }
 
