@@ -9,6 +9,10 @@ import { checkSgrClosureEvidence } from './sgr-closure-receipt.mjs';
 import { checkSgrUnderlineColorEvidence } from './sgr-underline-color-receipt.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
+import { adaptCharEditCollector, charEditAdapterId } from './char-edit-grading-collector.mjs';
+import { charEditSuiteId, charEditContractsVersion } from './char-edit-contracts.mjs';
+import { buildCharEditGradingReport } from './char-edit-grading.mjs';
+import { syntheticCharEditEvidence } from './fixtures/char-edit-evidence.mjs';
 import { adaptEraseDisplayCollector, eraseDisplayAdapterId } from './erase-display-grading-collector.mjs';
 import { eraseDisplaySuiteId, eraseDisplayContractsVersion } from './erase-display-contracts.mjs';
 import { buildEraseDisplayGradingReport } from './erase-display-grading.mjs';
@@ -18,29 +22,42 @@ import { fixture as chainFixture, hash, runId, syntheticOwnedAdapter, syntheticU
 
 const syntheticEraseLineExtension = adaptEraseLineCollector(syntheticClosureExtension);
 // The erase-in-display suite is built once: it is deterministic, and each fixture gets its own copy of the report to mutate.
-const displayBytes = Buffer.from(adaptEraseDisplayCollector(syntheticEraseLineExtension));
+const syntheticCharEditExtension = adaptCharEditCollector(syntheticEraseLineExtension);
+const charEditBytes = Buffer.from(syntheticCharEditExtension);
+const charEditEvidence = syntheticCharEditEvidence(runId, hash(charEditBytes));
+charEditEvidence.adapter = { ...charEditEvidence.adapter, id: charEditAdapterId, derivedFromAdapterId: 'ntilde-owned-erase-line-grading-v1' };
+const charEditReportText = JSON.stringify(buildCharEditGradingReport(charEditEvidence.frames, charEditEvidence.run, runId, charEditEvidence.adapter));
+const displayBytes = Buffer.from(adaptEraseDisplayCollector(syntheticCharEditExtension));
 const displayEvidence = syntheticEraseDisplayEvidence(runId, hash(displayBytes));
 const displayReportText = JSON.stringify(buildEraseDisplayGradingReport(displayEvidence.frames, displayEvidence.run, runId, displayEvidence.adapter));
 
 /** The shared predecessor chain (through erase-in-line, policy v19) plus this suite's retained files, declarations and binding at policy v20. */
 function fixture(action) {
     chainFixture(f => {
+        f.write('ched-observations.json', JSON.parse(charEditReportText)); f.write('ched-run.json', charEditEvidence.run);
+        writeFileSync(join(f.output, 'ched-snapshots.jsonl'), charEditEvidence.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+        writeFileSync(join(f.output, 'collector-ched.mjs'), charEditBytes);
+        const charEditBinding = { runId, suiteId: charEditSuiteId, file: 'ched-observations.json',
+            sha256: hash(readFileSync(join(f.output, 'ched-observations.json'))),
+            runFile: 'ched-run.json', runSha256: hash(readFileSync(join(f.output, 'ched-run.json'))),
+            adapterBundleSha256: hash(charEditBytes), contractsVersion: charEditContractsVersion, counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
         const displayReport = JSON.parse(displayReportText);
         f.write('erdi-observations.json', displayReport); f.write('erdi-run.json', displayEvidence.run);
         writeFileSync(join(f.output, 'erdi-snapshots.jsonl'), displayEvidence.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
         writeFileSync(join(f.output, 'collector-erdi.mjs'), displayBytes);
-        Object.assign(f.context, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v20', eraseDisplayAdapterId, eraseDisplaySuiteId,
+        Object.assign(f.context, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v21', charEditAdapterId, charEditSuiteId,
+            charEditBundleSha256: hash(charEditBytes), charEditContractsVersion, eraseDisplayAdapterId, eraseDisplaySuiteId,
             eraseDisplayBundleSha256: hash(displayBytes), eraseDisplayContractsVersion });
         f.write('context.json', f.context);
         const displayBinding = { runId, suiteId: eraseDisplaySuiteId, file: 'erdi-observations.json',
             sha256: hash(readFileSync(join(f.output, 'erdi-observations.json'))),
             runFile: 'erdi-run.json', runSha256: hash(readFileSync(join(f.output, 'erdi-run.json'))),
             adapterBundleSha256: hash(displayBytes), contractsVersion: eraseDisplayContractsVersion, counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
-        action({ ...f, displayEvidence, displayReport, displayBinding });
+        action({ ...f, displayEvidence, displayReport, displayBinding, charEditBinding });
     });
 }
 
-const predecessors = f => ({ eraseDisplayEvidence: f.displayBinding, eraseLineEvidence: f.binding, sgrClosureEvidence: f.closureBinding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
+const predecessors = f => ({ eraseDisplayEvidence: f.displayBinding, charEditEvidence: f.charEditBinding, eraseLineEvidence: f.binding, sgrClosureEvidence: f.closureBinding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
 
 const reasons = /Erase-in-display|erase-in-line|SGR closure|erase-in-display|SGR selective-reset|SGR-underline|Invalid|Missing|bytes|report|journal|counts|identity|derivation|contracts|differs|predecessor|ENOENT/i;
 
@@ -52,7 +69,7 @@ test('the erase-in-display receipt binding re-derives the whole report from reta
     assert.doesNotThrow(() => checkSgrUnderlineColorEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
-test('the shared finalizer publishes receipt schema 26 beside every predecessor suite', () => fixture(f => {
+test('the shared finalizer publishes receipt schema 27 beside every predecessor suite', () => fixture(f => {
     const { output, scratch, write, context } = f;
     const { sourceSnapshotPolicy, ...lightContext } = context;
     void sourceSnapshotPolicy;
@@ -64,9 +81,10 @@ test('the shared finalizer publishes receipt schema 26 beside every predecessor 
         rgbEvidence: entry('rgb-observations.json'), renditionEvidence: entry('rendition-observations.json'),
         cursorEvidence: entry('cursor-observations.json'), gradingEvidence: f.gradingBinding, ...predecessors(f) };
     const receipt = completeOwnedReceipt(output, scratch, evidence);
-    assert.equal(receipt.schemaVersion, 26);
+    assert.equal(receipt.schemaVersion, 27);
     assert.equal(receipt.eraseDisplayEvidence, f.displayBinding);
     assert.equal(receipt.eraseLineEvidence, f.binding);
+    assert.equal(receipt.charEditEvidence, f.charEditBinding);
     assert.equal(receipt.sgrClosureEvidence, f.closureBinding);
     assert.equal(receipt.sgrResetEvidence, f.resetBinding);
     assert.equal(receipt.sgrUnderlineColorEvidence, f.underlineColorBinding);
@@ -75,6 +93,7 @@ test('the shared finalizer publishes receipt schema 26 beside every predecessor 
 
 /** Every predecessor layer: its label, declaration key, receipt binding key and, where the test holds its synthetic extension, the text whose digest is declared. */
 const layers = [
+    ['character-editing', 'charEdit', 'charEditBinding', syntheticCharEditExtension, 'ntilde-owned-char-edit-grading-v1'],
     ['erase-in-line', 'eraseLine', 'binding', syntheticEraseLineExtension, 'ntilde-owned-erase-line-grading-v1'],
     ['SGR closure', 'sgrClosure', 'closureBinding', syntheticClosureExtension, 'ntilde-owned-sgr-closure-grading-v1'],
     ['SGR selective-reset', 'sgrReset', 'resetBinding', syntheticResetExtension, 'ntilde-owned-sgr-selective-reset-grading-v1'],
@@ -127,7 +146,7 @@ for (const [name, mutate] of [
 test('policy v19 requires the erase-in-display binding even without artifacts', () => fixture(f => {
     for (const file of ['erdi-observations.json', 'erdi-run.json', 'erdi-snapshots.jsonl', 'collector-erdi.mjs'])
         rmSync(join(f.output, file));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v20' };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v21' };
     assert.equal(includesEraseDisplayEvidence(f.output, {}, context), true);
     assert.throws(() => checkEraseDisplayEvidence(f.output, predecessors(f), runId, context), /Missing or changed erase-in-display adapter declaration/);
 }));
@@ -153,11 +172,11 @@ test('a symlinked retained artifact is refused even when it points at valid evid
     assert.doesNotThrow(() => checkEraseDisplayEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
-test('historical receipts stay valid without any erase-in-display artifacts (policies v10-v19)', () => {
+test('historical receipts stay valid without any erase-in-display artifacts (policies v10-v20)', () => {
     const publication = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-sgr-attributes-qualification.json', import.meta.url)));
     assert.equal(publication.receipt.schemaVersion, 16);
     assert.equal(publication.receipt.eraseDisplayEvidence, undefined);
-    for (const version of [10, 11, 13, 14, 15, 16, 17, 18, 19]) {
+    for (const version of [10, 11, 13, 14, 15, 16, 17, 18, 19, 20]) {
         assert.equal(includesEraseDisplayEvidence('/nonexistent', {}, { sourceSnapshotPolicy: `readonly-owned-source-graph-v${version}` }), false, `v${version}`);
     }
     assert.equal(includesEraseDisplayEvidence('/nonexistent', {}, {}), false);

@@ -77,7 +77,7 @@ export function syntheticEraseDisplayReads(caseId) {
 }
 
 const eraseDisplaySuite = Object.freeze({ noncePrefix: 'NTILDE_ED_', prefix: 'erdi', contracts: eraseDisplayContracts,
-    adapterId: eraseDisplayAdapterId, derivedFrom: 'ntilde-owned-erase-line-grading-v1', reset: eraseDisplayReset,
+    adapterId: eraseDisplayAdapterId, derivedFrom: 'ntilde-owned-char-edit-grading-v1', reset: eraseDisplayReset,
     geometry: displayGeometry, decorate,
     screens: (caseId, binding, readsOf) => {
         const reads = readsOf?.(caseId) ?? syntheticEraseDisplayReads(caseId);

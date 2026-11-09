@@ -21,7 +21,7 @@ const screenOf = value => {
 /** The suite's report spec: identities, pinned replay and scope. */
 const spec = Object.freeze({ label: 'Erase-in-display', prefix: 'erdi', noncePrefix: eraseDisplayNoncePrefix,
     contracts: eraseDisplayContracts, caseIds: eraseDisplayCaseIds, suiteId: eraseDisplaySuiteId, version: eraseDisplayContractsVersion,
-    adapterId: eraseDisplayAdapterId, derivedFrom: 'ntilde-owned-erase-line-grading-v1',
+    adapterId: eraseDisplayAdapterId, derivedFrom: 'ntilde-owned-char-edit-grading-v1',
     screenOf,
     observation: eraseDisplayObservation, grade: gradeEraseDisplayCase,
     replayPinned: (contract, screens) => replayEraseDisplayPinned(contract, screens),

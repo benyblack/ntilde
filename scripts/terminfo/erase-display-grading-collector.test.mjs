@@ -73,7 +73,7 @@ test('the derivation appends after any earlier layer without rewriting it', () =
     assert.ok(layered.includes(eraseDisplayAdapterId));
 });
 
-// The real pinned bundle, derived through all twelve layers and EXECUTED over synthetic observed cells: the pinned
+// The real pinned bundle, derived through all thirteen layers and EXECUTED over synthetic observed cells: the pinned
 // eraseScreenResult code must agree with the independent replay and contract. Skipped when the collector cache is absent.
 const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
 const haveBundle = existsSync(bundleUrl);
@@ -82,7 +82,7 @@ test('the real pinned bundle derives through every layer and its eraseScreenResu
     const { adaptCollector, upstreamBundleSha256 } = await import('./collector.mjs');
     // Every earlier layer, in derivation order: a grading-collector module per suite, each exporting one adapt...Collector function.
     const layerModules = ['grading', 'sgr-colors-grading', 'sgr-rgb-grading', 'sgr-attrs-grading', 'sgr-palette-grading', 'sgr-truecolor-grading',
-        'sgr-underline-grading', 'sgr-underline-color-grading', 'sgr-reset-grading', 'sgr-closure-grading', 'erase-line-grading'];
+        'sgr-underline-grading', 'sgr-underline-color-grading', 'sgr-reset-grading', 'sgr-closure-grading', 'erase-line-grading', 'char-edit-grading'];
     const layers = await Promise.all(layerModules.map(name => import(`./${name}-collector.mjs`)
         .then(module => Object.entries(module).find(([key]) => /^adapt\w+Collector$/.test(key))[1])));
     const { replayEraseDisplayPinned } = await import('./erase-display-grading.mjs');

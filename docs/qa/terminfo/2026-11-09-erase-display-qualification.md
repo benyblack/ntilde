@@ -36,7 +36,7 @@ stay `inconclusive` ("Erase pixel fixture needs capture…").
 
 ## Method
 
-Thirteenth digest-checked collector extension `ntilde-owned-erase-display-grading-v1` (derived over the erase-in-line one; it refuses derivation
+Fourteenth digest-checked collector extension `ntilde-owned-erase-display-grading-v1` (derived over the character-editing one, itself over erase-in-line; it refuses derivation
 unless the three registrations and the `isBlank`, `rowCells`, `eraseScreenResult` and `captureEraseFixture` bodies are present verbatim once; the
 `erase.screen.scrollback` registration is deliberately not a seam), contracts v1, suite `ntilde-owned-erase-display-graded-v1`, prefix `erdi`,
 nonce `NTILDE_ED_`. The pinned setup and erase bytes are fed byte-exactly, one write each, on a measured reset screen; the pinned termless probe
@@ -71,7 +71,7 @@ buffer state or history, stale or incoherent evidence or incomplete restoration 
 ## Measurement
 
 Scripts `c2a14801` (committed final scripts); the App source is unchanged since `c16997c2` (the sidecar `erase-display` was built from this checkout, no App
-change). Owned run `0e662c8dd6490461cd95b495301c13a7`, receipt schema 26, source policy v20 (inventory v27, 178 files), default theme, 40x140,
+change). Owned run `0e662c8dd6490461cd95b495301c13a7`, receipt schema 27, source policy v21 (inventory v28, 183 files), default theme, 40x140,
 disposable sidecar.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |

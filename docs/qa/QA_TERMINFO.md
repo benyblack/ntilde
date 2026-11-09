@@ -850,9 +850,9 @@ upstream and is not qualified. Receipt schema 25 and source policy v19 (173 file
 ### Erase-in-display qualification (ED 0, ED 1, ED 2)
 
 The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
-`erase.screen.all` (all explicit-parameter spellings) through a thirteenth layered collector extension (`ntilde-owned-erase-display-grading-v1`),
+`erase.screen.all` (all explicit-parameter spellings) through a fourteenth layered collector extension (`ntilde-owned-erase-display-grading-v1`),
 replaying the geometry-dependent pinned setup (pinned here to the owned 40x140 screen) and erase bytes and running the pinned termless
 `eraseScreenResult` over parent-journaled stored cells, the cursor and the saved-line count. The contract adds whole-screen retained/erased,
 cursor, mode-flag, boundary, retained-attribute and main-screen history controls; the other ED spellings are labeled observations; background-color
 erase is observed, not required. The pinned pixel path is capture-only upstream and is not qualified; CSI 3J is not graded (it appears only as
-disposable-screen cleanup). Receipt schema 26 and source policy v20 (178 files) bind it; earlier policies stay frozen.
+disposable-screen cleanup). Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.

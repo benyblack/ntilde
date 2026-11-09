@@ -43,7 +43,7 @@ test('the published erase-in-display evidence re-derives exactly from its retain
     assert.equal(JSON.stringify(report), JSON.stringify(derived));
     assert.equal(report.suiteId, eraseDisplaySuiteId);
     assert.equal(report.adapter.id, eraseDisplayAdapterId);
-    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-erase-line-grading-v1');
+    assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-char-edit-grading-v1');
     assert.equal(report.snapshots.length, 3 + 3 * 15);
     assert.deepEqual(report.cases.map(item => item.caseId), ids);
     assert.deepEqual(report.cases.map(item => [item.conclusion.outcome, item.pinned.observation.outcome]), ids.map(() => ['supported', 'supported']));
