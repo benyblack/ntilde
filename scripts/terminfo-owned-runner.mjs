@@ -129,6 +129,19 @@ import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateCl
 import { OwnedPrivateClipboardObserver, privateClipboardScreen } from './terminfo/private-clipboard-capture.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './terminfo/private-clipboard-worker.mjs';
 
+/** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
+const untranslatedCellPrefixes = new Set([
+    'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
+    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'rect', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'history', 'saved', 'metadata',
+]);
+const untranslatedCellSteps = new Set(['start', 'bind', 'read', 'finish']);
+/** Whether a request kind is exactly `<prefix>-<step>` for one of the cell observation prefixes and steps. */
+function untranslatedCellKind(kind) {
+    const [prefix, step, extra] = String(kind).split('-');
+    return extra === undefined && untranslatedCellPrefixes.has(prefix) && untranslatedCellSteps.has(step);
+}
+
 const sourceRepo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = process.env.NTILDE_TERMINFO_ORIGINAL_REPO ?? sourceRepo;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -2072,7 +2085,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeImageRequest(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^(?:cell|sgr|grading|sgcolors|sgrgb|sgattr|sgpal|sgtc|sgtf|sgus|sguc|sgur|sgsr|sgcl|erln|ched|erdi|ledt|chrs|scrl|svrs|erar|atrc|curq|echh|rect|rgb|rendition|cursor|pixel|color|erase|editing|history|saved|metadata)-(?:start|bind|read|finish)$/.test(request.kind)
+            if (untranslatedCellKind(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);

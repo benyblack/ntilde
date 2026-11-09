@@ -44,13 +44,31 @@ const charsOf = (screen, rows, cols) => Array.from({ length: rows }, (_, row) =>
 /** The pinned row text projection. */
 const textsOf = cells => cells.map(line => line.join(''));
 
+/** The pinned observation outcome of a tri-state pass. */
+function outcomeOf(pass) {
+    if (pass === null) return 'inconclusive';
+    return pass ? 'supported' : 'unsupported';
+}
+
 /** The pinned parserStateResult shape, key order included. */
 function parserState(pass, expected, state, note) {
     const response = JSON.stringify(state);
     return { pass: pass === true, response, ...note && { note },
-        observation: { outcome: pass === null ? 'inconclusive' : pass ? 'supported' : 'unsupported',
+        observation: { outcome: outcomeOf(pass),
             ...pass === null && { reason: 'insufficient-evidence' }, evidence: 'parser-state', ...note && { note } },
         ...pass !== null && { assertions: [{ kind: pass ? 'positive' : 'negative', expected, observed: response }] } };
+}
+
+/** The pinned controls and verdict of one mode over its before and after row projections. */
+function pinnedVerdict(mode, beforeState, afterState) {
+    if (mode === 'copy') {
+        const controlsValid = afterState.slice(0, 4).every((line, row) => line === beforeState[row]) && afterState[4]?.slice(0, 9) === beforeState[4]?.slice(0, 9)
+            && afterState[5]?.slice(0, 9) === beforeState[5]?.slice(0, 9);
+        return { controlsValid, verdict: controlsValid ? afterState[4]?.slice(9) === 'ABCDE' && afterState[5]?.slice(9) === 'FGHIJ' : null };
+    }
+    const controlsValid = afterState.every((line, row) => line[5] === beforeState[row]?.[5]);
+    const leftHalfOk = mode === 'fill' ? line => line.slice(0, 5) === 'XXXXX' : line => line.slice(0, 5).every(isBlank);
+    return { controlsValid, verdict: controlsValid ? afterState.every(leftHalfOk) : null };
 }
 
 /** Re-derive the complete pinned DECFRA/DECERA/DECCRA result over the before, setup and edited screens of the pinned fixture,
@@ -76,18 +94,7 @@ export function replayRectEditPinned(contract, screens) {
     if (cursor.x !== 0 || cursor.y !== 0) return parserState(null, notes.expected, { before: beforeState, setup: cursor }, notes.cursor);
     const afterCells = charsOf(edited, need.rows, need.cols);
     const afterState = shape(afterCells);
-    let controlsValid, verdict;
-    if (mode === 'fill') {
-        controlsValid = afterState.every((line, row) => line[5] === beforeState[row]?.[5]);
-        verdict = controlsValid ? afterState.every(line => line.slice(0, 5) === 'XXXXX') : null;
-    } else if (mode === 'erase') {
-        controlsValid = afterState.every((line, row) => line[5] === beforeState[row]?.[5]);
-        verdict = controlsValid ? afterState.every(line => line.slice(0, 5).every(isBlank)) : null;
-    } else {
-        controlsValid = afterState.slice(0, 4).every((line, row) => line === beforeState[row]) && afterState[4]?.slice(0, 9) === beforeState[4]?.slice(0, 9)
-            && afterState[5]?.slice(0, 9) === beforeState[5]?.slice(0, 9);
-        verdict = controlsValid ? afterState[4]?.slice(9) === 'ABCDE' && afterState[5]?.slice(9) === 'FGHIJ' : null;
-    }
+    const { controlsValid, verdict } = pinnedVerdict(mode, beforeState, afterState);
     return parserState(verdict, notes.expected, { before: beforeState, setup: cursor, after: afterState }, controlsValid ? undefined : notes.controls);
 }
 

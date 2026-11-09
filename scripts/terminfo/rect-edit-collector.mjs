@@ -6,38 +6,32 @@
 import { collectGradedPlans, planFeeds, planReads } from './graded-plan.mjs';
 import { rectEditContracts, rectEditNoncePrefix, rectEditReset, rectEditCellAt, validateRectEditScreen, pinnedNotes } from './rect-edit-contracts.mjs';
 
+/** The pinned code may only feed the contracted pinned fixture bytes, in order. */
+function requirePinnedFeed(contract, fed, text) {
+    if (fed >= contract.pinnedFeeds.length || text !== contract.pinnedFeeds[fed]) {
+        throw new Error(`Pinned ${contract.caseId} feed ${fed} differs from the contract.`);
+    }
+}
+
 /** Serve the pre-captured screens of the pinned fixture to a pinned termless probe, cross-checking that the pinned
  * code itself replays exactly the contracted pinned fixture bytes (and nothing else): three feeds (the seed, the
  * cursor move and the edit), the cells read after the first and third and the cursor after the second. */
 export function rectEditRecordingContext(contract, screens) {
     let fed = 0;
+    const readByFeed = [contract.beforeRead, contract.setupRead, contract.pinnedRead];
+    const setupScreen = () => screens[contract.setupRead];
     const current = () => {
         if (fed < 1) throw new Error(`Pinned ${contract.caseId} read before its fixture.`);
-        return screens[fed === 1 ? contract.beforeRead : fed === 2 ? contract.setupRead : contract.pinnedRead];
+        return screens[readByFeed[Math.min(fed, readByFeed.length) - 1]];
     };
     return {
-        get cols() { return screens[contract.setupRead].cols; },
+        get cols() { return setupScreen().cols; },
         get fedCount() { return fed; },
-        feed(text) {
-            if (fed >= contract.pinnedFeeds.length || text !== contract.pinnedFeeds[fed]) {
-                throw new Error(`Pinned ${contract.caseId} feed ${fed} differs from the contract.`);
-            }
-            fed++;
-        },
-        getText() {
-            throw new Error(`Pinned ${contract.caseId} probe must not read text.`);
-        },
-        getScrollback() {
-            const screen = screens[contract.setupRead];
-            return { screenLines: screen.rows, totalLines: screen.rows, viewportY: 0 };
-        },
-        getCursor() {
-            const screen = current();
-            return { x: screen.cursorCol, y: screen.cursorRow, visible: screen.cursorVisible };
-        },
-        getCell(row, col) {
-            return rectEditCellAt(current(), row, col);
-        },
+        feed: text => { requirePinnedFeed(contract, fed, text); fed++; },
+        getText: () => { throw new Error(`Pinned ${contract.caseId} probe must not read text.`); },
+        getScrollback: () => ({ screenLines: setupScreen().rows, totalLines: setupScreen().rows, viewportY: 0 }),
+        getCursor: () => ({ x: current().cursorCol, y: current().cursorRow, visible: current().cursorVisible }),
+        getCell: (row, col) => rectEditCellAt(current(), row, col),
     };
 }
 

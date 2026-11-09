@@ -63,13 +63,13 @@ export function syntheticRectEditReads(caseId) {
         return { ...common,
             before: read(['aaaaaZ', 'bbbbbY', 'cccccW'], [2, 6]), setup: read(['aaaaaZ', 'bbbbbY', 'cccccW'], [0, 0]), edited: read(['XXXXXZ', 'XXXXXY', 'XXXXXW'], [0, 0]),
             one: read(patched({ 1: 'K+MNOPQRST' }), park), box: read(boxed, park),
-            defaults: read(Array(rectEditRows).fill(full), park), zero: read(Array(rectEditRows).fill(full), park),
-            clip: read([...block.slice(0, 4), `opqrst${'+'.repeat(54)}`, `yz0123${'+'.repeat(54)}`, `89!@#$${'+'.repeat(54)}`, ...Array(5).fill(`      ${'+'.repeat(54)}`)], park),
+            defaults: read(new Array(rectEditRows).fill(full), park), zero: read(new Array(rectEditRows).fill(full), park),
+            clip: read([...block.slice(0, 4), `opqrst${'+'.repeat(54)}`, `yz0123${'+'.repeat(54)}`, `89!@#$${'+'.repeat(54)}`, ...new Array(5).fill(`      ${'+'.repeat(54)}`)], park),
             noop: read(block, park),
             origin: read(patched({ 2: 'U+++YZabcd', 3: 'e+++ijklmn' }), [3, 2], { ...region, origin: true }),
             margins: read(marginRows, [5, 2], region), insertMode: read(boxed, park, { insert: true }),
-            attr: { rows: [...attrRows, ...Array(7).fill([]), [colorCell('P', pen)]], cursor: [11, 1] },
-            literal: { rows: [...literalRows, ...Array(4).fill([]), [colorCell('P', literalPen)]], cursor: [11, 1] } };
+            attr: { rows: [...attrRows, ...new Array(7).fill([]), [colorCell('P', pen)]], cursor: [11, 1] },
+            literal: { rows: [...literalRows, ...new Array(4).fill([]), [colorCell('P', literalPen)]], cursor: [11, 1] } };
     }
     if (caseId === 'editing.decera') {
         const boxed = patched({ 1: 'KL    QRST', 2: 'UV    abcd', 3: 'ef    klmn' });
@@ -82,10 +82,10 @@ export function syntheticRectEditReads(caseId) {
             clip: read([...block.slice(0, 4), 'opqrst', 'yz0123', '89!@#$'], park), noop: read(block, park),
             origin: read(patched({ 2: 'U   YZabcd', 3: 'e   ijklmn' }), [3, 2], { ...region, origin: true }),
             margins: read(marginRows, [5, 2], region), protected: read(boxed, park),
-            attr: { rows: [...attrRows, ...Array(7).fill([]), [colorCell('P', blueBackground)]], cursor: [11, 1] } };
+            attr: { rows: [...attrRows, ...new Array(7).fill([]), [colorCell('P', blueBackground)]], cursor: [11, 1] } };
     }
     const pinnedCopy = ['ABCDE.........', 'FGHIJ.........', '..............', '..............', '.........ABCDE', '.........FGHIJ'];
-    const copiedAttr = [...attrBefore, ...Array(2).fill([]), ...attrBefore, [], [colorCell('P', pen)]];
+    const copiedAttr = [...attrBefore, ...new Array(2).fill([]), ...attrBefore, [], [colorCell('P', pen)]];
     return { ...common,
         before: read(['ABCDE.........', 'FGHIJ.........', '..............', '..............', '.........12345', '.........67890'], [5, 14]),
         setup: read(['ABCDE.........', 'FGHIJ.........', '..............', '..............', '.........12345', '.........67890'], [0, 0]),
@@ -94,7 +94,7 @@ export function syntheticRectEditReads(caseId) {
         down: read(patched({ 1: 'ABCDEPQRST', 2: 'KLMNOZabcd', 3: 'UVWXYjklmn', 4: 'efghituvwx' }), park),
         up: read(patched({ 1: 'UVWXYPQRST', 2: 'efghiZabcd', 3: 'opqrsjklmn', 4: 'yz012tuvwx' }), park),
         diagonal: read(patched({ 1: 'KABCDEQRST', 2: 'UKLMNOabcd', 3: 'eUVWXYklmn' }), park), self: read(block, park),
-        cornerRow: read([...block, ...Array(4).fill(''), 'ABC'], park),
+        cornerRow: read([...block, ...new Array(4).fill(''), 'ABC'], park),
         cornerCol: read(patched({ 0: `ABCDEFGHIJ${' '.repeat(49)}A`, 1: `KLMNOPQRST${' '.repeat(49)}K` }), park),
         noop: read(block, park), pages: read(block, park),
         origin: read(patched({ 4: 'opqrUVWvwx', 5: 'yz01efg567' }), [3, 2], { ...region, origin: true }),

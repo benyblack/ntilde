@@ -59,9 +59,9 @@
 // Naming: the pinned ids are exactly `editing.decfra`, `editing.decera` and `editing.deccra`. Ntilde's own
 // ntilde-owned-cell-editing-v1 suite may carry identically named experiments with different bytes; those are Ntilde-owned
 // observations, not these fixtures and not benchmark grades.
-import { planFeed, planRead, planFeeds, validateExactFeeds } from './graded-plan.mjs';
+import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { sgrAttrsReset, sgrAttrsPredicates } from './sgr-attrs-contracts.mjs';
-import { eraseLineInk, eraseLineCellAt, validateEraseLineScreen } from './erase-line-contracts.mjs';
+import { eraseLineInk } from './erase-line-contracts.mjs';
 
 const { neutral } = sgrAttrsPredicates;
 
@@ -74,7 +74,7 @@ export const rectEditNoncePrefix = 'NTILDE_RC_';
 /** The measured reset every plan begins with: DECSCNM, DECOM, margins, IRM and SGR off, screen cleared, cursor home. */
 export const rectEditReset = sgrAttrsReset;
 /** The attribute suite's screen validation, so attribute runs, stored details and resolved colors must agree. */
-export const validateRectEditScreen = validateEraseLineScreen;
+export { validateEraseLineScreen as validateRectEditScreen } from './erase-line-contracts.mjs';
 /** Between groups: margins, origin mode, insert mode, SGR and character protection off, screen cleared, cursor home. */
 const clear = '\x1b[r\x1b[?6l\x1b[4l\x1b[0m\x1b[0"q\x1b[2J\x1b[H';
 
@@ -144,7 +144,7 @@ const fillOp = (params, code = fillCode) => Object.freeze({ kind: 'fill', bytes:
         if (params.length > 4 || !validFill(code)) return;
         const rect = rectOf(params, page);
         if (rect === null) return;
-        for (let row = rect.top; row <= rect.bottom; row++) for (let col = rect.left; col <= rect.right; col++) grid[row][col] = String.fromCharCode(code);
+        for (let row = rect.top; row <= rect.bottom; row++) for (let col = rect.left; col <= rect.right; col++) grid[row][col] = String.fromCodePoint(code);
     } });
 /** DECERA: up to four borders. */
 const eraseOp = params => Object.freeze({ kind: 'erase', bytes: `\x1b[${params.join(';')}$z`,
@@ -248,8 +248,7 @@ function groupsFor(mode) {
         ...controlsFor[mode].map(item => ({ role: item.role, feeds: [item.feed] })),
     ];
     if (mode === 'erase') groups.push({ role: protectedControl.role, feeds: [protectedControl.feed] });
-    groups.push({ role: 'attrBefore', feeds: [clear + attrSeed] });
-    groups.push({ role: 'attr', feeds: [clear + attrSeed + `\x1b[${attrPark.row};${attrPark.col}H` + attrOps[mode].pen + attrOps[mode].op.bytes + referenceChar] });
+    groups.push({ role: 'attrBefore', feeds: [clear + attrSeed] }, { role: 'attr', feeds: [clear + attrSeed + `\x1b[${attrPark.row};${attrPark.col}H` + attrOps[mode].pen + attrOps[mode].op.bytes + referenceChar] });
     if (mode === 'fill') {
         groups.push({ role: 'literal', feeds: [clear + blockFeed + `\x1b[${attrPark.row};${attrPark.col}H` + pens.literal + literalFill.bytes + referenceChar] });
     }
@@ -301,7 +300,7 @@ export const rectEditContracts = Object.freeze(contracts);
 export const rectEditCaseIds = Object.freeze(rectEditContracts.map(contract => contract.caseId));
 
 /** The pinned getCell projection: the stored character of one cell. */
-export const rectEditCellAt = eraseLineCellAt;
+export { eraseLineCellAt as rectEditCellAt } from './erase-line-contracts.mjs';
 
 /** A group's observation: its ink, cursor, geometry and the App's stored buffer state. */
 const group = screen => ({ ink: eraseLineInk(screen), cursor: [screen.cursorRow, screen.cursorCol], rows: screen.rows, cols: screen.cols,
@@ -359,40 +358,54 @@ function attrSeedOk(before) {
         && [0, 3].every(row => (byRow.get(row) ?? []).every(neutral)) && sameCursor(before, [3, 10]);
 }
 
+const atReference = cell => cell.row === attrPark.row - 1 && cell.col === attrPark.col - 1;
+const samePlace = (left, right) => left.row === right.row && left.col === right.col;
+/** Whether the observed cells equal the expected ones in order: same places and same stored tuples. */
+const sameStoredCells = (actual, expected) => actual.length === expected.length
+    && expected.every((cell, index) => samePlace(actual[index], cell) && storedKey(actual[index]) === storedKey(cell));
+/** Whether the reference cell carries the pen the attribute control printed it under. */
+const penMeasured = (mode, reference) => (mode === 'erase'
+    ? reference.bgIndex === 4 && reference.italic === false
+    : reference.italic === true && reference.fgIndex === 3 && reference.bgIndex === 2);
+const rectCells = rect => (rect.bottom - rect.top + 1) * (rect.right - rect.left + 1);
+
+/** The background an erase left on its cells, in words (observed, never required). */
+function backgroundFillNote(inside, reference, referenceOk, rect) {
+    if (inside.length === 0) return 'erased cells keep the default background';
+    const painted = inside.filter(cell => cell.bgIndex >= 0 || cell.backgroundArgb !== null);
+    const same = painted.filter(cell => referenceOk && JSON.stringify(cell.bg) === JSON.stringify(reference.bg));
+    const full = rectCells(rect);
+    if (painted.length === full && same.length === full) return 'erased cells carry the current background color';
+    return painted.length === 0 ? 'erased cells carry no background color' : 'mixed or different background on erased cells';
+}
+
+/** The cells a copy must leave: the seed plus its copy shifted by the destination row. */
+function copyChange(before, rest, rect) {
+    const moved = before.ink.map(cell => ({ ...cell, row: cell.row + rect.top, col: cell.col }));
+    return { changedOk: sameStoredCells(rest, [...before.ink, ...moved].sort(byPosition)) };
+}
+
+/** A fill or an erase: the cells outside the rectangle keep their tuples, and the cells inside change as the mode requires. */
+function areaChange(mode, before, rest, rect, reference, flags) {
+    const outside = before.ink.filter(cell => !within(cell, rect));
+    const insideNow = rest.filter(cell => within(cell, rect));
+    const outsideOk = sameStoredCells(rest.filter(cell => !within(cell, rect)), outside);
+    if (mode === 'fill') {
+        return { changedOk: outsideOk && flags.penOk && insideNow.length === rectCells(rect)
+            && insideNow.every(cell => cell.char === fillChar && tupleKey(cell) === tupleKey(reference)) };
+    }
+    return { changedOk: outsideOk && insideNow.every(backgroundOnly), fill: backgroundFillNote(insideNow, reference, flags.referenceOk, rect) };
+}
+
 /** The attribute control of one mode: its reference cell, the changed rectangle and the untouched cells around it. */
 function attributeState(mode, before, after) {
     const { rect } = attrOps[mode];
-    const parked = [attrPark.row - 1, attrPark.col];
-    const reference = after.ink.find(cell => cell.row === attrPark.row - 1 && cell.col === attrPark.col - 1);
+    const reference = after.ink.find(atReference);
     const referenceOk = reference !== undefined && reference.char === referenceChar;
-    const penOk = referenceOk && (mode === 'erase' ? reference.bgIndex === 4 && reference.italic === false
-        : reference.italic === true && reference.fgIndex === 3 && reference.bgIndex === 2);
-    const rest = after.ink.filter(cell => !(cell.row === attrPark.row - 1 && cell.col === attrPark.col - 1));
-    let expected = [], changedOk, fill;
-    if (mode === 'copy') {
-        const moved = before.ink.map(cell => ({ ...cell, row: cell.row + rect.top, col: cell.col }));
-        expected = [...before.ink, ...moved].sort(byPosition);
-        changedOk = rest.length === expected.length && expected.every((cell, index) => rest[index].row === cell.row && rest[index].col === cell.col && storedKey(rest[index]) === storedKey(cell));
-    } else {
-        const outside = before.ink.filter(cell => !within(cell, rect));
-        const outsideNow = rest.filter(cell => !within(cell, rect));
-        const insideNow = rest.filter(cell => within(cell, rect));
-        const outsideOk = outsideNow.length === outside.length && outside.every((cell, index) => outsideNow[index].row === cell.row && outsideNow[index].col === cell.col
-            && storedKey(outsideNow[index]) === storedKey(cell));
-        if (mode === 'fill') {
-            const cells = (rect.bottom - rect.top + 1) * (rect.right - rect.left + 1);
-            changedOk = outsideOk && penOk && insideNow.length === cells && insideNow.every(cell => cell.char === fillChar && tupleKey(cell) === tupleKey(reference));
-        } else {
-            changedOk = outsideOk && insideNow.every(backgroundOnly);
-            const painted = insideNow.filter(cell => cell.bgIndex >= 0 || cell.backgroundArgb !== null);
-            const same = painted.filter(cell => referenceOk && JSON.stringify(cell.bg) === JSON.stringify(reference.bg));
-            const full = (rect.bottom - rect.top + 1) * (rect.right - rect.left + 1);
-            fill = insideNow.length === 0 ? 'erased cells keep the default background'
-                : painted.length === full && same.length === full ? 'erased cells carry the current background color'
-                    : painted.length === 0 ? 'erased cells carry no background color' : 'mixed or different background on erased cells';
-        }
-    }
-    return { referenceOk, penOk, changedOk, fill, cursorOk: sameCursor(after, parked), seedOk: attrSeedOk(before) };
+    const penOk = referenceOk && penMeasured(mode, reference);
+    const rest = after.ink.filter(cell => !atReference(cell));
+    const { changedOk, fill } = mode === 'copy' ? copyChange(before, rest, rect) : areaChange(mode, before, rest, rect, reference, { referenceOk, penOk });
+    return { referenceOk, penOk, changedOk, fill, cursorOk: sameCursor(after, [attrPark.row - 1, attrPark.col]), seedOk: attrSeedOk(before) };
 }
 
 /** The literal-pen fill control: the filled cells carry the stored tuple of the reference cell printed under the same literal pen. */
@@ -431,49 +444,72 @@ function diagnose(contract, state) {
     return 'The edited rows differ from the contracted rectangle operation';
 }
 
-/** The shared control walk, then the exact rectangle-edit verdict. */
-function gradeRectEdit(contract, observation) {
+const inconclusive = note => ({ outcome: 'inconclusive', note });
+const unsupported = note => ({ outcome: 'unsupported', note });
+const notControlRoles = ['initial', 'before', 'setup', 'edited', 'blockBefore', 'attrBefore', 'attr', 'literal', 'pages'];
+/** What the unsupported attribute control says, by mode. */
+const attributeMismatchNotes = Object.freeze({
+    fill: 'The filled cells did not carry the live pen, cells outside the rectangle changed, or the cursor or pen drifted, in the attribute control',
+    erase: 'Erased cells carried attributes, cells outside the rectangle changed, or the cursor or pen drifted, in the attribute control',
+    copy: 'Copied cells lost their stored attributes, the source changed, or the cursor or pen drifted, in the attribute control',
+});
+
+/** The first reason the seed, geometry or contracted state was not measured, or null. */
+function seedGap(contract, observation) {
     const { before, setup, reverseVideo, initial } = observation;
     const mode = contract.mode;
-    const inconclusive = note => ({ outcome: 'inconclusive', note });
-    if (setup.rows < minimum.rows || setup.cols < minimum.cols) return inconclusive(pinnedGeometryNote);
-    if (reverseVideo !== false) return inconclusive('DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it');
+    if (setup.rows < minimum.rows || setup.cols < minimum.cols) return pinnedGeometryNote;
+    if (reverseVideo !== false) return 'DECSCNM reverse video was not proven off, so stored attributes cannot be separated from it';
     const { rows, cols } = setup;
-    const items = contract.roles.filter(role => !['initial', 'before', 'setup', 'edited', 'blockBefore', 'attrBefore', 'attr', 'literal', 'pages'].includes(role));
     const badState = contract.roles.find(role => !stateIsContracted(observation[role], controlOf(mode, role)));
     if (badState !== undefined) {
-        return inconclusive(`The observed margins, origin mode or insert mode differ from the contracted setup in the ${badState} read, so the edit cannot be attributed`);
+        return `The observed margins, origin mode or insert mode differ from the contracted setup in the ${badState} read, so the edit cannot be attributed`;
     }
-    if (initial.ink.length !== 0) return inconclusive('Blank neutral screen control was not measured (the screen was not empty)');
-    if (!inkIs(before, place(pinnedBase(mode, rows, cols))) || !sameCursor(before, pinned[mode].cursor)) return inconclusive('The pinned seed rows were not measured before the edit');
-    if (!inkIs(setup, place(pinnedBase(mode, rows, cols))) || !sameCursor(setup, [0, 0])) return inconclusive('The pinned cursor setup did not reach row 1 column 1');
-    if (!inkIs(observation.blockBefore, place(textsOf(gridOf(blockTexts, rows, cols)))) || !sameCursor(observation.blockBefore, [blockTexts.length - 1, blockTexts[0].length])) {
-        return inconclusive('The block control seed was not measured, so a misplaced or smeared cell cannot be distinguished');
-    }
-    if (!attrSeedOk(observation.attrBefore)) return inconclusive('The attribute control seed was not measured, so stored attributes cannot be distinguished');
-    const attributes = attributeState(mode, observation.attrBefore, observation.attr);
-    if (!attributes.referenceOk || !attributes.penOk) return inconclusive('The reference cell printed under the control pen was not measured, so the pen cannot be attributed');
-    const literal = mode === 'fill' ? literalState(null, observation.literal) : null;
-    if (literal !== null && !literal.penOk) return inconclusive('The literal-color reference cell was not measured, so the literal pen cannot be attributed');
-    if (!inkIs(observation.edited, place(pinnedEdited(mode, rows, cols)))) return { outcome: 'unsupported', note: diagnose(contract, observation.edited) };
-    if (!sameCursor(observation.edited, [0, 0])) return { outcome: 'unsupported', note: 'The cursor drifted during the edit: it must stay at row 1, column 1' };
-    for (const role of items) {
+    if (initial.ink.length !== 0) return 'Blank neutral screen control was not measured (the screen was not empty)';
+    const seeded = inkIs(before, place(pinnedBase(mode, rows, cols))) && sameCursor(before, pinned[mode].cursor);
+    if (!seeded) return 'The pinned seed rows were not measured before the edit';
+    if (!inkIs(setup, place(pinnedBase(mode, rows, cols))) || !sameCursor(setup, [0, 0])) return 'The pinned cursor setup did not reach row 1 column 1';
+    const blockMeasured = inkIs(observation.blockBefore, place(textsOf(gridOf(blockTexts, rows, cols))))
+        && sameCursor(observation.blockBefore, [blockTexts.length - 1, blockTexts[0].length]);
+    return blockMeasured ? null : 'The block control seed was not measured, so a misplaced or smeared cell cannot be distinguished';
+}
+
+/** The first reason a pen reference was not measured, or null. */
+function penGap(contract, observation) {
+    if (!attrSeedOk(observation.attrBefore)) return 'The attribute control seed was not measured, so stored attributes cannot be distinguished';
+    const attributes = attributeState(contract.mode, observation.attrBefore, observation.attr);
+    if (!attributes.referenceOk || !attributes.penOk) return 'The reference cell printed under the control pen was not measured, so the pen cannot be attributed';
+    if (contract.mode !== 'fill') return null;
+    return literalState(null, observation.literal).penOk ? null : 'The literal-color reference cell was not measured, so the literal pen cannot be attributed';
+}
+
+/** The first way a measured edit differs from the rectangle model, or null. */
+function rectangleMismatch(contract, observation) {
+    const mode = contract.mode;
+    const { rows, cols } = observation.setup;
+    if (!inkIs(observation.edited, place(pinnedEdited(mode, rows, cols)))) return diagnose(contract, observation.edited);
+    if (!sameCursor(observation.edited, [0, 0])) return 'The cursor drifted during the edit: it must stay at row 1, column 1';
+    for (const role of contract.roles.filter(item => !notControlRoles.includes(item))) {
         const item = controlOf(mode, role);
-        const expected = expectedRows(item, rows, cols);
-        if (!inkIs(observation[role], place(expected)) || !sameCursor(observation[role], item.cursor)) {
-            return { outcome: 'unsupported', note: `The ${role} control differs from the rectangle model: a border, default, clip, margin, mode, overlap or the cursor was wrong` };
+        if (!inkIs(observation[role], place(expectedRows(item, rows, cols))) || !sameCursor(observation[role], item.cursor)) {
+            return `The ${role} control differs from the rectangle model: a border, default, clip, margin, mode, overlap or the cursor was wrong`;
         }
     }
-    if (!attributes.changedOk || !attributes.cursorOk) {
-        return { outcome: 'unsupported', note: mode === 'fill'
-            ? 'The filled cells did not carry the live pen, cells outside the rectangle changed, or the cursor or pen drifted, in the attribute control'
-            : mode === 'erase' ? 'Erased cells carried attributes, cells outside the rectangle changed, or the cursor or pen drifted, in the attribute control'
-                : 'Copied cells lost their stored attributes, the source changed, or the cursor or pen drifted, in the attribute control' };
-    }
+    const attributes = attributeState(mode, observation.attrBefore, observation.attr);
+    if (!attributes.changedOk || !attributes.cursorOk) return attributeMismatchNotes[mode];
+    const literal = mode === 'fill' ? literalState(null, observation.literal) : null;
     if (literal !== null && (!literal.filledOk || !literal.restOk || !literal.cursorOk)) {
-        return { outcome: 'unsupported', note: 'The filled cells did not carry the literal-color pen, or cells outside the rectangle changed, in the literal control' };
+        return 'The filled cells did not carry the literal-color pen, or cells outside the rectangle changed, in the literal control';
     }
-    return { outcome: 'supported' };
+    return null;
+}
+
+/** The shared control walk, then the exact rectangle-edit verdict. */
+function gradeRectEdit(contract, observation) {
+    const gap = seedGap(contract, observation) ?? penGap(contract, observation);
+    if (gap !== null) return inconclusive(gap);
+    const mismatch = rectangleMismatch(contract, observation);
+    return mismatch === null ? { outcome: 'supported' } : unsupported(mismatch);
 }
 
 /** A group's rows as text over its head columns, `_` for blank. */
@@ -485,6 +521,13 @@ const render = (state, indexes, width = 16) => indexes.map(row => Array.from({ l
 const briefState = state => ({ text: render(state, Array.from({ length: Math.min(state.rows, 12) }, (_, row) => row)), lastRow: render(state, [state.rows - 1])[0],
     lastColumn: [0, 1, state.rows - 1].map(row => state.ink.find(cell => cell.row === row && cell.col === state.cols - 1)?.char ?? '_').join(''),
     ink: state.ink.length, cursor: state.cursor, margins: state.margins, origin: state.origin, insert: state.insert, scrollback: state.scrollback });
+
+/** What each mode's attribute control requires, in words. */
+const attributePolicies = Object.freeze({
+    fill: 'filled cells carry the stored tuple of a reference cell printed afterwards under the same pen; cells outside keep their stored tuples (required)',
+    erase: 'erased cells carry no stored attribute but a background color and cells outside keep their stored tuples (required); background fill is observed, not required',
+    copy: 'copied cells carry the stored tuple of their source cells while a different pen stays active (required)',
+});
 
 /** The observed record: every group's text, cursor, margins and ink, the attribute and page observations. */
 function briefRectEdit(contract, observation) {
@@ -502,9 +545,7 @@ function briefRectEdit(contract, observation) {
         before: briefState(observation.before), setup: briefState(observation.setup), edited: briefState(observation.edited),
         blockSeed: briefState(observation.blockBefore),
         controls: { policy: 'graded controls: each is one fenced write over the measured block seed, compared with the independent rectangle model over the whole screen', ...controls },
-        attributes: { policy: mode === 'fill' ? 'filled cells carry the stored tuple of a reference cell printed afterwards under the same pen; cells outside keep their stored tuples (required)'
-            : mode === 'erase' ? 'erased cells carry no stored attribute but a background color and cells outside keep their stored tuples (required); background fill is observed, not required'
-                : 'copied cells carry the stored tuple of their source cells while a different pen stays active (required)',
+        attributes: { policy: attributePolicies[mode],
         before: briefState(observation.attrBefore), after: briefState(observation.attr), referenceMeasured: attributes.referenceOk, penMeasured: attributes.penOk,
         changedOk: attributes.changedOk, cursorOk: attributes.cursorOk, ...(attributes.fill ? { backgroundFill: attributes.fill } : {}) },
         history: { policy: 'observed, not graded: no pinned criterion requires scrollback behavior and the reads run on the alternate screen', scrollbackLines: [...new Set(histories)],
@@ -521,12 +562,18 @@ function briefRectEdit(contract, observation) {
     return record;
 }
 
+/** The shared reverse-video reading of every screen: off, on, or not provable (mixed or unreported). */
+function reverseVideoOf(binding) {
+    if (binding.every(value => value === false)) return false;
+    return binding.includes(true) ? true : null;
+}
+
 /** Group the read screens of one case by role. */
 export function rectEditObservation(contract, screens) {
     if (!Array.isArray(screens) || screens.length !== contract.roles.length) throw new Error('Missing rectangle-edit read captures.');
     const observation = Object.fromEntries(contract.roles.map((role, index) => [role, group(screens[index])]));
     const binding = screens.map(screen => screen.colorBinding.reverseVideo);
-    observation.reverseVideo = binding.every(value => value === false) ? false : binding.some(value => value === true) ? true : null;
+    observation.reverseVideo = reverseVideoOf(binding);
     return observation;
 }
 

@@ -6,43 +6,37 @@
 import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { rectEditSuiteId, rectEditContractsVersion } from './rect-edit-contracts.mjs';
-import { adaptRectEditCollector, rectEditAdapterId } from './rect-edit-grading-collector.mjs';
-import { adaptSavedResetCollector } from './saved-reset-grading-collector.mjs';
 import { adaptAttrRectCollector } from './attr-rect-grading-collector.mjs';
-import { adaptCursorQualCollector } from './cursor-qual-grading-collector.mjs';
-import { adaptEraseCharsHistoryCollector } from './erase-chars-history-grading-collector.mjs';
-import { adaptEraseAttrsRegionCollector } from './erase-attrs-region-grading-collector.mjs';
-import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
 import { adaptCharEditCollector } from './char-edit-grading-collector.mjs';
-import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
-import { adaptLineEditCollector } from './line-edit-grading-collector.mjs';
 import { adaptCharsetsCollector } from './charsets-grading-collector.mjs';
+import { adaptCursorQualCollector } from './cursor-qual-grading-collector.mjs';
+import { adaptEraseAttrsRegionCollector } from './erase-attrs-region-grading-collector.mjs';
+import { adaptEraseCharsHistoryCollector } from './erase-chars-history-grading-collector.mjs';
+import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
+import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
+import { adaptGradingCollector } from './grading-collector.mjs';
+import { adaptLineEditCollector } from './line-edit-grading-collector.mjs';
+import { adaptSavedResetCollector } from './saved-reset-grading-collector.mjs';
 import { adaptScrollbackCollector } from './scrollback-grading-collector.mjs';
-import { adaptSgrResetCollector } from './sgr-reset-grading-collector.mjs';
+import { adaptSgrAttrsCollector } from './sgr-attrs-grading-collector.mjs';
 import { adaptSgrClosureCollector } from './sgr-closure-grading-collector.mjs';
+import { adaptSgrColorsCollector } from './sgr-colors-grading-collector.mjs';
+import { adaptSgrPaletteCollector } from './sgr-palette-grading-collector.mjs';
+import { adaptSgrResetCollector } from './sgr-reset-grading-collector.mjs';
+import { adaptSgrRgbCollector } from './sgr-rgb-grading-collector.mjs';
+import { adaptSgrTruecolorCollector } from './sgr-truecolor-grading-collector.mjs';
 import { adaptSgrUnderlineColorCollector } from './sgr-underline-color-grading-collector.mjs';
 import { adaptSgrUnderlineCollector } from './sgr-underline-grading-collector.mjs';
-import { adaptSgrTruecolorCollector } from './sgr-truecolor-grading-collector.mjs';
-import { adaptSgrPaletteCollector } from './sgr-palette-grading-collector.mjs';
-import { adaptSgrAttrsCollector } from './sgr-attrs-grading-collector.mjs';
-import { adaptSgrRgbCollector } from './sgr-rgb-grading-collector.mjs';
-import { adaptSgrColorsCollector } from './sgr-colors-grading-collector.mjs';
-import { adaptGradingCollector } from './grading-collector.mjs';
+import { rectEditSuiteId, rectEditContractsVersion } from './rect-edit-contracts.mjs';
+import { adaptRectEditCollector, rectEditAdapterId } from './rect-edit-grading-collector.mjs';
 import { buildRectEditGradingReport } from './rect-edit-grading.mjs';
 /** SHA-256 of exact bytes. */
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const files = ['rect-observations.json', 'rect-run.json', 'rect-snapshots.jsonl', 'collector-rect.mjs'];
 
-/** Whether a retained artifact path exists. */
-function present(path) {
-    try { lstatSync(path); return true; }
-    catch (error) {
-        if (error.code === 'ENOENT') return false;
-        throw error;
-    }
-}
+/** Whether a retained artifact path exists; any failure other than a missing entry is fatal. */
+const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
 
 /** Any retained rectangle-editing artifact or declaration requires the v36 suffix, and a
  * policy-v30 run always carries them, because the current worker collects this suite
@@ -70,44 +64,35 @@ export function rectEditCounts(report) {
     return counts;
 }
 
-/** Full rederivation: journal, run log, layered adapter bytes and conclusions. */
-export function checkRectEditEvidence(output, evidence, runId, context) {
-    if (context.rectEditAdapterId !== rectEditAdapterId || context.rectEditSuiteId !== rectEditSuiteId) {
-        throw new Error('Missing or changed rectangle-editing adapter declaration.');
-    }
-    if (context.eraseCharsHistoryAdapterId === undefined || evidence.eraseCharsHistoryEvidence === undefined
-        || context.cursorQualAdapterId === undefined || evidence.cursorQualEvidence === undefined
-        || context.attrRectAdapterId === undefined || evidence.attrRectEvidence === undefined
-        || context.eraseAttrsRegionAdapterId === undefined || evidence.eraseAttrsRegionEvidence === undefined
-        || context.savedResetAdapterId === undefined || evidence.savedResetEvidence === undefined
-        || context.scrollbackAdapterId === undefined || evidence.scrollbackEvidence === undefined
-        || context.charsetsAdapterId === undefined || evidence.charsetsEvidence === undefined
-        || context.lineEditAdapterId === undefined || evidence.lineEditEvidence === undefined
-        || context.eraseDisplayAdapterId === undefined || evidence.eraseDisplayEvidence === undefined
-        || context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
-        || context.eraseLineAdapterId === undefined || evidence.eraseLineEvidence === undefined
-        || context.sgrClosureAdapterId === undefined || evidence.sgrClosureEvidence === undefined
-        || context.sgrResetAdapterId === undefined || evidence.sgrResetEvidence === undefined
-        || context.sgrUnderlineColorAdapterId === undefined || evidence.sgrUnderlineColorEvidence === undefined
-        || context.sgrUnderlineAdapterId === undefined || evidence.sgrUnderlineEvidence === undefined
-        || context.sgrTruecolorAdapterId === undefined || evidence.sgrTruecolorEvidence === undefined
-        || context.sgrColorsAdapterId === undefined || evidence.sgrColorsEvidence === undefined
-        || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
-        || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
-        || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
-        throw new Error('rectangle-editing evidence requires its erase-character/saved-lines, cursor, attribute-rectangle, erase attributes/margins, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
-    }
+/** The predecessor layers, oldest first. Each entry names the layer (its `<name>AdapterId`, `<name>Evidence` and `<name>BundleSha256` in the receipt)
+ * and the adapter that derives its bundle from the layer before it; the first derives from the retained first grading extension. */
+const layerChain = [
+    ['sgrColors', adaptSgrColorsCollector], ['sgrRgb', adaptSgrRgbCollector], ['sgrAttrs', adaptSgrAttrsCollector], ['sgrPalette', adaptSgrPaletteCollector],
+    ['sgrTruecolor', adaptSgrTruecolorCollector], ['sgrUnderline', adaptSgrUnderlineCollector], ['sgrUnderlineColor', adaptSgrUnderlineColorCollector],
+    ['sgrReset', adaptSgrResetCollector], ['sgrClosure', adaptSgrClosureCollector], ['eraseLine', adaptEraseLineCollector], ['charEdit', adaptCharEditCollector],
+    ['eraseDisplay', adaptEraseDisplayCollector], ['lineEdit', adaptLineEditCollector], ['charsets', adaptCharsetsCollector],
+    ['scrollback', adaptScrollbackCollector], ['savedReset', adaptSavedResetCollector], ['eraseAttrsRegion', adaptEraseAttrsRegionCollector],
+    ['attrRect', adaptAttrRectCollector], ['cursorQual', adaptCursorQualCollector], ['eraseCharsHistory', adaptEraseCharsHistoryCollector],
+];
+const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
+const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const predecessorList = 'erase-character/saved-lines, cursor, attribute-rectangle, erase attributes/margins, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors';
+
+/** The receipt binding of this suite, or a refusal when it is missing or does not match the run. */
+function requireBinding(evidence, runId, context) {
     const binding = evidence.rectEditEvidence;
     if (binding === undefined) throw new Error('Missing rectangle-editing suite receipt binding.');
-    if (!binding || binding.runId !== runId || binding.suiteId !== rectEditSuiteId
-        || binding.file !== 'rect-observations.json' || binding.runFile !== 'rect-run.json'
-        || binding.provisionalUntil !== 'cell-receipt.json'
-        || !/^[a-f\d]{64}$/.test(binding.sha256 ?? '') || !/^[a-f\d]{64}$/.test(binding.runSha256 ?? '')
-        || !/^[a-f\d]{64}$/.test(binding.adapterBundleSha256 ?? '')
-        || binding.contractsVersion !== rectEditContractsVersion
-        || context.rectEditContractsVersion !== binding.contractsVersion) {
+    const identity = binding && binding.runId === runId && binding.suiteId === rectEditSuiteId && binding.file === 'rect-observations.json'
+        && binding.runFile === 'rect-run.json' && binding.provisionalUntil === 'cell-receipt.json';
+    const digests = binding && [binding.sha256, binding.runSha256, binding.adapterBundleSha256].every(isDigest);
+    if (!identity || !digests || binding.contractsVersion !== rectEditContractsVersion || context.rectEditContractsVersion !== binding.contractsVersion) {
         throw new Error('Invalid rectangle-editing suite receipt binding.');
     }
+    return binding;
+}
+
+/** The retained bytes of the suite, each checked against its receipt digest. */
+function readRetained(output, binding, context) {
     requireRegularFiles(output);
     const bytes = readFileSync(join(output, binding.file));
     if (hash(bytes) !== binding.sha256) throw new Error('rectangle-editing observation bytes changed.');
@@ -117,58 +102,46 @@ export function checkRectEditEvidence(output, evidence, runId, context) {
     if (hash(adapterBytes) !== binding.adapterBundleSha256 || context.rectEditBundleSha256 !== binding.adapterBundleSha256) {
         throw new Error('rectangle-editing adapter bytes changed.');
     }
-    // The retained extension must be exactly the layered derivation of the retained scrolling/history extension over the charsets and line-editing extensions over the erase-in-display and character-editing extensions over the erase-in-line extension over the SGR
-    // closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and
-    // SGR-colors extensions over the retained first grading extension over the retained owned adapter.
-    const asciiSgrBytes = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
-    const sgrColorsBytes = Buffer.from(adaptSgrColorsCollector(asciiSgrBytes.toString()));
-    const sgrRgbBytes = Buffer.from(adaptSgrRgbCollector(sgrColorsBytes.toString()));
-    const sgrAttrsBytes = Buffer.from(adaptSgrAttrsCollector(sgrRgbBytes.toString()));
-    const sgrPaletteBytes = Buffer.from(adaptSgrPaletteCollector(sgrAttrsBytes.toString()));
-    const sgrTruecolorBytes = Buffer.from(adaptSgrTruecolorCollector(sgrPaletteBytes.toString()));
-    const sgrUnderlineBytes = Buffer.from(adaptSgrUnderlineCollector(sgrTruecolorBytes.toString()));
-    const sgrUnderlineColorBytes = Buffer.from(adaptSgrUnderlineColorCollector(sgrUnderlineBytes.toString()));
-    const sgrResetBytes = Buffer.from(adaptSgrResetCollector(sgrUnderlineColorBytes.toString()));
-    const sgrClosureBytes = Buffer.from(adaptSgrClosureCollector(sgrResetBytes.toString()));
-    const eraseLineBytes = Buffer.from(adaptEraseLineCollector(sgrClosureBytes.toString()));
-    const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
-    const eraseDisplayBytes = Buffer.from(adaptEraseDisplayCollector(charEditBytes.toString()));
-    const lineEditBytes = Buffer.from(adaptLineEditCollector(eraseDisplayBytes.toString()));
-    const charsetsBytes = Buffer.from(adaptCharsetsCollector(lineEditBytes.toString()));
-    const scrollbackBytes = Buffer.from(adaptScrollbackCollector(charsetsBytes.toString()));
-    const savedResetBytes = Buffer.from(adaptSavedResetCollector(scrollbackBytes.toString()));
-    const eraseAttrsRegionBytes = Buffer.from(adaptEraseAttrsRegionCollector(savedResetBytes.toString()));
-    const attrRectBytes = Buffer.from(adaptAttrRectCollector(eraseAttrsRegionBytes.toString()));
-    const cursorQualBytes = Buffer.from(adaptCursorQualCollector(attrRectBytes.toString()));
-    const eraseCharsHistoryBytes = Buffer.from(adaptEraseCharsHistoryCollector(cursorQualBytes.toString()));
-    const derivedBytes = Buffer.from(adaptRectEditCollector(eraseCharsHistoryBytes.toString()));
-    if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
+    return { bytes, runBytes, adapterBytes };
+}
+
+/** The retained extension must be exactly the layered derivation of every predecessor extension over the retained first grading
+ * extension over the retained owned adapter, and every predecessor bundle must be the one the run declared. */
+function requireLayeredDerivation(output, adapterBytes, context) {
+    let layer = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
+    const derived = [];
+    for (const [name, adapt] of layerChain) {
+        layer = Buffer.from(adapt(layer.toString()));
+        derived.push([name, layer]);
+    }
+    if (Buffer.compare(Buffer.from(adaptRectEditCollector(layer.toString())), adapterBytes) !== 0) {
         throw new Error('rectangle-editing adapter is not the retained layered derivation.');
     }
-    if (hash(sgrColorsBytes) !== context.sgrColorsBundleSha256 || hash(sgrRgbBytes) !== context.sgrRgbBundleSha256
-        || hash(sgrAttrsBytes) !== context.sgrAttrsBundleSha256 || hash(sgrPaletteBytes) !== context.sgrPaletteBundleSha256
-        || hash(sgrTruecolorBytes) !== context.sgrTruecolorBundleSha256 || hash(sgrUnderlineBytes) !== context.sgrUnderlineBundleSha256
-        || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256
-        || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256 || hash(charEditBytes) !== context.charEditBundleSha256
-        || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256 || hash(lineEditBytes) !== context.lineEditBundleSha256
-        || hash(charsetsBytes) !== context.charsetsBundleSha256 || hash(scrollbackBytes) !== context.scrollbackBundleSha256
-        || hash(savedResetBytes) !== context.savedResetBundleSha256 || hash(eraseAttrsRegionBytes) !== context.eraseAttrsRegionBundleSha256
-        || hash(attrRectBytes) !== context.attrRectBundleSha256 || hash(cursorQualBytes) !== context.cursorQualBundleSha256
-        || hash(eraseCharsHistoryBytes) !== context.eraseCharsHistoryBundleSha256) {
-        throw new Error('rectangle-editing adapter is not derived from the retained erase-character/saved-lines, cursor, attribute-rectangle, erase attributes/margins, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing and earlier extensions.');
+    if (derived.some(([name, bytes]) => hash(bytes) !== context[`${name}BundleSha256`])) {
+        throw new Error(`rectangle-editing adapter is not derived from the retained ${predecessorList} and earlier extensions.`);
     }
+}
+
+/** Full rederivation: journal, run log, layered adapter bytes and conclusions. */
+export function checkRectEditEvidence(output, evidence, runId, context) {
+    if (context.rectEditAdapterId !== rectEditAdapterId || context.rectEditSuiteId !== rectEditSuiteId) {
+        throw new Error('Missing or changed rectangle-editing adapter declaration.');
+    }
+    if (layerChain.some(([name]) => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
+        throw new Error(`rectangle-editing evidence requires its ${predecessorList} predecessors.`);
+    }
+    const binding = requireBinding(evidence, runId, context);
+    const { bytes, runBytes, adapterBytes } = readRetained(output, binding, context);
+    requireLayeredDerivation(output, adapterBytes, context);
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
-    if (report.adapter.bundleSha256 !== binding.adapterBundleSha256
-        || report.adapter.upstreamBundleSha256 !== context.upstreamBundleSha256
-        || report.contractsVersion !== binding.contractsVersion) {
-        throw new Error('rectangle-editing report adapter or contract identity differs from the receipt.');
-    }
+    const identityMatches = [report.adapter.bundleSha256 === binding.adapterBundleSha256,
+        report.adapter.upstreamBundleSha256 === context.upstreamBundleSha256, report.contractsVersion === binding.contractsVersion];
+    if (!identityMatches.every(Boolean)) throw new Error('rectangle-editing report adapter or contract identity differs from the receipt.');
     const journalText = readFileSync(join(output, 'rect-snapshots.jsonl'), 'utf8').trim();
     if (!journalText) throw new Error('rectangle-editing journal is empty.');
     const frames = journalText.split('\n').map(line => JSON.parse(line));
-    const derived = buildRectEditGradingReport(frames, run, runId, report.adapter,
-        { contractsVersion: report.contractsVersion });
-    if (JSON.stringify(report) !== JSON.stringify(derived)) throw new Error('rectangle-editing observations do not match retained evidence.');
-    if (JSON.stringify(frames) !== JSON.stringify(report.snapshots)) throw new Error('rectangle-editing journal does not match the report.');
-    if (JSON.stringify(rectEditCounts(report)) !== JSON.stringify(binding.counts)) throw new Error('rectangle-editing receipt counts do not match the report.');
+    const derived = buildRectEditGradingReport(frames, run, runId, report.adapter, { contractsVersion: report.contractsVersion });
+    if (!sameJson(report, derived)) throw new Error('rectangle-editing observations do not match retained evidence.');
+    if (!sameJson(frames, report.snapshots)) throw new Error('rectangle-editing journal does not match the report.');
+    if (!sameJson(rectEditCounts(report), binding.counts)) throw new Error('rectangle-editing receipt counts do not match the report.');
 }

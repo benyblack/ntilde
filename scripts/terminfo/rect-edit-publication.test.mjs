@@ -135,7 +135,9 @@ test('unsupported DECCRA pages are an Ntilde policy: they were observed to be ig
     assert.deepEqual(cra.pages.sequences, ['\x1b[1;1;2;5;2;5;6$v', '\x1b[1;1;2;5;1;5;6;2$v']);
     assert.equal(cra.pages.ignored, true, 'neither page 2 source nor page 2 destination was aliased to the active page');
     assert.equal(rectEditContracts[2].roles.includes('pages'), true);
-    assert.match(readFileSync(new URL('./rect-edit-contracts.mjs', import.meta.url), 'utf8'), /'pages'\]\.includes\(role\)/);
+    const source = readFileSync(new URL('./rect-edit-contracts.mjs', import.meta.url), 'utf8');
+    assert.match(source, /notControlRoles = \[[^\]]*'pages'\]/);
+    assert.match(source, /!notControlRoles\.includes\(item\)/);
 });
 
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', async () => {
