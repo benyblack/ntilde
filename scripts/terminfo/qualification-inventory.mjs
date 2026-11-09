@@ -57,8 +57,8 @@ export const findingSuites = Object.freeze([
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Retained evidence is LF in git; a Windows checkout may add CR. Hash and size the LF form so the inventory is checkout-independent. */
-const lf = bytes => Buffer.from(bytes.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
-export const readText = path => readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+const lf = bytes => Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1');
+export const readText = path => readFileSync(path, 'utf8').replaceAll('\r\n', '\n');
 const readJson = path => JSON.parse(readFileSync(path));
 const posix = path => path.split(sep).join('/');
 
@@ -349,7 +349,7 @@ async function findingRecord(root, suite, publication, options) {
         note: 'App-observed underline-color resolution, reported separately from the parent-derived expectation. Not a terminfo.dev case.' };
 }
 
-const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const byText = (a, b) => Number(a > b) - Number(a < b);
 const sortedJson = list => JSON.stringify([...list].sort(byText));
 
 /** Guards over one claim of one row. */
@@ -425,6 +425,11 @@ const short = (hash, length = 8) => (hash ? hash.slice(0, length) : 'n/a');
 const code = text => `\`${text}\``;
 const codeList = ids => ids.map(code).join(', ');
 
+function diagnosticLine(diagnostic) {
+    const complete = code(`suiteComplete=${diagnostic.suiteComplete}`);
+    return `- ${code(diagnostic.id)}: ${diagnostic.kind} (${diagnostic.name}). Ungraded, ${complete}. It is not a graded unsupported case and is counted in none of the totals above.`;
+}
+
 function totalsSection(inventory) {
     const { totals, stockBaseline } = inventory;
     const remaining = totals.remainingAgainstStockInconclusive;
@@ -448,7 +453,7 @@ function totalsSection(inventory) {
         `| Effect-unqualified (${allBaseline.stockInconclusive} − ${totals.effectSupportedIds}) | ${remaining.effectUnqualified} |`,
         `| Not pinned-supported (${allBaseline.stockInconclusive} − ${totals.pinnedSupportedIds}) | ${remaining.notPinnedSupported} |`, '',
         unsupportedLine, '', '### Ungraded diagnostic', '',
-        ...inventory.ungradedDiagnostics.map(diagnostic => `- ${code(diagnostic.id)}: ${diagnostic.kind} (${diagnostic.name}). Ungraded, ${code(`suiteComplete=${diagnostic.suiteComplete}`)}. It is not a graded unsupported case and is counted in none of the totals above.`)];
+        ...inventory.ungradedDiagnostics.map(diagnosticLine)];
 }
 
 function suitesSection(inventory) {
