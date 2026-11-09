@@ -83,7 +83,8 @@ public partial class TerminalBuffer
             top = Math.Clamp(top, 0, Rows - 1);
             bottom = Math.Clamp(bottom, 0, Rows - 1);
             if (left > right || top > bottom) return;
-            if (!AnyViewportRowProtected(top, bottom))
+            // A scaled block crossing the rectangle can hold protection outside it, so only a screen with no protection at all is DECERA's.
+            if (!AnyViewportRowProtected(0, _viewport.Length - 1))
             {
                 EraseRectangularArea(left, top, right, bottom);
                 return;
@@ -106,6 +107,27 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
+    /// Whether the cell is protected, or belongs to a scaled (OSC 66) block with any protected cell on the screen. A block is written
+    /// protected as a whole, but rows that went through history and came back lose protection, so a block can hold mixed protection;
+    /// it is retired whole or not at all, and one protected cell spares all of it.
+    /// </summary>
+    private bool IsProtectedOrInProtectedBlock(int rowIndex, int col)
+    {
+        var row = _viewport[rowIndex];
+        if (row.IsProtected(col)) return true;
+        if (row.GetTextSizing(col) is not { } piece) return false;
+        int top = rowIndex - piece.RowOffset, left = col - piece.ColumnOffset;
+        for (int dy = 0; dy < piece.Block.Height; dy++)
+        {
+            int r = top + dy;
+            if (r < 0 || r >= _viewport.Length || !_viewport[r].HasProtectedCells) continue;
+            for (int dx = 0; dx < piece.Block.Width; dx++)
+                if (left + dx >= 0 && left + dx < Cols && _viewport[r].IsProtected(left + dx)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Blanks every unprotected cell of [<paramref name="from"/>, <paramref name="to"/>) in one viewport row with
     /// the same per-cell cleanup the ordinary erases do. With <paramref name="edShortcut"/> (DECSED) a whole row with no
     /// protected cell is erased exactly as ED erases it; a rectangle (DECSERA) always keeps DECERA's own blank and cleanup. Scaled (OSC 66) units are
@@ -117,7 +139,7 @@ public partial class TerminalBuffer
         from = Math.Max(0, from);
         to = Math.Min(Cols, to);
         if (from >= to) return;
-        if (edShortcut && from == 0 && to == Cols && !row.HasProtectedCells)
+        if (edShortcut && from == 0 && to == Cols && !row.HasProtectedCells && row.GetTextSizingMap() is not { Count: > 0 })
         {
             ClearRowInternal(rowIndex);
             return;
@@ -127,9 +149,9 @@ public partial class TerminalBuffer
         int col = from;
         while (col < to)
         {
-            if (row.IsProtected(col)) { col++; continue; }
+            if (IsProtectedOrInProtectedBlock(rowIndex, col)) { col++; continue; }
             int start = col;
-            while (col < to && !row.IsProtected(col)) col++;
+            while (col < to && !IsProtectedOrInProtectedBlock(rowIndex, col)) col++;
             EraseTextSizingRange(start, col, absolute, absolute + 1, blank);
             row.NoteColumnsWritten(col);
             for (int c = start; c < col; c++)

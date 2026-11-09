@@ -335,6 +335,35 @@ public sealed class SelectiveErasureTests
         Assert.Equal('P', CellAt(buffer, 0, 0).Character);
     }
 
+    /// <summary>
+    /// A scaled block is retired whole or not at all: when rows that went through history lost their protection and the block holds mixed
+    /// protection, one protected cell spares all of it, and a rectangle that covers only part of it cannot retire it either.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Scaled_blocks_with_any_protected_cell_are_spared_whole(bool rectangle)
+    {
+        var (buffer, parser) = Create(8, 4);
+        parser.Process("\u001b[1;1H\u001b[1\"q\u001b]66;s=2;A\a\u001b[0\"q");
+        parser.Process("\u001b[?47h");
+        buffer.Resize(8, 3);
+        buffer.Resize(8, 4);
+        parser.Process("\u001b[?47l");
+        bool topProtected, lowerProtected;
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            topProtected = buffer.IsCellProtected(0, 0);
+            lowerProtected = buffer.IsCellProtected(0, 1);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.NotEqual(topProtected, lowerProtected); // the round trip leaves mixed protection, which is the case under test
+        parser.Process(rectangle ? "\u001b[1;1;1;2${" : "\u001b[?2J");
+        Assert.Equal('A', CellAt(buffer, 0, 0).Character);
+        Assert.NotNull(buffer.ExportState(0).TextSizing); // the block was spared, not retired
+    }
+
     /// <summary>Whatever the input is split into, the selective erase gives the same screen.</summary>
     [Fact]
     public void Selective_erasure_is_equivalent_across_every_input_split()
