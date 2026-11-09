@@ -20,6 +20,7 @@ import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-
 import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
+import { collectSavedResetGrading } from './saved-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -175,6 +176,14 @@ try {
         const eraseLineModule = await import(pathToFileURL(config.eraseLineBundle).href);
         const eraseLineRun = await collectEraseLineGrading({ config, fence, owner, gradingModule: eraseLineModule });
         writeFileSync(join(config.output, 'erln-run.json'), JSON.stringify(eraseLineRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered saved-state/reset qualification follows the erase-in-line suite on the same fence.
+        const savedResetSource = readFileSync(config.savedResetBundle);
+        if (createHash('sha256').update(savedResetSource).digest('hex') !== config.savedResetBundleSha256) {
+            throw new Error('Local saved-state/reset adapter bundle changed.');
+        }
+        const savedResetModule = await import(pathToFileURL(config.savedResetBundle).href);
+        const savedResetRun = await collectSavedResetGrading({ config, fence, owner, gradingModule: savedResetModule });
+        writeFileSync(join(config.output, 'svrs-run.json'), JSON.stringify(savedResetRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

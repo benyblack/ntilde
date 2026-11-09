@@ -35,10 +35,10 @@ function present(path) {
 }
 
 /** Any retained erase-in-line artifact or declaration requires the v25 suffix, and a
- * policy-v19 run always carries them, because the current worker collects this suite
+ * policy-v19 or v20 run always carries them, because the current worker collects this suite
  * unconditionally after the SGR closure suite. */
 export function includesEraseLineEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v19'
+    return ['readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20'].includes(context.sourceSnapshotPolicy)
         || context.eraseLineAdapterId !== undefined || context.eraseLineSuiteId !== undefined
         || context.eraseLineBundleSha256 !== undefined || context.eraseLineContractsVersion !== undefined
         || evidence.eraseLineEvidence !== undefined

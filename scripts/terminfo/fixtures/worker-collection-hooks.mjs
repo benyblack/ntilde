@@ -30,6 +30,7 @@ code.set(new URL('sgr-underline-color-collector.mjs', root).href, log + `export 
 code.set(new URL('sgr-underline-color-resolved-collector.mjs', root).href, log + `export async function collectUnderlineResolvedGrading() { record('UnderlineResolved'); return { schemaVersion: 1, suiteId: 'stub', caseIds: [], cases: [] }; }`);
 code.set(new URL('sgr-reset-collector.mjs', root).href, log + `export async function collectSgrResetGrading() { record('SgrReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('sgr-closure-collector.mjs', root).href, log + `export async function collectSgrClosureGrading() { record('SgrClosure'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('saved-reset-collector.mjs', root).href, log + `export async function collectSavedResetGrading() { record('SavedReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('erase-line-collector.mjs', root).href, log + `export async function collectEraseLineGrading() { record('EraseLine'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
