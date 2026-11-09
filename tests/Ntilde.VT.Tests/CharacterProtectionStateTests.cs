@@ -649,6 +649,22 @@ public sealed class CharacterProtectionStateTests
         Assert.False(buffer.HasProtectedCharacters());
     }
 
+    /// <summary>A stale protection record on an orphaned wide anchor does not turn the blank a selective erase writes over it into a protected cell.</summary>
+    [Theory]
+    [InlineData("\u001b[?2J")]
+    [InlineData("\u001b[1;1;2;4${")]
+    public void Selective_erase_over_an_orphaned_anchor_leaves_no_protected_blank(string erase)
+    {
+        var (buffer, parser) = Create(6, 3);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q界" + Esc + "[0\"q" + Esc + "[1;2HX");   // X overwrites the continuation: the anchor is orphaned and unprotected
+        Assert.False(buffer.HasProtectedCharacters());
+        parser.Process("\u001b[3;1H\u001b[1\"qkeep\u001b[0\"q");                          // something else protected, so the selective path runs
+        parser.Process(erase);
+        Assert.False(Protection(buffer, 0)[0]);
+        parser.Process(Esc + "[3;1H" + Esc + "[2K");
+        Assert.False(buffer.HasProtectedCharacters());
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

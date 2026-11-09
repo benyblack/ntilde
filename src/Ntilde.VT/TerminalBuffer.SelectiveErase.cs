@@ -186,6 +186,8 @@ public partial class TerminalBuffer
             row.SetExtendedText(c, null);
             row.SetHyperlink(c, null);
             row.SetUnderline(c, null);
+            // A stale record (an orphaned wide anchor's) must not outlive the cell it described: once the blank is narrow it would read protected.
+            row.SetProtected(c, false);
         }
     }
 }
