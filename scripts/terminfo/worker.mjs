@@ -26,6 +26,7 @@ import { collectLineEditGrading } from './line-edit-collector.mjs';
 import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
+import { collectEraseCharsHistoryGrading } from './erase-chars-history-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -229,6 +230,14 @@ try {
         const savedResetModule = await import(pathToFileURL(config.savedResetBundle).href);
         const savedResetRun = await collectSavedResetGrading({ config, fence, owner, gradingModule: savedResetModule });
         writeFileSync(join(config.output, 'svrs-run.json'), JSON.stringify(savedResetRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered erase-character/saved-lines qualification follows the saved-state/reset suite on the same fence.
+        const eraseCharsHistorySource = readFileSync(config.eraseCharsHistoryBundle);
+        if (createHash('sha256').update(eraseCharsHistorySource).digest('hex') !== config.eraseCharsHistoryBundleSha256) {
+            throw new Error('Local erase-character/saved-lines adapter bundle changed.');
+        }
+        const eraseCharsHistoryModule = await import(pathToFileURL(config.eraseCharsHistoryBundle).href);
+        const eraseCharsHistoryRun = await collectEraseCharsHistoryGrading({ config, fence, owner, gradingModule: eraseCharsHistoryModule });
+        writeFileSync(join(config.output, 'echh-run.json'), JSON.stringify(eraseCharsHistoryRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

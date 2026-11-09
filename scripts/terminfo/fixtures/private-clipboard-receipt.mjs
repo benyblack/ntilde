@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV32SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV33SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV32SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV33SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV32SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV33SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -441,6 +441,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'svrs-run.json', runSha256: hash(readFileSync(join(output, 'svrs-run.json'))),
                 adapterBundleSha256: hash(savedResetBytes), contractsVersion: savedResetContractsVersion,
                 ...savedResetCounts(savedResetReport), provisionalUntil: 'cell-receipt.json' };
+            // Policy v26 always carries the layered erase-character/saved-lines suffix as well.
+            const { syntheticEraseCharsHistoryEvidence } = await import('./erase-chars-history-evidence.mjs');
+            const { buildEraseCharsHistoryGradingReport } = await import('../erase-chars-history-grading.mjs');
+            const { adaptEraseCharsHistoryCollector, eraseCharsHistoryAdapterId } = await import('../erase-chars-history-grading-collector.mjs');
+            const { eraseCharsHistorySuiteId, eraseCharsHistoryContractsVersion } = await import('../erase-chars-history-contracts.mjs');
+            const { eraseCharsHistoryCounts } = await import('../erase-chars-history-receipt.mjs');
+            const eraseCharsHistoryBytes = Buffer.from(adaptEraseCharsHistoryCollector(savedResetBytes.toString()));
+            const eraseCharsHistory = syntheticEraseCharsHistoryEvidence(context.runId, hash(eraseCharsHistoryBytes));
+            eraseCharsHistory.adapter = { id: eraseCharsHistoryAdapterId, derivedFromAdapterId: savedResetAdapterId,
+                bundleSha256: hash(eraseCharsHistoryBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const eraseCharsHistoryReport = buildEraseCharsHistoryGradingReport(eraseCharsHistory.frames, eraseCharsHistory.run, context.runId, eraseCharsHistory.adapter);
+            write('echh-observations.json', eraseCharsHistoryReport);
+            write('echh-run.json', eraseCharsHistory.run);
+            writeFileSync(join(output, 'echh-snapshots.jsonl'), eraseCharsHistory.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-echh.mjs'), eraseCharsHistoryBytes);
+            Object.assign(context, { eraseCharsHistoryAdapterId, eraseCharsHistorySuiteId, eraseCharsHistoryBundleSha256: hash(eraseCharsHistoryBytes), eraseCharsHistoryContractsVersion });
+            evidence.eraseCharsHistoryEvidence = { runId: context.runId, suiteId: eraseCharsHistorySuiteId,
+                file: 'echh-observations.json', sha256: hash(readFileSync(join(output, 'echh-observations.json'))),
+                runFile: 'echh-run.json', runSha256: hash(readFileSync(join(output, 'echh-run.json'))),
+                adapterBundleSha256: hash(eraseCharsHistoryBytes), contractsVersion: eraseCharsHistoryContractsVersion,
+                counts: eraseCharsHistoryCounts(eraseCharsHistoryReport), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;
