@@ -84,7 +84,7 @@ Observed: seed `AAAAA`/`BBBBB`/`CCCCC` on rows 0/20/39, cursor (20, 2) in every 
 columns 3-4 and `CCCCC`; ED 2 left everything blank; the cursor stayed at (20, 2) and every mode flag was unchanged. In the fill control ED 0 kept rows
 0-19 and `ROW2` of row 20, ED 1 kept row 20 from column 5 (including its last-column marker) and rows 21-39, ED 2 left nothing. At the boundary the cursor
 stayed on its first/last/bottom-right cell and the cursor row was erased entirely. Retained bold cells kept flags 769.
-**Background-color erase is observed:** with the blue pen active every erased cell (2790, 2795 and 5585 cells) carries the pen's resolved color
+**Background-color erase is observed:** with the blue pen active every erased cell (2798, 2803 and 5600 cells, every erased position including the erased seed letters) carries the pen's resolved color
 `(0,0,238)`, but **stored as a literal ARGB (`4278190318`) rather than the palette index 4 a cell written under the same pen stores**. That
 representation difference is an Ntilde-specific observation, not a requirement and not a benchmark grade.
 **Viewport versus scrollback:** with four saved lines on the main screen, ED 0, ED 1 and ED 2 left all four lines unchanged and added none.
@@ -101,5 +101,5 @@ sidecar, default theme, 40x140 geometry only.
 
 ## Evidence
 
-[`2026-11-09-erase-display/`](2026-11-09-erase-display/): summary, report header, one file per case, run log, common frames and one file per read
+[`2026-11-09-erase-display/`](2026-11-09-erase-display/): summary, run log, common frames with the report header, one file per case and one file per read
 frame. `scripts/terminfo/erase-display-publication.test.mjs` re-derives the report from the retained journal.

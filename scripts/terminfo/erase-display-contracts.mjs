@@ -29,8 +29,7 @@
 // not remove scrollback lines (ED 2 is not ED 3). Whether erased cells take the current background color (BCE) is OBSERVED, not required: no
 // pinned criterion constrains it.
 import { planFeed, planRead, planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
-import { sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen, sgrAttrsPredicates, sgrAttrsCellAt } from './sgr-attrs-contracts.mjs';
-import { eraseLineInk } from './erase-line-contracts.mjs';
+import { sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen, sgrAttrsPredicates, sgrAttrsCellAt, sgrAttrsExpand } from './sgr-attrs-contracts.mjs';
 
 const { neutral } = sgrAttrsPredicates;
 
@@ -184,8 +183,28 @@ export function validateEraseDisplayScreen(screen) {
 
 /** Screens without buffer state or history cannot be graded. */
 const missingState = () => { throw new Error('Erase-in-display screens need buffer state and complete history.'); };
+/** Whether one stored cell detail is the default tuple (no attribute, default colors, no underline or overline color). */
+const defaultDetail = detail => detail.flags === 0x300 && detail.fg === -1 && detail.bg === -1 && detail.foregroundArgb == null
+    && detail.backgroundArgb == null && detail.overline === false && detail.underlineStyle === 0
+    && detail.underlineColorIndex === -1 && detail.underlineArgb == null;
+
+/** Every cell of the screen that carries text or a non-default stored tuple, in row-major order with stored detail.
+ * A cell absent from this list is a blank cell with default storage. The screen's projections expand once, not per cell. */
+export function eraseDisplayInk(screen) {
+    validateEraseDisplayScreen(screen);
+    const expanded = sgrAttrsExpand(screen);
+    const ink = [];
+    for (let position = 0; position < screen.rows * screen.cols; position++) {
+        const row = Math.floor(position / screen.cols), col = position % screen.cols;
+        const char = (screen.lines[row] ?? '')[col] ?? ' ';
+        if (char === ' ' && defaultDetail(expanded.details[position])) continue;
+        ink.push({ row, col, ...sgrAttrsCellAt(screen, row, col, expanded) });
+    }
+    return ink;
+}
+
 /** A group's observation: its ink, cursor, geometry, buffer state and history. */
-const group = screen => ({ ink: screen.bufferState && screen.history ? eraseLineInk(screen) : missingState(), cursor: [screen.cursorRow, screen.cursorCol], rows: screen.rows, cols: screen.cols,
+const group = screen => ({ ink: screen.bufferState && screen.history ? eraseDisplayInk(screen) : missingState(), cursor: [screen.cursorRow, screen.cursorCol], rows: screen.rows, cols: screen.cols,
     cursorVisible: screen.cursorVisible, buffer: screen.bufferState, history: screen.history.lines });
 const sameCursor = (state, cursor) => state.cursor[0] === cursor[0] && state.cursor[1] === cursor[1];
 

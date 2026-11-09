@@ -1,5 +1,5 @@
 // Frozen real-App publication. Synthetic fixtures do not replace this measurement; every digest below is
-// checked against the committed evidence. The publication is split into reviewable files (summary, report header, one
+// checked against the committed evidence. The publication is split into reviewable files (summary, run log, common frames with the report header, one
 // file per case, run log, common frames and one file per read frame); the test reassembles the exact journal order.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,7 +24,7 @@ const dir = new URL('../../docs/qa/terminfo/2026-11-09-erase-display/', import.m
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
 const ids = ['erase.screen.below', 'erase.screen.above', 'erase.screen.all'];
 const load = () => {
-    const summary = read('summary.json'), header = read('report.json'), run = read('run-log.json'), common = read('journal-common.json');
+    const summary = read('summary.json'), run = read('run-log.json'), common = read('journal-common.json'), header = common.reportHeader;
     const snapshots = [common.frames.start, common.frames.bind];
     for (const contract of eraseDisplayContracts) {
         for (let index = 0; index < contract.roles.length; index++) {
@@ -132,7 +132,7 @@ test('retained cells keep bold; background-color erase is observed (not required
         assert.ok(attributes.after.ink.some(entry => Array.isArray(entry.cols) && entry.char === ' '), 'a painted run is one range entry');
     }
     const [below, above, all] = load().report.cases.map(item => item.observed.attributes.backgroundColorEraseDetail.erasedCells);
-    assert.deepEqual([below, above, all], [2790, 2795, 5585]);
+    assert.deepEqual([below, above, all], [2798, 2803, 5600]);
 });
 
 test('viewport erasure is distinct from scrollback removal: the saved lines survive ED 0, ED 1 and ED 2 on the main screen', () => {
