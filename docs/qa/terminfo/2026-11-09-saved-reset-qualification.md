@@ -20,7 +20,7 @@ so an upstream change that gave one a verdict would be refused. In the stock run
 
 ## Method
 
-Thirteenth digest-checked extension, contracts v1, suite `ntilde-owned-saved-reset-graded-v1`, prefix `svrs`, nonce `NTILDE_SR_`. The harness runs inside the
+Fourteenth digest-checked extension (derived over the character-editing one), contracts v1, suite `ntilde-owned-saved-reset-graded-v1`, prefix `svrs`, nonce `NTILDE_SR_`. The harness runs inside the
 alternate screen, where a nested `ESC[?1049h` is a no-op and would void the pinned exit fixture, so every group starts from a bank-normalizing reset (no RIS) that
 leaves the **main** screen active with both banks blank. Pinned bytes are fed exactly, one write each, with a journaled read between pinned writes; the pinned
 probe runs over those screens and the parent re-executes it. Only the active screen is read (cells, stored attributes, cursor, active-buffer flag, margins, mode
@@ -35,8 +35,11 @@ no-reset control showing the SGR pen persists. Unsupported needs valid controls 
 
 ## Measurement
 
-Scripts `9ac95942` (committed source); App source unchanged from main `4e32f6d9` (sidecar `saved-reset` built there, no App change). Run
-`2c4b2603ebe805a4232cf1ab5122581f`, receipt schema 26, source policy v20 (inventory v27, 178 files), default theme, 40x140, first and only attempt.
+Scripts `2d22f91b` (committed source, the merge of main with the character-editing layer); App source unchanged from main `4e32f6d9` (sidecar `saved-reset` built there; main's character-editing merge changed no App file). Run
+`91849fd9fa621dfd9ad63f6d091b9397`, receipt schema 27, source policy v21 (inventory v28, 183 files), default theme, 40x140.
+
+**Preserved attempt:** run `2c4b2603ebe805a4232cf1ab5122581f` (scripts `9ac95942`, receipt 26, policy v20, 178 files) was complete but superseded because main merged the
+character-editing layer meanwhile; this layer was restacked as the fourteenth extension and the whole suite re-measured. Every case graded identically in both runs.
 
 | Case | Pinned (parent replay + live pinned code) | Effect contract | Divergence |
 |---|---|---|---|
