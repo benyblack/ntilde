@@ -63,7 +63,7 @@ public partial class TerminalBuffer
     /// </summary>
     internal void ChangeRectangularAttributes(int left, int top, int right, int bottom, ReadOnlySpan<int> selectors, bool reverse)
     {
-        if (!TryBuildAttributeChange(selectors, reverse, out ushort set, out ushort clear, out ushort toggle)) return;
+        if (!HasDefinedSelector(selectors, reverse)) return;
         bool changed = false;
         bool lockTaken = EnterWriteLockIfNeeded();
         try
@@ -83,42 +83,64 @@ public partial class TerminalBuffer
                 // DEC STD 070 (as xterm reads it): the stream leaves unoccupied cells alone, the rectangle fills them. A cell past
                 // the row's written extent is unoccupied; typed spaces inside it are not.
                 if (!rectangle) last = Math.Min(last, row.WrittenColumns - 1);
-                if (first <= last) changed |= ChangeRowAttributes(row, first, last, set, clear, toggle);
+                if (first <= last) changed |= ChangeRowAttributes(row, first, last, selectors, reverse, rectangle);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         if (changed) OnInvalidate?.Invoke();
     }
 
+    /// <summary>Whether any selector is in the table for the operation (DECCARA: 0, 1, 4, 5, 7, 22, 24, 25, 27; DECRARA: 0, 1, 4, 5, 7).</summary>
+    private static bool HasDefinedSelector(ReadOnlySpan<int> selectors, bool reverse)
+    {
+        foreach (int selector in selectors)
+        {
+            if (selector is 0 or 1 or 4 or 5 or 7) return true;
+            if (!reverse && selector is 22 or 24 or 25 or 27) return true;
+        }
+        return false;
+    }
+
     /// <summary>
-    /// Folds the selector list, in order, into one set/clear/toggle mask triple. Selectors outside the VT510 tables are ignored:
-    /// DECCARA takes 0, 1, 4, 5, 7, 22, 24, 25 and 27; DECRARA takes 0, 1, 4, 5 and 7. Returns false when nothing can change.
+    /// Applies the selector list to one cell's flags in order: DECCARA sets (1, 4, 5, 7) and clears (22, 24, 25, 27), DECRARA toggles
+    /// (1, 4, 5, 7); selector 0 clears or toggles all four. Selectors outside the table are ignored. <paramref name="dropUnderlineDetail"/>
+    /// is set whenever the underline goes off at any step, even if a later selector turns it back on.
     /// </summary>
-    private static bool TryBuildAttributeChange(ReadOnlySpan<int> selectors, bool reverse, out ushort set, out ushort clear, out ushort toggle)
+    private static void ApplySelectors(ReadOnlySpan<int> selectors, bool reverse, ref ushort flags, ref bool dropUnderlineDetail)
     {
         const ushort Bold = (ushort)TerminalCellFlags.Bold, Underline = (ushort)TerminalCellFlags.Underline,
             Blink = (ushort)TerminalCellFlags.Blink, Inverse = (ushort)TerminalCellFlags.Inverse;
         const ushort All = Bold | Underline | Blink | Inverse;
-        set = clear = toggle = 0;
         foreach (int selector in selectors)
         {
-            ushort bit = selector switch
+            ushort mask = selector switch
             {
-                1 => Bold, 4 => Underline, 5 => Blink, 7 => Inverse,
-                22 when !reverse => Bold, 24 when !reverse => Underline, 25 when !reverse => Blink, 27 when !reverse => Inverse,
+                0 => All,
+                1 => Bold,
+                4 => Underline,
+                5 => Blink,
+                7 => Inverse,
+                22 when !reverse => Bold,
+                24 when !reverse => Underline,
+                25 when !reverse => Blink,
+                27 when !reverse => Inverse,
                 _ => 0,
             };
-            if (selector == 0) { if (reverse) toggle ^= All; else { clear |= All; set &= unchecked((ushort)~All); } continue; }
-            if (bit == 0) continue;
-            if (reverse) toggle ^= bit;
-            else if (selector is 1 or 4 or 5 or 7) { set |= bit; clear &= unchecked((ushort)~bit); }
-            else { clear |= bit; set &= unchecked((ushort)~bit); }
+            if (mask == 0) continue;
+            ushort before = flags;
+            bool clears = selector is 0 or 22 or 24 or 25 or 27;
+            if (reverse) flags ^= mask;
+            else if (clears) flags &= unchecked((ushort)~mask);
+            else flags |= mask;
+            if ((before & Underline) != 0 && (flags & Underline) == 0) dropUnderlineDetail = true;
         }
-        return (set | clear | toggle) != 0;
     }
 
-    /// <summary>Applies the masks to one row span, widened so a wide glyph is never split; returns whether any cell changed.</summary>
-    private bool ChangeRowAttributes(TerminalRow row, int first, int last, ushort set, ushort clear, ushort toggle)
+    /// <summary>
+    /// Applies the selectors to one row span, widened so a wide glyph is never split; the rectangle also occupies the span even when no
+    /// attribute differs. Returns whether any cell changed.
+    /// </summary>
+    private bool ChangeRowAttributes(TerminalRow row, int first, int last, ReadOnlySpan<int> selectors, bool reverse, bool rectangle)
     {
         if (first > 0 && row.Cells[first].IsWideContinuation && row.Cells[first - 1].IsWide) first--;
         if (last + 1 < Cols && row.Cells[last].IsWide && row.Cells[last + 1].IsWideContinuation) last++;
@@ -126,19 +148,26 @@ public partial class TerminalBuffer
         for (int col = first; col <= last; col++)
         {
             var cell = row.Cells[col];
-            ushort flags = (ushort)(((cell.Flags & ~clear) | set) ^ toggle);
-            if (flags == cell.Flags) continue;
-            if ((cell.Flags & (ushort)TerminalCellFlags.Underline) != 0 && (flags & (ushort)TerminalCellFlags.Underline) == 0
-                && row.GetUnderline(col) is { } detail)
+            ushort flags = cell.Flags;
+            bool dropDetail = false;
+            ApplySelectors(selectors, reverse, ref flags, ref dropDetail);
+            bool detailChanged = false;
+            if (dropDetail && row.GetUnderline(col) is { } detail)
             {
-                // The underline's style and color go with it; an independent overline stays.
-                row.SetUnderline(col, detail.Overline ? CellUnderline.OverlineOnly : null);
+                // The underline's style and color go with it, wherever the list leaves the underline; an independent overline stays.
+                var replacement = detail.Overline ? CellUnderline.OverlineOnly : null;
+                if (!Equals(detail, replacement))
+                {
+                    row.SetUnderline(col, replacement);
+                    detailChanged = true;
+                }
             }
+            if (flags == cell.Flags && !detailChanged) continue;
             cell.Flags = (ushort)(flags | (ushort)TerminalCellFlags.Dirty);
             row.Cells[col] = cell;
-            row.NoteColumnsWritten(col + 1);
             changed = true;
         }
+        if (rectangle || changed) row.NoteColumnsWritten(last + 1);
         if (changed) row.TouchRevision();
         return changed;
     }

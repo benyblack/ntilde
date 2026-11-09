@@ -580,4 +580,38 @@ public sealed class RectangularAttributeTests
         Assert.Equal("[IB][IB]..", Marks(buffer, 0, 4));
         Assert.Equal("BB..", Marks(buffer, 1, 4));
     }
+
+    /// <summary>A rectangle occupies its cells even when the attributes already match, so a later stream change reaches them.</summary>
+    [Fact]
+    public void Rectangle_occupies_cells_even_when_nothing_changes()
+    {
+        var buffer = new TerminalBuffer(8, 2);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process($"{Esc}[2*x{Esc}[1;1;1;4;0$r{Esc}[0*x{Esc}[1;1;1;8;7$r");
+        Assert.Equal("IIII....", Marks(buffer, 0, 8));
+    }
+
+    /// <summary>Selectors apply in order: 24 then 4 drops the underline style and color exactly as two separate commands do.</summary>
+    [Fact]
+    public void Selector_order_decides_whether_underline_detail_survives()
+    {
+        static string Detail(string commands)
+        {
+            var buffer = new TerminalBuffer(8, 2);
+            var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+            parser.Process($"{Esc}[4:3;58:5:5mA{Esc}[0m{Esc}[2*x{commands}");
+            buffer.Lock.EnterReadLock();
+            try
+            {
+                var row = buffer.GetRowAbsolute(buffer.Scrollback.Count)!;
+                return $"{row.Cells[0].IsUnderline}/{row.GetUnderline(0)?.Style}/{row.GetUnderline(0)?.ColorIndex}";
+            }
+            finally { buffer.Lock.ExitReadLock(); }
+        }
+        string together = Detail($"{Esc}[1;1;1;1;24;4$r");
+        Assert.Equal(Detail($"{Esc}[1;1;1;1;24$r{Esc}[1;1;1;1;4$r"), together);
+        Assert.Equal("True//", together);
+        Assert.Equal($"True/Curly/5", Detail($"{Esc}[1;1;1;1;4;4$r"));
+        Assert.Equal("True//", Detail($"{Esc}[1;1;1;1;4$t{Esc}[1;1;1;1;4$t"));
+    }
 }
