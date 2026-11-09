@@ -46,6 +46,18 @@ namespace Ntilde.VT.Storage
             }
         }
 
+        /// <summary>True when <paramref name="predicate"/> holds for any key; stops at the first.</summary>
+        public bool AnyKey(System.Func<int, bool> predicate)
+        {
+            if (_dictionary != null)
+            {
+                foreach (var key in _dictionary.Keys) if (predicate(key)) return true;
+                return false;
+            }
+            for (int i = 0; i < _count; i++) if (predicate(_entries![i].Key)) return true;
+            return false;
+        }
+
         /// <summary>
         /// Attempts to get the value associated with the specified key.
         /// </summary>

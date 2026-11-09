@@ -508,7 +508,6 @@ namespace Ntilde.VT
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 EraseTextSizingRange(_cursorCol, Cols, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                if (_cursorCol >= 0 && _cursorCol < Cols) ClearDisplacedWideProtection(row, _cursorCol, Cols);
                 if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteColumnsWritten(Cols);
                 for (int i = _cursorCol; i < Cols; i++)
                 {
@@ -535,7 +534,6 @@ namespace Ntilde.VT
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 EraseTextSizingRange(0, Math.Min(Cols, _cursorCol + 1), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                ClearDisplacedWideProtection(row, Math.Max(0, _cursorCol), Math.Min(Cols, _cursorCol + 1));
                 row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + 1));
                 for (int i = 0; i <= _cursorCol; i++)
                 {
@@ -607,10 +605,7 @@ namespace Ntilde.VT
                 EraseTextSizingRange(_cursorCol, (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count)), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)
-                {
-                    ClearDisplacedWideProtection(row, _cursorCol, (int)Math.Min(Cols, (long)_cursorCol + count));
                     row.NoteColumnsWritten((int)Math.Min(Cols, (long)_cursorCol + count));
-                }
 
                 for (int i = 0; i < count; i++)
                 {
@@ -847,7 +842,10 @@ namespace Ntilde.VT
                 if (clearAlt)
                 {
                     ClearAltScreenNoLock();
+                    // Entering the alternate screen starts a fresh pen, but DECSCA is one flag for the terminal, as in xterm: it carries over.
+                    bool protectedPen = IsCharacterProtected;
                     ResetCursorStateToDefaultsNoLock();
+                    IsCharacterProtected = protectedPen;
                     CaptureCursorStateNoLock(_screenCursorStates.Alt);
                 }
                 else
@@ -1177,8 +1175,6 @@ namespace Ntilde.VT
                         for (int r = 0; r < rowsToCopy; r++)
                         {
                             var row = _viewport[r];
-                            // The copy overwrites [0, colsToCopy): wide glyphs it cuts at the edge leave orphan halves that must not keep protection.
-                            ClearDisplacedWideProtection(row, 0, colsToCopy);
                             Array.Copy(cellSpan.Slice(r * snapshot.Cols, colsToCopy).ToArray(), row.Cells, colsToCopy);
 
                             row.WrittenColumns = Math.Min(snapshot.RowWrittenColumns?[r]
@@ -1263,7 +1259,6 @@ namespace Ntilde.VT
                         var restored = _viewport[r];
                         // A checkpoint wider than this buffer clips a wide glyph at the last column: its protection goes with the lost half.
                         restored.ClearProtectionOfClippedWideAnchor(restoredCols, snapshot.Cols);
-                        restored.NormalizeImportedWideProtection();
                         if (!restored.HasProtectedCells) continue;
                         // Protected cells in the columns the snapshot did not replace are authored content: keep their extent.
                         for (int c = restoredCols; c < Cols; c++) if (restored.IsProtected(c)) restored.NoteColumnsWritten(c + 1);

@@ -275,8 +275,6 @@ namespace Ntilde.VT
                                 bool expandedIntoNextCell = false;
                                 if (!nextCell.IsWideContinuation)
                                 {
-                                    // The adjacent cell is overwritten: if it headed another wide glyph, that glyph's continuation is orphaned.
-                                    ClearDisplacedWideProtection(row, attachCol + 1, attachCol + 2);
                                     SyncPackedState();
                                     nextCell = new TerminalCell(' ', _packedFg, _packedBg, (ushort)(_packedFlags | (ushort)TerminalCellFlags.WideContinuation));
                                     row.SetExtendedText(attachCol + 1, null); // Ensure no old text remains
@@ -284,9 +282,6 @@ namespace Ntilde.VT
                                     row.SetUnderline(attachCol + 1, UnderlineForWrite); // the continuation takes the pen's flags
                                     expandedIntoNextCell = true;
                                 }
-
-                                // The continuation, new or already there, is the glyph's own half and carries the glyph's protection.
-                                row.SetProtected(attachCol + 1, row.IsProtected(attachCol));
 
                                 // If the cursor was waiting at the next cell, and we just expanded into it, push the cursor forward.
                                 if (expandedIntoNextCell && _cursorCol == attachCol + 1)
@@ -350,7 +345,8 @@ namespace Ntilde.VT
 
                 SyncPackedState();
 
-                ClearDisplacedWideProtection(row, _cursorCol, Math.Min(Cols, _cursorCol + Math.Max(1, width)));
+                // Protection is only touched when the pen protects or the row already holds records: plain output pays one null check.
+                bool tracksProtection = _state.IsCharacterProtected || row.HasProtectionEntries;
 
                 // Clear continuations and old extended text
                 for (int i = 0; i < width && _cursorCol + i < Cols; i++)
@@ -359,7 +355,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(_cursorCol + i, null);
                     row.SetHyperlink(_cursorCol + i, null);
                     row.SetUnderline(_cursorCol + i, null);
-                    row.SetProtected(_cursorCol + i, false);
+                    if (tracksProtection) row.SetProtected(_cursorCol + i, false);
                 }
 
                 ushort flags = _packedFlags;
@@ -373,7 +369,7 @@ namespace Ntilde.VT
                 }
                 row.SetHyperlink(_cursorCol, _currentHyperlink);
                 row.SetUnderline(_cursorCol, UnderlineForWrite);
-                row.SetProtected(_cursorCol, _state.IsCharacterProtected);
+                if (tracksProtection) row.SetProtected(_cursorCol, _state.IsCharacterProtected); // a wide glyph's protection lives on its anchor
 
                 if (width >= 2 && _cursorCol + 1 < Cols)
                 {
@@ -384,7 +380,6 @@ namespace Ntilde.VT
                         row.SetExtendedText(_cursorCol + i, null);
                         row.SetHyperlink(_cursorCol + i, _currentHyperlink);
                         row.SetUnderline(_cursorCol + i, UnderlineForWrite);
-                        row.SetProtected(_cursorCol + i, _state.IsCharacterProtected);
                     }
                 }
 
@@ -637,41 +632,6 @@ namespace Ntilde.VT
             Invalidate();
         }
 
-        /// <summary>
-        /// A write over part of a wide glyph orphans its other half. That half is no longer part of any protected glyph, so it must
-        /// not keep the old glyph's protection: the continuation of an overwritten head and the anchor of an overwritten tail lose it
-        /// when they lie outside the written range [<paramref name="start"/>, <paramref name="end"/>).
-        /// </summary>
-        private static void ClearDisplacedWideProtection(TerminalRow row, int start, int end)
-        {
-            if (!row.HasProtectedCells) return;
-            for (int col = start; col < end; col++)
-            {
-                // Only a real pair counts: an orphaned wide flag beside an unrelated character says nothing about that character.
-                if (row.Cells[col].IsWide && col + 1 >= end && col + 1 < row.Cells.Length && row.Cells[col + 1].IsWideContinuation)
-                    row.SetProtected(col + 1, false);
-                if (row.Cells[col].IsWideContinuation && col - 1 < start && col > 0 && row.Cells[col - 1].IsWide)
-                    row.SetProtected(col - 1, false);
-            }
-        }
-
-        /// <summary>
-        /// After cells shift, a wide glyph may have lost one half; a protected half with no partner is not part of any protected glyph.
-        /// Scans [<paramref name="from"/>, <paramref name="to"/>) and unprotects such cells.
-        /// </summary>
-        private static void NormalizeWideProtection(TerminalRow row, int from, int to)
-        {
-            if (!row.HasProtectedCells) return;
-            int last = Math.Min(to, row.Cells.Length);
-            for (int col = Math.Max(0, from); col < last; col++)
-            {
-                if (!row.IsProtected(col)) continue;
-                bool orphanHead = row.Cells[col].IsWide && col + 1 < row.Cells.Length && !row.Cells[col + 1].IsWideContinuation;
-                bool orphanTail = row.Cells[col].IsWideContinuation && !(col > 0 && row.Cells[col - 1].IsWide);
-                if (orphanHead || orphanTail) row.SetProtected(col, false);
-            }
-        }
-
         private void InsertCharactersInternal(int count)
         {
             // Lock must be held by caller
@@ -683,6 +643,9 @@ namespace Ntilde.VT
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;
 
+            // A glyph pushed against the right edge loses its continuation off the end; its anchor must not stay protected there.
+            // (A glyph that is already an edge anchor keeps its record: nothing was cut.)
+            bool edgeCut = Cols - 1 - count >= _cursorCol && row.Cells[Cols - 1 - count].IsWide;
             // Shift characters to right
             // Start from end, move char at (c - count) to c
             for (int c = Cols - 1; c >= endCol; c--)
@@ -695,6 +658,7 @@ namespace Ntilde.VT
             // string stays behind at the old column (#164). Insert mode reaches this per printable
             // character, hence the HasRowMetadata guard.
             if (row.HasRowMetadata) row.ShiftRowMetadata(_cursorCol, count, Cols);
+            if (edgeCut) row.SetProtected(Cols - 1, false);
 
             // Fill gap with default empty cells
             var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex, false, false, false, false, false, false);
@@ -702,7 +666,6 @@ namespace Ntilde.VT
             {
                 row.Cells[c] = empty;
             }
-            NormalizeWideProtection(row, _cursorCol - 1, Cols);
             row.TouchRevision();
         }
 
@@ -731,9 +694,9 @@ namespace Ntilde.VT
             int endCol = Cols - count;
             EraseTextSizingForShift(insert: false, count);
             var row = _viewport[_cursorRow];
-            // The deleted range [cursor, cursor + count) cuts glyphs at both ends; their surviving halves are orphans, not parts of the
-            // glyphs that happen to shift against them, so they lose protection before the cells move.
-            ClearDisplacedWideProtection(row, _cursorCol, _cursorCol + count);
+            // Deleting a continuation leaves its anchor beside whatever shifts in next, which could be another glyph's continuation:
+            // the anchor's record must go with the half that is deleted, or the two would read as one protected glyph.
+            if (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation && row.Cells[_cursorCol - 1].IsWide) row.SetProtected(_cursorCol - 1, false);
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;
 
@@ -774,7 +737,6 @@ namespace Ntilde.VT
             {
                 row.Cells[c] = empty;
             }
-            NormalizeWideProtection(row, _cursorCol - 1, Cols);
             row.TouchRevision();
         }
     }

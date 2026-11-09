@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "86a0b862ed47dd3df8fdf5f9fafa59aa7d367b52490b95fe5d6fc3c50419fc1a",
+  "matrixSha256": "e15081b448fe19a62f6f20cec9ddcfe7bbcda54b2b6234c10c5e463010aa6ecc",
   "summary": {
     "totalRows": 103,
     "supportedCount": 53,
@@ -485,7 +485,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Modes 0/1/2 erase their ED region except characters written under DECSCA 1, leaving the cursor, pen and saved lines alone; while nothing on the screen is protected they are exactly ED. With protected text present the inline-image plane is left untouched (ordinary ED retires intersecting images). Undefined private mode 3 is ignored and preserves scrollback, both screen banks and image anchors; ordinary ED 3 still clears history. Rows scrolled into history lose protection.",
+      "knownDeviations": "Modes 0/1/2 erase their ED region except characters written under DECSCA 1, leaving the cursor, pen and saved lines alone; while nothing on the screen is protected they are exactly ED. Mode 2 retires intersecting inline images exactly as ED 2 does; images are never protected. Undefined private mode 3 is ignored and preserves scrollback, both screen banks and image anchors; ordinary ED 3 still clears history. Rows scrolled into history lose protection.",
       "sourceLine": 90
     },
     {
@@ -586,7 +586,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "\u0060CSI 1 \u0022 q\u0060 protects later characters from DECSED and DECSERA; 0, 2 and an omitted value do not; other values and extra parameters are ignored. A separate pen mode, not SGR: SGR resets leave it alone, DECSC/DECRC save it per screen, DECSTR and RIS reset it. Stored per screen cell (wide glyphs protect both halves), kept through ICH/DCH/IRM, scrolling, resize/reflow, full-state export and recording checkpoints; ordinary erases and overwrites clear it. Rows scrolled into history lose protection. ISO SPA/EPA protection, DECRQSS and DECSEL are not covered; ANSI/text export carries no protection.",
+      "knownDeviations": "\u0060CSI 1 \u0022 q\u0060 protects later characters from DECSED and DECSERA; 0, 2 and an omitted value do not; other values and extra parameters are ignored. A separate pen mode, not SGR: SGR resets leave it alone, DECSC/DECRC save it per screen, DECSTR and RIS reset it, and entering the alternate screen keeps it. Stored per screen cell (a wide glyph\u0027s protection lives on its anchor and reads on both halves only while the pair is intact), kept through ICH/DCH/IRM, scrolling, resize/reflow, full-state export and recording checkpoints; ordinary erases and overwrites clear it. Rows scrolled into history lose protection. ISO SPA/EPA protection, DECRQSS and DECSEL are not covered; ANSI/text export carries no protection.",
       "sourceLine": 94
     },
     {

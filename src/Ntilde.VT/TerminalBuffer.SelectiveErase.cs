@@ -35,8 +35,8 @@ public partial class TerminalBuffer
     /// <summary>
     /// DECSED: the ED region of <paramref name="mode"/> (0 cursor to end, 1 start to cursor, 2 everything)
     /// erased except protected characters. Returns false, having changed nothing, when no character is
-    /// protected, so the caller runs ordinary ED. Like DECERA it works on stored text only: the image
-    /// plane, the cursor, the pen and saved lines are untouched.
+    /// protected, so the caller runs ordinary ED. Like DECERA it works on stored text only: the cursor, the pen
+    /// and saved lines are untouched (mode 2 retires images exactly as ED 2 does).
     /// </summary>
     internal bool TrySelectiveEraseInDisplay(int mode)
     {
@@ -59,6 +59,7 @@ public partial class TerminalBuffer
         int firstRow = mode == 0 ? _cursorRow : 0;
         int lastRow = mode == 1 ? _cursorRow : Rows - 1;
         var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
+        if (mode == 2) RetireImagesOverVisibleScreen(); // as ED 2 does: only ED 2 touches the image plane, and images are never protected
         for (int r = firstRow; r <= lastRow; r++)
         {
             bool cursorRow = r == _cursorRow;
@@ -157,7 +158,7 @@ public partial class TerminalBuffer
             // nothing the row did not already hold, and must not extend the extent reflow uses to tell typed spaces from wide padding.
             BlankRun(row, start, col, blank, noteExtent: !edShortcut || !blank.IsDefaultBackground);
         }
-        if (edShortcut && blank.IsDefaultBackground && to == Cols) TrimErasedTailExtent(row, from);
+        if (edShortcut && blank.IsDefaultBackground && to == Cols) TrimErasedTailExtent(rowIndex, from);
         row.TouchRevision();
     }
 
@@ -165,11 +166,13 @@ public partial class TerminalBuffer
     /// A selective display erase of a row's tail over default blanks trims the authored extent back to what survives (the cells before
     /// <paramref name="from"/> and the protected cells), so a later wide pre-wrap still recognizes the erased tail as padding.
     /// </summary>
-    private static void TrimErasedTailExtent(TerminalRow row, int from)
+    private void TrimErasedTailExtent(int rowIndex, int from)
     {
+        var row = _viewport[rowIndex];
         if (row.WrittenColumns <= from) return;
         int kept = from;
-        for (int c = from; c < row.Cells.Length; c++) if (row.IsProtected(c)) kept = c + 1;
+        // Cells the erase spared (protected, or part of a scaled block with a protected cell) are still authored content.
+        for (int c = from; c < row.Cells.Length; c++) if (IsProtectedOrInProtectedBlock(rowIndex, c)) kept = c + 1;
         row.WrittenColumns = Math.Min(row.WrittenColumns, kept);
     }
 

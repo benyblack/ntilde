@@ -541,11 +541,7 @@ namespace Ntilde.VT
                 }
 
                 // A narrower destination clips a wide glyph at its last column; the anchor loses protection with the lost half.
-                for (int r = 0; r < rowsToCopy; r++)
-                {
-                    rows[r].ClearProtectionOfClippedWideAnchor(colsToCopy, sourceCols);
-                    rows[r].NormalizeImportedWideProtection();
-                }
+                for (int r = 0; r < rowsToCopy; r++) rows[r].ClearProtectionOfClippedWideAnchor(colsToCopy, sourceCols);
             }
         }
 

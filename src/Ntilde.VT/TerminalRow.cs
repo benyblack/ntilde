@@ -164,12 +164,26 @@ namespace Ntilde.VT
             _underlines = null;
         }
 
-        /// <summary>Whether the character at <paramref name="col"/> was written under DECSCA 1 and is still protected.</summary>
+        /// <summary>
+        /// Whether the character at <paramref name="col"/> was written under DECSCA 1 and is still protected. A wide glyph is protected
+        /// as a unit, held on its anchor: a continuation is protected exactly when it still follows a protected wide anchor, and an
+        /// anchor only while its continuation (or the screen edge) follows it. A half that an overwrite, erase, shift or clip has
+        /// orphaned therefore reads unprotected without any cleanup at the place that orphaned it.
+        /// </summary>
         public bool IsProtected(int col)
-            => _protected != null && _protected.TryGet(col, out _);
+        {
+            if (_protected == null || (uint)col >= (uint)Cells.Length) return false;
+            var cell = Cells[col];
+            if (cell.IsWideContinuation) return col > 0 && Cells[col - 1].IsWide && _protected.TryGet(col - 1, out _);
+            if (!_protected.TryGet(col, out _)) return false;
+            return !cell.IsWide || col == Cells.Length - 1 || Cells[col + 1].IsWideContinuation;
+        }
 
-        /// <summary>True when any column of this row is protected.</summary>
-        public bool HasProtectedCells => _protected is { Count: > 0 };
+        /// <summary>True when any column of this row reads protected (see <see cref="IsProtected"/>).</summary>
+        public bool HasProtectedCells => _protected is { Count: > 0 } map && map.AnyKey(IsProtected);
+
+        /// <summary>Cheap: whether the row holds any protection record at all, possibly stale. Safe to use to skip protection work.</summary>
+        internal bool HasProtectionEntries => _protected != null;
 
         /// <summary>Marks or unmarks one column; unmarking a row that never had protection is free.</summary>
         public void SetProtected(int col, bool isProtected)
@@ -191,24 +205,6 @@ namespace Ntilde.VT
         internal void ClearProtectionOfClippedWideAnchor(int copiedCols, int sourceCols)
         {
             if (copiedCols > 0 && copiedCols < sourceCols && Cells[copiedCols - 1].IsWide) SetProtected(copiedCols - 1, false);
-        }
-
-        /// <summary>
-        /// A wide glyph is protected as a unit. After protection arrives from outside (state import, checkpoint), a pair marked on only
-        /// one half is not a state the terminal can produce, so neither half keeps the mark; a protected half with no partner loses it.
-        /// </summary>
-        internal void NormalizeImportedWideProtection()
-        {
-            if (!HasProtectedCells) return;
-            for (int col = 0; col < Cells.Length; col++)
-            {
-                // A wide anchor on the last column has no continuation to pair with; with autowrap off the terminal produces it live.
-                if (Cells[col].IsWide && col == Cells.Length - 1) continue;
-                bool pair = Cells[col].IsWide && col + 1 < Cells.Length && Cells[col + 1].IsWideContinuation;
-                if (pair && IsProtected(col) != IsProtected(col + 1)) { SetProtected(col, false); SetProtected(col + 1, false); }
-                else if (!pair && IsProtected(col) && (Cells[col].IsWide || Cells[col].IsWideContinuation)
-                    && !(Cells[col].IsWideContinuation && col > 0 && Cells[col - 1].IsWide)) SetProtected(col, false);
-            }
         }
 
         public void ClearProtection()

@@ -364,6 +364,69 @@ public sealed class SelectiveErasureTests
         Assert.NotNull(buffer.ExportState(0).TextSizing); // the block was spared, not retired
     }
 
+    /// <summary>Insert and delete lines move whole rows, so protected rows keep their protection and the rows they open are unprotected.</summary>
+    [Fact]
+    public void Insert_and_delete_lines_move_protected_rows_with_their_protection()
+    {
+        var (buffer, parser) = Create(8, 5);
+        parser.Process("\u001b[1;1Hone\u001b[2;1H\u001b[1\"qtwo\u001b[0\"q\u001b[3;1Hthree\u001b[4;1Hfour");
+        parser.Process("\u001b[1;1H\u001b[L");           // IL: a blank row on top, everything moves down one
+        Assert.Equal(new[] { string.Empty, "one", "two", "three", "four" }, Rows(buffer));
+        parser.Process("\u001b[?2J");
+        Assert.Equal(new[] { string.Empty, string.Empty, "two", string.Empty, string.Empty }, Rows(buffer));
+        parser.Process("\u001b[1;1H\u001b[M");           // DL: the protected row moves up and survives another selective erase
+        Assert.Equal(new[] { string.Empty, "two", string.Empty, string.Empty, string.Empty }, Rows(buffer));
+        parser.Process("\u001b[?2J");
+        Assert.Equal("two", Row(buffer, 1));
+    }
+
+    /// <summary>
+    /// DECSED mode 0 and 1 cut a wide glyph at the cursor exactly as ED does (selective and ordinary erase agree wherever nothing is
+    /// protected there): the half the span reaches goes, the other half stays. Pinned so a change to wide handling is deliberate.
+    /// </summary>
+    [Fact]
+    public void Decsed_cuts_an_unprotected_wide_glyph_at_the_cursor_like_ED()
+    {
+        var (selective, selectiveParser) = Create(8, 3);
+        var (ordinary, ordinaryParser) = Create(8, 3);
+        const string seed = "\u001b[3;1H\u001b[1\"qP\u001b[0\"q\u001b[1;1HA界B\u001b[1;3H";
+        selectiveParser.Process(seed + "\u001b[?0J");
+        ordinaryParser.Process(seed.Replace("\u001b[1\"qP\u001b[0\"q", "P") + "\u001b[0J");
+        Assert.Equal(CellAt(ordinary, 1, 0).Character, CellAt(selective, 1, 0).Character);
+        Assert.Equal(CellAt(ordinary, 2, 0).IsWideContinuation, CellAt(selective, 2, 0).IsWideContinuation);
+        Assert.Equal(CellAt(ordinary, 3, 0).Character, CellAt(selective, 3, 0).Character);
+    }
+
+    /// <summary>DECSED 2 retires the images over the screen like ED 2, protected text or not; modes 0 and 1 never touch images.</summary>
+    [Theory]
+    [InlineData(2, true, "P")]
+    [InlineData(0, false, "Pabc")]
+    [InlineData(1, false, "P")]
+    public void Decsed_retires_images_like_ED_even_with_protected_text(int mode, bool retired, string firstRow)
+    {
+        var (buffer, parser) = Create(8, 4);
+        parser.Process("\u001b[1;1H\u001b[1\"qP\u001b[0\"qabc");
+        buffer.AddImage(new TerminalImage(new object(), 2, buffer.Scrollback.Count + 1, 2, 1));
+        parser.Process($"\u001b[2;1H\u001b[?{mode}J");
+        Assert.Equal(retired ? 0 : 1, buffer.Images.Count);
+        Assert.Equal(firstRow, Row(buffer, 0));
+    }
+
+    /// <summary>A selective display erase of a row's tail keeps the authored extent of an OSC 66 block it spared.</summary>
+    [Fact]
+    public void Selective_display_erase_keeps_the_extent_of_a_spared_scaled_block()
+    {
+        var (buffer, parser) = Create(8, 4);
+        parser.Process("\u001b[1;1H\u001b[1\"q\u001b]66;s=2;A\a\u001b[0\"q");
+        parser.Process("\u001b[?47h");
+        buffer.Resize(8, 3);
+        buffer.Resize(8, 4);
+        parser.Process("\u001b[?47l\u001b[?2J");   // mixed protection after the round trip: the whole block is spared
+        buffer.Lock.EnterReadLock();
+        try { Assert.True(buffer.GetRowAbsolute(buffer.Scrollback.Count)!.WrittenColumns >= 2); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     /// <summary>Whatever the input is split into, the selective erase gives the same screen.</summary>
     [Fact]
     public void Selective_erasure_is_equivalent_across_every_input_split()

@@ -109,13 +109,13 @@ invariant changes.
 - **Character protection (DECSCA) belongs to VT as sparse screen metadata.** `CSI 1 " q` sets a pen
   mode, separate from SGR (SGR resets never touch it), that marks later characters protected in a
   per-row side table; `TerminalCellFlags` and the 12-byte cell layout are unchanged. Writes set or
-  clear it with the cell (wide glyphs mark both halves, OSC 66 blocks mark the whole unit);
+  clear it with the cell (a wide glyph's protection lives on its anchor and reads on both halves only while the pair is intact, so an orphaned half reads unprotected with no cleanup; OSC 66 blocks mark the whole unit);
   ICH/DCH/insert mode, scrolling, resize/reflow, both screen banks, full-state export (`prot`,
   `dsca`) and recording checkpoints (`prot_cells`, `dsca`) carry it; every ordinary erase and
-  overwrite clears it. DECSC/DECRC save the mode per screen and DECSTR/RIS reset it. DECSED
+  overwrite clears it. DECSC/DECRC save the mode per screen, entering the alternate screen keeps it, and DECSTR/RIS reset it. DECSED
   (`CSI ? Ps J`) and DECSERA (`CSI Pt;Pl;Pb;Pr $ {`) erase only unprotected characters with
   ED's/DECERA's blanks and cleanup, and are exactly ED/DECERA while nothing in the region is
-  protected; with protected text present they leave the image plane untouched. Protection is
+  protected; DECSED 2 retires images exactly as ED 2 does. Protection is
   screen state: rows that scroll into history lose it, and ANSI text export, render snapshots and
   the mux text client do not carry it. DECSEL stays an EL alias and ISO SPA/EPA is unsupported;
   both are separate contracts.

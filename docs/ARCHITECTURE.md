@@ -420,7 +420,7 @@ Incoming boundaries are validated before state changes, including rejection of h
 `CSI 1 " q` sets a pen mode, separate from SGR, that marks later characters protected in a sparse
 per-row side table beside the other row metadata; the cell flags and the 12-byte cell layout do not
 change. Protection travels with its cell wherever VT moves or copies it: writes (wide glyphs mark both
-halves, scaled blocks the whole unit), ICH/DCH/insert mode, scrolling, both screen banks, resize and
+halves through the anchor, scaled blocks the whole unit), ICH/DCH/insert mode, scrolling, both screen banks, resize and
 reflow, saved cursors (the pen mode, per screen), `prot`/`dsca` in full-state transfer and
 `prot_cells`/`dsca` in recording checkpoints. Every ordinary erase and overwrite clears it, so protected
 text is not read-only. DECSED and DECSERA erase only the unprotected characters of their region with

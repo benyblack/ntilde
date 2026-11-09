@@ -111,15 +111,15 @@ public sealed class CharacterProtectionStateTests
         Assert.False(buffer.IsCharacterProtected);
     }
 
-    /// <summary>Entering the alternate screen gives it its own pen; leaving restores the main screen's.</summary>
+    /// <summary>DECSCA is one flag across the screen switch, as in xterm: entering the alternate screen keeps it, and leaving restores the main screen's saved pen.</summary>
     [Fact]
-    public void The_pen_mode_is_per_screen()
+    public void The_pen_mode_survives_entering_the_alternate_screen_and_is_restored_on_exit()
     {
         var (buffer, parser) = Create();
         parser.Process(Esc + "[1\"q" + Esc + "[?1049h");
-        Assert.False(buffer.IsCharacterProtected);
-        parser.Process(Esc + "[?1049l");
         Assert.True(buffer.IsCharacterProtected);
+        parser.Process(Esc + "[0\"q" + Esc + "[?1049l");
+        Assert.True(buffer.IsCharacterProtected, "the main screen's saved pen returns");
     }
 
     /// <summary>Cells move with their protection: ICH, DCH, insert mode and scrolling.</summary>
@@ -620,11 +620,11 @@ public sealed class CharacterProtectionStateTests
         finally { File.Delete(path); }
     }
 
-    /// <summary>A payload that marks one half of a wide pair, or a half with no partner, imports without any protected half.</summary>
+    /// <summary>A wide pair's protection is held on its anchor: marking the anchor protects the pair, marking only the continuation protects nothing.</summary>
     [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    public void Imported_half_marked_wide_pairs_are_not_protected(int markedColumn)
+    [InlineData(0, "PPP.......")]
+    [InlineData(1, "..P.......")]
+    public void Imported_wide_pairs_take_their_protection_from_the_anchor(int markedColumn, string expected)
     {
         var (live, parser) = Create(10, 4);
         parser.Process(Esc + "[1;1H界X");
@@ -632,7 +632,7 @@ public sealed class CharacterProtectionStateTests
         state.Main.ProtectedCells = [markedColumn, 2];   // one half of the pair, and the unrelated X
         var restored = new TerminalBuffer(10, 4);
         restored.ImportState(state);
-        Assert.Equal("..P.......", Mask(restored, 0));
+        Assert.Equal(expected, Mask(restored, 0));
     }
 
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
