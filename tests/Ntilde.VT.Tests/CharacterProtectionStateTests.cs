@@ -450,6 +450,17 @@ public sealed class CharacterProtectionStateTests
         Assert.False(buffer.HasProtectedCharacters());
     }
 
+    /// <summary>A protected character written beside an orphaned wide flag keeps its protection when a later write lands next to it.</summary>
+    [Fact]
+    public void An_orphaned_wide_flag_does_not_unprotect_its_unrelated_neighbour()
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q界" + Esc + "[1;1HP");   // P protected over the head; the old continuation flag stays at column 2
+        Assert.Equal("P.........", Mask(buffer, 0));
+        parser.Process(Esc + "[0\"q" + Esc + "[1;2HQ");                      // an unprotected Q over the orphaned continuation
+        Assert.True(Protection(buffer, 0)[0], "P is not part of any wide pair and stays protected");
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

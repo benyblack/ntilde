@@ -643,8 +643,11 @@ namespace Ntilde.VT
             if (!row.HasProtectedCells) return;
             for (int col = start; col < end; col++)
             {
-                if (row.Cells[col].IsWide && col + 1 >= end && col + 1 < row.Cells.Length) row.SetProtected(col + 1, false);
-                if (row.Cells[col].IsWideContinuation && col - 1 < start && col > 0) row.SetProtected(col - 1, false);
+                // Only a real pair counts: an orphaned wide flag beside an unrelated character says nothing about that character.
+                if (row.Cells[col].IsWide && col + 1 >= end && col + 1 < row.Cells.Length && row.Cells[col + 1].IsWideContinuation)
+                    row.SetProtected(col + 1, false);
+                if (row.Cells[col].IsWideContinuation && col - 1 < start && col > 0 && row.Cells[col - 1].IsWide)
+                    row.SetProtected(col - 1, false);
             }
         }
 
