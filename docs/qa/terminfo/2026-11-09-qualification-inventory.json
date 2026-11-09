@@ -1387,8 +1387,8 @@
       ],
       "evidence": {
         "files": 50,
-        "bytes": 806115,
-        "sha256": "30de32aeb638a4811c7e33eb00fbab036e9d8c1cde99c0ca8ab6a9ca85734698"
+        "bytes": 807225,
+        "sha256": "ef5af927a695626c78c7019c861f0e612431de193419f367e8bbeaa5fe5dc742"
       },
       "receipt": {
         "schemaVersion": 33,
@@ -1437,7 +1437,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/attr-rect-publication.test.mjs",
-        "testSha256": "1d22d74bb2f6b48d9a6f2965f8b30208bc83aecc48f93c82c88645d01caf6267"
+        "testSha256": "3756ca92e85f658697bd42c2beb166ba39fb9dd51ab8fe3da532d943b4380321"
       }
     }
   ],

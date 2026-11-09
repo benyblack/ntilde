@@ -1316,6 +1316,20 @@
       }
     },
     {
+      "runId": "98810e12e7baffcb92c59caca26d9d69",
+      "scriptsRevision": "2bd4b0c06c16b2fba92b08a5b35ed269efb522bd",
+      "receiptCompleted": false,
+      "verdicts": null,
+      "outcome": "later attempt on head 2bd4b0c0 (the legacy-replay-checkpoint fix, which touches no measured path), made after the published run below: the owned App aborted before any observation (Avalonia.Native could not start the RenderTimer, native error -6661; the desktop session was idle and locked), so no evidence was collected; preserved, not evidence"
+    },
+    {
+      "runId": "855c4ce581f4446b04444bb191606b58",
+      "scriptsRevision": "2bd4b0c06c16b2fba92b08a5b35ed269efb522bd",
+      "receiptCompleted": false,
+      "verdicts": null,
+      "outcome": "later attempt on head 2bd4b0c0 (the legacy-replay-checkpoint fix, which touches no measured path), made after the published run below: the owned App aborted before any observation (Avalonia.Native could not start the RenderTimer, native error -6661; the desktop session was idle and locked), so no evidence was collected; preserved, not evidence"
+    },
+    {
       "runId": "6af895fbcdedae19c5682fee92717d57",
       "scriptsRevision": "9ee16b381337241c2fa2575eae8c63b76a50f932",
       "receiptCompleted": true,

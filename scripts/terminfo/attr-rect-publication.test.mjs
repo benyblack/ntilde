@@ -209,6 +209,10 @@ test('prior publications still rederive beside this batch and every superseded a
     assert.ok(attempts.length >= 2);
     assert.equal(attempts.at(-1).runId, context.runId);
     for (const attempt of attempts.slice(0, -1)) assert.notEqual(attempt.runId, context.runId);
-    assert.ok(attempts.every(attempt => attempt.receiptCompleted === true));
-    assert.ok(attempts.every(attempt => Object.values(attempt.verdicts).length === 3));
+    // A completed attempt carries its three verdicts; an attempt whose App aborted before any observation is preserved as such, never as evidence.
+    for (const attempt of attempts) {
+        if (attempt.receiptCompleted) assert.equal(Object.values(attempt.verdicts).length, 3);
+        else assert.ok(attempt.verdicts === null && /before any observation/.test(attempt.outcome), attempt.runId);
+    }
+    assert.ok(attempts.at(-1).receiptCompleted);
 });
