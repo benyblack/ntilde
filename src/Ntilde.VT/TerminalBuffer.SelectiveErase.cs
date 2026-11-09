@@ -8,9 +8,9 @@ public partial class TerminalBuffer
     /// </summary>
     public bool HasProtectedCharacters()
     {
-        bool lockTaken = EnterWriteLockIfNeeded();
+        bool lockTaken = EnterReadLockIfNeeded();
         try { return AnyViewportRowProtected(0, _viewport.Length - 1); }
-        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        finally { ExitReadLockIfNeeded(Lock, lockTaken); }
     }
 
     /// <summary>Whether any viewport row in the inclusive range holds a protected cell. The caller holds the buffer lock.</summary>
@@ -24,12 +24,12 @@ public partial class TerminalBuffer
     /// <summary>Whether the active screen's cell is protected; false outside the screen.</summary>
     public bool IsCellProtected(int col, int row)
     {
-        bool lockTaken = EnterWriteLockIfNeeded();
+        bool lockTaken = EnterReadLockIfNeeded();
         try
         {
             return row >= 0 && row < _viewport.Length && col >= 0 && col < Cols && _viewport[row].IsProtected(col);
         }
-        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        finally { ExitReadLockIfNeeded(Lock, lockTaken); }
     }
 
     /// <summary>

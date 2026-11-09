@@ -195,6 +195,24 @@ public sealed class CharacterProtectionStateTests
         Assert.False(Protection(buffer, 0)[6]);
     }
 
+    /// <summary>The protection queries follow the cell accessors' lock pattern: callable with the read lock already held.</summary>
+    [Fact]
+    public void Protection_queries_work_under_a_caller_held_read_lock()
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"qP");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.True(buffer.HasProtectedCharacters());
+            Assert.True(buffer.IsCellProtected(0, 0));
+            Assert.False(buffer.IsCellProtected(1, 0));
+            Assert.False(buffer.IsCellProtected(99, 99));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.True(buffer.HasProtectedCharacters());
+    }
+
     /// <summary>The full-state export (mux attach, session transfer) carries the pen mode and protected cells in both banks.</summary>
     [Fact]
     public void Full_state_round_trip_preserves_protection_in_both_banks_and_the_pens()
