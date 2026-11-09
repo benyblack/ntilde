@@ -1,6 +1,6 @@
 // Receipt binding for the erase-character / saved-lines qualification (erase.character, erase.screen.scrollback). The graded evidence
 // stays provisional until the shared cleanup receipt exists, and the check re-derives the whole report from retained bytes without
-// the collector. A run carrying this evidence must also carry its erase-attributes/margins, saved-state/reset, scrolling/history, charsets, line-editing,
+// the collector. A run carrying this evidence must also carry its attribute-rectangle, erase-attributes/margins, saved-state/reset, scrolling/history, charsets, line-editing,
 // erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline,
 // SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors: these conclusions sit beside theirs, never replace them.
 import { lstatSync, readFileSync } from 'node:fs';
@@ -10,6 +10,7 @@ import { eraseCharsHistorySuiteId, eraseCharsHistoryContractsVersion } from './e
 import { adaptEraseCharsHistoryCollector, eraseCharsHistoryAdapterId } from './erase-chars-history-grading-collector.mjs';
 import { adaptSavedResetCollector } from './saved-reset-grading-collector.mjs';
 import { adaptEraseAttrsRegionCollector } from './erase-attrs-region-grading-collector.mjs';
+import { adaptAttrRectCollector } from './attr-rect-grading-collector.mjs';
 import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
 import { adaptCharEditCollector } from './char-edit-grading-collector.mjs';
 import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
@@ -32,7 +33,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const files = ['echh-observations.json', 'echh-run.json', 'echh-snapshots.jsonl', 'collector-echh.mjs'];
 /** The earlier suites whose evidence and adapter declarations must accompany this one: the context carries `<name>AdapterId`, the receipt `<name>Evidence`. */
-const predecessors = Object.freeze(['eraseAttrsRegion', 'savedReset', 'scrollback', 'charsets', 'lineEdit', 'eraseDisplay', 'charEdit', 'eraseLine', 'sgrClosure', 'sgrReset',
+const predecessors = Object.freeze(['attrRect', 'eraseAttrsRegion', 'savedReset', 'scrollback', 'charsets', 'lineEdit', 'eraseDisplay', 'charEdit', 'eraseLine', 'sgrClosure', 'sgrReset',
     'sgrUnderlineColor', 'sgrUnderline', 'sgrTruecolor', 'sgrColors', 'sgrRgb', 'sgrAttrs', 'sgrPalette']);
 
 /** Whether a retained artifact path exists. */
@@ -45,10 +46,10 @@ function present(path) {
 }
 
 /** Any retained erase-character/saved-lines artifact or declaration requires the v32 suffix, and a
- * policy-v27 run always carries them, because the current worker collects this suite
- * unconditionally after the erase-attributes/margins suite. */
+ * policy-v28 run always carries them, because the current worker collects this suite
+ * unconditionally after the attribute-rectangle suite. */
 export function includesEraseCharsHistoryEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v27'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v28'
         || context.eraseCharsHistoryAdapterId !== undefined || context.eraseCharsHistorySuiteId !== undefined
         || context.eraseCharsHistoryBundleSha256 !== undefined || context.eraseCharsHistoryContractsVersion !== undefined
         || evidence.eraseCharsHistoryEvidence !== undefined
@@ -76,7 +77,7 @@ export function checkEraseCharsHistoryEvidence(output, evidence, runId, context)
         throw new Error('Missing or changed erase-character/saved-lines adapter declaration.');
     }
     if (predecessors.some(name => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
-        throw new Error('erase-character/saved-lines evidence requires its erase-attributes/margins, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
+        throw new Error('erase-character/saved-lines evidence requires its attribute-rectangle, erase-attributes/margins, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.eraseCharsHistoryEvidence;
     if (binding === undefined) throw new Error('Missing erase-character/saved-lines suite receipt binding.');
@@ -98,7 +99,7 @@ export function checkEraseCharsHistoryEvidence(output, evidence, runId, context)
     if (hash(adapterBytes) !== binding.adapterBundleSha256 || context.eraseCharsHistoryBundleSha256 !== binding.adapterBundleSha256) {
         throw new Error('erase-character/saved-lines adapter bytes changed.');
     }
-    // The retained extension must be exactly the layered derivation of the retained erase-attributes/margins extension over the saved-state/reset and scrolling/history,
+    // The retained extension must be exactly the layered derivation of the retained attribute-rectangle extension over the erase-attributes/margins and saved-state/reset and scrolling/history,
     // charsets, line-editing, erase-in-display and character-editing extensions over the erase-in-line extension over the SGR closure, SGR
     // selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors extensions over
     // the retained first grading extension over the retained owned adapter.
@@ -120,7 +121,8 @@ export function checkEraseCharsHistoryEvidence(output, evidence, runId, context)
     const scrollbackBytes = Buffer.from(adaptScrollbackCollector(charsetsBytes.toString()));
     const savedResetBytes = Buffer.from(adaptSavedResetCollector(scrollbackBytes.toString()));
     const eraseAttrsRegionBytes = Buffer.from(adaptEraseAttrsRegionCollector(savedResetBytes.toString()));
-    const derivedBytes = Buffer.from(adaptEraseCharsHistoryCollector(eraseAttrsRegionBytes.toString()));
+    const attrRectBytes = Buffer.from(adaptAttrRectCollector(eraseAttrsRegionBytes.toString()));
+    const derivedBytes = Buffer.from(adaptEraseCharsHistoryCollector(attrRectBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('erase-character/saved-lines adapter is not the retained layered derivation.');
     }
@@ -131,7 +133,7 @@ export function checkEraseCharsHistoryEvidence(output, evidence, runId, context)
         || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256 || hash(charEditBytes) !== context.charEditBundleSha256
         || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256 || hash(lineEditBytes) !== context.lineEditBundleSha256
         || hash(charsetsBytes) !== context.charsetsBundleSha256 || hash(scrollbackBytes) !== context.scrollbackBundleSha256
-        || hash(savedResetBytes) !== context.savedResetBundleSha256 || hash(eraseAttrsRegionBytes) !== context.eraseAttrsRegionBundleSha256) {
+        || hash(savedResetBytes) !== context.savedResetBundleSha256 || hash(eraseAttrsRegionBytes) !== context.eraseAttrsRegionBundleSha256 || hash(attrRectBytes) !== context.attrRectBundleSha256) {
         throw new Error('erase-character/saved-lines adapter is not derived from the retained saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);

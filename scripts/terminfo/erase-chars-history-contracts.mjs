@@ -16,8 +16,9 @@
 // "Cursor response does not measure erased cells or scrollback", so it never carries a verdict and is not qualified.
 //
 // SPELLINGS ARE DISTINCT. erase.character grades the EXPLICIT count 3 (`ESC[3X`); erase.screen.scrollback grades the explicit `ESC[3J`. The
-// omitted, explicit 0 and 1, count 5 and oversized ECH counts run as separate, labeled observations that are never grades, and no other
-// spelling (ECH 1, ED 2, DCH, EL, scrolling) is substituted for a pinned one.
+// omitted, explicit 0 and 1 and count 5 ECH spellings run as separate, labeled observations that are never grades; an oversized count (`ESC[999X`) is GRADED
+// as a clamping control (no wrap onto the next row, the rows around the line intact), not as a spelling of the pinned case. No other spelling (ECH 1,
+// ED 2, DCH, EL, scrolling) is substituted for a pinned one.
 //
 // This contract grades the pinned bytes against independently observed state. Every expected state comes from the byte-interpreting model
 // (scrollback-model.mjs) over the exact bytes the plan feeds, never from terminal readback, and is compared with the complete viewport,

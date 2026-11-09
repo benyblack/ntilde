@@ -174,7 +174,7 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     }
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...new Set(expected)].sort());
-    assert.equal(Object.keys(summary.sameRun).length, benchmarkSuites.findIndex(item => item.suite === 'erase-attrs-region'), 'one same-run entry per merged predecessor suite');
+    assert.equal(Object.keys(summary.sameRun).length, benchmarkSuites.findIndex(item => item.suite === 'erase-attrs-region'), 'one same-run entry per merged predecessor suite (this suite and the later attribute-rectangle suite excluded)');
     for (const [name, suite] of Object.entries(summary.sameRun)) {
         // The saved-state/reset suite keeps its two pinned-inconclusive cases; its separately identified effect contracts are all supported.
         if (name === 'saved-reset') assert.ok(suite.cases.every(item => item.effectContract === 'supported'), name);

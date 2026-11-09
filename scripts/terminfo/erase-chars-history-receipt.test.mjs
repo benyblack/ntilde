@@ -9,6 +9,11 @@ import { checkScrollbackEvidence } from './scrollback-receipt.mjs';
 import { checkSavedResetEvidence, savedResetCounts } from './saved-reset-receipt.mjs';
 import { checkEraseAttrsRegionEvidence, eraseAttrsRegionCounts } from './erase-attrs-region-receipt.mjs';
 import { adaptEraseAttrsRegionCollector, eraseAttrsRegionAdapterId } from './erase-attrs-region-grading-collector.mjs';
+import { checkAttrRectEvidence, attrRectCounts } from './attr-rect-receipt.mjs';
+import { adaptAttrRectCollector, attrRectAdapterId } from './attr-rect-grading-collector.mjs';
+import { attrRectSuiteId, attrRectContractsVersion } from './attr-rect-contracts.mjs';
+import { buildAttrRectGradingReport } from './attr-rect-grading.mjs';
+import { syntheticAttrRectEvidence } from './fixtures/attr-rect-evidence.mjs';
 import { eraseAttrsRegionSuiteId, eraseAttrsRegionContractsVersion } from './erase-attrs-region-contracts.mjs';
 import { buildEraseAttrsRegionGradingReport } from './erase-attrs-region-grading.mjs';
 import { syntheticEraseAttrsRegionEvidence } from './fixtures/erase-attrs-region-evidence.mjs';
@@ -146,7 +151,9 @@ function fixture(action) {
     const savedBytes = Buffer.from(syntheticSavedExtension);
     const syntheticEraseAttrsExtension = adaptEraseAttrsRegionCollector(syntheticSavedExtension);
     const eraseAttrsBytes = Buffer.from(syntheticEraseAttrsExtension);
-    const echBytes = Buffer.from(adaptEraseCharsHistoryCollector(syntheticEraseAttrsExtension));
+    const syntheticAttrRectExtension = adaptAttrRectCollector(syntheticEraseAttrsExtension);
+    const attrRectBytes = Buffer.from(syntheticAttrRectExtension);
+    const echBytes = Buffer.from(adaptEraseCharsHistoryCollector(syntheticAttrRectExtension));
     const upstream = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
     const grading = syntheticGradingEvidence(runId, hash(firstExtensionBytes));
     grading.adapter = { id: 'ntilde-owned-ascii-sgr-grading-v1', derivedFromAdapterId: 'ntilde-owned-macos-v1',
@@ -186,11 +193,13 @@ function fixture(action) {
     const savedReport = buildSavedResetGradingReport(savedEvidence.frames, savedEvidence.run, runId, savedEvidence.adapter);
     const eraseAttrsEvidence = syntheticEraseAttrsRegionEvidence(runId, hash(eraseAttrsBytes));
     const eraseAttrsReport = buildEraseAttrsRegionGradingReport(eraseAttrsEvidence.frames, eraseAttrsEvidence.run, runId, eraseAttrsEvidence.adapter);
+    const attrRectEvidence = syntheticAttrRectEvidence(runId, hash(attrRectBytes));
+    const attrRectReport = buildAttrRectGradingReport(attrRectEvidence.frames, attrRectEvidence.run, runId, attrRectEvidence.adapter);
     const echEvidence = syntheticEraseCharsHistoryEvidence(runId, hash(echBytes));
     const echReport = buildEraseCharsHistoryGradingReport(echEvidence.frames, echEvidence.run, runId, echEvidence.adapter);
     const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value) + '\n');
     const journal = (file, frames) => writeFileSync(join(output, file), frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
-    const context = { runId, sourceSnapshotPolicy: 'readonly-owned-source-graph-v27',
+    const context = { runId, sourceSnapshotPolicy: 'readonly-owned-source-graph-v28',
         gradingAdapterId: 'ntilde-owned-ascii-sgr-grading-v1', asciiSgrSuiteId,
         gradingBundleSha256: hash(firstExtensionBytes), gradingContractsVersion: asciiSgrContractsVersion,
         sgrColorsAdapterId: 'ntilde-owned-sgr-colors-grading-v1', sgrColorsSuiteId, sgrColorsBundleSha256: hash(colorsBytes),
@@ -210,6 +219,7 @@ function fixture(action) {
         scrollbackAdapterId, scrollbackSuiteId, scrollbackBundleSha256: hash(scrollbackBytes), scrollbackContractsVersion,
         savedResetAdapterId, savedResetSuiteId, savedResetBundleSha256: hash(savedBytes), savedResetContractsVersion,
         eraseAttrsRegionAdapterId, eraseAttrsRegionSuiteId, eraseAttrsRegionBundleSha256: hash(eraseAttrsBytes), eraseAttrsRegionContractsVersion,
+        attrRectAdapterId, attrRectSuiteId, attrRectBundleSha256: hash(attrRectBytes), attrRectContractsVersion,
         eraseCharsHistoryAdapterId, eraseCharsHistorySuiteId, eraseCharsHistoryBundleSha256: hash(echBytes), eraseCharsHistoryContractsVersion,
         upstreamBundleSha256: upstream };
     try {
@@ -249,6 +259,8 @@ function fixture(action) {
         journal('svrs-snapshots.jsonl', savedEvidence.frames);
         write('erar-observations.json', eraseAttrsReport); write('erar-run.json', eraseAttrsEvidence.run);
         journal('erar-snapshots.jsonl', eraseAttrsEvidence.frames);
+        write('atrc-observations.json', attrRectReport); write('atrc-run.json', attrRectEvidence.run);
+        journal('atrc-snapshots.jsonl', attrRectEvidence.frames);
         write('echh-observations.json', echReport); write('echh-run.json', echEvidence.run);
         journal('echh-snapshots.jsonl', echEvidence.frames);
         writeFileSync(join(output, 'collector-adapter.mjs'), ownedAdapterBytes);
@@ -266,6 +278,7 @@ function fixture(action) {
         writeFileSync(join(output, 'collector-ched.mjs'), charEditBytes);
         writeFileSync(join(output, 'collector-svrs.mjs'), savedBytes);
         writeFileSync(join(output, 'collector-erar.mjs'), eraseAttrsBytes);
+        writeFileSync(join(output, 'collector-atrc.mjs'), attrRectBytes);
         writeFileSync(join(output, 'collector-echh.mjs'), echBytes);
         writeFileSync(join(output, 'collector-erdi.mjs'), eraseDisplayBytes);
         writeFileSync(join(output, 'collector-ledt.mjs'), lineEditBytes);
@@ -287,6 +300,7 @@ function fixture(action) {
         const charsetsBinding = bind(charsetsSuiteId, 'chrs', charsetsBytes, charsetsContractsVersion, { supported: 4 });
         const savedResetBinding = { ...bind(savedResetSuiteId, 'svrs', savedBytes, savedResetContractsVersion, {}), ...savedResetCounts(savedReport) };
         const eraseAttrsBinding = { ...bind(eraseAttrsRegionSuiteId, 'erar', eraseAttrsBytes, eraseAttrsRegionContractsVersion, {}), ...eraseAttrsRegionCounts(eraseAttrsReport) };
+        const attrRectBinding = { ...bind(attrRectSuiteId, 'atrc', attrRectBytes, attrRectContractsVersion, {}), ...attrRectCounts(attrRectReport) };
         const echBinding = bind(eraseCharsHistorySuiteId, 'echh', echBytes, eraseCharsHistoryContractsVersion, eraseCharsHistoryCounts(echReport));
         const binding = bind(scrollbackSuiteId, 'scrl', scrollbackBytes, scrollbackContractsVersion, { supported: 9 });
         const underlineColorBinding = bind(sgrUnderlineColorSuiteId, 'sguc', underlineColorBytes, sgrUnderlineColorContractsVersion, { supported: 3 });
@@ -297,11 +311,11 @@ function fixture(action) {
         const rgbBinding = bind(sgrRgbSuiteId, 'sgrgb', rgbBytes, sgrRgbContractsVersion, { supported: 2 });
         const colorsBinding = bind(sgrColorsSuiteId, 'sgcolors', colorsBytes, sgrColorsContractsVersion, { supported: 5 });
         const gradingBinding = bind(gradingReport.suiteId, 'grading', firstExtensionBytes, gradingReport.contractsVersion, { supported: 4 });
-        action({ output, scratch, evidence, report, context, binding, savedResetBinding, savedResetReport: savedReport, echBinding, echReport, eraseAttrsBinding, eraseAttrsReport, eraseAttrsText: syntheticEraseAttrsExtension, savedText: syntheticSavedExtension, scrollbackText: syntheticScrollbackExtension, charsetsBinding, lineEditBinding, eraseDisplayBinding, charEditBinding, eraseBinding, closureBinding, resetBinding, underlineColorBinding, underlineBinding, truecolorBinding, paletteBinding, attrsBinding, rgbBinding, colorsBinding, gradingBinding, write });
+        action({ output, scratch, evidence, report, context, binding, savedResetBinding, savedResetReport: savedReport, echBinding, echReport, attrRectBinding, attrRectText: syntheticAttrRectExtension, eraseAttrsBinding, eraseAttrsReport, eraseAttrsText: syntheticEraseAttrsExtension, savedText: syntheticSavedExtension, scrollbackText: syntheticScrollbackExtension, charsetsBinding, lineEditBinding, eraseDisplayBinding, charEditBinding, eraseBinding, closureBinding, resetBinding, underlineColorBinding, underlineBinding, truecolorBinding, paletteBinding, attrsBinding, rgbBinding, colorsBinding, gradingBinding, write });
     } finally { rmSync(output, { recursive: true, force: true }); }
 }
 
-const predecessors = f => ({ eraseCharsHistoryEvidence: f.echBinding, eraseAttrsRegionEvidence: f.eraseAttrsBinding, savedResetEvidence: f.savedResetBinding, scrollbackEvidence: f.binding, charsetsEvidence: f.charsetsBinding, lineEditEvidence: f.lineEditBinding, eraseDisplayEvidence: f.eraseDisplayBinding, charEditEvidence: f.charEditBinding, eraseLineEvidence: f.eraseBinding, sgrClosureEvidence: f.closureBinding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
+const predecessors = f => ({ eraseCharsHistoryEvidence: f.echBinding, attrRectEvidence: f.attrRectBinding, eraseAttrsRegionEvidence: f.eraseAttrsBinding, savedResetEvidence: f.savedResetBinding, scrollbackEvidence: f.binding, charsetsEvidence: f.charsetsBinding, lineEditEvidence: f.lineEditBinding, eraseDisplayEvidence: f.eraseDisplayBinding, charEditEvidence: f.charEditBinding, eraseLineEvidence: f.eraseBinding, sgrClosureEvidence: f.closureBinding, sgrResetEvidence: f.resetBinding, sgrUnderlineColorEvidence: f.underlineColorBinding, sgrUnderlineEvidence: f.underlineBinding, sgrTruecolorEvidence: f.truecolorBinding, sgrPaletteEvidence: f.paletteBinding, sgrAttrsEvidence: f.attrsBinding, sgrRgbEvidence: f.rgbBinding, sgrColorsEvidence: f.colorsBinding });
 
 const reasons = /Erase-character|erase-character|observations|Saved-state|saved-state|Invalid|Missing|bytes|report|journal|counts|identity|derivation|contracts|differs|predecessor|ENOENT/i;
 const ownFiles = ['echh-observations.json', 'echh-run.json', 'echh-snapshots.jsonl', 'collector-echh.mjs'];
@@ -309,6 +323,7 @@ const ownFiles = ['echh-observations.json', 'echh-run.json', 'echh-snapshots.jso
 maybe('the erase-character/saved-lines receipt binding re-derives the whole report from retained bytes', () => fixture(f => {
     assert.equal(includesEraseCharsHistoryEvidence(f.output, {}, f.context), true);
     assert.doesNotThrow(() => checkEraseCharsHistoryEvidence(f.output, predecessors(f), runId, f.context));
+    assert.doesNotThrow(() => checkAttrRectEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkEraseAttrsRegionEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkSavedResetEvidence(f.output, predecessors(f), runId, f.context));
     assert.doesNotThrow(() => checkScrollbackEvidence(f.output, predecessors(f), runId, f.context));
@@ -319,7 +334,7 @@ maybe('the erase-character/saved-lines receipt binding re-derives the whole repo
     assert.deepEqual(f.echBinding.counts, { supported: 2 });
 }));
 
-maybe('the shared finalizer publishes receipt schema 33 beside every predecessor suite', () => fixture(f => {
+maybe('the shared finalizer publishes receipt schema 34 beside every predecessor suite', () => fixture(f => {
     const { output, scratch, write, context } = f;
     const { sourceSnapshotPolicy, ...lightContext } = context;
     void sourceSnapshotPolicy;
@@ -331,7 +346,8 @@ maybe('the shared finalizer publishes receipt schema 33 beside every predecessor
         rgbEvidence: entry('rgb-observations.json'), renditionEvidence: entry('rendition-observations.json'),
         cursorEvidence: entry('cursor-observations.json'), gradingEvidence: f.gradingBinding, ...predecessors(f) };
     const receipt = completeOwnedReceipt(output, scratch, evidence);
-    assert.equal(receipt.schemaVersion, 33);
+    assert.equal(receipt.schemaVersion, 34);
+    assert.equal(receipt.attrRectEvidence, f.attrRectBinding);
     assert.equal(receipt.eraseAttrsRegionEvidence, f.eraseAttrsBinding);
     assert.equal(receipt.eraseCharsHistoryEvidence, f.echBinding);
     assert.equal(receipt.savedResetEvidence, f.savedResetBinding);
@@ -358,6 +374,9 @@ for (const [name, mutate] of [
     ['declared contracts drift', f => { f.context.eraseCharsHistoryContractsVersion = 2; f.write('context.json', f.context); }],
     ['missing adapter declaration', f => { delete f.context.eraseCharsHistoryAdapterId; f.write('context.json', f.context); }],
     ['missing suite declaration', f => { delete f.context.eraseCharsHistorySuiteId; f.write('context.json', f.context); }],
+    ['missing attribute-rectangle predecessor evidence', f => { delete f.attrRectBinding; }],
+    ['missing attribute-rectangle predecessor declaration', f => { delete f.context.attrRectAdapterId; f.write('context.json', f.context); }],
+    ['declared attribute-rectangle layer digest drift', drift('attrRectText', 'attrRectBundleSha256', 'ntilde-owned-attr-rect-grading-v1')],
     ['missing erase-attributes/margins predecessor evidence', f => { delete f.eraseAttrsBinding; }],
     ['missing erase-attributes/margins predecessor declaration', f => { delete f.context.eraseAttrsRegionAdapterId; f.write('context.json', f.context); }],
     ['declared erase-attributes/margins layer digest drift', drift('eraseAttrsText', 'eraseAttrsRegionBundleSha256', 'ntilde-owned-erase-attrs-region-grading-v1')],
@@ -401,20 +420,20 @@ for (const [name, mutate] of [
 
 // Unconditional (no collector cache needed): the policy alone admits the suffix, whatever the output directory holds, so a regression that
 // dropped policy-only admission cannot pass CI on a runner without the cache.
-test('policy v27 alone admits the suffix and refuses it without a declaration, with an empty output directory', () => {
+test('policy v28 alone admits the suffix and refuses it without a declaration, with an empty output directory', () => {
     const output = mkdtempSync(join(tmpdir(), 'nt-echh-policy-'));
     try {
-        const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v27' };
+        const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v28' };
         assert.equal(includesEraseCharsHistoryEvidence(output, {}, context), true);
         assert.throws(() => checkEraseCharsHistoryEvidence(output, {}, runId, context), /Missing or changed erase-character.saved-lines adapter declaration/);
-        assert.equal(includesEraseCharsHistoryEvidence(output, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v26' }), false);
+        assert.equal(includesEraseCharsHistoryEvidence(output, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v27' }), false);
         assert.equal(includesEraseCharsHistoryEvidence(output, {}, {}), false);
     } finally { rmSync(output, { recursive: true, force: true }); }
 });
 
-maybe('policy v27 requires the erase-character/saved-lines binding even without artifacts', () => fixture(f => {
+maybe('policy v28 requires the erase-character/saved-lines binding even without artifacts', () => fixture(f => {
     for (const file of ownFiles) rmSync(join(f.output, file));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v27' };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v28' };
     assert.equal(includesEraseCharsHistoryEvidence(f.output, {}, context), true);
     assert.throws(() => checkEraseCharsHistoryEvidence(f.output, predecessors(f), runId, context), /Missing or changed erase-character.saved-lines adapter declaration/);
 }));
@@ -440,11 +459,11 @@ maybe('a symlinked retained artifact is refused even when it points at valid evi
     assert.doesNotThrow(() => checkEraseCharsHistoryEvidence(f.output, predecessors(f), runId, f.context));
 }));
 
-maybe('historical receipts stay valid without any erase-character/saved-lines artifacts (policies v10-v26)', () => {
+maybe('historical receipts stay valid without any erase-character/saved-lines artifacts (policies v10-v27)', () => {
     const publication = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-sgr-attributes-qualification.json', import.meta.url)));
     assert.equal(publication.receipt.schemaVersion, 16);
     assert.equal(publication.receipt.eraseCharsHistoryEvidence, undefined);
-    for (const version of [10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]) {
+    for (const version of [10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]) {
         assert.equal(includesEraseCharsHistoryEvidence('/nonexistent', {}, { sourceSnapshotPolicy: `readonly-owned-source-graph-v${version}` }), false, `v${version}`);
     }
     assert.equal(includesEraseCharsHistoryEvidence('/nonexistent', {}, {}), false);

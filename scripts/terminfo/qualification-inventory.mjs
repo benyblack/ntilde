@@ -44,6 +44,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('scrollback', '2026-11-09-scrollback', '2026-11-09-scrollback-qualification.md'), module: 'scrollback-contracts.mjs', exports: ['scrollbackSuiteId', 'scrollbackContractsVersion', 'scrollbackCaseIds'], test: 'scrollback-publication.test.mjs' },
     { ...directory('saved-reset', '2026-11-09-saved-reset', '2026-11-09-saved-reset-qualification.md'), module: 'saved-reset-contracts.mjs', exports: ['savedResetSuiteId', 'savedResetContractsVersion', 'savedResetCaseIds'], test: 'saved-reset-publication.test.mjs' },
     { ...directory('erase-attrs-region', '2026-11-09-erase-attrs-region', '2026-11-09-erase-attrs-region-qualification.md'), module: 'erase-attrs-region-contracts.mjs', exports: ['eraseAttrsRegionSuiteId', 'eraseAttrsRegionContractsVersion', 'eraseAttrsRegionCaseIds'], test: 'erase-attrs-region-publication.test.mjs' },
+    { ...directory('attr-rect', '2026-11-09-attr-rect', '2026-11-09-attr-rect-qualification.md'), module: 'attr-rect-contracts.mjs', exports: ['attrRectSuiteId', 'attrRectContractsVersion', 'attrRectCaseIds'], test: 'attr-rect-publication.test.mjs' },
     { ...directory('erase-chars-history', '2026-11-09-erase-chars-history', '2026-11-09-erase-chars-history-qualification.md'), module: 'erase-chars-history-contracts.mjs', exports: ['eraseCharsHistorySuiteId', 'eraseCharsHistoryContractsVersion', 'eraseCharsHistoryCaseIds'], test: 'erase-chars-history-publication.test.mjs' },
 ]);
 

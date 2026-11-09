@@ -826,6 +826,7 @@ namespace Ntilde.VT
             ModifyOtherKeysMain = modes.ModifyOtherKeys.MainLevel,
             ModifyOtherKeysAlt = modes.ModifyOtherKeys.AltLevel,
             AlternateScrollOverride = modes.AlternateScrollOverride,
+            RectangularAttributeExtent = modes.IsRectangularAttributeExtent ? true : null,
         };
 
         private static void ImportModes(ModeState target, TerminalModeState source)
@@ -853,6 +854,7 @@ namespace Ntilde.VT
             target.IsEchoEnabled = source.IsEchoEnabled;
             // The app's choice only; the importing host keeps its own default.
             target.AlternateScrollOverride = source.AlternateScrollOverride;
+            target.IsRectangularAttributeExtent = source.RectangularAttributeExtent ?? false;
         }
 
         // ── validation ───────────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import { includesCharsetsEvidence, checkCharsetsEvidence } from './charsets-rece
 import { includesScrollbackEvidence, checkScrollbackEvidence } from './scrollback-receipt.mjs';
 import { includesSavedResetEvidence, checkSavedResetEvidence } from './saved-reset-receipt.mjs';
 import { includesEraseAttrsRegionEvidence, checkEraseAttrsRegionEvidence } from './erase-attrs-region-receipt.mjs';
+import { includesAttrRectEvidence, checkAttrRectEvidence } from './attr-rect-receipt.mjs';
 import { includesEraseCharsHistoryEvidence, checkEraseCharsHistoryEvidence } from './erase-chars-history-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
@@ -165,6 +166,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesScrollback',
     'includesSavedReset',
     'includesEraseAttrsRegion',
+    'includesAttrRect',
     'includesEraseCharsHistory',
 ]);
 
@@ -205,6 +207,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesScrollback = includesScrollbackEvidence(output, evidence, context);
     const includesSavedReset = includesSavedResetEvidence(output, evidence, context);
     const includesEraseAttrsRegion = includesEraseAttrsRegionEvidence(output, evidence, context);
+    const includesAttrRect = includesAttrRectEvidence(output, evidence, context);
     const includesEraseCharsHistory = includesEraseCharsHistoryEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
@@ -213,7 +216,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesEraseCharsHistory };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesEraseCharsHistory };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -247,6 +250,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesScrollback) checkScrollbackEvidence(output, evidence, runId, context);
     if (suffixes.includesSavedReset) checkSavedResetEvidence(output, evidence, runId, context);
     if (suffixes.includesEraseAttrsRegion) checkEraseAttrsRegionEvidence(output, evidence, runId, context);
+    if (suffixes.includesAttrRect) checkAttrRectEvidence(output, evidence, runId, context);
     if (suffixes.includesEraseCharsHistory) checkEraseCharsHistoryEvidence(output, evidence, runId, context);
 }
 

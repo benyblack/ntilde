@@ -24,6 +24,13 @@ namespace Ntilde.VT
         public bool IsOriginMode { get; set; }            // ?6 - DECOM (Origin Mode)
 
         /// <summary>
+        /// DECSACE (CSI Ps * x): <c>true</c> after Ps 2 (DECCARA/DECRARA affect the rectangle), <c>false</c> for the stream
+        /// (Ps 0 or 1, the power-up default). Stream state: RIS restores the stream, DECSTR keeps the selection, and state transfer
+        /// carries it. It is independent of the margins, origin mode and the current pen.
+        /// </summary>
+        public bool IsRectangularAttributeExtent { get; set; }
+
+        /// <summary>
         /// DECSCNM (?5): screen-wide reverse video. While set, the render snapshot presents the
         /// theme's default foreground and background swapped (xterm semantics). Set it through
         /// <see cref="TerminalBuffer.SetReverseVideo"/>, which also invalidates every rendered row.
@@ -132,6 +139,7 @@ namespace Ntilde.VT
                 IsApplicationKeypad = this.IsApplicationKeypad,
                 IsAutoWrapMode = this.IsAutoWrapMode,
                 IsOriginMode = this.IsOriginMode,
+                IsRectangularAttributeExtent = this.IsRectangularAttributeExtent,
                 IsReverseVideo = this.IsReverseVideo,
                 IsSixelDisplayMode = this.IsSixelDisplayMode,
                 IsFocusEventReporting = this.IsFocusEventReporting,
