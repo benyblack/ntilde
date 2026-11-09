@@ -587,6 +587,39 @@ public sealed class CharacterProtectionStateTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    /// <summary>A full-state import into a narrower buffer clips a protected wide pair like a resize does.</summary>
+    [Fact]
+    public void Full_state_import_into_a_narrower_buffer_drops_the_clipped_anchor_protection()
+    {
+        var (live, parser) = Create(10, 4);
+        parser.Process(Esc + "[1;5H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        var restored = new TerminalBuffer(5, 4);
+        restored.ImportState(live.ExportState(int.MaxValue));
+        Assert.DoesNotContain('P', Mask(restored, 0));
+    }
+
+    /// <summary>A checkpoint that overwrites half of a protected wide glyph unprotects the other half.</summary>
+    [Fact]
+    [Trait("Category", "Replay")]
+    public async Task Checkpoint_restore_over_half_a_protected_glyph_unprotects_the_orphan()
+    {
+        var (source, sourceParser) = Create(3, 2);
+        sourceParser.Process(Esc + "[1;1HABC");
+        string path = Path.GetTempFileName();
+        try
+        {
+            using (var recorder = new PtyRecorder(path, 3, 2)) recorder.RecordSnapshot(source);
+            ReplaySnapshot? captured = null;
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask,
+                onSnapshotCallback: snapshot => { captured = snapshot; return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken);
+            var (dest, destParser) = Create(6, 2);
+            destParser.Process(Esc + "[1;3H" + Esc + "[1\"q界" + Esc + "[0\"q");
+            dest.ApplySnapshot(captured!);
+            Assert.DoesNotContain('P', Mask(dest, 0));
+        }
+        finally { File.Delete(path); }
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

@@ -1177,6 +1177,8 @@ namespace Ntilde.VT
                         for (int r = 0; r < rowsToCopy; r++)
                         {
                             var row = _viewport[r];
+                            // The copy overwrites [0, colsToCopy): wide glyphs it cuts at the edge leave orphan halves that must not keep protection.
+                            ClearDisplacedWideProtection(row, 0, colsToCopy);
                             Array.Copy(cellSpan.Slice(r * snapshot.Cols, colsToCopy).ToArray(), row.Cells, colsToCopy);
 
                             row.WrittenColumns = Math.Min(snapshot.RowWrittenColumns?[r]
