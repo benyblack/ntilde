@@ -850,8 +850,8 @@ upstream and is not qualified. Receipt schema 25 and source policy v19 (173 file
 ### Charset qualification (UTF-8, DEC special graphics, DEC line drawing, G0/G1 switching)
 
 The [charset batch](terminfo/2026-11-09-charsets-qualification.md) grades exactly `charsets.utf8`, `charsets.dec-special`,
-`charsets.dec-line-drawing` and `charsets.g0-g1-switching` through a thirteenth layered collector extension
+`charsets.dec-line-drawing` and `charsets.g0-g1-switching` through a fourteenth layered collector extension
 (`ntilde-owned-charsets-grading-v1`), replaying the pinned bytes untouched and running the pinned termless probes over parent-journaled
 physical cells derived from complete stored cell details (never attribute strings or UTF-16 offsets). Controls cover the ASCII
 same-source seed, designation versus invocation, persistence past SI and lowercase restoration witnesses. The pinned pixel and
-cursor-query paths are not qualified. Receipt schema 26 and source policy v20 (178 files) bind it; earlier policies stay frozen.
+cursor-query paths are not qualified. Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.

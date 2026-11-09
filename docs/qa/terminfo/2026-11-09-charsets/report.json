@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-charsets-graded-v1",
-  "runId": "3fb3237e338d3d461a06e7073d5de05a",
+  "runId": "d26056b83ad7d53b674f70c481779916",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-charsets-grading-v1",
-    "derivedFromAdapterId": "ntilde-owned-erase-line-grading-v1",
-    "bundleSha256": "b9627b9c74a66a92418849017fd3e14790d453468ed10367db1213306fa4fa42",
+    "derivedFromAdapterId": "ntilde-owned-char-edit-grading-v1",
+    "bundleSha256": "dad039f97112845e869224e871230c21a216d333c9afc114c255310457ff441a",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 charset termless criteria (charsets.utf8, charsets.dec-special, charsets.dec-line-drawing and charsets.g0-g1-switching) replayed byte-exactly (UTF-8 text, escape designations and shift controls untouched) on a disposable App and graded from parent-journaled stored cell details and text: decoded physical cells (narrow, wide, wide continuation), the cursor and neutral stored attributes, with controls for the ASCII seed using the same source characters, designation without invocation, invocation without designation, direct G0 and G1 routes, an uppercase control, persistence of the G1 designation past SI, a wide-alone and a precomposed control, and lowercase restoration witnesses (an uppercase marker never proves ASCII restoration). The pinned terminal pixel capture and cursor-query paths are never verdicts and are not qualified; no glyph, pixel, font fallback, keyboard, locale, normalization or platform claim; no stock grades; the Unicode scope is this fixture's two samples only.",
