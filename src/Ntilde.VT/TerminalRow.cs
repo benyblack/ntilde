@@ -187,6 +187,12 @@ namespace Ntilde.VT
             NoteColumnsWritten(col + 1);
         }
 
+        /// <summary>After a copy that kept the first <paramref name="copiedCols"/> columns, a wide anchor on the last kept column lost its continuation and its protection with it.</summary>
+        internal void ClearProtectionOfClippedWideAnchor(int copiedCols, int sourceCols)
+        {
+            if (copiedCols > 0 && copiedCols < sourceCols && Cells[copiedCols - 1].IsWide) SetProtected(copiedCols - 1, false);
+        }
+
         public void ClearProtection()
         {
             _protected = null;

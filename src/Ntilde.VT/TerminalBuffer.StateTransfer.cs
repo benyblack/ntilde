@@ -1014,6 +1014,17 @@ namespace Ntilde.VT
                     throw StateTransferValidation.Reject(what, "wrap columns require a soft-wrapped row");
                 ValidateWrapTail(state, cells.Slice(row * cols, cols), row * cols, width, what);
             }
+
+            // Protection keyed into a wrap-padding tail would hide behind the boundary, like the other cell metadata.
+            if (state.ProtectedCells != null)
+            {
+                foreach (int key in state.ProtectedCells)
+                {
+                    int row = key / cols;
+                    if (key >= 0 && row < rows && widths[row] >= 0 && key % cols >= widths[row])
+                        throw StateTransferValidation.Reject(what, "wrap padding carries protected cells");
+                }
+            }
         }
 
         private static void ValidateWrapTail(TerminalScreenState state, ReadOnlySpan<TerminalCell> row, int firstCell, int width, string what)

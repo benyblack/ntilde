@@ -490,6 +490,33 @@ public sealed class CharacterProtectionStateTests
         Assert.False(Protection(buffer, 0)[2], "the displaced glyph's continuation must not stay protected");
     }
 
+    /// <summary>Protection keyed into a wrap-padding tail is refused on import, in both the full-state and the legacy checkpoint forms.</summary>
+    [Fact]
+    public void Protection_hidden_behind_wrap_padding_is_refused()
+    {
+        var (live, parser) = Create(10, 4);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"qP" + Esc + "[0\"q");
+        var state = live.ExportState(int.MaxValue);
+        state.Main.RowWraps = [true, false, false, false];
+        state.Main.RowWrapColumns = [4, -1, -1, -1];
+        state.Main.RowWrittenColumns = [1, 0, 0, 0];
+        state.Main.ProtectedCells = [7];
+        Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 4).ImportState(state));
+        state.Main.ProtectedCells = [0];
+        new TerminalBuffer(10, 4).ImportState(state);
+    }
+
+    /// <summary>Resizing an inactive alternate screen narrower than a protected wide glyph drops the clipped anchor's protection.</summary>
+    [Fact]
+    public void Alternate_screen_resize_clipping_a_wide_pair_drops_the_anchor_protection()
+    {
+        var (buffer, parser) = Create(10, 4);
+        parser.Process(Esc + "[?1049h" + Esc + "[1;5H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        Assert.Equal("....PP....", Mask(buffer, 0));
+        buffer.Resize(5, 4);
+        Assert.DoesNotContain('P', Mask(buffer, 0));
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

@@ -427,8 +427,7 @@ text is not read-only. DECSED and DECSERA erase only the unprotected characters 
 the ordinary erases' blanks and cleanup, and are exactly ED and DECERA while nothing is protected; a
 scaled block with any protected cell is spared whole. Protection is screen state: rows that scroll into
 history lose it, and ANSI text export, render snapshots and the mux text client do not carry it.
-Absent members import as unprotected. Readers outside VT see it through `IsCellProtected` and the
-opt-in `readScreen(includeProtection)` projection only. DECSEL and ISO SPA/EPA are separate contracts.
+Absent members import as unprotected. Readers outside VT see it through `HasProtectedCharacters`/`IsCellProtected` only. DECSEL and ISO SPA/EPA are separate contracts.
 See `docs/MODULE_OWNERSHIP.md` for the owning invariants.
 
 ## 4. Recording / Playback — `Ntilde.Replay`

@@ -451,6 +451,7 @@ namespace Ntilde.VT
                 // Detached buffers are not reflowed either, so the side tables transfer by column
                 // (#164). Copying Cells and IsWrapped alone lost extended graphemes and links.
                 resized[i].CopyRowMetadataFrom(source[i], copyCols);
+                resized[i].ClearProtectionOfClippedWideAnchor(copyCols, source[i].Cells.Length);
             }
 
             return resized;
@@ -1074,7 +1075,8 @@ namespace Ntilde.VT
                     RowWraps = snapshot.RowWraps,
                     RowWrapColumns = widths,
                     RowWrittenColumns = snapshot.RowWrittenColumns,
-                    ExtendedText = snapshot.ExtendedText
+                    ExtendedText = snapshot.ExtendedText,
+                    ProtectedCells = snapshot.ProtectedCells
                 }, snapshot.Rows, snapshot.Cols, cells, "legacy replay");
                 if (snapshot.Underlines != null)
                     foreach (int key in snapshot.Underlines.Keys)
@@ -1241,7 +1243,8 @@ namespace Ntilde.VT
 
                 // DECSCA protection, absent in recordings made before it.
                 // Only cells this snapshot restored can carry its protection: a taller or wider buffer keeps everything else as it was.
-                if (legacyCells != null && snapshot.ProtectedCells != null && snapshot.Cols > 0)
+                if (legacyCells != null && legacyCells.Length / System.Runtime.CompilerServices.Unsafe.SizeOf<TerminalCell>() >= snapshot.Cols * snapshot.Rows
+                    && snapshot.ProtectedCells != null && snapshot.Cols > 0)
                 {
                     int restoredRows = Math.Min(snapshot.Rows, _viewport.Length);
                     int restoredCols = Math.Min(snapshot.Cols, Cols);
