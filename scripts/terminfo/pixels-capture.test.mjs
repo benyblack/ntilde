@@ -180,7 +180,7 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
     const output = mkdtempSync(join(tmpdir(), 'nt-worker-order-'));
     try {
         const bundle = join(output, 'bundle.mjs'), gradingBundle = join(output, 'grading.mjs'),
-            sgrColorsBundle = join(output, 'sgcolors.mjs'), sgrRgbBundle = join(output, 'sgrgb.mjs'), sgrAttrsBundle = join(output, 'sgattr.mjs'), sgrPaletteBundle = join(output, 'sgpal.mjs'), sgrTruecolorBundle = join(output, 'sgtc.mjs'), sgrUnderlineBundle = join(output, 'sgus.mjs'), sgrUnderlineColorBundle = join(output, 'sguc.mjs'), sgrResetBundle = join(output, 'sgsr.mjs'), sgrClosureBundle = join(output, 'sgcl.mjs'), eraseLineBundle = join(output, 'erln.mjs'), charEditBundle = join(output, 'ched.mjs'), eraseDisplayBundle = join(output, 'erdi.mjs'), lineEditBundle = join(output, 'ledt.mjs'), charsetsBundle = join(output, 'chrs.mjs'), scrollbackBundle = join(output, 'scrl.mjs'), savedResetBundle = join(output, 'svrs.mjs'), eraseAttrsRegionBundle = join(output, 'erar.mjs'),
+            sgrColorsBundle = join(output, 'sgcolors.mjs'), sgrRgbBundle = join(output, 'sgrgb.mjs'), sgrAttrsBundle = join(output, 'sgattr.mjs'), sgrPaletteBundle = join(output, 'sgpal.mjs'), sgrTruecolorBundle = join(output, 'sgtc.mjs'), sgrUnderlineBundle = join(output, 'sgus.mjs'), sgrUnderlineColorBundle = join(output, 'sguc.mjs'), sgrResetBundle = join(output, 'sgsr.mjs'), sgrClosureBundle = join(output, 'sgcl.mjs'), eraseLineBundle = join(output, 'erln.mjs'), charEditBundle = join(output, 'ched.mjs'), eraseDisplayBundle = join(output, 'erdi.mjs'), lineEditBundle = join(output, 'ledt.mjs'), charsetsBundle = join(output, 'chrs.mjs'), scrollbackBundle = join(output, 'scrl.mjs'), savedResetBundle = join(output, 'svrs.mjs'), eraseAttrsRegionBundle = join(output, 'erar.mjs'), rectEditBundle = join(output, 'rect.mjs'),
             config = join(output, 'worker.json'), log = join(output, 'calls.txt');
         const source = 'import {appendFileSync} from \"node:fs\"; export async function collectNtildeRun() { appendFileSync(process.env.NTILDE_WORKER_TEST_LOG, \"stock-close\\n\"); return { testOnly: true }; }';
         const gradingSource = 'export const ntildeGradingAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunTermless() {}';
@@ -220,6 +220,8 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
         writeFileSync(savedResetBundle, savedResetSource);
         const eraseAttrsRegionSource = 'export const ntildeEraseAttrsRegionAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunEraseAttrsRegionTermless() {}';
         writeFileSync(eraseAttrsRegionBundle, eraseAttrsRegionSource);
+        const rectEditSource = 'export const ntildeRectEditAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunRectEditTermless() {}';
+        writeFileSync(rectEditBundle, rectEditSource);
         writeFileSync(config, JSON.stringify({ privateClipboard, output, bundle, gradingBundle,
             gradingBundleSha256: createHash('sha256').update(gradingSource).digest('hex'),
             sgrColorsBundle, sgrColorsBundleSha256: createHash('sha256').update(sgrColorsSource).digest('hex'),
@@ -239,12 +241,13 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
             scrollbackBundle, scrollbackBundleSha256: createHash('sha256').update(scrollbackSource).digest('hex'),
             savedResetBundle, savedResetBundleSha256: createHash('sha256').update(savedResetSource).digest('hex'),
             eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256: createHash('sha256').update(eraseAttrsRegionSource).digest('hex'),
+            rectEditBundle, rectEditBundleSha256: createHash('sha256').update(rectEditSource).digest('hex'),
             adapterBundleSha256: createHash('sha256').update(source).digest('hex') }));
         const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/worker-collection-hooks.mjs', import.meta.url).href,
             fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
             env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'SgrClosure', 'EraseLine', 'CharEdit', 'EraseDisplay', 'LineEdit', 'Charsets', 'Scrollback', 'SavedReset', 'EraseAttrsRegion', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
+        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'SgrClosure', 'EraseLine', 'CharEdit', 'EraseDisplay', 'LineEdit', 'Charsets', 'Scrollback', 'SavedReset', 'EraseAttrsRegion', 'RectEdit', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
         assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
         assert.equal(JSON.parse(readFileSync(join(output, 'grading-run.json'))).adapterId, 'stub');
         assert.equal(JSON.parse(readFileSync(join(output, 'sgcolors-run.json'))).adapterId, 'stub');

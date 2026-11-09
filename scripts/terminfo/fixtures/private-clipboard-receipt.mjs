@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV33SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV34SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV33SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV34SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV33SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV34SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -462,6 +462,27 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'erar-run.json', runSha256: hash(readFileSync(join(output, 'erar-run.json'))),
                 adapterBundleSha256: hash(eraseAttrsRegionBytes), contractsVersion: eraseAttrsRegionContractsVersion,
                 ...eraseAttrsRegionCounts(eraseAttrsRegionReport), provisionalUntil: 'cell-receipt.json' };
+            // Policy v27 always carries the layered rectangle-editing suffix as well.
+            const { syntheticRectEditEvidence } = await import('./rect-edit-evidence.mjs');
+            const { buildRectEditGradingReport } = await import('../rect-edit-grading.mjs');
+            const { adaptRectEditCollector, rectEditAdapterId } = await import('../rect-edit-grading-collector.mjs');
+            const { rectEditSuiteId, rectEditContractsVersion } = await import('../rect-edit-contracts.mjs');
+            const { rectEditCounts } = await import('../rect-edit-receipt.mjs');
+            const rectEditBytes = Buffer.from(adaptRectEditCollector(eraseAttrsRegionBytes.toString()));
+            const rectEdit = syntheticRectEditEvidence(context.runId, hash(rectEditBytes));
+            rectEdit.adapter = { id: rectEditAdapterId, derivedFromAdapterId: eraseAttrsRegionAdapterId,
+                bundleSha256: hash(rectEditBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const rectEditReport = buildRectEditGradingReport(rectEdit.frames, rectEdit.run, context.runId, rectEdit.adapter);
+            write('rect-observations.json', rectEditReport);
+            write('rect-run.json', rectEdit.run);
+            writeFileSync(join(output, 'rect-snapshots.jsonl'), rectEdit.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-rect.mjs'), rectEditBytes);
+            Object.assign(context, { rectEditAdapterId, rectEditSuiteId, rectEditBundleSha256: hash(rectEditBytes), rectEditContractsVersion });
+            evidence.rectEditEvidence = { runId: context.runId, suiteId: rectEditSuiteId,
+                file: 'rect-observations.json', sha256: hash(readFileSync(join(output, 'rect-observations.json'))),
+                runFile: 'rect-run.json', runSha256: hash(readFileSync(join(output, 'rect-run.json'))),
+                adapterBundleSha256: hash(rectEditBytes), contractsVersion: rectEditContractsVersion,
+                counts: rectEditCounts(rectEditReport), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

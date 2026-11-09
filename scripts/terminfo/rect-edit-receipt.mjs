@@ -1,6 +1,6 @@
 // Receipt binding for the rectangle-editing qualification (editing.decfra, editing.decera, editing.deccra). The graded
 // evidence stays provisional until the shared cleanup receipt exists, and the check re-derives the whole report from
-// retained bytes without the collector. A run carrying this evidence must also carry its saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline,
+// retained bytes without the collector. A run carrying this evidence must also carry its erase-attributes/region, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline,
 // SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors: these conclusions sit beside theirs,
 // never replace them.
 import { lstatSync, readFileSync } from 'node:fs';
@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { rectEditSuiteId, rectEditContractsVersion } from './rect-edit-contracts.mjs';
 import { adaptRectEditCollector, rectEditAdapterId } from './rect-edit-grading-collector.mjs';
 import { adaptSavedResetCollector } from './saved-reset-grading-collector.mjs';
+import { adaptEraseAttrsRegionCollector } from './erase-attrs-region-grading-collector.mjs';
 import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
 import { adaptCharEditCollector } from './char-edit-grading-collector.mjs';
 import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
@@ -40,11 +41,11 @@ function present(path) {
     }
 }
 
-/** Any retained rectangle-editing artifact or declaration requires the v32 suffix, and a
- * policy-v26 run always carries them, because the current worker collects this suite
- * unconditionally after the rectangle-editing suite. */
+/** Any retained rectangle-editing artifact or declaration requires the v33 suffix, and a
+ * policy-v27 run always carries them, because the current worker collects this suite
+ * unconditionally after the erase-attributes/region suite. */
 export function includesRectEditEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v26'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v27'
         || context.rectEditAdapterId !== undefined || context.rectEditSuiteId !== undefined
         || context.rectEditBundleSha256 !== undefined || context.rectEditContractsVersion !== undefined
         || evidence.rectEditEvidence !== undefined
@@ -71,7 +72,8 @@ export function checkRectEditEvidence(output, evidence, runId, context) {
     if (context.rectEditAdapterId !== rectEditAdapterId || context.rectEditSuiteId !== rectEditSuiteId) {
         throw new Error('Missing or changed rectangle-editing adapter declaration.');
     }
-    if (context.savedResetAdapterId === undefined || evidence.savedResetEvidence === undefined
+    if (context.eraseAttrsRegionAdapterId === undefined || evidence.eraseAttrsRegionEvidence === undefined
+        || context.savedResetAdapterId === undefined || evidence.savedResetEvidence === undefined
         || context.scrollbackAdapterId === undefined || evidence.scrollbackEvidence === undefined
         || context.charsetsAdapterId === undefined || evidence.charsetsEvidence === undefined
         || context.lineEditAdapterId === undefined || evidence.lineEditEvidence === undefined
@@ -87,7 +89,7 @@ export function checkRectEditEvidence(output, evidence, runId, context) {
         || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
         || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
         || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
-        throw new Error('rectangle-editing evidence requires its saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
+        throw new Error('rectangle-editing evidence requires its erase-attributes/region, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.rectEditEvidence;
     if (binding === undefined) throw new Error('Missing rectangle-editing suite receipt binding.');
@@ -129,7 +131,8 @@ export function checkRectEditEvidence(output, evidence, runId, context) {
     const charsetsBytes = Buffer.from(adaptCharsetsCollector(lineEditBytes.toString()));
     const scrollbackBytes = Buffer.from(adaptScrollbackCollector(charsetsBytes.toString()));
     const savedResetBytes = Buffer.from(adaptSavedResetCollector(scrollbackBytes.toString()));
-    const derivedBytes = Buffer.from(adaptRectEditCollector(savedResetBytes.toString()));
+    const eraseAttrsRegionBytes = Buffer.from(adaptEraseAttrsRegionCollector(savedResetBytes.toString()));
+    const derivedBytes = Buffer.from(adaptRectEditCollector(eraseAttrsRegionBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('rectangle-editing adapter is not the retained layered derivation.');
     }
@@ -140,8 +143,8 @@ export function checkRectEditEvidence(output, evidence, runId, context) {
         || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256 || hash(charEditBytes) !== context.charEditBundleSha256
         || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256 || hash(lineEditBytes) !== context.lineEditBundleSha256
         || hash(charsetsBytes) !== context.charsetsBundleSha256 || hash(scrollbackBytes) !== context.scrollbackBundleSha256
-        || hash(savedResetBytes) !== context.savedResetBundleSha256) {
-        throw new Error('rectangle-editing adapter is not derived from the retained saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing and earlier extensions.');
+        || hash(savedResetBytes) !== context.savedResetBundleSha256 || hash(eraseAttrsRegionBytes) !== context.eraseAttrsRegionBundleSha256) {
+        throw new Error('rectangle-editing adapter is not derived from the retained erase-attributes/region, saved-state/reset, scrolling/history, charsets, line-editing, erase-in-display, character-editing and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256

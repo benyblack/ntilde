@@ -103,7 +103,7 @@ export function syntheticRectEditReads(caseId) {
 }
 
 const rectEditSuite = Object.freeze({ noncePrefix: 'NTILDE_RC_', prefix: 'rect', contracts: rectEditContracts,
-    adapterId: rectEditAdapterId, derivedFrom: 'ntilde-owned-saved-reset-grading-v1', reset: rectEditReset,
+    adapterId: rectEditAdapterId, derivedFrom: 'ntilde-owned-erase-attrs-region-grading-v1', reset: rectEditReset,
     geometry: { rows: rectEditRows, cols: rectEditCols },
     decorate: screen => ({ ...screen, bufferState: { scrollTop: 0, scrollBottom: rectEditRows - 1, originMode: false, autoWrap: true, insertMode: false,
         pendingWrap: false, alternateScreen: true, scrollbackLines: 0 }, history: { startLine: 0, totalLines: 0, lines: [] } }),

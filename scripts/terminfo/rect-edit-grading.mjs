@@ -20,7 +20,7 @@ const screenOf = value => {
 /** The suite's report spec: identities, pinned replay and scope. */
 const spec = Object.freeze({ label: 'Rectangle-editing', prefix: 'rect', noncePrefix: rectEditNoncePrefix,
     contracts: rectEditContracts, caseIds: rectEditCaseIds, suiteId: rectEditSuiteId, version: rectEditContractsVersion,
-    adapterId: rectEditAdapterId, derivedFrom: 'ntilde-owned-saved-reset-grading-v1',
+    adapterId: rectEditAdapterId, derivedFrom: 'ntilde-owned-erase-attrs-region-grading-v1',
     screenOf,
     observation: rectEditObservation, grade: gradeRectEditCase,
     replayPinned: (contract, screens) => replayRectEditPinned(contract, screens),

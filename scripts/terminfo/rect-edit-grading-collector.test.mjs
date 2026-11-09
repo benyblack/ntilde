@@ -73,13 +73,13 @@ test('refuses a pinned body whose fixture bytes, criteria or notes were substitu
 });
 
 test('the derivation appends after any earlier layer without rewriting it', () => {
-    const earlier = verbatim() + '// earlier layers\nexport const ntildeSavedResetAdapterLater = {};\n';
+    const earlier = verbatim() + '// earlier layers\nexport const ntildeEraseAttrsRegionAdapterLater = {};\n';
     const layered = adaptRectEditCollector(earlier);
     assert.ok(layered.startsWith(earlier));
     assert.ok(layered.includes(rectEditAdapterId));
 });
 
-// The real pinned bundle, derived through all eighteen earlier layers and EXECUTED over synthetic observed cells: the pinned
+// The real pinned bundle, derived through all nineteen earlier layers and EXECUTED over synthetic observed cells: the pinned
 // termless code must agree with the independent replay and contract. Skipped when the collector cache is absent.
 const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
 const haveBundle = existsSync(bundleUrl);
@@ -104,6 +104,7 @@ test('the real pinned bundle derives through every layer and its DECFRA, DECERA 
         import('./charsets-grading-collector.mjs').then(m => m.adaptCharsetsCollector),
         import('./scrollback-grading-collector.mjs').then(m => m.adaptScrollbackCollector),
         import('./saved-reset-grading-collector.mjs').then(m => m.adaptSavedResetCollector),
+        import('./erase-attrs-region-grading-collector.mjs').then(m => m.adaptEraseAttrsRegionCollector),
     ]);
     const { replayRectEditPinned } = await import('./rect-edit-grading.mjs');
     const { rectEditRecordingContext } = await import('./rect-edit-collector.mjs');

@@ -27,6 +27,7 @@ import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
 import { collectEraseAttrsRegionGrading } from './erase-attrs-region-collector.mjs';
+import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -238,6 +239,14 @@ try {
         const eraseAttrsRegionModule = await import(pathToFileURL(config.eraseAttrsRegionBundle).href);
         const eraseAttrsRegionRun = await collectEraseAttrsRegionGrading({ config, fence, owner, gradingModule: eraseAttrsRegionModule });
         writeFileSync(join(config.output, 'erar-run.json'), JSON.stringify(eraseAttrsRegionRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered rectangle-editing qualification follows the erase-attributes/region suite on the same fence.
+        const rectEditSource = readFileSync(config.rectEditBundle);
+        if (createHash('sha256').update(rectEditSource).digest('hex') !== config.rectEditBundleSha256) {
+            throw new Error('Local rectangle-editing adapter bundle changed.');
+        }
+        const rectEditModule = await import(pathToFileURL(config.rectEditBundle).href);
+        const rectEditRun = await collectRectEditGrading({ config, fence, owner, gradingModule: rectEditModule });
+        writeFileSync(join(config.output, 'rect-run.json'), JSON.stringify(rectEditRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
