@@ -20,6 +20,7 @@ import { collectUnderlineResolvedGrading } from './sgr-underline-color-resolved-
 import { collectSgrResetGrading } from './sgr-reset-collector.mjs';
 import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
+import { collectLineEditGrading } from './line-edit-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -175,6 +176,14 @@ try {
         const eraseLineModule = await import(pathToFileURL(config.eraseLineBundle).href);
         const eraseLineRun = await collectEraseLineGrading({ config, fence, owner, gradingModule: eraseLineModule });
         writeFileSync(join(config.output, 'erln-run.json'), JSON.stringify(eraseLineRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered line-editing qualification follows the erase-in-line suite on the same fence.
+        const lineEditSource = readFileSync(config.lineEditBundle);
+        if (createHash('sha256').update(lineEditSource).digest('hex') !== config.lineEditBundleSha256) {
+            throw new Error('Local line-editing adapter bundle changed.');
+        }
+        const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
+        const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
+        writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
