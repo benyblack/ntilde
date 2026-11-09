@@ -3,7 +3,8 @@
 // declarations in isolation.
 import { readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('../../terminfo-owned-runner.mjs', import.meta.url), 'utf8');
+// A Windows checkout with core.autocrlf rewrites the runner to CRLF; the declaration pattern below is written against LF.
+const source = readFileSync(new URL('../../terminfo-owned-runner.mjs', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 const declarations = /const untranslatedCellPrefixes = new Set\(\[[^\]]*\]\);\nconst untranslatedCellSteps = new Set\(\[[^\]]*\]\);\n(?:\/\*\*[^\n]*\*\/\n)?function untranslatedCellKind\(kind\) \{[\s\S]*?\n\}\n/.exec(source);
 if (declarations === null) throw new Error('The runner no longer declares the untranslated cell dispatch the tests read.');
 
