@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v28';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v29';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -401,9 +401,21 @@ export const capturedV34SourceFiles = Object.freeze({
     attrRectReceiptSourceSha256: "attr-rect-receipt.mjs",
 });
 
-// Frozen v35 erase-character / saved-lines (erase.character, erase.screen.scrollback) grading scope; future experiments must create a distinct policy and map.
+// Frozen v35 cursor (cursor.cup-scroll-region, cursor.hide, cursor.shape, cursor.reverse-wrap) grading scope; future experiments must create a distinct policy and map.
 export const capturedV35SourceFiles = Object.freeze({
     ...capturedV34SourceFiles,
+    cursorReportSourceSha256: "cursor-report.mjs",
+    cursorQualCaptureSourceSha256: "cursor-qual-capture.mjs",
+    cursorQualContractsSourceSha256: "cursor-qual-contracts.mjs",
+    cursorQualCollectorSourceSha256: "cursor-qual-collector.mjs",
+    cursorQualGradingSourceSha256: "cursor-qual-grading.mjs",
+    cursorQualGradingCollectorSourceSha256: "cursor-qual-grading-collector.mjs",
+    cursorQualReceiptSourceSha256: "cursor-qual-receipt.mjs",
+});
+
+// Frozen v36 erase-character / saved-lines (erase.character, erase.screen.scrollback) grading scope; future experiments must create a distinct policy and map.
+export const capturedV36SourceFiles = Object.freeze({
+    ...capturedV35SourceFiles,
     eraseCharsHistoryContractsSourceSha256: "erase-chars-history-contracts.mjs",
     eraseCharsHistoryCollectorSourceSha256: "erase-chars-history-collector.mjs",
     eraseCharsHistoryGradingSourceSha256: "erase-chars-history-grading.mjs",
@@ -411,11 +423,11 @@ export const capturedV35SourceFiles = Object.freeze({
     eraseCharsHistoryReceiptSourceSha256: "erase-chars-history-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v35 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v36 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV35SourceFiles)) throw new Error('Invalid current v35 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV36SourceFiles)) throw new Error('Invalid current v36 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

@@ -134,7 +134,7 @@ export function syntheticEraseCharsHistoryEvidence(runId, bundleSha256, binding,
     });
     frames.push(frame(frames.length, 'echh-finish', blank, deviceAttribute));
     const run = { schemaVersion: 1, adapterId: eraseCharsHistoryAdapterId, probeIds: contracts.map(contract => contract.caseId), cases };
-    const adapter = { id: eraseCharsHistoryAdapterId, derivedFromAdapterId: 'ntilde-owned-attr-rect-grading-v1', bundleSha256,
+    const adapter = { id: eraseCharsHistoryAdapterId, derivedFromAdapterId: 'ntilde-owned-cursor-qualification-grading-v1', bundleSha256,
         upstreamBundleSha256: 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6' };
     return { frames, run, runId, adapter, reset: eraseCharsHistoryReset };
 }

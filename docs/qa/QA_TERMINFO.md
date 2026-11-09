@@ -883,6 +883,15 @@ DCH, whole-line erasure and a no-op, ED 3 from ED 2, ordinary scrolling and an a
 rows only; the pinned pixel/query paths never carry a verdict and are not qualified. Receipt schema 34 and source policy v28 (219 files) bind it; earlier
 policies stay frozen.
 
+### Erase-character and saved-lines qualification (ECH, ED 3)
+
+The [erase-character/saved-lines batch](terminfo/2026-11-09-erase-chars-history-qualification.md) grades exactly `erase.character` (ECH `ESC[3X`) and
+`erase.screen.scrollback` (ED 3 `ESC[3J`) through a twenty-second layered collector extension (`ntilde-owned-erase-chars-history-grading-v1`). The cells,
+cursor, margins, modes, active buffer and the actual ordered saved lines are observed independently on a disposable App's main screen; ECH is told apart from
+DCH, whole-line erasure and a no-op, ED 3 from ED 2, ordinary scrolling and an already-empty history. Other ECH spellings are labeled observations. Physical
+rows only; the pinned pixel/query paths never carry a verdict and are not qualified. Receipt schema 35 and source policy v29 (226 files) bind it; earlier
+policies stay frozen.
+
 ### Erase-in-display qualification (ED 0, ED 1, ED 2)
 
 The [erase-in-display batch](terminfo/2026-11-09-erase-display-qualification.md) grades exactly `erase.screen.below`, `erase.screen.above` and
@@ -920,3 +929,12 @@ collector extension (`ntilde-owned-scrollback-grading-v1`) on the App's main scr
 screen and cursor are observed independently and compared with a byte-interpreting model; the pinned code runs over the same observations.
 Three pinned probes are null by construction, so the contract measures beyond them and the divergence is recorded; stock grades stay
 inconclusive. Receipt schema 30 and source policy v24 (199 files) bind it; earlier policies stay frozen.
+
+### Cursor qualification (CUP in a DECOM region, hide, shape, reverse wrap)
+
+The [cursor batch](terminfo/2026-11-09-cursor-qualification.md) grades exactly `cursor.cup-scroll-region`, `cursor.hide`, `cursor.shape` and
+`cursor.reverse-wrap` through a twenty-first layered collector extension (`ntilde-owned-cursor-qualification-grading-v1`). It runs the pinned termless and
+app callbacks over parent-observed state, retained raw CPR exchanges (the fence gained a bounded `cursorReport`) and controlled synthetic-phase renders,
+with a digest-checked geometry repair (`ntilde-owned-cursor-geometry-repair-v1`) for the undeclared-geometry defect of `cursor.reverse-wrap` and the latent
+one of `cursor.shape`; the original failures are retained. The measurement first found Ntilde ignoring DECSET 45 (preserved as the before-fix attempt) and
+led to the reverse-wraparound fix in #913. Receipt schema 34 and source policy v28 (221 files) bind it; earlier policies stay frozen.

@@ -1,4 +1,5 @@
 import { parseQueryFrame, querySequence, querySpec } from './color-query.mjs';
+import { cursorReportQuery, parseCursorReportFrame } from './cursor-report.mjs';
 // DA is an ordering barrier only. Cell/cursor assertions come from readScreen.
 export function terminalFence(input, output, timeoutMs = 1000) {
     const wasRaw = input.isRaw, wasPaused = input.isPaused();
@@ -14,7 +15,7 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         pending.bytes += chunk.toString('latin1');
         if (pending.expected) {
             try {
-                const result = parseQueryFrame(pending.bytes, pending.expected);
+                const result = pending.expected === cursorReportQuery ? parseCursorReportFrame(pending.bytes) : parseQueryFrame(pending.bytes, pending.expected);
                 if (result) pending.finish(null, result);
             } catch (error) { fail(error); }
             return;
@@ -59,6 +60,10 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         get failed() { return Boolean(fatal); },
         writeCleanup,
         write(sequence) { return request(sequence); },
+        /** One cursor position report: the raw CPR (or its explicit absence) and the DA ordering barrier. */
+        cursorReport(prefix = '') {
+            return request(prefix + cursorReportQuery, cursorReportQuery);
+        },
         query(expected, prefix = '') {
             const spec = querySpec(expected);
             return request(prefix + querySequence(spec), spec);

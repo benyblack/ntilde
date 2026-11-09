@@ -77,9 +77,9 @@ export function stablePixelContext(details) {
 }
 
 /** Read a retained image without accepting path traversal, symlinks or changed bytes. */
-function retainedCaptureResult(output, frame, color = false) {
+function retainedCaptureResult(output, frame, color = false, directory = color ? 'color-pixels' : 'pixels') {
     const pixel = frame?.pixel;
-    const pattern = color ? /^color-pixels\/frame-\d{3}\.png$/ : /^pixels\/frame-\d{3}\.png$/;
+    const pattern = new RegExp(`^${directory}/frame-\\d{3}\\.png$`);
     if (!pixel || !pattern.test(pixel.file ?? '') || !sha(pixel.sha256)) fail();
     const path = join(output, pixel.file), entry = lstatSync(path);
     if (!entry.isFile() || entry.isSymbolicLink() || entry.size > limits.bytes) fail();
@@ -91,6 +91,11 @@ function retainedCaptureResult(output, frame, color = false) {
 
 export function retainedPixel(output, frame) {
     return validatePixelCapture(retainedCaptureResult(output, frame), frame.screen, frame.pixel.presentationTimeMs).image;
+}
+
+/** A retained cursor-qualification capture, revalidated against its own bracketing state and presentation phase. */
+export function retainedCursorCapture(output, frame) {
+    return validatePixelCapture(retainedCaptureResult(output, frame, false, 'cursor-pixels'), frame.screen, frame.pixel.presentationTimeMs);
 }
 
 export function retainedColorCaptureResult(output, frame) {
