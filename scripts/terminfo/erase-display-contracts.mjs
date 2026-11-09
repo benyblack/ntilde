@@ -198,9 +198,12 @@ function inkIs(state, placements) {
         return cell.row === row && cell.col === col && cell.char === char && neutral(cell);
     });
 }
-/** Whether the stored cursor visibility and every buffer-state mode flag are unchanged between two reads. */
-const modesUnchanged = (before, after) => before.cursorVisible === after.cursorVisible
-    && JSON.stringify(before.buffer) === JSON.stringify(after.buffer);
+/** Whether the stored cursor visibility and every buffer-state mode flag are unchanged between two reads. The saved-line count is
+ * compared too unless `allowSavedLines` (the history control reports growth separately instead of failing it). */
+const modesUnchanged = (before, after, allowSavedLines = false) => {
+    const flags = state => (allowSavedLines ? { ...state.buffer, scrollbackLines: null } : state.buffer);
+    return before.cursorVisible === after.cursorVisible && JSON.stringify(flags(before)) === JSON.stringify(flags(after));
+};
 
 /** The attribute control: retained cells keep their bold-only tuple, every other ink cell is a blank inside the erased region, and the
  * cursor stays. Background-color erase is compared with the pen reference by resolved color and by stored representation, separately. */
@@ -221,7 +224,8 @@ function bceState(contract, before, after, pen) {
     const erased = [];
     for (let row = 0; row < after.rows; row++) {
         for (let col = 0; col < after.cols; col++) {
-            if (erasedAt(contract.mode, seedCursor, row, col) && !pinnedPlacements.some(([r, c]) => r === row && c === col)) erased.push([row, col]);
+            // Every erased position counts, including the seeded letters that lay inside the region: each must have become a blank too.
+            if (erasedAt(contract.mode, seedCursor, row, col)) erased.push([row, col]);
         }
     }
     const cells = erased.map(([row, col]) => painted.get(row * after.cols + col));
@@ -303,8 +307,14 @@ function gradeErase(contract, observation) {
     if (!inkIs(edge, surviving(fillPlacements, contract.mode, edgeCursor)) || !sameCursor(edge, edgeCursor) || !modesUnchanged(edgeBefore, edge)) {
         return { outcome: 'unsupported', note: 'The boundary control differs: the cursor row was erased wrongly at the first or last column, or the cursor moved' };
     }
+    if (!modesUnchanged(bceBefore, bce)) {
+        return { outcome: 'unsupported', note: 'A stored mode, margin, scrollback count or the cursor visibility changed during the erase in the attribute control' };
+    }
     if (!attributes.retainedOk || !attributes.blanksOk || !attributes.cursorOk) {
         return { outcome: 'unsupported', note: 'Retained cells lost their stored text or attributes, an erased blank landed outside the erased region, or the cursor moved, in the attribute control' };
+    }
+    if (!modesUnchanged(historyBefore, history, true)) {
+        return { outcome: 'unsupported', note: 'A stored mode, margin or the cursor visibility changed during the erase on the main screen' };
     }
     if (!retainedHistory.kept || !inkIs(history, surviving(pinnedPlacements, contract.mode, seedCursor)) || !sameCursor(history, seedCursor)) {
         return { outcome: 'unsupported', note: 'The main-screen control lost saved lines or changed the viewport differently: ED must not remove scrollback (that is ED 3)' };

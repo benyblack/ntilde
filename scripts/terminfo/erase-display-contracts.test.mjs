@@ -163,6 +163,32 @@ test('unaffected modes: the margins, origin, wrap, insert, alternate-screen flag
     assert.equal(outcome(BELOW, reads => { reads.wide = { ...reads.wide, buffer: { originMode: true } }; }), 'unsupported');
 });
 
+test('mode preservation is checked in the attribute and history controls too, while saved-line growth stays reportable', () => {
+    for (const id of eraseDisplayCaseIds) {
+        assert.equal(outcome(id, reads => { reads.bce = { ...reads.bce, buffer: { insertMode: true } }; }), 'unsupported', id);
+        assert.equal(outcome(id, reads => { reads.bce = { ...reads.bce, cursorVisible: false }; }), 'unsupported', id);
+        assert.match(note(id, reads => { reads.bce = { ...reads.bce, buffer: { originMode: true } }; }), /attribute control/);
+        assert.equal(outcome(id, reads => { reads.history = { ...reads.history, buffer: { insertMode: true } }; }), 'unsupported', id);
+        assert.equal(outcome(id, reads => { reads.history = { ...reads.history, buffer: { scrollTop: 3 } }; }), 'unsupported', id);
+        assert.equal(outcome(id, reads => { reads.history = { ...reads.history, cursorVisible: false }; }), 'unsupported', id);
+        assert.match(note(id, reads => { reads.history = { ...reads.history, buffer: { autoWrap: false } }; }), /main screen/);
+    }
+    // Saved-line growth (a terminal that pushes the viewport into history) is the explicitly permitted difference.
+    assert.equal(outcome(ALL, reads => { reads.history = { ...reads.history, history: [...historySeed, 'pushed'] }; }), 'supported');
+});
+
+test('every erased position counts in the background observation, including the seeded letters inside the erased region', () => {
+    const { record } = observeOf(ALL, reads => {
+        const full = painted(2, bluePen, false);
+        // The 15 seeded letters become default-background blanks: the other 5,585 erased cells stay painted.
+        reads.bce = { cells: full.cells, cursor: [20, 2] };
+    });
+    assert.equal(record.attributes.backgroundColorEraseDetail.erasedCells, 5600);
+    assert.equal(record.attributes.backgroundColorErase, 'mixed');
+    assert.equal(observeOf(ALL, reads => { reads.bce = painted(2); }).record.attributes.backgroundColorErase, 'erased cells carry the current background');
+    assert.deepEqual([BELOW, ABOVE, ALL].map(id => observeOf(id, () => {}).record.attributes.backgroundColorEraseDetail.erasedCells), [2798, 2803, 5600]);
+});
+
 test('required attributes: retained cells keep bold and no stored color; an erased cell must read blank', () => {
     assert.equal(outcome(BELOW, reads => { reads.bce = { cells: survivors(seed(), 0, [20, 2]), cursor: [20, 2] }; }), 'unsupported');
     assert.equal(outcome(ABOVE, reads => { reads.bce = { cells: [...reads.bce.cells.slice(0, -1), [39, 4, colorCell('C', { attrs: ['bold', 'italic'] })]], cursor: [20, 2] }; }), 'unsupported');
@@ -171,10 +197,10 @@ test('required attributes: retained cells keep bold and no stored color; an eras
 });
 
 const bluePen = { kind: 'palette', index: 4 };
-const painted = (mode, bg = bluePen) => {
+const painted = (mode, bg = bluePen, includeSeeds = true) => {
     const blanks = [];
     for (let row = 0; row < 40; row++) for (let col = 0; col < 140; col++) {
-        if (erasedBy(mode, [20, 2], row, col) && !seed().some(([r, c]) => r === row && c === col)) blanks.push([row, col, colorCell(' ', { bg })]);
+        if (erasedBy(mode, [20, 2], row, col) && (includeSeeds || !seed().some(([r, c]) => r === row && c === col))) blanks.push([row, col, colorCell(' ', { bg })]);
     }
     const bold = survivors(seed(), mode, [20, 2]).map(([r, c, s]) => [r, c, colorCell(s.char, { attrs: ['bold'] })]);
     return { cells: [...bold, ...blanks], cursor: [20, 2] };
