@@ -55,8 +55,8 @@ too-small screen, stale or incoherent evidence or incomplete restoration is inco
 
 ## Measurement
 
-Scripts `bf4d0755` (current main `4e32f6d9` plus this batch); the App source is unchanged since `c16997c2` (the Release sidecar
-was built from this checkout, no App change). Owned run `4583b045720e8ff917db8b11f4be4ffb`, receipt schema 26, source policy v20
+Scripts `9ce794e5` (current main `4e32f6d9` plus this batch); the App source is unchanged since `c16997c2` (the Release sidecar
+was built from this checkout, no App change). Owned run `8a4ea6b38243d477f22980a2ed6d68d8`, taken through the shared desktop lock, receipt schema 26, source policy v20
 (inventory v27, 178 files), default theme, 40x140, disposable sidecar `artifacts/sidecar-char-edit`.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Layer |
@@ -76,7 +76,11 @@ REP omitted, 0 and 1 all give `AXX__Z`; count 5 gives `AXXXXXX` (REP overwrites 
 into `_WX` (Y dropped) and DCH into `XY_`. Every spelling matched the ECMA-48 expectation.
 
 **Preserved attempts** (both in the summary): (1) `owned-kuyTIG`, the disposable app started but the worker's PTY fence received stray
-input before the first cell read, so no cell was observed; not evidence, repeated unchanged; (2) the final run above.
+input before the first cell read, so no cell was observed; it ran while another session's desktop collection was in flight and before
+this batch adopted the shared desktop lock, which is the likely cause; not evidence, repeated unchanged; (2) `owned-BbeLcQ` (run
+`4583b045…`), complete and graded all three supported, superseded because Codex review found the REP attribute control checked its flank
+cells' columns but not their rows (the contract grader changed) and the private-clipboard receipt fixture needed the policy-v20 migration,
+so the measurement was repeated on the fixed scripts; (3) the final run above.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported, including the erase-in-line suite (the
 inventory is derived from the merged contracts by the publication test); the separate 10/10 truecolor-literal finding; the separate

@@ -209,13 +209,15 @@ test('every publication file stays small enough to review in one piece', () => {
     }
 });
 
-test('prior publications still rederive beside this batch and the failed attempt is preserved', () => {
+test('prior publications still rederive beside this batch and the failed and superseded attempts are preserved', () => {
     const erase = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-08-erase-line/summary.json', import.meta.url)));
     assert.equal(erase.receipt.schemaVersion, 25);
     assert.equal(erase.receipt.charEditEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 1);
-    assert.equal(attempts[0].receiptCompleted, false);
+    assert.equal(attempts.length, 2);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [false, true]);
     assert.match(attempts[0].outcome, /Unexpected input during cell collection/);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
+    assert.match(attempts[1].outcome, /flank cells' columns but not their rows/);
+    assert.deepEqual(Object.values(attempts[1].verdicts), ['supported', 'supported', 'supported']);
 });
