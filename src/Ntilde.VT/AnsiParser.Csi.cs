@@ -239,6 +239,10 @@ namespace Ntilde.VT
                         int homeRow = _buffer.Modes.IsOriginMode ? _buffer.ScrollTop : 0;
                         _buffer.SetCursorPosition(0, homeRow);
                     }
+                    else
+                    {
+                        ChangeAttributesInRectangularArea(csi, reverse: false); // DECCARA is CSI ... $ r, never DECSTBM
+                    }
                     break;
                 case '@': // ICH - Insert Character
                           // CSI Pn SP @ is SL (scroll left), not ICH.
@@ -421,6 +425,9 @@ namespace Ntilde.VT
                 case 'z': // DECERA - Erase Rectangular Area
                     EraseRectangularArea(csi);
                     break;
+                case 'x': // DECSACE - Select Attribute Change Extent (CSI Ps * x); bare CSI x (DECREQTPARM) stays unhandled
+                    SelectAttributeChangeExtent(csi);
+                    break;
                 case 'X': // Erase Character (ECH)
                     if (bare)
                     {
@@ -572,7 +579,11 @@ namespace Ntilde.VT
                           // push/pop the title stack (AnsiParser.Titles.cs). The remaining
                           // window ops (iconify, resize-by-cells, ...) are ignored, and
                           // leader-prefixed variants stay unhandled.
-                    if (bare && (arg0 == 22 || arg0 == 23))
+                    if (!bare && leader == '\0' && intermediates.SequenceEqual("$"))
+                    {
+                        ChangeAttributesInRectangularArea(csi, reverse: true); // DECRARA is CSI ... $ t
+                    }
+                    else if (bare && (arg0 == 22 || arg0 == 23))
                     {
                         HandleTitleStack(validArgs, validSeparators);
                     }

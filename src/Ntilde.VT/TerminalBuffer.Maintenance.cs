@@ -438,6 +438,9 @@ namespace Ntilde.VT
                 // alternateScroll resource. DECSTR leaves it alone (xterm's soft reset list).
                 Modes.AlternateScrollOverride = null;
 
+                // DECSACE returns to the stream on RIS; DECSTR keeps the selection (not in the VT510 soft-reset table).
+                Modes.IsRectangularAttributeExtent = false;
+
                 _restoreMainCursorOnAltExit = false;
                 SwitchToMainScreen(restoreSavedCursorIfArmed: false);
 
