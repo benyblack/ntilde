@@ -635,6 +635,20 @@ public sealed class CharacterProtectionStateTests
         Assert.Equal(expected, Mask(restored, 0));
     }
 
+    /// <summary>A row with more protected cells than the small-map array holds (the dictionary form) still answers HasProtectedCharacters and still erases selectively.</summary>
+    [Fact]
+    public void A_row_with_many_protected_cells_uses_the_large_map_correctly()
+    {
+        var (buffer, parser) = Create(40, 3);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"q" + new string('P', 20) + Esc + "[0\"q" + new string('u', 10));
+        Assert.True(buffer.HasProtectedCharacters());
+        parser.Process(Esc + "[?2J");
+        Assert.Equal(20, Mask(buffer, 0).Count(c => c == 'P'));
+        Assert.DoesNotContain('u', new string(Enumerable.Range(0, 40).Select(col => { buffer.Lock.EnterReadLock(); try { return buffer.GetCell(col, 0).Character; } finally { buffer.Lock.ExitReadLock(); } }).ToArray()));
+        parser.Process(Esc + "[2J");
+        Assert.False(buffer.HasProtectedCharacters());
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

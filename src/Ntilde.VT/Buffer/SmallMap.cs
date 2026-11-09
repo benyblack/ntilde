@@ -46,15 +46,15 @@ namespace Ntilde.VT.Storage
             }
         }
 
-        /// <summary>True when <paramref name="predicate"/> holds for any key; stops at the first.</summary>
-        public bool AnyKey(System.Func<int, bool> predicate)
+        /// <summary>True when <paramref name="predicate"/> holds for any key (stops at the first); the state argument keeps callers allocation-free.</summary>
+        public bool AnyKey<TState>(TState state, System.Func<TState, int, bool> predicate)
         {
             if (_dictionary != null)
             {
-                foreach (var key in _dictionary.Keys) if (predicate(key)) return true;
+                foreach (var key in _dictionary.Keys) if (predicate(state, key)) return true;
                 return false;
             }
-            for (int i = 0; i < _count; i++) if (predicate(_entries![i].Key)) return true;
+            for (int i = 0; i < _count; i++) if (predicate(state, _entries![i].Key)) return true;
             return false;
         }
 

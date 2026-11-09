@@ -180,7 +180,7 @@ namespace Ntilde.VT
         }
 
         /// <summary>True when any column of this row reads protected (see <see cref="IsProtected"/>).</summary>
-        public bool HasProtectedCells => _protected is { Count: > 0 } map && map.AnyKey(IsProtected);
+        public bool HasProtectedCells => _protected is { Count: > 0 } map && map.AnyKey(this, static (row, col) => row.IsProtected(col));
 
         /// <summary>Cheap: whether the row holds any protection record at all, possibly stale. Safe to use to skip protection work.</summary>
         internal bool HasProtectionEntries => _protected != null;
