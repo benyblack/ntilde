@@ -172,18 +172,15 @@
     "eraseLineGradingSourceSha256": "erase-line-grading.mjs",
     "eraseLineGradingCollectorSourceSha256": "erase-line-grading-collector.mjs",
     "eraseLineReceiptSourceSha256": "erase-line-receipt.mjs",
-<<<<<<< HEAD
+    "charEditContractsSourceSha256": "char-edit-contracts.mjs",
+    "charEditCollectorSourceSha256": "char-edit-collector.mjs",
+    "charEditGradingSourceSha256": "char-edit-grading.mjs",
+    "charEditGradingCollectorSourceSha256": "char-edit-grading-collector.mjs",
+    "charEditReceiptSourceSha256": "char-edit-receipt.mjs",
     "scrollbackContractsSourceSha256": "scrollback-contracts.mjs",
     "scrollbackModelSourceSha256": "scrollback-model.mjs",
     "scrollbackCollectorSourceSha256": "scrollback-collector.mjs",
     "scrollbackGradingSourceSha256": "scrollback-grading.mjs",
     "scrollbackGradingCollectorSourceSha256": "scrollback-grading-collector.mjs",
     "scrollbackReceiptSourceSha256": "scrollback-receipt.mjs"
-=======
-    "charEditContractsSourceSha256": "char-edit-contracts.mjs",
-    "charEditCollectorSourceSha256": "char-edit-collector.mjs",
-    "charEditGradingSourceSha256": "char-edit-grading.mjs",
-    "charEditGradingCollectorSourceSha256": "char-edit-grading-collector.mjs",
-    "charEditReceiptSourceSha256": "char-edit-receipt.mjs"
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
 }

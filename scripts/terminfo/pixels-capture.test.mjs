@@ -180,11 +180,7 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
     const output = mkdtempSync(join(tmpdir(), 'nt-worker-order-'));
     try {
         const bundle = join(output, 'bundle.mjs'), gradingBundle = join(output, 'grading.mjs'),
-<<<<<<< HEAD
-            sgrColorsBundle = join(output, 'sgcolors.mjs'), sgrRgbBundle = join(output, 'sgrgb.mjs'), sgrAttrsBundle = join(output, 'sgattr.mjs'), sgrPaletteBundle = join(output, 'sgpal.mjs'), sgrTruecolorBundle = join(output, 'sgtc.mjs'), sgrUnderlineBundle = join(output, 'sgus.mjs'), sgrUnderlineColorBundle = join(output, 'sguc.mjs'), sgrResetBundle = join(output, 'sgsr.mjs'), sgrClosureBundle = join(output, 'sgcl.mjs'), eraseLineBundle = join(output, 'erln.mjs'), scrollbackBundle = join(output, 'scrl.mjs'),
-=======
-            sgrColorsBundle = join(output, 'sgcolors.mjs'), sgrRgbBundle = join(output, 'sgrgb.mjs'), sgrAttrsBundle = join(output, 'sgattr.mjs'), sgrPaletteBundle = join(output, 'sgpal.mjs'), sgrTruecolorBundle = join(output, 'sgtc.mjs'), sgrUnderlineBundle = join(output, 'sgus.mjs'), sgrUnderlineColorBundle = join(output, 'sguc.mjs'), sgrResetBundle = join(output, 'sgsr.mjs'), sgrClosureBundle = join(output, 'sgcl.mjs'), eraseLineBundle = join(output, 'erln.mjs'), charEditBundle = join(output, 'ched.mjs'),
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+            sgrColorsBundle = join(output, 'sgcolors.mjs'), sgrRgbBundle = join(output, 'sgrgb.mjs'), sgrAttrsBundle = join(output, 'sgattr.mjs'), sgrPaletteBundle = join(output, 'sgpal.mjs'), sgrTruecolorBundle = join(output, 'sgtc.mjs'), sgrUnderlineBundle = join(output, 'sgus.mjs'), sgrUnderlineColorBundle = join(output, 'sguc.mjs'), sgrResetBundle = join(output, 'sgsr.mjs'), sgrClosureBundle = join(output, 'sgcl.mjs'), eraseLineBundle = join(output, 'erln.mjs'), charEditBundle = join(output, 'ched.mjs'), scrollbackBundle = join(output, 'scrl.mjs'),
             config = join(output, 'worker.json'), log = join(output, 'calls.txt');
         const source = 'import {appendFileSync} from \"node:fs\"; export async function collectNtildeRun() { appendFileSync(process.env.NTILDE_WORKER_TEST_LOG, \"stock-close\\n\"); return { testOnly: true }; }';
         const gradingSource = 'export const ntildeGradingAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunTermless() {}';
@@ -210,13 +206,10 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
         writeFileSync(sgrClosureBundle, sgrClosureSource);
         const eraseLineSource = 'export const ntildeEraseLineAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunEraseLineTermless() {}';
         writeFileSync(eraseLineBundle, eraseLineSource);
-<<<<<<< HEAD
-        const scrollbackSource = 'export const ntildeScrollbackAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunScrollbackTermless() {}';
-        writeFileSync(scrollbackBundle, scrollbackSource);
-=======
         const charEditSource = 'export const ntildeCharEditAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunCharEditTermless() {}';
         writeFileSync(charEditBundle, charEditSource);
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+        const scrollbackSource = 'export const ntildeScrollbackAdapter = Object.freeze({ id: "stub", probeIds: [] }); export function ntildeRunScrollbackTermless() {}';
+        writeFileSync(scrollbackBundle, scrollbackSource);
         writeFileSync(config, JSON.stringify({ privateClipboard, output, bundle, gradingBundle,
             gradingBundleSha256: createHash('sha256').update(gradingSource).digest('hex'),
             sgrColorsBundle, sgrColorsBundleSha256: createHash('sha256').update(sgrColorsSource).digest('hex'),
@@ -229,21 +222,14 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
             sgrResetBundle, sgrResetBundleSha256: createHash('sha256').update(sgrResetSource).digest('hex'),
             sgrClosureBundle, sgrClosureBundleSha256: createHash('sha256').update(sgrClosureSource).digest('hex'),
             eraseLineBundle, eraseLineBundleSha256: createHash('sha256').update(eraseLineSource).digest('hex'),
-<<<<<<< HEAD
-            scrollbackBundle, scrollbackBundleSha256: createHash('sha256').update(scrollbackSource).digest('hex'),
-=======
             charEditBundle, charEditBundleSha256: createHash('sha256').update(charEditSource).digest('hex'),
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+            scrollbackBundle, scrollbackBundleSha256: createHash('sha256').update(scrollbackSource).digest('hex'),
             adapterBundleSha256: createHash('sha256').update(source).digest('hex') }));
         const result = spawnSync(process.execPath, ['--import', new URL('./fixtures/worker-collection-hooks.mjs', import.meta.url).href,
             fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
             env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-<<<<<<< HEAD
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'SgrClosure', 'EraseLine', 'Scrollback', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
-=======
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'SgrClosure', 'EraseLine', 'CharEdit', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Saved', 'Metadata', 'Grading', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'SgrClosure', 'EraseLine', 'CharEdit', 'Scrollback', 'Input', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);
         assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
         assert.equal(JSON.parse(readFileSync(join(output, 'grading-run.json'))).adapterId, 'stub');
         assert.equal(JSON.parse(readFileSync(join(output, 'sgcolors-run.json'))).adapterId, 'stub');

@@ -15,11 +15,8 @@ import { includesUnderlineResolvedEvidence, checkUnderlineResolvedEvidence } fro
 import { includesSgrResetEvidence, checkSgrResetEvidence } from './sgr-reset-receipt.mjs';
 import { includesSgrClosureEvidence, checkSgrClosureEvidence } from './sgr-closure-receipt.mjs';
 import { includesEraseLineEvidence, checkEraseLineEvidence } from './erase-line-receipt.mjs';
-<<<<<<< HEAD
-import { includesScrollbackEvidence, checkScrollbackEvidence } from './scrollback-receipt.mjs';
-=======
 import { includesCharEditEvidence, checkCharEditEvidence } from './char-edit-receipt.mjs';
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+import { includesScrollbackEvidence, checkScrollbackEvidence } from './scrollback-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -132,11 +129,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
 }
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-<<<<<<< HEAD
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesScrollback }) {
-=======
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit }) {
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesScrollback }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -162,11 +155,8 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesSgrReset) schemaVersion = 23;
     if (includesSgrClosure) schemaVersion = 24;
     if (includesEraseLine) schemaVersion = 25;
-<<<<<<< HEAD
-    if (includesScrollback) schemaVersion = 26;
-=======
     if (includesCharEdit) schemaVersion = 26;
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+    if (includesScrollback) schemaVersion = 27;
     return schemaVersion;
 }
 
@@ -191,11 +181,8 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSgrReset = includesSgrResetEvidence(output, evidence, context);
     const includesSgrClosure = includesSgrClosureEvidence(output, evidence, context);
     const includesEraseLine = includesEraseLineEvidence(output, evidence, context);
-<<<<<<< HEAD
-    const includesScrollback = includesScrollbackEvidence(output, evidence, context);
-=======
     const includesCharEdit = includesCharEditEvidence(output, evidence, context);
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+    const includesScrollback = includesScrollbackEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
@@ -203,11 +190,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-<<<<<<< HEAD
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesScrollback };
-=======
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit };
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesScrollback };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -234,11 +217,8 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesSgrReset) checkSgrResetEvidence(output, evidence, runId, context);
     if (suffixes.includesSgrClosure) checkSgrClosureEvidence(output, evidence, runId, context);
     if (suffixes.includesEraseLine) checkEraseLineEvidence(output, evidence, runId, context);
-<<<<<<< HEAD
-    if (suffixes.includesScrollback) checkScrollbackEvidence(output, evidence, runId, context);
-=======
     if (suffixes.includesCharEdit) checkCharEditEvidence(output, evidence, runId, context);
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
+    if (suffixes.includesScrollback) checkScrollbackEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

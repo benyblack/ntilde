@@ -1,11 +1,11 @@
 // Explicitly versioned collector extension for the scrolling/history qualification (the nine pinned
-// scrollback.* cases). This is a thirteenth digest-checked derivation layered on top of the erase-in-line
+// scrollback.* cases). This is a fourteenth digest-checked derivation layered on top of the character-editing
 // grading extension: the pinned bundle, the owned adapter and every earlier grading extension stay byte-for-byte
 // unchanged, and each graded result carries this extension's identity so it can never be presented as stock output.
 //
 // The extension adds no probe of its own. It exposes the PINNED termless probe definitions of the nine contracted
 // cases so live, independently observed states can be graded by the collector's own criteria. Derivation refuses
-// unless the retained erase-in-line extension still contains the exact pinned scrollback section (every registration,
+// unless the retained character-editing extension still contains the exact pinned scrollback section (every registration,
 // the tooSmall2/validSize2 helpers and all nine termless and terminal bodies, verified by one SHA-256 over the verbatim
 // section text) plus the parserStateResult and isBlank helpers the probes call, each exactly once.
 import { createHash } from 'node:crypto';
@@ -24,8 +24,8 @@ const helperSeams = Object.freeze([
     'function isBlank(char) {\n  return char === "" || char === " ";\n}',
     'function parserStateResult(pass, expected, state, note) {\n  const response = JSON.stringify(state);\n  return {\n    pass: pass === true,\n    response,\n    ...note && { note },\n    observation: {\n      outcome: pass === null ? "inconclusive" : pass ? "supported" : "unsupported",\n      ...pass === null && { reason: "insufficient-evidence" },\n      evidence: "parser-state",\n      ...note && { note }\n    },\n    ...pass !== null && {\n      assertions: [{ kind: pass ? "positive" : "negative", expected, observed: response }]\n    }\n  };\n}',
     // the retained previous layer's exports
-    'export const ntildeEraseLineAdapter = Object.freeze({',
-    'export function ntildeRunEraseLineTermless(probeId, ctx) {',
+    'export const ntildeCharEditAdapter = Object.freeze({',
+    'export function ntildeRunCharEditTermless(probeId, ctx) {',
 ]);
 
 /** The pinned seams, exposed so portable tests can build a synthetic layered source. */
@@ -41,10 +41,10 @@ export function pinnedScrollbackSection(source) {
     return text.slice(start, end);
 }
 
-/** Derive the scrolling/history grading extension from the erase-in-line grading extension. Only portable tests pass a different
+/** Derive the scrolling/history grading extension from the character-editing grading extension. Only portable tests pass a different
  * expected digest, to exercise the refusals on a synthetic source; every production caller uses the pinned digest. */
-export function adaptScrollbackCollector(eraseLineSource, expectedSectionSha256 = pinnedScrollbackSectionSha256) {
-    const source = String(eraseLineSource);
+export function adaptScrollbackCollector(charEditSource, expectedSectionSha256 = pinnedScrollbackSectionSha256) {
+    const source = String(charEditSource);
     for (const seam of helperSeams) {
         if (source.split(seam).length !== 2) throw new Error('Pinned scrollback helper seam changed; refusing derivation.');
     }
@@ -54,7 +54,7 @@ export function adaptScrollbackCollector(eraseLineSource, expectedSectionSha256 
     return source + `
 
 // Local scrolling/history grading extension ${JSON.stringify(scrollbackAdapterId)}.
-// Derived from the erase-in-line grading extension; probe definitions, policy
+// Derived from the character-editing grading extension; probe definitions, policy
 // gates and stock grading remain intact.
 export const ntildeScrollbackAdapter = Object.freeze({
   id: ${JSON.stringify(scrollbackAdapterId)},

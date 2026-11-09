@@ -39,7 +39,7 @@ function present(path) {
  * policy-v20 run always carries them, because the current worker collects this suite
  * unconditionally after the SGR closure suite. */
 export function includesCharEditEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v20'
+    return ['readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21'].includes(context.sourceSnapshotPolicy)
         || context.charEditAdapterId !== undefined || context.charEditSuiteId !== undefined
         || context.charEditBundleSha256 !== undefined || context.charEditContractsVersion !== undefined
         || evidence.charEditEvidence !== undefined

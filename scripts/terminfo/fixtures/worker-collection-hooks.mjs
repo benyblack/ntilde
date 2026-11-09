@@ -31,11 +31,8 @@ code.set(new URL('sgr-underline-color-resolved-collector.mjs', root).href, log +
 code.set(new URL('sgr-reset-collector.mjs', root).href, log + `export async function collectSgrResetGrading() { record('SgrReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('sgr-closure-collector.mjs', root).href, log + `export async function collectSgrClosureGrading() { record('SgrClosure'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('erase-line-collector.mjs', root).href, log + `export async function collectEraseLineGrading() { record('EraseLine'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
-<<<<<<< HEAD
 code.set(new URL('scrollback-collector.mjs', root).href, log + `export async function collectScrollbackGrading() { record('Scrollback'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
-=======
 code.set(new URL('char-edit-collector.mjs', root).href, log + `export async function collectCharEditGrading() { record('CharEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
->>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);
