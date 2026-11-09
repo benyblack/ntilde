@@ -1,0 +1,88 @@
+{
+  "frames": {
+    "start": {
+      "index": 0,
+      "kind": "chrs-start",
+      "paneId": "ebbe645d-8c1e-45f8-8079-a0712131d088",
+      "barrier": null,
+      "screen": {
+        "rows": 40,
+        "cols": 140,
+        "lines": ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+        "cursorRow": 0,
+        "cursorCol": 0,
+        "cursorVisible": true,
+        "cellDetails": [
+          {
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ]
+      },
+      "sha256": "6cdbd4eb7227d9a7c1a61b5f8ef8eef15ec473bb033baee8af74f3c9131f7f9f"
+    },
+    "bind": {
+      "index": 1,
+      "kind": "chrs-bind",
+      "paneId": "ebbe645d-8c1e-45f8-8079-a0712131d088",
+      "barrier": "\u001b[?62;4;22c",
+      "screen": {
+        "rows": 40,
+        "cols": 140,
+        "lines": ["NTILDE_CS_3fb3237e338d3d461a06e7073d5de05a", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+        "cursorRow": 0,
+        "cursorCol": 42,
+        "cursorVisible": true,
+        "cellDetails": [
+          {
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ]
+      },
+      "sha256": "3c960f44740cbe2abeed71e83a9750e44f252a18982ff6d810e15510c831f0e4"
+    },
+    "finish": {
+      "index": 52,
+      "kind": "chrs-finish",
+      "paneId": "ebbe645d-8c1e-45f8-8079-a0712131d088",
+      "barrier": "\u001b[?62;4;22c",
+      "screen": {
+        "rows": 40,
+        "cols": 140,
+        "lines": ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+        "cursorRow": 0,
+        "cursorCol": 0,
+        "cursorVisible": true,
+        "cellDetails": [
+          {
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ]
+      },
+      "sha256": "6cdbd4eb7227d9a7c1a61b5f8ef8eef15ec473bb033baee8af74f3c9131f7f9f"
+    }
+  }
+}

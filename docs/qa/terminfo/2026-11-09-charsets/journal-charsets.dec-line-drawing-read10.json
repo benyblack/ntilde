@@ -1,0 +1,32 @@
+{
+  "caseId": "charsets.dec-line-drawing",
+  "read": 10,
+  "frame": {
+    "index": 36,
+    "kind": "chrs-read",
+    "paneId": "ebbe645d-8c1e-45f8-8079-a0712131d088",
+    "barrier": "\u001b[?62;4;22c",
+    "screen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": ["┘┐┌└─│", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+      "cursorRow": 0,
+      "cursorCol": 6,
+      "cursorVisible": true,
+      "cellDetails": [
+        {
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ]
+    },
+    "sha256": "1c5fc2d3872c501f79601005bb62fdd031a35ad0186ebfa90fefdacbed2d8a8a"
+  }
+}

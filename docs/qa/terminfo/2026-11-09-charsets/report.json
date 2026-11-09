@@ -1,0 +1,682 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-charsets-graded-v1",
+  "runId": "3fb3237e338d3d461a06e7073d5de05a",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-charsets-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-erase-line-grading-v1",
+    "bundleSha256": "b9627b9c74a66a92418849017fd3e14790d453468ed10367db1213306fa4fa42",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 charset termless criteria (charsets.utf8, charsets.dec-special, charsets.dec-line-drawing and charsets.g0-g1-switching) replayed byte-exactly (UTF-8 text, escape designations and shift controls untouched) on a disposable App and graded from parent-journaled stored cell details and text: decoded physical cells (narrow, wide, wide continuation), the cursor and neutral stored attributes, with controls for the ASCII seed using the same source characters, designation without invocation, invocation without designation, direct G0 and G1 routes, an uppercase control, persistence of the G1 designation past SI, a wide-alone and a precomposed control, and lowercase restoration witnesses (an uppercase marker never proves ASCII restoration). The pinned terminal pixel capture and cursor-query paths are never verdicts and are not qualified; no glyph, pixel, font fallback, keyboard, locale, normalization or platform claim; no stock grades; the Unicode scope is this fixture's two samples only.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 52,
+  "cases": [
+    {
+      "caseId": "charsets.utf8",
+      "pinnedCriterion": "U+00E9 at column 1 and U+4E16 at column 2 with ASCII A at column 0 and Z at column 4",
+      "pinnedFeeds": ["\u001b[1;1H\u001b[2KAxy?Z", "\u001b[1;2H", "é", "\u001b[1;3H", "世"],
+      "pinnedFinally": null,
+      "overlaps": [],
+      "terminalFixture": {
+        "writes": ["\u001b[1;1H\u001b[2KAxy?Z", "\u001b[1;2H", "é", "\u001b[1;3H", "世"],
+        "demand": "U+00E9 at column 1 and U+4E16 at columns 2-3 with A and Z intact",
+        "minimum": {
+          "rows": 1,
+          "cols": 5
+        },
+        "note": "the pinned cursor-position query path is never a verdict and is not claimed"
+      },
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u001b[1;1H\u001b[2KAxy?Z", "\u001b[1;2H", "é", "\u001b[1;3H", "世", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "A世Z", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "éZ", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "éZ"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        [0, 0],
+        [0, 5],
+        [0, 1],
+        [0, 2],
+        [0, 2],
+        [0, 4],
+        [1, 7],
+        [2, 7],
+        [3, 7],
+        [0, 4],
+        [0, 2],
+        [0, 2]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "pinnedFeeds": ["\u001b[1;1H\u001b[2KAxy?Z", "\u001b[1;2H", "é", "\u001b[1;3H", "世"],
+        "pinnedFinally": null,
+        "groups": {
+          "initial": {
+            "class": "initial",
+            "feeds": [],
+            "text": ["____________"],
+            "cursor": [0, 0],
+            "cells": []
+          },
+          "seed": {
+            "class": "fixture",
+            "feeds": ["\u001b[1;1H\u001b[2KAxy?Z"],
+            "text": ["Axy?Z_______"],
+            "cursor": [0, 5],
+            "cells": ["0,0,A", "0,1,x", "0,2,y", "0,3,?", "0,4,Z"]
+          },
+          "cup1": {
+            "class": "fixture",
+            "feeds": ["\u001b[1;2H"],
+            "text": ["Axy?Z_______"],
+            "cursor": [0, 1],
+            "cells": ["0,0,A", "0,1,x", "0,2,y", "0,3,?", "0,4,Z"]
+          },
+          "afterE": {
+            "class": "behavior",
+            "feeds": ["é"],
+            "text": ["Aéy?Z_______"],
+            "cursor": [0, 2],
+            "cells": ["0,0,A", "0,1,é U+00E9", "0,2,y", "0,3,?", "0,4,Z"]
+          },
+          "cup2": {
+            "class": "fixture",
+            "feeds": ["\u001b[1;3H"],
+            "text": ["Aéy?Z_______"],
+            "cursor": [0, 2],
+            "cells": ["0,0,A", "0,1,é U+00E9", "0,2,y", "0,3,?", "0,4,Z"]
+          },
+          "target": {
+            "class": "pinned",
+            "feeds": ["世"],
+            "text": ["Aé世>Z_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,é U+00E9", "0,2,世 U+4E16 wide", "0,3,<continuation>", "0,4,Z"]
+          },
+          "witnessAscii": {
+            "class": "restoration",
+            "feeds": ["\u001b[2;1Hjklmqxl"],
+            "text": ["Aé世>Z_______", "jklmqxl_____"],
+            "cursor": [1, 7],
+            "cells": ["0,0,A", "0,1,é U+00E9", "0,2,世 U+4E16 wide", "0,3,<continuation>", "0,4,Z", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l"]
+          },
+          "witnessDec": {
+            "class": "restoration",
+            "feeds": ["\u001b[3;1H\u001b(0jklmqxl\u001b(B"],
+            "text": ["Aé世>Z_______", "jklmqxl_____", "┘┐┌└─│┌_____"],
+            "cursor": [2, 7],
+            "cells": ["0,0,A", "0,1,é U+00E9", "0,2,世 U+4E16 wide", "0,3,<continuation>", "0,4,Z", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C"]
+          },
+          "witnessAfter": {
+            "class": "restoration",
+            "feeds": ["\u001b[4;1Hjklmqxl"],
+            "text": ["Aé世>Z_______", "jklmqxl_____", "┘┐┌└─│┌_____", "jklmqxl_____"],
+            "cursor": [3, 7],
+            "cells": ["0,0,A", "0,1,é U+00E9", "0,2,世 U+4E16 wide", "0,3,<continuation>", "0,4,Z", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C", "3,0,j", "3,1,k", "3,2,l", "3,3,m", "3,4,q", "3,5,x", "3,6,l"]
+          },
+          "wideAlone": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "A世Z"],
+            "text": ["A世>Z________"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,世 U+4E16 wide", "0,2,<continuation>", "0,3,Z"]
+          },
+          "precomposed": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "éZ"],
+            "text": ["éZ__________"],
+            "cursor": [0, 2],
+            "cells": ["0,0,é U+00E9", "0,1,Z"]
+          },
+          "decomposed": {
+            "class": "observed",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "éZ"],
+            "text": ["????????????"],
+            "cursor": [0, 2],
+            "cells": ["0,0,<ambiguous> extended", "0,1,<ambiguous>", "0,2,<ambiguous>", "0,3,<ambiguous>", "0,4,<ambiguous>", "0,5,<ambiguous>", "0,6,<ambiguous>", "0,7,<ambiguous>", "0,8,<ambiguous>", "0,9,<ambiguous>", "0,10,<ambiguous>", "0,11,<ambiguous>", "0,12,<ambiguous>", "0,13,<ambiguous>", "0,14,<ambiguous>", "0,15,<ambiguous>", "0,16,<ambiguous>", "0,17,<ambiguous>", "0,18,<ambiguous>", "0,19,<ambiguous>", "0,20,<ambiguous>", "0,21,<ambiguous>", "0,22,<ambiguous>", "0,23,<ambiguous>", "0,24,<ambiguous>", "0,25,<ambiguous>", "0,26,<ambiguous>", "0,27,<ambiguous>", "0,28,<ambiguous>", "0,29,<ambiguous>", "0,30,<ambiguous>", "0,31,<ambiguous>", "0,32,<ambiguous>", "0,33,<ambiguous>", "0,34,<ambiguous>", "0,35,<ambiguous>", "0,36,<ambiguous>", "0,37,<ambiguous>", "0,38,<ambiguous>", "0,39,<ambiguous>", "0,40,<ambiguous>", "0,41,<ambiguous>", "0,42,<ambiguous>", "0,43,<ambiguous>", "0,44,<ambiguous>", "0,45,<ambiguous>", "0,46,<ambiguous>", "0,47,<ambiguous>", "0,48,<ambiguous>", "0,49,<ambiguous>", "0,50,<ambiguous>", "0,51,<ambiguous>", "0,52,<ambiguous>", "0,53,<ambiguous>", "0,54,<ambiguous>", "0,55,<ambiguous>", "0,56,<ambiguous>", "0,57,<ambiguous>", "0,58,<ambiguous>", "0,59,<ambiguous>", "0,60,<ambiguous>", "0,61,<ambiguous>", "0,62,<ambiguous>", "0,63,<ambiguous>", "0,64,<ambiguous>", "0,65,<ambiguous>", "0,66,<ambiguous>", "0,67,<ambiguous>", "0,68,<ambiguous>", "0,69,<ambiguous>", "0,70,<ambiguous>", "0,71,<ambiguous>", "0,72,<ambiguous>", "0,73,<ambiguous>", "0,74,<ambiguous>", "0,75,<ambiguous>", "0,76,<ambiguous>", "0,77,<ambiguous>", "0,78,<ambiguous>", "0,79,<ambiguous>", "0,80,<ambiguous>", "0,81,<ambiguous>", "0,82,<ambiguous>", "0,83,<ambiguous>", "0,84,<ambiguous>", "0,85,<ambiguous>", "0,86,<ambiguous>", "0,87,<ambiguous>", "0,88,<ambiguous>", "0,89,<ambiguous>", "0,90,<ambiguous>", "0,91,<ambiguous>", "0,92,<ambiguous>", "0,93,<ambiguous>", "0,94,<ambiguous>", "0,95,<ambiguous>", "0,96,<ambiguous>", "0,97,<ambiguous>", "0,98,<ambiguous>", "0,99,<ambiguous>", "0,100,<ambiguous>", "0,101,<ambiguous>", "0,102,<ambiguous>", "0,103,<ambiguous>", "0,104,<ambiguous>", "0,105,<ambiguous>", "0,106,<ambiguous>", "0,107,<ambiguous>", "0,108,<ambiguous>", "0,109,<ambiguous>", "0,110,<ambiguous>", "0,111,<ambiguous>", "0,112,<ambiguous>", "0,113,<ambiguous>", "0,114,<ambiguous>", "0,115,<ambiguous>", "0,116,<ambiguous>", "0,117,<ambiguous>", "0,118,<ambiguous>", "0,119,<ambiguous>", "0,120,<ambiguous>", "0,121,<ambiguous>", "0,122,<ambiguous>", "0,123,<ambiguous>", "0,124,<ambiguous>", "0,125,<ambiguous>", "0,126,<ambiguous>", "0,127,<ambiguous>", "0,128,<ambiguous>", "0,129,<ambiguous>", "0,130,<ambiguous>", "0,131,<ambiguous>", "0,132,<ambiguous>", "0,133,<ambiguous>", "0,134,<ambiguous>", "0,135,<ambiguous>", "0,136,<ambiguous>", "0,137,<ambiguous>", "0,138,<ambiguous>", "0,139,<ambiguous>"]
+          }
+        },
+        "overlaps": []
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"x\",\"y\",\"?\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0},{\"x\":2,\"y\":0}],\"after\":[\"A\",\"é\",\"世\",\"\",\"Z\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "Sampled Unicode characters é and 世 occupy their target cells with ASCII controls intact",
+            "observed": "{\"before\":[\"A\",\"x\",\"y\",\"?\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0},{\"x\":2,\"y\":0}],\"after\":[\"A\",\"é\",\"世\",\"\",\"Z\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-physical-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored decoded cell contents only for this fixture's two Unicode samples: U+00E9 (one narrow cell) and U+4E16 (a wide cell plus its continuation) with the ASCII A and Z controls, the cursor, neutral stored attributes, unaffected cells and lowercase charset witnesses; physical cells from complete stored cell details, never UTF-16 offsets; not general UTF-8, grapheme, normalization or width completeness, not glyphs or pixels"
+      }
+    },
+    {
+      "caseId": "charsets.dec-special",
+      "pinnedCriterion": "ASCII q cells at columns 0 and 2 flank the cell at column 1, which holds U+2500 after ESC ( 0 q ESC ( B q",
+      "pinnedFeeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kqqq", "\u001b[1;2H", "\u001b(0q\u001b(Bq"],
+      "pinnedFinally": "\u000f\u001b(B\u001b)B",
+      "overlaps": [
+        {
+          "with": "charsets.dec-line-drawing",
+          "shared": "DEC Special Graphics designation ESC ( 0, restoration ESC ( B and the source character q (U+2500)"
+        }
+      ],
+      "terminalFixture": {
+        "writes": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kqqq", "\u001b[1;2H", "\u001b(0q\u001b(Bq"],
+        "restore": "\u000f\u001b(B\u001b)B",
+        "demand": "q U+2500 q at columns 0-2 with ASCII restored",
+        "minimum": {
+          "rows": 1,
+          "cols": 3
+        },
+        "note": "upstream pixel capture (rows 1-4) and cursor-query paths are never verdicts and are not claimed"
+      },
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kqqq", "\u001b[1;2H", "\u001b(0q\u001b(Bq", "\u000f\u001b(B\u001b)B", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(B\u001b)0qqq", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0QQQ\u001b(B", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0qqq", "\u001b(Bqqq"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        [0, 0],
+        [0, 3],
+        [0, 1],
+        [0, 3],
+        [0, 3],
+        [1, 7],
+        [2, 7],
+        [3, 7],
+        [0, 3],
+        [0, 3],
+        [0, 3],
+        [0, 6]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "pinnedFeeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kqqq", "\u001b[1;2H", "\u001b(0q\u001b(Bq"],
+        "pinnedFinally": "\u000f\u001b(B\u001b)B",
+        "groups": {
+          "initial": {
+            "class": "initial",
+            "feeds": [],
+            "text": ["____________"],
+            "cursor": [0, 0],
+            "cells": []
+          },
+          "seed": {
+            "class": "fixture",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kqqq"],
+            "text": ["qqq_________"],
+            "cursor": [0, 3],
+            "cells": ["0,0,q", "0,1,q", "0,2,q"]
+          },
+          "cup": {
+            "class": "fixture",
+            "feeds": ["\u001b[1;2H"],
+            "text": ["qqq_________"],
+            "cursor": [0, 1],
+            "cells": ["0,0,q", "0,1,q", "0,2,q"]
+          },
+          "target": {
+            "class": "pinned",
+            "feeds": ["\u001b(0q\u001b(Bq"],
+            "text": ["q─q_________"],
+            "cursor": [0, 3],
+            "cells": ["0,0,q", "0,1,─ U+2500", "0,2,q"]
+          },
+          "restored": {
+            "class": "restoration",
+            "feeds": ["\u000f\u001b(B\u001b)B"],
+            "text": ["q─q_________"],
+            "cursor": [0, 3],
+            "cells": ["0,0,q", "0,1,─ U+2500", "0,2,q"]
+          },
+          "witnessAscii": {
+            "class": "restoration",
+            "feeds": ["\u001b[2;1Hjklmqxl"],
+            "text": ["q─q_________", "jklmqxl_____"],
+            "cursor": [1, 7],
+            "cells": ["0,0,q", "0,1,─ U+2500", "0,2,q", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l"]
+          },
+          "witnessDec": {
+            "class": "behavior",
+            "feeds": ["\u001b[3;1H\u001b(0jklmqxl\u001b(B"],
+            "text": ["q─q_________", "jklmqxl_____", "┘┐┌└─│┌_____"],
+            "cursor": [2, 7],
+            "cells": ["0,0,q", "0,1,─ U+2500", "0,2,q", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C"]
+          },
+          "witnessAfter": {
+            "class": "restoration",
+            "feeds": ["\u001b[4;1Hjklmqxl"],
+            "text": ["q─q_________", "jklmqxl_____", "┘┐┌└─│┌_____", "jklmqxl_____"],
+            "cursor": [3, 7],
+            "cells": ["0,0,q", "0,1,─ U+2500", "0,2,q", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C", "3,0,j", "3,1,k", "3,2,l", "3,3,m", "3,4,q", "3,5,x", "3,6,l"]
+          },
+          "designateG1": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(B\u001b)0qqq"],
+            "text": ["qqq_________"],
+            "cursor": [0, 3],
+            "cells": ["0,0,q", "0,1,q", "0,2,q"]
+          },
+          "upper": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0QQQ\u001b(B"],
+            "text": ["QQQ_________"],
+            "cursor": [0, 3],
+            "cells": ["0,0,Q", "0,1,Q", "0,2,Q"]
+          },
+          "persist": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0qqq"],
+            "text": ["───_________"],
+            "cursor": [0, 3],
+            "cells": ["0,0,─ U+2500", "0,1,─ U+2500", "0,2,─ U+2500"]
+          },
+          "persistRestore": {
+            "class": "behavior",
+            "feeds": ["\u001b(Bqqq"],
+            "text": ["───qqq______"],
+            "cursor": [0, 6],
+            "cells": ["0,0,─ U+2500", "0,1,─ U+2500", "0,2,─ U+2500", "0,3,q", "0,4,q", "0,5,q"]
+          }
+        },
+        "overlaps": [
+          {
+            "with": "charsets.dec-line-drawing",
+            "shared": "DEC Special Graphics designation ESC ( 0, restoration ESC ( B and the source character q (U+2500)"
+          }
+        ]
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"q\",\"q\",\"q\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"q\",\"─\",\"q\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "ASCII q controls flank DEC Special Graphics q mapped to U+2500",
+            "observed": "{\"before\":[\"q\",\"q\",\"q\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"q\",\"─\",\"q\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-physical-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored decoded cell contents only: the exact ASCII q, U+2500 and ASCII q code points at columns 0-2, narrow storage, the cursor, neutral stored attributes, unaffected cells and lowercase restoration witnesses; not font glyphs, pixels or the pinned pixel capture path"
+      }
+    },
+    {
+      "caseId": "charsets.dec-line-drawing",
+      "pinnedCriterion": "ESC ( 0 jklmqx ESC ( B stores U+2518 U+2510 U+250C U+2514 U+2500 U+2502 at columns 0-5 while the trailing ASCII j at column 6 is unchanged",
+      "pinnedFeeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kjklmqxj", "\u001b[1;1H", "\u001b(0jklmqx\u001b(B"],
+      "pinnedFinally": "\u000f\u001b(B\u001b)B",
+      "overlaps": [
+        {
+          "with": "charsets.dec-special",
+          "shared": "DEC Special Graphics designation ESC ( 0, restoration ESC ( B and the source character q (U+2500)"
+        },
+        {
+          "with": "charsets.g0-g1-switching",
+          "shared": "the source character l (U+250C) and the preamble SI ESC ( B ESC ) B"
+        }
+      ],
+      "terminalFixture": {
+        "writes": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kjklmqxj", "\u001b[1;1H", "\u001b(0jklmqx\u001b(B"],
+        "restore": "\u000f\u001b(B\u001b)B",
+        "demand": "jklmqx stored as six box-drawing code points followed by ASCII j",
+        "minimum": {
+          "rows": 1,
+          "cols": 7
+        },
+        "note": "the pinned cursor-position query path is never a verdict and is not claimed"
+      },
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kjklmqxj", "\u001b[1;1H", "\u001b(0jklmqx\u001b(B", "\u000f\u001b(B\u001b)B", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(B\u001b)0jklmqx", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0JKLMQX\u001b(B", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0jklmqx", "\u001b(Bjklmqx"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        [0, 0],
+        [0, 7],
+        [0, 0],
+        [0, 6],
+        [0, 6],
+        [1, 7],
+        [2, 7],
+        [3, 7],
+        [0, 6],
+        [0, 6],
+        [0, 6],
+        [0, 12]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "pinnedFeeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kjklmqxj", "\u001b[1;1H", "\u001b(0jklmqx\u001b(B"],
+        "pinnedFinally": "\u000f\u001b(B\u001b)B",
+        "groups": {
+          "initial": {
+            "class": "initial",
+            "feeds": [],
+            "text": ["____________"],
+            "cursor": [0, 0],
+            "cells": []
+          },
+          "seed": {
+            "class": "fixture",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kjklmqxj"],
+            "text": ["jklmqxj_____"],
+            "cursor": [0, 7],
+            "cells": ["0,0,j", "0,1,k", "0,2,l", "0,3,m", "0,4,q", "0,5,x", "0,6,j"]
+          },
+          "cup": {
+            "class": "fixture",
+            "feeds": ["\u001b[1;1H"],
+            "text": ["jklmqxj_____"],
+            "cursor": [0, 0],
+            "cells": ["0,0,j", "0,1,k", "0,2,l", "0,3,m", "0,4,q", "0,5,x", "0,6,j"]
+          },
+          "target": {
+            "class": "pinned",
+            "feeds": ["\u001b(0jklmqx\u001b(B"],
+            "text": ["┘┐┌└─│j_____"],
+            "cursor": [0, 6],
+            "cells": ["0,0,┘ U+2518", "0,1,┐ U+2510", "0,2,┌ U+250C", "0,3,└ U+2514", "0,4,─ U+2500", "0,5,│ U+2502", "0,6,j"]
+          },
+          "restored": {
+            "class": "restoration",
+            "feeds": ["\u000f\u001b(B\u001b)B"],
+            "text": ["┘┐┌└─│j_____"],
+            "cursor": [0, 6],
+            "cells": ["0,0,┘ U+2518", "0,1,┐ U+2510", "0,2,┌ U+250C", "0,3,└ U+2514", "0,4,─ U+2500", "0,5,│ U+2502", "0,6,j"]
+          },
+          "witnessAscii": {
+            "class": "restoration",
+            "feeds": ["\u001b[2;1Hjklmqxl"],
+            "text": ["┘┐┌└─│j_____", "jklmqxl_____"],
+            "cursor": [1, 7],
+            "cells": ["0,0,┘ U+2518", "0,1,┐ U+2510", "0,2,┌ U+250C", "0,3,└ U+2514", "0,4,─ U+2500", "0,5,│ U+2502", "0,6,j", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l"]
+          },
+          "witnessDec": {
+            "class": "behavior",
+            "feeds": ["\u001b[3;1H\u001b(0jklmqxl\u001b(B"],
+            "text": ["┘┐┌└─│j_____", "jklmqxl_____", "┘┐┌└─│┌_____"],
+            "cursor": [2, 7],
+            "cells": ["0,0,┘ U+2518", "0,1,┐ U+2510", "0,2,┌ U+250C", "0,3,└ U+2514", "0,4,─ U+2500", "0,5,│ U+2502", "0,6,j", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C"]
+          },
+          "witnessAfter": {
+            "class": "restoration",
+            "feeds": ["\u001b[4;1Hjklmqxl"],
+            "text": ["┘┐┌└─│j_____", "jklmqxl_____", "┘┐┌└─│┌_____", "jklmqxl_____"],
+            "cursor": [3, 7],
+            "cells": ["0,0,┘ U+2518", "0,1,┐ U+2510", "0,2,┌ U+250C", "0,3,└ U+2514", "0,4,─ U+2500", "0,5,│ U+2502", "0,6,j", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C", "3,0,j", "3,1,k", "3,2,l", "3,3,m", "3,4,q", "3,5,x", "3,6,l"]
+          },
+          "designateG1": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(B\u001b)0jklmqx"],
+            "text": ["jklmqx______"],
+            "cursor": [0, 6],
+            "cells": ["0,0,j", "0,1,k", "0,2,l", "0,3,m", "0,4,q", "0,5,x"]
+          },
+          "upper": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0JKLMQX\u001b(B"],
+            "text": ["JKLMQX______"],
+            "cursor": [0, 6],
+            "cells": ["0,0,J", "0,1,K", "0,2,L", "0,3,M", "0,4,Q", "0,5,X"]
+          },
+          "persist": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0jklmqx"],
+            "text": ["┘┐┌└─│______"],
+            "cursor": [0, 6],
+            "cells": ["0,0,┘ U+2518", "0,1,┐ U+2510", "0,2,┌ U+250C", "0,3,└ U+2514", "0,4,─ U+2500", "0,5,│ U+2502"]
+          },
+          "persistRestore": {
+            "class": "behavior",
+            "feeds": ["\u001b(Bjklmqx"],
+            "text": ["┘┐┌└─│jklmqx"],
+            "cursor": [0, 12],
+            "cells": ["0,0,┘ U+2518", "0,1,┐ U+2510", "0,2,┌ U+250C", "0,3,└ U+2514", "0,4,─ U+2500", "0,5,│ U+2502", "0,6,j", "0,7,k", "0,8,l", "0,9,m", "0,10,q", "0,11,x"]
+          }
+        },
+        "overlaps": [
+          {
+            "with": "charsets.dec-special",
+            "shared": "DEC Special Graphics designation ESC ( 0, restoration ESC ( B and the source character q (U+2500)"
+          },
+          {
+            "with": "charsets.g0-g1-switching",
+            "shared": "the source character l (U+250C) and the preamble SI ESC ( B ESC ) B"
+          }
+        ]
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"j\",\"k\",\"l\",\"m\",\"q\",\"x\",\"j\"],\"setup\":[{\"x\":0,\"y\":0}],\"after\":[\"┘\",\"┐\",\"┌\",\"└\",\"─\",\"│\",\"j\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DEC jklmqx map exactly to ┘┐┌└─│ while trailing ASCII j remains unchanged",
+            "observed": "{\"before\":[\"j\",\"k\",\"l\",\"m\",\"q\",\"x\",\"j\"],\"setup\":[{\"x\":0,\"y\":0}],\"after\":[\"┘\",\"┐\",\"┌\",\"└\",\"─\",\"│\",\"j\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-physical-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored decoded cell contents only: the six exact DEC line-drawing code points at columns 0-5, the unchanged ASCII j at column 6, narrow storage, the cursor, neutral stored attributes, unaffected cells, a same-source-character ASCII control, an uppercase control and lowercase restoration witnesses; not font glyphs or pixels"
+      }
+    },
+    {
+      "caseId": "charsets.g0-g1-switching",
+      "pinnedCriterion": "after ESC ( B ESC ) 0 l SO l SI l the cells at columns 1-3 hold l, U+250C, l within the A and Z controls",
+      "pinnedFeeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ", "\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl"],
+      "pinnedFinally": "\u000f\u001b(B\u001b)B",
+      "overlaps": [
+        {
+          "with": "charsets.dec-line-drawing",
+          "shared": "the source character l (U+250C) and the preamble SI ESC ( B ESC ) B"
+        }
+      ],
+      "terminalFixture": {
+        "writes": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ", "\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl"],
+        "restore": "\u000f\u001b(B\u001b)B",
+        "demand": "l U+250C l between A and Z",
+        "minimum": {
+          "rows": 1,
+          "cols": 5
+        },
+        "note": "the pinned cursor-position query path is never a verdict and is not claimed"
+      },
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ", "\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl", "\u000f\u001b(B\u001b)B", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0lll", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)B\u000elll\u000f", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(0lll\u001b(B", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0\u000elll\u000f", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl", "\u001b[2;1H\u000ejkl\u000f"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        [0, 0],
+        [0, 5],
+        [0, 1],
+        [0, 4],
+        [0, 4],
+        [1, 7],
+        [2, 7],
+        [3, 7],
+        [0, 4],
+        [0, 4],
+        [0, 4],
+        [0, 4],
+        [0, 4],
+        [1, 3]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "pinnedFeeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ", "\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl"],
+        "pinnedFinally": "\u000f\u001b(B\u001b)B",
+        "groups": {
+          "initial": {
+            "class": "initial",
+            "feeds": [],
+            "text": ["____________"],
+            "cursor": [0, 0],
+            "cells": []
+          },
+          "seed": {
+            "class": "fixture",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ"],
+            "text": ["AlllZ_______"],
+            "cursor": [0, 5],
+            "cells": ["0,0,A", "0,1,l", "0,2,l", "0,3,l", "0,4,Z"]
+          },
+          "cup": {
+            "class": "fixture",
+            "feeds": ["\u001b[1;2H"],
+            "text": ["AlllZ_______"],
+            "cursor": [0, 1],
+            "cells": ["0,0,A", "0,1,l", "0,2,l", "0,3,l", "0,4,Z"]
+          },
+          "target": {
+            "class": "pinned",
+            "feeds": ["\u001b(B\u001b)0l\u000el\u000fl"],
+            "text": ["Al┌lZ_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,l", "0,2,┌ U+250C", "0,3,l", "0,4,Z"]
+          },
+          "restored": {
+            "class": "restoration",
+            "feeds": ["\u000f\u001b(B\u001b)B"],
+            "text": ["Al┌lZ_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,l", "0,2,┌ U+250C", "0,3,l", "0,4,Z"]
+          },
+          "witnessAscii": {
+            "class": "restoration",
+            "feeds": ["\u001b[2;1Hjklmqxl"],
+            "text": ["Al┌lZ_______", "jklmqxl_____"],
+            "cursor": [1, 7],
+            "cells": ["0,0,A", "0,1,l", "0,2,┌ U+250C", "0,3,l", "0,4,Z", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l"]
+          },
+          "witnessDec": {
+            "class": "restoration",
+            "feeds": ["\u001b[3;1H\u001b(0jklmqxl\u001b(B"],
+            "text": ["Al┌lZ_______", "jklmqxl_____", "┘┐┌└─│┌_____"],
+            "cursor": [2, 7],
+            "cells": ["0,0,A", "0,1,l", "0,2,┌ U+250C", "0,3,l", "0,4,Z", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C"]
+          },
+          "witnessAfter": {
+            "class": "restoration",
+            "feeds": ["\u001b[4;1Hjklmqxl"],
+            "text": ["Al┌lZ_______", "jklmqxl_____", "┘┐┌└─│┌_____", "jklmqxl_____"],
+            "cursor": [3, 7],
+            "cells": ["0,0,A", "0,1,l", "0,2,┌ U+250C", "0,3,l", "0,4,Z", "1,0,j", "1,1,k", "1,2,l", "1,3,m", "1,4,q", "1,5,x", "1,6,l", "2,0,┘ U+2518", "2,1,┐ U+2510", "2,2,┌ U+250C", "2,3,└ U+2514", "2,4,─ U+2500", "2,5,│ U+2502", "2,6,┌ U+250C", "3,0,j", "3,1,k", "3,2,l", "3,3,m", "3,4,q", "3,5,x", "3,6,l"]
+          },
+          "designateOnly": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0lll"],
+            "text": ["AlllZ_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,l", "0,2,l", "0,3,l", "0,4,Z"]
+          },
+          "shiftOnly": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)B\u000elll\u000f"],
+            "text": ["AlllZ_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,l", "0,2,l", "0,3,l", "0,4,Z"]
+          },
+          "g0Direct": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(0lll\u001b(B"],
+            "text": ["A┌┌┌Z_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,┌ U+250C", "0,2,┌ U+250C", "0,3,┌ U+250C", "0,4,Z"]
+          },
+          "g1Invoked": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0\u000elll\u000f"],
+            "text": ["A┌┌┌Z_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,┌ U+250C", "0,2,┌ U+250C", "0,3,┌ U+250C", "0,4,Z"]
+          },
+          "persistFixture": {
+            "class": "behavior",
+            "feeds": ["\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl"],
+            "text": ["Al┌lZ_______"],
+            "cursor": [0, 4],
+            "cells": ["0,0,A", "0,1,l", "0,2,┌ U+250C", "0,3,l", "0,4,Z"]
+          },
+          "persistShift": {
+            "class": "behavior",
+            "feeds": ["\u001b[2;1H\u000ejkl\u000f"],
+            "text": ["Al┌lZ_______", "┘┐┌_________"],
+            "cursor": [1, 3],
+            "cells": ["0,0,A", "0,1,l", "0,2,┌ U+250C", "0,3,l", "0,4,Z", "1,0,┘ U+2518", "1,1,┐ U+2510", "1,2,┌ U+250C"]
+          }
+        },
+        "overlaps": [
+          {
+            "with": "charsets.dec-line-drawing",
+            "shared": "the source character l (U+250C) and the preamble SI ESC ( B ESC ) B"
+          }
+        ]
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"l\",\"l\",\"l\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"A\",\"l\",\"┌\",\"l\",\"Z\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "G0 ASCII l, SO-selected G1 DEC l→U+250C, then SI-selected G0 ASCII l, within A/Z controls",
+            "observed": "{\"before\":[\"A\",\"l\",\"l\",\"l\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"A\",\"l\",\"┌\",\"l\",\"Z\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-physical-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored decoded cell contents only: the exact A, l, U+250C, l, Z code points at columns 0-4, narrow storage, the cursor, neutral stored attributes, unaffected cells, designation-only, shift-only, G0-direct and G1-invoked controls, persistence of the G1 designation past SI, and lowercase restoration witnesses; not font glyphs or pixels"
+      }
+    }
+  ]
+}
