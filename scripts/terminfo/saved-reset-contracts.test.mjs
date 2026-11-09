@@ -175,6 +175,17 @@ test('reset.sgr: unrelated state changed by the full-tuple reset is unsupported 
     assert.equal(outcome(SGR, reads => { reads.omitted = { ...reads.omitted, history: ['stray'] }; }), 'inconclusive');
 });
 
+test('reset.sgr: every attribute of the full-style control must be stored on X, or the control is inconclusive', () => {
+    const all = ['bold', 'dim', 'italic', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline', 'underline'];
+    for (const missing of ['bold', 'dim', 'italic', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline']) {
+        const x = {
+            attrs: all.filter(name => name !== missing), underlineStyle: 1, underlineColorIndex: 3,
+            fg: { kind: 'literal', rgb: { r: 1, g: 2, b: 3 } }, bg: { kind: 'literal', rgb: { r: 4, g: 5, b: 6 } },
+        };
+        assert.equal(outcome(SGR, reads => { reads.full = { cells: [...put(0, 0, 'X', x), ...put(0, 1, 'Y', {})], cursor: [0, 2] }; }), 'inconclusive', missing);
+    }
+});
+
 test('reset.sgr: a missing or wrong styled control is inconclusive, and the reset is attributed only when styles persist without it', () => {
     const pair = (x, y) => ({ cells: [...put(0, 0, 'X', x), ...put(0, 1, 'Y', y)], cursor: [0, 2] });
     assert.equal(outcome(SGR, reads => { reads.pinned = pair({ attrs: ['bold', 'italic'] }, {}); }), 'inconclusive', 'inverse missing on X');

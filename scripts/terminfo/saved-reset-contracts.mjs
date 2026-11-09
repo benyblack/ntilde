@@ -325,7 +325,10 @@ function gradeSgr(observation) {
     }
     const wide = cells(full);
     const storesUnderlineColor = wide.x !== undefined && (wide.x.underlineColorIndex !== -1 || wide.x.underlineArgb !== null);
-    if (wide.x?.char !== 'X' || neutral(wide.x) || wide.x.underline !== 'single' || !wide.x.overline || !storesUnderlineColor
+    // Every requested attribute must be stored on X, or a neutral Y would not prove SGR 0 cleared it: bold, faint, italic, inverse, hidden,
+    // strikethrough, blink, single underline, overline, both literal colors and the underline color.
+    const everyStyle = wide.x !== undefined && ['bold', 'dim', 'italic', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline'].every(name => wide.x[name] === true);
+    if (wide.x?.char !== 'X' || neutral(wide.x) || !everyStyle || wide.x.underline !== 'single' || !storesUnderlineColor
         || wide.x.foregroundArgb === null || wide.x.backgroundArgb === null) {
         return inconclusive('The full-tuple control did not store every styled field on X');
     }
