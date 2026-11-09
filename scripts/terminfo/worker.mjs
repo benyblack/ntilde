@@ -28,6 +28,7 @@ import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
 import { collectEraseAttrsRegionGrading } from './erase-attrs-region-collector.mjs';
 import { collectAttrRectGrading } from './attr-rect-collector.mjs';
+import { collectCursorQualGrading } from './cursor-qual-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -247,6 +248,14 @@ try {
         const attrRectModule = await import(pathToFileURL(config.attrRectBundle).href);
         const attrRectRun = await collectAttrRectGrading({ config, fence, owner, gradingModule: attrRectModule });
         writeFileSync(join(config.output, 'atrc-run.json'), JSON.stringify(attrRectRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered cursor qualification follows the attribute-rectangle suite on the same fence, on the alternate screen.
+        const cursorQualSource = readFileSync(config.cursorQualBundle);
+        if (createHash('sha256').update(cursorQualSource).digest('hex') !== config.cursorQualBundleSha256) {
+            throw new Error('Local cursor adapter bundle changed.');
+        }
+        const cursorQualModule = await import(pathToFileURL(config.cursorQualBundle).href);
+        const cursorQualRun = await collectCursorQualGrading({ config, fence, owner, gradingModule: cursorQualModule });
+        writeFileSync(join(config.output, 'curq-run.json'), JSON.stringify(cursorQualRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

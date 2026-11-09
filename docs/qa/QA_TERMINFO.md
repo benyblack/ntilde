@@ -911,3 +911,12 @@ collector extension (`ntilde-owned-scrollback-grading-v1`) on the App's main scr
 screen and cursor are observed independently and compared with a byte-interpreting model; the pinned code runs over the same observations.
 Three pinned probes are null by construction, so the contract measures beyond them and the divergence is recorded; stock grades stay
 inconclusive. Receipt schema 30 and source policy v24 (199 files) bind it; earlier policies stay frozen.
+
+### Cursor qualification (CUP in a DECOM region, hide, shape, reverse wrap)
+
+The [cursor batch](terminfo/2026-11-09-cursor-qualification.md) grades exactly `cursor.cup-scroll-region`, `cursor.hide`, `cursor.shape` and
+`cursor.reverse-wrap` through a twenty-first layered collector extension (`ntilde-owned-cursor-qualification-grading-v1`). It runs the pinned termless and
+app callbacks over parent-observed state, retained raw CPR exchanges (the fence gained a bounded `cursorReport`) and controlled synthetic-phase renders,
+with a digest-checked geometry repair (`ntilde-owned-cursor-geometry-repair-v1`) for the undeclared-geometry defect of `cursor.reverse-wrap` and the latent
+one of `cursor.shape`; the original failures are retained. The measurement first found Ntilde ignoring DECSET 45 (preserved as the before-fix attempt) and
+led to the reverse-wraparound fix in #913. Receipt schema 34 and source policy v28 (221 files) bind it; earlier policies stay frozen.

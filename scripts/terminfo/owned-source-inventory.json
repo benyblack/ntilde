@@ -212,5 +212,12 @@
     "attrRectCollectorSourceSha256": "attr-rect-collector.mjs",
     "attrRectGradingSourceSha256": "attr-rect-grading.mjs",
     "attrRectGradingCollectorSourceSha256": "attr-rect-grading-collector.mjs",
-    "attrRectReceiptSourceSha256": "attr-rect-receipt.mjs"
+    "attrRectReceiptSourceSha256": "attr-rect-receipt.mjs",
+    "cursorReportSourceSha256": "cursor-report.mjs",
+    "cursorQualCaptureSourceSha256": "cursor-qual-capture.mjs",
+    "cursorQualContractsSourceSha256": "cursor-qual-contracts.mjs",
+    "cursorQualCollectorSourceSha256": "cursor-qual-collector.mjs",
+    "cursorQualGradingSourceSha256": "cursor-qual-grading.mjs",
+    "cursorQualGradingCollectorSourceSha256": "cursor-qual-grading-collector.mjs",
+    "cursorQualReceiptSourceSha256": "cursor-qual-receipt.mjs"
 }

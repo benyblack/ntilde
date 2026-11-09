@@ -1,0 +1,988 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-cursor-qualification-grading-v1",
+  "probeIds": [
+    "cursor.cup-scroll-region",
+    "cursor.hide",
+    "cursor.shape",
+    "cursor.reverse-wrap"
+  ],
+  "geometryRepairId": "ntilde-owned-cursor-geometry-repair-v1",
+  "cases": [
+    {
+      "caseId": "cursor.cup-scroll-region",
+      "feeds": [
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[5;15r",
+        "\u001b[?6h",
+        "\u001b[1;1H",
+        "\u001b[?6l",
+        "\u001b[r",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[5;15r",
+        "\u001b[?6h",
+        "\u001b[1;1H",
+        "\u001b[2;1H",
+        "\u001b[999B",
+        "\u001b[?6l",
+        "\u001b[r",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[5;15r",
+        "\u001b[1;1H",
+        "\u001b[15;1H",
+        "\u001b[3;3H",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[5;15r",
+        "\u001b[?6h",
+        "\u001b[11;1H",
+        "\u001b[12;1H",
+        "\u001b[999A",
+        "\u001b[?6l",
+        "\u001b[r",
+        "\u001b[3;5H"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "state",
+          "cursor": [
+            4,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            4,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[1;1R",
+              "row": 1,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            5,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[2;1R",
+              "row": 2,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            14,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[11;1R",
+              "row": 11,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[1;1R",
+              "row": 1,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            14,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[15;1R",
+              "row": 15,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            2,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[3;3R",
+              "row": 3,
+              "col": 3
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            14,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[11;1R",
+              "row": 11,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            14,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[11;1R",
+              "row": 11,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            4,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[1;1R",
+              "row": 1,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            2,
+            4
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[3;5R",
+              "row": 3,
+              "col": 5
+            }
+          }
+        }
+      ],
+      "pinned": {
+        "termless": {
+          "probeId": "cursor.cup-scroll-region",
+          "pass": true,
+          "response": "{\"x\":0,\"y\":4,\"visible\":true,\"style\":\"underline\"}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "cursor row=4, col=0 (0-based)",
+              "observed": "{\"x\":0,\"y\":4,\"visible\":true,\"style\":\"underline\"}"
+            }
+          ]
+        },
+        "app": {
+          "probeId": "cursor.cup-scroll-region",
+          "pass": false,
+          "response": "{\"rows\":40,\"measured\":[{\"step\":\"region-top\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"region-row-2\",\"report\":{\"row\":2,\"col\":1}},{\"step\":\"region-bottom\",\"report\":{\"row\":11,\"col\":1}}]}",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query",
+            "note": "DECOM makes CPR region-relative (VT100: region top is 1, bottom is 11); measured 1;1, 2;1, 11;1 — the physical row 5 and the margins still need an independent observable"
+          },
+          "writes": [
+            "\u001b[5;15r",
+            "\u001b[?6h",
+            "\u001b[1;1H",
+            "\u001b[2;1H",
+            "\u001b[999B",
+            "\u001b[?6l",
+            "\u001b[r"
+          ],
+          "repaired": false,
+          "geometry": {
+            "rows": 40,
+            "cols": 140
+          }
+        }
+      }
+    },
+    {
+      "caseId": "cursor.hide",
+      "feeds": [
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[?25h",
+        "\u001b[?25l",
+        "\u001b[?25h",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HCURSOR\u001b[2;1HL  R\u001b[2;3H\u001b[2 q\u001b[?25h",
+        "\u001b[?25l",
+        "\u001b[0m\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[1;1HCURSOR\u001b[2;1HL  R\u001b[2;3H\u001b[2 q\u001b[?25h",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "0d590012405ea673c652301b4d54db23c2b89b109a4732bd43bc679ddfecfe7f"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "1d934598480936ea6da268f4e16ae5325da34fbc08ce0deee653089781560b6e"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "0d590012405ea673c652301b4d54db23c2b89b109a4732bd43bc679ddfecfe7f"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        }
+      ],
+      "pinned": {
+        "termless": {
+          "probeId": "cursor.hide",
+          "pass": true,
+          "response": "{\"before\":true,\"shown\":true,\"hidden\":false,\"restored\":true}",
+          "note": "Parser visibility state only; display pixels were not captured",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state",
+            "note": "Parser visibility state only; display pixels were not captured"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Cursor parser visibility changes from shown to hidden and its initial state is restored",
+              "observed": "{\"before\":true,\"shown\":true,\"hidden\":false,\"restored\":true}"
+            }
+          ]
+        },
+        "app": {
+          "probeId": "cursor.hide",
+          "pass": false,
+          "response": "{\"rows\":40,\"cols\":140,\"cursor\":{\"row\":2,\"col\":3},\"control\":{\"role\":\"control\",\"label\":\"Shown steady block cursor requested at row 2 column 3\",\"ref\":\"sha256:0d590012405ea673c652301b4d54db23c2b89b109a4732bd43bc679ddfecfe7f\"},\"target\":{\"role\":\"target\",\"label\":\"Hidden cursor requested at the same cell\",\"ref\":\"sha256:1d934598480936ea6da268f4e16ae5325da34fbc08ce0deee653089781560b6e\"}}",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "pixels",
+            "screenshotRef": "sha256:1d934598480936ea6da268f4e16ae5325da34fbc08ce0deee653089781560b6e",
+            "frames": [
+              {
+                "role": "control",
+                "label": "Shown steady block cursor requested at row 2 column 3",
+                "ref": "sha256:0d590012405ea673c652301b4d54db23c2b89b109a4732bd43bc679ddfecfe7f"
+              },
+              {
+                "role": "target",
+                "label": "Hidden cursor requested at the same cell",
+                "ref": "sha256:1d934598480936ea6da268f4e16ae5325da34fbc08ce0deee653089781560b6e"
+              }
+            ],
+            "note": "Seeded cursor pixels require independent review: control must visibly show the cursor; blink phase or missing focus cannot establish a negative"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Control visibly shows a cursor at row 2 column 3 between L and R; target removes that cursor while other seeded content is unchanged",
+              "observed": "{\"rows\":40,\"cols\":140,\"cursor\":{\"row\":2,\"col\":3},\"control\":{\"role\":\"control\",\"label\":\"Shown steady block cursor requested at row 2 column 3\",\"ref\":\"sha256:0d590012405ea673c652301b4d54db23c2b89b109a4732bd43bc679ddfecfe7f\"},\"target\":{\"role\":\"target\",\"label\":\"Hidden cursor requested at the same cell\",\"ref\":\"sha256:1d934598480936ea6da268f4e16ae5325da34fbc08ce0deee653089781560b6e\"}}",
+              "note": "capture-only assertion; cursor visibility and the control must be independently reviewed"
+            }
+          ],
+          "writes": [
+            "\u001b[0m\u001b[2J\u001b[H",
+            "\u001b[1;1HCURSOR\u001b[2;1HL  R\u001b[2;3H\u001b[2 q\u001b[?25h",
+            "\u001b[?25l",
+            "\u001b[0m\u001b[2J\u001b[H\u001b[?25h\u001b[0 q"
+          ],
+          "repaired": false,
+          "geometry": {
+            "rows": 40,
+            "cols": 140
+          }
+        }
+      }
+    },
+    {
+      "caseId": "cursor.shape",
+      "feeds": [
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[6 q",
+        "\u001b[0 q",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[1;1HCURSOR\u001b[2;1HL  R\u001b[2;3H",
+        "\u001b[5 q",
+        "\u001b[0 q",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[1;1HCURSOR\u001b[2;1HL  R\u001b[2;3H",
+        "\u001b[2 q",
+        "\u001b[4 q",
+        "\u001b[6 q",
+        "\u001b[?25l",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "b4d32e9a410bf5b74bc06bca0a083d8428d701621bb7f0dc5a9ac0dd38326534"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "7b0575b2d3627d92e87d437c28d96f51a1ec870e9b63fec4ba93151341cbad6d"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 530,
+          "pixelSha256": "1d934598480936ea6da268f4e16ae5325da34fbc08ce0deee653089781560b6e"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "0d590012405ea673c652301b4d54db23c2b89b109a4732bd43bc679ddfecfe7f"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "b4d32e9a410bf5b74bc06bca0a083d8428d701621bb7f0dc5a9ac0dd38326534"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "7b0575b2d3627d92e87d437c28d96f51a1ec870e9b63fec4ba93151341cbad6d"
+        },
+        {
+          "kind": "capture",
+          "cursor": [
+            1,
+            2
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "timeMs": 0,
+          "pixelSha256": "1d934598480936ea6da268f4e16ae5325da34fbc08ce0deee653089781560b6e"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        }
+      ],
+      "pinned": {
+        "termless": {
+          "probeId": "cursor.shape",
+          "pass": true,
+          "response": "{\"style\":\"beam\"}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "DECSCUSR reports a beam cursor after CSI 6 SP q",
+              "observed": "{\"style\":\"beam\"}"
+            }
+          ]
+        },
+        "app": {
+          "probeId": "cursor.shape",
+          "pass": false,
+          "response": "{\"rows\":40,\"cols\":140,\"cursorCell\":null,\"detail\":\"DECSCUSR shape fixture does not establish the cursor cell; only measured geometry and roles\",\"control\":\"Default cursor shape\",\"target\":\"Bar cursor shape\"}",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "pixels",
+            "screenshotRef": "sha256:7b0575b2d3627d92e87d437c28d96f51a1ec870e9b63fec4ba93151341cbad6d",
+            "frames": [
+              {
+                "role": "control",
+                "label": "Default cursor shape",
+                "ref": "sha256:b4d32e9a410bf5b74bc06bca0a083d8428d701621bb7f0dc5a9ac0dd38326534"
+              },
+              {
+                "role": "target",
+                "label": "Bar cursor shape",
+                "ref": "sha256:7b0575b2d3627d92e87d437c28d96f51a1ec870e9b63fec4ba93151341cbad6d"
+              }
+            ],
+            "note": "Cursor pixels captured; shape difference requires review"
+          },
+          "writes": [
+            "\u001b[5 q",
+            "\u001b[0 q"
+          ],
+          "repaired": true,
+          "geometry": {
+            "rows": 40,
+            "cols": 140
+          }
+        },
+        "original": {
+          "probeId": "cursor.shape",
+          "threw": {
+            "name": "UndeclaredTerminalGeometry",
+            "message": "App callback cursor.shape accessed undeclared or unavailable terminal geometry"
+          },
+          "writes": [
+            "\u001b[5 q",
+            "\u001b[0 q"
+          ],
+          "geometry": {
+            "rows": 40,
+            "cols": 140
+          }
+        },
+        "repair": {
+          "derivationId": "ntilde-owned-cursor-geometry-repair-v1",
+          "probeId": "cursor.shape",
+          "originalKeys": [
+            "id",
+            "termless",
+            "term"
+          ],
+          "repairedKeys": [
+            "id",
+            "termless",
+            "term",
+            "termNeedsGeometry"
+          ],
+          "originalTermNeedsGeometry": null,
+          "repairedTermNeedsGeometry": true,
+          "sameTermless": true,
+          "sameTerm": true,
+          "termlessSha256": "9ef2e561a52d7ee6839d06c036f3141d39e05d826f41b312ce66a55c2b8c3a98",
+          "termSha256": "4bae0ac61fc1c050563389ef88a61d5dc0fdf8932295b98fffd3b23687616870",
+          "metadataChange": "termNeedsGeometry: true added to the cursor.reverse-wrap probe record; both callbacks are the original function objects"
+        }
+      }
+    },
+    {
+      "caseId": "cursor.reverse-wrap",
+      "feeds": [
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[?7h",
+        "\u001b[?45h",
+        "\u001b[H",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+        "\b\b",
+        "\u001b[?45l",
+        "\u001b[?7h",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[?45h",
+        "\u001b[?7h",
+        "\u001b[H",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+        "\b\b",
+        "\u001b[?45l",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q",
+        "\u001b[?7h",
+        "\u001b[H",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+        "\b\b",
+        "\u001b[0m\u001b[?5l\u001b[?6l\u001b[?7h\u001b[?45l\u001b[r\u001b[4l\u001b[2J\u001b[H\u001b[?25h\u001b[0 q"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            1,
+            1
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            139
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            139
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[1;1R",
+              "row": 1,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            1,
+            1
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[2;2R",
+              "row": 2,
+              "col": 2
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            0,
+            139
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[1;140R",
+              "row": 1,
+              "col": 140
+            }
+          }
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            139
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            1,
+            1
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[2;2R",
+              "row": 2,
+              "col": 2
+            }
+          }
+        },
+        {
+          "kind": "cpr",
+          "cursor": [
+            1,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c",
+          "cpr": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001b[2;1R",
+              "row": 2,
+              "col": 1
+            }
+          }
+        },
+        {
+          "kind": "state",
+          "cursor": [
+            0,
+            0
+          ],
+          "barrier": "\u001b[?62;4;22c"
+        }
+      ],
+      "pinned": {
+        "termless": {
+          "probeId": "cursor.reverse-wrap",
+          "pass": true,
+          "response": "{\"cols\":140,\"start\":{\"x\":0,\"y\":0,\"visible\":true,\"style\":\"underline\"},\"wrapped\":{\"x\":1,\"y\":1,\"visible\":true,\"style\":\"underline\"},\"cursor\":{\"x\":139,\"y\":0,\"visible\":true,\"style\":\"underline\"}}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Backspace reverses a wrap across the measured row width",
+              "observed": "{\"cols\":140,\"start\":{\"x\":0,\"y\":0,\"visible\":true,\"style\":\"underline\"},\"wrapped\":{\"x\":1,\"y\":1,\"visible\":true,\"style\":\"underline\"},\"cursor\":{\"x\":139,\"y\":0,\"visible\":true,\"style\":\"underline\"}}"
+            }
+          ]
+        },
+        "app": {
+          "probeId": "cursor.reverse-wrap",
+          "pass": true,
+          "response": "{\"measured\":[{\"step\":\"home\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"wrapped\",\"report\":{\"row\":2,\"col\":2}},{\"step\":\"reverted\",\"report\":{\"row\":1,\"col\":140}}]}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Backspace from column 1 of row 2 reverses the wrap to the last column of row 1",
+              "observed": "{\"measured\":[{\"step\":\"home\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"wrapped\",\"report\":{\"row\":2,\"col\":2}},{\"step\":\"reverted\",\"report\":{\"row\":1,\"col\":140}}]}"
+            }
+          ],
+          "writes": [
+            "\u001b[?45h",
+            "\u001b[?7h",
+            "\u001b[H",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "\b\b",
+            "\u001b[?45l"
+          ],
+          "repaired": true,
+          "geometry": {
+            "rows": 40,
+            "cols": 140
+          }
+        },
+        "original": {
+          "probeId": "cursor.reverse-wrap",
+          "threw": {
+            "name": "UndeclaredTerminalGeometry",
+            "message": "App callback cursor.reverse-wrap accessed undeclared or unavailable terminal geometry"
+          },
+          "writes": [],
+          "geometry": {
+            "rows": 40,
+            "cols": 140
+          }
+        },
+        "repair": {
+          "derivationId": "ntilde-owned-cursor-geometry-repair-v1",
+          "probeId": "cursor.reverse-wrap",
+          "originalKeys": [
+            "id",
+            "termless",
+            "term"
+          ],
+          "repairedKeys": [
+            "id",
+            "termless",
+            "term",
+            "termNeedsGeometry"
+          ],
+          "originalTermNeedsGeometry": null,
+          "repairedTermNeedsGeometry": true,
+          "sameTermless": true,
+          "sameTerm": true,
+          "termlessSha256": "e826f4d412828757bab79786f121ae25e288febc77d8ef61219f27981f2439d8",
+          "termSha256": "9a064034a510d62a3b76b7b81852200ddb48b7bb769cb4760ea755b45b4f61f6",
+          "metadataChange": "termNeedsGeometry: true added to the cursor.reverse-wrap probe record; both callbacks are the original function objects"
+        }
+      }
+    }
+  ]
+}

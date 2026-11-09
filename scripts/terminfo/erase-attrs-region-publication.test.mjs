@@ -167,13 +167,13 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed: every other benchmark suite's case ids.
     const expected = [];
-    for (const suite of benchmarkSuites.filter(item => !['erase-attrs-region', 'attr-rect'].includes(item.suite))) {
+    for (const suite of benchmarkSuites.filter(item => !['erase-attrs-region', 'attr-rect', 'cursor'].includes(item.suite))) {
         const module = await import(new URL(suite.module, import.meta.url));
         expected.push(...module[suite.exports[2]]);
     }
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...new Set(expected)].sort());
-    assert.equal(Object.keys(summary.sameRun).length, benchmarkSuites.length - 2, 'one same-run entry per merged predecessor suite (this suite and the later attribute-rectangle suite excluded)');
+    assert.equal(Object.keys(summary.sameRun).length, benchmarkSuites.length - 3, 'one same-run entry per merged predecessor suite (this suite and the later attribute-rectangle and cursor suites excluded)');
     for (const [name, suite] of Object.entries(summary.sameRun)) {
         // The saved-state/reset suite keeps its two pinned-inconclusive cases; its separately identified effect contracts are all supported.
         if (name === 'saved-reset') assert.ok(suite.cases.every(item => item.effectContract === 'supported'), name);
