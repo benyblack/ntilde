@@ -207,5 +207,10 @@
     "eraseAttrsRegionCollectorSourceSha256": "erase-attrs-region-collector.mjs",
     "eraseAttrsRegionGradingSourceSha256": "erase-attrs-region-grading.mjs",
     "eraseAttrsRegionGradingCollectorSourceSha256": "erase-attrs-region-grading-collector.mjs",
-    "eraseAttrsRegionReceiptSourceSha256": "erase-attrs-region-receipt.mjs"
+    "eraseAttrsRegionReceiptSourceSha256": "erase-attrs-region-receipt.mjs",
+    "attrRectContractsSourceSha256": "attr-rect-contracts.mjs",
+    "attrRectCollectorSourceSha256": "attr-rect-collector.mjs",
+    "attrRectGradingSourceSha256": "attr-rect-grading.mjs",
+    "attrRectGradingCollectorSourceSha256": "attr-rect-grading-collector.mjs",
+    "attrRectReceiptSourceSha256": "attr-rect-receipt.mjs"
 }

@@ -27,6 +27,7 @@ import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
 import { collectEraseAttrsRegionGrading } from './erase-attrs-region-collector.mjs';
+import { collectAttrRectGrading } from './attr-rect-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -238,6 +239,14 @@ try {
         const eraseAttrsRegionModule = await import(pathToFileURL(config.eraseAttrsRegionBundle).href);
         const eraseAttrsRegionRun = await collectEraseAttrsRegionGrading({ config, fence, owner, gradingModule: eraseAttrsRegionModule });
         writeFileSync(join(config.output, 'erar-run.json'), JSON.stringify(eraseAttrsRegionRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered attribute-rectangle qualification follows the erase attributes / erase margins suite on the same fence.
+        const attrRectSource = readFileSync(config.attrRectBundle);
+        if (createHash('sha256').update(attrRectSource).digest('hex') !== config.attrRectBundleSha256) {
+            throw new Error('Local attribute-rectangle adapter bundle changed.');
+        }
+        const attrRectModule = await import(pathToFileURL(config.attrRectBundle).href);
+        const attrRectRun = await collectAttrRectGrading({ config, fence, owner, gradingModule: attrRectModule });
+        writeFileSync(join(config.output, 'atrc-run.json'), JSON.stringify(attrRectRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

@@ -1,0 +1,514 @@
+{
+  "caseId": "editing.decsace",
+  "pinnedCriterion": "`ESC[1;1H ESC[2*x` is consumed and the text read: always the pinned inconclusive (the probe never applies DECCARA/DECRARA and never reads an attribute); separately identified effect contract: the stream (default, 0, 1, omitted) versus rectangle (2) cells changed by the same DECCARA/DECRARA across the first, intermediate and last rows",
+  "pinnedFeeds": [
+    "\u001b[1;1H\u001b[2*x"
+  ],
+  "pinnedFed": 1,
+  "terminalFixture": {
+    "writes": [],
+    "demand": "none (always inconclusive)",
+    "minimum": {
+      "rows": 1,
+      "cols": 1
+    },
+    "note": "the upstream terminal path is a `not attempted` placeholder that never carries a verdict"
+  },
+  "feeds": [
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1H\u001b[2*x",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$r",
+    "\u001b[1*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$r",
+    "\u001b[2*x",
+    "\u001b[*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$r",
+    "\u001b[2*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$r",
+    "\u001b[2*x",
+    "\u001b[3*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$r",
+    "\u001b[2*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$t",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$t",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[2;3r",
+    "\u001b[?6h",
+    "\u001b[2;3H",
+    "\u001b[1;44m",
+    "\u001b[2*x",
+    "Q",
+    "\u001b[0*x",
+    "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+    "\u001b[1;1HAAAAAAAA\u001b[2;1HBBBBBBBB\u001b[3;1HCCCCCCCC\u001b[4;1HDDDDDDDD\u001b[1;1H",
+    "\u001b[1;3;4;6;7$r"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "initial": {
+      "ink": 0,
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    "extentObservation": "the DECSACE setting is not readable; it is inferred from the cells changed and restored to the stream after every rectangle control",
+    "pinned": {
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 0,
+      "text": []
+    },
+    "fixture": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "........",
+        "........",
+        "........",
+        "........"
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "stream0": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIIIII",
+        "IIIIIIII",
+        "IIIIIIII",
+        "IIIIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "stream1": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIIIII",
+        "IIIIIIII",
+        "IIIIIIII",
+        "IIIIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "omitted": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIIIII",
+        "IIIIIIII",
+        "IIIIIIII",
+        "IIIIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "rectangle": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIII..",
+        "..IIII..",
+        "..IIII..",
+        "..IIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "ignoredValue": {
+      "policy": "observed, not graded: an undefined DECSACE value (3) after the rectangle selection",
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIII..",
+        "..IIII..",
+        "..IIII..",
+        "..IIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      },
+      "keptRectangle": true
+    },
+    "rectReverse": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIII..",
+        "..IIII..",
+        "..IIII..",
+        "..IIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "streamReverse": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIIIII",
+        "IIIIIIII",
+        "IIIIIIII",
+        "IIIIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    },
+    "isolation": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "........",
+        "........",
+        "........",
+        "........"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 1,
+        "bottom": 2,
+        "origin": true,
+        "alt": true
+      },
+      "pen": {
+        "text": [
+          "AAAAAAAA",
+          "BBBBBBBB",
+          "CCQCCCCC",
+          "DDDDDDDD"
+        ],
+        "marks": [
+          "........",
+          "........",
+          "..B.....",
+          "........"
+        ],
+        "cursor": [
+          2,
+          3
+        ],
+        "inkCells": 32,
+        "buffer": {
+          "top": 1,
+          "bottom": 2,
+          "origin": true,
+          "alt": true
+        }
+      }
+    },
+    "witness": {
+      "text": [
+        "AAAAAAAA",
+        "BBBBBBBB",
+        "CCCCCCCC",
+        "DDDDDDDD"
+      ],
+      "marks": [
+        "..IIIIII",
+        "IIIIIIII",
+        "IIIIIIII",
+        "IIIIII.."
+      ],
+      "cursor": [
+        0,
+        0
+      ],
+      "inkCells": 32,
+      "buffer": {
+        "top": 0,
+        "bottom": 39,
+        "origin": false,
+        "alt": true
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"text\":\"\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"}",
+    "note": "Sequence consumption does not measure attribute-change extent",
+    "observation": {
+      "outcome": "inconclusive",
+      "evidence": "consumed",
+      "reason": "insufficient-evidence"
+    },
+    "assertions": null
+  },
+  "effectContract": {
+    "id": "ntilde.attr-rect.effect/v1",
+    "version": 1,
+    "outcome": "supported",
+    "defaultExtent": "stream",
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "defaultExtent": "stream"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-stored-cells",
+    "grading": "pinned-termless-preserved-by-design",
+    "note": "Sequence consumption does not measure attribute-change extent",
+    "scope": "the stored cells a DECCARA/DECRARA changes under each DECSACE value across a four-row eight-column fixture (stream: first row from Pl, whole middle rows, last row through Pr; rectangle: Pl..Pr on every row), independence from margins, origin mode, the cursor and the SGR pen, and restoration of the stream; the extent setting itself is never read"
+  }
+}

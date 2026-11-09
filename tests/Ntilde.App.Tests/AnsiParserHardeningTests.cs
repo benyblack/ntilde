@@ -304,7 +304,7 @@ public sealed class AnsiParserHardeningTests
         Assert.True(offenders.Count == 0, "Prefixed CSI sequences executed a bare meaning:\n" + string.Join("\n", offenders));
     }
 
-    /// <summary>Sweeps all intermediate identities except the exact separately tested DECSCUSR, DECRQM, DECERA, DECFRA and DECCRA commands.</summary>
+    /// <summary>Sweeps all intermediate identities except the exact separately tested DECSCUSR, DECRQM, DECERA, DECFRA, DECCRA, DECCARA and DECRARA commands.</summary>
     [Fact]
     public void IntermediatePrefixedCsi_NeverExecutesTheBareMeaning()
     {
@@ -318,6 +318,7 @@ public sealed class AnsiParserHardeningTests
                 if (final == 'q' && intermediate == ' ') continue;
                 if (final == 'p' && intermediate == '$') continue;
                 if (final == 'z' && intermediate == '$') continue; // DECERA; other z identities remain in the sweep.
+                if (final is 'r' or 't' && intermediate == '$') continue; // DECCARA and DECRARA (RectangularAttributeTests).
                 if (final is 'x' or 'v' && intermediate == '$') continue; // DECFRA / DECCRA; other identities remain in the sweep.
 
                 string sequence = $"\x1b[1{intermediate}{final}";
