@@ -64,7 +64,7 @@ public partial class TerminalBuffer
             bool cursorRow = r == _cursorRow;
             int from = mode == 0 && cursorRow ? cursorCol : 0;
             int to = mode == 1 && cursorRow ? Math.Min(Cols, cursorCol + 1) : Cols;
-            EraseUnprotectedSpanNoLock(r, from, to, blank);
+            EraseUnprotectedSpanNoLock(r, from, to, blank, edShortcut: true);
         }
     }
 
@@ -98,7 +98,7 @@ public partial class TerminalBuffer
                 // A glyph split by an edge is one unit; whether it goes is decided by its own protection.
                 if (from > 0 && row.Cells[from].IsWideContinuation && row.Cells[from - 1].IsWide) from--;
                 if (to < Cols && row.Cells[to - 1].IsWide && row.Cells[to].IsWideContinuation) to++;
-                EraseUnprotectedSpanNoLock(r, from, to, blank);
+                EraseUnprotectedSpanNoLock(r, from, to, blank, edShortcut: false);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
@@ -107,17 +107,17 @@ public partial class TerminalBuffer
 
     /// <summary>
     /// Blanks every unprotected cell of [<paramref name="from"/>, <paramref name="to"/>) in one viewport row with
-    /// the same per-cell cleanup the ordinary erases do. A row with no protected cell is erased exactly as ED
-    /// erases it, so selective and ordinary erase agree wherever nothing is protected. Scaled (OSC 66) units are
+    /// the same per-cell cleanup the ordinary erases do. With <paramref name="edShortcut"/> (DECSED) a whole row with no
+    /// protected cell is erased exactly as ED erases it; a rectangle (DECSERA) always keeps DECERA's own blank and cleanup. Scaled (OSC 66) units are
     /// retired only through unprotected cells: they are written, and protected, as a whole.
     /// </summary>
-    private void EraseUnprotectedSpanNoLock(int rowIndex, int from, int to, TerminalCell blank)
+    private void EraseUnprotectedSpanNoLock(int rowIndex, int from, int to, TerminalCell blank, bool edShortcut)
     {
         var row = _viewport[rowIndex];
         from = Math.Max(0, from);
         to = Math.Min(Cols, to);
         if (from >= to) return;
-        if (from == 0 && to == Cols && !row.HasProtectedCells)
+        if (edShortcut && from == 0 && to == Cols && !row.HasProtectedCells)
         {
             ClearRowInternal(rowIndex);
             return;

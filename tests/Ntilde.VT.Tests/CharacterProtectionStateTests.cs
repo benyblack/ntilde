@@ -172,6 +172,29 @@ public sealed class CharacterProtectionStateTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    /// <summary>Protected blanks are authored content: a sparse-gap reflow must not replace them with unprotected padding, and a protected blank row below the cursor survives the trim.</summary>
+    [Fact]
+    public void Reflow_keeps_protected_blanks_in_gaps_and_below_the_cursor()
+    {
+        var (buffer, parser) = Create(20, 6);
+        parser.Process(Esc + "[1;1HA" + Esc + "[1\"q" + new string(' ', 18) + Esc + "[0\"qZ");
+        parser.Process(Esc + "[5;1H" + Esc + "[1\"q   " + Esc + "[0\"q" + Esc + "[1;1H");
+        buffer.Resize(24, 6);
+        Assert.Equal(".111111111111111111", Mask(buffer, 0).Replace('P', '1')[..19]);
+        Assert.Equal(18, Mask(buffer, 0).Count(c => c == 'P'));
+        Assert.Contains('P', Mask(buffer, 4));
+    }
+
+    /// <summary>A protected ordinary-wide glyph that a shrinking resize clips must not leave its protection on the blank that replaces it.</summary>
+    [Fact]
+    public void Resize_clipping_a_protected_wide_glyph_clears_its_protection()
+    {
+        var (buffer, parser) = Create(10, 4);
+        parser.Process(Esc + "]66;s=2;A\a" + Esc + "[1;7H" + Esc + "[1\"q界" + Esc + "[0\"q");
+        buffer.Resize(7, 4);
+        Assert.False(Protection(buffer, 0)[6]);
+    }
+
     /// <summary>The full-state export (mux attach, session transfer) carries the pen mode and protected cells in both banks.</summary>
     [Fact]
     public void Full_state_round_trip_preserves_protection_in_both_banks_and_the_pens()

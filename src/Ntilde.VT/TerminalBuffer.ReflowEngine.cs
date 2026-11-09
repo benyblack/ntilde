@@ -189,6 +189,7 @@ namespace Ntilde.VT
                 {
                     result.Cells[cols - 1] = TerminalCell.Default;
                     result.SetExtendedText(cols - 1, null);
+                    result.SetProtected(cols - 1, false);
                 }
                 result.WrittenColumns = Math.Min(cols, source.WrittenColumns);
                 result.IsWrapped = false;
@@ -750,7 +751,7 @@ namespace Ntilde.VT
                             for (int scan = physRow.Cells.Length - 1; scan >= 0; scan--)
                             {
                                 var cell = physRow.Cells[scan];
-                                if ((cell.Character != ' ' && cell.Character != '\0') || physRow.GetUnderline(scan) != null)
+                                if ((cell.Character != ' ' && cell.Character != '\0') || physRow.GetUnderline(scan) != null || physRow.IsProtected(scan))
                                 {
                                     lastContentIndex = scan;
                                     break;
@@ -765,7 +766,7 @@ namespace Ntilde.VT
                                 {
                                     var cell = physRow.Cells[scan];
                                     // Visible decoration is authored content, never an adjustable layout gap.
-                                    bool isSpace = (cell.Character == ' ' || cell.Character == '\0') && physRow.GetUnderline(scan) == null;
+                                    bool isSpace = (cell.Character == ' ' || cell.Character == '\0') && physRow.GetUnderline(scan) == null && !physRow.IsProtected(scan);
 
                                     if (isSpace)
                                     {
@@ -1026,7 +1027,8 @@ namespace Ntilde.VT
                             {
                                 // Check if row has any actual content
                                 bool hasContent = nextRow.GetTextSizingMap() is { Count: > 0 }
-                                    || nextRow.GetUnderlineMap() is { Count: > 0 };
+                                    || nextRow.GetUnderlineMap() is { Count: > 0 }
+                                    || nextRow.HasProtectedCells;
                                 for (int c = 0; c < nextRow.Cells.Length; c++)
                                 {
                                     if (nextRow.Cells[c].Character != ' ' && nextRow.Cells[c].Character != '\0')

@@ -314,6 +314,27 @@ public sealed class SelectiveErasureTests
         Assert.Equal((0, 4), (buffer.CursorRow, buffer.CursorCol));
     }
 
+    /// <summary>
+    /// A full-width DECSERA over a protected row and an entirely unprotected row blanks both with DECERA's erase blank, including the
+    /// retained palette index, so a later palette change reaches every erased cell.
+    /// </summary>
+    [Fact]
+    public void Decsera_blanks_whole_unprotected_rows_like_DECERA()
+    {
+        var (buffer, parser) = Create(8, 3);
+        parser.Process("\u001b[1;1H\u001b[1\"qP\u001b[0\"qabc\u001b[2;1Hxyz\u001b[41m");
+        parser.Process("\u001b[1;1;2;8${");
+        foreach (int row in new[] { 0, 1 })
+        {
+            var cell = CellAt(buffer, 5, row);
+            Assert.Equal(1, cell.BgIndex);
+            Assert.Equal(' ', cell.Character);
+        }
+        parser.Process("\u001b]4;1;#abcdef\a");
+        Assert.Equal(CellAt(buffer, 5, 0).Bg, CellAt(buffer, 5, 1).Bg);
+        Assert.Equal('P', CellAt(buffer, 0, 0).Character);
+    }
+
     /// <summary>Whatever the input is split into, the selective erase gives the same screen.</summary>
     [Fact]
     public void Selective_erasure_is_equivalent_across_every_input_split()
