@@ -24,6 +24,7 @@ import { collectCharEditGrading } from './char-edit-collector.mjs';
 import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectLineEditGrading } from './line-edit-collector.mjs';
 import { collectCharsetsGrading } from './charsets-collector.mjs';
+import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -211,6 +212,14 @@ try {
         const charsetsModule = await import(pathToFileURL(config.charsetsBundle).href);
         const charsetsRun = await collectCharsetsGrading({ config, fence, owner, gradingModule: charsetsModule });
         writeFileSync(join(config.output, 'chrs-run.json'), JSON.stringify(charsetsRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered scrolling/history qualification follows the charsets suite on the same fence, on the main screen.
+        const scrollbackSource = readFileSync(config.scrollbackBundle);
+        if (createHash('sha256').update(scrollbackSource).digest('hex') !== config.scrollbackBundleSha256) {
+            throw new Error('Local scrolling/history adapter bundle changed.');
+        }
+        const scrollbackModule = await import(pathToFileURL(config.scrollbackBundle).href);
+        const scrollbackRun = await collectScrollbackGrading({ config, fence, owner, gradingModule: scrollbackModule });
+        writeFileSync(join(config.output, 'scrl-run.json'), JSON.stringify(scrollbackRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

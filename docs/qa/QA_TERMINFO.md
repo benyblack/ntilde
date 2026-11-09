@@ -875,3 +875,12 @@ The [charset batch](terminfo/2026-11-09-charsets-qualification.md) grades exactl
 physical cells derived from complete stored cell details (never attribute strings or UTF-16 offsets). Controls cover the ASCII
 same-source seed, designation versus invocation, persistence past SI and lowercase restoration witnesses. The pinned pixel and
 cursor-query paths are not qualified. Receipt schema 29 and source policy v23 (193 files) bind it; earlier policies stay frozen.
+
+### Scrolling and history qualification (nine scrollback cases)
+
+The [scrolling/history batch](terminfo/2026-11-09-scrollback-qualification.md) grades exactly `scrollback.accumulate`, `.total-lines`,
+`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a seventeenth layered
+collector extension (`ntilde-owned-scrollback-grading-v1`) on the App's main screen. Viewport text, actual scrollback lines, margins, active
+screen and cursor are observed independently and compared with a byte-interpreting model; the pinned code runs over the same observations.
+Three pinned probes are null by construction, so the contract measures beyond them and the divergence is recorded; stock grades stay
+inconclusive. Receipt schema 30 and source policy v24 (199 files) bind it; earlier policies stay frozen.

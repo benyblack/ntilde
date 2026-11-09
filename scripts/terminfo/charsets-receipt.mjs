@@ -42,7 +42,7 @@ function present(path) {
  * policy-v23 run always carries them, because the current worker collects this suite
  * unconditionally after the line-editing suite. */
 export function includesCharsetsEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v23'
+    return ['readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24'].includes(context.sourceSnapshotPolicy)
         || context.charsetsAdapterId !== undefined || context.charsetsSuiteId !== undefined
         || context.charsetsBundleSha256 !== undefined || context.charsetsContractsVersion !== undefined
         || evidence.charsetsEvidence !== undefined

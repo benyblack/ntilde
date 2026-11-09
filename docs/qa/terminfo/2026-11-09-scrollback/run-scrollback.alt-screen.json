@@ -1,0 +1,68 @@
+{
+  "caseId": "scrollback.alt-screen",
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1HROW-0\u001b[2;1HROW-1\u001b[3;1HROW-2\u001b[4;1HROW-3\u001b[5;1HROW-4\u001b[6;1HROW-5\u001b[7;1HROW-6\u001b[8;1HROW-7\u001b[9;1HROW-8\u001b[10;1HROW-9\u001b[11;1HROW-10\u001b[12;1HROW-11\u001b[13;1HROW-12\u001b[14;1HROW-13\u001b[15;1HROW-14\u001b[16;1HROW-15\u001b[17;1HROW-16\u001b[18;1HROW-17\u001b[19;1HROW-18\u001b[20;1HROW-19\u001b[21;1HROW-20\u001b[22;1HROW-21\u001b[23;1HROW-22\u001b[24;1HROW-23\u001b[25;1HROW-24\u001b[26;1HROW-25\u001b[27;1HROW-26\u001b[28;1HROW-27\u001b[29;1HROW-28\u001b[30;1HROW-29\u001b[31;1HROW-30\u001b[32;1HROW-31\u001b[33;1HROW-32\u001b[34;1HROW-33\u001b[35;1HROW-34\u001b[36;1HROW-35\u001b[37;1HROW-36\u001b[38;1HROW-37\u001b[39;1HROW-38\u001b[40;1HROW-39\u001b[40;1H\n\n\n",
+    "NORMAL",
+    "\u001b[?1049h",
+    "\u001b[HALT-0\r\nALT-1\r\nALT-2\r\nALT-3\r\nALT-4\r\nALT-5\r\nALT-6\r\nALT-7\r\nALT-8\r\nALT-9\r\nALT-10\r\nALT-11\r\nALT-12\r\nALT-13\r\nALT-14\r\nALT-15\r\nALT-16\r\nALT-17\r\nALT-18\r\nALT-19\r\nALT-20\r\nALT-21\r\nALT-22\r\nALT-23\r\nALT-24\r\nALT-25\r\nALT-26\r\nALT-27\r\nALT-28\r\nALT-29\r\nALT-30\r\nALT-31\r\nALT-32\r\nALT-33\r\nALT-34\r\nALT-35\r\nALT-36\r\nALT-37\r\nALT-38\r\nALT-39\r\nALT-40\r\nALT-41\r\nALT-42\r\nALT-43\r\nALT-44\r\n",
+    "\u001b[?1049l"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        6
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        6
+      ]
+    }
+  ],
+  "pinned": {
+    "probeId": "scrollback.alt-screen",
+    "pass": false,
+    "response": "{\"mode\":true}",
+    "note": "Mode metadata does not measure preserved scrollback",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "parser-state",
+      "note": "Mode metadata does not measure preserved scrollback"
+    }
+  }
+}

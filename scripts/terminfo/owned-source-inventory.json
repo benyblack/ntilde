@@ -191,5 +191,11 @@
     "charsetsCollectorSourceSha256": "charsets-collector.mjs",
     "charsetsGradingSourceSha256": "charsets-grading.mjs",
     "charsetsGradingCollectorSourceSha256": "charsets-grading-collector.mjs",
-    "charsetsReceiptSourceSha256": "charsets-receipt.mjs"
+    "charsetsReceiptSourceSha256": "charsets-receipt.mjs",
+    "scrollbackContractsSourceSha256": "scrollback-contracts.mjs",
+    "scrollbackModelSourceSha256": "scrollback-model.mjs",
+    "scrollbackCollectorSourceSha256": "scrollback-collector.mjs",
+    "scrollbackGradingSourceSha256": "scrollback-grading.mjs",
+    "scrollbackGradingCollectorSourceSha256": "scrollback-grading-collector.mjs",
+    "scrollbackReceiptSourceSha256": "scrollback-receipt.mjs"
 }
