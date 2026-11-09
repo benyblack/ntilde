@@ -45,6 +45,11 @@ public sealed class VtCapabilityContractTests
             ["cursor-previous-line"] = AssertCursorPreviousLine,
             ["cursor-horizontal-absolute"] = AssertCursorHorizontalAbsolute,
             ["erase-rectangular-area"] = AssertRectangularTextErase,
+            ["fill-rectangular-area"] = AssertRectangularTextFill,
+            ["copy-rectangular-area"] = AssertRectangularTextCopy,
+            ["change-attributes-rectangular-area"] = AssertRectangularAttributeChange,
+            ["reverse-attributes-rectangular-area"] = AssertRectangularAttributeReverse,
+            ["select-attribute-change-extent"] = AssertAttributeChangeExtent,
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
@@ -72,6 +77,11 @@ public sealed class VtCapabilityContractTests
             ["cursor-previous-line"] = "\x1b[2F",
             ["cursor-horizontal-absolute"] = "\x1b[4G",
             ["erase-rectangular-area"] = "\u001b[2;2;3;3$z",
+            ["fill-rectangular-area"] = "\u001b[88;2;2;3;3$x",
+            ["copy-rectangular-area"] = "\u001b[1;1;2;2;1;2;2$v",
+            ["change-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$r",
+            ["reverse-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$t",
+            ["select-attribute-change-extent"] = "\u001b[2*x",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
@@ -93,6 +103,64 @@ public sealed class VtCapabilityContractTests
         ContractCases["erase-rectangular-area"]();
     }
 
+    /// <summary>Pins the advertised partial fill contract without claiming image-plane, protected-cell or non-Latin-1 fill.</summary>
+    [Fact]
+    public void Partial_DECFRA_catalogue_has_an_executable_text_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "CSI:$x");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("fill-rectangular-area", capability.ContractCase);
+        ContractCases["fill-rectangular-area"]();
+    }
+
+    /// <summary>Pins the advertised partial copy contract: page 1 only, text plane only.</summary>
+    [Fact]
+    public void Partial_DECCRA_catalogue_has_an_executable_text_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "CSI:$v");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("copy-rectangular-area", capability.ContractCase);
+        ContractCases["copy-rectangular-area"]();
+    }
+
+    private static void AssertRectangularTextFill()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("AAAA\r\nBBBB\r\nCCCC\u001b[88;2;2;3;3$x");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal('A', buffer.GetCell(1, 0).Character);
+            Assert.Equal('B', buffer.GetCell(0, 1).Character);
+            Assert.Equal('X', buffer.GetCell(1, 1).Character);
+            Assert.Equal('X', buffer.GetCell(2, 2).Character);
+            Assert.Equal('C', buffer.GetCell(3, 2).Character);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal((2, 3, true), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
+    }
+
+    private static void AssertRectangularTextCopy()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("AAAA\r\nBBBB\r\nCCCC\u001b[1;1;2;2;1;2;2$v");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal('A', buffer.GetCell(0, 0).Character);
+            Assert.Equal('B', buffer.GetCell(0, 1).Character);
+            Assert.Equal('A', buffer.GetCell(1, 1).Character);
+            Assert.Equal('A', buffer.GetCell(2, 1).Character);
+            Assert.Equal('B', buffer.GetCell(1, 2).Character);
+            Assert.Equal('B', buffer.GetCell(2, 2).Character);
+            Assert.Equal('C', buffer.GetCell(0, 2).Character);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal((2, 3, true), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
+    }
+
     /// <summary>Checks a real rectangle in authored rows, including preservation of pending wrap at the last column.</summary>
     private static void AssertRectangularTextErase()
     {
@@ -110,6 +178,53 @@ public sealed class VtCapabilityContractTests
         }
         finally { buffer.Lock.ExitReadLock(); }
         Assert.Equal((2, 3, true), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
+    }
+
+    private static (TerminalBuffer Buffer, AnsiParser Parser) AttributeFixture()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("AAAA\r\nBBBB\r\nCCCC");
+        return (buffer, parser);
+    }
+
+    private static string InverseMap(TerminalBuffer buffer)
+    {
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            return string.Join("|", Enumerable.Range(0, buffer.Rows).Select(row => new string(Enumerable.Range(0, buffer.Cols)
+                .Select(col => buffer.GetCell(col, row).IsInverse ? 'I' : '.').ToArray())));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    private static void AssertRectangularAttributeChange()
+    {
+        var (buffer, parser) = AttributeFixture();
+        parser.Process("\u001b[2*x\u001b[2;2;3;3;7$r");
+        Assert.Equal("....|.II.|.II.", InverseMap(buffer));
+        parser.Process("\u001b[2;2;3;3;27$r");
+        Assert.Equal("....|....|....", InverseMap(buffer));
+    }
+
+    private static void AssertRectangularAttributeReverse()
+    {
+        var (buffer, parser) = AttributeFixture();
+        parser.Process("\u001b[2*x\u001b[2;2;3;3;7$t");
+        Assert.Equal("....|.II.|.II.", InverseMap(buffer));
+        parser.Process("\u001b[2;2;3;3;7$t");
+        Assert.Equal("....|....|....", InverseMap(buffer));
+    }
+
+    private static void AssertAttributeChangeExtent()
+    {
+        var (buffer, parser) = AttributeFixture();
+        parser.Process("\u001b[1;2;3;3;7$r");
+        Assert.Equal(".III|IIII|III.", InverseMap(buffer));
+        var (rectangle, rectangleParser) = AttributeFixture();
+        rectangleParser.Process("\u001b[2*x\u001b[1;2;3;3;7$r");
+        Assert.Equal(".II.|.II.|.II.", InverseMap(rectangle));
     }
 
     private static void AssertDecrqssMargins()

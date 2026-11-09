@@ -24,6 +24,19 @@ namespace Ntilde.VT
         public bool IsOriginMode { get; set; }            // ?6 - DECOM (Origin Mode)
 
         /// <summary>
+        /// ?45 - reverse-wraparound (xterm). With auto-wrap (?7) also set, BS at the left edge returns to the
+        /// last column of the previous row when that row ended by a soft wrap. Off by default.
+        /// </summary>
+        public bool IsReverseWrapMode { get; set; }
+
+        /// <summary>
+        /// DECSACE (CSI Ps * x): <c>true</c> after Ps 2 (DECCARA/DECRARA affect the rectangle), <c>false</c> for the stream
+        /// (Ps 0 or 1, the power-up default). Stream state: RIS restores the stream, DECSTR keeps the selection, and state transfer
+        /// carries it. It is independent of the margins, origin mode and the current pen.
+        /// </summary>
+        public bool IsRectangularAttributeExtent { get; set; }
+
+        /// <summary>
         /// DECSCNM (?5): screen-wide reverse video. While set, the render snapshot presents the
         /// theme's default foreground and background swapped (xterm semantics). Set it through
         /// <see cref="TerminalBuffer.SetReverseVideo"/>, which also invalidates every rendered row.
@@ -131,7 +144,9 @@ namespace Ntilde.VT
                 IsApplicationCursorKeys = this.IsApplicationCursorKeys,
                 IsApplicationKeypad = this.IsApplicationKeypad,
                 IsAutoWrapMode = this.IsAutoWrapMode,
+                IsReverseWrapMode = this.IsReverseWrapMode,
                 IsOriginMode = this.IsOriginMode,
+                IsRectangularAttributeExtent = this.IsRectangularAttributeExtent,
                 IsReverseVideo = this.IsReverseVideo,
                 IsSixelDisplayMode = this.IsSixelDisplayMode,
                 IsFocusEventReporting = this.IsFocusEventReporting,

@@ -41,10 +41,10 @@ function present(path) {
 }
 
 /** Any retained saved-state/reset artifact or declaration requires the v31 suffix, and a
- * policy-v25 run always carries them, because the current worker collects this suite
+ * policy-v25 or v26 run always carries them, because the current worker collects this suite
  * unconditionally after the scrolling/history suite. */
 export function includesSavedResetEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v25'
+    return ['readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29'].includes(context.sourceSnapshotPolicy)
         || context.savedResetAdapterId !== undefined || context.savedResetSuiteId !== undefined
         || context.savedResetBundleSha256 !== undefined || context.savedResetContractsVersion !== undefined
         || evidence.savedResetEvidence !== undefined

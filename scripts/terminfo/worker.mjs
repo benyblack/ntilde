@@ -26,6 +26,10 @@ import { collectLineEditGrading } from './line-edit-collector.mjs';
 import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
+import { collectEraseAttrsRegionGrading } from './erase-attrs-region-collector.mjs';
+import { collectAttrRectGrading } from './attr-rect-collector.mjs';
+import { collectCursorQualGrading } from './cursor-qual-collector.mjs';
+import { collectEraseCharsHistoryGrading } from './erase-chars-history-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -229,6 +233,38 @@ try {
         const savedResetModule = await import(pathToFileURL(config.savedResetBundle).href);
         const savedResetRun = await collectSavedResetGrading({ config, fence, owner, gradingModule: savedResetModule });
         writeFileSync(join(config.output, 'svrs-run.json'), JSON.stringify(savedResetRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered erase attributes / erase margins qualification follows the saved-state/reset suite on the same fence.
+        const eraseAttrsRegionSource = readFileSync(config.eraseAttrsRegionBundle);
+        if (createHash('sha256').update(eraseAttrsRegionSource).digest('hex') !== config.eraseAttrsRegionBundleSha256) {
+            throw new Error('Local erase-attributes adapter bundle changed.');
+        }
+        const eraseAttrsRegionModule = await import(pathToFileURL(config.eraseAttrsRegionBundle).href);
+        const eraseAttrsRegionRun = await collectEraseAttrsRegionGrading({ config, fence, owner, gradingModule: eraseAttrsRegionModule });
+        writeFileSync(join(config.output, 'erar-run.json'), JSON.stringify(eraseAttrsRegionRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered attribute-rectangle qualification follows the erase attributes / erase margins suite on the same fence.
+        const attrRectSource = readFileSync(config.attrRectBundle);
+        if (createHash('sha256').update(attrRectSource).digest('hex') !== config.attrRectBundleSha256) {
+            throw new Error('Local attribute-rectangle adapter bundle changed.');
+        }
+        const attrRectModule = await import(pathToFileURL(config.attrRectBundle).href);
+        const attrRectRun = await collectAttrRectGrading({ config, fence, owner, gradingModule: attrRectModule });
+        writeFileSync(join(config.output, 'atrc-run.json'), JSON.stringify(attrRectRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered cursor qualification follows the attribute-rectangle suite on the same fence, on the alternate screen.
+        const cursorQualSource = readFileSync(config.cursorQualBundle);
+        if (createHash('sha256').update(cursorQualSource).digest('hex') !== config.cursorQualBundleSha256) {
+            throw new Error('Local cursor adapter bundle changed.');
+        }
+        const cursorQualModule = await import(pathToFileURL(config.cursorQualBundle).href);
+        const cursorQualRun = await collectCursorQualGrading({ config, fence, owner, gradingModule: cursorQualModule });
+        writeFileSync(join(config.output, 'curq-run.json'), JSON.stringify(cursorQualRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered erase-character/saved-lines qualification follows the cursor-qualification suite on the same fence.
+        const eraseCharsHistorySource = readFileSync(config.eraseCharsHistoryBundle);
+        if (createHash('sha256').update(eraseCharsHistorySource).digest('hex') !== config.eraseCharsHistoryBundleSha256) {
+            throw new Error('Local erase-character/saved-lines adapter bundle changed.');
+        }
+        const eraseCharsHistoryModule = await import(pathToFileURL(config.eraseCharsHistoryBundle).href);
+        const eraseCharsHistoryRun = await collectEraseCharsHistoryGrading({ config, fence, owner, gradingModule: eraseCharsHistoryModule });
+        writeFileSync(join(config.output, 'echh-run.json'), JSON.stringify(eraseCharsHistoryRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

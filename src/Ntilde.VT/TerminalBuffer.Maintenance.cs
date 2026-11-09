@@ -399,6 +399,7 @@ namespace Ntilde.VT
                 ScrollBottom = Rows - 1;
                 Modes.IsOriginMode = false;
                 Modes.IsAutoWrapMode = true;
+                Modes.IsReverseWrapMode = false;
                 Modes.IsApplicationCursorKeys = false;
                 Modes.IsApplicationKeypad = false;
                 Modes.IsInsertMode = false;
@@ -430,6 +431,7 @@ namespace Ntilde.VT
                     MarkRenderThemeChangedNoLock();
                 }
                 Modes.IsAutoWrapMode = true;
+                Modes.IsReverseWrapMode = false;
                 Modes.IsApplicationCursorKeys = false;
                 Modes.IsApplicationKeypad = false;
                 Modes.IsClipboardPasteMode = false;
@@ -446,6 +448,9 @@ namespace Ntilde.VT
                 // ?1007 returns to the host's configured default, as xterm's RIS restores the
                 // alternateScroll resource. DECSTR leaves it alone (xterm's soft reset list).
                 Modes.AlternateScrollOverride = null;
+
+                // DECSACE returns to the stream on RIS; DECSTR keeps the selection (not in the VT510 soft-reset table).
+                Modes.IsRectangularAttributeExtent = false;
 
                 _restoreMainCursorOnAltExit = false;
                 SwitchToMainScreen(restoreSavedCursorIfArmed: false);

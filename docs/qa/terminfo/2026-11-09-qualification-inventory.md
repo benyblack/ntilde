@@ -9,31 +9,33 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 63 |
-| Suite claims (an id covered by two suites has two claims) | 65 |
+| Unique benchmark ids with qualified effect evidence | 74 |
+| Suite claims (an id covered by two suites has two claims) | 76 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 63 |
-| Supported by both the pinned probe and the effect contract | 58 |
-| Effect supported, pinned verdict inconclusive | 5 |
+| Effect contract supported | 74 |
+| Supported by both the pinned probe and the effect contract | 66 |
+| Effect supported, pinned verdict inconclusive | 8 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
-Effect supported but pinned inconclusive: `modes.altscreen-1047`, `modes.altscreen-47`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `editing.deccara`, `editing.decrara`, `editing.decsace`, `modes.altscreen-1047`, `modes.altscreen-47`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 ## Remaining cases against an explicit baseline
 
-Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z, freshly collected for the saved-state/reset measurement (PR #903)), 255 graded cases: 86 supported, 1 unsupported, 168 inconclusive. Every qualified id is a stock-inconclusive case, so the remaining counts are taken against the 168 inconclusive ones.
+Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z, freshly collected for the saved-state/reset measurement (PR #903)), 255 graded cases: 86 supported, 1 unsupported, 168 inconclusive. Every qualified id that has a stock outcome is a stock-inconclusive case (an ungraded diagnostic has none), so the remaining counts are taken against the 168 inconclusive ones.
 
 | Remaining | Count |
 |---|---:|
-| Effect-unqualified (168 − 63) | 105 |
-| Not pinned-supported (168 − 58) | 110 |
+| Effect-unqualified (168 − 73) | 95 |
+| Not pinned-supported (168 − 65) | 103 |
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 110 not-pinned-supported inconclusive cases are the 111 cases outside the 86 stock-supported plus 58 pinned-supported ones.
+Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
+
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 103 not-pinned-supported inconclusive cases are the 104 cases outside the 86 stock-supported plus 65 pinned-supported ones.
 
 ### Ungraded diagnostic
 
-- `cursor.reverse-wrap`: collector-error (UndeclaredTerminalGeometry). Ungraded, `suiteComplete=false`. It is not a graded unsupported case and is counted in none of the totals above.
+- `cursor.reverse-wrap`: collector-error (UndeclaredTerminalGeometry). Ungraded, `suiteComplete=false`. It is not a graded stock case: it has no stock outcome and is in no stock count or remaining count. Where a repaired-probe suite qualifies it, that is a separate claim of that suite.
 
 ## Suites and retained evidence
 
@@ -56,6 +58,10 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `charsets` | 4 | v1 | passed | 29 | `4e32f6d9` | v23 | 54 | `dc1af2d4` |
 | `scrollback` | 9 | v1 | passed | 30 | `c16997c2` | v24 | 67 | `15fa0b19` |
 | `saved-reset` | 5 | v1 | passed | 31 | `4e32f6d9` | v25 | 54 | `566a16ef` |
+| `erase-attrs-region` | 2 | v1 | passed | 32 | `c16997c2` | v26 | 23 | `b24ceb69` |
+| `attr-rect` | 3 | v1 | passed | 33 | `9ee16b38` | v27 | 50 | `ef5af927` |
+| `cursor` | 4 | v1 | passed | 34 | `6b26a158` | v28 | 66 | `8f522422` |
+| `erase-chars-history` | 2 | v1 | passed | 35 | `359417dd` | v29 | 33 | `c9c8a0b2` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -82,6 +88,10 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `charsets` | collected-run-id-recorded | `3d8b2d87` | 168/86/1 | n/a |
 | `scrollback` | collected-run-id-recorded | `5cb90de3` | 168/86/1 | n/a |
 | `saved-reset` | collected-run-id-recorded | `02be5c60` | 168/86/1 | n/a |
+| `erase-attrs-region` | collected-run-id-recorded | `d400cb6d` | 168/86/1 | `cf7d8759` |
+| `attr-rect` | carried-forward | n/a | carried (see note) | n/a |
+| `cursor` | collected-run-id-recorded | `f31a740c` | 168/86/1 | `cf7d8759` |
+| `erase-chars-history` | carried-forward | n/a | carried (see note) | n/a |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -94,17 +104,28 @@ The stock collector reports `suiteComplete=false` in every run.
 | `charsets.dec-special` | inconclusive | supported | supported | stored-state | charsets | - |
 | `charsets.g0-g1-switching` | inconclusive | supported | supported | stored-state | charsets | - |
 | `charsets.utf8` | inconclusive | supported | supported | stored-state | charsets | - |
+| `cursor.cup-scroll-region` | inconclusive | supported | supported | stored-state + cursor-position-report | cursor | - |
+| `cursor.hide` | inconclusive | supported | supported | stored-state + controlled-pixels | cursor | - |
+| `cursor.reverse-wrap` | ungraded | supported | supported | stored-state + cursor-position-report | cursor | - |
+| `cursor.shape` | inconclusive | supported | supported | stored-state + controlled-pixels | cursor | - |
+| `editing.deccara` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-fixture-assumes-rectangle-extent |
+| `editing.decrara` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-fixture-assumes-rectangle-extent |
+| `editing.decsace` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-inconclusive-by-design |
 | `editing.delete-chars` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
 | `editing.delete-lines` | inconclusive | supported | supported | stored-state + app-resolved-color | line-edit | - |
 | `editing.insert-chars` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
 | `editing.insert-lines` | inconclusive | supported | supported | stored-state + app-resolved-color | line-edit | - |
 | `editing.repeat-char` | inconclusive | supported | supported | stored-state + app-resolved-color | char-edit | - |
+| `erase.character` | inconclusive | supported | supported | stored-state | erase-chars-history | - |
+| `erase.ed-scroll-region` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-attrs-region | - |
+| `erase.el-with-attrs` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-attrs-region | - |
 | `erase.line.all` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.line.left` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.line.right` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-line | - |
 | `erase.screen.above` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
 | `erase.screen.all` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
 | `erase.screen.below` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
+| `erase.screen.scrollback` | inconclusive | supported | supported | stored-state + actual-scrollback | erase-chars-history | - |
 | `modes.alt-screen.exit` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |
 | `modes.altscreen-1047` | inconclusive | inconclusive | supported | stored-state + app-resolved-color | saved-reset | saved-reset: pinned-inconclusive-by-design |
 | `modes.altscreen-47` | inconclusive | inconclusive | supported | stored-state + app-resolved-color | saved-reset | saved-reset: pinned-inconclusive-by-design |

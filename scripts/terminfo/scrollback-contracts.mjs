@@ -131,7 +131,7 @@ export function scrollbackMismatch(observed, expected, options = {}) {
 }
 
 /** A plan under construction: feed and read steps plus the per-read role record. */
-class PlanBuilder {
+export class PlanBuilder {
     constructor() { this.steps = []; this.roles = []; this.feeds = 0; this.pinned = []; this.readAt = {}; }
     /** One exact feed; returns its index among the plan's feeds. */
     feed(bytes) { this.steps.push(planFeed(bytes)); return this.feeds++; }

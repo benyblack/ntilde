@@ -665,6 +665,28 @@ public sealed class CharacterProtectionStateTests
         Assert.False(buffer.HasProtectedCharacters());
     }
 
+    /// <summary>DECFRA writes its fill under the live pen: protected under DECSCA 1, and an unprotected fill over protected cells unprotects them.</summary>
+    [Fact]
+    public void Rectangle_fill_follows_the_decsca_pen()
+    {
+        var (buffer, parser) = Create(8, 3);
+        parser.Process(Esc + "[1\"q" + Esc + "[88;1;1;1;4$x" + Esc + "[0\"q");   // 'X' (88) protected on row 1, columns 1-4
+        Assert.Equal("PPPP....", Mask(buffer, 0));
+        parser.Process(Esc + "[89;1;2;1;3$x");                                    // unprotected 'Y' over columns 2-3
+        Assert.Equal("P..P....", Mask(buffer, 0));
+    }
+
+    /// <summary>DECCRA copies protection with the characters, over whatever protection the destination held.</summary>
+    [Fact]
+    public void Rectangle_copy_carries_protection_with_the_characters()
+    {
+        var (buffer, parser) = Create(8, 3);
+        parser.Process(Esc + "[1;1H" + Esc + "[1\"qPQ" + Esc + "[0\"qRS" + Esc + "[2;1H" + Esc + "[1\"qZZZZ" + Esc + "[0\"q");
+        parser.Process(Esc + "[1;1;1;4;1;2;3;1$v");                               // copy row 1 columns 1-4 over row 2 starting at column 3
+        Assert.Equal("PP......", Mask(buffer, 0));                               // the source is untouched
+        Assert.Equal("PPPP....", Mask(buffer, 1));                               // Z Z P Q R S: ZZ stay protected, the copied P and Q are protected, R and S are not
+    }
+
     /// <summary>The split-input guarantee holds for the pen sequence itself.</summary>
     [Fact]
     public void Decsca_is_equivalent_across_every_input_split()

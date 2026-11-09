@@ -845,6 +845,7 @@ namespace Ntilde.VT
             IsApplicationCursorKeys = modes.IsApplicationCursorKeys,
             IsApplicationKeypad = modes.IsApplicationKeypad,
             IsAutoWrapMode = modes.IsAutoWrapMode,
+            IsReverseWrapMode = modes.IsReverseWrapMode,
             IsOriginMode = modes.IsOriginMode,
             IsReverseVideo = modes.IsReverseVideo,
             IsSixelDisplayMode = modes.IsSixelDisplayMode,
@@ -861,6 +862,7 @@ namespace Ntilde.VT
             ModifyOtherKeysMain = modes.ModifyOtherKeys.MainLevel,
             ModifyOtherKeysAlt = modes.ModifyOtherKeys.AltLevel,
             AlternateScrollOverride = modes.AlternateScrollOverride,
+            RectangularAttributeExtent = modes.IsRectangularAttributeExtent ? true : null,
         };
 
         private static void ImportModes(ModeState target, TerminalModeState source)
@@ -873,6 +875,7 @@ namespace Ntilde.VT
             target.IsApplicationCursorKeys = source.IsApplicationCursorKeys;
             target.IsApplicationKeypad = source.IsApplicationKeypad;
             target.IsAutoWrapMode = source.IsAutoWrapMode;
+            target.IsReverseWrapMode = source.IsReverseWrapMode;
             target.IsOriginMode = source.IsOriginMode;
             target.IsReverseVideo = source.IsReverseVideo;
             target.IsSixelDisplayMode = source.IsSixelDisplayMode;
@@ -888,6 +891,7 @@ namespace Ntilde.VT
             target.IsEchoEnabled = source.IsEchoEnabled;
             // The app's choice only; the importing host keeps its own default.
             target.AlternateScrollOverride = source.AlternateScrollOverride;
+            target.IsRectangularAttributeExtent = source.RectangularAttributeExtent ?? false;
         }
 
         // ── validation ───────────────────────────────────────────────────────────

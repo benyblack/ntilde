@@ -1,0 +1,360 @@
+{
+  "caseId": "erase.screen.scrollback",
+  "pinnedCriterion": "ED 3 `ESC[3J` removes the measured saved lines (the screen is scrolled by rows+2 line feeds first) and the measured total returns to the screen rows",
+  "pinnedFeeds": [
+    "\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "\u001b[3J"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001b[5;5H",
+      "\u001b[3J"
+    ],
+    "demand": "nonempty ordered saved lines before, empty after, with viewport, cursor, margins, modes and the main buffer preserved",
+    "minimum": {
+      "rows": 5,
+      "cols": 5
+    },
+    "note": "upstream pixel/query path writes different bytes and ends in a cursor-position query that never measures cells or saved lines: it carries no verdict and is not qualified"
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "\u001b[3J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[3J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[2J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[40;1H\r\n\r\n\r\n",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1HROW-0\u001b[2;1HROW-1\u001b[3;1HROW-2\u001b[4;1HROW-3\u001b[5;1HROW-4\u001b[6;1HROW-5\u001b[7;1HROW-6\u001b[8;1HROW-7\u001b[9;1HROW-8\u001b[10;1HROW-9\u001b[11;1HROW-10\u001b[12;1HROW-11\u001b[13;1HROW-12\u001b[14;1HROW-13\u001b[15;1HROW-14\u001b[16;1HROW-15\u001b[17;1HROW-16\u001b[18;1HROW-17\u001b[19;1HROW-18\u001b[20;1HROW-19\u001b[21;1HROW-20\u001b[22;1HROW-21\u001b[23;1HROW-22\u001b[24;1HROW-23\u001b[25;1HROW-24\u001b[26;1HROW-25\u001b[27;1HROW-26\u001b[28;1HROW-27\u001b[29;1HROW-28\u001b[30;1HROW-29\u001b[31;1HROW-30\u001b[32;1HROW-31\u001b[33;1HROW-32\u001b[34;1HROW-33\u001b[35;1HROW-34\u001b[36;1HROW-35\u001b[37;1HROW-36\u001b[38;1HROW-37\u001b[39;1HROW-38\u001b[40;1HROW-39\u001b[7;12H",
+    "\u001b[3J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[3J",
+    "\u001b[40;1H\r\n\r\n"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      39,
+      0
+    ],
+    [
+      39,
+      0
+    ],
+    [
+      6,
+      11
+    ],
+    [
+      6,
+      11
+    ],
+    [
+      6,
+      11
+    ],
+    [
+      39,
+      0
+    ],
+    [
+      6,
+      11
+    ],
+    [
+      6,
+      11
+    ],
+    [
+      39,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "units": "physical rows: no wrapped (logical) lines are written, so a history count is a count of stored physical rows and totalLines is rows plus that count",
+    "roles": {
+      "initial": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "before": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          39,
+          0
+        ],
+        "viewport": [],
+        "history": [],
+        "historyCount": 3,
+        "totalLines": 43
+      },
+      "after": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          39,
+          0
+        ],
+        "viewport": [],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "seed": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          6,
+          11
+        ],
+        "viewport": [
+          "0-38: HIST-9..47"
+        ],
+        "history": [
+          "0-8: HIST-0..8"
+        ],
+        "historyCount": 9,
+        "totalLines": 49
+      },
+      "erase3": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          6,
+          11
+        ],
+        "viewport": [
+          "0-38: HIST-9..47"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "ed2": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          6,
+          11
+        ],
+        "viewport": [],
+        "history": [
+          "0-8: HIST-0..8"
+        ],
+        "historyCount": 9,
+        "totalLines": 49
+      },
+      "scrolled": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          39,
+          0
+        ],
+        "viewport": [
+          "0-35: HIST-12..47"
+        ],
+        "history": [
+          "0-11: HIST-0..11"
+        ],
+        "historyCount": 12,
+        "totalLines": 52
+      },
+      "emptyBefore": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          6,
+          11
+        ],
+        "viewport": [
+          "0-39: ROW-0..39"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "emptyErase": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          6,
+          11
+        ],
+        "viewport": [
+          "0-39: ROW-0..39"
+        ],
+        "history": [],
+        "historyCount": 0,
+        "totalLines": 40
+      },
+      "regrow": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          39,
+          0
+        ],
+        "viewport": [
+          "0-36: HIST-11..47"
+        ],
+        "history": [
+          "0-1: HIST-9..10"
+        ],
+        "historyCount": 2,
+        "totalLines": 42
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":{\"screenLines\":40,\"totalLines\":43,\"viewportY\":0},\"after\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "ED3 removes measured scrollback while keeping screen geometry",
+        "observed": "{\"before\":{\"screenLines\":40,\"totalLines\":43,\"viewportY\":0},\"after\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      "actual scrollback",
+      "stored cells",
+      "cursor",
+      "margins and modes",
+      "active buffer"
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-and-actual-scrollback",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": [
+      "actual scrollback",
+      "stored cells",
+      "cursor",
+      "margins and modes",
+      "active buffer"
+    ],
+    "scope": "stored viewport text, cursor, margins, modes, active buffer and the actual ordered saved physical rows and their count; no wrapped (logical) line, wide-cell, reflow, resize, alternate-screen history, terminal query or pixel claim"
+  }
+}

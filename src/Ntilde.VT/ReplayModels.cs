@@ -92,12 +92,16 @@ namespace Ntilde.VT
         [JsonPropertyName("sb")] public int ScrollBottom { get; set; }
 
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; }
+        /// <summary>Reverse-wraparound (?45). Absent in older recordings, which reads as off.</summary>
+        [JsonPropertyName("rwm")] public bool IsReverseWrapMode { get; set; }
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("m9")] public bool MouseModeX10PressOnly { get; set; }
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
         /// <summary>DECSCNM (?5). Absent (false) in legacy recordings.</summary>
         [JsonPropertyName("decscnm")] public bool IsReverseVideo { get; set; }
+        /// <summary>DECSACE rectangle extent (Ps 2). Written only while selected; absent (false, the stream) in legacy recordings.</summary>
+        [JsonPropertyName("decsace_rect"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsRectangularAttributeExtent { get; set; }
         [JsonPropertyName("sixel_display")] public bool IsSixelDisplayMode { get; set; }
         [JsonPropertyName("sixel_cw"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellWidthPx { get; set; }
         [JsonPropertyName("sixel_ch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public float? SixelCellHeightPx { get; set; }

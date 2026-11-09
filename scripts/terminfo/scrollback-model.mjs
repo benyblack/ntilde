@@ -4,11 +4,13 @@
 // from terminal readback. It models only the control subset the pinned fixtures and their controls use and
 // refuses (throws on) anything else, so an unmodeled sequence can never silently produce an expectation.
 //
-// Modeled: printable ASCII, CR, LF, CUP/HVP, ED 2 and ED 3, DECSTBM, SU, SD, RI, SGR reset, the origin,
+// Modeled: printable ASCII, CR, LF, CUP/HVP, CHA, CUF, CUB, ED 2 and ED 3, EL, ECH, DCH, DECSTBM, SU, SD, RI, SGR reset, the origin,
 // reverse-video and insert-mode resets, and the 1049 alternate screen (cursor saved on entry and restored on
 // exit, alternate screen cleared on entry, no history while alternate). A line scrolled off the top of a
 // full-height main-screen region enters history; a line scrolled out of any other region, or off the
 // alternate screen, is discarded. Wrapping is not modeled: a write that would wrap is refused.
+// Text and position only: the style parameters 1 (bold) and 44 (blue background) are accepted and ignored because
+// stored attributes are graded from the observed cell details, never from this model.
 
 /** One blank row of the given width. */
 const blankRow = cols => ' '.repeat(cols);
@@ -83,7 +85,29 @@ function csi(model, prefix, params, final) {
         }
         case 'S': for (let step = 0; step < count; step++) scrollUp(model); return;
         case 'T': for (let step = 0; step < count; step++) scrollDown(model); return;
-        case 'm': if (numbers.every(value => value === 0)) return; break;
+        case 'G': model.col = Math.min(Math.max(1, first), model.cols) - 1; return;
+        // A write that fills the last column leaves the cursor one past it (a pending wrap); a left or right move starts from the last column.
+        case 'C': model.col = Math.min(model.col + count, model.cols - 1); return;
+        case 'D': model.col = Math.max(0, Math.min(model.col, model.cols - 1) - count); return;
+        case 'X': { // ECH: blank `count` cells from the cursor without moving it or shifting anything.
+            const start = Math.min(model.col, model.cols - 1), screen = grid(model), row = screen[model.row];
+            screen[model.row] = row.slice(0, start) + ' '.repeat(Math.min(count, model.cols - start)) + row.slice(start + count);
+            return;
+        }
+        case 'P': { // DCH: pull the suffix left by `count` cells and blank the right edge.
+            const start = Math.min(model.col, model.cols - 1), screen = grid(model), row = screen[model.row];
+            screen[model.row] = (row.slice(0, start) + row.slice(start + count)).padEnd(model.cols, ' ');
+            return;
+        }
+        case 'K': { // EL: mode 0 cursor to end, 1 start to cursor, 2 the whole row.
+            const start = Math.min(model.col, model.cols - 1), screen = grid(model), row = screen[model.row];
+            if (first === 0) screen[model.row] = row.slice(0, start) + ' '.repeat(model.cols - start);
+            else if (first === 1) screen[model.row] = ' '.repeat(start + 1) + row.slice(start + 1);
+            else if (first === 2) screen[model.row] = blankRow(model.cols);
+            else break;
+            return;
+        }
+        case 'm': if (numbers.every(value => value === 0 || value === 1 || value === 44)) return; break;
         case 'l': if (first === 4 && numbers.length === 1) return; break;
         default: break;
     }

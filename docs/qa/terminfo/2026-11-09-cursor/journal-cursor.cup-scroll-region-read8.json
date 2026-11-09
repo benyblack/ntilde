@@ -1,0 +1,110 @@
+{
+  "caseId": "cursor.cup-scroll-region",
+  "read": 8,
+  "frame": {
+    "index": 10,
+    "kind": "curq-read",
+    "paneId": "f4ccc355-365a-4b6d-9fe6-acd045e6ca19",
+    "barrier": "\u001b[?62;4;22c",
+    "screen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "cursorRow": 2,
+      "cursorCol": 2,
+      "cursorVisible": true,
+      "attributeRuns": [
+        {
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1
+        }
+      ],
+      "cellDetails": [
+        {
+          "overline": false,
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
+      "bufferState": {
+        "scrollTop": 4,
+        "scrollBottom": 14,
+        "originMode": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "alternateScreen": true,
+        "scrollbackLines": 0
+      },
+      "history": {
+        "startLine": 0,
+        "totalLines": 0,
+        "lines": []
+      }
+    },
+    "sha256": "9b59ce559461fce87fe85d4e51e098af9bfda105b73d9bf94ce36f415e565576",
+    "cpr": {
+      "barrier": "\u001b[?62;4;22c",
+      "reply": {
+        "raw": "\u001b[3;3R",
+        "row": 3,
+        "col": 3
+      }
+    }
+  }
+}

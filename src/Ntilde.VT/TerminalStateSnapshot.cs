@@ -353,6 +353,8 @@ namespace Ntilde.VT
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;
+        /// <summary>Reverse-wraparound (?45). Absent in older payloads, which reads as off.</summary>
+        [JsonPropertyName("rwm")] public bool IsReverseWrapMode { get; set; }
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
         /// <summary>DECSCNM (?5). Absent in older payloads, which reads as normal video.</summary>
         [JsonPropertyName("decscnm")] public bool IsReverseVideo { get; set; }
@@ -383,6 +385,12 @@ namespace Ntilde.VT
         /// importing host's own default applies. Legacy payloads lack it and read as null.
         /// </summary>
         [JsonPropertyName("alt_scroll"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? AlternateScrollOverride { get; set; }
+
+        /// <summary>
+        /// DECSACE rectangle extent (Ps 2). Written only while the rectangle is selected; absent means the stream default,
+        /// which is what every legacy payload read as.
+        /// </summary>
+        [JsonPropertyName("decsace_rect"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? RectangularAttributeExtent { get; set; }
     }
 
     /// <summary>Both kitty keyboard flag stacks and which one is live.</summary>

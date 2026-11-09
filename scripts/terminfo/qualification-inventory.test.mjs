@@ -47,8 +47,9 @@ test('the totals are identities over the rows, not independent numbers', () => {
     assert.equal(totals.effectSupportedIds, totals.pinnedAndEffectSupportedIds + totals.effectSupportedPinnedInconclusiveIds.length);
     assert.equal(totals.pinnedSupportedIds, totals.pinnedAndEffectSupportedIds, 'a pinned-supported id is also effect-supported here');
     const inconclusive = totals.baseline.stockInconclusive;
-    assert.equal(totals.remainingAgainstStockInconclusive.effectUnqualified, inconclusive - totals.effectSupportedIds);
-    assert.equal(totals.remainingAgainstStockInconclusive.notPinnedSupported, inconclusive - totals.pinnedSupportedIds);
+    assert.equal(totals.remainingAgainstStockInconclusive.effectUnqualified, inconclusive - totals.effectSupportedOfStockInconclusive);
+    assert.equal(totals.remainingAgainstStockInconclusive.notPinnedSupported, inconclusive - totals.pinnedSupportedOfStockInconclusive);
+    assert.equal(totals.effectSupportedIds - totals.effectSupportedOfStockInconclusive, totals.ungradedStockIdsWithEvidence.length, 'only ungraded stock ids can be effect-supported without being stock-inconclusive');
     assert.equal(totals.baseline.allCases, totals.baseline.stockSupported + totals.baseline.stockUnsupported + inconclusive);
     assert.deepEqual(totalsOf(stored.benchmark, baseline()), totals);
 });
@@ -82,7 +83,10 @@ test('the five effect-only ids keep a recorded pinned/effect divergence instead 
 test('benchmark ids, Ntilde findings, controls and diagnostics are separated', () => {
     const stored = committed(), base = baseline();
     for (const item of stored.benchmark) {
-        assert.equal(base.outcomes[item.id], 'inconclusive', item.id);
+        if (item.stockStatus) {
+            assert.equal(item.stockStatus, 'ungraded-collector-error'); assert.equal(item.stockOutcome, null);
+            assert.ok(stored.ungradedDiagnostics.some(diagnostic => diagnostic.id === item.id), item.id);
+        } else assert.equal(base.outcomes[item.id], 'inconclusive', item.id);
         assert.doesNotMatch(item.id, /^(?:finding|ntilde)\./);
     }
     assert.deepEqual(stored.findings.map(finding => finding.suite), ['truecolor-literal-finding', 'sgr-underline-color-resolved']);
@@ -98,9 +102,13 @@ test('benchmark ids, Ntilde findings, controls and diagnostics are separated', (
     assert.deepEqual(stored.stockBaseline.stockUnsupported, ['extensions.osc5522-clipboard']);
 });
 
-test('no benchmark claim measures pixels; layers are classified from the retained evidence', () => {
+test('only controlled pixels are measured, by the cursor suite alone; layers are classified from the retained evidence', () => {
     const stored = committed();
     assert.ok(stored.benchmark.every(item => item.claims.every(claim => !claim.measuredLayers.includes('pixels'))));
+    const pixelClaims = stored.benchmark.flatMap(item => item.claims.filter(claim => claim.measuredLayers.includes('controlled-pixels')).map(claim => [item.id, claim.suite]));
+    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor']]);
+    assert.deepEqual(measuredLayersOf('owned-stored-physical-cursor-and-cpr', ''), ['stored-state', 'cursor-position-report']);
+    assert.deepEqual(measuredLayersOf('owned-stored-cursor-and-controlled-pixels', ''), ['stored-state', 'controlled-pixels']);
     assert.deepEqual(measuredLayersOf('owned-cells', 'graded from parent-journaled readScreen cells'), ['stored-state']);
     assert.deepEqual(measuredLayersOf('owned-cells', 'Named-color conclusions cover stored indices and markers, never theme-resolved RGB'), ['stored-state'], 'a scope that disclaims resolution does not add the layer');
     assert.deepEqual(measuredLayersOf('owned-resolved-colors', 'resolved RGB bound to one recorded palette/theme state'), ['app-resolved-color']);
@@ -124,8 +132,8 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock.basis === 'carried-forward');
-    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit']);
-    assert.match(carried[0].stock.note, /carried, not re-measured/);
+    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history']);
+    for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured/, suite.suite);
     const runIds = stored.suites.map(suite => suite.stock.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
     assert.deepEqual(stockProvenance({}), null);
@@ -194,7 +202,13 @@ test('guard: unsupported evidence cannot be promoted into the benchmark totals',
     assert.throws(() => check(foreign), /not a case of the pinned stock baseline|Ntilde-specific id/);
     const diagnostic = committed();
     diagnostic.benchmark.push({ ...clone(diagnostic.benchmark[0]), id: 'cursor.reverse-wrap' });
-    assert.throws(() => check(diagnostic), /ungraded diagnostic/);
+    assert.throws(() => check(diagnostic), /listed twice|ungraded stock diagnostic/);
+    const stockOutcome = committed();
+    row(stockOutcome, 'cursor.reverse-wrap').stockOutcome = 'inconclusive';
+    assert.throws(() => check(stockOutcome), /stock outcome differs|ungraded stock diagnostic/);
+    const statusless = committed();
+    delete row(statusless, 'cursor.reverse-wrap').stockStatus;
+    assert.throws(() => check(statusless), /ungraded stock diagnostic has no stock outcome and must say so/);
     const stockSupported = committed();
     const base = baseline();
     const supportedId = Object.keys(base.outcomes).find(id => base.outcomes[id] === 'supported');
@@ -229,13 +243,13 @@ test('guard: recorded totals must match the recomputed ones', () => {
     assert.throws(() => check(inflated), /totals differ/);
     const pixels = committed();
     pixels.benchmark[0].claims[0].measuredLayers.push('pixels');
-    assert.throws(() => check(pixels), /measures pixels/);
+    assert.throws(() => check(pixels), /unknown measured layer pixels/);
 });
 
 test('the generated summary states its baseline and keeps the diagnostic out of the counts', () => {
     const text = renderSummary(committed());
     assert.match(text, /Baseline: stock run `[0-9a-f]{32}`/);
-    assert.match(text, /cursor\.reverse-wrap.*suiteComplete=false.*not a graded unsupported case/);
+    assert.match(text, /cursor\.reverse-wrap.*suiteComplete=false.*not a graded stock case/);
     assert.match(text, /Ntilde-specific findings \(not benchmark ids\)/);
     assert.ok(Buffer.byteLength(text) < 40 * 1024 && readFileSync(join(defaultQaRoot, inventoryFiles.json)).length < 160 * 1024, 'the generated files stay reviewable');
 });

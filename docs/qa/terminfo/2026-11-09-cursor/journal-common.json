@@ -1,0 +1,298 @@
+{
+  "frames": {
+    "start": {
+      "index": 0,
+      "kind": "curq-start",
+      "paneId": "f4ccc355-365a-4b6d-9fe6-acd045e6ca19",
+      "barrier": null,
+      "screen": {
+        "rows": 40,
+        "cols": 140,
+        "lines": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "cursorRow": 0,
+        "cursorCol": 0,
+        "cursorVisible": true,
+        "attributeRuns": [
+          {
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1
+          }
+        ],
+        "cellDetails": [
+          {
+            "overline": false,
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ],
+        "cursorMode": {
+          "style": 2,
+          "blink": true,
+          "isDefault": true
+        },
+        "bufferState": {
+          "scrollTop": 0,
+          "scrollBottom": 39,
+          "originMode": false,
+          "autoWrap": true,
+          "insertMode": false,
+          "pendingWrap": false,
+          "alternateScreen": false,
+          "scrollbackLines": 0
+        },
+        "history": {
+          "startLine": 0,
+          "totalLines": 0,
+          "lines": []
+        }
+      },
+      "sha256": "389b6109132b390226d0e55db0813e21f098ac2e31c06cb2bc9ae9d38e7b87c8"
+    },
+    "bind": {
+      "index": 1,
+      "kind": "curq-bind",
+      "paneId": "f4ccc355-365a-4b6d-9fe6-acd045e6ca19",
+      "barrier": "\u001b[?62;4;22c",
+      "screen": {
+        "rows": 40,
+        "cols": 140,
+        "lines": [
+          "NTILDE_CQ_ce7cf5bb73e2ff346e571cb261fe156b",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "cursorRow": 0,
+        "cursorCol": 42,
+        "cursorVisible": true,
+        "attributeRuns": [
+          {
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1
+          }
+        ],
+        "cellDetails": [
+          {
+            "overline": false,
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ],
+        "cursorMode": {
+          "style": 2,
+          "blink": true,
+          "isDefault": true
+        },
+        "bufferState": {
+          "scrollTop": 0,
+          "scrollBottom": 39,
+          "originMode": false,
+          "autoWrap": true,
+          "insertMode": false,
+          "pendingWrap": false,
+          "alternateScreen": true,
+          "scrollbackLines": 0
+        },
+        "history": {
+          "startLine": 0,
+          "totalLines": 0,
+          "lines": []
+        }
+      },
+      "sha256": "12a6393f2a26fddbcb5cd3544bdfcfaa56252a6ee5dffa78481b67b3b977419d"
+    },
+    "finish": {
+      "index": 49,
+      "kind": "curq-finish",
+      "paneId": "f4ccc355-365a-4b6d-9fe6-acd045e6ca19",
+      "barrier": "\u001b[?62;4;22c",
+      "screen": {
+        "rows": 40,
+        "cols": 140,
+        "lines": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "cursorRow": 0,
+        "cursorCol": 0,
+        "cursorVisible": true,
+        "attributeRuns": [
+          {
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1
+          }
+        ],
+        "cellDetails": [
+          {
+            "overline": false,
+            "count": 5600,
+            "flags": 768,
+            "fg": -1,
+            "bg": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null,
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null
+          }
+        ],
+        "cursorMode": {
+          "style": 2,
+          "blink": true,
+          "isDefault": true
+        },
+        "bufferState": {
+          "scrollTop": 0,
+          "scrollBottom": 39,
+          "originMode": false,
+          "autoWrap": true,
+          "insertMode": false,
+          "pendingWrap": false,
+          "alternateScreen": false,
+          "scrollbackLines": 0
+        },
+        "history": {
+          "startLine": 0,
+          "totalLines": 0,
+          "lines": []
+        }
+      },
+      "sha256": "389b6109132b390226d0e55db0813e21f098ac2e31c06cb2bc9ae9d38e7b87c8"
+    }
+  }
+}

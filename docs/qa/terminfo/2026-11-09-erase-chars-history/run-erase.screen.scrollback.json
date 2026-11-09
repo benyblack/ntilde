@@ -1,0 +1,141 @@
+{
+  "caseId": "erase.screen.scrollback",
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "\u001b[3J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[3J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[2J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[40;1H\r\n\r\n\r\n",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1HROW-0\u001b[2;1HROW-1\u001b[3;1HROW-2\u001b[4;1HROW-3\u001b[5;1HROW-4\u001b[6;1HROW-5\u001b[7;1HROW-6\u001b[8;1HROW-7\u001b[9;1HROW-8\u001b[10;1HROW-9\u001b[11;1HROW-10\u001b[12;1HROW-11\u001b[13;1HROW-12\u001b[14;1HROW-13\u001b[15;1HROW-14\u001b[16;1HROW-15\u001b[17;1HROW-16\u001b[18;1HROW-17\u001b[19;1HROW-18\u001b[20;1HROW-19\u001b[21;1HROW-20\u001b[22;1HROW-21\u001b[23;1HROW-22\u001b[24;1HROW-23\u001b[25;1HROW-24\u001b[26;1HROW-25\u001b[27;1HROW-26\u001b[28;1HROW-27\u001b[29;1HROW-28\u001b[30;1HROW-29\u001b[31;1HROW-30\u001b[32;1HROW-31\u001b[33;1HROW-32\u001b[34;1HROW-33\u001b[35;1HROW-34\u001b[36;1HROW-35\u001b[37;1HROW-36\u001b[38;1HROW-37\u001b[39;1HROW-38\u001b[40;1HROW-39\u001b[7;12H",
+    "\u001b[3J",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "HIST-0\r\nHIST-1\r\nHIST-2\r\nHIST-3\r\nHIST-4\r\nHIST-5\r\nHIST-6\r\nHIST-7\r\nHIST-8\r\nHIST-9\r\nHIST-10\r\nHIST-11\r\nHIST-12\r\nHIST-13\r\nHIST-14\r\nHIST-15\r\nHIST-16\r\nHIST-17\r\nHIST-18\r\nHIST-19\r\nHIST-20\r\nHIST-21\r\nHIST-22\r\nHIST-23\r\nHIST-24\r\nHIST-25\r\nHIST-26\r\nHIST-27\r\nHIST-28\r\nHIST-29\r\nHIST-30\r\nHIST-31\r\nHIST-32\r\nHIST-33\r\nHIST-34\r\nHIST-35\r\nHIST-36\r\nHIST-37\r\nHIST-38\r\nHIST-39\r\nHIST-40\r\nHIST-41\r\nHIST-42\r\nHIST-43\r\nHIST-44\r\nHIST-45\r\nHIST-46\r\nHIST-47\r\n",
+    "\u001b[7;12H",
+    "\u001b[3J",
+    "\u001b[40;1H\r\n\r\n"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        6,
+        11
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        6,
+        11
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        6,
+        11
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        6,
+        11
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        6,
+        11
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        0
+      ]
+    }
+  ],
+  "pinned": {
+    "probeId": "erase.screen.scrollback",
+    "pass": true,
+    "response": "{\"before\":{\"screenLines\":40,\"totalLines\":43,\"viewportY\":0},\"after\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}",
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "ED3 removes measured scrollback while keeping screen geometry",
+        "observed": "{\"before\":{\"screenLines\":40,\"totalLines\":43,\"viewportY\":0},\"after\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0}}"
+      }
+    ]
+  }
+}
