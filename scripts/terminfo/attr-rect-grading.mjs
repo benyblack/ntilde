@@ -26,7 +26,7 @@ const screenOf = value => {
 /** The suite's report spec: identities, pinned replay and scope. */
 const spec = Object.freeze({ label: 'Attribute-rectangle', prefix: 'atrc', noncePrefix: attrRectNoncePrefix,
     contracts: attrRectContracts, caseIds: attrRectCaseIds, suiteId: attrRectSuiteId, version: attrRectContractsVersion,
-    adapterId: attrRectAdapterId, derivedFrom: 'ntilde-owned-saved-reset-grading-v1', screenOf,
+    adapterId: attrRectAdapterId, derivedFrom: 'ntilde-owned-erase-attrs-region-grading-v1', screenOf,
     scope: 'Pinned terminfo.dev@4.0.0 termless criteria for editing.deccara (`ESC[1;1;3;5;7$r` over aaaaaZ/bbbbbY/cccccX), editing.decrara (`ESC[1;1;3;5;7$t` over '
             + 'the inverse-seeded rows) and editing.decsace (`ESC[1;1H ESC[2*x`, inconclusive by design in the pinned probe) replayed byte-exactly on a disposable App and graded on '
             + 'parent-journaled readScreen stored cells, cursor, attribute details and buffer facts. The pinned DECCARA/DECRARA fixtures run at the default extent, which the VT510 '

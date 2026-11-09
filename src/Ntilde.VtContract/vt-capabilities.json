@@ -224,6 +224,24 @@
       "contractCase": "erase-rectangular-area"
     },
     {
+      "key": "CSI:$x",
+      "mnemonic": "DECFRA",
+      "support": "partial",
+      "description": "Fill a bounded stored-text rectangle with one character (32-126 through the in-use GL set, 160-255 as Latin-1) carrying the live SGR pen; omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. Invalid character codes and reversed borders are ignored. Image-plane, protected-cell and Unicode/wide-fill behavior remain unqualified.",
+      "matrixFeature": "DECFRA ($ x)",
+      "evidencePath": "tests/Ntilde.VT.Tests/RectangleCopyFillTests.cs",
+      "contractCase": "fill-rectangular-area"
+    },
+    {
+      "key": "CSI:$v",
+      "mnemonic": "DECCRA",
+      "support": "partial",
+      "description": "Copy a bounded stored-text rectangle on page 1 as if the source were read first (overlap-safe), keeping character, attributes, colors, hyperlinks and underline decoration, with omitted/zero borders, page clipping and DECOM row origin; preserve cursor, pen and row wrapping. A source or destination page other than 0/1 is ignored. Image-plane, protected-cell, scaled-text and multi-page behavior remain unqualified.",
+      "matrixFeature": "DECCRA ($ v)",
+      "evidencePath": "tests/Ntilde.VT.Tests/RectangleCopyFillTests.cs",
+      "contractCase": "copy-rectangular-area"
+    },
+    {
       "key": "CSI:$r",
       "mnemonic": "DECCARA",
       "support": "partial",

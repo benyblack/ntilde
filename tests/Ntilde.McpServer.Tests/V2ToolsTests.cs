@@ -439,6 +439,21 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("DECERA", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
     }
 
+    /// <summary>The exact DECFRA and DECCRA spellings retain the catalogue's Partial support limitation.</summary>
+    [Theory]
+    [InlineData("CSI 88;1;1;3;5 $ x", "DECFRA")]
+    [InlineData("\x1b[88;1;1;3;5$x", "DECFRA")]
+    [InlineData("CSI $ x", "DECFRA")]
+    [InlineData("CSI 1;1;2;5;1;5;10 $ v", "DECCRA")]
+    [InlineData("\e[1;1;2;5;1;5;10$v", "DECCRA")]
+    [InlineData("CSI ;;;;;;; $ v", "DECCRA")]
+    public void Rectangle_fill_and_copy_explain_the_partial_contract(string sequence, string mnemonic)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains(mnemonic, result, StringComparison.Ordinal);
+        Assert.Contains("PARTIALLY", result, StringComparison.Ordinal);
+    }
+
     /// <summary>The exact attribute-rectangle spellings keep the catalogue's Partial support limitation.</summary>
     [Theory]
     [InlineData("CSI $ r", "DECCARA")]
@@ -453,6 +468,24 @@ public class ExplainEscapeSequenceTests
         string result = VtTools.ExplainEscapeSequence(sequence);
         Assert.Contains(mnemonic, result, StringComparison.Ordinal);
         Assert.Contains("PARTIALLY", result, StringComparison.Ordinal);
+    }
+
+    /// <summary>Other identities, excess parameters and subparameters cannot inherit the admitted fill or copy explanation.</summary>
+    [Theory]
+    [InlineData("CSI x")]
+    [InlineData("CSI v")]
+    [InlineData("CSI ? 1 $ x")]
+    [InlineData("CSI $$ x")]
+    [InlineData("CSI 1:2 $ x")]
+    [InlineData("CSI 1;2;3;4;5;6 $ x")]
+    [InlineData("CSI 1;2;3;4;5;6;7;8;9 $ v")]
+    [InlineData("CSI 1:2 $ v")]
+    [InlineData("CSI $! v")]
+    public void Other_fill_and_copy_forms_claim_no_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.DoesNotContain("DECFRA", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("DECCRA", result, StringComparison.Ordinal);
     }
 
     /// <summary>Other identities and subparameters cannot inherit the attribute-rectangle explanations, and DECCARA is never DECSTBM.</summary>

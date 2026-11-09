@@ -552,4 +552,32 @@ public sealed class RectangularAttributeTests
         parser.Process($"{Esc}[1;1;1;8;7$r");
         Assert.Equal("IIIII...", Marks(buffer, 0, 8));
     }
+
+    /// <summary>Cells filled by DECFRA are occupied, so the stream reaches them; the attribute change is not lost by a later DECFRA either.</summary>
+    [Fact]
+    public void Filled_cells_are_occupied_for_the_stream()
+    {
+        var buffer = new TerminalBuffer(8, 2);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process($"{Esc}[88;1;1;1;4$x");
+        parser.Process($"{Esc}[1;1;1;8;7$r");
+        Assert.Equal("IIII....", Marks(buffer, 0, 8));
+        Assert.Equal("XXXX____", new string(Enumerable.Range(0, 8).Select(col => Cell(buffer, col, 0).Character == ' ' ? '_' : Cell(buffer, col, 0).Character).ToArray()));
+    }
+
+    /// <summary>DECCRA copies the attributes DECCARA stored, and DECCARA over the copy does not change the source.</summary>
+    [Fact]
+    public void Copied_cells_carry_the_changed_attributes()
+    {
+        var buffer = new TerminalBuffer(8, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("abcd");
+        parser.Process($"{Esc}[2*x{Esc}[1;1;1;2;1;7$r{Esc}[0*x");
+        parser.Process($"{Esc}[1;1;1;4;1;2;1$v");
+        Assert.Equal("[IB][IB]..", Marks(buffer, 0, 4));
+        Assert.Equal("[IB][IB]..", Marks(buffer, 1, 4));
+        parser.Process($"{Esc}[2*x{Esc}[2;1;2;4;27$r{Esc}[0*x");
+        Assert.Equal("[IB][IB]..", Marks(buffer, 0, 4));
+        Assert.Equal("BB..", Marks(buffer, 1, 4));
+    }
 }

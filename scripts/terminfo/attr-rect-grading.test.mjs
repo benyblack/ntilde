@@ -179,7 +179,7 @@ test('tampered pinned results, run logs and identities are refused', () => {
     assert.throws(() => build(mutate(copy => { copy.run.cases.reverse(); })), /case order differs/);
     assert.throws(() => build(mutate(copy => { copy.run.probeIds = [...copy.run.probeIds].reverse(); })), /does not cover/);
     assert.throws(() => build(mutate(copy => { copy.adapter.id = 'other'; })), /Invalid Attribute-rectangle adapter identity/);
-    assert.throws(() => build(mutate(copy => { copy.adapter.derivedFromAdapterId = 'ntilde-owned-scrollback-grading-v1'; })), /Invalid Attribute-rectangle adapter identity/);
+    assert.throws(() => build(mutate(copy => { copy.adapter.derivedFromAdapterId = 'ntilde-owned-saved-reset-grading-v1'; })), /Invalid Attribute-rectangle adapter identity/);
     assert.throws(() => build(mutate(copy => { copy.run.adapterId = 'other'; })), /Invalid Attribute-rectangle adapter identity/);
     assert.throws(() => build(mutate(copy => { delete copy.run.cases[0].pinnedFed; })), /Invalid editing\.deccara pinned feed count/);
     assert.throws(() => build(mutate(copy => { copy.run.cases[2].pinnedFed = 5; })), /Invalid editing\.decsace pinned feed count/);

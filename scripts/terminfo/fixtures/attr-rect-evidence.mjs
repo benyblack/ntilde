@@ -103,7 +103,7 @@ export function syntheticAttrRectEvidence(runId = 'a'.repeat(32), bundleSha256 =
     });
     frames.push(frame(frames.length, 'atrc-finish', blank, deviceAttribute));
     const run = { schemaVersion: 1, adapterId: attrRectAdapterId, probeIds: attrRectContracts.map(contract => contract.caseId), cases };
-    const adapter = { id: attrRectAdapterId, derivedFromAdapterId: 'ntilde-owned-saved-reset-grading-v1', bundleSha256,
+    const adapter = { id: attrRectAdapterId, derivedFromAdapterId: 'ntilde-owned-erase-attrs-region-grading-v1', bundleSha256,
         upstreamBundleSha256: 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6' };
     return { frames, run, runId, adapter };
 }

@@ -425,8 +425,12 @@ namespace Ntilde.VT
                 case 'z': // DECERA - Erase Rectangular Area
                     EraseRectangularArea(csi);
                     break;
-                case 'x': // DECSACE - Select Attribute Change Extent (CSI Ps * x); bare CSI x (DECREQTPARM) stays unhandled
-                    SelectAttributeChangeExtent(csi);
+                case 'x': // DECSACE (CSI Ps * x), DECFRA (only the exact $ x identity); bare CSI x (DECREQTPARM) stays unhandled
+                    if (intermediates.SequenceEqual("*")) SelectAttributeChangeExtent(csi);
+                    else FillRectangularArea(csi);
+                    break;
+                case 'v': // DECCRA - Copy Rectangular Area (only the exact $ v identity)
+                    CopyRectangularArea(csi);
                     break;
                 case 'X': // Erase Character (ECH)
                     if (bare)

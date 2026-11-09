@@ -1,20 +1,20 @@
 // Explicitly versioned collector extension for the attribute-rectangle qualification
-// (editing.deccara, editing.decrara and editing.decsace). This is a nineteenth digest-checked derivation layered on top of
-// the saved-state/reset grading extension: the pinned bundle, the owned adapter and every earlier grading extension stay
+// (editing.deccara, editing.decrara and editing.decsace). This is a twentieth digest-checked derivation layered on top of
+// the erase-attributes/margins grading extension: the pinned bundle, the owned adapter and every earlier grading extension stay
 // byte-for-byte unchanged, and each graded result carries this extension's identity so it can never be presented as stock output.
 //
 // The extension adds no probe of its own. It exposes the PINNED termless probe definitions of the three contracted cases so
 // live, independently observed cells can be graded by the collector's own criteria. Derivation refuses unless the retained
-// saved-state/reset extension still contains the exact pinned registrations (each with its terminal path, which never carries a
+// erase-attributes/margins extension still contains the exact pinned registrations (each with its terminal path, which never carries a
 // cell verdict: the cursor-query paths of DECCARA and DECRARA and the not-attempted placeholder of DECSACE) and the two result
 // helpers, each verbatim and once. DECSACE's termless path is pinned inconclusive by design; a later upstream change that gave it
 // a verdict would be refused.
 import { attrRectCaseIds } from './attr-rect-contracts.mjs';
 
-/** Identity of this nineteenth layered extension. */
+/** Identity of this twentieth layered extension. */
 export const attrRectAdapterId = 'ntilde-owned-attr-rect-grading-v1';
 
-/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the saved-state/reset extension). Each must appear exactly once;
+/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the erase-attributes/margins extension). Each must appear exactly once;
  * then the retained previous layer's exports. */
 const pinnedAttrRectSeams = Object.freeze([
     // editing.deccara registration (termless criterion and its cursor-query terminal path)
@@ -28,16 +28,16 @@ const pinnedAttrRectSeams = Object.freeze([
     // unmeasuredCellResult helper
     "function unmeasuredCellResult(position, feature) {\n  return {\n    pass: false,\n    ...position && { response: `${position.row};${position.col}` },\n    note: position ? `Cursor response does not measure ${feature}` : `No cursor response after ${feature}`,\n    observation: {\n      outcome: \"inconclusive\",\n      reason: position ? \"insufficient-evidence\" : \"no-response\",\n      evidence: \"query\"\n    }\n  };\n}",
     // the retained previous layer's exports
-    'export const ntildeSavedResetAdapter = Object.freeze({',
-    'export function ntildeRunSavedResetTermless(probeId, ctx) {',
+    'export const ntildeEraseAttrsRegionAdapter = Object.freeze({',
+    'export function ntildeRunEraseAttrsRegionTermless(probeId, ctx) {',
 ]);
 
 /** The pinned seams, exposed so portable tests can build a synthetic layered source. */
 export const attrRectSeams = pinnedAttrRectSeams;
 
-/** Derive the attribute-rectangle grading extension from the saved-state/reset grading extension. */
-export function adaptAttrRectCollector(savedResetSource) {
-    const source = String(savedResetSource);
+/** Derive the attribute-rectangle grading extension from the erase-attributes/margins grading extension. */
+export function adaptAttrRectCollector(eraseAttrsRegionSource) {
+    const source = String(eraseAttrsRegionSource);
     for (const seam of pinnedAttrRectSeams) {
         if (source.split(seam).length !== 2) throw new Error('Pinned attribute-rectangle probe seam changed; refusing derivation.');
     }
@@ -45,7 +45,7 @@ export function adaptAttrRectCollector(savedResetSource) {
     return source + `
 
 // Local attribute-rectangle grading extension ${JSON.stringify(attrRectAdapterId)}.
-// Derived from the saved-state/reset grading extension; probe definitions, policy
+// Derived from the erase-attributes/margins grading extension; probe definitions, policy
 // gates and stock grading remain intact.
 export const ntildeAttrRectAdapter = Object.freeze({
   id: ${JSON.stringify(attrRectAdapterId)},

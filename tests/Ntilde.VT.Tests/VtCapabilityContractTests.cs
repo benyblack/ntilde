@@ -45,6 +45,8 @@ public sealed class VtCapabilityContractTests
             ["cursor-previous-line"] = AssertCursorPreviousLine,
             ["cursor-horizontal-absolute"] = AssertCursorHorizontalAbsolute,
             ["erase-rectangular-area"] = AssertRectangularTextErase,
+            ["fill-rectangular-area"] = AssertRectangularTextFill,
+            ["copy-rectangular-area"] = AssertRectangularTextCopy,
             ["change-attributes-rectangular-area"] = AssertRectangularAttributeChange,
             ["reverse-attributes-rectangular-area"] = AssertRectangularAttributeReverse,
             ["select-attribute-change-extent"] = AssertAttributeChangeExtent,
@@ -75,6 +77,8 @@ public sealed class VtCapabilityContractTests
             ["cursor-previous-line"] = "\x1b[2F",
             ["cursor-horizontal-absolute"] = "\x1b[4G",
             ["erase-rectangular-area"] = "\u001b[2;2;3;3$z",
+            ["fill-rectangular-area"] = "\u001b[88;2;2;3;3$x",
+            ["copy-rectangular-area"] = "\u001b[1;1;2;2;1;2;2$v",
             ["change-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$r",
             ["reverse-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$t",
             ["select-attribute-change-extent"] = "\u001b[2*x",
@@ -97,6 +101,64 @@ public sealed class VtCapabilityContractTests
         Assert.Equal(VtSupport.Partial, capability.Support);
         Assert.Equal("erase-rectangular-area", capability.ContractCase);
         ContractCases["erase-rectangular-area"]();
+    }
+
+    /// <summary>Pins the advertised partial fill contract without claiming image-plane, protected-cell or non-Latin-1 fill.</summary>
+    [Fact]
+    public void Partial_DECFRA_catalogue_has_an_executable_text_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "CSI:$x");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("fill-rectangular-area", capability.ContractCase);
+        ContractCases["fill-rectangular-area"]();
+    }
+
+    /// <summary>Pins the advertised partial copy contract: page 1 only, text plane only.</summary>
+    [Fact]
+    public void Partial_DECCRA_catalogue_has_an_executable_text_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "CSI:$v");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("copy-rectangular-area", capability.ContractCase);
+        ContractCases["copy-rectangular-area"]();
+    }
+
+    private static void AssertRectangularTextFill()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("AAAA\r\nBBBB\r\nCCCC\u001b[88;2;2;3;3$x");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal('A', buffer.GetCell(1, 0).Character);
+            Assert.Equal('B', buffer.GetCell(0, 1).Character);
+            Assert.Equal('X', buffer.GetCell(1, 1).Character);
+            Assert.Equal('X', buffer.GetCell(2, 2).Character);
+            Assert.Equal('C', buffer.GetCell(3, 2).Character);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal((2, 3, true), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
+    }
+
+    private static void AssertRectangularTextCopy()
+    {
+        var buffer = new TerminalBuffer(4, 3);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("AAAA\r\nBBBB\r\nCCCC\u001b[1;1;2;2;1;2;2$v");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal('A', buffer.GetCell(0, 0).Character);
+            Assert.Equal('B', buffer.GetCell(0, 1).Character);
+            Assert.Equal('A', buffer.GetCell(1, 1).Character);
+            Assert.Equal('A', buffer.GetCell(2, 1).Character);
+            Assert.Equal('B', buffer.GetCell(1, 2).Character);
+            Assert.Equal('B', buffer.GetCell(2, 2).Character);
+            Assert.Equal('C', buffer.GetCell(0, 2).Character);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal((2, 3, true), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
     }
 
     /// <summary>Checks a real rectangle in authored rows, including preservation of pending wrap at the last column.</summary>
