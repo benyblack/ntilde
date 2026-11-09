@@ -230,8 +230,8 @@ function regionControl(builder, operation, label, wrong) {
 
 /** Build the pinned contracts for the measured geometry. */
 export function makeScrollbackContracts(rows, cols) {
-    if (!Number.isSafeInteger(rows) || rows < scrollbackMinimum.rows || rows > 128 || !Number.isSafeInteger(cols) || cols < scrollbackMinimum.cols) {
-        throw new Error('Scrollback contracts need at least 12 rows and 48 columns within the observer limits.');
+    if (!Number.isSafeInteger(rows) || rows < scrollbackMinimum.rows || rows > 128 || !Number.isSafeInteger(cols) || cols < scrollbackMinimum.cols || cols > 256) {
+        throw new Error('Scrollback contracts need at least 12 rows and 48 columns, and at most 128 rows and 256 columns (the observer limits).');
     }
     const contracts = [];
     contracts.push(finish(rows, cols, accumulatePlan(rows, 'line', 'scrollback.accumulate',

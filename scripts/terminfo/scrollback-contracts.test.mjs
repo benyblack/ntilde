@@ -184,6 +184,9 @@ test('contracts refuse geometry below the floor and above the observer limits', 
     assert.throws(() => makeScrollbackContracts(11, 140), /at least 12 rows/);
     assert.throws(() => makeScrollbackContracts(40, 47), /at least 12 rows/);
     assert.throws(() => makeScrollbackContracts(129, 140), /at least 12 rows/);
+    assert.throws(() => makeScrollbackContracts(40, 257), /at most 128 rows and 256 columns/);
+    assert.throws(() => makeScrollbackContracts(40, 1e9), /at most 128 rows and 256 columns/);
+    assert.throws(() => makeScrollbackContracts(40, undefined), /at most 128 rows and 256 columns/);
     assert.doesNotThrow(() => makeScrollbackContracts(12, 48));
     for (const [rows, cols] of [[12, 48], [24, 80], [40, 140], [128, 256]]) {
         const history = byId(makeScrollbackContracts(rows, cols), 'scrollback.accumulate').roles.find(entry => entry.role === 'final').expected.history;

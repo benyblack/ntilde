@@ -268,6 +268,9 @@ test('incomplete restoration, an unbound start and a wrong geometry are refused'
     finish.screen.bufferState.scrollbackLines = 1;
     finish.sha256 = snapshotHash(finish.screen);
     assert.throws(() => build(history), /was not restored/);
+    const huge = clone(evidence);
+    huge.frames[0].screen.cols = 1e9;
+    assert.throws(() => buildScrollbackGradingReport(huge.frames, huge.run, huge.runId, huge.adapter), /at most 128 rows and 256 columns/);
     const nonce = clone(evidence);
     nonce.frames[1].screen.lines[0] = 'NTILDE_SB_other';
     nonce.frames[1].sha256 = snapshotHash(nonce.frames[1].screen);
