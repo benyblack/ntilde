@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-charsets-grading-v1",
+  "probeIds": ["charsets.utf8", "charsets.dec-special", "charsets.dec-line-drawing", "charsets.g0-g1-switching"],
+  "cases": [
+    {
+      "caseId": "charsets.utf8",
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u001b[1;1H\u001b[2KAxy?Z", "\u001b[1;2H", "é", "\u001b[1;3H", "世", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "A世Z", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "éZ", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "éZ"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 2]
+        }
+      ],
+      "pinned": {
+        "probeId": "charsets.utf8",
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"x\",\"y\",\"?\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0},{\"x\":2,\"y\":0}],\"after\":[\"A\",\"é\",\"世\",\"\",\"Z\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "Sampled Unicode characters é and 世 occupy their target cells with ASCII controls intact",
+            "observed": "{\"before\":[\"A\",\"x\",\"y\",\"?\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0},{\"x\":2,\"y\":0}],\"after\":[\"A\",\"é\",\"世\",\"\",\"Z\"]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "charsets.dec-special",
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kqqq", "\u001b[1;2H", "\u001b(0q\u001b(Bq", "\u000f\u001b(B\u001b)B", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(B\u001b)0qqq", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0QQQ\u001b(B", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0qqq", "\u001b(Bqqq"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 3]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 3]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 3]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 3]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 3]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 3]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 6]
+        }
+      ],
+      "pinned": {
+        "probeId": "charsets.dec-special",
+        "pass": true,
+        "response": "{\"before\":[\"q\",\"q\",\"q\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"q\",\"─\",\"q\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "ASCII q controls flank DEC Special Graphics q mapped to U+2500",
+            "observed": "{\"before\":[\"q\",\"q\",\"q\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"q\",\"─\",\"q\"]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "charsets.dec-line-drawing",
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2Kjklmqxj", "\u001b[1;1H", "\u001b(0jklmqx\u001b(B", "\u000f\u001b(B\u001b)B", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(B\u001b)0jklmqx", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0JKLMQX\u001b(B", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u001b(0jklmqx", "\u001b(Bjklmqx"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 12]
+        }
+      ],
+      "pinned": {
+        "probeId": "charsets.dec-line-drawing",
+        "pass": true,
+        "response": "{\"before\":[\"j\",\"k\",\"l\",\"m\",\"q\",\"x\",\"j\"],\"setup\":[{\"x\":0,\"y\":0}],\"after\":[\"┘\",\"┐\",\"┌\",\"└\",\"─\",\"│\",\"j\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DEC jklmqx map exactly to ┘┐┌└─│ while trailing ASCII j remains unchanged",
+            "observed": "{\"before\":[\"j\",\"k\",\"l\",\"m\",\"q\",\"x\",\"j\"],\"setup\":[{\"x\":0,\"y\":0}],\"after\":[\"┘\",\"┐\",\"┌\",\"└\",\"─\",\"│\",\"j\"]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "charsets.g0-g1-switching",
+      "feeds": ["\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u000f\u001b(B\u001b)B\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ", "\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl", "\u000f\u001b(B\u001b)B", "\u001b[2;1Hjklmqxl", "\u001b[3;1H\u001b(0jklmqxl\u001b(B", "\u001b[4;1Hjklmqxl", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0lll", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)B\u000elll\u000f", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(0lll\u001b(B", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0\u000elll\u000f", "\u000f\u001b(B\u001b)B\u001b[0m\u001b[2J\u001b[H", "\u000f\u001b(B\u001b)B\u001b[1;1H\u001b[2KAlllZ\u001b[1;2H", "\u001b(B\u001b)0l\u000el\u000fl", "\u001b[2;1H\u000ejkl\u000f"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0, 0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3, 7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0, 4]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1, 3]
+        }
+      ],
+      "pinned": {
+        "probeId": "charsets.g0-g1-switching",
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"l\",\"l\",\"l\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"A\",\"l\",\"┌\",\"l\",\"Z\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "G0 ASCII l, SO-selected G1 DEC l→U+250C, then SI-selected G0 ASCII l, within A/Z controls",
+            "observed": "{\"before\":[\"A\",\"l\",\"l\",\"l\",\"Z\"],\"setup\":[{\"x\":1,\"y\":0}],\"after\":[\"A\",\"l\",\"┌\",\"l\",\"Z\"]}"
+          }
+        ]
+      }
+    }
+  ]
+}

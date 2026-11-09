@@ -18,6 +18,7 @@ import { includesEraseLineEvidence, checkEraseLineEvidence } from './erase-line-
 import { includesCharEditEvidence, checkCharEditEvidence } from './char-edit-receipt.mjs';
 import { includesEraseDisplayEvidence, checkEraseDisplayEvidence } from './erase-display-receipt.mjs';
 import { includesLineEditEvidence, checkLineEditEvidence } from './line-edit-receipt.mjs';
+import { includesCharsetsEvidence, checkCharsetsEvidence } from './charsets-receipt.mjs';
 import { includesScrollbackEvidence, checkScrollbackEvidence } from './scrollback-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
@@ -131,7 +132,7 @@ function checkHistoryProof(output, evidence, runId, context, proof) {
 }
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
-function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesScrollback }) {
+function ownedReceiptVersion(context, { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata, includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback }) {
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -160,7 +161,8 @@ function ownedReceiptVersion(context, { includesEditing, includesHistory, includ
     if (includesCharEdit) schemaVersion = 26;
     if (includesEraseDisplay) schemaVersion = 27;
     if (includesLineEdit) schemaVersion = 28;
-    if (includesScrollback) schemaVersion = 29;
+    if (includesCharsets) schemaVersion = 29;
+    if (includesScrollback) schemaVersion = 30;
     return schemaVersion;
 }
 
@@ -188,6 +190,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesCharEdit = includesCharEditEvidence(output, evidence, context);
     const includesEraseDisplay = includesEraseDisplayEvidence(output, evidence, context);
     const includesLineEdit = includesLineEditEvidence(output, evidence, context);
+    const includesCharsets = includesCharsetsEvidence(output, evidence, context);
     const includesScrollback = includesScrollbackEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
@@ -196,7 +199,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesScrollback };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -226,6 +229,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesCharEdit) checkCharEditEvidence(output, evidence, runId, context);
     if (suffixes.includesEraseDisplay) checkEraseDisplayEvidence(output, evidence, runId, context);
     if (suffixes.includesLineEdit) checkLineEditEvidence(output, evidence, runId, context);
+    if (suffixes.includesCharsets) checkCharsetsEvidence(output, evidence, runId, context);
     if (suffixes.includesScrollback) checkScrollbackEvidence(output, evidence, runId, context);
 }
 

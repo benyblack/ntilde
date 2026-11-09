@@ -44,11 +44,11 @@ test('refuses derivation when the section, its markers or any helper seam change
     assert.throws(() => adapt(verbatim(body.replace('tooSmall2', 'tooSmall3'))), /Pinned scrollback probes changed/);
 });
 
-test('the helper seams are the pinned isBlank and parserStateResult plus the retained line-editing exports', () => {
+test('the helper seams are the pinned isBlank and parserStateResult plus the retained charsets exports', () => {
     assert.ok(helperSeams.some(seam => seam.startsWith('function isBlank(')));
     assert.ok(helperSeams.some(seam => seam.startsWith('function parserStateResult(') && seam.includes('outcome: pass === null ? "inconclusive"')));
-    assert.ok(helperSeams.includes('export const ntildeLineEditAdapter = Object.freeze({'));
-    assert.ok(helperSeams.includes('export function ntildeRunLineEditTermless(probeId, ctx) {'));
+    assert.ok(helperSeams.includes('export const ntildeCharsetsAdapter = Object.freeze({'));
+    assert.ok(helperSeams.includes('export function ntildeRunCharsetsTermless(probeId, ctx) {'));
 });
 
 test('the derivation appends after any earlier layer without rewriting it', () => {
@@ -58,7 +58,7 @@ test('the derivation appends after any earlier layer without rewriting it', () =
     assert.ok(layered.includes(scrollbackAdapterId));
 });
 
-// The real pinned bundle, derived through all fifteen layers and EXECUTED over synthetic observed states: the pinned
+// The real pinned bundle, derived through all sixteen layers and EXECUTED over synthetic observed states: the pinned
 // probe code must agree with the independent replay and the contract. Skipped when the collector cache is absent.
 const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
 const haveBundle = existsSync(bundleUrl);
@@ -79,6 +79,7 @@ test('the real pinned bundle derives through every layer and its nine probes agr
         import('./char-edit-grading-collector.mjs').then(m => m.adaptCharEditCollector),
         import('./erase-display-grading-collector.mjs').then(m => m.adaptEraseDisplayCollector),
         import('./line-edit-grading-collector.mjs').then(m => m.adaptLineEditCollector),
+        import('./charsets-grading-collector.mjs').then(m => m.adaptCharsetsCollector),
     ]);
     const { replayScrollbackPinned } = await import('./scrollback-grading.mjs');
     const { scrollbackRecordingContext } = await import('./scrollback-collector.mjs');

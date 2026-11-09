@@ -24,10 +24,10 @@ inconclusive for all nine (stock counts unchanged: 86 supported, 1 unsupported, 
 
 ## Method
 
-Sixteenth digest-checked collector extension `ntilde-owned-scrollback-grading-v1` (derived over the line-editing one; it refuses
+Seventeenth digest-checked collector extension `ntilde-owned-scrollback-grading-v1` (derived over the charsets one; it refuses
 derivation unless the verbatim pinned scrollback section, pinned by one SHA-256, and the `parserStateResult`/`isBlank` helpers are present
 once), contracts v1, suite `ntilde-owned-scrollback-graded-v1`, prefix `scrl`, nonce `NTILDE_SB_`. The suite runs on the **main screen**
-(history is only observable there) after the line-editing suite, starting from a pristine main screen and restoring it exactly. Each plan
+(history is only observable there) after the charsets suite, starting from a pristine main screen and restoring it exactly. Each plan
 begins with a measured reset (`?1049l`, DECSCNM/DECOM/margins/IRM/SGR off, `2J`, `3J`, home), feeds the pinned bytes one write each, and
 journals complete state reads: viewport text, **actual `readScrollback` lines and count**, margins, active screen, origin/insert/auto-wrap
 and pending wrap, cursor, and that no cell stores a non-default attribute (attribute runs and stored details must agree). Every expected
@@ -46,7 +46,7 @@ geometry is inconclusive.
 
 ## Measurement
 
-Owned run on a disposable sidecar built from this checkout, receipt schema 29, source policy v23 (inventory v30, 194 files), default theme,
+Owned run on a disposable sidecar built from this checkout, receipt schema 30, source policy v24 (inventory v31, 199 files), default theme,
 40x140. All nine cases graded **supported** by the contract. Six pinned verdicts agree (supported); three are inconclusive by construction.
 Observed: 50 lines overflow into exactly lines 0-10 of history (total lines 40 to 51) with `line 11`..`line 49` in rows 0-38; SU confined to
 rows 2-4 gave A,C,D,blank,E with no history; RI/SD inserted a blank top row; DECSTBM `5;10` observed as margins 4..9 (0-based) and restored to
@@ -55,7 +55,7 @@ rows 2-4 gave A,C,D,blank,E with no history; RI/SD inserted a blank top row; DEC
 alternate screen is active and homes the cursor on entry (observed, not required); alternate overflow added nothing to it and exit restored
 the main viewport, cursor `(39,6)` and history exactly.
 
-**Preserved attempts:** (1) `289de99d…` (scripts `152509f3`): the first measurement over main `4e32f6d9` (receipt 26, policy v20, 179 files), superseded when main merged the character-editing layer; (2) the post-integration run over that layer (receipt 27, policy v21, 184 files, scripts `57efb32e`), superseded when main merged the erase-in-display layer; (3) the post-integration run over that layer (receipt 28, policy v22, 189 files), superseded when main merged the line-editing layer; (4) the post-integration run over that layer (receipt 29, policy v23, 194 files), superseded when Codex review found the geometry guard did not bound the column count (an evidence-validation change), so the guard was corrected and the run repeated on the same base. This layer was restacked each time (now the sixteenth extension, receipt 29, policy v23, 194 files) and re-measured; all five runs graded all nine supported. The final run measured the scripts of the commit recorded in the summary; App source is unchanged since `c16997c2`.
+**Preserved attempts:** (1) `289de99d…` (scripts `152509f3`): the first measurement over main `4e32f6d9` (receipt 26, policy v20, 179 files), superseded when main merged the character-editing layer; (2) the post-integration run over that layer (receipt 27, policy v21, 184 files, scripts `57efb32e`), superseded when main merged the erase-in-display layer; (3) the post-integration run over that layer (receipt 28, policy v22, 189 files), superseded when main merged the line-editing layer; (4) the post-integration run over that layer (receipt 29, policy v23, 194 files), superseded when Codex review found the geometry guard did not bound the column count (an evidence-validation change), so the guard was corrected and the run repeated on the same base. This layer was restacked each time (now the seventeenth extension, receipt 30, policy v24, 199 files) and re-measured; all five runs graded all nine supported. The final run measured the scripts of the commit recorded in the summary; App source is unchanged since `c16997c2`.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (inventory derived from the merged contracts
 by the publication test); 10/10 truecolor-literal finding; 3/3 underline-color resolution.
