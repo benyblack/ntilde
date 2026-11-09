@@ -55,7 +55,7 @@ rows 2-4 gave A,C,D,blank,E with no history; RI/SD inserted a blank top row; DEC
 alternate screen is active and homes the cursor on entry (observed, not required); alternate overflow added nothing to it and exit restored
 the main viewport, cursor `(39,6)` and history exactly.
 
-**Preserved attempt:** `289de99d…` (scripts `152509f3`), complete and superseded: the first measurement over main `4e32f6d9` (receipt 26, policy v20, 179 files); main then merged the character-editing layer, so this layer was restacked as the fourteenth extension (receipt 27, policy v21, 184 files) and re-measured. Both runs graded all nine supported. The final run measured scripts `57efb32e`; App source is unchanged since `c16997c2`.
+**Preserved attempts:** (1) `289de99d…` (scripts `152509f3`): the first measurement over main `4e32f6d9` (receipt 26, policy v20, 179 files), superseded when main merged the character-editing layer; (2) the post-integration run over that layer (receipt 27, policy v21, 184 files, scripts `57efb32e`), superseded when main merged the erase-in-display layer. This layer was restacked each time (now the fifteenth extension, receipt 28, policy v22, 189 files) and re-measured; all three runs graded all nine supported. The final run measured the scripts of the commit recorded in the summary; App source is unchanged since `c16997c2`.
 
 Same-run reconfirmation (kept separate): every merged predecessor qualification case supported (inventory derived from the merged contracts
 by the publication test); 10/10 truecolor-literal finding; 3/3 underline-color resolution.

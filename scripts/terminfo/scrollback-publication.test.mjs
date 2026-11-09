@@ -221,7 +221,7 @@ test('prior publications still rederive beside this batch', () => {
     assert.equal(display.receipt.schemaVersion, 27);
     assert.equal(display.receipt.scrollbackEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 1);
+    assert.equal(attempts.length, 2);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
-    assert.deepEqual(Object.values(attempts[0].verdicts), scrollbackCaseIds.map(() => 'supported'));
+    for (const attempt of attempts) assert.deepEqual(Object.values(attempt.verdicts), scrollbackCaseIds.map(() => 'supported'));
 });
