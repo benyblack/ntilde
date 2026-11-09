@@ -346,6 +346,8 @@ namespace Ntilde.VT
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;
+        /// <summary>Reverse-wraparound (?45). Absent in older payloads, which reads as off.</summary>
+        [JsonPropertyName("rwm")] public bool IsReverseWrapMode { get; set; }
         [JsonPropertyName("decom")] public bool IsOriginMode { get; set; }
         /// <summary>DECSCNM (?5). Absent in older payloads, which reads as normal video.</summary>
         [JsonPropertyName("decscnm")] public bool IsReverseVideo { get; set; }

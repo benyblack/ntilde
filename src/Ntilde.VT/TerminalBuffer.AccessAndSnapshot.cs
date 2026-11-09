@@ -1110,6 +1110,7 @@ namespace Ntilde.VT
                 }
 
                 Modes.IsAutoWrapMode = snapshot.IsAutoWrapMode;
+                Modes.IsReverseWrapMode = snapshot.IsReverseWrapMode;
                 Modes.IsApplicationCursorKeys = snapshot.IsApplicationCursorKeys;
                 Modes.IsApplicationKeypad = snapshot.IsApplicationKeypad;
                 if (snapshot.MouseModeX10PressOnly) Modes.SetMouseTrackingMode(9, true);
