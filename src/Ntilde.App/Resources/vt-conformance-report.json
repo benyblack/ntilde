@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "5fc544e4f0adf3e6960715f2042c1a351d8d41a2793faa5eceebd5fed44d6c53",
+  "matrixSha256": "282b04704ba645a6b7bb2f0e55998bd05c19c671440a9725d9b96d89ecf2d7a3",
   "summary": {
     "totalRows": 104,
     "supportedCount": 54,
@@ -1007,7 +1007,7 @@
       "section": "4) Scrolling, margins, and origin mode",
       "feature": "Reverse-wraparound (CSI ? 45 h / l)",
       "status": "\u2705 Supported",
-      "specOrNotes": "xterm semantics: with auto-wrap (?7) also set, BS at the left edge moves to the last column of the previous row when that row ended by a soft wrap. Off by default; never crosses a hard line break, the top row or the top margin of the active scrolling region; reset by RIS and DECSTR; reported by DECRQM; carried through state export/import and recordings",
+      "specOrNotes": "xterm semantics: with auto-wrap (?7) also set, BS and CUB at the left edge move to the last column of the previous row when that row ended by a soft wrap. A pending wrap is consumed before the cursor moves left. Off by default; never crosses a hard line break, the top row or the top margin of the active scrolling region; reset by RIS and DECSTR; reported by DECRQM; carried through state export/import and recordings",
       "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/ReverseWrapModeTests.cs\u0060",
       "evidenceKinds": [
         "unit"

@@ -85,25 +85,7 @@ namespace Ntilde.VT
             }
             else if (c == '\b')
             {
-                if (_cursorCol > 0)
-                {
-                    _cursorCol--;
-
-                    if (_cursorRow >= 0 && _cursorRow < Rows)
-                    {
-                        var row = _viewport[_cursorRow];
-                        while (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation)
-                        {
-                            _cursorCol--;
-                        }
-                    }
-                }
-                else if (Modes.IsReverseWrapMode && Modes.IsAutoWrapMode)
-                {
-                    ReverseWrapBackspace();
-                }
-
-                _isPendingWrap = false;
+                StepCursorBack(Modes.IsReverseWrapMode && Modes.IsAutoWrapMode);
             }
             else if (c == '\t')
             {
@@ -112,24 +94,76 @@ namespace Ntilde.VT
         }
 
         /// <summary>
-        /// Reverse-wraparound (xterm ?45): BS at the left edge returns to the last column of the previous row,
-        /// but only across a soft wrap. A hard line break, the top of the screen and the top margin of the
-        /// scrolling region holding the cursor are never crossed, so the backspace is then a no-op as before.
+        /// CUB (CSI Ps D). Without reverse-wraparound it clamps at column 0, exactly as before. With ?45 and
+        /// auto-wrap (?7) both set each step is the same one BS takes (xterm's CursorBack serves both), so it
+        /// may cross a soft wrap and a pending wrap is consumed first.
         /// </summary>
-        private void ReverseWrapBackspace()
+        public void CursorBackward(int count)
         {
-            if (_cursorRow <= 0 || _cursorRow >= Rows) return;
+            bool lockTaken = EnterWriteLockIfNeeded();
+            try
+            {
+                if (!(Modes.IsReverseWrapMode && Modes.IsAutoWrapMode))
+                {
+                    _cursorCol = Math.Max(0, _cursorCol - count);
+                    _isPendingWrap = false;
+                    return;
+                }
+
+                for (int step = 0; step < count; step++)
+                {
+                    if (!StepCursorBack(reverseWrap: true)) break;
+                }
+            }
+            finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        }
+
+        /// <summary>
+        /// One backward step (BS, or one column of CUB). Returns false when the cursor could not move.
+        /// Reverse-wraparound (xterm ?45, only with ?7 set): a pending wrap is consumed without moving, and at the
+        /// left edge the cursor returns to the last column of the previous row, but only across a soft wrap. A hard
+        /// line break, the top of the screen and the top margin of the scrolling region holding the cursor are
+        /// never crossed. Without it a pending wrap is cleared by the usual one-cell move.
+        /// </summary>
+        private bool StepCursorBack(bool reverseWrap)
+        {
+            if (reverseWrap && _isPendingWrap)
+            {
+                _isPendingWrap = false;
+                return true;
+            }
+
+            _isPendingWrap = false;
+            if (_cursorCol > 0)
+            {
+                _cursorCol--;
+
+                if (_cursorRow >= 0 && _cursorRow < Rows)
+                {
+                    var row = _viewport[_cursorRow];
+                    while (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation)
+                    {
+                        _cursorCol--;
+                    }
+                }
+
+                return true;
+            }
+
+            if (!reverseWrap || _cursorRow <= 0 || _cursorRow >= Rows) return false;
             bool inRegion = _cursorRow >= ScrollTop && _cursorRow <= ScrollBottom;
-            if (_cursorRow <= (inRegion ? ScrollTop : 0)) return;
-            if (!_viewport[_cursorRow - 1].IsWrapped) return;
+            if (_cursorRow <= (inRegion ? ScrollTop : 0)) return false;
+            if (!_viewport[_cursorRow - 1].IsWrapped) return false;
 
             _cursorRow--;
             _cursorCol = Cols - 1;
-            var row = _viewport[_cursorRow];
-            while (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation)
+            var previous = _viewport[_cursorRow];
+            while (_cursorCol > 0 && previous.Cells[_cursorCol].IsWideContinuation)
             {
                 _cursorCol--;
             }
+
+            return true;
         }
 
         public void WriteContent(string text, bool ignored = false)

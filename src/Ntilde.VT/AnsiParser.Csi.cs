@@ -329,7 +329,7 @@ namespace Ntilde.VT
                 case 'D': // Cursor Back
                     if (bare)
                     {
-                        _buffer.CursorCol = Math.Max(0, _buffer.CursorCol - Math.Max(1, arg0));
+                        _buffer.CursorBackward(Math.Max(1, arg0));
                         _buffer.Invalidate();
                     }
                     break;

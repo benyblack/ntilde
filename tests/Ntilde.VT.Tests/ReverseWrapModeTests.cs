@@ -117,12 +117,44 @@ public class ReverseWrapModeTests
     }
 
     [Fact]
-    public void BS_with_a_pending_wrap_moves_left_one_cell_without_reverse_wrapping()
+    public void A_pending_wrap_is_consumed_without_moving_before_the_cursor_goes_left()
     {
         var (buffer, parser, _) = Terminal();
         parser.Process("\u001b[?45h\u001b[H" + new string('A', Cols) + "\b");
+        Assert.Equal((0, Cols - 1), (buffer.CursorRow, buffer.CursorCol));
+
+        parser.Process("\b");
+        Assert.Equal((0, Cols - 2), (buffer.CursorRow, buffer.CursorCol));
+    }
+
+    [Fact]
+    public void Without_the_mode_BS_with_a_pending_wrap_keeps_its_one_cell_move()
+    {
+        var (buffer, parser, _) = Terminal();
+        parser.Process("\u001b[H" + new string('A', Cols) + "\b");
 
         Assert.Equal((0, Cols - 2), (buffer.CursorRow, buffer.CursorCol));
+    }
+
+    [Fact]
+    public void CUB_reverse_wraps_exactly_like_BS()
+    {
+        var (buffer, parser, _) = Terminal();
+        parser.Process("\u001b[?45h\u001b[H" + Wrapped + "\u001b[2D");
+        Assert.Equal((0, Cols - 1), (buffer.CursorRow, buffer.CursorCol));
+
+        // A hard break stops it, however large the count.
+        parser.Process("\u001b[3;1HAB\r\n\u001b[9D");
+        Assert.Equal((3, 0), (buffer.CursorRow, buffer.CursorCol));
+    }
+
+    [Fact]
+    public void CUB_without_the_mode_still_clamps_at_the_left_edge()
+    {
+        var (buffer, parser, _) = Terminal();
+        parser.Process("\u001b[H" + Wrapped + "\u001b[9D");
+
+        Assert.Equal((1, 0), (buffer.CursorRow, buffer.CursorCol));
     }
 
     [Fact]
