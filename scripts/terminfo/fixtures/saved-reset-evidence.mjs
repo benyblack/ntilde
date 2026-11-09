@@ -6,7 +6,7 @@ import { planFeeds } from '../graded-plan.mjs';
 import { savedResetContracts, savedResetObservation, gradeSavedResetCase } from '../saved-reset-contracts.mjs';
 import { replaySavedResetPinned } from '../saved-reset-grading.mjs';
 import { savedResetAdapterId } from '../saved-reset-grading-collector.mjs';
-import { paletteBinding, colorCell, defaultChannel, paletteChannel, literalChannel } from './sgr-palette-evidence.mjs';
+import { paletteBinding, colorCell, paletteChannel, literalChannel } from './sgr-palette-evidence.mjs';
 
 export { paletteBinding, colorCell, paletteChannel, literalChannel } from './sgr-palette-evidence.mjs';
 
@@ -122,7 +122,7 @@ const frame = (index, kind, screen, barrier) => ({ index, kind, paneId, barrier,
 export function syntheticSavedResetEvidence(runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), binding = paletteBinding(), readsOf = null) {
     const nonce = 'NTILDE_SR_' + runId;
     const blank = syntheticSavedResetScreen({}, binding);
-    const bound = { ...syntheticSavedResetScreen({}, binding), lines: [nonce, ...Array(savedResetRows - 1).fill('')], cursorCol: nonce.length };
+    const bound = { ...syntheticSavedResetScreen({}, binding), lines: [nonce, ...Array.from({ length: savedResetRows - 1 }, () => '')], cursorCol: nonce.length };
     const frames = [frame(0, 'svrs-start', blank, null), frame(1, 'svrs-bind', bound, deviceAttribute)];
     const cases = savedResetContracts.map(contract => {
         const feeds = planFeeds(contract);

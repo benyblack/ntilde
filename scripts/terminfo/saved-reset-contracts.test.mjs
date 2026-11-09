@@ -160,6 +160,21 @@ test('reset.sgr: styles active on X and cleared on Y; any remaining styled field
     assert.equal(outcome(SGR, reads => { reads.full = pair({ attrs: ['bold', 'italic', 'inverse', 'underline', 'overline'], underlineStyle: 1, underlineColorIndex: 3 }, { attrs: ['overline'] }); }), 'inconclusive');
 });
 
+test('reset.sgr: unrelated state changed by the full-tuple reset is unsupported (cursor, buffer, margins, modes, history, extra cells)', () => {
+    const withState = extra => reads => { reads.full = { ...reads.full, ...extra(reads.full) }; };
+    assert.match(note(SGR, withState(item => ({ cursor: [3, 3] }))), /unrelated state/);
+    assert.match(note(SGR, withState(() => ({ alt: true }))), /unrelated state/);
+    assert.match(note(SGR, withState(() => ({ buffer: { scrollTop: 1 } }))), /unrelated state/);
+    assert.match(note(SGR, withState(() => ({ buffer: { originMode: true } }))), /unrelated state/);
+    assert.match(note(SGR, withState(() => ({ buffer: { insertMode: true } }))), /unrelated state/);
+    assert.match(note(SGR, withState(() => ({ history: ['stray'] }))), /unrelated state/);
+    assert.match(note(SGR, withState(item => ({ cells: [...item.cells, ...put(5, 5, 'Z')] }))), /unrelated state/);
+    assert.equal(outcome(SGR, withState(() => ({}))), 'supported');
+    // The no-reset and spelling controls must be contained too, or the run is inconclusive.
+    assert.equal(outcome(SGR, reads => { reads.persist = { ...reads.persist, cursor: [2, 2] }; }), 'inconclusive');
+    assert.equal(outcome(SGR, reads => { reads.omitted = { ...reads.omitted, history: ['stray'] }; }), 'inconclusive');
+});
+
 test('reset.sgr: a missing or wrong styled control is inconclusive, and the reset is attributed only when styles persist without it', () => {
     const pair = (x, y) => ({ cells: [...put(0, 0, 'X', x), ...put(0, 1, 'Y', y)], cursor: [0, 2] });
     assert.equal(outcome(SGR, reads => { reads.pinned = pair({ attrs: ['bold', 'italic'] }, {}); }), 'inconclusive', 'inverse missing on X');

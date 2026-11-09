@@ -109,6 +109,12 @@ export function reconcileSavedReset(contract, pinnedOutcome, effect) {
     return { pinnedOutcome, contractOutcome: effect.outcome, kind: 'pinned-inconclusive-by-design' };
 }
 
+/** The conclusion's note: the pinned note when the pinned verdict is preserved, else the effect note when there is one. */
+function conclusionNote(preserved, pinned, effect) {
+    if (preserved) return { note: pinned.note ?? null };
+    return effect.note ? { note: effect.note } : {};
+}
+
 /** Re-derive and cross-check every case; throw on any disagreement. */
 export function buildSavedResetGradingReport(frames, run, runId, adapter, { contractsVersion = spec.version, replayModule = null } = {}) {
     validateSavedResetEvidence(frames, run, runId, adapter);
@@ -153,7 +159,7 @@ export function buildSavedResetGradingReport(frames, run, runId, adapter, { cont
             conclusion: { outcome: preserved ? pinned.observation.outcome : effect.outcome, evidence: 'owned-stored-and-resolved-cells',
                 grading: preserved ? 'pinned-termless-preserved-by-design' : 'pinned-termless-plus-contract-v' + contractsVersion,
                 ...(!preserved && effect.layers ? { layers: effect.layers } : {}),
-                ...(preserved ? { note: pinned.note ?? null } : effect.note ? { note: effect.note } : {}),
+                ...conclusionNote(preserved, pinned, effect),
                 scope: contract.appearanceScope } });
     }
     return { schemaVersion: 1, suiteId: spec.suiteId, runId, contractsVersion, adapter, scope: spec.scope, initialSnapshot: 0,

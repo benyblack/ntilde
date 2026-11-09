@@ -31,7 +31,7 @@
 //
 // Not claimed: reset.method (needs a backend reset() API, RIS is not substituted), state stacks, private-mode/SGR/color stacks, scrolling and
 // history behavior, rendered appearance, and the pinned DECALN pixel path.
-import { planFeed, planRead, planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
+import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { sgrAttrsFlagBits, validateSgrAttrsScreen, sgrAttrsPredicates } from './sgr-attrs-contracts.mjs';
 import { expandScreenFlags } from './ascii-sgr-contracts.mjs';
 import { expandResolvedColors, exposedRgb } from './resolved-colors.mjs';
@@ -314,23 +314,27 @@ function gradeSgr(observation) {
     const { pinned, persist, full, omitted } = observation;
     const cells = item => ({ x: item.ink.find(cell => cell.row === 0 && cell.col === 0), y: item.ink.find(cell => cell.row === 0 && cell.col === 1) });
     const { x, y } = cells(pinned);
-    if (!x || x.char !== 'X' || !y || y.char !== 'Y' || !exactly(x, styledAttrs)) return inconclusive(pinnedStyledNote);
+    if (x?.char !== 'X' || y?.char !== 'Y' || !exactly(x, styledAttrs)) return inconclusive(pinnedStyledNote);
     if (pinned.ink.length !== 2 || !sameCursor(pinned, 0, 2) || pinned.alt || !quiet(pinned)) return inconclusive('The styled fixture changed more than the two measured cells');
+    /** Only the two measured cells changed, the cursor advanced past them and nothing outside the operation moved. */
+    const contained = item => item.ink.length === 2 && sameCursor(item, 0, 2) && !item.alt && quiet(item);
     const held = cells(persist);
+    if (!contained(persist)) return inconclusive('The no-reset control changed more than the two measured cells or moved unrelated state');
     if (!held.x || !held.y || !exactly(held.x, styledAttrs) || !exactly(held.y, styledAttrs)) {
         return inconclusive('The no-reset control did not keep the pen active (the styles cannot be attributed to the reset)');
     }
     const wide = cells(full);
     const storesUnderlineColor = wide.x !== undefined && (wide.x.underlineColorIndex !== -1 || wide.x.underlineArgb !== null);
-    if (!wide.x || wide.x.char !== 'X' || neutral(wide.x) || wide.x.underline !== 'single' || !wide.x.overline || !storesUnderlineColor
+    if (wide.x?.char !== 'X' || neutral(wide.x) || wide.x.underline !== 'single' || !wide.x.overline || !storesUnderlineColor
         || wide.x.foregroundArgb === null || wide.x.backgroundArgb === null) {
         return inconclusive('The full-tuple control did not store every styled field on X');
     }
+    if (!contained(full)) return unsupported('SGR 0 in the full-tuple control changed unrelated state (cursor, active buffer, margins, modes, history or extra cells)');
     if (!neutral(y)) return unsupported('SGR 0 did not clear every styled field on Y');
-    if (!wide.y || wide.y.char !== 'Y' || !neutral(wide.y)) return unsupported('SGR 0 left a styled field (underline, overline, strikethrough, color or underline color) on Y');
+    if (wide.y?.char !== 'Y' || !neutral(wide.y)) return unsupported('SGR 0 left a styled field (underline, overline, strikethrough, color or underline color) on Y');
     if (!exactly(x, styledAttrs)) return unsupported('The reset changed the already-written X cell');
     const spelled = cells(omitted);
-    if (!spelled.y || !spelled.x) return inconclusive('The omitted-parameter spelling control was not measured');
+    if (!spelled.y || !spelled.x || !contained(omitted)) return inconclusive('The omitted-parameter spelling control was not measured');
     return { outcome: 'supported', layers: [{ name: 'styles-active-on-x-cleared-on-y', outcome: 'supported' }] };
 }
 
@@ -392,12 +396,13 @@ const observedSwap = mode => observation => ({
     observations: { policy: 'observed, not required: cursor positions across the swaps' + (mode === 1047 ? ' and whether ?1047h retains previous alternate contents on entry' : ''),
         ...(mode === 1047 ? { retainsAlternateContentsOnEntry: inkIs(observation.retainedEntry, place(0, 0, 'PRE-ALT')) } : {}),
         cursorAfterExit: observation.exited.cursor, cursorAfterBack: observation.back.cursor } });
+/** The Y cell of the omitted-spelling control. */
+const omittedY = observation => observation.omitted.ink.find(cell => cell.col === 1 && cell.row === 0);
 /** The observed record of the reset.sgr case, with its labeled spelling observation. */
 const observedSgr = observation => ({
     roles: Object.fromEntries(plans['reset.sgr'].roles.map(role => [role, brief(observation[role])])),
     observations: { policy: 'observed, not graded: the omitted-parameter reset spelling (ESC[m) against the pinned explicit ESC[0m',
-        omittedSpellingClearsY: observation.omitted.ink.find(cell => cell.col === 1 && cell.row === 0) !== undefined
-            && neutral(observation.omitted.ink.find(cell => cell.col === 1 && cell.row === 0)) } });
+        omittedSpellingClearsY: omittedY(observation) !== undefined && neutral(omittedY(observation)) } });
 /** The observed record of the reset.decaln case, with its labeled observations. */
 const observedDecaln = observation => ({
     roles: Object.fromEntries(plans['reset.decaln'].roles.map(role => [role, brief(observation[role])])),
@@ -458,7 +463,9 @@ export function savedResetObservation(contract, screens) {
     if (!Array.isArray(screens) || screens.length !== contract.roles.length) throw new Error('Missing saved-state read captures.');
     const observation = Object.fromEntries(contract.roles.map((role, index) => [role, state(screens[index])]));
     const binding = screens.map(screen => screen.colorBinding.reverseVideo);
-    observation.reverseVideo = binding.every(value => value === false) ? false : binding.some(value => value === true) ? true : null;
+    observation.reverseVideo = null;
+    if (binding.every(value => value === false)) observation.reverseVideo = false;
+    else if (binding.includes(true)) observation.reverseVideo = true;
     return observation;
 }
 
