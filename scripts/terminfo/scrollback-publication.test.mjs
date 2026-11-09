@@ -221,8 +221,11 @@ test('prior publications still rederive beside this batch', () => {
     const display = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-09-erase-display/summary.json', import.meta.url)));
     assert.equal(display.receipt.schemaVersion, 27);
     assert.equal(display.receipt.scrollbackEvidence, undefined);
+    const lines = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-09-line-editing/summary.json', import.meta.url)));
+    assert.equal(lines.receipt.schemaVersion, 28);
+    assert.equal(lines.receipt.scrollbackEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 2);
+    assert.equal(attempts.length, 3);
     for (const attempt of attempts) assert.notEqual(attempt.runId, context.runId);
     for (const attempt of attempts) assert.deepEqual(Object.values(attempt.verdicts), scrollbackCaseIds.map(() => 'supported'));
 });

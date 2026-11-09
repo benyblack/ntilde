@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-scrollback-graded-v1",
-  "runId": "d7e2ec51b5628f7e7275b6d7cf596611",
+  "runId": "2236f1570e097a1b45f817b18be1da20",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-scrollback-grading-v1",
-    "derivedFromAdapterId": "ntilde-owned-erase-display-grading-v1",
-    "bundleSha256": "7c841d43403b2a4b5bd45e2692bf075c00aa797eaf8e369bf41c37c0c7d1db55",
+    "derivedFromAdapterId": "ntilde-owned-line-editing-grading-v1",
+    "bundleSha256": "b97efcb7cc5bcfb7c0e78a8c786c7931dfcf958f3992431b2fc51b34dfb69ae0",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 scrolling/history termless criteria (scrollback.accumulate, total-lines, scroll-up, reverse-index, scroll-down, set-region, alt-screen, decstbm, decstbm-reset) replayed byte-exactly on a disposable App main screen and graded from parent-journaled readScreen viewport text, actual readScrollback lines and count, margins, active screen, origin/insert/auto-wrap state, cursor and stored attributes, with controls for the empty-history baseline, the pre-overflow state, region-confined scrolling with every row outside the region, wrong direction, no-op scrolling, whole-screen scrolling, alternate-screen isolation and restoration, and unreset-region accumulation. Three pinned probes are null by construction; the contract measures what their notes say is missing and the divergence is recorded. ASCII fixtures only; no Unicode, wrapped-line, reflow, resize or pixel claim; no stock grades.",
