@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v22';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v23';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -340,9 +340,19 @@ export const capturedV28SourceFiles = Object.freeze({
     eraseDisplayReceiptSourceSha256: "erase-display-receipt.mjs",
 });
 
-// Frozen v29 scrolling/history (the nine pinned scrollback.* cases) grading scope; future experiments must create a distinct policy and map.
+// Frozen v29 line-editing (editing.insert-lines, editing.delete-lines) grading scope; future experiments must create a distinct policy and map.
 export const capturedV29SourceFiles = Object.freeze({
     ...capturedV28SourceFiles,
+    lineEditContractsSourceSha256: "line-edit-contracts.mjs",
+    lineEditCollectorSourceSha256: "line-edit-collector.mjs",
+    lineEditGradingSourceSha256: "line-edit-grading.mjs",
+    lineEditGradingCollectorSourceSha256: "line-edit-grading-collector.mjs",
+    lineEditReceiptSourceSha256: "line-edit-receipt.mjs",
+});
+
+// Frozen v30 scrolling/history (the nine pinned scrollback.* cases) grading scope; future experiments must create a distinct policy and map.
+export const capturedV30SourceFiles = Object.freeze({
+    ...capturedV29SourceFiles,
     scrollbackContractsSourceSha256: "scrollback-contracts.mjs",
     scrollbackModelSourceSha256: "scrollback-model.mjs",
     scrollbackCollectorSourceSha256: "scrollback-collector.mjs",
@@ -351,11 +361,11 @@ export const capturedV29SourceFiles = Object.freeze({
     scrollbackReceiptSourceSha256: "scrollback-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v29 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v30 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV29SourceFiles)) throw new Error('Invalid current v29 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV30SourceFiles)) throw new Error('Invalid current v30 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

@@ -158,7 +158,7 @@ function specFor(frames) {
     const contracts = makeScrollbackContracts(start?.rows, start?.cols);
     return Object.freeze({ label: 'Scrollback', prefix: 'scrl', noncePrefix: scrollbackNoncePrefix,
         contracts, caseIds: scrollbackCaseIds, suiteId: scrollbackSuiteId, version: scrollbackContractsVersion,
-        adapterId: scrollbackAdapterId, derivedFrom: 'ntilde-owned-erase-display-grading-v1',
+        adapterId: scrollbackAdapterId, derivedFrom: 'ntilde-owned-line-editing-grading-v1',
         screenOf: value => {
             const screen = screenSnapshot(value, true, true, false, true, true, true);
             validateScrollbackScreen(screen);

@@ -32,7 +32,7 @@ function present(path) {
  * policy-v12 run always carries them, because the current worker collects this
  * suite unconditionally after the SGR-palette suite. */
 export function includesSgrTruecolorEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v12', 'readonly-owned-source-graph-v13', 'readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15', 'readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v12', 'readonly-owned-source-graph-v13', 'readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15', 'readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23'].includes(context.sourceSnapshotPolicy)
         || context.sgrTruecolorAdapterId !== undefined || context.sgrTruecolorSuiteId !== undefined
         || context.sgrTruecolorBundleSha256 !== undefined || context.sgrTruecolorContractsVersion !== undefined
         || evidence.sgrTruecolorEvidence !== undefined

@@ -1,0 +1,432 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-line-editing-grading-v1",
+  "probeIds": [
+    "editing.insert-lines",
+    "editing.delete-lines"
+  ],
+  "cases": [
+    {
+      "caseId": "editing.insert-lines",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAAAAA",
+        "\u001b[2;1H\u001b[2KBBBBB",
+        "\u001b[3;1H\u001b[2KCCCCC",
+        "\u001b[4;1H\u001b[2KDDDDD",
+        "\u001b[2;1H",
+        "\u001b[1L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[0L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[2L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[999L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HTOP-ROW---\u001b[999;1HLAST-ROW--\u001b[A\rNEXT-LAST-",
+        "\u001b[1L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[4;3H",
+        "\u001b[1L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[4;3H\u001b[99L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[2;3H\u001b[1L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[6;3H\u001b[1L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[?6h\u001b[2;3H",
+        "\u001b[1L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-\u001b[2;1H\u001b[44m",
+        "\u001b[1L",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            38,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            38,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            5,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.insert-lines",
+        "pass": true,
+        "response": "{\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"],[\"D\",\"D\",\"D\",\"D\",\"D\"]],\"setup\":{\"x\":0,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\" \",\" \",\" \",\" \",\" \"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "IL inserts a blank row 2 and shifts measured rows down while row 1 stays intact",
+            "observed": "{\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"],[\"D\",\"D\",\"D\",\"D\",\"D\"]],\"setup\":{\"x\":0,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\" \",\" \",\" \",\" \",\" \"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"]]}"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "editing.delete-lines",
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAAAAA",
+        "\u001b[2;1H\u001b[2KBBBBB",
+        "\u001b[3;1H\u001b[2KCCCCC",
+        "\u001b[4;1H\u001b[2KDDDDD",
+        "\u001b[2;1H",
+        "\u001b[1M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[0M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[2M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1H\u001b[2KAAAAA\u001b[2;1H\u001b[2KBBBBB\u001b[3;1H\u001b[2KCCCCC\u001b[4;1H\u001b[2KDDDDD\u001b[2;1H\u001b[999M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HTOP-ROW---\u001b[999;1HLAST-ROW--\u001b[A\rNEXT-LAST-",
+        "\u001b[1M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[4;3H",
+        "\u001b[1M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[4;3H\u001b[99M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[2;3H\u001b[1M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[6;3H\u001b[1M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HAAAAAAAAAA\u001b[2;1HBBBBBBBBBB\u001b[3;1HCCCCCCCCCC\u001b[4;1HDDDDDDDDDD\u001b[5;1HEEEEEEEEEE\u001b[6;1HFFFFFFFFFF\u001b[7;1HGGGGGGGGGG\u001b[3;5r\u001b[?6h\u001b[2;3H",
+        "\u001b[1M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-ROW-\u001b[2;1H\u001b[44m",
+        "\u001b[1M",
+        "\u001b[r\u001b[?6l\u001b[0m\u001b[2J\u001b[H\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            5
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            38,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            38,
+            10
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            5,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            1
+          ]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.delete-lines",
+        "pass": true,
+        "response": "{\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"],[\"D\",\"D\",\"D\",\"D\",\"D\"]],\"setup\":{\"x\":0,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"C\",\"C\",\"C\",\"C\",\"C\"],[\"D\",\"D\",\"D\",\"D\",\"D\"]]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DL removes row 2 and shifts measured rows up while row 1 stays intact",
+            "observed": "{\"before\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"B\",\"B\",\"B\",\"B\",\"B\"],[\"C\",\"C\",\"C\",\"C\",\"C\"],[\"D\",\"D\",\"D\",\"D\",\"D\"]],\"setup\":{\"x\":0,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"A\",\"A\",\"A\",\"A\"],[\"C\",\"C\",\"C\",\"C\",\"C\"],[\"D\",\"D\",\"D\",\"D\",\"D\"]]}"
+          }
+        ]
+      }
+    }
+  ]
+}

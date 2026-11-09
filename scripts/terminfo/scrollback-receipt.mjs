@@ -1,7 +1,7 @@
 // Receipt binding for the scrolling/history qualification. The graded
 // evidence stays provisional until the shared cleanup receipt exists, and the
 // check re-derives the whole report from retained bytes without the collector.
-// A run carrying scrolling/history evidence must also carry its erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color,
+// A run carrying scrolling/history evidence must also carry its line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color,
 // SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors
 // predecessors: these conclusions sit beside theirs, never replace them.
 import { lstatSync, readFileSync } from 'node:fs';
@@ -12,6 +12,7 @@ import { adaptScrollbackCollector, scrollbackAdapterId } from './scrollback-grad
 import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
 import { adaptCharEditCollector } from './char-edit-grading-collector.mjs';
 import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
+import { adaptLineEditCollector } from './line-edit-grading-collector.mjs';
 import { adaptSgrResetCollector } from './sgr-reset-grading-collector.mjs';
 import { adaptSgrClosureCollector } from './sgr-closure-grading-collector.mjs';
 import { adaptSgrUnderlineColorCollector } from './sgr-underline-color-grading-collector.mjs';
@@ -37,11 +38,11 @@ function present(path) {
     }
 }
 
-/** Any retained scrolling/history artifact or declaration requires the v28 suffix, and a
- * policy-v22 run always carries them, because the current worker collects this suite
- * unconditionally after the erase-in-display suite. */
+/** Any retained scrolling/history artifact or declaration requires the v29 suffix, and a
+ * policy-v23 run always carries them, because the current worker collects this suite
+ * unconditionally after the line-editing suite. */
 export function includesScrollbackEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v22'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v23'
         || context.scrollbackAdapterId !== undefined || context.scrollbackSuiteId !== undefined
         || context.scrollbackBundleSha256 !== undefined || context.scrollbackContractsVersion !== undefined
         || evidence.scrollbackEvidence !== undefined
@@ -61,7 +62,8 @@ export function checkScrollbackEvidence(output, evidence, runId, context) {
     if (context.scrollbackAdapterId !== scrollbackAdapterId || context.scrollbackSuiteId !== scrollbackSuiteId) {
         throw new Error('Missing or changed scrolling/history adapter declaration.');
     }
-    if (context.eraseDisplayAdapterId === undefined || evidence.eraseDisplayEvidence === undefined
+    if (context.lineEditAdapterId === undefined || evidence.lineEditEvidence === undefined
+        || context.eraseDisplayAdapterId === undefined || evidence.eraseDisplayEvidence === undefined
         || context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
         || context.eraseLineAdapterId === undefined || evidence.eraseLineEvidence === undefined
         || context.sgrClosureAdapterId === undefined || evidence.sgrClosureEvidence === undefined
@@ -73,7 +75,7 @@ export function checkScrollbackEvidence(output, evidence, runId, context) {
         || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
         || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
         || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
-        throw new Error('scrolling/history evidence requires its erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
+        throw new Error('scrolling/history evidence requires its line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.scrollbackEvidence;
     if (binding === undefined) throw new Error('Missing scrolling/history suite receipt binding.');
@@ -96,7 +98,7 @@ export function checkScrollbackEvidence(output, evidence, runId, context) {
         throw new Error('scrolling/history adapter bytes changed.');
     }
     // The retained extension must be exactly the layered derivation of the retained
-    // erase-in-display extension over the character-editing extension over the erase-in-line extension over the SGR closure extension over the SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette,
+    // line-editing extension over the erase-in-display extension over the character-editing extension over the erase-in-line extension over the SGR closure extension over the SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette,
     // SGR-attributes, SGR-RGB and SGR-colors extensions over the retained first grading
     // extension over the retained owned adapter.
     const asciiSgrBytes = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
@@ -112,7 +114,8 @@ export function checkScrollbackEvidence(output, evidence, runId, context) {
     const eraseLineBytes = Buffer.from(adaptEraseLineCollector(sgrClosureBytes.toString()));
     const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
     const eraseDisplayBytes = Buffer.from(adaptEraseDisplayCollector(charEditBytes.toString()));
-    const derivedBytes = Buffer.from(adaptScrollbackCollector(eraseDisplayBytes.toString()));
+    const lineEditBytes = Buffer.from(adaptLineEditCollector(eraseDisplayBytes.toString()));
+    const derivedBytes = Buffer.from(adaptScrollbackCollector(lineEditBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('scrolling/history adapter is not the retained layered derivation.');
     }
@@ -121,8 +124,9 @@ export function checkScrollbackEvidence(output, evidence, runId, context) {
         || hash(sgrTruecolorBytes) !== context.sgrTruecolorBundleSha256 || hash(sgrUnderlineBytes) !== context.sgrUnderlineBundleSha256
         || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256
         || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256
-        || hash(charEditBytes) !== context.charEditBundleSha256 || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256) {
-        throw new Error('scrolling/history adapter is not derived from the retained erase-in-display, character-editing, erase-in-line, SGR closure and earlier extensions.');
+        || hash(charEditBytes) !== context.charEditBundleSha256 || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256
+        || hash(lineEditBytes) !== context.lineEditBundleSha256) {
+        throw new Error('scrolling/history adapter is not derived from the retained line-editing, erase-in-display, character-editing, erase-in-line, SGR closure and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256

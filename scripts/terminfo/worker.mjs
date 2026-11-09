@@ -22,6 +22,7 @@ import { collectSgrClosureGrading } from './sgr-closure-collector.mjs';
 import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
 import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
+import { collectLineEditGrading } from './line-edit-collector.mjs';
 import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
@@ -194,7 +195,15 @@ try {
         const eraseDisplayModule = await import(pathToFileURL(config.eraseDisplayBundle).href);
         const eraseDisplayRun = await collectEraseDisplayGrading({ config, fence, owner, gradingModule: eraseDisplayModule });
         writeFileSync(join(config.output, 'erdi-run.json'), JSON.stringify(eraseDisplayRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered scrolling/history qualification follows the erase-in-display suite on the same fence, on the main screen.
+        // The layered line-editing qualification follows the erase-in-display suite on the same fence.
+        const lineEditSource = readFileSync(config.lineEditBundle);
+        if (createHash('sha256').update(lineEditSource).digest('hex') !== config.lineEditBundleSha256) {
+            throw new Error('Local line-editing adapter bundle changed.');
+        }
+        const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
+        const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
+        writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered scrolling/history qualification follows the line-editing suite on the same fence, on the main screen.
         const scrollbackSource = readFileSync(config.scrollbackBundle);
         if (createHash('sha256').update(scrollbackSource).digest('hex') !== config.scrollbackBundleSha256) {
             throw new Error('Local scrolling/history adapter bundle changed.');

@@ -857,11 +857,21 @@ cursor, mode-flag, boundary, retained-attribute and main-screen history controls
 erase is observed, not required. The pinned pixel path is capture-only upstream and is not qualified; CSI 3J is not graded (it appears only as
 disposable-screen cleanup). Receipt schema 27 and source policy v21 (183 files) bind it; earlier policies stay frozen.
 
+### Line-editing qualification (IL, DL)
+
+The [line-editing batch](terminfo/2026-11-09-line-editing-qualification.md) grades exactly `editing.insert-lines` (`ESC[1L`) and
+`editing.delete-lines` (`ESC[1M`) through a fifteenth layered collector extension (`ntilde-owned-line-editing-grading-v1`),
+replaying the pinned seed, cursor and edit bytes and running the pinned termless probes over parent-journaled stored cells of the whole
+screen, the cursor and the App's stored margins, origin and insert mode. The contract adds full-screen line contents, a full-height boundary,
+a DECSTBM scroll-region control (cursor inside, above and below), origin mode and moved-cell attribute controls; count spellings, new-line
+background fill, cursor column and scrollback are observations. The pinned terminal pixel path never carries a verdict and is not qualified.
+Receipt schema 28 and source policy v22 (188 files) bind it; earlier policies stay frozen.
+
 ### Scrolling and history qualification (nine scrollback cases)
 
 The [scrolling/history batch](terminfo/2026-11-09-scrollback-qualification.md) grades exactly `scrollback.accumulate`, `.total-lines`,
-`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a fifteenth layered
+`.scroll-up`, `.reverse-index`, `.scroll-down`, `.set-region`, `.alt-screen`, `.decstbm` and `.decstbm-reset` through a sixteenth layered
 collector extension (`ntilde-owned-scrollback-grading-v1`) on the App's main screen. Viewport text, actual scrollback lines, margins, active
 screen and cursor are observed independently and compared with a byte-interpreting model; the pinned code runs over the same observations.
 Three pinned probes are null by construction, so the contract measures beyond them and the divergence is recorded; stock grades stay
-inconclusive. Receipt schema 28 and source policy v22 (189 files) bind it; earlier policies stay frozen.
+inconclusive. Receipt schema 29 and source policy v23 (194 files) bind it; earlier policies stay frozen.
