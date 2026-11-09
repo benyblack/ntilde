@@ -135,7 +135,7 @@ export function syntheticSavedResetEvidence(runId = 'a'.repeat(32), bundleSha256
     });
     frames.push(frame(frames.length, 'svrs-finish', blank, deviceAttribute));
     const run = { schemaVersion: 1, adapterId: savedResetAdapterId, probeIds: savedResetContracts.map(contract => contract.caseId), cases };
-    const adapter = { id: savedResetAdapterId, derivedFromAdapterId: 'ntilde-owned-line-editing-grading-v1', bundleSha256,
+    const adapter = { id: savedResetAdapterId, derivedFromAdapterId: 'ntilde-owned-scrollback-grading-v1', bundleSha256,
         upstreamBundleSha256: 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6' };
     return { frames, run, runId, adapter };
 }

@@ -81,13 +81,13 @@ test('refuses a pinned body whose fixture bytes, criteria or notes were substitu
 });
 
 test('the derivation appends after any earlier layer without rewriting it', () => {
-    const earlier = verbatim() + '// earlier layers\nexport const ntildeLineEditAdapterLater = {};\n';
+    const earlier = verbatim() + '// earlier layers\nexport const ntildeScrollbackAdapterLater = {};\n';
     const layered = adaptSavedResetCollector(earlier);
     assert.ok(layered.startsWith(earlier));
     assert.ok(layered.includes(savedResetAdapterId));
 });
 
-// The real pinned bundle, derived through all fifteen layers and EXECUTED over synthetic observed screens: the pinned
+// The real pinned bundle, derived through all seventeen layers and EXECUTED over synthetic observed screens: the pinned
 // code must agree with the independent replay and contract. Skipped when the collector cache is absent.
 const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
 const haveBundle = existsSync(bundleUrl);
@@ -109,6 +109,8 @@ test('the real pinned bundle derives through every layer and its pinned probes a
         import('./char-edit-grading-collector.mjs').then(m => m.adaptCharEditCollector),
         import('./erase-display-grading-collector.mjs').then(m => m.adaptEraseDisplayCollector),
         import('./line-edit-grading-collector.mjs').then(m => m.adaptLineEditCollector),
+        import('./charsets-grading-collector.mjs').then(m => m.adaptCharsetsCollector),
+        import('./scrollback-grading-collector.mjs').then(m => m.adaptScrollbackCollector),
     ]);
     const { replaySavedResetPinned } = await import('./saved-reset-grading.mjs');
     const { savedResetRecordingContext } = await import('./saved-reset-collector.mjs');

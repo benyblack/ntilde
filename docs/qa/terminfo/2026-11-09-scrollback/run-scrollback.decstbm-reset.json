@@ -1,0 +1,172 @@
+{
+  "caseId": "scrollback.decstbm-reset",
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[5;10r",
+    "\u001b[r",
+    "\u001b[H",
+    "line-0\r\n",
+    "line-1\r\n",
+    "line-2\r\n",
+    "line-3\r\n",
+    "line-4\r\n",
+    "line-5\r\n",
+    "line-6\r\n",
+    "line-7\r\n",
+    "line-8\r\n",
+    "line-9\r\n",
+    "line-10\r\n",
+    "line-11\r\n",
+    "line-12\r\n",
+    "line-13\r\n",
+    "line-14\r\n",
+    "line-15\r\n",
+    "line-16\r\n",
+    "line-17\r\n",
+    "line-18\r\n",
+    "line-19\r\n",
+    "line-20\r\n",
+    "line-21\r\n",
+    "line-22\r\n",
+    "line-23\r\n",
+    "line-24\r\n",
+    "line-25\r\n",
+    "line-26\r\n",
+    "line-27\r\n",
+    "line-28\r\n",
+    "line-29\r\n",
+    "line-30\r\n",
+    "line-31\r\n",
+    "line-32\r\n",
+    "line-33\r\n",
+    "line-34\r\n",
+    "line-35\r\n",
+    "line-36\r\n",
+    "line-37\r\n",
+    "line-38\r\n",
+    "line-39\r\n",
+    "line-40\r\n",
+    "line-41\r\n",
+    "line-42\r\n",
+    "line-43\r\n",
+    "line-44\r\n",
+    "line-45\r\n",
+    "line-46\r\n",
+    "line-47\r\n",
+    "line-48\r\n",
+    "line-49\r\n",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[5;10r",
+    "\u001b[H",
+    "line-0\r\nline-1\r\nline-2\r\nline-3\r\nline-4\r\nline-5\r\nline-6\r\nline-7\r\nline-8\r\nline-9\r\nline-10\r\nline-11\r\nline-12\r\nline-13\r\nline-14\r\nline-15\r\nline-16\r\nline-17\r\nline-18\r\nline-19\r\nline-20\r\nline-21\r\nline-22\r\nline-23\r\nline-24\r\nline-25\r\nline-26\r\nline-27\r\nline-28\r\nline-29\r\nline-30\r\nline-31\r\nline-32\r\nline-33\r\nline-34\r\nline-35\r\nline-36\r\nline-37\r\nline-38\r\nline-39\r\nline-40\r\nline-41\r\nline-42\r\nline-43\r\nline-44\r\nline-45\r\nline-46\r\nline-47\r\nline-48\r\nline-49\r\n"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        39,
+        0
+      ]
+    },
+    {
+      "kind": "state",
+      "cursor": [
+        9,
+        0
+      ]
+    }
+  ],
+  "pinned": {
+    "probeId": "scrollback.decstbm-reset",
+    "pass": false,
+    "response": "{\"baseline\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"scroll\":{\"screenLines\":40,\"totalLines\":51,\"viewportY\":0}}",
+    "note": "Scrollback growth does not prove the earlier region was active before reset",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "parser-state",
+      "note": "Scrollback growth does not prove the earlier region was active before reset"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-scrollback-grading-v1",
+  "probeIds": [
+    "scrollback.accumulate",
+    "scrollback.total-lines",
+    "scrollback.scroll-up",
+    "scrollback.reverse-index",
+    "scrollback.scroll-down",
+    "scrollback.set-region",
+    "scrollback.alt-screen",
+    "scrollback.decstbm",
+    "scrollback.decstbm-reset"
+  ],
+  "caseIds": [
+    "scrollback.accumulate",
+    "scrollback.total-lines",
+    "scrollback.scroll-up",
+    "scrollback.reverse-index",
+    "scrollback.scroll-down",
+    "scrollback.set-region",
+    "scrollback.alt-screen",
+    "scrollback.decstbm",
+    "scrollback.decstbm-reset"
+  ]
+}

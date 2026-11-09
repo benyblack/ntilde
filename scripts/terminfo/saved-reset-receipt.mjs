@@ -1,7 +1,7 @@
 // Receipt binding for the saved-state / reset qualification (modes.alt-screen.exit, modes.altscreen-47,
 // modes.altscreen-1047, reset.sgr, reset.decaln). The graded evidence stays provisional until the shared cleanup receipt
 // exists, and the check re-derives the whole report from retained bytes without the collector. A run carrying this
-// evidence must also carry its line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline,
+// evidence must also carry its scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline,
 // SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors: these conclusions sit beside theirs,
 // never replace them.
 import { lstatSync, readFileSync } from 'node:fs';
@@ -13,6 +13,8 @@ import { adaptEraseLineCollector } from './erase-line-grading-collector.mjs';
 import { adaptCharEditCollector } from './char-edit-grading-collector.mjs';
 import { adaptEraseDisplayCollector } from './erase-display-grading-collector.mjs';
 import { adaptLineEditCollector } from './line-edit-grading-collector.mjs';
+import { adaptCharsetsCollector } from './charsets-grading-collector.mjs';
+import { adaptScrollbackCollector } from './scrollback-grading-collector.mjs';
 import { adaptSgrResetCollector } from './sgr-reset-grading-collector.mjs';
 import { adaptSgrClosureCollector } from './sgr-closure-grading-collector.mjs';
 import { adaptSgrUnderlineColorCollector } from './sgr-underline-color-grading-collector.mjs';
@@ -38,11 +40,11 @@ function present(path) {
     }
 }
 
-/** Any retained saved-state/reset artifact or declaration requires the v29 suffix, and a
- * policy-v23 run always carries them, because the current worker collects this suite
- * unconditionally after the line-editing suite. */
+/** Any retained saved-state/reset artifact or declaration requires the v31 suffix, and a
+ * policy-v25 run always carries them, because the current worker collects this suite
+ * unconditionally after the scrolling/history suite. */
 export function includesSavedResetEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v23'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v25'
         || context.savedResetAdapterId !== undefined || context.savedResetSuiteId !== undefined
         || context.savedResetBundleSha256 !== undefined || context.savedResetContractsVersion !== undefined
         || evidence.savedResetEvidence !== undefined
@@ -72,7 +74,9 @@ export function checkSavedResetEvidence(output, evidence, runId, context) {
     if (context.savedResetAdapterId !== savedResetAdapterId || context.savedResetSuiteId !== savedResetSuiteId) {
         throw new Error('Missing or changed saved-state/reset adapter declaration.');
     }
-    if (context.lineEditAdapterId === undefined || evidence.lineEditEvidence === undefined
+    if (context.scrollbackAdapterId === undefined || evidence.scrollbackEvidence === undefined
+        || context.charsetsAdapterId === undefined || evidence.charsetsEvidence === undefined
+        || context.lineEditAdapterId === undefined || evidence.lineEditEvidence === undefined
         || context.eraseDisplayAdapterId === undefined || evidence.eraseDisplayEvidence === undefined
         || context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
         || context.eraseLineAdapterId === undefined || evidence.eraseLineEvidence === undefined
@@ -85,7 +89,7 @@ export function checkSavedResetEvidence(output, evidence, runId, context) {
         || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
         || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
         || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
-        throw new Error('saved-state/reset evidence requires its line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
+        throw new Error('saved-state/reset evidence requires its scrolling/history, charsets, line-editing, erase-in-display, character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.savedResetEvidence;
     if (binding === undefined) throw new Error('Missing saved-state/reset suite receipt binding.');
@@ -107,7 +111,7 @@ export function checkSavedResetEvidence(output, evidence, runId, context) {
     if (hash(adapterBytes) !== binding.adapterBundleSha256 || context.savedResetBundleSha256 !== binding.adapterBundleSha256) {
         throw new Error('saved-state/reset adapter bytes changed.');
     }
-    // The retained extension must be exactly the layered derivation of the retained line-editing extension over the erase-in-display and character-editing extensions over the erase-in-line extension over the SGR
+    // The retained extension must be exactly the layered derivation of the retained scrolling/history extension over the charsets and line-editing extensions over the erase-in-display and character-editing extensions over the erase-in-line extension over the SGR
     // closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and
     // SGR-colors extensions over the retained first grading extension over the retained owned adapter.
     const asciiSgrBytes = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
@@ -124,7 +128,9 @@ export function checkSavedResetEvidence(output, evidence, runId, context) {
     const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
     const eraseDisplayBytes = Buffer.from(adaptEraseDisplayCollector(charEditBytes.toString()));
     const lineEditBytes = Buffer.from(adaptLineEditCollector(eraseDisplayBytes.toString()));
-    const derivedBytes = Buffer.from(adaptSavedResetCollector(lineEditBytes.toString()));
+    const charsetsBytes = Buffer.from(adaptCharsetsCollector(lineEditBytes.toString()));
+    const scrollbackBytes = Buffer.from(adaptScrollbackCollector(charsetsBytes.toString()));
+    const derivedBytes = Buffer.from(adaptSavedResetCollector(scrollbackBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('saved-state/reset adapter is not the retained layered derivation.');
     }
@@ -133,8 +139,9 @@ export function checkSavedResetEvidence(output, evidence, runId, context) {
         || hash(sgrTruecolorBytes) !== context.sgrTruecolorBundleSha256 || hash(sgrUnderlineBytes) !== context.sgrUnderlineBundleSha256
         || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256
         || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256 || hash(charEditBytes) !== context.charEditBundleSha256
-        || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256 || hash(lineEditBytes) !== context.lineEditBundleSha256) {
-        throw new Error('saved-state/reset adapter is not derived from the retained line-editing, erase-in-display, character-editing and earlier extensions.');
+        || hash(eraseDisplayBytes) !== context.eraseDisplayBundleSha256 || hash(lineEditBytes) !== context.lineEditBundleSha256
+        || hash(charsetsBytes) !== context.charsetsBundleSha256 || hash(scrollbackBytes) !== context.scrollbackBundleSha256) {
+        throw new Error('saved-state/reset adapter is not derived from the retained scrolling/history, charsets, line-editing, erase-in-display, character-editing and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     if (report.adapter.bundleSha256 !== binding.adapterBundleSha256

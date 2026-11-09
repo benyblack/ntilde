@@ -36,10 +36,10 @@ function present(path) {
 }
 
 /** Any retained character-editing artifact or declaration requires the v26 suffix, and a
- * policy-v20 run always carries them, because the current worker collects this suite
+ * policy-v20 or v21 run always carries them, because the current worker collects this suite
  * unconditionally after the SGR closure suite. */
 export function includesCharEditEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25'].includes(context.sourceSnapshotPolicy)
         || context.charEditAdapterId !== undefined || context.charEditSuiteId !== undefined
         || context.charEditBundleSha256 !== undefined || context.charEditContractsVersion !== undefined
         || evidence.charEditEvidence !== undefined

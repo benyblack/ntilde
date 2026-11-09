@@ -23,6 +23,8 @@ import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
 import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectLineEditGrading } from './line-edit-collector.mjs';
+import { collectCharsetsGrading } from './charsets-collector.mjs';
+import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
@@ -203,7 +205,23 @@ try {
         const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
         const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
         writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered saved-state/reset qualification follows the line-editing suite on the same fence.
+        // The layered charset qualification follows the line-editing suite on the same fence.
+        const charsetsSource = readFileSync(config.charsetsBundle);
+        if (createHash('sha256').update(charsetsSource).digest('hex') !== config.charsetsBundleSha256) {
+            throw new Error('Local charsets adapter bundle changed.');
+        }
+        const charsetsModule = await import(pathToFileURL(config.charsetsBundle).href);
+        const charsetsRun = await collectCharsetsGrading({ config, fence, owner, gradingModule: charsetsModule });
+        writeFileSync(join(config.output, 'chrs-run.json'), JSON.stringify(charsetsRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered scrolling/history qualification follows the charsets suite on the same fence, on the main screen.
+        const scrollbackSource = readFileSync(config.scrollbackBundle);
+        if (createHash('sha256').update(scrollbackSource).digest('hex') !== config.scrollbackBundleSha256) {
+            throw new Error('Local scrolling/history adapter bundle changed.');
+        }
+        const scrollbackModule = await import(pathToFileURL(config.scrollbackBundle).href);
+        const scrollbackRun = await collectScrollbackGrading({ config, fence, owner, gradingModule: scrollbackModule });
+        writeFileSync(join(config.output, 'scrl-run.json'), JSON.stringify(scrollbackRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered saved-state/reset qualification follows the scrolling/history suite on the same fence.
         const savedResetSource = readFileSync(config.savedResetBundle);
         if (createHash('sha256').update(savedResetSource).digest('hex') !== config.savedResetBundleSha256) {
             throw new Error('Local saved-state/reset adapter bundle changed.');

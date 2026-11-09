@@ -1,22 +1,22 @@
 // Explicitly versioned collector extension for the saved-state / reset qualification
-// (modes.alt-screen.exit, modes.altscreen-47, modes.altscreen-1047, reset.sgr and reset.decaln). This is a sixteenth
-// digest-checked derivation layered on top of the line-editing grading extension: the pinned bundle, the owned
+// (modes.alt-screen.exit, modes.altscreen-47, modes.altscreen-1047, reset.sgr and reset.decaln). This is a eighteenth
+// digest-checked derivation layered on top of the scrolling/history grading extension: the pinned bundle, the owned
 // adapter and every earlier grading extension stay byte-for-byte unchanged, and each graded result carries this
 // extension's identity so it can never be presented as stock output.
 //
 // The extension adds no probe of its own. It exposes the PINNED termless probe definitions of the five contracted
 // cases so live, independently observed screens can be graded by the collector's own criteria. Derivation refuses
-// unless the retained line-editing extension still contains the exact pinned helper bodies, registrations and
+// unless the retained scrolling/history extension still contains the exact pinned helper bodies, registrations and
 // terminal paths below, each verbatim and once. The terminal paths are pinned too: they are cursor-query, DECRPM,
 // consumed-byte and capture-only paths that never carry a supported or unsupported verdict, so a later upstream change
 // that gave one a verdict would be refused. reset.method and scrollback.alt-screen are different cases and are not
 // pinned here.
 import { savedResetCaseIds } from './saved-reset-contracts.mjs';
 
-/** Identity of this sixteenth layered extension. */
+/** Identity of this eighteenth layered extension. */
 export const savedResetAdapterId = 'ntilde-owned-saved-reset-grading-v1';
 
-/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the line-editing extension). Each must appear exactly
+/** Exact pinned seams from terminfo.dev@4.0.0 (as retained by the scrolling/history extension). Each must appear exactly
  * once; then the retained previous layer's exports. isBlank and parserStateResult are already pinned by earlier layers too, which is harmless: each still occurs once. */
 const pinnedSavedResetSeams = Object.freeze([
     // parserStateResult helper
@@ -36,16 +36,16 @@ const pinnedSavedResetSeams = Object.freeze([
     // reset.decaln registration (termless criterion and its capture-only pixel path)
     "      ...probe(\"reset.decaln\", (ctx) => {\n        ctx.feed(\"\\x1B#8\");\n        const cell = ctx.getCell(0, 0);\n        return parserStateResult(cell.char === \"E\", \"DECALN fills the measured cell (0,0) with E\", { cell });\n      }, async (ctx) => {\n        const rows = ctx.rows;\n        const cols = ctx.cols;\n        const capture = ctx.capture;\n        if (!capture || !Number.isSafeInteger(rows) || !Number.isSafeInteger(cols) || rows < 2 || cols < 2) {\n          const note = `DECALN pixel fixture needs capture and measured 2x2 geometry; measured ${rows}x${cols}`;\n          return {\n            pass: false,\n            note,\n            observation: { outcome: \"inconclusive\", reason: \"insufficient-evidence\", evidence: \"none\", note }\n          };\n        }\n        const seed = \"AB\".repeat(Math.ceil(cols / 2)).slice(0, cols);\n        try {\n          ctx.write(\"\\x1B[0m\\x1B[2J\\x1B[H\");\n          for (let row = 1;row <= rows; row++)\n            ctx.write(`\\x1B[${row};1H${seed}`);\n          ctx.write(\"\\x1B[H\");\n          const control = await capture({ role: \"control\", label: \"Known non-E AB grid before DECALN\" });\n          ctx.write(\"\\x1B#8\");\n          const postAlignmentCursor = await ctx.queryCursorPosition();\n          const target = await capture({ role: \"target\", label: \"DECALN alignment grid after ESC # 8\" });\n          const delayedCaptureMs = 5000;\n          await new Promise((resolve) => {\n            setTimeout(resolve, delayedCaptureMs);\n          });\n          const delayedTarget = await capture({\n            role: \"target\",\n            label: \"DECALN alignment grid after delayed checkpoint\"\n          });\n          ctx.write(\"\\x1B[H\");\n          const cursorOnlyControl = await capture({ role: \"control\", label: \"Cursor-only control after CUP home\" });\n          ctx.write(\"X\");\n          const redrawControl = await capture({ role: \"control\", label: \"Redraw control after one ordinary glyph\" });\n          const observed = JSON.stringify({\n            rows,\n            cols,\n            seed,\n            postAlignmentCursor,\n            control,\n            target,\n            delayedCaptureMs,\n            delayedTarget,\n            cursorOnlyControl,\n            redrawControl\n          });\n          return {\n            pass: false,\n            response: observed,\n            observation: {\n              outcome: \"inconclusive\",\n              reason: \"insufficient-evidence\",\n              evidence: \"pixels\",\n              screenshotRef: target.ref,\n              frames: [control, target, delayedTarget, cursorOnlyControl, redrawControl],\n              note: `${postAlignmentCursor === null ? \"No post-DECALN CPR response; processing barrier unconfirmed. \" : \"\"}Known non-E grid, initial and delayed DECALN targets, cursor-only control and ordinary-glyph redraw control captured; repeated E glyphs across measured rows and columns require independent review. CPR at the already-homed cursor records responsiveness, not DECALN recognition or render completion`\n            },\n            assertions: [\n              {\n                kind: \"positive\",\n                expected: `Control shows alternating A/B across ${rows} rows and ${cols} columns; DECALN target shows repeated E across that same measured grid`,\n                observed,\n                note: \"capture-only assertion; glyphs and full-grid coverage must be independently reviewed\"\n              }\n            ]\n          };\n        } finally {\n          ctx.write(\"\\x1B[0m\\x1B[2J\\x1B[H\");\n        }\n      }),\n      termNeedsGeometry: true\n    },",
     // the retained previous layer's exports
-    'export const ntildeLineEditAdapter = Object.freeze({',
-    'export function ntildeRunLineEditTermless(probeId, ctx) {',
+    'export const ntildeScrollbackAdapter = Object.freeze({',
+    'export function ntildeRunScrollbackTermless(probeId, ctx) {',
 ]);
 
 /** The pinned seams, exposed so portable tests can build a synthetic layered source. */
 export const savedResetSeams = pinnedSavedResetSeams;
 
-/** Derive the saved-state / reset grading extension from the line-editing grading extension. */
-export function adaptSavedResetCollector(lineEditSource) {
-    const source = String(lineEditSource);
+/** Derive the saved-state / reset grading extension from the scrolling/history grading extension. */
+export function adaptSavedResetCollector(scrollbackSource) {
+    const source = String(scrollbackSource);
     for (const seam of pinnedSavedResetSeams) {
         if (source.split(seam).length !== 2) throw new Error('Pinned saved-state probe seam changed; refusing derivation.');
     }
@@ -53,7 +53,7 @@ export function adaptSavedResetCollector(lineEditSource) {
     return source + `
 
 // Local saved-state / reset grading extension ${JSON.stringify(savedResetAdapterId)}.
-// Derived from the line-editing grading extension; probe definitions, policy
+// Derived from the scrolling/history grading extension; probe definitions, policy
 // gates and stock grading remain intact.
 export const ntildeSavedResetAdapter = Object.freeze({
   id: ${JSON.stringify(savedResetAdapterId)},

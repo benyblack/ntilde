@@ -1,0 +1,32 @@
+{
+  "caseId": "charsets.g0-g1-switching",
+  "read": 7,
+  "frame": {
+    "index": 45,
+    "kind": "chrs-read",
+    "paneId": "1f6464bc-c241-49c2-8c37-d809829136ea",
+    "barrier": "\u001b[?62;4;22c",
+    "screen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": ["Al┌lZ", "jklmqxl", "┘┐┌└─│┌", "jklmqxl", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+      "cursorRow": 3,
+      "cursorCol": 7,
+      "cursorVisible": true,
+      "cellDetails": [
+        {
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ]
+    },
+    "sha256": "f77d794540455be8505c95d85db0462d4285649871a85840ac4074bfaeda619f"
+  }
+}

@@ -14,7 +14,7 @@ import { adaptEraseLineCollector, eraseLineAdapterId, eraseLineSeams } from '../
 import { eraseDisplaySeams } from '../erase-display-grading-collector.mjs';
 import { charEditSeams } from '../char-edit-grading-collector.mjs';
 import { lineEditSeams } from '../line-edit-grading-collector.mjs';
-import { savedResetSeams } from '../saved-reset-grading-collector.mjs';
+import { charsetsSeams } from '../charsets-grading-collector.mjs';
 import { adaptSgrUnderlineColorCollector, sgrUnderlineColorAdapterId, sgrUnderlineColorSeams } from '../sgr-underline-color-grading-collector.mjs';
 import { adaptSgrUnderlineCollector, sgrUnderlineAdapterId, sgrUnderlineSeams } from '../sgr-underline-grading-collector.mjs';
 import { adaptSgrTruecolorCollector, sgrTruecolorAdapterId, sgrTruecolorSeams } from '../sgr-truecolor-grading-collector.mjs';
@@ -106,11 +106,11 @@ const eraseSeams = eraseLineSeams.filter(seam => !seam.startsWith('export '));
 const displaySeams = eraseDisplaySeams.filter(seam => !seam.startsWith('export '));
 const charSeams = charEditSeams.filter(seam => !seam.startsWith('export '));
 const lineSeams = lineEditSeams.filter(seam => !seam.startsWith('export '));
-const savedSeams = savedResetSeams.filter(seam => !seam.startsWith('export '));
+const charsetsOwnSeams = charsetsSeams.filter(seam => !seam.startsWith('export '));
 // The reset layer's complete measuredReset body already carries the colors layer's two measuredReset seams once.
 const colorSeamsWithoutReset = colorSeams.filter(seam => seam !== 'function measuredReset(ctx, id, setup, reset, set, preserve) {'
     && seam !== 'measured setup attributes clear on Y and unrelated attributes remain set');
-export const syntheticOwnedAdapter = template([...firstSeams, ...colorSeamsWithoutReset, ...attributeSeams, ...paletteSeams, ...truecolorSeams, ...underlineSeams, ...underlineColorSeams, ...resetSeams, ...closureSeams, ...eraseSeams, ...charSeams, ...lineSeams, ...savedSeams, ...displaySeams])
+export const syntheticOwnedAdapter = template([...firstSeams, ...colorSeamsWithoutReset, ...attributeSeams, ...paletteSeams, ...truecolorSeams, ...underlineSeams, ...underlineColorSeams, ...resetSeams, ...closureSeams, ...eraseSeams, ...charSeams, ...lineSeams, ...charsetsOwnSeams, ...displaySeams])
     + '\nexport async function collectNtildeRun(assertion) {\n  return collectProbeRun({ ntildeOwner: assertion });\n}\n';
 const syntheticFirstExtension = adaptGradingCollector(syntheticOwnedAdapter);
 const syntheticColorsExtension = adaptSgrColorsCollector(syntheticFirstExtension);

@@ -1,0 +1,295 @@
+{
+  "caseId": "scrollback.total-lines",
+  "pinnedCriterion": "rows+10 lines `line N` raise the measured total line count above its baseline; observed as rows plus the exact history lines",
+  "pinnedFeeds": [
+    "line 0\r\n",
+    "line 1\r\n",
+    "line 2\r\n",
+    "line 3\r\n",
+    "line 4\r\n",
+    "line 5\r\n",
+    "line 6\r\n",
+    "line 7\r\n",
+    "line 8\r\n",
+    "line 9\r\n",
+    "line 10\r\n",
+    "line 11\r\n",
+    "line 12\r\n",
+    "line 13\r\n",
+    "line 14\r\n",
+    "line 15\r\n",
+    "line 16\r\n",
+    "line 17\r\n",
+    "line 18\r\n",
+    "line 19\r\n",
+    "line 20\r\n",
+    "line 21\r\n",
+    "line 22\r\n",
+    "line 23\r\n",
+    "line 24\r\n",
+    "line 25\r\n",
+    "line 26\r\n",
+    "line 27\r\n",
+    "line 28\r\n",
+    "line 29\r\n",
+    "line 30\r\n",
+    "line 31\r\n",
+    "line 32\r\n",
+    "line 33\r\n",
+    "line 34\r\n",
+    "line 35\r\n",
+    "line 36\r\n",
+    "line 37\r\n",
+    "line 38\r\n",
+    "line 39\r\n",
+    "line 40\r\n",
+    "line 41\r\n",
+    "line 42\r\n",
+    "line 43\r\n",
+    "line 44\r\n",
+    "line 45\r\n",
+    "line 46\r\n",
+    "line 47\r\n",
+    "line 48\r\n",
+    "line 49\r\n"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "(see pinnedFeeds: one `line N` write per row plus ten)"
+    ],
+    "demand": "exact ordered history and viewport after overflow",
+    "minimum": {
+      "rows": 12,
+      "cols": 48
+    }
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "line 0\r\n",
+    "line 1\r\n",
+    "line 2\r\n",
+    "line 3\r\n",
+    "line 4\r\n",
+    "line 5\r\n",
+    "line 6\r\n",
+    "line 7\r\n",
+    "line 8\r\n",
+    "line 9\r\n",
+    "line 10\r\n",
+    "line 11\r\n",
+    "line 12\r\n",
+    "line 13\r\n",
+    "line 14\r\n",
+    "line 15\r\n",
+    "line 16\r\n",
+    "line 17\r\n",
+    "line 18\r\n",
+    "line 19\r\n",
+    "line 20\r\n",
+    "line 21\r\n",
+    "line 22\r\n",
+    "line 23\r\n",
+    "line 24\r\n",
+    "line 25\r\n",
+    "line 26\r\n",
+    "line 27\r\n",
+    "line 28\r\n",
+    "line 29\r\n",
+    "line 30\r\n",
+    "line 31\r\n",
+    "line 32\r\n",
+    "line 33\r\n",
+    "line 34\r\n",
+    "line 35\r\n",
+    "line 36\r\n",
+    "line 37\r\n",
+    "line 38\r\n",
+    "line 39\r\n",
+    "line 40\r\n",
+    "line 41\r\n",
+    "line 42\r\n",
+    "line 43\r\n",
+    "line 44\r\n",
+    "line 45\r\n",
+    "line 46\r\n",
+    "line 47\r\n",
+    "line 48\r\n",
+    "line 49\r\n"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      39,
+      0
+    ],
+    [
+      39,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "roles": {
+      "initial": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [],
+        "history": [],
+        "historyCount": 0
+      },
+      "justFull": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          39,
+          0
+        ],
+        "viewport": [
+          "0-38: line 0..38"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "final": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          39,
+          0
+        ],
+        "viewport": [
+          "0-38: line 11..49"
+        ],
+        "history": [
+          "0-10: line 0..10"
+        ],
+        "historyCount": 11
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"baseline\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"lineCount\":50,\"scroll\":{\"screenLines\":40,\"totalLines\":51,\"viewportY\":0}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "Measured total lines increase after writing beyond the screen",
+        "observed": "{\"baseline\":{\"screenLines\":40,\"totalLines\":40,\"viewportY\":0},\"lineCount\":50,\"scroll\":{\"screenLines\":40,\"totalLines\":51,\"viewportY\":0}}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      "stored cells",
+      "actual scrollback",
+      "margins and modes",
+      "cursor"
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-and-actual-scrollback",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": [
+      "stored cells",
+      "actual scrollback",
+      "margins and modes",
+      "cursor"
+    ],
+    "scope": "stored cells, actual local scrollback, margins and cursor of ASCII fixtures at the measured geometry; no Unicode, wide-cell, wrapped-line, reflow, resize or pixel claim"
+  }
+}

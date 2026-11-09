@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV30SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV32SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -28,12 +28,12 @@ export async function privateClipboardReceiptFixture(action) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV30SourceFiles)) {
+        for (const [key, file] of Object.entries(capturedV32SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV30SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV32SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -380,15 +380,55 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'ledt-run.json', runSha256: hash(readFileSync(join(output, 'ledt-run.json'))),
                 adapterBundleSha256: hash(lineEditBytes), contractsVersion: lineEditContractsVersion,
                 counts: { supported: 2 }, provisionalUntil: 'cell-receipt.json' };
-            // Policy v23 always carries the layered saved-state/reset suffix as well.
+            // Policy v23 always carries the layered charsets suffix as well.
+            const { syntheticCharsetsEvidence } = await import('./charsets-evidence.mjs');
+            const { buildCharsetsGradingReport } = await import('../charsets-grading.mjs');
+            const { adaptCharsetsCollector, charsetsAdapterId } = await import('../charsets-grading-collector.mjs');
+            const { charsetsSuiteId, charsetsContractsVersion } = await import('../charsets-contracts.mjs');
+            const charsetsBytes = Buffer.from(adaptCharsetsCollector(lineEditBytes.toString()));
+            const charsets = syntheticCharsetsEvidence(context.runId, hash(charsetsBytes));
+            charsets.adapter = { id: charsetsAdapterId, derivedFromAdapterId: lineEditAdapterId,
+                bundleSha256: hash(charsetsBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const charsetsReport = buildCharsetsGradingReport(charsets.frames, charsets.run, context.runId, charsets.adapter);
+            write('chrs-observations.json', charsetsReport);
+            write('chrs-run.json', charsets.run);
+            writeFileSync(join(output, 'chrs-snapshots.jsonl'), charsets.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-chrs.mjs'), charsetsBytes);
+            Object.assign(context, { charsetsAdapterId, charsetsSuiteId, charsetsBundleSha256: hash(charsetsBytes), charsetsContractsVersion });
+            evidence.charsetsEvidence = { runId: context.runId, suiteId: charsetsSuiteId,
+                file: 'chrs-observations.json', sha256: hash(readFileSync(join(output, 'chrs-observations.json'))),
+                runFile: 'chrs-run.json', runSha256: hash(readFileSync(join(output, 'chrs-run.json'))),
+                adapterBundleSha256: hash(charsetsBytes), contractsVersion: charsetsContractsVersion,
+                counts: { supported: 4 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v24 always carries the layered scrolling/history suffix as well.
+            const { syntheticScrollbackEvidence } = await import('./scrollback-evidence.mjs');
+            const { buildScrollbackGradingReport } = await import('../scrollback-grading.mjs');
+            const { adaptScrollbackCollector, scrollbackAdapterId } = await import('../scrollback-grading-collector.mjs');
+            const { scrollbackSuiteId, scrollbackContractsVersion } = await import('../scrollback-contracts.mjs');
+            const scrollbackBytes = Buffer.from(adaptScrollbackCollector(charsetsBytes.toString()));
+            const scrollback = syntheticScrollbackEvidence(context.runId, hash(scrollbackBytes));
+            scrollback.adapter = { id: scrollbackAdapterId, derivedFromAdapterId: charsetsAdapterId,
+                bundleSha256: hash(scrollbackBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const scrollbackReport = buildScrollbackGradingReport(scrollback.frames, scrollback.run, context.runId, scrollback.adapter);
+            write('scrl-observations.json', scrollbackReport);
+            write('scrl-run.json', scrollback.run);
+            writeFileSync(join(output, 'scrl-snapshots.jsonl'), scrollback.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-scrl.mjs'), scrollbackBytes);
+            Object.assign(context, { scrollbackAdapterId, scrollbackSuiteId, scrollbackBundleSha256: hash(scrollbackBytes), scrollbackContractsVersion });
+            evidence.scrollbackEvidence = { runId: context.runId, suiteId: scrollbackSuiteId,
+                file: 'scrl-observations.json', sha256: hash(readFileSync(join(output, 'scrl-observations.json'))),
+                runFile: 'scrl-run.json', runSha256: hash(readFileSync(join(output, 'scrl-run.json'))),
+                adapterBundleSha256: hash(scrollbackBytes), contractsVersion: scrollbackContractsVersion,
+                counts: { supported: 9 }, provisionalUntil: 'cell-receipt.json' };
+            // Policy v25 always carries the layered saved-state/reset suffix as well.
             const { syntheticSavedResetEvidence } = await import('./saved-reset-evidence.mjs');
             const { buildSavedResetGradingReport } = await import('../saved-reset-grading.mjs');
             const { adaptSavedResetCollector, savedResetAdapterId } = await import('../saved-reset-grading-collector.mjs');
             const { savedResetSuiteId, savedResetContractsVersion } = await import('../saved-reset-contracts.mjs');
             const { savedResetCounts } = await import('../saved-reset-receipt.mjs');
-            const savedResetBytes = Buffer.from(adaptSavedResetCollector(lineEditBytes.toString()));
+            const savedResetBytes = Buffer.from(adaptSavedResetCollector(scrollbackBytes.toString()));
             const savedReset = syntheticSavedResetEvidence(context.runId, hash(savedResetBytes));
-            savedReset.adapter = { id: savedResetAdapterId, derivedFromAdapterId: lineEditAdapterId,
+            savedReset.adapter = { id: savedResetAdapterId, derivedFromAdapterId: scrollbackAdapterId,
                 bundleSha256: hash(savedResetBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
             const savedResetReport = buildSavedResetGradingReport(savedReset.frames, savedReset.run, context.runId, savedReset.adapter);
             write('svrs-observations.json', savedResetReport);

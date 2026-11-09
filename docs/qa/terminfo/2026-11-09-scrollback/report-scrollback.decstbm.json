@@ -1,0 +1,264 @@
+{
+  "caseId": "scrollback.decstbm",
+  "pinnedCriterion": "DECSTBM scrolls the inner marker while preserving FIXED_TOP outside the region",
+  "pinnedFeeds": [
+    "FIXED_TOP\r\n",
+    "\u001b[3;10r",
+    "\u001b[3;1HINNER",
+    "\u001b[10;1HZ\r\n",
+    "\u001b[r"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "FIXED_TOP\r\n",
+      "\u001b[3;10r",
+      "\u001b[3;1HINNER",
+      "\u001b[10;1HZ\r\n",
+      "\u001b[r"
+    ],
+    "demand": "inner rows scroll, FIXED_TOP and every row outside the region stay intact, no history growth",
+    "minimum": {
+      "rows": 12,
+      "cols": 48
+    }
+  },
+  "feeds": [
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "FIXED_TOP\r\n",
+    "\u001b[3;10r",
+    "\u001b[3;1HINNER",
+    "\u001b[10;1HZ\r\n",
+    "\u001b[r",
+    "\u001b[?1049l\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[3J\u001b[H",
+    "\u001b[1;1HROW-0\u001b[2;1HROW-1\u001b[3;1HROW-2\u001b[4;1HROW-3\u001b[5;1HROW-4\u001b[6;1HROW-5\u001b[7;1HROW-6\u001b[8;1HROW-7\u001b[9;1HROW-8\u001b[10;1HROW-9\u001b[11;1HROW-10\u001b[12;1HROW-11\u001b[13;1HROW-12\u001b[14;1HROW-13\u001b[15;1HROW-14\u001b[16;1HROW-15\u001b[17;1HROW-16\u001b[18;1HROW-17\u001b[19;1HROW-18\u001b[20;1HROW-19\u001b[21;1HROW-20\u001b[22;1HROW-21\u001b[23;1HROW-22\u001b[24;1HROW-23\u001b[25;1HROW-24\u001b[26;1HROW-25\u001b[27;1HROW-26\u001b[28;1HROW-27\u001b[29;1HROW-28\u001b[30;1HROW-29\u001b[31;1HROW-30\u001b[32;1HROW-31\u001b[33;1HROW-32\u001b[34;1HROW-33\u001b[35;1HROW-34\u001b[36;1HROW-35\u001b[37;1HROW-36\u001b[38;1HROW-37\u001b[39;1HROW-38\u001b[40;1HROW-39",
+    "\u001b[3;10r",
+    "\u001b[10;1HZ\r\n"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      2,
+      5
+    ],
+    [
+      9,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      9,
+      0
+    ]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "roles": {
+      "initial": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [],
+        "history": [],
+        "historyCount": 0
+      },
+      "before": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          1,
+          0
+        ],
+        "viewport": [
+          "0: FIXED_TOP"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "innerBefore": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          2,
+          9
+        ],
+        "cursor": [
+          2,
+          5
+        ],
+        "viewport": [
+          "0: FIXED_TOP",
+          "2: INNER"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "after": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          2,
+          9
+        ],
+        "cursor": [
+          9,
+          0
+        ],
+        "viewport": [
+          "0: FIXED_TOP",
+          "8: Z"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "restored": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          0,
+          39
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0: FIXED_TOP",
+          "8: Z"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "ctlBefore": {
+        "kind": "control",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          2,
+          9
+        ],
+        "cursor": [
+          0,
+          0
+        ],
+        "viewport": [
+          "0-39: ROW-0..39"
+        ],
+        "history": [],
+        "historyCount": 0
+      },
+      "ctlAfter": {
+        "kind": "measured",
+        "matchesModel": true,
+        "screen": "main",
+        "margins": [
+          2,
+          9
+        ],
+        "cursor": [
+          9,
+          0
+        ],
+        "viewport": [
+          "0-1: ROW-0..1",
+          "2-7: ROW-3..8",
+          "8: ZOW-9",
+          "10-39: ROW-10..39"
+        ],
+        "history": [],
+        "historyCount": 0
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":{\"char\":\"F\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"innerBefore\":{\"char\":\"I\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"innerAfter\":{\"char\":\" \",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"topAfter\":{\"char\":\"F\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {
+        "kind": "positive",
+        "expected": "DECSTBM scrolls the inner marker while preserving FIXED_TOP outside the region",
+        "observed": "{\"before\":{\"char\":\"F\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"innerBefore\":{\"char\":\"I\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"innerAfter\":{\"char\":\" \",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"topAfter\":{\"char\":\"F\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+      }
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "layers": [
+      "stored cells",
+      "actual scrollback",
+      "margins and modes",
+      "cursor"
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-and-actual-scrollback",
+    "grading": "pinned-termless-plus-contract-v1",
+    "layers": [
+      "stored cells",
+      "actual scrollback",
+      "margins and modes",
+      "cursor"
+    ],
+    "scope": "stored cells, actual local scrollback, margins and cursor of ASCII fixtures at the measured geometry; no Unicode, wide-cell, wrapped-line, reflow, resize or pixel claim"
+  }
+}
