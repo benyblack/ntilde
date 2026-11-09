@@ -255,7 +255,7 @@ const brief = cell => (neutral(cell) ? `${cell.row},${cell.col},${cell.char}`
 const runKey = cell => JSON.stringify([cell.row, cell.char, cell.flags, cell.fgIndex, cell.bgIndex, cell.foregroundArgb, cell.backgroundArgb]);
 /** The ink list, with each run of identical adjacent non-neutral cells (for example an erased tail painted with a background) collapsed to
  * one `{ row, cols: [first, last], ... }` entry; neutral cells stay one string each. */
-function briefInk(ink) {
+export function briefInk(ink) {
     const out = [];
     let last = null;
     for (const cell of ink) {

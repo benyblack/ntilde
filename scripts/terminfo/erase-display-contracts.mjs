@@ -29,6 +29,7 @@
 // not remove scrollback lines (ED 2 is not ED 3). Whether erased cells take the current background color (BCE) is OBSERVED, not required: no
 // pinned criterion constrains it.
 import { planFeed, planRead, planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
+import { briefInk } from './erase-line-contracts.mjs';
 import { sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen, sgrAttrsPredicates, sgrAttrsCellAt, sgrAttrsExpand, sgrAttrsFlagBits } from './sgr-attrs-contracts.mjs';
 
 const { neutral } = sgrAttrsPredicates;
@@ -199,7 +200,8 @@ export function eraseDisplayInk(screen) {
         const char = (screen.lines[row] ?? '')[col] ?? ' ';
         // The attribute runs and the stored details are two projections of one cell: they must agree for every cell, blank ones included.
         const detail = expanded.details[position];
-        if (detail.flags !== expanded.flags[position] || Boolean(detail.flags & sgrAttrsFlagBits.underline) !== Boolean(detail.underlineStyle)) {
+        const underlined = (detail.flags & sgrAttrsFlagBits.underline) !== 0;
+        if (detail.flags !== expanded.flags[position] || underlined !== (detail.underlineStyle !== 0)) {
             throw new Error(`Contradictory stored cell projections at ${row},${col}.`);
         }
         if (char === ' ' && defaultDetail(detail)) continue;
@@ -346,27 +348,6 @@ function gradeErase(contract, observation) {
     return { outcome: 'supported' };
 }
 
-/** A compact stored record of one cell: a `row,col,char` string when its stored tuple is neutral, else the stored fields. */
-const brief = cell => (neutral(cell) ? `${cell.row},${cell.col},${cell.char}`
-    : { row: cell.row, col: cell.col, char: cell.char, flags: cell.flags, fgIndex: cell.fgIndex, bgIndex: cell.bgIndex,
-        foregroundArgb: cell.foregroundArgb, backgroundArgb: cell.backgroundArgb });
-/** The stored fields two adjacent non-neutral cells must share to read as one run. */
-const runKey = cell => JSON.stringify([cell.row, cell.char, cell.flags, cell.fgIndex, cell.bgIndex, cell.foregroundArgb, cell.backgroundArgb]);
-/** The ink list, with each run of identical adjacent non-neutral cells (an erased region painted with a background) collapsed to one
- * `{ row, cols: [first, last], ... }` entry; neutral cells stay one string each. */
-function briefInk(ink) {
-    const out = [];
-    let last = null;
-    for (const cell of ink) {
-        if (neutral(cell)) { out.push(brief(cell)); last = null; continue; }
-        if (last !== null && last.row === cell.row && last.col + 1 === cell.col && runKey(last) === runKey(cell)) {
-            const entry = out.at(-1);
-            if (entry.cols === undefined) { entry.cols = [entry.col, cell.col]; delete entry.col; } else entry.cols[1] = cell.col;
-        } else out.push(brief(cell));
-        last = cell;
-    }
-    return out;
-}
 /** The first ten columns of the given rows of a group's ink as text, `_` for blank. */
 const render = (state, rows) => rows.map(row => Array.from({ length: 10 }, (_, col) => {
     const cell = state.ink.find(item => item.row === row && item.col === col);

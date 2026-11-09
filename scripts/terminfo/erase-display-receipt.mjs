@@ -22,6 +22,11 @@ import { adaptSgrRgbCollector } from './sgr-rgb-grading-collector.mjs';
 import { adaptSgrColorsCollector } from './sgr-colors-grading-collector.mjs';
 import { adaptGradingCollector } from './grading-collector.mjs';
 import { buildEraseDisplayGradingReport } from './erase-display-grading.mjs';
+/** The predecessor layers in derivation order: declaration key and collector adapter. Each is required evidence of this run. */
+const derivationChain = Object.freeze([['sgrColors', adaptSgrColorsCollector], ['sgrRgb', adaptSgrRgbCollector], ['sgrAttrs', adaptSgrAttrsCollector],
+    ['sgrPalette', adaptSgrPaletteCollector], ['sgrTruecolor', adaptSgrTruecolorCollector], ['sgrUnderline', adaptSgrUnderlineCollector],
+    ['sgrUnderlineColor', adaptSgrUnderlineColorCollector], ['sgrReset', adaptSgrResetCollector], ['sgrClosure', adaptSgrClosureCollector],
+    ['eraseLine', adaptEraseLineCollector], ['charEdit', adaptCharEditCollector]]);
 /** SHA-256 of exact bytes. */
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
@@ -60,17 +65,7 @@ export function checkEraseDisplayEvidence(output, evidence, runId, context) {
     if (context.eraseDisplayAdapterId !== eraseDisplayAdapterId || context.eraseDisplaySuiteId !== eraseDisplaySuiteId) {
         throw new Error('Missing or changed erase-in-display adapter declaration.');
     }
-    if (context.charEditAdapterId === undefined || evidence.charEditEvidence === undefined
-        || context.eraseLineAdapterId === undefined || evidence.eraseLineEvidence === undefined
-        || context.sgrClosureAdapterId === undefined || evidence.sgrClosureEvidence === undefined
-        || context.sgrResetAdapterId === undefined || evidence.sgrResetEvidence === undefined
-        || context.sgrUnderlineColorAdapterId === undefined || evidence.sgrUnderlineColorEvidence === undefined
-        || context.sgrUnderlineAdapterId === undefined || evidence.sgrUnderlineEvidence === undefined
-        || context.sgrTruecolorAdapterId === undefined || evidence.sgrTruecolorEvidence === undefined
-        || context.sgrColorsAdapterId === undefined || evidence.sgrColorsEvidence === undefined
-        || context.sgrRgbAdapterId === undefined || evidence.sgrRgbEvidence === undefined
-        || context.sgrAttrsAdapterId === undefined || evidence.sgrAttrsEvidence === undefined
-        || context.sgrPaletteAdapterId === undefined || evidence.sgrPaletteEvidence === undefined) {
+    if (derivationChain.some(([key]) => context[`${key}AdapterId`] === undefined || evidence[`${key}Evidence`] === undefined)) {
         throw new Error('erase-in-display evidence requires its character-editing, erase-in-line, SGR closure, SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette, SGR-attributes, SGR-RGB and SGR-colors predecessors.');
     }
     const binding = evidence.eraseDisplayEvidence;
@@ -97,28 +92,18 @@ export function checkEraseDisplayEvidence(output, evidence, runId, context) {
     // erase-in-line extension over the SGR closure extension over the SGR selective-reset, SGR-underline-color, SGR-underline, SGR-truecolor, SGR-palette,
     // SGR-attributes, SGR-RGB and SGR-colors extensions over the retained first grading
     // extension over the retained owned adapter.
-    const asciiSgrBytes = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
-    const sgrColorsBytes = Buffer.from(adaptSgrColorsCollector(asciiSgrBytes.toString()));
-    const sgrRgbBytes = Buffer.from(adaptSgrRgbCollector(sgrColorsBytes.toString()));
-    const sgrAttrsBytes = Buffer.from(adaptSgrAttrsCollector(sgrRgbBytes.toString()));
-    const sgrPaletteBytes = Buffer.from(adaptSgrPaletteCollector(sgrAttrsBytes.toString()));
-    const sgrTruecolorBytes = Buffer.from(adaptSgrTruecolorCollector(sgrPaletteBytes.toString()));
-    const sgrUnderlineBytes = Buffer.from(adaptSgrUnderlineCollector(sgrTruecolorBytes.toString()));
-    const sgrUnderlineColorBytes = Buffer.from(adaptSgrUnderlineColorCollector(sgrUnderlineBytes.toString()));
-    const sgrResetBytes = Buffer.from(adaptSgrResetCollector(sgrUnderlineColorBytes.toString()));
-    const sgrClosureBytes = Buffer.from(adaptSgrClosureCollector(sgrResetBytes.toString()));
-    const eraseLineBytes = Buffer.from(adaptEraseLineCollector(sgrClosureBytes.toString()));
-    const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
-    const derivedBytes = Buffer.from(adaptEraseDisplayCollector(charEditBytes.toString()));
+    // Each layer is derived from the previous one's bytes; every declared layer digest must match its re-derived bytes.
+    let layerBytes = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
+    const drifted = [];
+    for (const [key, adapt] of derivationChain) {
+        layerBytes = Buffer.from(adapt(layerBytes.toString()));
+        if (hash(layerBytes) !== context[`${key}BundleSha256`]) drifted.push(key);
+    }
+    const derivedBytes = Buffer.from(adaptEraseDisplayCollector(layerBytes.toString()));
     if (Buffer.compare(derivedBytes, adapterBytes) !== 0) {
         throw new Error('erase-in-display adapter is not the retained layered derivation.');
     }
-    if (hash(sgrColorsBytes) !== context.sgrColorsBundleSha256 || hash(sgrRgbBytes) !== context.sgrRgbBundleSha256
-        || hash(sgrAttrsBytes) !== context.sgrAttrsBundleSha256 || hash(sgrPaletteBytes) !== context.sgrPaletteBundleSha256
-        || hash(sgrTruecolorBytes) !== context.sgrTruecolorBundleSha256 || hash(sgrUnderlineBytes) !== context.sgrUnderlineBundleSha256
-        || hash(sgrUnderlineColorBytes) !== context.sgrUnderlineColorBundleSha256 || hash(sgrResetBytes) !== context.sgrResetBundleSha256
-        || hash(sgrClosureBytes) !== context.sgrClosureBundleSha256 || hash(eraseLineBytes) !== context.eraseLineBundleSha256
-        || hash(charEditBytes) !== context.charEditBundleSha256) {
+    if (drifted.length > 0) {
         throw new Error('erase-in-display adapter is not derived from the retained character-editing, erase-in-line, SGR closure and earlier extensions.');
     }
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
