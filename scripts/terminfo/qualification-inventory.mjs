@@ -66,7 +66,7 @@ const posix = path => path.split(sep).join('/');
 function evidenceDigest(root, suite) {
     const files = [];
     const walk = dir => {
-        for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+        for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => byText(a.name, b.name))) {
             const path = join(dir, entry.name);
             if (entry.isDirectory()) walk(path);
             else files.push(path);
@@ -296,22 +296,21 @@ export function totalsOf(rows, baseline) {
 /** Build the inventory. `options.rederive === false` skips the (slow) trusted rederivation and marks every claim unrederived. */
 export async function buildInventory({ root = defaultQaRoot, ...options } = {}) {
     const baseline = readJson(join(root, stockBaselineFile));
-    const suites = [], claimsById = new Map(), loaded = [];
-    for (const suite of benchmarkSuites) {
-        const entry = await suiteRecord(root, suite, options);
+    const suites = [], claimsById = new Map();
+    const loaded = await Promise.all(benchmarkSuites.map(suite => suiteRecord(root, suite, options)));
+    for (const [index, entry] of loaded.entries()) {
+        const suite = benchmarkSuites[index];
         suites.push(entry.record);
-        loaded.push(entry);
         for (const item of entry.report.cases) {
             if (!claimsById.has(item.caseId)) claimsById.set(item.caseId, []);
             claimsById.get(item.caseId).push(claimOf(suite, entry.report, item, entry.record.rederivation.status));
         }
     }
-    const benchmark = [...claimsById].sort(([a], [b]) => (a < b ? -1 : 1)).map(([id, claims]) => ({ id, kind: 'benchmark', stockOutcome: baseline.outcomes[id] ?? null, ...rollup(claims), claims }));
-    const findings = [];
-    for (const suite of findingSuites) {
+    const benchmark = [...claimsById].sort(([a], [b]) => byText(a, b)).map(([id, claims]) => ({ id, kind: 'benchmark', stockOutcome: baseline.outcomes[id] ?? null, ...rollup(claims), claims }));
+    const findings = await Promise.all(findingSuites.map(suite => {
         const publication = suite.suite === 'truecolor-literal-finding' ? null : loadPublication(root, { layout: 'directory', dir: suite.dir });
-        findings.push(await findingRecord(root, suite, publication, options));
-    }
+        return findingRecord(root, suite, publication, options);
+    }));
     const diagnostics = Object.entries(baseline.ungradedDiagnostics ?? {}).map(([id, diagnostic]) => ({
         id, graded: false, suiteComplete: baseline.source.suiteComplete, kind: diagnostic.kind, name: diagnostic.name, message: diagnostic.message,
         note: 'An ungraded collector diagnostic, retained as such. It is not an unsupported case: the stock unsupported count is separate.' }));
@@ -350,6 +349,57 @@ async function findingRecord(root, suite, publication, options) {
         note: 'App-observed underline-color resolution, reported separately from the parent-derived expectation. Not a terminfo.dev case.' };
 }
 
+const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const sortedJson = list => JSON.stringify([...list].sort(byText));
+
+/** Guards over one claim of one row. */
+function claimProblems(inventory, row, claim, suiteNames, seenClaims) {
+    const problems = [];
+    const key = `${row.id}\u0000${claim.suite}`;
+    if (seenClaims.has(key)) problems.push(`${row.id}: duplicate claim for suite ${claim.suite}.`);
+    seenClaims.add(key);
+    if (!suiteNames.has(claim.suite)) problems.push(`${row.id}: claim names unknown suite ${claim.suite}.`);
+    if (!verdicts.includes(claim.pinned.verdict) || !verdicts.includes(claim.effect.verdict)) problems.push(`${row.id}: unknown verdict.`);
+    if (claim.measuredLayers.includes('pixels')) problems.push(`${row.id}: no benchmark claim here measures pixels.`);
+    const agree = claim.pinned.verdict === claim.effect.verdict;
+    if (agree && claim.divergence) problems.push(`${row.id}: a divergence is recorded for agreeing verdicts.`);
+    if (!agree && !claim.divergence) problems.push(`${row.id} (${claim.suite}): pinned and effect verdicts differ but no divergence is recorded; they must not be collapsed.`);
+    if (claim.divergence && (claim.divergence.pinned !== claim.pinned.verdict || claim.divergence.effect !== claim.effect.verdict)) problems.push(`${row.id}: the divergence does not match the claim's verdicts.`);
+    const suite = inventory.suites.find(item => item.suite === claim.suite);
+    if (suite && claim.status === 'qualified' && suite.rederivation.status !== 'passed') problems.push(`${row.id}: counted as qualified without a passed rederivation of suite ${claim.suite}.`);
+    if (suite && claim.status !== 'qualified' && suite.rederivation.status === 'passed') problems.push(`${row.id}: rederived suite ${claim.suite} left a claim unqualified.`);
+    return problems;
+}
+
+/** Guards over one benchmark row and its claims. */
+function rowProblems(inventory, row, baseline, suiteNames, seenClaims) {
+    const problems = [];
+    if (row.claims.length === 0) problems.push(`${row.id}: no claim.`);
+    if (!(row.id in baseline.outcomes)) problems.push(`${row.id}: not a case of the pinned stock baseline.`);
+    if (/^(?:finding|ntilde)\./.test(row.id)) problems.push(`${row.id}: an Ntilde-specific id cannot be a benchmark id.`);
+    if (row.id === 'cursor.reverse-wrap') problems.push('cursor.reverse-wrap is an ungraded diagnostic, not a qualified or unsupported case.');
+    if (row.stockOutcome !== baseline.outcomes[row.id]) problems.push(`${row.id}: stock outcome differs from the baseline.`);
+    if (row.stockOutcome !== 'inconclusive') problems.push(`${row.id}: qualification evidence can only cover stock-inconclusive cases (stock: ${row.stockOutcome}).`);
+    for (const claim of row.claims) problems.push(...claimProblems(inventory, row, claim, suiteNames, seenClaims));
+    const derived = rollup(row.claims);
+    if (JSON.stringify(derived.pinned) !== JSON.stringify(row.pinned) || JSON.stringify(derived.effect) !== JSON.stringify(row.effect)) problems.push(`${row.id}: the pinned/effect roll-up differs from its claims.`);
+    return problems;
+}
+
+/** Guards over one suite: its claims must be exactly its contract's case ids. */
+function suiteProblems(inventory, suite, contracts, options) {
+    const problems = [];
+    const contract = contracts?.get(suite.suite);
+    const claimed = inventory.benchmark.flatMap(row => row.claims.filter(claim => claim.suite === suite.suite).map(() => row.id));
+    const retained = options.reportCaseIds?.get(suite.suite);
+    if (retained && sortedJson(retained) !== sortedJson(suite.caseIds)) problems.push(`${suite.suite}: the retained report's case ids differ from the live contract's (lost or added case).`);
+    if (contract && JSON.stringify(contract.caseIds) !== JSON.stringify(suite.caseIds)) problems.push(`${suite.suite}: contract ids differ from the recorded ones.`);
+    if (sortedJson(claimed) !== sortedJson(suite.caseIds)) problems.push(`${suite.suite}: its claims are not exactly its contract's case ids (lost, added or duplicated case).`);
+    if (claimed.length !== suite.caseCount) problems.push(`${suite.suite}: ${claimed.length} claims for ${suite.caseCount} retained cases.`);
+    if (suite.evidence.files === 0) problems.push(`${suite.suite}: no retained evidence files.`);
+    return problems;
+}
+
 /** Structural guards: duplicate counting, lost cases, unsupported promotion and pinned/effect collapse all throw. */
 export function assertInventory(inventory, { baseline, contracts, ...options }) {
     const problems = [];
@@ -358,43 +408,12 @@ export function assertInventory(inventory, { baseline, contracts, ...options }) 
     const ids = inventory.benchmark.map(row => row.id);
     if (new Set(ids).size !== ids.length) problems.push('A benchmark id is listed twice; multiple suites must be separate claims of one row.');
     const seenClaims = new Set();
-    for (const row of inventory.benchmark) {
-        if (row.claims.length === 0) problems.push(`${row.id}: no claim.`);
-        if (!(row.id in baseline.outcomes)) problems.push(`${row.id}: not a case of the pinned stock baseline.`);
-        if (/^(?:finding|ntilde)\./.test(row.id)) problems.push(`${row.id}: an Ntilde-specific id cannot be a benchmark id.`);
-        if (row.id === 'cursor.reverse-wrap') problems.push('cursor.reverse-wrap is an ungraded diagnostic, not a qualified or unsupported case.');
-        if (row.stockOutcome !== baseline.outcomes[row.id]) problems.push(`${row.id}: stock outcome differs from the baseline.`);
-        if (row.stockOutcome !== 'inconclusive') problems.push(`${row.id}: qualification evidence can only cover stock-inconclusive cases (stock: ${row.stockOutcome}).`);
-        for (const claim of row.claims) {
-            const key = `${row.id}\u0000${claim.suite}`;
-            if (seenClaims.has(key)) problems.push(`${row.id}: duplicate claim for suite ${claim.suite}.`);
-            seenClaims.add(key);
-            if (!suiteNames.has(claim.suite)) problems.push(`${row.id}: claim names unknown suite ${claim.suite}.`);
-            if (!verdicts.includes(claim.pinned.verdict) || !verdicts.includes(claim.effect.verdict)) problems.push(`${row.id}: unknown verdict.`);
-            if (claim.measuredLayers.includes('pixels')) problems.push(`${row.id}: no benchmark claim here measures pixels.`);
-            if (claim.pinned.verdict === claim.effect.verdict && claim.divergence) problems.push(`${row.id}: a divergence is recorded for agreeing verdicts.`);
-            if (claim.pinned.verdict !== claim.effect.verdict && !claim.divergence) problems.push(`${row.id} (${claim.suite}): pinned and effect verdicts differ but no divergence is recorded; they must not be collapsed.`);
-            if (claim.divergence && (claim.divergence.pinned !== claim.pinned.verdict || claim.divergence.effect !== claim.effect.verdict)) problems.push(`${row.id}: the divergence does not match the claim's verdicts.`);
-            const suite = inventory.suites.find(item => item.suite === claim.suite);
-            if (suite && claim.status === 'qualified' && suite.rederivation.status !== 'passed') problems.push(`${row.id}: counted as qualified without a passed rederivation of suite ${claim.suite}.`);
-            if (suite && claim.status !== 'qualified' && suite.rederivation.status === 'passed') problems.push(`${row.id}: rederived suite ${claim.suite} left a claim unqualified.`);
-        }
-        const derived = rollup(row.claims);
-        if (JSON.stringify(derived.pinned) !== JSON.stringify(row.pinned) || JSON.stringify(derived.effect) !== JSON.stringify(row.effect)) problems.push(`${row.id}: the pinned/effect roll-up differs from its claims.`);
-    }
-    for (const suite of inventory.suites) {
-        const contract = contracts?.get(suite.suite);
-        const claimed = inventory.benchmark.flatMap(row => row.claims.filter(claim => claim.suite === suite.suite).map(() => row.id));
-        const retained = options.reportCaseIds?.get(suite.suite);
-        if (retained && JSON.stringify([...retained].sort()) !== JSON.stringify([...suite.caseIds].sort())) problems.push(`${suite.suite}: the retained report's case ids differ from the live contract's (lost or added case).`);
-        if (contract && JSON.stringify(contract.caseIds) !== JSON.stringify(suite.caseIds)) problems.push(`${suite.suite}: contract ids differ from the recorded ones.`);
-        if (JSON.stringify([...claimed].sort()) !== JSON.stringify([...suite.caseIds].sort())) problems.push(`${suite.suite}: its claims are not exactly its contract's case ids (lost, added or duplicated case).`);
-        if (claimed.length !== suite.caseCount) problems.push(`${suite.suite}: ${claimed.length} claims for ${suite.caseCount} retained cases.`);
-        if (suite.evidence.files === 0) problems.push(`${suite.suite}: no retained evidence files.`);
-    }
+    for (const row of inventory.benchmark) problems.push(...rowProblems(inventory, row, baseline, suiteNames, seenClaims));
+    for (const suite of inventory.suites) problems.push(...suiteProblems(inventory, suite, contracts, options));
     const totals = totalsOf(inventory.benchmark, baseline);
     if (JSON.stringify(totals) !== JSON.stringify(inventory.totals)) problems.push('The recorded totals differ from the recomputed ones.');
-    if (totals.suiteClaims !== inventory.suites.reduce((count, suite) => count + suite.caseCount, 0) && inventory.suites.every(suite => suite.rederivation.status === 'passed')) problems.push('Suite claims differ from the sum of suite case counts.');
+    const allPassed = inventory.suites.every(suite => suite.rederivation.status === 'passed');
+    if (allPassed && totals.suiteClaims !== inventory.suites.reduce((count, suite) => count + suite.caseCount, 0)) problems.push('Suite claims differ from the sum of suite case counts.');
     for (const diagnostic of inventory.ungradedDiagnostics) {
         if (diagnostic.graded !== false) problems.push(`${diagnostic.id}: a diagnostic must stay ungraded.`);
         if (diagnostic.suiteComplete !== false) problems.push(`${diagnostic.id}: the diagnostic's suite must be recorded as incomplete (suiteComplete=false).`);
@@ -403,67 +422,102 @@ export function assertInventory(inventory, { baseline, contracts, ...options }) 
 }
 
 const short = (hash, length = 8) => (hash ? hash.slice(0, length) : 'n/a');
+const code = text => `\`${text}\``;
+const codeList = ids => ids.map(code).join(', ');
 
-/** The readable summary. Generated, never edited by hand. */
-export function renderSummary(inventory) {
-    const { totals } = inventory;
-    const lines = [];
-    const push = (...text) => lines.push(...text);
-    push('# Terminfo qualification inventory (2026-11-09)', '',
-        'Generated by `node scripts/terminfo-inventory.mjs --write --rederive` from the merged contract modules and the retained publications; do not edit by hand.',
-        'Machine-readable form: [`2026-11-09-qualification-inventory.json`](2026-11-09-qualification-inventory.json). It consolidates the evidence already published; it adds no measurement and rewrites no grade.', '',
-        `Pinned collector: \`${inventory.pinned.package}\`, bundle SHA-256 \`${short(inventory.pinned.bundleSha256)}…\`, probeHash \`${inventory.pinned.probeHash}\`.`, '',
-        '## Totals', '', '| Measure | Value |', '|---|---:|',
+function totalsSection(inventory) {
+    const { totals, stockBaseline } = inventory;
+    const remaining = totals.remainingAgainstStockInconclusive;
+    const allBaseline = totals.baseline;
+    const multi = `${totals.idsWithMultipleClaims.length} (${codeList(totals.idsWithMultipleClaims)})`;
+    const freshness = stockBaseline.freshness.split(';')[0];
+    const baselineLine = `Baseline: stock run ${code(stockBaseline.stockCollectorRunId)} (${stockBaseline.measuredAt}, ${freshness}), ${allBaseline.allCases} graded cases: ${allBaseline.stockSupported} supported, ${allBaseline.stockUnsupported} unsupported, ${allBaseline.stockInconclusive} inconclusive. Every qualified id is a stock-inconclusive case, so the remaining counts are taken against the ${allBaseline.stockInconclusive} inconclusive ones.`;
+    const outside = allBaseline.stockUnsupported + remaining.notPinnedSupported;
+    const unsupportedLine = `The baseline's single stock-unsupported case (${codeList(stockBaseline.stockUnsupported)}) is graded and separate from both remaining counts. The ${allBaseline.stockUnsupported} unsupported plus the ${remaining.notPinnedSupported} not-pinned-supported inconclusive cases are the ${outside} cases outside the ${allBaseline.stockSupported} stock-supported plus ${totals.pinnedSupportedIds} pinned-supported ones.`;
+    return ['## Totals', '', '| Measure | Value |', '|---|---:|',
         `| Unique benchmark ids with qualified effect evidence | ${totals.uniqueBenchmarkIds} |`,
         `| Suite claims (an id covered by two suites has two claims) | ${totals.suiteClaims} |`,
-        `| Ids with more than one claim | ${totals.idsWithMultipleClaims.length} (${totals.idsWithMultipleClaims.map(id => `\`${id}\``).join(', ')}) |`,
+        `| Ids with more than one claim | ${multi} |`,
         `| Effect contract supported | ${totals.effectSupportedIds} |`,
         `| Supported by both the pinned probe and the effect contract | ${totals.pinnedAndEffectSupportedIds} |`,
         `| Effect supported, pinned verdict inconclusive | ${totals.effectSupportedPinnedInconclusiveIds.length} |`, '',
         'The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim\'s pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.', '',
-        `Effect supported but pinned inconclusive: ${totals.effectSupportedPinnedInconclusiveIds.map(id => `\`${id}\``).join(', ')}.`, '',
-        '## Remaining cases against an explicit baseline', '',
-        `Baseline: stock run \`${inventory.stockBaseline.stockCollectorRunId}\` (${inventory.stockBaseline.measuredAt}, ${inventory.stockBaseline.freshness.split(';')[0]}), ${totals.baseline.allCases} graded cases: ${totals.baseline.stockSupported} supported, ${totals.baseline.stockUnsupported} unsupported, ${totals.baseline.stockInconclusive} inconclusive. Every qualified id is a stock-inconclusive case, so the remaining counts are taken against the ${totals.baseline.stockInconclusive} inconclusive ones.`, '',
+        `Effect supported but pinned inconclusive: ${codeList(totals.effectSupportedPinnedInconclusiveIds)}.`, '',
+        '## Remaining cases against an explicit baseline', '', baselineLine, '',
         '| Remaining | Count |', '|---|---:|',
-        `| Effect-unqualified (${totals.baseline.stockInconclusive} − ${totals.effectSupportedIds}) | ${totals.remainingAgainstStockInconclusive.effectUnqualified} |`,
-        `| Not pinned-supported (${totals.baseline.stockInconclusive} − ${totals.pinnedSupportedIds}) | ${totals.remainingAgainstStockInconclusive.notPinnedSupported} |`, '',
-        `The baseline's single stock-unsupported case (${inventory.stockBaseline.stockUnsupported.map(id => `\`${id}\``).join(', ')}) is graded and separate from both remaining counts. The ${totals.baseline.stockUnsupported} unsupported plus the ${totals.remainingAgainstStockInconclusive.notPinnedSupported} not-pinned-supported inconclusive cases are the ${totals.baseline.stockUnsupported + totals.remainingAgainstStockInconclusive.notPinnedSupported} cases outside the ${totals.baseline.stockSupported} stock-supported plus ${totals.pinnedSupportedIds} pinned-supported ones.`, '',
-        '### Ungraded diagnostic', '');
-    for (const diagnostic of inventory.ungradedDiagnostics) {
-        push(`- \`${diagnostic.id}\`: ${diagnostic.kind} (${diagnostic.name}). Ungraded, \`suiteComplete=${diagnostic.suiteComplete}\`. It is not a graded unsupported case and is counted in none of the totals above.`);
-    }
-    push('', '## Suites and retained evidence', '',
-        '| Suite | Cases | Contracts | Rederivation | Receipt | App revision | Policy | Evidence files | Evidence SHA-256 |', '|---|---:|---:|---|---:|---|---|---:|---|');
+        `| Effect-unqualified (${allBaseline.stockInconclusive} − ${totals.effectSupportedIds}) | ${remaining.effectUnqualified} |`,
+        `| Not pinned-supported (${allBaseline.stockInconclusive} − ${totals.pinnedSupportedIds}) | ${remaining.notPinnedSupported} |`, '',
+        unsupportedLine, '', '### Ungraded diagnostic', '',
+        ...inventory.ungradedDiagnostics.map(diagnostic => `- ${code(diagnostic.id)}: ${diagnostic.kind} (${diagnostic.name}). Ungraded, ${code(`suiteComplete=${diagnostic.suiteComplete}`)}. It is not a graded unsupported case and is counted in none of the totals above.`)];
+}
+
+function suitesSection(inventory) {
+    const lines = ['', '## Suites and retained evidence', '',
+        '| Suite | Cases | Contracts | Rederivation | Receipt | App revision | Policy | Evidence files | Evidence SHA-256 |', '|---|---:|---:|---|---:|---|---|---:|---|'];
     for (const suite of inventory.suites) {
-        push(`| \`${suite.suite}\` | ${suite.caseCount} | v${suite.contractsVersion} | ${suite.rederivation.status} | ${suite.receipt.schemaVersion ?? 'n/a'} | \`${short(suite.run.appRevision, 8)}\` | ${suite.run.sourceSnapshotPolicy?.replace('readonly-owned-source-graph-', '') ?? 'n/a'} | ${suite.evidence.files} | \`${short(suite.evidence.sha256)}\` |`);
+        const policy = suite.run.sourceSnapshotPolicy?.replace('readonly-owned-source-graph-', '') ?? 'n/a';
+        lines.push(`| ${code(suite.suite)} | ${suite.caseCount} | v${suite.contractsVersion} | ${suite.rederivation.status} | ${suite.receipt.schemaVersion ?? 'n/a'} | ${code(short(suite.run.appRevision, 8))} | ${policy} | ${suite.evidence.files} | ${code(short(suite.evidence.sha256))} |`);
     }
-    push('', 'Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.', '',
-        '## Stock collector counts', '',
+    lines.push('', 'Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.', '');
+    return lines;
+}
+
+function stockRunCell(stock) {
+    if (stock?.runId) return code(short(stock.runId));
+    if (stock?.rawSha256) return `raw ${code(short(stock.rawSha256))}`;
+    return 'n/a';
+}
+
+function stockSection(inventory) {
+    const lines = ['## Stock collector counts', '',
         'Stock grades are never rewritten by owned evidence. Each publication records its own stock counts; `basis` says whether they were measured in that run.', '',
-        '| Suite | Basis | Stock run | Counts (inconclusive/supported/unsupported) | Collector source |', '|---|---|---|---|---|');
+        '| Suite | Basis | Stock run | Counts (inconclusive/supported/unsupported) | Collector source |', '|---|---|---|---|---|'];
     for (const suite of inventory.suites) {
         const stock = suite.stock;
         const counts = stock?.counts ? `${stock.counts.inconclusive}/${stock.counts.supported}/${stock.counts.unsupported}` : 'carried (see note)';
-        push(`| \`${suite.suite}\` | ${stock?.basis ?? 'none'} | ${stock?.runId ? `\`${short(stock.runId)}\`` : stock?.rawSha256 ? `raw \`${short(stock.rawSha256)}\`` : 'n/a'} | ${counts} | ${stock?.sourceRevision ? `\`${short(stock.sourceRevision)}\`` : 'n/a'} |`);
+        const source = stock?.sourceRevision ? code(short(stock.sourceRevision)) : 'n/a';
+        lines.push(`| ${code(suite.suite)} | ${stock?.basis ?? 'none'} | ${stockRunCell(stock)} | ${counts} | ${source} |`);
     }
-    push('', `The baseline run itself is retained as a case-id to outcome map in [\`${stockBaselineFile}\`](${stockBaselineFile}); its raw output is git-ignored and not in the repository (\`${inventory.stockBaseline.rawSha256.slice(0, 12)}…\`). Profile: macOS, Ntilde ${inventory.stockBaseline.target.version} (identity \`${inventory.stockBaseline.identity}\`, operator supplied), no outer terminal or mux, default settings.`,
-        'The stock collector reports `suiteComplete=false` in every run.', '',
-        '## Benchmark ids', '',
-        '| Id | Stock | Pinned | Effect | Layers | Suites | Divergence |', '|---|---|---|---|---|---|---|');
+    const { stockBaseline } = inventory;
+    const rawDigest = `${stockBaseline.rawSha256.slice(0, 12)}…`;
+    lines.push('', `The baseline run itself is retained as a case-id to outcome map in [${code(stockBaselineFile)}](${stockBaselineFile}); its raw output is git-ignored and not in the repository (${code(rawDigest)}). Profile: macOS, Ntilde ${stockBaseline.target.version} (identity ${code(stockBaseline.identity)}, operator supplied), no outer terminal or mux, default settings.`,
+        'The stock collector reports `suiteComplete=false` in every run.', '');
+    return lines;
+}
+
+function benchmarkSection(inventory) {
+    const lines = ['## Benchmark ids', '', '| Id | Stock | Pinned | Effect | Layers | Suites | Divergence |', '|---|---|---|---|---|---|---|'];
     for (const row of inventory.benchmark) {
         const layers = [...new Set(row.claims.flatMap(claim => claim.measuredLayers))].join(' + ');
-        const divergence = row.claims.filter(claim => claim.divergence).map(claim => `${claim.suite}: ${claim.divergence.kind}${claim.divergence.recordedInReport ? '' : ' (derived)'}`).join('; ') || '-';
+        const divergence = row.claims.filter(claim => claim.divergence).map(claim => {
+            const derived = claim.divergence.recordedInReport ? '' : ' (derived)';
+            return `${claim.suite}: ${claim.divergence.kind}${derived}`;
+        }).join('; ') || '-';
         const pinned = row.pinned.byClaim.length > 1 ? row.pinned.byClaim.map(entry => `${entry.suite}=${entry.verdict}`).join(', ') : row.pinned.best;
-        push(`| \`${row.id}\` | ${row.stockOutcome} | ${pinned} | ${row.effect.verdict} | ${layers} | ${row.claims.map(claim => claim.suite).join(', ')} | ${divergence} |`);
+        lines.push(`| ${code(row.id)} | ${row.stockOutcome} | ${pinned} | ${row.effect.verdict} | ${layers} | ${row.claims.map(claim => claim.suite).join(', ')} | ${divergence} |`);
     }
-    push('', '## Ntilde-specific findings (not benchmark ids)', '');
+    return lines;
+}
+
+function findingsSection(inventory) {
+    const lines = ['', '## Ntilde-specific findings (not benchmark ids)', ''];
     for (const finding of inventory.findings) {
-        push(`- \`${finding.suite}\` (${finding.caseIds.length} cases, contracts v${finding.contractsVersion}, rederivation ${finding.rederivation.status}): ${finding.note} Layer: ${finding.measuredLayer}.`);
+        lines.push(`- ${code(finding.suite)} (${finding.caseIds.length} cases, contracts v${finding.contractsVersion}, rederivation ${finding.rederivation.status}): ${finding.note} Layer: ${finding.measuredLayer}.`);
     }
-    push('', 'Controls and aggregate summaries inside each publication are retained in their journals and are not benchmark ids; they are not counted here.', '',
+    lines.push('', 'Controls and aggregate summaries inside each publication are retained in their journals and are not benchmark ids; they are not counted here.', '',
         '## Guards', '',
         '`assertInventory` (run on every generation and by `scripts/terminfo/qualification-inventory.test.mjs`) refuses: a benchmark id listed twice or claimed twice by one suite; a retained report whose case ids differ from the live contract (lost or added case); a claim whose id is not a stock-inconclusive case of the pinned baseline; an Ntilde finding or the `cursor.reverse-wrap` diagnostic among benchmark ids; a pinned/effect difference without a recorded divergence; a qualified claim whose suite was not rederived; and recorded totals that differ from the recomputed ones.', '');
-    return lines.join('\n');
+    return lines;
+}
+
+/** The readable summary. Generated, never edited by hand. */
+export function renderSummary(inventory) {
+    const pinnedHash = `${short(inventory.pinned.bundleSha256)}…`;
+    const head = ['# Terminfo qualification inventory (2026-11-09)', '',
+        'Generated by `node scripts/terminfo-inventory.mjs --write --rederive` from the merged contract modules and the retained publications; do not edit by hand.',
+        'Machine-readable form: [`2026-11-09-qualification-inventory.json`](2026-11-09-qualification-inventory.json). It consolidates the evidence already published; it adds no measurement and rewrites no grade.', '',
+        `Pinned collector: ${code(inventory.pinned.package)}, bundle SHA-256 ${code(pinnedHash)}, probeHash ${code(inventory.pinned.probeHash)}.`, ''];
+    return [...head, ...totalsSection(inventory), ...suitesSection(inventory), ...stockSection(inventory), ...benchmarkSection(inventory), ...findingsSection(inventory)].join('\n');
 }
 
 export const inventoryPaths = (root = defaultQaRoot) => ({ json: join(root, inventoryFiles.json), markdown: join(root, inventoryFiles.markdown) });

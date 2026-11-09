@@ -156,7 +156,7 @@ class PlanBuilder {
  */
 export function splitTrailingNumber(text) {
     let start = text.length;
-    while (start > 0 && text.charCodeAt(start - 1) >= 48 && text.charCodeAt(start - 1) <= 57) start--;
+    while (start > 0 && text.codePointAt(start - 1) >= 48 && text.codePointAt(start - 1) <= 57) start--;
     if (start === text.length) return null;
     const prefix = text.slice(0, start);
     if (/[\n\r\u2028\u2029]/.test(prefix)) return null;
