@@ -24,7 +24,7 @@ import { charEditContracts } from './char-edit-contracts.mjs';
 import { eraseDisplayContracts } from './erase-display-contracts.mjs';
 import { lineEditContracts } from './line-edit-contracts.mjs';
 import { charsetsContracts } from './charsets-contracts.mjs';
-import { scrollbackContracts } from './scrollback-contracts.mjs';
+import { scrollbackCaseIds, scrollbackDecidingIds } from './scrollback-contracts.mjs';
 
 const dir = new URL('../../docs/qa/terminfo/2026-11-09-saved-reset/', import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
@@ -170,10 +170,15 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.notEqual(summary.stockCollectorRunId, summary.ownedRunId);
     // The predecessor inventory is derived from the merged contracts, not assumed.
     const expected = new Set([...asciiSgrContracts, ...sgrColorsContracts, ...sgrRgbContracts, ...sgrAttrsContracts, ...sgrPaletteContracts,
-        ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts, ...eraseLineContracts, ...charEditContracts, ...eraseDisplayContracts, ...lineEditContracts, ...charsetsContracts, ...scrollbackContracts].map(contract => contract.caseId));
+        ...sgrTruecolorContracts, ...sgrUnderlineContracts, ...sgrUnderlineColorContracts, ...sgrResetContracts, ...sgrClosureContracts, ...eraseLineContracts,
+        ...charEditContracts, ...eraseDisplayContracts, ...lineEditContracts, ...charsetsContracts].map(contract => contract.caseId).concat(scrollbackCaseIds));
     const unique = new Set(Object.values(summary.sameRun).flatMap(suite => suite.cases.map(item => item.caseId)));
     assert.deepEqual([...unique].sort(), [...expected].sort());
-    for (const suite of Object.values(summary.sameRun)) assert.ok(suite.cases.every(item => item.outcome === 'supported'));
+    for (const [name, suite] of Object.entries(summary.sameRun)) {
+        // The scrolling/history suite keeps its own pinned-inconclusive cases; every other predecessor case is supported.
+        if (name === 'scrollback') assert.ok(suite.cases.every(item => (scrollbackDecidingIds.includes(item.caseId) ? item.outcome === 'supported' : true)));
+        else assert.ok(suite.cases.every(item => item.outcome === 'supported'), name);
+    }
     assert.ok(!ids.some(id => unique.has(id)), 'the five new cases are counted separately');
     assert.equal(summary.truecolorFinding.cases.length, 10);
     assert.ok(summary.truecolorFinding.cases.every(item => item.caseId.startsWith('finding.truecolor-literal.') && item.outcome === 'supported'));
@@ -202,9 +207,9 @@ test('prior publications still rederive beside this batch and the attempt record
     assert.equal(earlier.receipt.schemaVersion, 30);
     assert.equal(earlier.receipt.savedResetEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 4);
-    assert.equal(attempts[3].runId, context.runId);
-    for (const attempt of attempts.slice(0, 3)) assert.notEqual(attempt.runId, context.runId);
-    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, true, true]);
+    assert.equal(attempts.length, 5);
+    assert.equal(attempts[4].runId, context.runId);
+    for (const attempt of attempts.slice(0, 4)) assert.notEqual(attempt.runId, context.runId);
+    assert.deepEqual(attempts.map(attempt => attempt.receiptCompleted), [true, true, true, true, true]);
     assert.deepEqual(Object.values(attempts[0].verdicts), ['supported', 'inconclusive', 'inconclusive', 'supported', 'supported']);
 });

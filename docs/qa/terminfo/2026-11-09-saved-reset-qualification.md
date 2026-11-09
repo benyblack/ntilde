@@ -20,7 +20,7 @@ so an upstream change that gave one a verdict would be refused. In the stock run
 
 ## Method
 
-Sixteenth digest-checked extension (derived over the line-editing one), contracts v1, suite `ntilde-owned-saved-reset-graded-v1`, prefix `svrs`, nonce `NTILDE_SR_`. The harness runs inside the
+Eighteenth digest-checked extension (derived over the scrolling/history one), contracts v1, suite `ntilde-owned-saved-reset-graded-v1`, prefix `svrs`, nonce `NTILDE_SR_`. The harness runs inside the
 alternate screen, where a nested `ESC[?1049h` is a no-op and would void the pinned exit fixture, so every group starts from a bank-normalizing reset (no RIS) that
 leaves the **main** screen active with both banks blank. Pinned bytes are fed exactly, one write each, with a journaled read between pinned writes; the pinned
 probe runs over those screens and the parent re-executes it. Only the active screen is read (cells, stored attributes, cursor, active-buffer flag, margins, mode
@@ -35,10 +35,10 @@ no-reset control showing the SGR pen persists. Unsupported needs valid controls 
 
 ## Measurement
 
-Scripts `5201cad906ca694366950173b693696c1d221f7a` (committed source: the merge of main with the character-editing, erase-in-display and line-editing layers, plus two Codex-review fixes); App source unchanged from main `4e32f6d9` (sidecar `saved-reset` built there; none of the merged layers changed an App file). Run
-`a38dbcebb8390d33f6ef4dc97a689e57`, receipt schema 29, source policy v23 (inventory v30, 193 files), default theme, 40x140.
+Scripts `6edc9ea725b5b1278dd1ac163db39c61a21de7b3` (committed source: the merge of main with the character-editing, erase-in-display, line-editing, charsets and scrolling/history layers, plus three Codex-review fixes); App source unchanged from main `4e32f6d9` (sidecar `saved-reset` built there; none of the merged layers changed an App file). Run
+`c25be2bc2c701f35517dec934ccefee6`, receipt schema 31, source policy v25 (inventory v32, 204 files), default theme, 40x140.
 
-**Preserved attempts** (all in the summary, with run ids and script revisions; every case graded identically in each): (1) `2c4b2603…` (scripts `9ac95942`, receipt 26, policy v20), superseded when main merged the character-editing layer; (2) `91849fd9…` (scripts `2d22f91b`, receipt 27), superseded when Codex found the full-tuple SGR reset control did not validate unrelated state; (3) `fd0b4dc0…` (scripts `793b1937`, receipt 27), superseded when a second Codex review required every attribute of the full-style control on X and main merged the erase-in-display and line-editing layers (restacked as the sixteenth extension).
+**Preserved attempts** (all in the summary, with run ids and script revisions; every case graded identically in each): (1) `2c4b2603…` (scripts `9ac95942`, receipt 26, policy v20), superseded when main merged the character-editing layer; (2) `91849fd9…` (scripts `2d22f91b`, receipt 27), superseded when Codex found the full-tuple SGR reset control did not validate unrelated state; (3) `fd0b4dc0…` (scripts `793b1937`, receipt 27), superseded when a second Codex review required every attribute of the full-style control on X and main merged erase-in-display and line-editing; (4) `a38dbceb…` (scripts `5201cad9`, receipt 29, policy v23), superseded when a third Codex review found the stale-save and styled exit controls did not validate quiet state and main merged charsets and scrolling/history.
 
 | Case | Pinned (parent replay + live pinned code) | Effect contract | Divergence |
 |---|---|---|---|
