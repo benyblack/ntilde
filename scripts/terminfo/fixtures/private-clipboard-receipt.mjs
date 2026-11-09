@@ -320,6 +320,7 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'erln-run.json', runSha256: hash(readFileSync(join(output, 'erln-run.json'))),
                 adapterBundleSha256: hash(eraseLineBytes), contractsVersion: eraseLineContractsVersion,
                 counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
+<<<<<<< HEAD
             // Policy v20 always carries the layered scrolling/history suffix as well.
             const { syntheticScrollbackEvidence } = await import('./scrollback-evidence.mjs');
             const { buildScrollbackGradingReport } = await import('../scrollback-grading.mjs');
@@ -340,6 +341,28 @@ export async function privateClipboardReceiptFixture(action) {
                 runFile: 'scrl-run.json', runSha256: hash(readFileSync(join(output, 'scrl-run.json'))),
                 adapterBundleSha256: hash(scrollbackBytes), contractsVersion: scrollbackContractsVersion,
                 counts: { supported: 9 }, provisionalUntil: 'cell-receipt.json' };
+=======
+            // Policy v20 always carries the layered character-editing suffix as well.
+            const { syntheticCharEditEvidence } = await import('./char-edit-evidence.mjs');
+            const { buildCharEditGradingReport } = await import('../char-edit-grading.mjs');
+            const { adaptCharEditCollector, charEditAdapterId } = await import('../char-edit-grading-collector.mjs');
+            const { charEditSuiteId, charEditContractsVersion } = await import('../char-edit-contracts.mjs');
+            const charEditBytes = Buffer.from(adaptCharEditCollector(eraseLineBytes.toString()));
+            const charEdit = syntheticCharEditEvidence(context.runId, hash(charEditBytes));
+            charEdit.adapter = { id: charEditAdapterId, derivedFromAdapterId: eraseLineAdapterId,
+                bundleSha256: hash(charEditBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const charEditReport = buildCharEditGradingReport(charEdit.frames, charEdit.run, context.runId, charEdit.adapter);
+            write('ched-observations.json', charEditReport);
+            write('ched-run.json', charEdit.run);
+            writeFileSync(join(output, 'ched-snapshots.jsonl'), charEdit.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-ched.mjs'), charEditBytes);
+            Object.assign(context, { charEditAdapterId, charEditSuiteId, charEditBundleSha256: hash(charEditBytes), charEditContractsVersion });
+            evidence.charEditEvidence = { runId: context.runId, suiteId: charEditSuiteId,
+                file: 'ched-observations.json', sha256: hash(readFileSync(join(output, 'ched-observations.json'))),
+                runFile: 'ched-run.json', runSha256: hash(readFileSync(join(output, 'ched-run.json'))),
+                adapterBundleSha256: hash(charEditBytes), contractsVersion: charEditContractsVersion,
+                counts: { supported: 3 }, provisionalUntil: 'cell-receipt.json' };
+>>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

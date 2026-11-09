@@ -4,7 +4,11 @@ import { privateClipboardReceiptFixture } from './fixtures/private-clipboard-rec
 
 test('schema12 rederives the complete private suffix and preserves every original sixteen-suite binding and negative', () => privateClipboardReceiptFixture(f => {
     const receipt = f.finish(); assert.equal(receipt.schemaVersion, 26);
+<<<<<<< HEAD
     for (const key of Object.keys(f.evidence).filter(key => !['privateClipboardEvidence', 'gradingEvidence', 'sgrColorsEvidence', 'sgrRgbEvidence', 'sgrAttrsEvidence', 'sgrPaletteEvidence', 'sgrTruecolorEvidence', 'truecolorFindingEvidence', 'sgrUnderlineEvidence', 'sgrUnderlineColorEvidence', 'underlineResolvedEvidence', 'sgrResetEvidence', 'sgrClosureEvidence', 'eraseLineEvidence', 'scrollbackEvidence'].includes(key))) assert.deepEqual(receipt[key], f.old[key]);
+=======
+    for (const key of Object.keys(f.evidence).filter(key => !['privateClipboardEvidence', 'gradingEvidence', 'sgrColorsEvidence', 'sgrRgbEvidence', 'sgrAttrsEvidence', 'sgrPaletteEvidence', 'sgrTruecolorEvidence', 'truecolorFindingEvidence', 'sgrUnderlineEvidence', 'sgrUnderlineColorEvidence', 'underlineResolvedEvidence', 'sgrResetEvidence', 'sgrClosureEvidence', 'eraseLineEvidence', 'charEditEvidence'].includes(key))) assert.deepEqual(receipt[key], f.old[key]);
+>>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
     assert.deepEqual(f.report.observations.map(value => value.originalPass), [false, true, false]);
     assert.equal(f.report.frames.length, 22); assert.equal(f.report.controller.events.at(-1).request.operation, 'close');
 }));

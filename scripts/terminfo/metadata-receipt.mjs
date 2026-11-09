@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+<<<<<<< HEAD
 import { capturedV8SourceFiles, legacyV8SourceFiles, capturedV8SourcePolicy, capturedV9SourceFiles, capturedV10SourceFiles, capturedV11SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, assertRetainedSourceClosure } from './owned-sources.mjs';
+=======
+import { capturedV8SourceFiles, legacyV8SourceFiles, capturedV8SourcePolicy, capturedV9SourceFiles, capturedV10SourceFiles, capturedV11SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, capturedV26SourceFiles, capturedV27SourceFiles, assertRetainedSourceClosure } from './owned-sources.mjs';
+>>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
 import { buildMetadataReport } from './metadata.mjs';
 import { metadataSuiteId, ownedMetadataPolicy } from './metadata-cases.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';

@@ -1,0 +1,1733 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-char-edit-graded-v1",
+  "runId": "df238255441c8fa924a18a452877d0a9",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-char-edit-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-erase-line-grading-v1",
+    "bundleSha256": "331c31d40d79aefb61f650e8a4cfa91e01b81053539b4af02ced3f1f73a8f28a",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 character-editing termless criteria (editing.insert-chars with the explicit-1 ICH spelling, editing.delete-chars with the explicit-1 DCH spelling and editing.repeat-char with REP count 3) replayed on a disposable App and graded from parent-journaled readScreen stored cells, the cursor and stored attribute details, with controls for the unmodified seed (no-op), every other count spelling (omitted, explicit 0, 2 and a huge count for ICH/DCH; omitted, 0, 1 and 5 for REP), a wide-row control for unaffected rows and the whole-row shift, a right-edge control (truncation and exposed blanks), REP after a fence barrier (ECMA-48 undefined) as a labeled observation, and an attribute control (moved cells keep their attributes; created blank cells and repeated cells observed against a same-pen reference, not required). REP sends the graphic and the repeat in one fenced write because the fence barrier is itself a control function; the pinned pre-REP reads come from a separate group ending at the graphic. Stored ASCII state only: the pinned pixel/query paths never measure cells and are not qualified; no Unicode, wide-cell or combining-character editing; no stock grades.",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 47,
+  "cases": [
+    {
+      "caseId": "editing.insert-chars",
+      "pinnedCriterion": "row 0 of ABCDEZQH with the cursor at column 2: ICH `ESC[1@` inserts one blank at column 2 and shifts the suffix right (cells 3..7 read CDEZQ); prefix AB intact",
+      "pinnedFeeds": [
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[1@"
+      ],
+      "terminalFixture": {
+        "demand": "one blank inserted at the cursor, suffix shifted right, truncation at the screen edge",
+        "minimum": {
+          "rows": 1,
+          "cols": 5
+        },
+        "note": "upstream pixel/query path writes different bytes and ends in a cursor-position query that never measures cells: it carries no verdict and is not qualified"
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[0@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[2@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[999@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2K\u001b[999C\u001b[2DWXY\u001b[2D",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABC\u001b[1mDE\u001b[0mZQH\u001b[1;3H\u001b[44m",
+        "\u001b[1@",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          137
+        ],
+        [
+          0,
+          137
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "reverseVideo": false,
+        "pinnedSequence": "\u001b[1@",
+        "initial": {
+          "ink": 0,
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        "seed": {
+          "text": [
+            "ABCDEZQH____"
+          ],
+          "cursor": [
+            0,
+            8
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B",
+            "0,2,C",
+            "0,3,D",
+            "0,4,E",
+            "0,5,Z",
+            "0,6,Q",
+            "0,7,H"
+          ]
+        },
+        "pinned": {
+          "text": [
+            "AB_CDEZQH___"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B",
+            "0,3,C",
+            "0,4,D",
+            "0,5,E",
+            "0,6,Z",
+            "0,7,Q",
+            "0,8,H"
+          ]
+        },
+        "spellingControls": {
+          "policy": "observed, not graded: separate spellings of the same operation, kept distinct from the pinned spelling",
+          "omitted": {
+            "sequence": "\u001b[@",
+            "count": 1,
+            "text": [
+              "AB_CDEZQH___"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,3,C",
+              "0,4,D",
+              "0,5,E",
+              "0,6,Z",
+              "0,7,Q",
+              "0,8,H"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": true
+          },
+          "explicit0": {
+            "sequence": "\u001b[0@",
+            "count": 1,
+            "text": [
+              "AB_CDEZQH___"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,3,C",
+              "0,4,D",
+              "0,5,E",
+              "0,6,Z",
+              "0,7,Q",
+              "0,8,H"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": true
+          },
+          "explicit2": {
+            "sequence": "\u001b[2@",
+            "count": 2,
+            "text": [
+              "AB__CDEZQH__"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,4,C",
+              "0,5,D",
+              "0,6,E",
+              "0,7,Z",
+              "0,8,Q",
+              "0,9,H"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit999": {
+            "sequence": "\u001b[999@",
+            "count": 999,
+            "text": [
+              "AB__________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          }
+        },
+        "wideRow": {
+          "policy": "unaffected rows and columns: ten-column middle row between two full rows",
+          "before": {
+            "text": [
+              "ABOVE-ROW!__",
+              "ABCDEFGHIJ__",
+              "BELOW-ROW!__"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "1,2,C",
+              "1,3,D",
+              "1,4,E",
+              "1,5,F",
+              "1,6,G",
+              "1,7,H",
+              "1,8,I",
+              "1,9,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          },
+          "after": {
+            "text": [
+              "ABOVE-ROW!__",
+              "AB_CDEFGHIJ_",
+              "BELOW-ROW!__"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "1,3,C",
+              "1,4,D",
+              "1,5,E",
+              "1,6,F",
+              "1,7,G",
+              "1,8,H",
+              "1,9,I",
+              "1,10,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          }
+        },
+        "setup": {
+          "cursor": {
+            "text": [
+              "ABCDEZQH____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,C",
+              "0,3,D",
+              "0,4,E",
+              "0,5,Z",
+              "0,6,Q",
+              "0,7,H"
+            ]
+          }
+        },
+        "rightEdge": {
+          "policy": "the last three columns hold WXY with the cursor on W: ICH truncates at the edge, DCH exposes a blank at it",
+          "before": {
+            "tail": "___WXY",
+            "cursor": [
+              0,
+              137
+            ],
+            "ink": [
+              "0,137,W",
+              "0,138,X",
+              "0,139,Y"
+            ]
+          },
+          "after": {
+            "tail": "____WX",
+            "cursor": [
+              0,
+              137
+            ],
+            "ink": [
+              "0,138,W",
+              "0,139,X"
+            ]
+          }
+        },
+        "attributes": {
+          "policy": "moved cells keep their stored tuple (D and E bold; required); blank cells created by the edit are observed against a same-pen reference, not required",
+          "before": {
+            "text": [
+              "ABCDEZQH____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,C",
+              {
+                "row": 0,
+                "col": 3,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 4,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              "0,5,Z",
+              "0,6,Q",
+              "0,7,H"
+            ]
+          },
+          "after": {
+            "text": [
+              "AB_CDEZQH___"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              {
+                "row": 0,
+                "col": 2,
+                "char": " ",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              "0,3,C",
+              {
+                "row": 0,
+                "col": 4,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 5,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              "0,6,Z",
+              "0,7,Q",
+              "0,8,H"
+            ]
+          },
+          "penReference": {
+            "text": [
+              "X___________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "movedKeepAttributes": true,
+          "createdBlankBackground": "created cells carry the current background",
+          "createdBlankBackgroundDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "first": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
+        }
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\" \",\"C\",\"D\",\"E\",\"Z\",\"Q\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "ICH inserts a blank cell at column 3 and shifts measured text right; prefix stays intact",
+            "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\" \",\"C\",\"D\",\"E\",\"Z\",\"Q\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored ASCII cells only: exact edited and retained characters across the whole row, neutral stored attributes for retained and moved text, the cursor and unaffected rows/columns; attributes of newly created blank cells (ICH, DCH) and of repeated cells (REP) are observed against a same-pen reference, not required; no Unicode, wide-cell or combining-character editing and no pixels are claimed"
+      }
+    },
+    {
+      "caseId": "editing.delete-chars",
+      "pinnedCriterion": "row 0 of ABCDEZQH with the cursor at column 2: DCH `ESC[1P` removes the cell at column 2 and shifts the suffix left (cells 2..6 read DEZQH); prefix AB intact",
+      "pinnedFeeds": [
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[1P"
+      ],
+      "terminalFixture": {
+        "demand": "cell at the cursor removed, suffix shifted left, blank exposed at the screen edge",
+        "minimum": {
+          "rows": 1,
+          "cols": 5
+        },
+        "note": "upstream pixel/query path writes different bytes and ends in a cursor-position query that never measures cells: it carries no verdict and is not qualified"
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[0P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[2P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABCDEZQH",
+        "\u001b[1;3H",
+        "\u001b[999P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2K\u001b[999C\u001b[2DWXY\u001b[2D",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HABCDEFGHIJ\u001b[3;1HBELOW-ROW!\u001b[2;3H",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KABC\u001b[1mDE\u001b[0mZQH\u001b[1;3H\u001b[44m",
+        "\u001b[1P",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          137
+        ],
+        [
+          0,
+          137
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "reverseVideo": false,
+        "pinnedSequence": "\u001b[1P",
+        "initial": {
+          "ink": 0,
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        "seed": {
+          "text": [
+            "ABCDEZQH____"
+          ],
+          "cursor": [
+            0,
+            8
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B",
+            "0,2,C",
+            "0,3,D",
+            "0,4,E",
+            "0,5,Z",
+            "0,6,Q",
+            "0,7,H"
+          ]
+        },
+        "pinned": {
+          "text": [
+            "ABDEZQH_____"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,B",
+            "0,2,D",
+            "0,3,E",
+            "0,4,Z",
+            "0,5,Q",
+            "0,6,H"
+          ]
+        },
+        "spellingControls": {
+          "policy": "observed, not graded: separate spellings of the same operation, kept distinct from the pinned spelling",
+          "omitted": {
+            "sequence": "\u001b[P",
+            "count": 1,
+            "text": [
+              "ABDEZQH_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,D",
+              "0,3,E",
+              "0,4,Z",
+              "0,5,Q",
+              "0,6,H"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": true
+          },
+          "explicit0": {
+            "sequence": "\u001b[0P",
+            "count": 1,
+            "text": [
+              "ABDEZQH_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,D",
+              "0,3,E",
+              "0,4,Z",
+              "0,5,Q",
+              "0,6,H"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": true
+          },
+          "explicit2": {
+            "sequence": "\u001b[2P",
+            "count": 2,
+            "text": [
+              "ABEZQH______"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,E",
+              "0,3,Z",
+              "0,4,Q",
+              "0,5,H"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit999": {
+            "sequence": "\u001b[999P",
+            "count": 999,
+            "text": [
+              "AB__________"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          }
+        },
+        "wideRow": {
+          "policy": "unaffected rows and columns: ten-column middle row between two full rows",
+          "before": {
+            "text": [
+              "ABOVE-ROW!__",
+              "ABCDEFGHIJ__",
+              "BELOW-ROW!__"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "1,2,C",
+              "1,3,D",
+              "1,4,E",
+              "1,5,F",
+              "1,6,G",
+              "1,7,H",
+              "1,8,I",
+              "1,9,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          },
+          "after": {
+            "text": [
+              "ABOVE-ROW!__",
+              "ABDEFGHIJ___",
+              "BELOW-ROW!__"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,B",
+              "1,2,D",
+              "1,3,E",
+              "1,4,F",
+              "1,5,G",
+              "1,6,H",
+              "1,7,I",
+              "1,8,J",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          }
+        },
+        "setup": {
+          "cursor": {
+            "text": [
+              "ABCDEZQH____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,C",
+              "0,3,D",
+              "0,4,E",
+              "0,5,Z",
+              "0,6,Q",
+              "0,7,H"
+            ]
+          }
+        },
+        "rightEdge": {
+          "policy": "the last three columns hold WXY with the cursor on W: ICH truncates at the edge, DCH exposes a blank at it",
+          "before": {
+            "tail": "___WXY",
+            "cursor": [
+              0,
+              137
+            ],
+            "ink": [
+              "0,137,W",
+              "0,138,X",
+              "0,139,Y"
+            ]
+          },
+          "after": {
+            "tail": "___XY_",
+            "cursor": [
+              0,
+              137
+            ],
+            "ink": [
+              "0,137,X",
+              "0,138,Y"
+            ]
+          }
+        },
+        "attributes": {
+          "policy": "moved cells keep their stored tuple (D and E bold; required); blank cells created by the edit are observed against a same-pen reference, not required",
+          "before": {
+            "text": [
+              "ABCDEZQH____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,C",
+              {
+                "row": 0,
+                "col": 3,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 4,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              "0,5,Z",
+              "0,6,Q",
+              "0,7,H"
+            ]
+          },
+          "after": {
+            "text": [
+              "ABDEZQH_____"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              {
+                "row": 0,
+                "col": 2,
+                "char": "D",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 3,
+                "char": "E",
+                "flags": 769,
+                "fgIndex": -1,
+                "bgIndex": -1,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              "0,4,Z",
+              "0,5,Q",
+              "0,6,H",
+              {
+                "row": 0,
+                "col": 139,
+                "char": " ",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "penReference": {
+            "text": [
+              "X___________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33024,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "movedKeepAttributes": true,
+          "createdBlankBackground": "created cells carry the current background",
+          "createdBlankBackgroundDetail": {
+            "pen": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            },
+            "first": {
+              "bgIndex": 4,
+              "backgroundArgb": null,
+              "resolved": {
+                "r": 0,
+                "g": 0,
+                "b": 238
+              }
+            }
+          }
+        }
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\"D\",\"E\",\"Z\",\"Q\",\"H\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DCH deletes the cell at column 3 and shifts measured text left; prefix stays intact",
+            "observed": "{\"before\":[\"A\",\"B\",\"C\",\"D\",\"E\",\"Z\",\"Q\",\"H\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"B\",\"D\",\"E\",\"Z\",\"Q\",\"H\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored ASCII cells only: exact edited and retained characters across the whole row, neutral stored attributes for retained and moved text, the cursor and unaffected rows/columns; attributes of newly created blank cells (ICH, DCH) and of repeated cells (REP) are observed against a same-pen reference, not required; no Unicode, wide-cell or combining-character editing and no pixels are claimed"
+      }
+    },
+    {
+      "caseId": "editing.repeat-char",
+      "pinnedCriterion": "row 0 AX   Z with the cursor at column 1: X is written and REP `ESC[3b` repeats it into cells 2..4 (cells 1..4 read XXXX); flank A and Z intact",
+      "pinnedFeeds": [
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X",
+        "\u001b[3b"
+      ],
+      "terminalFixture": {
+        "demand": "preceding X repeated exactly three times, flank cells unchanged, cursor after the last repeat",
+        "minimum": {
+          "rows": 1,
+          "cols": 6
+        },
+        "note": "upstream pixel/query path writes different bytes and ends in a cursor-position query that never measures cells: it carries no verdict and is not qualified"
+      },
+      "feeds": [
+        "\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X",
+        "\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[0b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[1b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z",
+        "\u001b[1;2H",
+        "X\u001b[5b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1HABOVE-ROW!\u001b[2;1HAX   ZQRST\u001b[3;1HBELOW-ROW!\u001b[2;2H",
+        "X\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1;1H\u001b[2KAX   Z\u001b[1;2H\u001b[1m\u001b[44m",
+        "X\u001b[3b",
+        "\u001b[0m\u001b[2J\u001b[H",
+        "\u001b[1m\u001b[44mX"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          5
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "reverseVideo": false,
+        "pinnedSequence": "X\u001b[3b",
+        "initial": {
+          "ink": 0,
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        "seed": {
+          "text": [
+            "AX___Z______"
+          ],
+          "cursor": [
+            0,
+            6
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,X",
+            "0,5,Z"
+          ]
+        },
+        "pinned": {
+          "text": [
+            "AXXXXZ______"
+          ],
+          "cursor": [
+            0,
+            5
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,X",
+            "0,2,X",
+            "0,3,X",
+            "0,4,X",
+            "0,5,Z"
+          ]
+        },
+        "spellingControls": {
+          "policy": "observed, not graded: separate spellings of the same operation, kept distinct from the pinned spelling",
+          "omitted": {
+            "sequence": "X\u001b[b",
+            "count": 1,
+            "text": [
+              "AXX__Z______"
+            ],
+            "cursor": [
+              0,
+              3
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,X",
+              "0,2,X",
+              "0,5,Z"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit0": {
+            "sequence": "X\u001b[0b",
+            "count": 1,
+            "text": [
+              "AXX__Z______"
+            ],
+            "cursor": [
+              0,
+              3
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,X",
+              "0,2,X",
+              "0,5,Z"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit1": {
+            "sequence": "X\u001b[1b",
+            "count": 1,
+            "text": [
+              "AXX__Z______"
+            ],
+            "cursor": [
+              0,
+              3
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,X",
+              "0,2,X",
+              "0,5,Z"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          },
+          "explicit5": {
+            "sequence": "X\u001b[5b",
+            "count": 5,
+            "text": [
+              "AXXXXXX_____"
+            ],
+            "cursor": [
+              0,
+              7
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,X",
+              "0,2,X",
+              "0,3,X",
+              "0,4,X",
+              "0,5,X",
+              "0,6,X"
+            ],
+            "matchesEcma48": true,
+            "sameAsPinned": false
+          }
+        },
+        "wideRow": {
+          "policy": "unaffected rows and columns: ten-column middle row between two full rows",
+          "before": {
+            "text": [
+              "ABOVE-ROW!__",
+              "AX___ZQRST__",
+              "BELOW-ROW!__"
+            ],
+            "cursor": [
+              1,
+              1
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,X",
+              "1,5,Z",
+              "1,6,Q",
+              "1,7,R",
+              "1,8,S",
+              "1,9,T",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          },
+          "after": {
+            "text": [
+              "ABOVE-ROW!__",
+              "AXXXXZQRST__",
+              "BELOW-ROW!__"
+            ],
+            "cursor": [
+              1,
+              5
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,B",
+              "0,2,O",
+              "0,3,V",
+              "0,4,E",
+              "0,5,-",
+              "0,6,R",
+              "0,7,O",
+              "0,8,W",
+              "0,9,!",
+              "1,0,A",
+              "1,1,X",
+              "1,2,X",
+              "1,3,X",
+              "1,4,X",
+              "1,5,Z",
+              "1,6,Q",
+              "1,7,R",
+              "1,8,S",
+              "1,9,T",
+              "2,0,B",
+              "2,1,E",
+              "2,2,L",
+              "2,3,O",
+              "2,4,W",
+              "2,5,-",
+              "2,6,R",
+              "2,7,O",
+              "2,8,W",
+              "2,9,!"
+            ]
+          }
+        },
+        "setup": {
+          "target": {
+            "text": [
+              "AX___Z______"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,X",
+              "0,5,Z"
+            ]
+          },
+          "before": {
+            "text": [
+              "AX___Z______"
+            ],
+            "cursor": [
+              0,
+              2
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,X",
+              "0,5,Z"
+            ]
+          }
+        },
+        "splitControl": {
+          "policy": "observed, not graded: REP in a separate write after the fence barrier (ECMA-48 8.3.103 leaves it undefined after a control function)",
+          "sequence": "\u001b[3b",
+          "text": [
+            "AX___Z______"
+          ],
+          "cursor": [
+            0,
+            2
+          ],
+          "ink": [
+            "0,0,A",
+            "0,1,X",
+            "0,5,Z"
+          ],
+          "repeats": false
+        },
+        "attributes": {
+          "policy": "flank cells keep neutral attributes (required); whether repeated cells carry the current pen is observed, not required",
+          "before": {
+            "text": [
+              "AX___Z______"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              "0,0,A",
+              "0,1,X",
+              "0,5,Z"
+            ]
+          },
+          "after": {
+            "text": [
+              "AXXXXZ______"
+            ],
+            "cursor": [
+              0,
+              5
+            ],
+            "ink": [
+              "0,0,A",
+              {
+                "row": 0,
+                "col": 1,
+                "char": "X",
+                "flags": 33025,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 2,
+                "char": "X",
+                "flags": 33025,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 3,
+                "char": "X",
+                "flags": 33025,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              {
+                "row": 0,
+                "col": 4,
+                "char": "X",
+                "flags": 33025,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              },
+              "0,5,Z"
+            ]
+          },
+          "penReference": {
+            "text": [
+              "X___________"
+            ],
+            "cursor": [
+              0,
+              1
+            ],
+            "ink": [
+              {
+                "row": 0,
+                "col": 0,
+                "char": "X",
+                "flags": 33025,
+                "fgIndex": -1,
+                "bgIndex": 4,
+                "foregroundArgb": null,
+                "backgroundArgb": null
+              }
+            ]
+          },
+          "flanksNeutral": true,
+          "repeatedCells": "repeated cells carry the current pen attributes",
+          "penStored": {
+            "flags": 33025,
+            "bgIndex": 4,
+            "backgroundArgb": null
+          }
+        }
+      },
+      "colorBinding": {
+        "reverseVideo": false,
+        "themeName": "Default",
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "minimumContrast": 1,
+        "paletteOverrideIndices": [],
+        "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+      },
+      "pinned": {
+        "pass": true,
+        "response": "{\"seed\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"targetPosition\":{\"x\":1,\"y\":0,\"visible\":true},\"before\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"X\",\"X\",\"X\",\"X\",\"Z\"]}",
+        "note": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "REP repeats the immediately preceding X into three target cells without changing flank controls",
+            "observed": "{\"seed\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"targetPosition\":{\"x\":1,\"y\":0,\"visible\":true},\"before\":[\"A\",\"X\",\" \",\" \",\" \",\"Z\"],\"setup\":{\"x\":2,\"y\":0,\"visible\":true},\"after\":[\"A\",\"X\",\"X\",\"X\",\"X\",\"Z\"]}"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-and-resolved-cells",
+        "grading": "pinned-termless-plus-contract-v1",
+        "scope": "stored ASCII cells only: exact edited and retained characters across the whole row, neutral stored attributes for retained and moved text, the cursor and unaffected rows/columns; attributes of newly created blank cells (ICH, DCH) and of repeated cells (REP) are observed against a same-pen reference, not required; no Unicode, wide-cell or combining-character editing and no pixels are claimed"
+      }
+    }
+  ]
+}

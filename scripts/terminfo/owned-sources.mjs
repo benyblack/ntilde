@@ -320,6 +320,7 @@ export const capturedV26SourceFiles = Object.freeze({
     eraseLineReceiptSourceSha256: "erase-line-receipt.mjs",
 });
 
+<<<<<<< HEAD
 // Frozen v27 scrolling/history (the nine pinned scrollback.* cases) grading scope; future experiments must create a distinct policy and map.
 export const capturedV27SourceFiles = Object.freeze({
     ...capturedV26SourceFiles,
@@ -329,6 +330,16 @@ export const capturedV27SourceFiles = Object.freeze({
     scrollbackGradingSourceSha256: "scrollback-grading.mjs",
     scrollbackGradingCollectorSourceSha256: "scrollback-grading-collector.mjs",
     scrollbackReceiptSourceSha256: "scrollback-receipt.mjs",
+=======
+// Frozen v27 character-editing (editing.insert-chars, editing.delete-chars, editing.repeat-char) grading scope; future experiments must create a distinct policy and map.
+export const capturedV27SourceFiles = Object.freeze({
+    ...capturedV26SourceFiles,
+    charEditContractsSourceSha256: "char-edit-contracts.mjs",
+    charEditCollectorSourceSha256: "char-edit-collector.mjs",
+    charEditGradingSourceSha256: "char-edit-grading.mjs",
+    charEditGradingCollectorSourceSha256: "char-edit-grading-collector.mjs",
+    charEditReceiptSourceSha256: "char-edit-receipt.mjs",
+>>>>>>> 6cda7f0b3373c6a52c55af724f3536d2c83de72d
 });
 
 /** Bind the private temporary root, exact v27 inventory and manifest environment pin before trusting any captured source. */
