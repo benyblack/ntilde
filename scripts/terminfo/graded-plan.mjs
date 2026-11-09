@@ -113,17 +113,21 @@ export function requireReplayAgreement(contract, replay, pinned) {
  * Drive every contracted plan serially through the owned fence, journaling
  * each read through the parent observer. Serial awaits are the contract:
  * every write/reply/read must complete before the next write changes state.
+ * Optional `contractsFor(startScreen)`, `bind` and `finish` let a suite measure geometry-dependent fixtures on the main screen;
+ * the defaults keep every earlier suite byte-identical.
  * Returns per-case { feeds, barriers, screens, reads } in contract order and
  * aggregates collection and restoration failures instead of dropping either.
  */
-export async function collectGradedPlans({ contracts, prefix, reset, nonce, fence, owner, planFeeds: feedsOf, planReads: readsOf }) {
+export async function collectGradedPlans({ contracts, contractsFor, prefix, reset, bind, finish, nonce, fence, owner, planFeeds: feedsOf, planReads: readsOf }) {
     const cases = [];
-    await owner(`${prefix}-start`);
+    const started = await owner(`${prefix}-start`);
     let primary, failed = false;
     try {
-        const bindBarrier = await fence.write('\x1b[?1049h' + reset + nonce);
+        // A suite whose fixtures depend on the measured geometry derives its contracts from the observed start screen.
+        const plans = contractsFor ? contractsFor(started.screen) : contracts;
+        const bindBarrier = await fence.write(bind ?? ('\x1b[?1049h' + reset + nonce));
         await owner(`${prefix}-bind`, bindBarrier);
-        for (const contract of contracts) {
+        for (const contract of plans) {
             const feeds = [], barriers = [], reads = [], screens = [];
             for (const step of contract.plan) {
                 if (step.feed) {
@@ -143,7 +147,7 @@ export async function collectGradedPlans({ contracts, prefix, reset, nonce, fenc
     } catch (error) { primary = error; failed = true; }
     let restoreFailed = false, restoreError;
     try {
-        await owner(`${prefix}-finish`, await fence.write(reset + '\x1b[?1049l'));
+        await owner(`${prefix}-finish`, await fence.write(finish ?? (reset + '\x1b[?1049l')));
     } catch (error) { restoreFailed = true; restoreError = error; }
     if (failed && restoreFailed) throw new AggregateError([primary, restoreError], `${prefix} collection and restoration failed.`);
     if (restoreFailed) throw restoreError;

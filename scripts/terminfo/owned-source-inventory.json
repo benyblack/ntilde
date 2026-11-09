@@ -171,5 +171,11 @@
     "eraseLineCollectorSourceSha256": "erase-line-collector.mjs",
     "eraseLineGradingSourceSha256": "erase-line-grading.mjs",
     "eraseLineGradingCollectorSourceSha256": "erase-line-grading-collector.mjs",
-    "eraseLineReceiptSourceSha256": "erase-line-receipt.mjs"
+    "eraseLineReceiptSourceSha256": "erase-line-receipt.mjs",
+    "scrollbackContractsSourceSha256": "scrollback-contracts.mjs",
+    "scrollbackModelSourceSha256": "scrollback-model.mjs",
+    "scrollbackCollectorSourceSha256": "scrollback-collector.mjs",
+    "scrollbackGradingSourceSha256": "scrollback-grading.mjs",
+    "scrollbackGradingCollectorSourceSha256": "scrollback-grading-collector.mjs",
+    "scrollbackReceiptSourceSha256": "scrollback-receipt.mjs"
 }

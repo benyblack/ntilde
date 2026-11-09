@@ -98,11 +98,11 @@ export function buildColorReport(spec, frames, run, runId, adapter, { contractsV
         const observation = spec.observation(contract, screens, frames[0].screen.colorBinding);
         const contractResult = spec.grade(contract, observation, contractsVersion);
         const pinned = recorded.pinned;
-        if (pinned?.probeId !== contract.caseId || pinned.observation?.evidence !== 'parser-state') {
+        if (pinned?.probeId !== contract.caseId || !(spec.pinnedEvidence ?? ['parser-state']).includes(pinned.observation?.evidence)) {
             throw new Error(`Missing pinned ${contract.caseId} grading result.`);
         }
         requirePinnedAgreement(contract, pinned, spec.replayPinned(contract, screens), spec.label);
-        const divergence = reconcile(contract, pinned.observation.outcome, contractResult);
+        const divergence = (spec.reconcile ?? reconcile)(contract, pinned.observation.outcome, contractResult);
         if (replayModule) {
             const replay = replayModule[spec.replayFn](contract.caseId, spec.recordingContext(contract, screens));
             requireReplayAgreement(contract, replay, pinned);
@@ -119,7 +119,7 @@ export function buildColorReport(spec, frames, run, runId, adapter, { contractsV
             pinned: { pass: pinned.pass, response: pinned.response, note: pinned.note ?? null,
                 observation: pinned.observation, assertions: pinned.assertions ?? null },
             contractResult, ...(divergence ? { divergence } : {}),
-            conclusion: { outcome: contractResult.outcome, evidence: 'owned-stored-and-resolved-cells',
+            conclusion: { outcome: contractResult.outcome, evidence: spec.evidence ?? 'owned-stored-and-resolved-cells',
                 grading: 'pinned-termless-plus-contract-v' + contractsVersion,
                 ...(contractResult.layers ? { layers: contractResult.layers } : {}),
                 ...(contractResult.note ? { note: contractResult.note } : {}),
