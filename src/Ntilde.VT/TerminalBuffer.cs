@@ -371,6 +371,8 @@ namespace Ntilde.VT
             _cursorCol = 0;
             ScrollTop = 0;
             ScrollBottom = rows - 1;
+            LeftMargin = 0;
+            RightMargin = cols - 1;
 
             _savedCursors.Main.Row = _cursorRow;
             _savedCursors.Main.Col = _cursorCol;

@@ -16,6 +16,18 @@ public sealed record BufferStateDto
     [JsonPropertyName("originMode")]
     public required bool OriginMode { get; init; }
 
+    /// <summary>DECLRMM (?69): whether CSI Pl ; Pr s sets the left/right margins.</summary>
+    [JsonPropertyName("leftRightMarginMode")]
+    public required bool LeftRightMarginMode { get; init; }
+
+    /// <summary>Inclusive zero-based left margin (the first column unless DECSLRM narrowed the margins).</summary>
+    [JsonPropertyName("leftMargin")]
+    public required int LeftMargin { get; init; }
+
+    /// <summary>Inclusive zero-based right margin (the last column unless DECSLRM narrowed the margins).</summary>
+    [JsonPropertyName("rightMargin")]
+    public required int RightMargin { get; init; }
+
     [JsonPropertyName("autoWrap")]
     public required bool AutoWrap { get; init; }
 

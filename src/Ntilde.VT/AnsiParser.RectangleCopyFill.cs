@@ -18,10 +18,11 @@ public partial class AnsiParser
         else return;
         ReadOnlySpan<int> borders = csi.Args.Length > 1 ? csi.Args[1..] : default;
         int origin = _buffer.Modes.IsOriginMode ? _buffer.ScrollTop : 0;
+        int columnOrigin = _buffer.Modes.IsOriginMode ? _buffer.LeftMargin : 0; // DECOM offsets columns by the left margin (0 without DECSLRM)
         int top = RectangleCoordinate(borders, 0, 1, _buffer.Rows, origin);
-        int left = RectangleCoordinate(borders, 1, 1, _buffer.Cols, 0);
+        int left = RectangleCoordinate(borders, 1, 1, _buffer.Cols, columnOrigin);
         int bottom = RectangleCoordinate(borders, 2, _buffer.Rows, _buffer.Rows, origin);
-        int right = RectangleCoordinate(borders, 3, _buffer.Cols, _buffer.Cols, 0);
+        int right = RectangleCoordinate(borders, 3, _buffer.Cols, _buffer.Cols, columnOrigin);
         _buffer.FillRectangularArea(fill, left, top, right, bottom);
     }
 
@@ -38,12 +39,13 @@ public partial class AnsiParser
         ReadOnlySpan<int> args = csi.Args;
         if ((args.Length > 4 && args[4] > 1) || (args.Length > 7 && args[7] > 1)) return;
         int origin = _buffer.Modes.IsOriginMode ? _buffer.ScrollTop : 0;
+        int columnOrigin = _buffer.Modes.IsOriginMode ? _buffer.LeftMargin : 0; // DECOM offsets columns by the left margin (0 without DECSLRM)
         int top = RectangleCoordinate(args, 0, 1, _buffer.Rows, origin);
-        int left = RectangleCoordinate(args, 1, 1, _buffer.Cols, 0);
+        int left = RectangleCoordinate(args, 1, 1, _buffer.Cols, columnOrigin);
         int bottom = RectangleCoordinate(args, 2, _buffer.Rows, _buffer.Rows, origin);
-        int right = RectangleCoordinate(args, 3, _buffer.Cols, _buffer.Cols, 0);
+        int right = RectangleCoordinate(args, 3, _buffer.Cols, _buffer.Cols, columnOrigin);
         int destinationTop = RectangleCoordinate(args, 5, 1, _buffer.Rows, origin);
-        int destinationLeft = RectangleCoordinate(args, 6, 1, _buffer.Cols, 0);
+        int destinationLeft = RectangleCoordinate(args, 6, 1, _buffer.Cols, columnOrigin);
         _buffer.CopyRectangularArea(left, top, right, bottom, destinationLeft, destinationTop);
     }
 }

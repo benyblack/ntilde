@@ -24,10 +24,11 @@ public partial class AnsiParser
         if (csi.Leader != '\0' || !csi.Intermediates.SequenceEqual("$") || csi.Args.Length > 4
             || csi.Separators.Contains(':') || _buffer.Rows < 1 || _buffer.Cols < 1) return;
         int origin = _buffer.Modes.IsOriginMode ? _buffer.ScrollTop : 0;
+        int columnOrigin = _buffer.Modes.IsOriginMode ? _buffer.LeftMargin : 0; // DECOM offsets columns by the left margin (0 without DECSLRM)
         int top = RectangleCoordinate(csi.Args, 0, 1, _buffer.Rows, origin);
-        int left = RectangleCoordinate(csi.Args, 1, 1, _buffer.Cols, 0);
+        int left = RectangleCoordinate(csi.Args, 1, 1, _buffer.Cols, columnOrigin);
         int bottom = RectangleCoordinate(csi.Args, 2, _buffer.Rows, _buffer.Rows, origin);
-        int right = RectangleCoordinate(csi.Args, 3, _buffer.Cols, _buffer.Cols, 0);
+        int right = RectangleCoordinate(csi.Args, 3, _buffer.Cols, _buffer.Cols, columnOrigin);
         if (selective) _buffer.SelectiveEraseRectangularArea(left, top, right, bottom);
         else _buffer.EraseRectangularArea(left, top, right, bottom);
     }
@@ -41,17 +42,18 @@ public partial class AnsiParser
 
     /// <summary>
     /// DECCARA (<c>CSI Pt;Pl;Pb;Pr;Ps... $ r</c>) and DECRARA (<c>CSI ... $ t</c>): exact identity only, four plain borders
-    /// followed by the attribute selectors. An omitted selector list is selector 0. Page coordinates; DECOM offsets rows only.
+    /// followed by the attribute selectors. An omitted selector list is selector 0. Page coordinates; DECOM offsets rows by the top margin and columns by the left margin.
     /// </summary>
     private void ChangeAttributesInRectangularArea(in CsiSequence csi, bool reverse)
     {
         if (csi.Leader != '\0' || !csi.Intermediates.SequenceEqual("$") || csi.Separators.Contains(':')
             || _buffer.Rows < 1 || _buffer.Cols < 1) return;
         int origin = _buffer.Modes.IsOriginMode ? _buffer.ScrollTop : 0;
+        int columnOrigin = _buffer.Modes.IsOriginMode ? _buffer.LeftMargin : 0; // DECOM offsets columns by the left margin (0 without DECSLRM)
         int top = RectangleCoordinate(csi.Args, 0, 1, _buffer.Rows, origin);
-        int left = RectangleCoordinate(csi.Args, 1, 1, _buffer.Cols, 0);
+        int left = RectangleCoordinate(csi.Args, 1, 1, _buffer.Cols, columnOrigin);
         int bottom = RectangleCoordinate(csi.Args, 2, _buffer.Rows, _buffer.Rows, origin);
-        int right = RectangleCoordinate(csi.Args, 3, _buffer.Cols, _buffer.Cols, 0);
+        int right = RectangleCoordinate(csi.Args, 3, _buffer.Cols, _buffer.Cols, columnOrigin);
         ReadOnlySpan<int> selectors = csi.Args.Length > 4 ? csi.Args[4..] : [0];
         _buffer.ChangeRectangularAttributes(left, top, right, bottom, selectors, reverse);
     }

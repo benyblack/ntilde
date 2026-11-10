@@ -254,14 +254,21 @@ namespace Ntilde.VT
         /// keyed to pre-shift columns: cells kept <c>HasExtendedText</c> while their strings —
         /// and their hyperlinks — pointed at the wrong columns (issue #164, item 1).
         /// </remarks>
-        public void ShiftRowMetadata(int startCol, int delta, int cols)
+        public void ShiftRowMetadata(int startCol, int delta, int cols) => ShiftRowMetadata(startCol, delta, cols, cols);
+
+        /// <summary>
+        /// Shifts the side-table entries of columns <paramref name="startCol"/>..<paramref name="end"/>-1 by <paramref name="delta"/>,
+        /// dropping those that leave that span; columns at or past <paramref name="end"/> (right of a right margin) stay where they are.
+        /// </summary>
+        public void ShiftRowMetadata(int startCol, int delta, int cols, int end)
         {
             if (delta == 0) return;
-            _extendedText = ShiftMap(_extendedText, startCol, delta, cols);
-            _hyperlinks = ShiftMap(_hyperlinks, startCol, delta, cols);
-            _underlines = ShiftMap(_underlines, startCol, delta, cols);
-            _textSizing = ShiftMap(_textSizing, startCol, delta, cols);
-            _protected = ShiftMap(_protected, startCol, delta, cols);
+            end = Math.Clamp(end, 0, cols);
+            _extendedText = ShiftMap(_extendedText, startCol, delta, end);
+            _hyperlinks = ShiftMap(_hyperlinks, startCol, delta, end);
+            _underlines = ShiftMap(_underlines, startCol, delta, end);
+            _textSizing = ShiftMap(_textSizing, startCol, delta, end);
+            _protected = ShiftMap(_protected, startCol, delta, end);
         }
 
         // Generic over the value type so the extended-text and hyperlink maps share one implementation:
@@ -289,7 +296,7 @@ namespace Ntilde.VT
             {
                 int col = keys[e];
                 int dest = col;
-                if (col >= startCol)
+                if (col >= startCol && col < cols)
                 {
                     dest = col + delta;
 

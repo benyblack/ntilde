@@ -46,6 +46,9 @@ namespace Ntilde.VT
                     IsPendingWrap = _isPendingWrap,
                     ScrollTop = ScrollTop,
                     ScrollBottom = ScrollBottom,
+                    // Written only while DECSLRM narrowed them; absent means the page edges, as every earlier payload read.
+                    LeftMargin = HasHorizontalMargins ? LeftMargin : null,
+                    RightMargin = HasHorizontalMargins ? RightMargin : null,
                     TabStops = (bool[])_tabStops.Clone(),
                     SavedCursorMain = ExportCursor(_savedCursors.Main),
                     SavedCursorAlt = ExportCursor(_savedCursors.Alt),
@@ -190,6 +193,14 @@ namespace Ntilde.VT
                 {
                     ScrollTop = 0;
                     ScrollBottom = Math.Max(0, Rows - 1);
+                }
+
+                // Horizontal margins: the page edges unless the payload carries a valid narrower pair.
+                ResetHorizontalMarginsNoLock();
+                if (snapshot.LeftMargin is int left && snapshot.RightMargin is int right && left >= 0 && right < Cols && left < right)
+                {
+                    LeftMargin = left;
+                    RightMargin = right;
                 }
 
                 ImportCursor(_savedCursors.Main, snapshot.SavedCursorMain);
@@ -863,6 +874,7 @@ namespace Ntilde.VT
             ModifyOtherKeysAlt = modes.ModifyOtherKeys.AltLevel,
             AlternateScrollOverride = modes.AlternateScrollOverride,
             RectangularAttributeExtent = modes.IsRectangularAttributeExtent ? true : null,
+            LeftRightMarginMode = modes.IsLeftRightMarginMode ? true : null,
         };
 
         private static void ImportModes(ModeState target, TerminalModeState source)
@@ -892,6 +904,7 @@ namespace Ntilde.VT
             // The app's choice only; the importing host keeps its own default.
             target.AlternateScrollOverride = source.AlternateScrollOverride;
             target.IsRectangularAttributeExtent = source.RectangularAttributeExtent ?? false;
+            target.IsLeftRightMarginMode = source.LeftRightMarginMode ?? false;
         }
 
         // ── validation ───────────────────────────────────────────────────────────

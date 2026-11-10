@@ -75,6 +75,12 @@ namespace Ntilde.VT
         [JsonPropertyName("pw")] public bool IsPendingWrap { get; set; }
         [JsonPropertyName("sr_top")] public int ScrollTop { get; set; }
         [JsonPropertyName("sr_bottom")] public int ScrollBottom { get; set; }
+
+        /// <summary>DECSLRM left margin, written only while narrower than the page; absent means the first column.</summary>
+        [JsonPropertyName("lr_left"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? LeftMargin { get; set; }
+
+        /// <summary>DECSLRM right margin, written only while narrower than the page; absent means the last column.</summary>
+        [JsonPropertyName("lr_right"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? RightMargin { get; set; }
         [JsonPropertyName("tabs")] public bool[] TabStops { get; set; } = [];
 
         [JsonPropertyName("saved_main")] public TerminalCursorState SavedCursorMain { get; set; } = new();
@@ -391,6 +397,9 @@ namespace Ntilde.VT
         /// which is what every legacy payload read as.
         /// </summary>
         [JsonPropertyName("decsace_rect"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? RectangularAttributeExtent { get; set; }
+
+        /// <summary>DECLRMM (?69). Written only while set; absent means reset, which is what every legacy payload read as.</summary>
+        [JsonPropertyName("declrmm"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? LeftRightMarginMode { get; set; }
     }
 
     /// <summary>Both kitty keyboard flag stacks and which one is live.</summary>

@@ -55,6 +55,8 @@ public sealed class VtCapabilityContractTests
             ["scroll-left"] = () => AssertColumnEdit("\u001b[2 @", "CDEF  ", "IJKL  "),
             ["scroll-right"] = () => AssertColumnEdit("\u001b[2 A", "  ABCD", "  GHIJ"),
             ["rectangle-checksum"] = AssertRectangleChecksum,
+            ["left-right-margin-mode"] = AssertLeftRightMarginMode,
+            ["set-left-right-margins"] = AssertSetLeftRightMargins,
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
@@ -92,6 +94,8 @@ public sealed class VtCapabilityContractTests
             ["scroll-left"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 @",
             ["scroll-right"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 A",
             ["rectangle-checksum"] = "ABCDE\u001b[1;1H\u001b[1;1;1;1;1;5*y",
+            ["left-right-margin-mode"] = "\u001b[?69h\u001b[?69$p",
+            ["set-left-right-margins"] = "\u001b[?69h\u001b[3;5s\u001b[1;4H12345",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
@@ -126,6 +130,46 @@ public sealed class VtCapabilityContractTests
         Assert.Equal(mnemonic, capability.Mnemonic);
         Assert.Equal(contractCase, capability.ContractCase);
         ContractCases[contractCase]();
+    }
+
+    /// <summary>Pins the advertised partial DECLRMM and DECSLRM contracts.</summary>
+    [Theory]
+    [InlineData("DEC:69", "DECLRMM", "left-right-margin-mode")]
+    [InlineData("CSI:s", "DECSLRM", "set-left-right-margins")]
+    public void Partial_margin_catalogue_entries_have_executable_contracts(string key, string mnemonic, string contractCase)
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == key);
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal(mnemonic, capability.Mnemonic);
+        Assert.Equal(contractCase, capability.ContractCase);
+        ContractCases[contractCase]();
+    }
+
+    /// <summary>DECRQM reports DECLRMM; without it CSI s saves the cursor, with it CSI s sets margins.</summary>
+    private static void AssertLeftRightMarginMode()
+    {
+        var buffer = new TerminalBuffer(10, 3);
+        var responses = new List<string>();
+        var parser = new AnsiParser(buffer) { OnResponse = responses.Add };
+        parser.Process("\u001b[?69$p\u001b[?69h\u001b[?69$p\u001b[3;5s");
+        Assert.Equal(new[] { "\u001b[?69;2$y", "\u001b[?69;1$y" }, responses);
+        Assert.Equal((2, 4), (buffer.LeftMargin, buffer.RightMargin));
+        parser.Process("\u001b[?69l");
+        Assert.Equal((0, 9), (buffer.LeftMargin, buffer.RightMargin));
+    }
+
+    /// <summary>Margins 3-5: text printed from column 4 wraps at the right margin back to the left margin.</summary>
+    private static void AssertSetLeftRightMargins()
+    {
+        var buffer = new TerminalBuffer(10, 3);
+        new AnsiParser(buffer).Process("\u001b[?69h\u001b[3;5s\u001b[1;4H12345");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("   12     ", new string(Enumerable.Range(0, 10).Select(col => buffer.GetCell(col, 0).Character is '\0' ? ' ' : buffer.GetCell(col, 0).Character).ToArray()));
+            Assert.Equal("  345     ", new string(Enumerable.Range(0, 10).Select(col => buffer.GetCell(col, 1).Character is '\0' ? ' ' : buffer.GetCell(col, 1).Character).ToArray()));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
     }
 
     /// <summary>Pins the advertised partial DECRQCRA contract: silent by default, the checksum reply once the host gate is on.</summary>

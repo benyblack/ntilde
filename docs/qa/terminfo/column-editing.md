@@ -26,9 +26,9 @@ Counts larger than the space between the start column and the right edge clamp t
 that space. With pending wrap the cursor still occupies the last column, so
 DECIC/DECDC act there. Origin mode does not change any of this.
 
-Left/right margins (DECLRMM/DECSLRM) are **not implemented**, so the horizontal
-margins are the page edges. When they are implemented, these operations must be
-bounded by them; no left/right-margin behavior is claimed here.
+With left/right margins (DECLRMM/DECSLRM, see [left-right-margins.md](left-right-margins.md)) the operations act only while the
+cursor column is between the margins, SL/SR start at the left margin, and only the columns between the margins move: blanks
+enter at the right margin and columns pushed past it are lost. Without margins the page edges are the horizontal margins.
 
 ## Cells
 
@@ -60,4 +60,4 @@ are retired as ICH/DCH retire them.
 - identity rejection and the bare finals' ICH/CUU meanings;
 - the alternate screen, untouched scrollback, full-state round trip, and chunked input.
 
-Image-plane shifting, left/right margins and rendered appearance remain unqualified.
+Image-plane shifting, the left/right-margin bounds (unit-tested, not live-qualified) and rendered appearance remain unqualified.
