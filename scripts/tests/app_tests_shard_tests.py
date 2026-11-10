@@ -44,7 +44,20 @@ EDGE_CASES = [
     "Ntilde.Tests.VtReportCliTests",  # one class claimed out of the top-level namespace
     "Ntilde.Tests.VtReportCliBuildTests",  # must not ride that class prefix either
     "Ntilde.Tests.VtReportCliTestsHelpers",  # must not ride that class prefix
+    "Ntilde.Tests.Core.MainWindowMuxRemoteTests",  # claimed out of Core by an earlier shard
+    "Ntilde.Tests.Core.MainWindowMuxRemoteTestsHelpers",  # stays with Core
+    "Ntilde.Tests.Core.MainWindowMuxBrandNewTests",  # a new MainWindowMux class stays with Core
+    "Ntilde.Tests.Core.MainWindowMuxRemoteTests+Nested",
 ]
+
+
+def run_module():
+    """The shard script itself, imported, for checks on its SHARDS table."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("app_tests_shard", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run(*args):
@@ -141,6 +154,22 @@ def main():
     owner = {s: matches(filters[s], "Ntilde.Tests.VtReportCliTestsHelpers.M") for s in shards}
     check(owner.get("rest"), "a class that merely starts with a claimed class falls to rest")
 
+    # First claiming shard wins: a class claimed out of a namespace a later shard claims runs on
+    # the earlier shard only, and the later shard's filter excludes it. The reverse would select
+    # nothing - a prefix inside a namespace an earlier shard already owns - so it is refused.
+    moved = "Ntilde.Tests.Core.MainWindowMuxRemoteTests.M"
+    owner = [s for s in shards if matches(filters[s], moved)]
+    check(owner == ["mux"], f"a class claimed out of Core runs on mux only ({owner})")
+    owner = [s for s in shards if matches(filters[s], "Ntilde.Tests.Core.MainWindowMuxRemoteTestsHelpers.M")]
+    check(owner == ["core"], f"a class that merely starts with a moved class stays with core ({owner})")
+    spec = run_module()
+    swallowed = []
+    earlier = []
+    for name, prefixes, _ in spec.SHARDS:
+        swallowed += [f"{name}: {p} (inside {q})" for p in prefixes for q in earlier if q in p]
+        earlier += prefixes
+    check(not swallowed, f"no claimed prefix sits inside one an earlier shard claims ({swallowed[:3]})")
+
     # Needs. Each shard prints one line per need; the workflow skips setup on a shard whose
     # line is empty, so the shard owning such a test must print 1.
     needs = {}
@@ -191,6 +220,14 @@ def main():
     check("Category!=SdkBuild" in shard_job, "the shards' App.Tests lane excludes Category=SdkBuild")
     check('--filter "Category=SdkBuild"' in build_job and USE_EXISTING_BUILD in build_job,
           "the build job runs Category=SdkBuild against its own build")
+
+    # The job's matrix runs exactly the script's shards. A name the script does not know fails the
+    # job's first step, but a shard left out of the matrix would fail nothing: its tests would
+    # simply stop running, and no other shard's floor can see that.
+    matrix = re.search(r"^\s+shard: \[([^\]]*)\]", shard_job, re.M)
+    in_matrix = [n.strip() for n in matrix.group(1).split(",")] if matrix else []
+    check(in_matrix == shards, f"the Unit Tests matrix runs exactly the script's shards "
+                               f"(matrix {in_matrix}, script {shards})")
 
     for bad in ([], ["nope"], ["shell", "extra"]):
         proc = run(*bad)

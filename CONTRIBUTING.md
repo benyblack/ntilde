@@ -487,8 +487,8 @@ All PRs are automatically checked by CI:
   workflow and the test sources they describe.
 - unit tests (VT, Rendering, Architecture, Platform, McpServer, Mux — blocking)
 - headless App.Tests, in two lanes (`Lane!=PlatformBoot` and `Lane=PlatformBoot`)
-  — **blocking**, on failures and on hangs. CI splits the first lane across three
-  jobs per OS by test namespace (`scripts/ci/app-tests-shard.py`: `assist-shell`,
+  — **blocking**, on failures and on hangs. CI splits the first lane across four
+  jobs per OS by test namespace (`scripts/ci/app-tests-shard.py`: `assist`, `mux`,
   `core` and `rest`; `rest` also runs the PlatformBoot lane and the other test
   projects), and runs the three `Category=SdkBuild` tests in the Build job.
   The `Unit Tests (<os>)` check rolls them up. Locally, run the two lanes as
