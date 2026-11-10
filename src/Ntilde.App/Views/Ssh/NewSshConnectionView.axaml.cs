@@ -2,6 +2,8 @@ using Ntilde.Shell;
 using System;
 using System.Collections.Generic;
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
@@ -14,6 +16,29 @@ namespace Ntilde.Views.Ssh;
 
 public partial class NewSshConnectionView : Window
 {
+    /// <summary>Visible when a count is zero (the Port Forwards empty state).</summary>
+    public static readonly IValueConverter IsZero = new FuncValueConverter<int, bool>(count => count == 0);
+
+    /// <summary>Visible when a count is non-zero (the Port Forwards list).</summary>
+    public static readonly IValueConverter IsNonZero = new FuncValueConverter<int, bool>(count => count != 0);
+
+    /// <summary>The "listen -> destination" half of a forward row; the kind is shown as its own badge.</summary>
+    public static readonly IValueConverter ForwardEndpoints = new FuncValueConverter<PortForward?, string>(FormatForwardEndpoints);
+
+    internal static string FormatForwardEndpoints(PortForward? forward)
+    {
+        if (forward == null)
+        {
+            return string.Empty;
+        }
+
+        string bind = string.IsNullOrWhiteSpace(forward.BindAddress) ? "localhost" : forward.BindAddress;
+        string listen = $"{bind}:{forward.SourcePort}";
+        return forward.Kind == PortForwardKind.Dynamic
+            ? $"{listen}  (SOCKS proxy)"
+            : $"{listen}  \u2192  {forward.DestinationHost}:{forward.DestinationPort}";
+    }
+
     public NewSshConnectionView()
     {
         InitializeComponent();
@@ -220,6 +245,61 @@ public partial class NewSshConnectionView : Window
         list.SelectedItem = selected;
     }
 
+    private void OnForwardKindChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        var kind = (sender as ComboBox)?.SelectedItem as PortForwardKind? ?? PortForwardKind.Local;
+        bool hasDestination = kind != PortForwardKind.Dynamic;
+
+        foreach (string name in new[] { "ForwardDestLabel", "ForwardDestHostInput", "ForwardDestColon", "ForwardDestPortInput" })
+        {
+            if (this.FindControl<Control>(name) is { } control)
+            {
+                control.IsVisible = hasDestination;
+            }
+        }
+
+        if (this.FindControl<TextBlock>("ForwardKindHint") is { } hint)
+        {
+            hint.Text = kind switch
+            {
+                PortForwardKind.Remote =>
+                    "Remote (ssh -R): opens the port on the server and tunnels connections back to the destination, as reached from this computer.",
+                PortForwardKind.Dynamic =>
+                    "Dynamic (ssh -D): runs a SOCKS proxy on this computer that sends traffic out through the server.",
+                _ =>
+                    "Local (ssh -L): opens the port on this computer and tunnels connections to the destination, as reached from the server.",
+            };
+        }
+
+        // Swap between the conventional defaults (8080 for a tunnel, 1080 for SOCKS) unless the
+        // user has already typed their own port.
+        if (this.FindControl<NumericUpDown>("ForwardSourcePortInput") is { } sourcePort)
+        {
+            if (kind == PortForwardKind.Dynamic && sourcePort.Value == 8080)
+            {
+                sourcePort.Value = 1080;
+            }
+            else if (kind != PortForwardKind.Dynamic && sourcePort.Value == 1080)
+            {
+                sourcePort.Value = 8080;
+            }
+        }
+
+        if (this.FindControl<TextBlock>("ForwardListenLabel") is { } listenLabel)
+        {
+            listenLabel.Text = kind == PortForwardKind.Remote ? "Listen on server" : "Listen on";
+        }
+    }
+
+    private void OnForwardEditorKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && e.Source is not ComboBox)
+        {
+            OnAddForwardClick(sender, e);
+            e.Handled = true;
+        }
+    }
+
     private void OnAddForwardClick(object? sender, RoutedEventArgs e)
     {
         if (ViewModel == null)
@@ -241,6 +321,16 @@ public partial class NewSshConnectionView : Window
         int sourcePort = (int)sourcePortInput.Value.Value;
         int destinationPort = destPortInput?.Value.HasValue == true ? (int)destPortInput.Value.Value : 0;
         string destinationHost = destHostInput?.Text?.Trim() ?? string.Empty;
+        if (kind == PortForwardKind.Dynamic)
+        {
+            destinationHost = string.Empty;
+            destinationPort = 0;
+        }
+        else if (string.IsNullOrWhiteSpace(destinationHost))
+        {
+            // The placeholder reads "localhost"; an empty box means exactly that.
+            destinationHost = "localhost";
+        }
 
         if (sourcePort <= 0)
         {
@@ -294,13 +384,13 @@ public partial class NewSshConnectionView : Window
             return;
         }
 
-        var list = this.FindControl<ListBox>("ForwardsList");
-        if (list?.SelectedItem is not PortForward selected)
+        // Each row carries its own Remove button; the row's PortForward is its DataContext.
+        if ((sender as Control)?.DataContext is not PortForward forward)
         {
             return;
         }
 
-        ViewModel.Forwards.Remove(selected);
+        ViewModel.Forwards.Remove(forward);
     }
 
     private void CompleteSave(bool connectAfterSave)

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:Ntilde.ViewModels.Ssh"
         xmlns:ssh="clr-namespace:Ntilde.Platform.Ssh.Models;assembly=Ntilde.Platform"
+        xmlns:views="clr-namespace:Ntilde.Views.Ssh"
         x:Class="Ntilde.Views.Ssh.NewSshConnectionView"
         x:DataType="vm:NewSshConnectionViewModel"
         Title="New SSH Connection"
@@ -103,7 +104,8 @@
                     <Grid ColumnDefinitions="2*,*,Auto,Auto" ColumnSpacing="8">
                         <TextBox Name="JumpHostInput" Grid.Column="0" PlaceholderText="Host (required)" />
                         <TextBox Name="JumpUserInput" Grid.Column="1" PlaceholderText="User (optional)" />
-                        <NumericUpDown Name="JumpPortInput" Grid.Column="2" Width="90" Minimum="1" Maximum="65535" Value="22" />
+                        <NumericUpDown Name="JumpPortInput" Grid.Column="2" Width="96" Minimum="1" Maximum="65535" Value="22"
+                                       FormatString="0" ShowButtonSpinner="False" />
                         <Button Grid.Column="3" Content="Add" Click="OnAddJumpHostClick" />
                     </Grid>
 
@@ -127,23 +129,86 @@
 
             <TabItem Header="Port Forwards">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <Grid Margin="0,10,4,0" RowDefinitions="Auto,*" RowSpacing="8">
-                    <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,Auto" ColumnSpacing="8">
-                        <ComboBox Name="ForwardKindCombo" Grid.Column="0" Width="100" />
-                        <TextBox Name="ForwardBindInput" Grid.Column="1" PlaceholderText="Bind address (optional)" />
-                        <NumericUpDown Name="ForwardSourcePortInput" Grid.Column="2" Width="90" Minimum="1" Maximum="65535" />
-                        <TextBox Name="ForwardDestHostInput" Grid.Column="3" PlaceholderText="Destination host" />
-                        <NumericUpDown Name="ForwardDestPortInput" Grid.Column="4" Width="90" Minimum="1" Maximum="65535" />
-                        <Button Grid.Column="5" Content="Add" Click="OnAddForwardClick" />
-                    </Grid>
+                <StackPanel Margin="0,10,4,0" Spacing="14">
+                    <!-- Editor: one labelled row per side of the tunnel. The destination row hides for
+                         Dynamic (SOCKS) forwards, which have no fixed destination. Enter adds. -->
+                    <Border Background="{DynamicResource NtPanelAlt}"
+                            BorderBrush="{DynamicResource NtHairline}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="14,12"
+                            KeyDown="OnForwardEditorKeyDown">
+                        <Grid ColumnDefinitions="128,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox Grid.Row="0" Grid.Column="1" Name="ForwardKindCombo" MinWidth="160"
+                                      SelectionChanged="OnForwardKindChanged" />
 
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <ListBox Name="ForwardsList" ItemsSource="{Binding Forwards}" MinHeight="160" />
-                        <StackPanel Grid.Column="1" Spacing="8">
-                            <Button Content="Remove" Width="72" Click="OnRemoveForwardClick" />
-                        </StackPanel>
-                    </Grid>
-                </Grid>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Name="ForwardKindHint"
+                                       Opacity="0.7" TextWrapping="Wrap" FontSize="12" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Name="ForwardListenLabel" Text="Listen on"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Name="ForwardBindInput" PlaceholderText="localhost" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text=":" VerticalAlignment="Center" Opacity="0.6" />
+                            <NumericUpDown Grid.Row="2" Grid.Column="3" Name="ForwardSourcePortInput" Width="96"
+                                           Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False" />
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Name="ForwardDestLabel" Text="Forward to"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Grid.Row="3" Grid.Column="1" Name="ForwardDestHostInput" PlaceholderText="localhost" />
+                            <TextBlock Grid.Row="3" Grid.Column="2" Name="ForwardDestColon" Text=":" VerticalAlignment="Center" Opacity="0.6" />
+                            <NumericUpDown Grid.Row="3" Grid.Column="3" Name="ForwardDestPortInput" Width="96"
+                                           Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False" />
+
+                            <Button Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" HorizontalAlignment="Right"
+                                    Content="Add forward" Click="OnAddForwardClick" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Forwards" FontWeight="SemiBold" />
+                        <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="1" CornerRadius="6" MinHeight="96">
+                            <Panel>
+                                <TextBlock Text="No port forwards yet. Add one above."
+                                           Opacity="0.6"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="12"
+                                           IsVisible="{Binding Forwards.Count, Converter={x:Static views:NewSshConnectionView.IsZero}}" />
+                                <ListBox Name="ForwardsList"
+                                         ItemsSource="{Binding Forwards}"
+                                         Background="Transparent"
+                                         IsVisible="{Binding Forwards.Count, Converter={x:Static views:NewSshConnectionView.IsNonZero}}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="ssh:PortForward">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                                <Border Grid.Column="0"
+                                                        Background="{DynamicResource NtAccentDim}"
+                                                        CornerRadius="4"
+                                                        Padding="8,2"
+                                                        MinWidth="72"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Kind}" FontSize="12" HorizontalAlignment="Center" />
+                                                </Border>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Converter={x:Static views:NewSshConnectionView.ForwardEndpoints}}"
+                                                           FontFamily="{DynamicResource NtMono}"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <Button Grid.Column="2"
+                                                        Content="Remove"
+                                                        Padding="10,3"
+                                                        Background="Transparent"
+                                                        VerticalAlignment="Center"
+                                                        Click="OnRemoveForwardClick" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Panel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
