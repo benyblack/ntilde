@@ -130,6 +130,7 @@ NON_HEADLESS = {
 
 
 def projects_for(name: str) -> list[str]:
+    """The non-headless projects shard `name` runs, in NON_HEADLESS order (possibly none)."""
     floor_for(name)  # KeyError for an unknown shard
     return [project for project, shard in NON_HEADLESS.items() if shard == name]
 
@@ -150,6 +151,8 @@ def excluded(name: str) -> list[str]:
 
 
 def filter_for(name: str) -> str:
+    """Shard `name`'s VSTest filter: its prefixes less those an earlier shard claimed inside them,
+    or for REST, every claimed prefix negated."""
     for shard, prefixes, _ in SHARDS:
         if shard != name:
             continue
