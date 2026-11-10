@@ -4,7 +4,7 @@ import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import test from 'node:test';
 import { privateClipboardReceiptFixture } from './fixtures/private-clipboard-receipt.mjs';
-import { includesCursorQualEvidence } from './cursor-qual-receipt.mjs';
+import { includesCursorQualEvidence, checkCursorQualEvidence } from './cursor-qual-receipt.mjs';
 import { cursorQualAdapterId } from './cursor-qual-grading-collector.mjs';
 import { cursorQualSuiteId } from './cursor-qual-contracts.mjs';
 
@@ -13,7 +13,14 @@ const pngs = f => readFileSync(join(f.output, 'curq-snapshots.jsonl'), 'utf8').t
 /** Re-bind a changed retained file so only the semantic change is under test, not the stale digest. */
 const rebind = (f, field, file) => { f.evidence.cursorQualEvidence[field] = hash(readFileSync(join(f.output, file))); };
 
+
+/** This layer's own receipt check over the fixture's current files and declarations. The complete-run test and the changed-report
+ * test go through the whole receipt; the refusals below call the layer check directly, so each one costs this layer's rederivation
+ * instead of every layer's, and a refusal must be a deliberate one, never a TypeError from a missing object. */
+const own = f => () => checkCursorQualEvidence(f.output, f.evidence, f.context.runId, f.context);
+const refusal = error => !(error instanceof TypeError);
 test('a complete run carries the cursor suffix: counts, adapter identity and every retained PNG are rederived without the collector', () => privateClipboardReceiptFixture(f => {
+    assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
     assert.equal(f.finish().schemaVersion, 37);
     assert.deepEqual(f.evidence.cursorQualEvidence.counts, { supported: 4 });
     assert.equal(f.context.cursorQualAdapterId, cursorQualAdapterId);
@@ -44,20 +51,20 @@ for (const [label, mutate] of [
     ['a changed adapter bundle declaration', f => { f.context.cursorQualBundleSha256 = '0'.repeat(64); }],
     ['a missing attribute-rectangle predecessor', f => { delete f.evidence.attrRectEvidence; }],
     ['a changed predecessor bundle', f => { f.context.attrRectBundleSha256 = '0'.repeat(64); }],
-]) test('the cursor receipt refuses ' + label, () => privateClipboardReceiptFixture(f => { mutate(f); f.write('context.json', f.context); assert.throws(f.finish); }));
+]) test('the cursor receipt refuses ' + label, () => privateClipboardReceiptFixture(f => { mutate(f); f.write('context.json', f.context); assert.throws(own(f), refusal); }));
 
 test('the cursor receipt refuses an adapter that is not the retained layered derivation', () => privateClipboardReceiptFixture(f => {
     writeFileSync(join(f.output, 'collector-curq.mjs'), readFileSync(join(f.output, 'collector-curq.mjs'), 'utf8') + '\n// edited\n');
     rebind(f, 'adapterBundleSha256', 'collector-curq.mjs');
     f.context.cursorQualBundleSha256 = f.evidence.cursorQualEvidence.adapterBundleSha256; f.write('context.json', f.context);
-    assert.throws(f.finish, /not the retained layered derivation/);
+    assert.throws(own(f), /not the retained layered derivation/);
 }));
 
 test('the cursor receipt refuses a changed journal, run log or report even when the binding is rehashed to match', () => privateClipboardReceiptFixture(f => {
     const run = JSON.parse(readFileSync(join(f.output, 'curq-run.json')));
     run.cases[3].pinned.original.threw.name = 'Error';
     writeFileSync(join(f.output, 'curq-run.json'), JSON.stringify(run, null, 2) + '\n'); rebind(f, 'runSha256', 'curq-run.json');
-    assert.throws(f.finish, /original cursor.reverse-wrap failure was not retained|do not match retained evidence/);
+    assert.throws(own(f), /original cursor.reverse-wrap failure was not retained|do not match retained evidence/);
 }));
 
 test('the cursor receipt refuses a changed report that no longer equals its rederivation', () => privateClipboardReceiptFixture(f => {
@@ -71,19 +78,19 @@ test('the cursor receipt refuses a changed report that no longer equals its rede
 test('the cursor receipt refuses a truncated journal and a missing retained artifact', () => privateClipboardReceiptFixture(f => {
     const journal = join(f.output, 'curq-snapshots.jsonl'), lines = readFileSync(journal, 'utf8').trimEnd().split('\n');
     writeFileSync(journal, lines.slice(0, -1).join('\n') + '\n');
-    assert.throws(f.finish);
+    assert.throws(own(f), refusal);
     writeFileSync(journal, lines.join('\n') + '\n');
     rmSync(join(f.output, 'curq-run.json'));
-    assert.throws(f.finish);
+    assert.throws(own(f), refusal);
 }));
 
 test('the cursor receipt refuses a retained PNG that was edited, removed or replaced by a symlink', () => privateClipboardReceiptFixture(f => {
     const [file] = pngs(f), path = join(f.output, file), original = readFileSync(path);
     const bytes = Buffer.from(original); bytes[bytes.length - 20] ^= 1; writeFileSync(path, bytes);
-    assert.throws(f.finish, /controlled pixel capture/);
+    assert.throws(own(f), /controlled pixel capture/);
     rmSync(path);
-    assert.throws(f.finish);
+    assert.throws(own(f), refusal);
     writeFileSync(join(f.output, 'elsewhere.png'), original);
     symlinkSync(join(f.output, 'elsewhere.png'), path);
-    assert.throws(f.finish, /controlled pixel capture/);
+    assert.throws(own(f), /controlled pixel capture/);
 }));
