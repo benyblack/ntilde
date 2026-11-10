@@ -1,5 +1,5 @@
 // Synthetic suffix over untouched real v11 prefix DATA. No archive module executes.
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -15,11 +15,13 @@ import { privateClipboardOutputPolicy } from '../terminal-output.mjs';
 import { emptyPrivateClipboardReply, privateClipboardEvidenceJson } from '../private-clipboard.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-/** Clone immutable v11 data into a private temporary directory, add a synthetic 17th suffix and always remove the copy. */
-export async function privateClipboardReceiptFixture(action) {
-    const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
-    const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
-    try {
+/** The JSON writer of one fixture directory. */
+const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
+
+/** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
+async function buildFixture(output) {
+    const write = writerFor(output);
+    {
         const archive = historicalArchive('2026-11-05-query-observations');
         for (const [file, bytes] of archive) { const path = join(output, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
         const old = JSON.parse(archive.get('cell-receipt.json'));
@@ -611,7 +613,38 @@ export async function privateClipboardReceiptFixture(action) {
             delete raw.ungradedDiagnostics[probeId];
         }
         write('raw.json', raw); write('context.json', context); write('ownership-proof.json', proof);
-        await action({ output, write, context, proof, report, evidence, raw, manifest, old,
+        return { context, proof, report, evidence, raw, manifest, old };
+    }
+}
+
+/** The fixture is deterministic and expensive (every synthetic suite is built and graded), so one process builds it once into a template
+ * directory and every test receives its own copy of the files and a deep clone of the state; the template is removed when the process exits. */
+let template;
+function fixtureTemplate() {
+    template ??= (async () => {
+        const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-template-'));
+        process.once('exit', () => rmSync(output, { recursive: true, force: true }));
+        try {
+            const state = await buildFixture(output);
+            if (JSON.stringify(state).includes(output)) throw new Error('The fixture state names its template directory; it cannot be copied.');
+            return { output, state };
+        } catch (error) {
+            // A failed build is reported to every test of this process; its directory is not kept until exit.
+            rmSync(output, { recursive: true, force: true });
+            throw error;
+        }
+    })();
+    return template;
+}
+
+/** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
+export async function privateClipboardReceiptFixture(action) {
+    const { output: source, state } = await fixtureTemplate();
+    const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
+    try {
+        cpSync(source, output, { recursive: true, verbatimSymlinks: true });
+        const { context, proof, report, evidence, raw, manifest, old } = structuredClone(state);
+        await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
 }

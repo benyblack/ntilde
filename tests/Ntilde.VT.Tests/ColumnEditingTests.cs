@@ -323,6 +323,22 @@ public sealed class ColumnEditingTests
         AssertNoOrphanHalves(buffer, 0);
     }
 
+    /// <summary>
+    /// ICH can leave a wide lead alone in the last column (its continuation pushed off the edge). A delete or a shift left must not
+    /// carry that lone lead inward as an orphan half.
+    /// </summary>
+    [Theory]
+    [InlineData("1'~")]
+    [InlineData("1 @")]
+    public void A_lone_lead_at_the_edge_is_not_carried_inward(string body)
+    {
+        var (buffer, parser) = Create(8, 1);
+        parser.Process($"abcdef\u4e2d{Esc}[1;1H{Esc}[1@");
+        Assert.True(Cell(buffer, 7, 0).IsWide, "the ICH precondition: a lead alone in the last column");
+        parser.Process($"{Esc}[{body}");
+        AssertNoOrphanHalves(buffer, 0);
+    }
+
     /// <summary>A whole wide glyph shifts intact.</summary>
     [Fact]
     public void Shift_left_moves_a_whole_wide_glyph()

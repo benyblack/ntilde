@@ -515,6 +515,9 @@ public class ExplainEscapeSequenceTests
     [InlineData("CSI 2 SP @", "SL")]
     [InlineData("CSI SP @", "SL")]
     [InlineData("CSI 2 SP A", "SR")]
+    [InlineData("\x1b[2 @", "SL")]
+    [InlineData("\\x1b[2 A", "SR")]
+    [InlineData("\\e[ @", "SL")]
     public void Column_edits_explain_the_partial_contract(string sequence, string mnemonic)
     {
         string result = VtTools.ExplainEscapeSequence(sequence);
@@ -547,6 +550,9 @@ public class ExplainEscapeSequenceTests
     {
         Assert.Contains("ICH", VtTools.ExplainEscapeSequence("CSI 2 @"), StringComparison.Ordinal);
         Assert.Contains("CUU", VtTools.ExplainEscapeSequence("CSI 2 A"), StringComparison.Ordinal);
+        Assert.Contains("ICH", VtTools.ExplainEscapeSequence("\x1b[2@"), StringComparison.Ordinal);
+        Assert.Contains("CUU", VtTools.ExplainEscapeSequence("\\x1b[2A"), StringComparison.Ordinal);
+        Assert.Contains("DECSCUSR", VtTools.ExplainEscapeSequence("\x1b[2 q"), StringComparison.Ordinal);
     }
 
     [Fact]

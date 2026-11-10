@@ -4,7 +4,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { privateClipboardReceiptFixture } from './fixtures/private-clipboard-receipt.mjs';
-import { includesRectEditEvidence } from './rect-edit-receipt.mjs';
+import { includesRectEditEvidence, checkRectEditEvidence } from './rect-edit-receipt.mjs';
 import { rectEditAdapterId } from './rect-edit-grading-collector.mjs';
 import { rectEditSuiteId } from './rect-edit-contracts.mjs';
 
@@ -12,7 +12,14 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Re-bind a changed retained file so only the semantic change is under test, not the stale digest. */
 const rebind = (f, field, file) => { f.evidence.rectEditEvidence[field] = hash(readFileSync(join(f.output, file))); };
 
+
+/** This layer's own receipt check over the fixture's current files and declarations. The complete-run test and the changed-report
+ * test go through the whole receipt; the refusals below call the layer check directly, so each one costs this layer's rederivation
+ * instead of every layer's, and a refusal must be a deliberate one, never a TypeError from a missing object. */
+const own = f => () => checkRectEditEvidence(f.output, f.evidence, f.context.runId, f.context);
+const refusal = error => !(error instanceof TypeError);
 test('a complete run carries the rectangle-editing suffix: counts, adapter identity and the layered derivation are rederived without the collector', () => privateClipboardReceiptFixture(f => {
+    assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
     assert.equal(f.finish().schemaVersion, 38);
     assert.deepEqual(f.evidence.rectEditEvidence.counts, { supported: 3 });
     assert.equal(f.context.rectEditAdapterId, rectEditAdapterId);
@@ -59,20 +66,20 @@ for (const [label, mutate] of [
     ['a missing saved-state/reset predecessor', f => { delete f.evidence.savedResetEvidence; }],
     ['a changed saved-state/reset predecessor bundle', f => { f.context.savedResetBundleSha256 = '0'.repeat(64); }],
     ['a missing scrolling/history predecessor', f => { delete f.evidence.scrollbackEvidence; }],
-]) test('the rectangle-editing receipt refuses ' + label, () => privateClipboardReceiptFixture(f => { mutate(f); f.write('context.json', f.context); assert.throws(f.finish); }));
+]) test('the rectangle-editing receipt refuses ' + label, () => privateClipboardReceiptFixture(f => { mutate(f); f.write('context.json', f.context); assert.throws(own(f), refusal); }));
 
 test('the rectangle-editing receipt refuses an adapter that is not the retained layered derivation', () => privateClipboardReceiptFixture(f => {
     writeFileSync(join(f.output, 'collector-rect.mjs'), readFileSync(join(f.output, 'collector-rect.mjs'), 'utf8') + '\n// edited\n');
     rebind(f, 'adapterBundleSha256', 'collector-rect.mjs');
     f.context.rectEditBundleSha256 = f.evidence.rectEditEvidence.adapterBundleSha256; f.write('context.json', f.context);
-    assert.throws(f.finish, /not the retained layered derivation/);
+    assert.throws(own(f), /not the retained layered derivation/);
 }));
 
 test('the rectangle-editing receipt refuses a changed run log even when the binding is rehashed to match', () => privateClipboardReceiptFixture(f => {
     const run = JSON.parse(readFileSync(join(f.output, 'rect-run.json')));
     run.cases[0].reads = run.cases[0].reads.slice(1);
     writeFileSync(join(f.output, 'rect-run.json'), JSON.stringify(run, null, 2) + '\n'); rebind(f, 'runSha256', 'rect-run.json');
-    assert.throws(f.finish);
+    assert.throws(own(f), refusal);
 }));
 
 test('the rectangle-editing receipt refuses a changed report that no longer equals its rederivation', () => privateClipboardReceiptFixture(f => {
@@ -86,10 +93,10 @@ test('the rectangle-editing receipt refuses a changed report that no longer equa
 test('the rectangle-editing receipt refuses a truncated journal, an empty journal and a missing retained artifact', () => privateClipboardReceiptFixture(f => {
     const journal = join(f.output, 'rect-snapshots.jsonl'), lines = readFileSync(journal, 'utf8').trimEnd().split('\n');
     writeFileSync(journal, lines.slice(0, -1).join('\n') + '\n');
-    assert.throws(f.finish);
+    assert.throws(own(f), refusal);
     writeFileSync(journal, '\n');
-    assert.throws(f.finish, /journal is empty/);
+    assert.throws(own(f), /journal is empty/);
     writeFileSync(journal, lines.join('\n') + '\n');
     rmSync(join(f.output, 'rect-run.json'));
-    assert.throws(f.finish);
+    assert.throws(own(f), refusal);
 }));
