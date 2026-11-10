@@ -85,3 +85,11 @@ test('schema11 independently refuses a coherently rehashed partial prior challen
     writeFileSync(join(f.output, 'query-observations.json'), bytes); f.evidence.queryEvidence.sha256 = hash(bytes);
     assert.throws(f.finish);
 }));
+
+// The matched case (the exact FFB2 reply under the setting) is the v33 private-clipboard receipt fixture.
+test('a run whose initial settings turn DECRQCRA on owes the reply, so retained silence is refused', () => queryReceiptFixture(f => {
+    const settings = JSON.parse(readFileSync(join(f.output, 'initial-settings.json'))); settings.AllowRectangleChecksumReport = true;
+    f.write('initial-settings.json', settings); f.context.initialSettingsSha256 = hash(readFileSync(join(f.output, 'initial-settings.json'))); f.write('context.json', f.context);
+    assert.equal(f.report.observations.find(x => x.id === 'q07.editing.decrqcra').observedEvidence, 'silence');
+    assert.throws(f.finish);
+}));

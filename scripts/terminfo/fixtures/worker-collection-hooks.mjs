@@ -47,6 +47,7 @@ code.set(new URL('erase-chars-history-collector.mjs', root).href, log + `export 
 code.set(new URL('selective-erase-collector.mjs', root).href, log + `export async function collectSelectiveEraseGrading() { record('SelectiveErase'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('rect-edit-collector.mjs', root).href, log + `export async function collectRectEditGrading() { record('RectEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('col-edit-collector.mjs', root).href, log + `export async function collectColEditGrading() { record('ColEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('rect-checksum-collector.mjs', root).href, log + `export async function collectRectChecksumGrading() { record('RectChecksum'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

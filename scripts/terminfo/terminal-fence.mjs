@@ -1,5 +1,6 @@
 import { parseQueryFrame, querySequence, querySpec } from './color-query.mjs';
 import { cursorReportQuery, parseCursorReportFrame } from './cursor-report.mjs';
+import { checksumReportExpectation, parseChecksumReportFrame } from './checksum-report.mjs';
 // DA is an ordering barrier only. Cell/cursor assertions come from readScreen.
 export function terminalFence(input, output, timeoutMs = 1000) {
     const wasRaw = input.isRaw, wasPaused = input.isPaused();
@@ -15,7 +16,10 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         pending.bytes += chunk.toString('latin1');
         if (pending.expected) {
             try {
-                const result = pending.expected === cursorReportQuery ? parseCursorReportFrame(pending.bytes) : parseQueryFrame(pending.bytes, pending.expected);
+                let result;
+                if (pending.expected === cursorReportQuery) result = parseCursorReportFrame(pending.bytes);
+                else if (pending.expected === checksumReportExpectation) result = parseChecksumReportFrame(pending.bytes);
+                else result = parseQueryFrame(pending.bytes, pending.expected);
                 if (result) pending.finish(null, result);
             } catch (error) { fail(error); }
             return;
@@ -63,6 +67,11 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         /** One cursor position report: the raw CPR (or its explicit absence) and the DA ordering barrier. */
         cursorReport(prefix = '') {
             return request(prefix + cursorReportQuery, cursorReportQuery);
+        },
+        /** One DECRQCRA exchange: the exact request bytes, then the raw DCS reply (or its explicit absence) and the DA ordering barrier. */
+        checksumReport(sequence) {
+            if (typeof sequence !== 'string' || !sequence.length || sequence.length > 256) return Promise.reject(new Error('Invalid rectangle checksum request.'));
+            return request(sequence, checksumReportExpectation);
         },
         query(expected, prefix = '') {
             const spec = querySpec(expected);
