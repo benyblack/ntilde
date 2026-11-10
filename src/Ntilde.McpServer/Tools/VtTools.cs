@@ -141,6 +141,9 @@ public sealed class VtTools
 
         // Classify DCS representations from untouched input before alias normalization.
         string original = sequence.TrimStart();
+        // Real ESC bytes or an escape notation mean exact bytes, not a readable spelling with formatting spaces.
+        bool rawBytes = original.Contains('\u001b') || original.Contains("\\x1b", System.StringComparison.OrdinalIgnoreCase)
+            || original.Contains("\\e", System.StringComparison.OrdinalIgnoreCase);
         DcsInputRepresentation dcsRepresentation = ClassifyDcsInput(original);
 
         // Normalize common notations to a canonical introducer + body.
@@ -158,6 +161,12 @@ public sealed class VtTools
         else if (upper.StartsWith("CSI", System.StringComparison.Ordinal)) csiBody = s.Substring(3);
         if (csiBody is not null)
         {
+            // In exact bytes, one space directly before SL's '@' or SR's 'A' is the SP intermediate, which the stripping below would lose.
+            if (rawBytes && csiBody.Length >= 2 && csiBody[^2] == ' ' && (csiBody[^1] is '@' or 'A') && (csiBody.Length == 2 || csiBody[^3] != ' '))
+            {
+                csiBody = csiBody[..^2] + "SP" + csiBody[^1];
+            }
+
             // Strip whitespace the user added for readability ("CSI 2 J") so it isn't mistaken for
             // an intermediate byte. Real intermediates are punctuation (0x21–0x2F) and survive.
             string body = new string(csiBody.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -248,6 +257,18 @@ public sealed class VtTools
             if (finalByte is 'x' or 'v' && qualifiers == "$")
             {
                 return ExplainRectangleCopyFill(finalByte, prefix[..^1]) + note;
+            }
+
+            if (finalByte is '}' or '~' && qualifiers == "'" && prefix.EndsWith('\''))
+            {
+                return ExplainColumnEdit("CSI:'" + finalByte, finalByte, prefix[..^1]) + note;
+            }
+
+            // SL and SR are CSI Pn SP @ / CSI Pn SP A. Whitespace is stripped above, so a literal space cannot be told apart
+            // from formatting; the ctlseqs spelling "SP" names the intermediate explicitly.
+            if (finalByte is '@' or 'A' && qualifiers == "SP" && prefix.EndsWith("SP", StringComparison.Ordinal))
+            {
+                return ExplainColumnEdit("CSI:SP" + finalByte, finalByte, prefix[..^2]);
             }
 
             // XTSMGRAPHICS shares 'S' with SU but never scrolls (#274); it is answered (#872).
@@ -501,6 +522,14 @@ public sealed class VtTools
         if (parameters.Any(c => c < '0' || c > '9'))
             return "CSI select-attribute-change-extent form: only one plain parameter is admitted; Ntilde's parser ignores this form.";
         return "CSI sequence, final byte 'x': " + ContractSequenceTable["CSI:*x"];
+    }
+
+    /// <summary>DECIC, DECDC, SL and SR: at most one plain numeric parameter; anything else is ignored by the parser.</summary>
+    private static string ExplainColumnEdit(string key, char finalByte, string parameters)
+    {
+        if (parameters.Any(c => c < '0' || c > '9'))
+            return "CSI column edit form: only one plain parameter is admitted; Ntilde's parser ignores this form.";
+        return $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable[key];
     }
 
     /// <summary>Names the Partial DECFRA (up to five) or DECCRA (up to eight) plain-parameter contract; any other shape is ignored by the parser.</summary>

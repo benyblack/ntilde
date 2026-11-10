@@ -267,6 +267,42 @@
       "matrixFeature": "DECSACE (* x)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularAttributeTests.cs",
       "contractCase": "select-attribute-change-extent"
+    },
+    {
+      "key": "CSI:'}",
+      "mnemonic": "DECIC",
+      "support": "partial",
+      "description": "Insert Pn (omitted/zero = 1) blank columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; columns pushed past the right edge are lost. Only the exact unprefixed one-parameter identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "matrixFeature": "DECIC (' })",
+      "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
+      "contractCase": "insert-column"
+    },
+    {
+      "key": "CSI:'~",
+      "mnemonic": "DECDC",
+      "support": "partial",
+      "description": "Delete Pn (omitted/zero = 1) columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; blank columns enter at the right edge. Only the exact unprefixed one-parameter identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "matrixFeature": "DECDC (' ~)",
+      "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
+      "contractCase": "delete-column"
+    },
+    {
+      "key": "CSI:SP@",
+      "mnemonic": "SL",
+      "support": "partial",
+      "description": "Shift every row of the top/bottom scrolling region left by Pn (omitted/zero = 1) columns from the left margin, whatever the cursor column, only while the cursor row is inside the region; blank columns enter at the right edge. Only the exact unprefixed one-parameter CSI Pn SP @ identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "matrixFeature": "SL (SP @)",
+      "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
+      "contractCase": "scroll-left"
+    },
+    {
+      "key": "CSI:SPA",
+      "mnemonic": "SR",
+      "support": "partial",
+      "description": "Shift every row of the top/bottom scrolling region right by Pn (omitted/zero = 1) columns from the left margin, whatever the cursor column, only while the cursor row is inside the region; columns pushed past the right edge are lost. Only the exact unprefixed one-parameter CSI Pn SP A identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "matrixFeature": "SR (SP A)",
+      "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
+      "contractCase": "scroll-right"
     }
   ]
 }

@@ -304,7 +304,7 @@ public sealed class AnsiParserHardeningTests
         Assert.True(offenders.Count == 0, "Prefixed CSI sequences executed a bare meaning:\n" + string.Join("\n", offenders));
     }
 
-    /// <summary>Sweeps all intermediate identities except the exact separately tested DECSCUSR, DECSCA, DECRQM, DECERA, DECSERA, DECFRA, DECCRA, DECCARA and DECRARA commands.</summary>
+    /// <summary>Sweeps all intermediate identities except the exact separately tested DECSCUSR, DECSCA, DECRQM, DECERA, DECSERA, DECFRA, DECCRA, DECCARA, DECRARA, SL and SR commands.</summary>
     [Fact]
     public void IntermediatePrefixedCsi_NeverExecutesTheBareMeaning()
     {
@@ -322,6 +322,7 @@ public sealed class AnsiParserHardeningTests
                 if (final == 'q' && intermediate == '"') continue; // DECSCA is a pen mode; its exact form is covered by SelectiveErasureTests.
                 if (final is 'r' or 't' && intermediate == '$') continue; // DECCARA and DECRARA (RectangularAttributeTests).
                 if (final is 'x' or 'v' && intermediate == '$') continue; // DECFRA / DECCRA; other identities remain in the sweep.
+                if (final is '@' or 'A' && intermediate == ' ') continue; // SL / SR; other identities remain in the sweep.
 
                 string sequence = $"\x1b[1{intermediate}{final}";
                 if (MutatesState(sequence, out string detail))
@@ -658,11 +659,9 @@ public sealed class AnsiParserHardeningTests
 
     /// <summary>
     /// ECMA-48 puts SL, SR and PPA on the same finals as ICH, CUU and DCH, separated only by the
-    /// space intermediate. None of the three is implemented; none may run the bare meaning.
+    /// space intermediate. PPA is not implemented and must not run the bare meaning.
     /// </summary>
     [Theory]
-    [InlineData("\x1b[2 @")] // SL - scroll left, not ICH
-    [InlineData("\x1b[2 A")] // SR - scroll right, not CUU
     [InlineData("\x1b[2 P")] // PPA - page position absolute, not DCH
     public void SpaceIntermediateSequences_DoNotRunTheBareMeaning(string sequence)
     {
@@ -674,6 +673,31 @@ public sealed class AnsiParserHardeningTests
         parser.Process(sequence);
 
         Assert.Equal(before, VisibleText(buffer));
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal(4, buffer.CursorRow);
+            Assert.Equal(2, buffer.CursorCol);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    /// <summary>
+    /// SL and SR are implemented column shifts of the whole scrolling region from the left margin: they
+    /// never insert at the cursor (ICH) or move it (CUU).
+    /// </summary>
+    [Theory]
+    [InlineData("\x1b[2 @", "cdef")] // SL - scroll left, not ICH
+    [InlineData("\x1b[2 A", "  abcdef")] // SR - scroll right, not CUU
+    public void SpaceIntermediateShifts_AreNotTheBareMeaning(string sequence, string firstRow)
+    {
+        var (buffer, parser) = NewTerminal();
+        parser.Process("abcdef");
+        parser.Process("\x1b[5;3H");
+
+        parser.Process(sequence);
+
+        Assert.StartsWith(firstRow, VisibleText(buffer), StringComparison.Ordinal);
         buffer.Lock.EnterReadLock();
         try
         {

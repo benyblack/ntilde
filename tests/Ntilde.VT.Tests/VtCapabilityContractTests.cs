@@ -50,6 +50,10 @@ public sealed class VtCapabilityContractTests
             ["change-attributes-rectangular-area"] = AssertRectangularAttributeChange,
             ["reverse-attributes-rectangular-area"] = AssertRectangularAttributeReverse,
             ["select-attribute-change-extent"] = AssertAttributeChangeExtent,
+            ["insert-column"] = () => AssertColumnEdit("\u001b[2'}", "AB  CD", "GH  IJ"),
+            ["delete-column"] = () => AssertColumnEdit("\u001b[2'~", "ABEF  ", "GHKL  "),
+            ["scroll-left"] = () => AssertColumnEdit("\u001b[2 @", "CDEF  ", "IJKL  "),
+            ["scroll-right"] = () => AssertColumnEdit("\u001b[2 A", "  ABCD", "  GHIJ"),
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
@@ -82,6 +86,10 @@ public sealed class VtCapabilityContractTests
             ["change-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$r",
             ["reverse-attributes-rectangular-area"] = "\u001b[2*x\u001b[2;2;3;3;7$t",
             ["select-attribute-change-extent"] = "\u001b[2*x",
+            ["insert-column"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2'}",
+            ["delete-column"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2'~",
+            ["scroll-left"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 @",
+            ["scroll-right"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 A",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
@@ -101,6 +109,37 @@ public sealed class VtCapabilityContractTests
         Assert.Equal(VtSupport.Partial, capability.Support);
         Assert.Equal("erase-rectangular-area", capability.ContractCase);
         ContractCases["erase-rectangular-area"]();
+    }
+
+    /// <summary>Pins the advertised partial column contracts (DECIC, DECDC, SL, SR) without claiming left/right margins.</summary>
+    [Theory]
+    [InlineData("CSI:'}", "DECIC", "insert-column")]
+    [InlineData("CSI:'~", "DECDC", "delete-column")]
+    [InlineData("CSI:SP@", "SL", "scroll-left")]
+    [InlineData("CSI:SPA", "SR", "scroll-right")]
+    public void Partial_column_catalogue_entries_have_executable_text_contracts(string key, string mnemonic, string contractCase)
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == key);
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal(mnemonic, capability.Mnemonic);
+        Assert.Equal(contractCase, capability.ContractCase);
+        ContractCases[contractCase]();
+    }
+
+    /// <summary>Two seeded rows, the cursor at row 1 column 3: both rows of the default region move and the cursor stays put.</summary>
+    private static void AssertColumnEdit(string control, string first, string second)
+    {
+        var buffer = new TerminalBuffer(6, 2);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process("ABCDEF\r\nGHIJKL\u001b[1;3H" + control);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal(first, new string(Enumerable.Range(0, 6).Select(col => buffer.GetCell(col, 0).Character).ToArray()));
+            Assert.Equal(second, new string(Enumerable.Range(0, 6).Select(col => buffer.GetCell(col, 1).Character).ToArray()));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal((0, 2, false), (buffer.CursorRow, buffer.CursorCol, buffer.IsPendingWrap));
     }
 
     /// <summary>Pins the advertised partial fill contract without claiming image-plane, protected-cell or non-Latin-1 fill.</summary>

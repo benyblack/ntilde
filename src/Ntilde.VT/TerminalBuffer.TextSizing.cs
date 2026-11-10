@@ -298,15 +298,18 @@ public partial class TerminalBuffer
         EraseTextSizingRange(_cursorCol, _cursorCol + width, row, row + 1);
     }
 
-    private void EraseTextSizingForShift(bool insert, int count)
+    private void EraseTextSizingForShift(bool insert, int count) => EraseTextSizingForShift(_cursorRow, _cursorCol, insert, count);
+
+    /// <summary>Retires the sized blocks that a column shift starting at <paramref name="startCol"/> of one viewport row would split or that span rows.</summary>
+    private void EraseTextSizingForShift(int viewportRow, int startCol, bool insert, int count)
     {
         if (_textSizingBlocks == null || count <= 0) return;
-        int row = TextSizingAbsoluteRow(_cursorRow);
-        for (int col = _cursorCol; col < Cols; col++)
+        int row = TextSizingAbsoluteRow(viewportRow);
+        for (int col = startCol; col < Cols; col++)
         {
-            if (_viewport[_cursorRow].GetTextSizing(col) is not { } piece) continue;
-            bool split = insert ? col >= Cols - count || (col == _cursorCol && piece.ColumnOffset > 0)
-                : col < _cursorCol + count;
+            if (_viewport[viewportRow].GetTextSizing(col) is not { } piece) continue;
+            bool split = insert ? col >= Cols - count || (col == startCol && piece.ColumnOffset > 0)
+                : col < startCol + count;
             if (piece.Block.Height > 1 || split)
                 EraseTextSizingBlock(piece.Block, col - piece.ColumnOffset, row - piece.RowOffset);
         }
