@@ -141,6 +141,9 @@ public sealed class VtTools
 
         // Classify DCS representations from untouched input before alias normalization.
         string original = sequence.TrimStart();
+        // Real ESC bytes or an escape notation mean exact bytes, not a readable spelling with formatting spaces.
+        bool rawBytes = original.Contains('\u001b') || original.Contains("\\x1b", System.StringComparison.OrdinalIgnoreCase)
+            || original.Contains("\\e", System.StringComparison.OrdinalIgnoreCase);
         DcsInputRepresentation dcsRepresentation = ClassifyDcsInput(original);
 
         // Normalize common notations to a canonical introducer + body.
@@ -158,6 +161,12 @@ public sealed class VtTools
         else if (upper.StartsWith("CSI", System.StringComparison.Ordinal)) csiBody = s.Substring(3);
         if (csiBody is not null)
         {
+            // In exact bytes, one space directly before SL's '@' or SR's 'A' is the SP intermediate, which the stripping below would lose.
+            if (rawBytes && csiBody.Length >= 2 && csiBody[^2] == ' ' && (csiBody[^1] is '@' or 'A') && (csiBody.Length == 2 || csiBody[^3] != ' '))
+            {
+                csiBody = csiBody[..^2] + "SP" + csiBody[^1];
+            }
+
             // Strip whitespace the user added for readability ("CSI 2 J") so it isn't mistaken for
             // an intermediate byte. Real intermediates are punctuation (0x21–0x2F) and survive.
             string body = new string(csiBody.Where(c => !char.IsWhiteSpace(c)).ToArray());

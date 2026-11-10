@@ -48,6 +48,8 @@ public partial class TerminalBuffer
         // the first column pushed off the edge (insert) or the first column kept after the deleted run (delete).
         RetireWideAcross(row, column, blank);
         RetireWideAcross(row, insert ? Cols - n : column + n, blank);
+        // A lead alone in the last column (ICH can leave one) has no continuation to travel with: a delete would carry it inward as an orphan.
+        if (!insert && cells[Cols - 1].IsWide) BlankCell(row, Cols - 1, blank);
 
         if (insert)
         {
