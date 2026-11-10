@@ -328,6 +328,24 @@ public sealed class LeftRightMarginTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    [Fact]
+    public void LF_in_newline_mode_indexes_first_then_returns_to_the_left_margin()
+    {
+        var (buffer, parser) = Seeded();
+        parser.Process($"{Esc}[20h{Esc}[6;5H\n");
+        Assert.Equal("ABMNOPQHIJ", Lines(buffer)[0]); // the band scrolled: the cursor was inside the margins at the bottom
+        Assert.Equal((5, 2), Cursor(buffer)); // LNM's CR went to the left margin after the index
+    }
+
+    [Fact]
+    public void A_legacy_replay_snapshot_restores_full_width_margins_and_the_mode_reset()
+    {
+        var (buffer, _) = Seeded();
+        buffer.ApplySnapshot(new ReplaySnapshot { Cols = 10, Rows = 6, ScrollBottom = 5 });
+        Assert.Equal((0, 9), (buffer.LeftMargin, buffer.RightMargin));
+        Assert.False(buffer.Modes.IsLeftRightMarginMode);
+    }
+
     // ---- resets, resize and state transfer ---------------------------------------------------------------------------------
 
     [Fact]

@@ -1136,6 +1136,9 @@ namespace Ntilde.VT
                     ScrollTop = 0;
                     ScrollBottom = Math.Max(0, Rows - 1);
                 }
+                // Replay snapshots predate left/right margins: a seek restores full-width margins with DECLRMM reset.
+                Modes.IsLeftRightMarginMode = false;
+                ResetHorizontalMarginsNoLock();
 
                 Modes.IsAutoWrapMode = snapshot.IsAutoWrapMode;
                 Modes.IsReverseWrapMode = snapshot.IsReverseWrapMode;

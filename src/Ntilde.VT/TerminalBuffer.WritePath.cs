@@ -73,14 +73,14 @@ namespace Ntilde.VT
             {
                 if (_cursorRow >= 0 && _cursorRow < Rows) _viewport[_cursorRow].IsWrapped = false;
 
-                // VT100: LF moves to the same horizontal position on the next line.
-                // Reset to column 0 ONLY if New Line Mode (LNM) is enabled.
+                // VT100: LF moves to the same horizontal position on the next line. With New Line Mode (LNM)
+                // it also returns, after the index as in xterm: a cursor between the margins at the bottom margin
+                // scrolls the band first, then goes to the left margin (column 0 without margins).
+                AdvanceCursorRowForLineFeed();
                 if (Modes.IsLineFeedNewLineMode)
                 {
-                    _cursorCol = 0;
+                    _cursorCol = CarriageReturnColumnNoLock;
                 }
-
-                AdvanceCursorRowForLineFeed();
                 _isPendingWrap = false;
             }
             else if (c == '\b')
