@@ -31,6 +31,11 @@ public partial class TerminalBuffer
         Invalidate();
     }
 
+    /// <summary>
+    /// Shifts one viewport row from <paramref name="column"/> to the right edge: inserts <paramref name="n"/> blanks there
+    /// (cells pushed past the edge are dropped) or deletes <paramref name="n"/> cells there (blanks enter at the edge). Side
+    /// tables move with their cells; wide glyphs and sized blocks the shift would split are retired first.
+    /// </summary>
     private void ShiftRowColumns(int rowIndex, int column, int n, bool insert, TerminalCell blank)
     {
         EraseTextSizingForShift(rowIndex, column, insert, n);
