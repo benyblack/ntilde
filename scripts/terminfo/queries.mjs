@@ -101,8 +101,12 @@ function inspectCapture(capture, context, id, used) {
     const result = inspectQueryWitness(context, id, capture), key = result.orderingNonces.join(',');
     check(!used.has(key)); used.add(key); return result;
 }
+/** The witness context of one query frame; `checksumReport` only when the run turned the off-by-default DECRQCRA report on. */
+export const queryContext = (screen, checksumReport = false) => ({ rows: screen.rows, cols: screen.cols, top: screen.bufferState.scrollTop + 1,
+    bottom: screen.bufferState.scrollBottom + 1, ...(checksumReport ? { checksumReport: true } : {}) });
 export function buildQueryReport(input) {
-    const { binding: supplied, priorChallenges, initial, actions, frames, seal } = structuredClone(input);
+    const { binding: supplied, priorChallenges, initial, actions, frames, seal, checksumReport = false } = structuredClone(input);
+    check(typeof checksumReport === 'boolean');
     const binding = queryBinding(supplied), prior = queryPrior(priorChallenges), clock = { time: -Infinity };
     check(prior.length === 110 && actions?.length === 44 && frames?.length === 44);
     const baseline = validateSample(initial.before, binding, null, clock), original = initial.before.beforeOwnership;
@@ -115,8 +119,7 @@ export function buildQueryReport(input) {
         const before = validateSample(frame.before, binding, original, clock);
         const after = validateSample(frame.after, binding, original, clock);
         check(snapshotHash(before) === snapshotHash(expected));
-        const context = { rows: before.rows, cols: before.cols, top: before.bufferState.scrollTop + 1, bottom: before.bufferState.scrollBottom + 1 };
-        const comparison = inspectCapture(frame.capture, context, entry.id ?? fixed[0].id, used);
+        const comparison = inspectCapture(frame.capture, queryContext(before, checksumReport), entry.id ?? fixed[0].id, used);
         if (entry.kind === 'query') observations.push(comparison);
         else {
             check(frame.capture.byteLength === 0);
@@ -133,6 +136,7 @@ export function buildQueryReport(input) {
         && status.lastAttempt.hex === final.hex + Buffer.from(final.barrier).toString('hex')
         && snapshotHash(status.lastAttempt.nonces) === snapshotHash(final.nonces));
     return { schemaVersion: 1, suiteId: querySuiteId, policy: ownedQueryPolicy, runId: binding.runId, binding, priorChallenges: prior, readerCounts: counts,
+        ...(checksumReport ? { checksumReport: 'AllowRectangleChecksumReport on in the initial settings: q07.editing.decrqcra owes the DECRQCRA reply' } : {}),
         unobservedState: ['reverseVideo'],
         scope: 'Exact original query spellings and exposed cells/attributes/cursor/modes/margins/history. Reverse-video memory and appearance are unobserved; no preservation claim. Contract matches include explicit negative replies and observed silence; no feature-support score, hidden parser/title/native-state or physical-geometry claim.',
         observations, initial, actions, frames, seal };

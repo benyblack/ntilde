@@ -27,13 +27,20 @@ const tcap = [['terminal-name', '544e'], ['color-count', '436f'], ['colors', '63
     ['unknown', '6e6f742d612d6361706162696c697479'], ['odd-hex', '5'],
     ['invalid-hex', 'zz'], ['empty', '']];
 
+/** The reply DECRQCRA owes the 1x1 witness request while the run turns AllowRectangleChecksumReport on: the bound first line
+ * always starts with the N of NTILDE_QRY_ (0x4E, plain), so the negated 16-bit checksum is FFB2. */
+const checksumReply = `${esc}P1!~FFB2${st}`;
+
+/** Observed geometry and absolute one-based margins, plus the optional `checksumReport` flag of a run whose initial settings turn
+ * the off-by-default DECRQCRA report on. Without the flag (every run before it existed) the context is exactly the four numbers. */
 export function queryWitnessContext(value) {
     const keys = ['rows', 'cols', 'top', 'bottom'];
-    if (!value || Object.keys(value).length !== keys.length || Object.keys(value).some(k => !keys.includes(k))
-        || !keys.every(k => Object.hasOwn(value, k))) {
+    const flagged = value && Object.hasOwn(value, 'checksumReport');
+    if (!value || Object.keys(value).length !== keys.length + (flagged ? 1 : 0) || Object.keys(value).some(k => !keys.includes(k) && k !== 'checksumReport')
+        || !keys.every(k => Object.hasOwn(value, k)) || (flagged && value.checksumReport !== true)) {
         throw new Error('Expected bounded observed geometry and absolute one-based margins.');
     }
-    const snapshot = Object.freeze(Object.fromEntries(keys.map(k => [k, value[k]])));
+    const snapshot = Object.freeze(Object.fromEntries([...keys, ...(flagged ? ['checksumReport'] : [])].map(k => [k, value[k]])));
     if (!keys.every(k => Number.isSafeInteger(snapshot[k]))
         || snapshot.rows < 1 || snapshot.rows > 4096 || snapshot.cols < 1 || snapshot.cols > 4096
         || snapshot.top < 1 || snapshot.bottom < snapshot.top || snapshot.bottom > snapshot.rows) {
@@ -50,7 +57,9 @@ export function queryWitnessPlan(context) {
     return Object.freeze([
         entry('q07.device.tertiary-da', 'device.tertiary-da', `${esc}[=c`, 'positive-reply', `${esc}P!|00000000${st}`),
         entry('q07.device.xtwinops-18', 'device.xtwinops-18', `${esc}[18t`, 'positive-reply', `${esc}[8;${c.rows};${c.cols}t`),
-        ...silent.map(([id, request]) => entry(`q07.${id}`, id, request, 'silence', '')),
+        ...silent.map(([id, request]) => (id === 'editing.decrqcra' && c.checksumReport
+            ? entry(`q07.${id}`, id, request, 'positive-reply', checksumReply)
+            : entry(`q07.${id}`, id, request, 'silence', ''))),
         entry('q12.decrqss.vertical-margins', 'device.decrqss', `${esc}P$qr${st}`, 'positive-reply', `${esc}P1$r${c.top};${c.bottom}r${st}`),
         ...decrqss.map(([id, setting]) => entry(`q12.decrqss.${id}`, 'device.decrqss', `${esc}P$q${setting}${st}`, 'negative-reply', `${esc}P0$r${st}`)),
         ...tcap.map(([id, name]) => entry(`q12.xtgettcap.${id}`, 'device.xtgettcap', `${esc}P+q${name}${st}`, 'negative-reply', `${esc}P0+r${st}`)),

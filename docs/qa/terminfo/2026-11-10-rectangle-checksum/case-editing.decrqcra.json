@@ -1,0 +1,585 @@
+{
+  "caseId": "editing.decrqcra",
+  "pinnedCriterion": "DECRQCRA (ESC[1;1;1;1;1;5*y) after the seed ABCDE ESC[1;1H answers a framed DCS 1 ! ~ hhhh ST (the checksum arithmetic is not verified)",
+  "pinnedFeeds": ["ABCDE\u001b[1;1H","\u001b[1;1;1;1;1;5*y"],
+  "terminalFixture": {
+    "writes": ["\u001b[1;1;1;1;1;1*y"],
+    "demand": "a framed DCS 1 ! ~ hhhh ST reply within 2000 ms",
+    "minimum": {
+      "rows": 1,
+      "cols": 1
+    },
+    "note": "the stock collector's queryOutcome path; this suite measures the same spelling as the graded terminal control"
+  },
+  "feeds": ["\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","ABCDE\u001b[1;1H","\u001b[1;1;1;1;1;5*y","\u001b[1;1;1;1;1;1*y","\u001b[3;1H\u001b[0mP\u001b[0m\u001b[3;3H\u001b[1mB\u001b[0m\u001b[3;5H\u001b[5mK\u001b[0m\u001b[3;7H\u001b[7mR\u001b[0m\u001b[3;9H\u001b[4mU\u001b[0m\u001b[3;11H\u001b[4:3mC\u001b[0m\u001b[3;13H\u001b[4:2mD\u001b[0m\u001b[3;15H\u001b[1;5;7;4mX\u001b[0m\u001b[3;17H\u001b[7m \u001b[0m\u001b[3;19H\u001b[3mI\u001b[0m\u001b[3;21H\u001b[2mF\u001b[0m\u001b[3;23H\u001b[8mH\u001b[0m\u001b[3;25H\u001b[9mS\u001b[0m\u001b[3;27H\u001b[53mO\u001b[0m\u001b[3;29H\u001b[31mr\u001b[0m\u001b[3;31H\u001b[48;2;10;20;30mg\u001b[0m\u001b[3;33H\u001b[38;5;200mp\u001b[0m\u001b[1;1H","\u001b[2;1;3;3;3;3*y","\u001b[2;1;3;5;3;5*y","\u001b[2;1;3;7;3;7*y","\u001b[2;1;3;9;3;9*y","\u001b[2;1;3;11;3;11*y","\u001b[2;1;3;13;3;13*y","\u001b[2;1;3;15;3;15*y","\u001b[2;1;3;17;3;17*y","\u001b[2;1;3;1;3;999*y","\u001b[2;1;3;19;3;33*y","\u001b[7*y","\u001b[7;0;0;0;0;0*y","\u001b[7;;3;5*y","\u001b[7;1;1;1;999;999*y","\u001b[7;9;1;1;1;5*y","\u001b[65535;1;3;1;3;40*y","\u001b[;1;1;1;1;5*y","\u001b[7;1;3;1;2;8*y","\u001b[7;1;1;5;1;1*y","\u001b[?1;1;1;1;1;5*y","\u001b[>1;1;1;1;1;5*y","\u001b[1;1;1;1;1;5;1*y","\u001b[1;1;1:2;1;1;5*y","\u001b[1;1;1;1;1;5$y","\u001b[1;1;1;1;1;5 *y","\u001b[3;6r\u001b[?6h","\u001b[7;1;1;1;2;12*y","\u001b[7;1;1;1;99;999*y","\u001b[7;1;0;0;0;0*y"],
+  "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+  "reads": [
+    {
+      "cursor": [0,0]
+    },
+    {
+      "cursor": [0,0]
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP1!~FEB1\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP1!~FFBF\u001b\\"
+    },
+    {
+      "cursor": [0,0]
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FF3E\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FF75\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FF8E\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FF9B\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FFAD\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FFAC\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FEB8\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FFC0\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~E93B\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP2!~FC5E\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP7!~3E0C\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP7!~3E0C\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP7!~758D\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP7!~3E0C\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP7!~FEB1\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP65535!~F5BB\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP0!~FEB1\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP7!~0000\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": "\u001bP7!~0000\u001b\\"
+    },
+    {
+      "cursor": [0,0],
+      "reply": null
+    },
+    {
+      "cursor": [0,0],
+      "reply": null
+    },
+    {
+      "cursor": [0,0],
+      "reply": null
+    },
+    {
+      "cursor": [0,0],
+      "reply": null
+    },
+    {
+      "cursor": [0,0],
+      "reply": null
+    },
+    {
+      "cursor": [0,0],
+      "reply": null
+    },
+    {
+      "cursor": [2,0]
+    },
+    {
+      "cursor": [2,0],
+      "reply": "\u001bP7!~FAF9\u001b\\"
+    },
+    {
+      "cursor": [2,0],
+      "reply": "\u001bP7!~61BB\u001b\\"
+    },
+    {
+      "cursor": [2,0],
+      "reply": "\u001bP7!~61BB\u001b\\"
+    }
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedFeeds": ["ABCDE\u001b[1;1H","\u001b[1;1;1;1;1;5*y"],
+    "pinnedReply": "\\eP1!~FEB1\\e\\",
+    "gate": "the measured run turns on AllowRectangleChecksumReport (off by default); the receipt binds the setting",
+    "seeds": {
+      "pinned": true,
+      "attributes": true,
+      "origin": {
+        "margins": [2,5],
+        "origin": true,
+        "cursor": [2,0]
+      }
+    },
+    "requests": {
+      "pinned": {
+        "request": "\\e[1;1;1;1;1;5*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 0,
+          "bottom": 0,
+          "right": 4
+        },
+        "demanded": "\\eP1!~FEB1\\e\\",
+        "received": "\\eP1!~FEB1\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "terminal": {
+        "request": "\\e[1;1;1;1;1;1*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 0,
+          "bottom": 0,
+          "right": 0
+        },
+        "demanded": "\\eP1!~FFBF\\e\\",
+        "received": "\\eP1!~FFBF\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-bold": {
+        "request": "\\e[2;1;3;3;3;3*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 2,
+          "bottom": 2,
+          "right": 2
+        },
+        "demanded": "\\eP2!~FF3E\\e\\",
+        "received": "\\eP2!~FF3E\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-blink": {
+        "request": "\\e[2;1;3;5;3;5*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 4,
+          "bottom": 2,
+          "right": 4
+        },
+        "demanded": "\\eP2!~FF75\\e\\",
+        "received": "\\eP2!~FF75\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-reverse": {
+        "request": "\\e[2;1;3;7;3;7*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 6,
+          "bottom": 2,
+          "right": 6
+        },
+        "demanded": "\\eP2!~FF8E\\e\\",
+        "received": "\\eP2!~FF8E\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-underline": {
+        "request": "\\e[2;1;3;9;3;9*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 8,
+          "bottom": 2,
+          "right": 8
+        },
+        "demanded": "\\eP2!~FF9B\\e\\",
+        "received": "\\eP2!~FF9B\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-curly": {
+        "request": "\\e[2;1;3;11;3;11*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 10,
+          "bottom": 2,
+          "right": 10
+        },
+        "demanded": "\\eP2!~FFAD\\e\\",
+        "received": "\\eP2!~FFAD\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-double": {
+        "request": "\\e[2;1;3;13;3;13*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 12,
+          "bottom": 2,
+          "right": 12
+        },
+        "demanded": "\\eP2!~FFAC\\e\\",
+        "received": "\\eP2!~FFAC\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-allFour": {
+        "request": "\\e[2;1;3;15;3;15*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 14,
+          "bottom": 2,
+          "right": 14
+        },
+        "demanded": "\\eP2!~FEB8\\e\\",
+        "received": "\\eP2!~FEB8\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-reverseSpace": {
+        "request": "\\e[2;1;3;17;3;17*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 16,
+          "bottom": 2,
+          "right": 16
+        },
+        "demanded": "\\eP2!~FFC0\\e\\",
+        "received": "\\eP2!~FFC0\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-row": {
+        "request": "\\e[2;1;3;1;3;999*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 0,
+          "bottom": 2,
+          "right": 139
+        },
+        "demanded": "\\eP2!~E93B\\e\\",
+        "received": "\\eP2!~E93B\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "attr-unweighted": {
+        "request": "\\e[2;1;3;19;3;33*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 18,
+          "bottom": 2,
+          "right": 32
+        },
+        "demanded": "\\eP2!~FC5E\\e\\",
+        "received": "\\eP2!~FC5E\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "page-omitted": {
+        "request": "\\e[7*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 0,
+          "bottom": 39,
+          "right": 139
+        },
+        "demanded": "\\eP7!~3E0C\\e\\",
+        "received": "\\eP7!~3E0C\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "page-zero": {
+        "request": "\\e[7;0;0;0;0;0*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 0,
+          "bottom": 39,
+          "right": 139
+        },
+        "demanded": "\\eP7!~3E0C\\e\\",
+        "received": "\\eP7!~3E0C\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "page-partial": {
+        "request": "\\e[7;;3;5*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 4,
+          "bottom": 39,
+          "right": 139
+        },
+        "demanded": "\\eP7!~758D\\e\\",
+        "received": "\\eP7!~758D\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "page-oversized": {
+        "request": "\\e[7;1;1;1;999;999*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 0,
+          "bottom": 39,
+          "right": 139
+        },
+        "demanded": "\\eP7!~3E0C\\e\\",
+        "received": "\\eP7!~3E0C\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "page-parameter": {
+        "request": "\\e[7;9;1;1;1;5*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 0,
+          "bottom": 0,
+          "right": 4
+        },
+        "demanded": "\\eP7!~FEB1\\e\\",
+        "received": "\\eP7!~FEB1\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "id-largest": {
+        "request": "\\e[65535;1;3;1;3;40*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 0,
+          "bottom": 2,
+          "right": 39
+        },
+        "demanded": "\\eP65535!~F5BB\\e\\",
+        "received": "\\eP65535!~F5BB\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "id-omitted": {
+        "request": "\\e[;1;1;1;1;5*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 0,
+          "bottom": 0,
+          "right": 4
+        },
+        "demanded": "\\eP0!~FEB1\\e\\",
+        "received": "\\eP0!~FEB1\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "inverted-rows": {
+        "request": "\\e[7;1;3;1;2;8*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 0,
+          "bottom": 1,
+          "right": 7
+        },
+        "demanded": "\\eP7!~0000\\e\\",
+        "received": "\\eP7!~0000\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "inverted-cols": {
+        "request": "\\e[7;1;1;5;1;1*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 0,
+          "left": 4,
+          "bottom": 0,
+          "right": 0
+        },
+        "demanded": "\\eP7!~0000\\e\\",
+        "received": "\\eP7!~0000\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "identity-private": {
+        "request": "\\e[?1;1;1;1;1;5*y",
+        "admitted": false,
+        "demanded": null,
+        "received": null,
+        "matches": true,
+        "unchanged": true
+      },
+      "identity-greater": {
+        "request": "\\e[>1;1;1;1;1;5*y",
+        "admitted": false,
+        "demanded": null,
+        "received": null,
+        "matches": true,
+        "unchanged": true
+      },
+      "identity-seventh": {
+        "request": "\\e[1;1;1;1;1;5;1*y",
+        "admitted": false,
+        "demanded": null,
+        "received": null,
+        "matches": true,
+        "unchanged": true
+      },
+      "identity-colon": {
+        "request": "\\e[1;1;1:2;1;1;5*y",
+        "admitted": false,
+        "demanded": null,
+        "received": null,
+        "matches": true,
+        "unchanged": true
+      },
+      "identity-dollar": {
+        "request": "\\e[1;1;1;1;1;5$y",
+        "admitted": false,
+        "demanded": null,
+        "received": null,
+        "matches": true,
+        "unchanged": true
+      },
+      "identity-space": {
+        "request": "\\e[1;1;1;1;1;5 *y",
+        "admitted": false,
+        "demanded": null,
+        "received": null,
+        "matches": true,
+        "unchanged": true
+      },
+      "origin-region": {
+        "request": "\\e[7;1;1;1;2;12*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 0,
+          "bottom": 3,
+          "right": 11
+        },
+        "demanded": "\\eP7!~FAF9\\e\\",
+        "received": "\\eP7!~FAF9\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "origin-clip": {
+        "request": "\\e[7;1;1;1;99;999*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 0,
+          "bottom": 39,
+          "right": 139
+        },
+        "demanded": "\\eP7!~61BB\\e\\",
+        "received": "\\eP7!~61BB\\e\\",
+        "matches": true,
+        "unchanged": true
+      },
+      "origin-defaults": {
+        "request": "\\e[7;1;0;0;0;0*y",
+        "admitted": true,
+        "rectangle": {
+          "top": 2,
+          "left": 0,
+          "bottom": 39,
+          "right": 139
+        },
+        "demanded": "\\eP7!~61BB\\e\\",
+        "received": "\\eP7!~61BB\\e\\",
+        "matches": true,
+        "unchanged": true
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "\u001bP1!~FEB1\u001b\\",
+    "note": "Checks framed reply and request id; checksum arithmetic is not verified",
+    "observation": {
+      "outcome": "supported",
+      "evidence": "query"
+    },
+    "assertions": [
+      {"kind":"positive","expected":"Complete four-digit checksum reply for request 1","observed":"\u001bP1!~FEB1\u001b\\"}
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-and-exact-replies",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "exact replies to stored ASCII cells: the checksum of the character and the bold, blink, reverse and underline weights over the requested rectangle, its defaults, origin offset and page clipping, the request id, the non-admitted spellings, and unchanged screen, cursor, margins and modes; wide, combining and supplementary characters, the persistent-session path, the default-off gate and rendered appearance are not claimed"
+  }
+}

@@ -41,10 +41,10 @@ const files = ['cole-observations.json', 'cole-run.json', 'cole-snapshots.jsonl'
 const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
 
 /** Any retained column-editing artifact or declaration requires the v38 suffix, and a
- * policy-v32 run always carries them, because the current worker collects this suite
+ * policy-v32 or later run always carries them, because the current worker collects this suite
  * unconditionally after the rectangle-editing suite. */
 export function includesColEditEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v32'
+    return ['readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33'].includes(context.sourceSnapshotPolicy)
         || context.colEditAdapterId !== undefined || context.colEditSuiteId !== undefined
         || context.colEditBundleSha256 !== undefined || context.colEditContractsVersion !== undefined
         || evidence.colEditEvidence !== undefined
