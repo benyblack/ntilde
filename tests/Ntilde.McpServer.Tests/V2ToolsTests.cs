@@ -544,6 +544,33 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("PARTIALLY", result, StringComparison.Ordinal);
     }
 
+    /// <summary>The exact DECRQCRA spellings name the Partial, off-by-default contract.</summary>
+    [Theory]
+    [InlineData("CSI 1;1;1;1;1;1 * y")]
+    [InlineData("\x1b[1;1;1;1;1;5*y")]
+    [InlineData("CSI * y")]
+    [InlineData("CSI ;;1;1;1;1 * y")]
+    public void Rectangle_checksum_explains_the_gated_partial_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains("DECRQCRA", result, StringComparison.Ordinal);
+        Assert.Contains("PARTIALLY", result, StringComparison.Ordinal);
+        Assert.Contains("Off by default", result, StringComparison.Ordinal);
+    }
+
+    /// <summary>Extra parameters, subparameters and other identities cannot inherit the checksum explanation.</summary>
+    [Theory]
+    [InlineData("CSI 1;1;1;1;1;1;1 * y")]
+    [InlineData("CSI 1;1;1:2;1;1;1 * y")]
+    [InlineData("CSI ? 1 * y")]
+    [InlineData("CSI 1 $ y")]
+    public void Other_checksum_forms_claim_no_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.DoesNotContain("DECRQCRA", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("PARTIALLY", result, StringComparison.Ordinal);
+    }
+
     /// <summary>The bare finals keep ICH and CUU.</summary>
     [Fact]
     public void Bare_at_and_A_stay_ich_and_cuu()

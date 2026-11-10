@@ -189,6 +189,8 @@ namespace Ntilde.Controls
             // Native kitty graphics on Windows (ConPTY pass-through opt-in): a freshly-created
             // parser must match what ApplySettings will set, same reasoning as above.
             Parser.AllowNativeKittyGraphics = AllowsNativeKittyGraphics(muxBacked);
+            // DECRQCRA reads the screen back, so it starts off unless the setting turns it on (direct panes only).
+            Parser.AllowRectangleChecksumReport = !muxBacked && (_settings?.AllowRectangleChecksumReport ?? false);
             if (muxBacked) PersistentImagePolicy.Apply(Parser, imagePolicy); // every parser of the session decides alike
 
             // Kitty t=f (file transport) reads happen through this delegate so the VT layer

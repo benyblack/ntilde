@@ -489,6 +489,35 @@ public class PaneParserWiringTests
     }
 
     /// <summary>
+    /// DECRQCRA reads the screen back, so a direct pane's parser answers it only while
+    /// <c>TerminalSettings.AllowRectangleChecksumReport</c> is on: off by default, live-synced on every
+    /// settings change, and never on a mux-backed parser (the daemon's parser owns that pane's replies).
+    /// </summary>
+    [AvaloniaFact]
+    public void RectangleChecksum_gate_is_off_by_default_follows_the_setting_live_and_stays_off_for_mux()
+    {
+        Assert.False(new TerminalSettings().AllowRectangleChecksumReport);
+
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        Assert.False(pane.Parser!.AllowRectangleChecksumReport);
+
+        pane.ApplySettings(new TerminalSettings { AllowRectangleChecksumReport = true });
+        pane.CreateAndWireParser();
+        AnsiParser parser = pane.Parser!;
+        Assert.True(parser.AllowRectangleChecksumReport);
+
+        pane.ApplySettings(new TerminalSettings { AllowRectangleChecksumReport = false });
+        Assert.Same(parser, pane.Parser);
+        Assert.False(parser.AllowRectangleChecksumReport);
+        pane.ApplySettings(new TerminalSettings { AllowRectangleChecksumReport = true });
+        Assert.True(parser.AllowRectangleChecksumReport);
+
+        pane.CreateAndWireParser(muxBacked: true);
+        Assert.False(pane.Parser!.AllowRectangleChecksumReport);
+    }
+
+    /// <summary>
     /// PR #500 Codex review: OSC 9;4 state 0 is the only withdrawal edge. An unknown or
     /// future state must be ignored — not collapsed into the null report that clears a
     /// live indicator — so a client speaking a newer dialect than this build cannot
