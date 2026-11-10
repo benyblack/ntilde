@@ -140,28 +140,37 @@
                             KeyDown="OnForwardEditorKeyDown">
                         <Grid ColumnDefinitions="128,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <!-- The hint, the listen label and the destination row all follow the selected
+                                 kind through element bindings, so a renamed control fails the XAML compile. -->
                             <ComboBox Grid.Row="0" Grid.Column="1" Name="ForwardKindCombo" MinWidth="160"
                                       SelectionChanged="OnForwardKindChanged" />
 
                             <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Name="ForwardKindHint"
+                                       Text="{Binding #ForwardKindCombo.SelectedItem, Converter={x:Static views:NewSshConnectionView.KindHint}}"
                                        Opacity="0.7" TextWrapping="Wrap" FontSize="12" />
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Name="ForwardListenLabel" Text="Listen on"
+                            <TextBlock Grid.Row="2" Grid.Column="0" Name="ForwardListenLabel"
+                                       Text="{Binding #ForwardKindCombo.SelectedItem, Converter={x:Static views:NewSshConnectionView.KindListenLabel}}"
                                        VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBox Grid.Row="2" Grid.Column="1" Name="ForwardBindInput" PlaceholderText="localhost" />
                             <TextBlock Grid.Row="2" Grid.Column="2" Text=":" VerticalAlignment="Center" Opacity="0.6" />
                             <NumericUpDown Grid.Row="2" Grid.Column="3" Name="ForwardSourcePortInput" Width="96"
-                                           Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False" />
+                                           Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False"
+                                           ValueChanged="OnForwardSourcePortChanged" />
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Name="ForwardDestLabel" Text="Forward to"
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Forward to"
+                                       IsVisible="{Binding #ForwardKindCombo.SelectedItem, Converter={x:Static views:NewSshConnectionView.KindHasDestination}}"
                                        VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <TextBox Grid.Row="3" Grid.Column="1" Name="ForwardDestHostInput" PlaceholderText="localhost" />
-                            <TextBlock Grid.Row="3" Grid.Column="2" Name="ForwardDestColon" Text=":" VerticalAlignment="Center" Opacity="0.6" />
+                            <TextBox Grid.Row="3" Grid.Column="1" Name="ForwardDestHostInput" PlaceholderText="localhost"
+                                     IsVisible="{Binding #ForwardKindCombo.SelectedItem, Converter={x:Static views:NewSshConnectionView.KindHasDestination}}" />
+                            <TextBlock Grid.Row="3" Grid.Column="2" Text=":" VerticalAlignment="Center" Opacity="0.6"
+                                       IsVisible="{Binding #ForwardKindCombo.SelectedItem, Converter={x:Static views:NewSshConnectionView.KindHasDestination}}" />
                             <NumericUpDown Grid.Row="3" Grid.Column="3" Name="ForwardDestPortInput" Width="96"
-                                           Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False" />
+                                           Minimum="1" Maximum="65535" FormatString="0" ShowButtonSpinner="False"
+                                           IsVisible="{Binding #ForwardKindCombo.SelectedItem, Converter={x:Static views:NewSshConnectionView.KindHasDestination}}" />
 
                             <Button Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" HorizontalAlignment="Right"
-                                    Content="Add forward" Click="OnAddForwardClick" />
+                                    Name="AddForwardButton" Content="Add forward" Click="OnAddForwardClick" />
                         </Grid>
                     </Border>
 
@@ -174,11 +183,11 @@
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Margin="12"
-                                           IsVisible="{Binding Forwards.Count, Converter={x:Static views:NewSshConnectionView.IsZero}}" />
+                                           IsVisible="{Binding !Forwards.Count}" />
                                 <ListBox Name="ForwardsList"
                                          ItemsSource="{Binding Forwards}"
                                          Background="Transparent"
-                                         IsVisible="{Binding Forwards.Count, Converter={x:Static views:NewSshConnectionView.IsNonZero}}">
+                                         IsVisible="{Binding !!Forwards.Count}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate x:DataType="ssh:PortForward">
                                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
@@ -197,6 +206,7 @@
                                                            TextTrimming="CharacterEllipsis" />
                                                 <Button Grid.Column="2"
                                                         Content="Remove"
+                                                        AutomationProperties.Name="{Binding Converter={x:Static views:NewSshConnectionView.RemoveForwardName}}"
                                                         Padding="10,3"
                                                         Background="Transparent"
                                                         VerticalAlignment="Center"
