@@ -16,6 +16,12 @@ prints (scripts/ci/app-tests-timing.py).
 Prefixes end in "." so `Ntilde.Tests.Core.` cannot also match `Ntilde.Tests.CoreX`, and they
 match through VSTest's `FullyQualifiedName~` (contains), which covers nested namespaces.
 
+The first claiming shard wins. A prefix may sit inside a namespace a LATER shard claims - one
+slow class (`Ntilde.Tests.Core.MainWindowMuxRemoteTests.`) moved out of a busy namespace
+(`Ntilde.Tests.Core.`) - and the later shard's filter then excludes it, so the class still runs
+exactly once. The reverse, a prefix inside a namespace an EARLIER shard already claims, could
+select nothing, and the self-test refuses it.
+
 Each shard also carries its floor for the gate (scripts/check-app-tests-baseline.py): the
 minimum executed count below which a run is treated as truncated rather than green. As with the
 single lane's floor before it, lowering one is a decision, not a fix.
@@ -24,8 +30,14 @@ A shard also says what it needs from its runner beyond the compiled test assembl
 below), so a shard that owns no such test skips that setup. Moving a prefix moves its needs with
 it: they are worked out from the same filter, never named per shard in the workflow.
 
-Usage: app-tests-shard.py <shard>   prints `filter=`, `floor=` and one `<need>=1` or `<need>=`
-                                    line per NEEDS entry, for $GITHUB_OUTPUT.
+The other test projects (NON_HEADLESS below) run on the shards too, each on exactly one, one
+after another on that runner, beside its share of App.Tests. Never several at once on one runner:
+#921 tried that and Platform.Tests' timing-bound tests failed under the contention (#926).
+
+Usage: app-tests-shard.py <shard>   prints `filter=`, `floor=`, `projects=` (the non-headless
+                                    projects it runs, space-separated, possibly none) and one
+                                    `<need>=1` or `<need>=` line per NEEDS entry, for
+                                    $GITHUB_OUTPUT.
        app-tests-shard.py --list    prints the shard names, one per line.
 The filter is ANDed onto the lane's own Category/Lane exclusions in ci.yml.
 """
@@ -38,7 +50,15 @@ REST = "rest"
 # A prefix can also name one class ("Ntilde.Tests.VtReportCliTests."), which is how a single
 # slow class that lives in a busy namespace gets moved.
 #
-# Rebalanced from run 41296868089 (windows test-step seconds; ubuntu is lower
+# Four shards from run 42886531622 (PR #921; windows, seconds of test time in each shard's trx,
+# plus about 20 s of host start and discovery per shard): CommandAssist 71, Controls 27, Shell
+# 55 (52 of it Shell.Mux), Core 142 - of which the four MainWindowMux*Tests classes are 46 (Remote
+# 27.5, Sharing 8.7, Update 7.5, Lifecycle 2.6) - and REST's App.Tests share 47, beside the
+# PlatformBoot lane (14 s). With three shards, assist-shell (153 s) and core (142 s) ended the
+# run. Now assist 98 s, mux 101 s, core 95 s; the non-headless projects then even the shards out
+# (NON_HEADLESS below).
+#
+# Before that, rebalanced from run 41296868089 (windows test-step seconds; ubuntu is lower
 # throughout): Core ~124 s of test time; CommandAssist ~62; Shell (almost all Shell.Mux) ~51;
 # REST's App.Tests share ~79 s of step, Controls the largest part of it at ~27, plus the
 # non-headless projects ~100 and the PlatformBoot lane ~10, which also run on REST. Core alone
@@ -48,19 +68,28 @@ REST = "rest"
 # first run of this split (41298327211), windows test steps: assist-shell 149 s, core 132,
 # rest 142 (89 non-headless + 45 + 8 PlatformBoot), from 145 / 198 / 189 before.
 #
-# Floors are the executed counts that run measured - identical on windows and ubuntu, since the
-# count includes skipped tests - less about 2% for churn: assist-shell 2,942, core 1,610,
-# rest 2,817; with the 3 SdkBuild tests, 7,372, the lane's count before the split. Each shard's
-# timing report (scripts/ci/app-tests-timing.py) prints the count per namespace, which is what
-# moving a namespace moves between floors.
+# Floors are the executed counts the measuring run had - identical on windows and ubuntu, since
+# the count includes skipped tests - less about 2% for churn. For the four-shard cut, from run
+# 42886531622: assist 1,783, mux 1,498, core 1,626 (floors 1,745, 1,465, 1,590). REST's floor is
+# unchanged by the cut (it measured 3,584; floor 2,760, set at the three-shard split from 2,817).
+# Each shard's timing report (scripts/ci/app-tests-timing.py) prints the count per namespace,
+# which is what moving a namespace moves between floors.
 SHARDS = [
-    ("assist-shell", [
+    ("assist", [
         "Ntilde.Tests.CommandAssist.",
         "Ntilde.Tests.VtReportCliTests.",
-        "Ntilde.Tests.Shell.",
         "Ntilde.Tests.Controls.",
-    ], 2880),
-    ("core", ["Ntilde.Tests.Core."], 1575),
+    ], 1745),
+    ("mux", [
+        "Ntilde.Tests.Shell.",
+        # Out of Ntilde.Tests.Core., which `core` below claims: see "The first claiming shard
+        # wins" above.
+        "Ntilde.Tests.Core.MainWindowMuxRemoteTests.",
+        "Ntilde.Tests.Core.MainWindowMuxSharingTests.",
+        "Ntilde.Tests.Core.MainWindowMuxUpdateTests.",
+        "Ntilde.Tests.Core.MainWindowMuxLifecycleTests.",
+    ], 1465),
+    ("core", ["Ntilde.Tests.Core."], 1590),
     (REST, [], 2760),
 ]
 
@@ -82,17 +111,56 @@ NEEDS = {
 }
 
 
+# Which shard runs each non-headless test project (tests/Ntilde.<name>.Tests), so that every shard
+# ends at about the same time. Serial seconds on windows from run 42897345590 (#926): VT 21,
+# Platform 21, McpServer 19, Mux 17, Architecture 15, Shots 7, Rendering 2 - 102 in all, which on
+# REST alone made it the longest shard by about a minute. Against the shards' App.Tests steps
+# (assist ~118 s, mux ~121, core ~115, REST ~79 with the PlatformBoot lane), this puts each at
+# about 130-138 s. Listed in the order they run; the self-test checks that every test project
+# but App.Tests is here exactly once.
+NON_HEADLESS = {
+    "VT": REST,
+    "Rendering": REST,
+    "Architecture": "assist",
+    "Platform": REST,
+    "McpServer": "core",
+    "Mux": "mux",
+    "Shots": REST,
+}
+
+
+def projects_for(name: str) -> list[str]:
+    """The non-headless projects shard `name` runs, in NON_HEADLESS order (possibly none)."""
+    floor_for(name)  # KeyError for an unknown shard
+    return [project for project, shard in NON_HEADLESS.items() if shard == name]
+
+
 def claimed() -> list[str]:
     return [prefix for name, prefixes, _ in SHARDS if name != REST for prefix in prefixes]
 
 
+def excluded(name: str) -> list[str]:
+    """The prefixes earlier shards claimed inside the namespaces shard `name` claims: those tests
+    are theirs, so this shard's filter leaves them out (the first claiming shard wins)."""
+    earlier: list[str] = []
+    for shard, prefixes, _ in SHARDS:
+        if shard == name:
+            return [q for q in earlier if any(p in q for p in prefixes)]
+        earlier += prefixes
+    raise KeyError(name)
+
+
 def filter_for(name: str) -> str:
+    """Shard `name`'s VSTest filter: its prefixes less those an earlier shard claimed inside them,
+    or for REST, every claimed prefix negated."""
     for shard, prefixes, _ in SHARDS:
         if shard != name:
             continue
         if shard == REST:
             return "&".join(f"FullyQualifiedName!~{p}" for p in claimed())
-        return "(" + "|".join(f"FullyQualifiedName~{p}" for p in prefixes) + ")"
+        terms = ["(" + "|".join(f"FullyQualifiedName~{p}" for p in prefixes) + ")"]
+        terms += [f"FullyQualifiedName!~{q}" for q in excluded(name)]
+        return "&".join(terms)
     raise KeyError(name)
 
 
@@ -106,7 +174,7 @@ def owns(name: str, fqn: str) -> bool:
         if shard == name:
             if shard == REST:
                 return not any(p in fqn for p in claimed())
-            return any(p in fqn for p in prefixes)
+            return any(p in fqn for p in prefixes) and not any(q in fqn for q in excluded(name))
     raise KeyError(name)
 
 
@@ -130,6 +198,7 @@ def main() -> int:
     try:
         print(f"filter={filter_for(arg)}")
         print(f"floor={floor_for(arg)}")
+        print(f"projects={' '.join(projects_for(arg))}")
         for need, needed in needs_for(arg).items():
             print(f"{need}={'1' if needed else ''}")
     except KeyError:

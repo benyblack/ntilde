@@ -19,8 +19,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "ci" / "app-tests-shard.py"
 APP_TESTS = ROOT / "tests" / "Ntilde.App.Tests"
-# The non-headless projects ci.yml runs on the rest shard, besides its share of App.Tests.
-NON_HEADLESS = ["VT", "Rendering", "Architecture", "Platform", "McpServer", "Mux"]
 
 # A test that drives the SDK on the source tree - `dotnet build ...` and the like - rather than
 # running an already-built assembly with `dotnet <dll>`. Those need a restored tree.
@@ -44,7 +42,20 @@ EDGE_CASES = [
     "Ntilde.Tests.VtReportCliTests",  # one class claimed out of the top-level namespace
     "Ntilde.Tests.VtReportCliBuildTests",  # must not ride that class prefix either
     "Ntilde.Tests.VtReportCliTestsHelpers",  # must not ride that class prefix
+    "Ntilde.Tests.Core.MainWindowMuxRemoteTests",  # claimed out of Core by an earlier shard
+    "Ntilde.Tests.Core.MainWindowMuxRemoteTestsHelpers",  # stays with Core
+    "Ntilde.Tests.Core.MainWindowMuxBrandNewTests",  # a new MainWindowMux class stays with Core
+    "Ntilde.Tests.Core.MainWindowMuxRemoteTests+Nested",
 ]
+
+
+def run_module():
+    """The shard script itself, imported, for checks on its SHARDS table."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("app_tests_shard", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run(*args):
@@ -141,12 +152,28 @@ def main():
     owner = {s: matches(filters[s], "Ntilde.Tests.VtReportCliTestsHelpers.M") for s in shards}
     check(owner.get("rest"), "a class that merely starts with a claimed class falls to rest")
 
+    # First claiming shard wins: a class claimed out of a namespace a later shard claims runs on
+    # the earlier shard only, and the later shard's filter excludes it. The reverse would select
+    # nothing - a prefix inside a namespace an earlier shard already owns - so it is refused.
+    moved = "Ntilde.Tests.Core.MainWindowMuxRemoteTests.M"
+    owner = [s for s in shards if matches(filters[s], moved)]
+    check(owner == ["mux"], f"a class claimed out of Core runs on mux only ({owner})")
+    owner = [s for s in shards if matches(filters[s], "Ntilde.Tests.Core.MainWindowMuxRemoteTestsHelpers.M")]
+    check(owner == ["core"], f"a class that merely starts with a moved class stays with core ({owner})")
+    spec = run_module()
+    swallowed = []
+    earlier = []
+    for name, prefixes, _ in spec.SHARDS:
+        swallowed += [f"{name}: {p} (inside {q})" for p in prefixes for q in earlier if q in p]
+        earlier += prefixes
+    check(not swallowed, f"no claimed prefix sits inside one an earlier shard claims ({swallowed[:3]})")
+
     # Needs. Each shard prints one line per need; the workflow skips setup on a shard whose
     # line is empty, so the shard owning such a test must print 1.
     needs = {}
     for shard in shards:
         out = dict(line.split("=", 1) for line in run(shard).stdout.splitlines() if "=" in line)
-        needs[shard] = {k: v for k, v in out.items() if k not in ("filter", "floor")}
+        needs[shard] = {k: v for k, v in out.items() if k not in ("filter", "floor", "projects")}
         check(set(needs[shard]) == {"restore", "shells"} and
               all(v in ("", "1") for v in needs[shard].values()),
               f"{shard}: prints restore= and shells= as 1 or empty ({needs[shard]})")
@@ -178,10 +205,25 @@ def main():
                if needs[o].get("restore") != "1"]
     check(not missing, "every test that drives `dotnet build` takes Category=SdkBuild or runs on a "
                        f"shard that restores (NEEDS['restore'] in app-tests-shard.py): {missing[:3]}")
-    others = sorted(c for proj in NON_HEADLESS
-                    for c in declared_classes(ROOT / "tests" / f"Ntilde.{proj}.Tests", drives_sdk))
-    check(not others or needs["rest"].get("restore") == "1",
-          f"no non-headless test drives `dotnet build`, or rest restores the tree ({others[:3]})")
+    # The non-headless projects: every test project but App.Tests runs on exactly one shard, and
+    # the shards' `projects=` lines say so. A project in none would silently stop running.
+    projects = {}
+    for shard in shards:
+        out = dict(line.split("=", 1) for line in run(shard).stdout.splitlines() if "=" in line)
+        projects[shard] = out.get("projects", "").split()
+    on_disk = sorted(d.name[len("Ntilde."):-len(".Tests")] for d in (ROOT / "tests").glob("Ntilde.*.Tests")
+                     if d.is_dir() and d.name != "Ntilde.App.Tests" and any(d.glob("*.csproj")))
+    assigned = sorted(p for ps in projects.values() for p in ps)
+    check(on_disk and assigned == on_disk,
+          f"every test project but App.Tests runs on exactly one shard (assigned {assigned}, "
+          f"on disk {on_disk})")
+    check(all(len(ps) == len(set(ps)) for ps in projects.values()), "no shard lists a project twice")
+
+    others = sorted(f"{c} -> {shard}" for shard, ps in projects.items() for proj in ps
+                    for c in declared_classes(ROOT / "tests" / f"Ntilde.{proj}.Tests", drives_sdk)
+                    if needs[shard].get("restore") != "1")
+    check(not others, f"no non-headless test drives `dotnet build`, or its shard restores the tree "
+                      f"({others[:3]})")
 
     # ...and the workflow does its half: the shards' lane leaves SdkBuild out, and the build job
     # runs it - with the variable that has the tests use the build that job just made.
@@ -191,6 +233,32 @@ def main():
     check("Category!=SdkBuild" in shard_job, "the shards' App.Tests lane excludes Category=SdkBuild")
     check('--filter "Category=SdkBuild"' in build_job and USE_EXISTING_BUILD in build_job,
           "the build job runs Category=SdkBuild against its own build")
+
+    # The job's matrix runs exactly the script's shards. A name the script does not know fails the
+    # job's first step, but a shard left out of the matrix would fail nothing: its tests would
+    # simply stop running, and no other shard's floor can see that.
+    matrix = re.search(r"^\s+shard: \[([^\]]*)\]", shard_job, re.M)
+    in_matrix = [n.strip() for n in matrix.group(1).split(",")] if matrix else []
+    # The non-headless step runs the shard's `projects=` list, not a list of its own, and runs them
+    # one after another (#926): a list in the workflow would drift from the script's, and a `&` in
+    # the loop would put them side by side again.
+    step_name = "- name: Test (unit — gating, non-headless projects)"
+    check(step_name in shard_job, f"the Unit Tests job has its non-headless step ({step_name!r})")
+    step = shard_job.split(step_name, 1)[-1] if step_name in shard_job else ""
+    step = step.split("\n      - name:", 1)[0]
+    check("steps.shard.outputs.projects" in step and "for proj in $PROJECTS" in step,
+          "the non-headless step runs the projects the shard script names")
+    check(not re.search(r"\)\s*&\s*$|&\s*$", step, re.M) and "wait" not in step.split(),
+          "the non-headless step runs its projects one after another")
+    # Every assigned project is in the build artifact the shards download; one that is not would
+    # fail only on its shard, with a missing-file error far from the cause.
+    upload = build_job.split("- name: Upload build artifact", 1)[-1]
+    not_uploaded = [p for p in assigned
+                    if f"tests/Ntilde.{p}.Tests/bin/${{{{ env.CONFIGURATION }}}}" not in upload]
+    check("- name: Upload build artifact" in build_job and not not_uploaded,
+          f"the build job uploads every assigned project's output (missing: {not_uploaded})")
+    check(in_matrix == shards, f"the Unit Tests matrix runs exactly the script's shards "
+                               f"(matrix {in_matrix}, script {shards})")
 
     for bad in ([], ["nope"], ["shell", "extra"]):
         proc = run(*bad)
