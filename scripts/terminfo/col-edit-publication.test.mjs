@@ -218,7 +218,7 @@ test('prior publications still rederive beside this batch and every attempt is p
     assert.equal(earlier.receipt.schemaVersion, 37);
     assert.equal(earlier.receipt.colEditEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 2);
+    assert.equal(attempts.length, 3);
     assert.equal(attempts[0].receiptCompleted, false);
     assert.match(attempts[0].outcome, /Oversized owner response/);
     assert.equal(attempts.at(-1).runId, context.runId);

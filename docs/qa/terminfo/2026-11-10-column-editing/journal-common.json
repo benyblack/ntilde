@@ -2,12 +2,12 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-column-editing-graded-v1",
-    "runId": "140e8da353177b481d17be1a7474be57",
+    "runId": "6e186dca2f788690f5b5f1e997c4a8d8",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-column-editing-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-rectangle-editing-grading-v1",
-      "bundleSha256": "92bef8e090adb58da258e2a228cb4cb356da0b146762e9b501fa03df9fc3255b",
+      "bundleSha256": "3147417975371320ae0277459c41bd79811ab2c5ec72834eb82b564bbb5018f9",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 column-editing termless criteria (editing.sl with ESC[2 @, editing.sr with ESC[2 A, editing.decic with ESC[2'} and editing.decdc with ESC[2'~, each over its pinned seed and setup cursor) replayed byte-exactly on a disposable App and graded from parent-journaled readScreen stored cells of the whole screen, the cursor, the App's stored margins, origin mode and insert mode, stored attribute tuples and per-cell DECSCA protection, with controls over a seed at both the left and the right edge for one, omitted, zero, three and oversized (clamped) counts, scroll margins with the cursor inside, above and below them, origin mode, insert mode, non-admitted identities (extra parameter, subparameter, private leader), the start column (SL/SR from the left margin whatever the cursor column; DECIC/DECDC at the first and the last column), moved attributed cells under a different pen with attribute-free introduced blanks, and moved protection. The pending-wrap state after an edit at the last column is observed, never graded. Stored ASCII state only with full-width horizontal margins: left/right margins (DECLRMM) are not implemented or claimed; the pinned terminal pixel path never carries a verdict and is not qualified; no Unicode, wide-cell, scaled-text, image-plane, DECRQCRA, rectangle or rendered-appearance claim; no stock grades.",
@@ -19,7 +19,7 @@
     "start": {
       "index": 0,
       "kind": "cole-start",
-      "paneId": "92753e07-93fa-4c7d-87f9-cc086dc45ff1",
+      "paneId": "e059a6cf-4c88-48d1-9fd4-863f5c63d454",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -71,12 +71,12 @@
     "bind": {
       "index": 1,
       "kind": "cole-bind",
-      "paneId": "92753e07-93fa-4c7d-87f9-cc086dc45ff1",
+      "paneId": "e059a6cf-4c88-48d1-9fd4-863f5c63d454",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
-        "lines": ["NTILDE_CE_140e8da353177b481d17be1a7474be57","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+        "lines": ["NTILDE_CE_6e186dca2f788690f5b5f1e997c4a8d8","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
         "cursorRow": 0,
         "cursorCol": 42,
         "cursorVisible": true,
@@ -118,12 +118,12 @@
           "lines": []
         }
       },
-      "sha256": "d00fd3797d931eeaf7b1c7817894599c653bf53d7f3b0fa5b989aafcbc3eab06"
+      "sha256": "67bde1e11d139dcaa2180acf0b4997bfbafbbdf6660c78bdcc10917bc1c50df3"
     },
     "finish": {
       "index": 56,
       "kind": "cole-finish",
-      "paneId": "92753e07-93fa-4c7d-87f9-cc086dc45ff1",
+      "paneId": "e059a6cf-4c88-48d1-9fd4-863f5c63d454",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,

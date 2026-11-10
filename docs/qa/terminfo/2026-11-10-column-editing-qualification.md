@@ -59,11 +59,12 @@ incomplete restoration is inconclusive or refused, never conclusive.
 
 ## Measurement
 
-Scripts (adapter) revision `a6457537c7a856441e99f42f7ccffb98de811299`; App source revision `ed95d75900124a77e5cfbde0735a68c657c2da9c` (the last commit that touched
-`src/` in the measured tree: PR 917's DECIC/DECDC/SL/SR on main `07322bb3`); the Release sidecar was built from that tree with the repository wrappers. Owned run
-`140e8da353177b481d17be1a7474be57`, receipt schema 38, source policy v32 (inventory v39, 241 files), default theme, 40x140, App version 0.13.0 (operator supplied; not
-independently verified), disposable sidecar `artifacts/sidecar-col-edit`, stock collector run `7fc55df7d17c31ab13c336ee0c47115f`, measured 2026-11-10T15:07Z on macOS
-with Node 24, under the shared desktop-collection lock.
+Scripts (adapter) revision `1e7887b3d70ae556517f5cab879fe84a7b50bb72` (the measured script files are those of `a6457537`; the merge only brought in PR 917's
+review fixes and PR 919's test-only and CI changes); App source revision `d361797541b5323524fa91251998b94df4b0e3f4` (the last commit that touched `src/` in the
+measured tree: PR 917's DECIC/DECDC/SL/SR with its review fixes); the Release sidecar was built from that tree with the repository wrappers. Owned run
+`6e186dca2f788690f5b5f1e997c4a8d8`, receipt schema 38, source policy v32 (inventory v39, 241 files), default theme, 40x140, App version 0.13.0 (operator supplied;
+not independently verified), disposable sidecar `artifacts/sidecar-col-edit-2`, stock collector run `6d800115e8965668e0c9252ffe0fcf24`, measured 2026-11-10T17:07Z
+on macOS with Node 24, under the shared desktop-collection lock.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Stock grade |
 |---|---|---|---|
@@ -88,10 +89,13 @@ pushed `Y` and `Z` past the edge). Introduced blanks carried no visual attribute
 **Predecessors and findings.** Every merged predecessor suite (twenty-three, including rectangle editing) and both finding suites reconfirm in the same run with the same
 outcomes as their own publications; the receipt re-derives all of them.
 
-**Preserved attempts:** (1) run `6ed5c2fd13272c9e81e0664900d63d6d` (scripts `f19d0e1c`, same App and sidecar) aborted in this suite with `Oversized owner response`
-after every earlier suite had completed: the attribute read (34 KB of protection and attribute runs) exceeded the 16 KiB control budget of the owner socket. The fix
-(scripts `a6457537`) admits `cole` reads to the cell snapshot budget exactly as the selective-erasure suite's reads were; it is retained under
-`artifacts/terminfo/owned-WH1b72` and no evidence from it was used. (2) The published run.
+**Preserved attempts:** (1) run `6ed5c2fd13272c9e81e0664900d63d6d` (scripts `f19d0e1c`, App source `ed95d759`, sidecar `artifacts/sidecar-col-edit`) aborted
+in this suite with `Oversized owner response` after every earlier suite had completed: the attribute read (34 KB of protection and attribute runs) exceeded the
+16 KiB control budget of the owner socket. The fix (scripts `a6457537`) admits `cole` reads to the cell snapshot budget exactly as the selective-erasure suite's
+reads were; retained under `artifacts/terminfo/owned-WH1b72`, no evidence used. (2) run `140e8da353177b481d17be1a7474be57` (scripts `a6457537`, App source
+`ed95d759`, stock run `7fc55df7d17c31ab13c336ee0c47115f`), complete, all four cases supported with the same observations; superseded because the review of PR 917
+then changed `src/` (a lone wide lead at the right edge is no longer carried inward by DECDC/SL; the MCP explainer names raw-byte SL/SR), so the suite was measured
+again on the final tree; retained under `artifacts/terminfo/owned-r2rxWb`. (3) The published run.
 
 ## Layout
 
