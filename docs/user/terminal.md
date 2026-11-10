@@ -126,7 +126,7 @@ or connect with `TERM=xterm-256color ssh host`. Ntilde's own SSH profiles always
 
 **What it adds:** `Tc`, `setrgbf` and `setrgbb` (truecolor); `Su`, `Smulx` and `Setulc` (underline
 styles and colors); `Sync` (synchronized output); `Ss` and `Se` (`Se` returns to your configured
-cursor); and `hs`, `tsl` and `fsl` (the title as a status line). It deliberately leaves out `RGB`:
+cursor); `Enmg`, `Dsmg`, `Clmg` and `Cmg` (left/right margins, which tmux uses to enable its `margins` feature); and `hs`, `tsl` and `fsl` (the title as a status line). It deliberately leaves out `RGB`:
 in a terminfo entry, ncurses would take it to mean that the 256-color `setaf` and `setab` take
 direct RGB values. Clipboard writes (`Ms`) are inherited from `xterm-256color` unchanged and still
 follow `AllowOsc52ClipboardWrite`.

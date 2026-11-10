@@ -51,6 +51,7 @@ public static class TerminalCapabilities
     private const string Sgr = "tests/Ntilde.App.Tests/SgrAttributeTests.cs";
     private const string Underline = "tests/Ntilde.VT.Tests/UnderlineStyleTests.cs";
     private const string Owner = "tests/Ntilde.VT.Tests/TerminalCapabilityTests.cs";
+    private const string Margins = "tests/Ntilde.VT.Tests/LeftRightMarginTests.cs";
 
     /// <summary>Every advertised capability, in a stable order.</summary>
     public static IReadOnlyList<TerminalCapability> All { get; } =
@@ -86,6 +87,10 @@ public static class TerminalCapabilities
                 + "sessions, which a static file cannot express; the entry adds nothing and inherits "
                 + "whatever xterm-256color says.",
         },
+        new("Enmg", TerminalCapabilityKind.Text, "\u001b[?69h", [Owner, Margins]),
+        new("Dsmg", TerminalCapabilityKind.Text, "\u001b[?69l", [Owner, Margins]),
+        new("Clmg", TerminalCapabilityKind.Text, "\u001b[s", [Owner, Margins]),
+        new("Cmg", TerminalCapabilityKind.Text, "\u001b[%i%p1%d;%p2%ds", [Owner, Margins]),
         new("hs", TerminalCapabilityKind.Flag, "", [Owner, "tests/Ntilde.VT.Tests/OscTitleTests.cs"]),
         new("tsl", TerminalCapabilityKind.Text, "\u001b]2;", [Owner, "tests/Ntilde.VT.Tests/OscTitleTests.cs"]),
         new("fsl", TerminalCapabilityKind.Text, "\u0007", [Owner, "tests/Ntilde.VT.Tests/OscTitleTests.cs"]),

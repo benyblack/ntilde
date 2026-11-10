@@ -70,6 +70,36 @@ public sealed class TerminalCapabilityTests
         Assert.Equal("\x1b[?2026;2$y", Reply(Expand("Sync", 1) + Expand("Sync", 2) + "\x1b[?2026$p"));
     }
 
+    [Theory]
+    [InlineData("Enmg", "\x1b[?69h")]
+    [InlineData("Dsmg", "\x1b[?69l")]
+    [InlineData("Clmg", "\x1b[s")]
+    [InlineData("Cmg", "\x1b[%i%p1%d;%p2%ds")]
+    public void Margin_capabilities_are_in_the_table_and_answer_XTGETTCAP(string name, string value)
+    {
+        Assert.True(TerminalCapabilities.TryGet(name, out TerminalCapability? capability));
+        Assert.Equal(TerminalCapabilityKind.Text, capability.Kind);
+        Assert.Equal(value, capability.Value);
+        Assert.Null(capability.TerminfoOmission);
+        Assert.Equal($"\x1bP1+r{Hex(name)}={Hex(value)}\x1b\\", Reply($"\x1bP+q{Hex(name)}\x1b\\"));
+    }
+
+    [Fact]
+    public void Margin_capabilities_set_and_clear_the_left_and_right_margins()
+    {
+        Assert.Equal("\x1b[5;14s", Expand("Cmg", 4, 13));
+        var buffer = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        parser.Process(Expand("Enmg") + Expand("Cmg", 4, 13));
+        Assert.Equal((4, 13), (buffer.LeftMargin, buffer.RightMargin));
+        parser.Process(Expand("Clmg"));
+        Assert.Equal((0, 19), (buffer.LeftMargin, buffer.RightMargin));
+        parser.Process(Expand("Cmg", 2, 7));
+        Assert.Equal((2, 7), (buffer.LeftMargin, buffer.RightMargin));
+        parser.Process(Expand("Dsmg"));
+        Assert.Equal((0, 19), (buffer.LeftMargin, buffer.RightMargin));
+    }
+
     [Fact]
     public void Ss_sets_and_Se_restores_the_cursor_style()
     {
@@ -295,7 +325,7 @@ public sealed class TerminalCapabilityTests
 
 /// <summary>
 /// The subset of curses' <c>tparm</c> the capability table uses: <c>%p1-%p9</c>, <c>%d</c>,
-/// <c>%s</c>, <c>%{n}</c>, the arithmetic operators, <c>%?…%t…%e…%;</c> and <c>%%</c>. Anything
+/// <c>%s</c>, <c>%i</c>, <c>%{n}</c>, the arithmetic operators, <c>%?…%t…%e…%;</c> and <c>%%</c>. Anything
 /// else fails the test, so a new entry cannot rely on an operation this expander ignores.
 /// </summary>
 internal static class TerminfoExpander
@@ -303,6 +333,7 @@ internal static class TerminfoExpander
     public static string Expand(string format, params object[] parameters)
     {
         var output = new StringBuilder();
+        parameters = (object[])parameters.Clone(); // %i edits them in place
         var stack = new Stack<object>();
         for (int i = 0; i < format.Length; i++)
         {
@@ -316,6 +347,9 @@ internal static class TerminfoExpander
             switch (op)
             {
                 case '%': output.Append('%'); break;
+                case 'i': // one-based: increment the first two parameters
+                    for (int p = 0; p < Math.Min(2, parameters.Length); p++) parameters[p] = (int)parameters[p] + 1;
+                    break;
                 case 'p': stack.Push(parameters[format[++i] - '1']); break;
                 case 'd': output.Append(((int)stack.Pop()).ToString(System.Globalization.CultureInfo.InvariantCulture)); break;
                 case 's': output.Append((string)stack.Pop()); break;
