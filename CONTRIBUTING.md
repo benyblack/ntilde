@@ -489,8 +489,9 @@ All PRs are automatically checked by CI:
 - headless App.Tests, in two lanes (`Lane!=PlatformBoot` and `Lane=PlatformBoot`)
   — **blocking**, on failures and on hangs. CI splits the first lane across four
   jobs per OS by test namespace (`scripts/ci/app-tests-shard.py`: `assist`, `mux`,
-  `core` and `rest`; `rest` also runs the PlatformBoot lane and the other test
-  projects), and runs the three `Category=SdkBuild` tests in the Build job.
+  `core` and `rest`; each also runs some of the other test projects, one after
+  another, and `rest` the PlatformBoot lane), and runs the three
+  `Category=SdkBuild` tests in the Build job.
   The `Unit Tests (<os>)` check rolls them up. Locally, run the two lanes as
   shown above; the shards only exist to save wall-clock time. Both test steps carry
   `continue-on-error`, but only so the verdict can come from the following step,

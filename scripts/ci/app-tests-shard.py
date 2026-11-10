@@ -30,8 +30,14 @@ A shard also says what it needs from its runner beyond the compiled test assembl
 below), so a shard that owns no such test skips that setup. Moving a prefix moves its needs with
 it: they are worked out from the same filter, never named per shard in the workflow.
 
-Usage: app-tests-shard.py <shard>   prints `filter=`, `floor=` and one `<need>=1` or `<need>=`
-                                    line per NEEDS entry, for $GITHUB_OUTPUT.
+The other test projects (NON_HEADLESS below) run on the shards too, each on exactly one, one
+after another on that runner, beside its share of App.Tests. Never several at once on one runner:
+#921 tried that and Platform.Tests' timing-bound tests failed under the contention (#926).
+
+Usage: app-tests-shard.py <shard>   prints `filter=`, `floor=`, `projects=` (the non-headless
+                                    projects it runs, space-separated, possibly none) and one
+                                    `<need>=1` or `<need>=` line per NEEDS entry, for
+                                    $GITHUB_OUTPUT.
        app-tests-shard.py --list    prints the shard names, one per line.
 The filter is ANDed onto the lane's own Category/Lane exclusions in ci.yml.
 """
@@ -105,6 +111,29 @@ NEEDS = {
 }
 
 
+# Which shard runs each non-headless test project (tests/Ntilde.<name>.Tests), so that every shard
+# ends at about the same time. Serial seconds on windows from run 42897345590 (#926): VT 21,
+# Platform 21, McpServer 19, Mux 17, Architecture 15, Shots 7, Rendering 2 - 102 in all, which on
+# REST alone made it the longest shard by about a minute. Against the shards' App.Tests steps
+# (assist ~118 s, mux ~121, core ~115, REST ~79 with the PlatformBoot lane), this puts each at
+# about 130-138 s. Listed in the order they run; the self-test checks that every test project
+# but App.Tests is here exactly once.
+NON_HEADLESS = {
+    "VT": REST,
+    "Rendering": REST,
+    "Architecture": "assist",
+    "Platform": REST,
+    "McpServer": "core",
+    "Mux": "mux",
+    "Shots": REST,
+}
+
+
+def projects_for(name: str) -> list[str]:
+    floor_for(name)  # KeyError for an unknown shard
+    return [project for project, shard in NON_HEADLESS.items() if shard == name]
+
+
 def claimed() -> list[str]:
     return [prefix for name, prefixes, _ in SHARDS if name != REST for prefix in prefixes]
 
@@ -166,6 +195,7 @@ def main() -> int:
     try:
         print(f"filter={filter_for(arg)}")
         print(f"floor={floor_for(arg)}")
+        print(f"projects={' '.join(projects_for(arg))}")
         for need, needed in needs_for(arg).items():
             print(f"{need}={'1' if needed else ''}")
     except KeyError:
