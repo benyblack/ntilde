@@ -83,6 +83,62 @@ public sealed class SettingsScreenshotHarness
         }
     }
 
+    /// <summary>
+    /// The SSH connection editor's Port Forwards tab: empty, with one forward of each kind, and
+    /// with Dynamic selected (the destination row hidden).
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("Default", "dark")]
+    [InlineData("GitHub Light", "light")]
+    public void CaptureSshPortForwards(string themeName, string slug)
+    {
+        string? output = Environment.GetEnvironmentVariable(OutputVariable);
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(output), $"Set {OutputVariable} to a directory to capture Settings screenshots.");
+        Directory.CreateDirectory(output!);
+
+        using var root = SettingsTestRoot.WithSettings($$"""{"ThemeName":"{{themeName}}"}""");
+        root.CopyShippedTheme("GitHubLight.json");
+        ThemeService.Apply(new ThemeManager().GetTheme(themeName), 1.0);
+
+        var vm = new Ntilde.ViewModels.Ssh.NewSshConnectionViewModel();
+        var window = new Ntilde.Views.Ssh.NewSshConnectionView(vm);
+        try
+        {
+            window.Show();
+            window.GetVisualDescendants().OfType<TabControl>().First().SelectedIndex = 3;
+            Save(window, output!, $"ssh-forwards-{slug}-empty.png");
+
+            vm.Forwards.Add(new Ntilde.Platform.Ssh.Models.PortForward
+            {
+                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Local,
+                SourcePort = 8080,
+                DestinationHost = "db.internal",
+                DestinationPort = 5432,
+            });
+            vm.Forwards.Add(new Ntilde.Platform.Ssh.Models.PortForward
+            {
+                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Remote,
+                BindAddress = "0.0.0.0",
+                SourcePort = 9000,
+                DestinationHost = "localhost",
+                DestinationPort = 3000,
+            });
+            vm.Forwards.Add(new Ntilde.Platform.Ssh.Models.PortForward
+            {
+                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Dynamic,
+                SourcePort = 1080,
+            });
+            Save(window, output!, $"ssh-forwards-{slug}-list.png");
+
+            window.FindControl<ComboBox>("ForwardKindCombo")!.SelectedItem = Ntilde.Platform.Ssh.Models.PortForwardKind.Dynamic;
+            Save(window, output!, $"ssh-forwards-{slug}-dynamic.png");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     private static void CaptureSettings(string output, string slug, List<string> written)
     {
         var window = new Ntilde.SettingsWindow();
