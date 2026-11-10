@@ -64,6 +64,10 @@ def main():
         except ValueError:
             continue
         raise AssertionError('accepted: ' + name)
+    # The workflow reads the output through bash command substitution: it must be LF-only on every OS.
+    import subprocess, sys
+    output = subprocess.run([sys.executable, str(ROOT / 'scripts/ci/node-tests-shard.py'), shard.REST, *files], capture_output=True, check=True).stdout
+    assert b'\r' not in output and output.decode().split() == shard.select(shard.REST, files), 'LF-only, one file per line'
     print(f'{len(files)} files partitioned across {len(shard.names())} shards; {len(refusals)} refusals passed')
 
 

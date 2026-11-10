@@ -85,13 +85,14 @@ def select(shard, files):
 
 def main(argv):
     if argv[1:] == ["--list"]:
-        print("\n".join(names()))
+        sys.stdout.buffer.write(("\n".join(names()) + "\n").encode())
         return 0
     if len(argv) < 3:
         print(__doc__.strip().splitlines()[-2].strip(), file=sys.stderr)
         return 2
     try:
-        print("\n".join(select(argv[1], argv[2:])))
+        # Raw bytes: text-mode stdout on windows would end each line with \r\n, and Git Bash would keep the \r on every file name.
+        sys.stdout.buffer.write(("\n".join(select(argv[1], argv[2:])) + "\n").encode())
     except ValueError as error:
         print(f"node-tests-shard: {error}", file=sys.stderr)
         return 1
