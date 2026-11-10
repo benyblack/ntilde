@@ -239,5 +239,17 @@
     "colEditCollectorSourceSha256": "col-edit-collector.mjs",
     "colEditGradingSourceSha256": "col-edit-grading.mjs",
     "colEditGradingCollectorSourceSha256": "col-edit-grading-collector.mjs",
-    "colEditReceiptSourceSha256": "col-edit-receipt.mjs"
+    "colEditReceiptSourceSha256": "col-edit-receipt.mjs",
+    "checksumReportSourceSha256": "checksum-report.mjs",
+    "rectChecksumContractsSourceSha256": "rect-checksum-contracts.mjs",
+    "rectChecksumCollectorSourceSha256": "rect-checksum-collector.mjs",
+    "rectChecksumCaptureSourceSha256": "rect-checksum-capture.mjs",
+    "rectChecksumGradingSourceSha256": "rect-checksum-grading.mjs",
+    "rectChecksumGradingCollectorSourceSha256": "rect-checksum-grading-collector.mjs",
+    "rectChecksumReceiptSourceSha256": "rect-checksum-receipt.mjs",
+    "lrMarginsContractsSourceSha256": "lr-margins-contracts.mjs",
+    "lrMarginsCollectorSourceSha256": "lr-margins-collector.mjs",
+    "lrMarginsGradingSourceSha256": "lr-margins-grading.mjs",
+    "lrMarginsGradingCollectorSourceSha256": "lr-margins-grading-collector.mjs",
+    "lrMarginsReceiptSourceSha256": "lr-margins-receipt.mjs"
 }

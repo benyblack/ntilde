@@ -239,9 +239,9 @@ namespace Ntilde.VT
                         int regionBottom = (argCount > 1 && validArgs[1] > 0 ? validArgs[1] : _buffer.Rows) - 1;
                         _buffer.SetScrollingRegion(regionTop, regionBottom);
                         // Cursor moves to home after setting region.
-                        // In DECOM, home is the top of the scrolling region.
+                        // In DECOM, home is the top of the scrolling region at the left margin.
                         int homeRow = _buffer.Modes.IsOriginMode ? _buffer.ScrollTop : 0;
-                        _buffer.SetCursorPosition(0, homeRow);
+                        _buffer.SetCursorPosition(_buffer.Modes.IsOriginMode ? _buffer.LeftMargin : 0, homeRow);
                     }
                     else
                     {
@@ -334,7 +334,8 @@ namespace Ntilde.VT
                 case 'a': // HPR - Horizontal Position Relative
                     if (bare)
                     {
-                        _buffer.CursorCol = Math.Min(_buffer.Cols - 1, _buffer.CursorCol + GetCsiParamOrDefaultOne(validArgs, 0));
+                        // Stops at the right margin, or at the last column once the cursor is right of it.
+                        _buffer.CursorForward(GetCsiParamOrDefaultOne(validArgs, 0));
                         _buffer.Invalidate();
                     }
                     break;
@@ -369,7 +370,7 @@ namespace Ntilde.VT
                         // image-rendering artifact that must not displace general TUI cursor positions.
 
                         row = ClampRowForMode(row);
-                        _buffer.SetCursorPosition(col, row);
+                        _buffer.SetCursorPosition(ClampColumnForMode(col), row);
                         _buffer.Invalidate();
                     }
                     break;
@@ -378,7 +379,7 @@ namespace Ntilde.VT
                     if (bare)
                     {
                         int val = GetCsiParamOrDefaultOne(validArgs, 0) - 1;
-                        _buffer.CursorCol = Math.Clamp(val, 0, _buffer.Cols - 1);
+                        _buffer.CursorCol = ClampColumnForMode(val);
                         _buffer.Invalidate();
                     }
                     break;
@@ -483,7 +484,9 @@ namespace Ntilde.VT
                           // save DEC private mode values). They are NOT SCO save-cursor.
                     if (leader == '\0' && intermediates.Length == 0)
                     {
-                        SaveCursor();
+                        // While DECLRMM is set, CSI Pl ; Pr s is DECSLRM (set left/right margins), never SCOSC.
+                        if (_buffer.Modes.IsLeftRightMarginMode) SetLeftRightMargins(validArgs);
+                        else SaveCursor();
                     }
                     break;
                 case 'u': // Restore Cursor (ANSI.SYS / SCO) or kitty keyboard protocol
@@ -669,7 +672,7 @@ namespace Ntilde.VT
             else
                 _buffer.CursorRow = Math.Max(0, _buffer.CursorRow - dist);
             if (toFirstColumn)
-                _buffer.CursorCol = 0;
+                _buffer.CarriageReturn();
             _buffer.Invalidate();
         }
 
@@ -684,7 +687,7 @@ namespace Ntilde.VT
             else
                 _buffer.CursorRow = Math.Min(_buffer.Rows - 1, _buffer.CursorRow + dist);
             if (toFirstColumn)
-                _buffer.CursorCol = 0;
+                _buffer.CarriageReturn();
             _buffer.Invalidate();
         }
 
@@ -772,7 +775,7 @@ namespace Ntilde.VT
             else if (arg0 == 6) // CPR (bare) / DECXCPR (private)
             {
                 string cprLeader = isPrivate ? "?" : string.Empty;
-                OnResponse?.Invoke($"\x1b[{cprLeader}{ReportedCursorRow()};{_buffer.CursorCol + 1}R");
+                OnResponse?.Invoke($"\x1b[{cprLeader}{ReportedCursorRow()};{ReportedCursorColumn()}R");
             }
 
             else if (arg0 == 996 && isPrivate && argCount == 1)
@@ -940,6 +943,36 @@ namespace Ntilde.VT
             return Math.Max(1, row + 1);
         }
 
+        /// <summary>The CPR column: relative to the left margin in origin mode (the first column without DECSLRM).</summary>
+        private int ReportedCursorColumn()
+        {
+            int col = _buffer.CursorCol;
+            if (_buffer.Modes.IsOriginMode) col -= _buffer.LeftMargin;
+            return Math.Max(1, col + 1);
+        }
+
+        /// <summary>A zero-based column for CUP/HVP and CHA/HPA: in origin mode offset by the left margin and kept between the margins.</summary>
+        private int ClampColumnForMode(int col)
+        {
+            if (_buffer.Modes.IsOriginMode)
+            {
+                return (int)Math.Clamp((long)col + _buffer.LeftMargin, _buffer.LeftMargin, _buffer.RightMargin);
+            }
+            return Math.Clamp(col, 0, _buffer.Cols - 1);
+        }
+
+        /// <summary>
+        /// DECSLRM (<c>CSI Pl ; Pr s</c> while DECLRMM is set): an omitted or zero Pl is 1; an omitted, zero or oversized Pr is the
+        /// last column. A pair whose left margin is not left of its right margin is ignored. Applied margins home the cursor.
+        /// </summary>
+        private void SetLeftRightMargins(ReadOnlySpan<int> args)
+        {
+            int left = (args.Length > 0 && args[0] > 0 ? args[0] : 1) - 1;
+            int right = (args.Length > 1 && args[1] > 0 && args[1] <= _buffer.Cols ? args[1] : _buffer.Cols) - 1;
+            _buffer.SetLeftRightMargins(left, right);
+            _buffer.Invalidate();
+        }
+
         private int ClampRowForMode(int row)
         {
             if (_buffer.Modes.IsOriginMode)
@@ -990,6 +1023,7 @@ namespace Ntilde.VT
                 case 1: return _buffer.Modes.IsApplicationCursorKeys ? 1 : 2;    // DECCKM
                 case 5: return _buffer.Modes.IsReverseVideo ? 1 : 2;             // DECSCNM
                 case 6: return _buffer.Modes.IsOriginMode ? 1 : 2;               // DECOM
+                case 69: return _buffer.Modes.IsLeftRightMarginMode ? 1 : 2;     // DECLRMM
                 case 7: return _buffer.Modes.IsAutoWrapMode ? 1 : 2;             // DECAWM
                 case 9: return _buffer.Modes.MouseModeX10PressOnly ? 1 : 2;     // X10 compatibility
                 case 25: return _buffer.Modes.IsCursorVisible ? 1 : 2;           // DECTCEM
@@ -1052,8 +1086,11 @@ namespace Ntilde.VT
                         break;
                     case 6: // DECOM - Origin Mode
                         _buffer.Modes.IsOriginMode = enable;
-                        // On DECOM change, move cursor to home for that mode.
-                        _buffer.SetCursorPosition(0, enable ? _buffer.ScrollTop : 0);
+                        // On DECOM change, move cursor to home for that mode (the top-left margin corner when set).
+                        _buffer.SetCursorPosition(enable ? _buffer.LeftMargin : 0, enable ? _buffer.ScrollTop : 0);
+                        break;
+                    case 69: // DECLRMM - left/right margin mode; reset restores full-width margins
+                        _buffer.SetLeftRightMarginMode(enable);
                         break;
                     case 7: // DECAWM - Auto Wrap Mode
                         _buffer.Modes.IsAutoWrapMode = enable;

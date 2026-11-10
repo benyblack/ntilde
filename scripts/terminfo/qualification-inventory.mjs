@@ -52,6 +52,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('selective-erase', '2026-11-09-selective-erase', '2026-11-09-selective-erase-qualification.md'), module: 'selective-erase-contracts.mjs', exports: ['selectiveEraseSuiteId', 'selectiveEraseContractsVersion', 'selectiveEraseCaseIds'], test: 'selective-erase-publication.test.mjs' },
     { ...directory('rect-edit', '2026-11-09-rectangle-editing', '2026-11-09-rectangle-editing-qualification.md'), module: 'rect-edit-contracts.mjs', exports: ['rectEditSuiteId', 'rectEditContractsVersion', 'rectEditCaseIds'], test: 'rect-edit-publication.test.mjs' },
     { ...directory('col-edit', '2026-11-10-column-editing', '2026-11-10-column-editing-qualification.md'), module: 'col-edit-contracts.mjs', exports: ['colEditSuiteId', 'colEditContractsVersion', 'colEditCaseIds'], test: 'col-edit-publication.test.mjs' },
+    { ...directory('rect-checksum', '2026-11-10-rectangle-checksum', '2026-11-10-rectangle-checksum-qualification.md'), module: 'rect-checksum-contracts.mjs', exports: ['rectChecksumSuiteId', 'rectChecksumContractsVersion', 'rectChecksumCaseIds'], test: 'rect-checksum-publication.test.mjs' },
+    { ...directory('lr-margins', '2026-11-10-left-right-margins', '2026-11-10-left-right-margins-qualification.md'), module: 'lr-margins-contracts.mjs', exports: ['lrMarginsSuiteId', 'lrMarginsContractsVersion', 'lrMarginsCaseIds'], test: 'lr-margins-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */

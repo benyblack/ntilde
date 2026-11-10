@@ -52,6 +52,12 @@ Only the exact unprefixed identity is admitted: no leader, the single `*` interm
 colon subparameter. Any other shape is ignored and gets no reply. The request never changes the screen, the cursor, the pen,
 the pending-wrap state, the modes or the margins.
 
+## Qualification
+
+The terminfo.dev case `editing.decrqcra` is qualified (pinned and contract supported) by the
+[2026-11-10 rectangle-checksum qualification](2026-11-10-rectangle-checksum-qualification.md), measured with the setting turned on in the run's initial
+settings.
+
 ## Evidence
 
 - [RectangleChecksumTests](../../../tests/Ntilde.VT.Tests/RectangleChecksumTests.cs): the gate, the pinned terminfo.dev spellings,

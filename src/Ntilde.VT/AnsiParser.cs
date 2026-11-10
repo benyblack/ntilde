@@ -518,16 +518,16 @@ namespace Ntilde.VT
                     BeginApc();
                     return true;
                 case 'D': // IND
-                    Index();
+                    _buffer.Index();
                     _state = State.Normal;
                     return true;
-                case 'E': // NEL
-                    _buffer.CursorCol = 0;
-                    Index();
+                case 'E': // NEL: CR (to the left margin when the cursor is at or right of it) then IND
+                    _buffer.CarriageReturn();
+                    _buffer.Index();
                     _state = State.Normal;
                     return true;
                 case 'M': // RI
-                    ReverseIndex();
+                    _buffer.ReverseIndex();
                     _state = State.Normal;
                     return true;
                 case 'H': // HTS
@@ -902,28 +902,6 @@ namespace Ntilde.VT
 
             Array.Resize(ref _paramBuffer, next);
             return true;
-        }
-
-        private void Index()
-        {
-            if (_buffer.CursorRow == _buffer.ScrollBottom)
-            {
-                _buffer.ScrollUp();
-                return;
-            }
-
-            _buffer.CursorRow = Math.Min(_buffer.CursorRow + 1, _buffer.Rows - 1);
-        }
-
-        private void ReverseIndex()
-        {
-            if (_buffer.CursorRow == _buffer.ScrollTop)
-            {
-                _buffer.ScrollDown();
-                return;
-            }
-
-            _buffer.CursorRow = Math.Max(_buffer.CursorRow - 1, 0);
         }
     }
 }

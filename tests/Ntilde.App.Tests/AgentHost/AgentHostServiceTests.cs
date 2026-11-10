@@ -485,19 +485,25 @@ public class AgentHostServiceTests : IDisposable
             ScrollTop = 0,
             ScrollBottom = 9,
             OriginMode = false,
+            LeftRightMarginMode = false,
+            LeftMargin = 0,
+            RightMargin = 39,
             AutoWrap = true,
             InsertMode = false,
             PendingWrap = false,
             AlternateScreen = false,
             ScrollbackLines = 0
         }, initial.BufferState);
-        parser.Process((alternate ? "\x1b[?1049h" : "") + "\x1b[3;8r\x1b[?6h\x1b[4h\x1b[?7lX");
+        parser.Process((alternate ? "\x1b[?1049h" : "") + "\x1b[3;8r\x1b[?69h\x1b[5;20s\x1b[?6h\x1b[4h\x1b[?7lX");
         var captured = ResultOf(Handle(service, request), AgentHostJsonContext.Default.ScreenSnapshotDto);
         Assert.Equal(new BufferStateDto
         {
             ScrollTop = 2,
             ScrollBottom = 7,
             OriginMode = true,
+            LeftRightMarginMode = true,
+            LeftMargin = 4,
+            RightMargin = 19,
             AutoWrap = false,
             InsertMode = true,
             PendingWrap = false,
@@ -505,8 +511,8 @@ public class AgentHostServiceTests : IDisposable
             ScrollbackLines = 0
         }, captured.BufferState);
         Assert.Equal(2, captured.CursorRow);
-        Assert.Equal(1, captured.CursorCol);
-        Assert.Equal("X", captured.Lines[2]);
+        Assert.Equal(5, captured.CursorCol); // origin mode homed to the left margin (column 4) before X
+        Assert.Equal("    X", captured.Lines[2]);
         Assert.Null(captured.CellDetails);
         Assert.Null(captured.CursorMode);
         parser.Process("\x1b[?1049l\x1b[!p");

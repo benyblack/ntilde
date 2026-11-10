@@ -26,10 +26,11 @@ public partial class AnsiParser
         int id = args.Length > 0 ? Math.Max(0, args[0]) : 0;
         ReadOnlySpan<int> rect = args.Length > 2 ? args[2..] : [];
         int origin = _buffer.Modes.IsOriginMode ? _buffer.ScrollTop : 0;
+        int columnOrigin = _buffer.Modes.IsOriginMode ? _buffer.LeftMargin : 0; // DECOM offsets columns by the left margin (0 without DECSLRM)
         int top = RectangleCoordinate(rect, 0, 1, _buffer.Rows, origin);
-        int left = RectangleCoordinate(rect, 1, 1, _buffer.Cols, 0);
+        int left = RectangleCoordinate(rect, 1, 1, _buffer.Cols, columnOrigin);
         int bottom = RectangleCoordinate(rect, 2, _buffer.Rows, _buffer.Rows, origin);
-        int right = RectangleCoordinate(rect, 3, _buffer.Cols, _buffer.Cols, 0);
+        int right = RectangleCoordinate(rect, 3, _buffer.Cols, _buffer.Cols, columnOrigin);
         ushort checksum = _buffer.RectangleChecksum(left, top, right, bottom);
         OnResponse(string.Create(CultureInfo.InvariantCulture, $"\x1bP{id}!~{checksum:X4}\x1b\\"));
     }

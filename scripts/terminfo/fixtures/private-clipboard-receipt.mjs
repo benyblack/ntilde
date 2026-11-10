@@ -7,7 +7,8 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV39SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV41SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { buildQueryReport, queryPlan } from '../queries.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
@@ -30,12 +31,26 @@ async function buildFixture(output) {
         const context = JSON.parse(archive.get('context.json')), proof = JSON.parse(archive.get('ownership-proof.json'));
         const settings = JSON.parse(archive.get('initial-settings.json')), query = JSON.parse(archive.get('query-observations.json'));
         const raw = JSON.parse(archive.get('raw.json')), process = proof.proofs[0];
-        for (const [key, file] of Object.entries(capturedV39SourceFiles)) {
+        // Policy v33 runs turn the off-by-default DECRQCRA report on, so the archived witness request is answered: FFB2, the
+        // checksum of the N the query suite binds at its home cell. Patch that one capture and re-derive the query report.
+        settings.AllowRectangleChecksumReport = true;
+        const journalOf = file => archive.get(file).toString().trim().split('\n').map(line => JSON.parse(line));
+        const queryFrames = journalOf('query-snapshots.jsonl');
+        const witness = queryFrames[queryPlan.find(entry => entry.id === 'q07.editing.decrqcra').index].capture;
+        const witnessReply = Buffer.from('\x1bP1!~FFB2\x1b\\', 'ascii');
+        Object.assign(witness, { hex: witnessReply.toString('hex'), byteLength: witnessReply.length });
+        writeFileSync(join(output, 'query-snapshots.jsonl'), queryFrames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+        const priorOf = file => JSON.parse(archive.get(file)).snapshots.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
+        const queryReport = buildQueryReport({ binding: process.queries.binding, priorChallenges: [...priorOf('input-observations.json'), ...priorOf('image-observations.json')],
+            initial: JSON.parse(archive.get('query-initial.json')), actions: journalOf('query-actions.jsonl'), frames: queryFrames, seal: process.queries.seal, checksumReport: true });
+        write('query-observations.json', queryReport);
+        evidence.queryEvidence = { ...evidence.queryEvidence, sha256: hash(readFileSync(join(output, 'query-observations.json'))) };
+        for (const [key, file] of Object.entries(capturedV41SourceFiles)) {
             const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV39SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV41SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -592,6 +607,48 @@ async function buildFixture(output) {
                 runFile: 'cole-run.json', runSha256: hash(readFileSync(join(output, 'cole-run.json'))),
                 adapterBundleSha256: hash(colEditBytes), contractsVersion: colEditContractsVersion,
                 counts: colEditCounts(colEditReport), provisionalUntil: 'cell-receipt.json' };
+            // Policy v33 always carries the layered rectangle-checksum suffix as well.
+            const { syntheticRectChecksumEvidence } = await import('./rect-checksum-evidence.mjs');
+            const { buildRectChecksumGradingReport } = await import('../rect-checksum-grading.mjs');
+            const { adaptRectChecksumCollector, rectChecksumAdapterId } = await import('../rect-checksum-grading-collector.mjs');
+            const { rectChecksumSuiteId, rectChecksumContractsVersion } = await import('../rect-checksum-contracts.mjs');
+            const { rectChecksumCounts } = await import('../rect-checksum-receipt.mjs');
+            const rectChecksumBytes = Buffer.from(adaptRectChecksumCollector(colEditBytes.toString()));
+            const rectChecksum = syntheticRectChecksumEvidence(context.runId, hash(rectChecksumBytes));
+            rectChecksum.adapter = { id: rectChecksumAdapterId, derivedFromAdapterId: colEditAdapterId,
+                bundleSha256: hash(rectChecksumBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const rectChecksumReport = buildRectChecksumGradingReport(rectChecksum.frames, rectChecksum.run, context.runId, rectChecksum.adapter);
+            write('csum-observations.json', rectChecksumReport);
+            write('csum-run.json', rectChecksum.run);
+            writeFileSync(join(output, 'csum-snapshots.jsonl'), rectChecksum.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-csum.mjs'), rectChecksumBytes);
+            Object.assign(context, { rectChecksumAdapterId, rectChecksumSuiteId, rectChecksumBundleSha256: hash(rectChecksumBytes), rectChecksumContractsVersion });
+            evidence.rectChecksumEvidence = { runId: context.runId, suiteId: rectChecksumSuiteId,
+                file: 'csum-observations.json', sha256: hash(readFileSync(join(output, 'csum-observations.json'))),
+                runFile: 'csum-run.json', runSha256: hash(readFileSync(join(output, 'csum-run.json'))),
+                adapterBundleSha256: hash(rectChecksumBytes), contractsVersion: rectChecksumContractsVersion,
+                counts: rectChecksumCounts(rectChecksumReport), provisionalUntil: 'cell-receipt.json' };
+            // Policy v34 always carries the layered left/right-margin suffix as well.
+            const { syntheticLrMarginsEvidence } = await import('./lr-margins-evidence.mjs');
+            const { buildLrMarginsGradingReport } = await import('../lr-margins-grading.mjs');
+            const { adaptLrMarginsCollector, lrMarginsAdapterId } = await import('../lr-margins-grading-collector.mjs');
+            const { lrMarginsSuiteId, lrMarginsContractsVersion } = await import('../lr-margins-contracts.mjs');
+            const { lrMarginsCounts } = await import('../lr-margins-receipt.mjs');
+            const lrMarginsBytes = Buffer.from(adaptLrMarginsCollector(rectChecksumBytes.toString()));
+            const lrMargins = syntheticLrMarginsEvidence(context.runId, hash(lrMarginsBytes));
+            lrMargins.adapter = { id: lrMarginsAdapterId, derivedFromAdapterId: rectChecksumAdapterId,
+                bundleSha256: hash(lrMarginsBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            const lrMarginsReport = buildLrMarginsGradingReport(lrMargins.frames, lrMargins.run, context.runId, lrMargins.adapter);
+            write('lrmm-observations.json', lrMarginsReport);
+            write('lrmm-run.json', lrMargins.run);
+            writeFileSync(join(output, 'lrmm-snapshots.jsonl'), lrMargins.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-lrmm.mjs'), lrMarginsBytes);
+            Object.assign(context, { lrMarginsAdapterId, lrMarginsSuiteId, lrMarginsBundleSha256: hash(lrMarginsBytes), lrMarginsContractsVersion });
+            evidence.lrMarginsEvidence = { runId: context.runId, suiteId: lrMarginsSuiteId,
+                file: 'lrmm-observations.json', sha256: hash(readFileSync(join(output, 'lrmm-observations.json'))),
+                runFile: 'lrmm-run.json', runSha256: hash(readFileSync(join(output, 'lrmm-run.json'))),
+                adapterBundleSha256: hash(lrMarginsBytes), contractsVersion: lrMarginsContractsVersion,
+                counts: lrMarginsCounts(lrMarginsReport), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

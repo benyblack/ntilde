@@ -98,3 +98,19 @@ test('changing context getters are read once and only the validated snapshot is 
     assert.throws(() => queryWitnessContext(invalid));
     assert.equal(attempts, 1);
 });
+
+test('a run that turns the off-by-default DECRQCRA report on owes the exact checksum of the bound N; every other witness is unchanged', () => {
+    const plain = queryWitnessPlan(context), flagged = queryWitnessPlan({ ...context, checksumReport: true });
+    const witness = plan => plan.find(item => item.id === 'q07.editing.decrqcra');
+    assert.deepEqual({ ...witness(plain) }, { id: 'q07.editing.decrqcra', featureId: 'editing.decrqcra', request: '\x1b[1;1;1;1;1;1*y', expectedEvidence: 'silence', expectedReply: '' });
+    assert.deepEqual({ ...witness(flagged) }, { ...witness(plain), expectedEvidence: 'positive-reply', expectedReply: '\x1bP1!~FFB2\x1b\\' });
+    // N is 0x4E: the negated 16-bit sum is 0x10000 - 0x4E = 0xFFB2.
+    assert.equal((0x10000 - 'N'.charCodeAt(0)).toString(16).toUpperCase(), 'FFB2');
+    assert.deepEqual(flagged.filter(item => item.id !== 'q07.editing.decrqcra').map(item => ({ ...item })), plain.filter(item => item.id !== 'q07.editing.decrqcra').map(item => ({ ...item })));
+    assert.equal(flagged.filter(item => item.expectedEvidence === 'silence').length, 15);
+    assert.equal(queryWitnessContext({ ...context, checksumReport: true }).checksumReport, true);
+    assert.equal(Object.hasOwn(queryWitnessContext(context), 'checksumReport'), false, 'an unflagged context stays exactly the four numbers');
+    for (const bad of [{ ...context, checksumReport: false }, { ...context, checksumReport: 'yes' }, { ...context, checksumReport: true, extra: 1 }]) {
+        assert.throws(() => queryWitnessContext(bad), /bounded observed geometry/, JSON.stringify(bad));
+    }
+});

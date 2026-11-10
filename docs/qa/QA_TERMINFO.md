@@ -974,3 +974,30 @@ blanks. Related controls share a read so a suite stays within the observer's 64-
 graded. Left/right margins (DECLRMM) are not implemented, so `modes.left-right-margin` is not claimed; DECRQCRA, Unicode, the image plane and rendered appearance are not
 claimed either. The pinned terminal cursor-query paths never carry a verdict and are not qualified. The VT implementation is in
 [the column-editing contract](terminfo/column-editing.md). Receipt schema 38 and source policy v32 (241 files) bind it; earlier policies stay frozen.
+
+### Rectangle-checksum qualification (DECRQCRA)
+
+The [rectangle-checksum batch](terminfo/2026-11-10-rectangle-checksum-qualification.md) grades exactly `editing.decrqcra` through a twenty-sixth layered collector
+extension (`ntilde-owned-rectangle-checksum-grading-v1`) over the column-editing one. DECRQCRA is **off by default** (`AllowRectangleChecksumReport`), because a one-cell
+checksum lets a program read the screen back; the measured run turns it on in its retained initial settings, and the receipt refuses evidence from a run that did not.
+Every request is one fenced exchange: the raw DCS reply (or its explicit absence) is retained before the DA barrier, the parent journals it beside the stored cells, the
+pinned termless code runs over the journaled reply, and an independent checksum model demands the exact reply of every request from the cells the request saw. Controls
+cover the pinned and terminal-path spellings, each weighted attribute and attributes that must add nothing, omitted, zero, partly omitted and oversized borders, an ignored
+page parameter, request ids, inverted rectangles, DECOM row offsets with page clipping, six non-admitted spellings that must stay unanswered, and unchanged state after
+every request. Because the setting is on for the whole run, the exact-query suite's `q07.editing.decrqcra` witness owes the reply too (`ESC P 1 ! ~ FFB2 ESC \`, the
+checksum of the `N` it binds at home); runs without the setting keep the original silence. Stored ASCII cells only: wide, combining and supplementary characters, the
+persistent-session path and rendered appearance are not claimed. The VT implementation is in [the rectangle-checksum contract](terminfo/rectangle-checksum.md).
+Receipt schema 39 and source policy v33 (248 files) bind it; earlier policies stay frozen.
+
+### Left/right-margin qualification (DECLRMM, DECSLRM)
+
+The [left/right-margin batch](terminfo/2026-11-10-left-right-margins-qualification.md) grades `modes.left-right-margin` through a twenty-seventh layered
+collector extension (`ntilde-owned-left-right-margins-grading-v1`) over the rectangle-checksum one. The pinned termless code (`ESC[?69h`, the mode metadata,
+`ESC[?69l`) returns inconclusive by design whatever it reads, so its verdict is preserved; its response records the mode the App reported. A separately
+identified effect contract (`ntilde-left-right-margins-effect-v1`) carries the graded verdict: an independent margins model must reproduce the App's whole
+screen, cursor, stored region, left/right margins, DECLRMM, origin and insert mode after sixteen controls over a block seed. The controls cover SCOSC without
+DECLRMM, DECSLRM homing and refusals, wrap at the right margin, insert mode, CUF/CUB/CR/HT bounds, LF/RI/SU/SD band scrolls and the outside-margin no-op, IL/DL,
+ICH/DCH, DECIC/DECDC/SL/SR, DECOM addressing and rectangles, DECSTR and the `?69` reset. The shared observer keeps the App's stored margins only for this suite
+(`includeHorizontalMargins`). The model was checked against the VT implementation on every control's exact bytes before measurement. CPR, wide glyphs, side
+tables, the image plane and rendered appearance are unit-tested, not qualified here. The VT implementation is in [the margin contract](terminfo/left-right-margins.md).
+Receipt schema 40 and source policy v34 (253 files) bind it; earlier policies stay frozen.

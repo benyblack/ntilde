@@ -154,6 +154,7 @@ namespace Ntilde.VT
 
                     ScrollTop = 0;
                     ScrollBottom = Rows - 1;
+                    ResetHorizontalMarginsNoLock();
                     return;
                 }
 
@@ -253,6 +254,7 @@ namespace Ntilde.VT
                 // Reset scrolling region to full screen on resize (standard terminal behavior)
                 ScrollTop = 0;
                 ScrollBottom = Rows - 1;
+                ResetHorizontalMarginsNoLock();
 
             }
             finally

@@ -37,7 +37,7 @@ function present(path) {
  * policy-v18 run always carries them, because the current worker collects this suite
  * unconditionally after the SGR-underline-color suite. */
 export function includesSgrClosureEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34'].includes(context.sourceSnapshotPolicy)
         || context.sgrClosureAdapterId !== undefined || context.sgrClosureSuiteId !== undefined
         || context.sgrClosureBundleSha256 !== undefined || context.sgrClosureContractsVersion !== undefined
         || evidence.sgrClosureEvidence !== undefined

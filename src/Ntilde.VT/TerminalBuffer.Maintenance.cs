@@ -361,7 +361,8 @@ namespace Ntilde.VT
                     row.TouchRevision();
                 }
 
-                // Reset cursor to home
+                // Reset cursor to home. DECALN sets the horizontal margins to the page edges (the top/bottom region is kept, as before).
+                ResetHorizontalMarginsNoLock();
                 _cursorCol = 0;
                 _cursorRow = 0;
                 _isPendingWrap = false; // Reset wrap state
@@ -397,6 +398,7 @@ namespace Ntilde.VT
                 _cursorCol = col;
                 ScrollTop = 0;
                 ScrollBottom = Rows - 1;
+                ResetHorizontalMarginsNoLock(); // DECSTR restores full-width margins; DECLRMM itself is kept
                 Modes.IsOriginMode = false;
                 Modes.IsAutoWrapMode = true;
                 Modes.IsReverseWrapMode = false;
@@ -423,6 +425,8 @@ namespace Ntilde.VT
             {
                 ScrollTop = 0;
                 ScrollBottom = Rows - 1;
+                Modes.IsLeftRightMarginMode = false;
+                ResetHorizontalMarginsNoLock();
                 Modes.IsSixelDisplayMode = false;
                 // DECSCNM returns to normal video on RIS (xterm); DECSTR deliberately keeps it.
                 if (Modes.IsReverseVideo)

@@ -56,6 +56,24 @@
       "contractCase": "alternate-scroll"
     },
     {
+      "key": "DEC:69",
+      "mnemonic": "DECLRMM",
+      "support": "partial",
+      "description": "Left/right margin mode. Off by default; DECRQM reports 1/2. While set, CSI Pl;Pr s is DECSLRM instead of SCOSC; resetting it, RIS, DECSTR, DECALN and a resize restore full-width margins (RIS also resets the mode). State transfer carries the mode and the margins. DECRQSS for the margins is not implemented.",
+      "matrixFeature": "DECLRMM (CSI ? 69 h/l)",
+      "evidencePath": "tests/Ntilde.VT.Tests/LeftRightMarginTests.cs",
+      "contractCase": "left-right-margin-mode"
+    },
+    {
+      "key": "CSI:s",
+      "mnemonic": "DECSLRM",
+      "support": "partial",
+      "description": "Set left/right margins while DECLRMM is set (otherwise CSI s stays SCOSC): omitted/zero Pl is 1, omitted/zero/oversized Pr the last column, Pl not left of Pr is ignored; applied margins home the cursor (to the top-left margin corner under DECOM). The margins bound printing and autowrap (a wrap returns to the left margin and is not a soft wrap), CR/NEL/CNL/CPL, CUF/CUB/BS, HT, CUP/HVP/CHA/HPA and CPR under DECOM, IND/RI/LF at the region edges (a cursor outside them neither scrolls nor moves there), SU/SD, IL/DL, ICH/DCH, insert mode, DECIC/DECDC/SL/SR and DECOM rectangle columns. Partial-width scrolls never feed scrollback, move side tables with their cells, retire wide glyphs cut by a margin and remove images overlapping the band. ED/EL/ECH, DECBI/DECFI and DECRQSS are not bounded or implemented.",
+      "matrixFeature": "DECSLRM (CSI Pl;Pr s)",
+      "evidencePath": "tests/Ntilde.VT.Tests/LeftRightMarginTests.cs",
+      "contractCase": "set-left-right-margins"
+    },
+    {
       "key": "OSC:30001",
       "mnemonic": "Color stack push",
       "support": "supported",
@@ -281,7 +299,7 @@
       "key": "CSI:'}",
       "mnemonic": "DECIC",
       "support": "partial",
-      "description": "Insert Pn (omitted/zero = 1) blank columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; columns pushed past the right edge are lost. Only the exact unprefixed one-parameter identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "description": "Insert Pn (omitted/zero = 1) blank columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; columns pushed past the right edge are lost. Only the exact unprefixed one-parameter identity is admitted. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them (blanks enter at the right margin); without them the margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
       "matrixFeature": "DECIC (' })",
       "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
       "contractCase": "insert-column"
@@ -290,7 +308,7 @@
       "key": "CSI:'~",
       "mnemonic": "DECDC",
       "support": "partial",
-      "description": "Delete Pn (omitted/zero = 1) columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; blank columns enter at the right edge. Only the exact unprefixed one-parameter identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "description": "Delete Pn (omitted/zero = 1) columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; blank columns enter at the right edge. Only the exact unprefixed one-parameter identity is admitted. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them (blanks enter at the right margin); without them the margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
       "matrixFeature": "DECDC (' ~)",
       "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
       "contractCase": "delete-column"
@@ -299,7 +317,7 @@
       "key": "CSI:SP@",
       "mnemonic": "SL",
       "support": "partial",
-      "description": "Shift every row of the top/bottom scrolling region left by Pn (omitted/zero = 1) columns from the left margin, whatever the cursor column, only while the cursor row is inside the region; blank columns enter at the right edge. Only the exact unprefixed one-parameter CSI Pn SP @ identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "description": "Shift every row of the top/bottom scrolling region left by Pn (omitted/zero = 1) columns from the left margin, whatever the cursor column, only while the cursor row is inside the region; blank columns enter at the right edge. Only the exact unprefixed one-parameter CSI Pn SP @ identity is admitted. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them (blanks enter at the right margin); without them the margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
       "matrixFeature": "SL (SP @)",
       "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
       "contractCase": "scroll-left"
@@ -308,7 +326,7 @@
       "key": "CSI:SPA",
       "mnemonic": "SR",
       "support": "partial",
-      "description": "Shift every row of the top/bottom scrolling region right by Pn (omitted/zero = 1) columns from the left margin, whatever the cursor column, only while the cursor row is inside the region; columns pushed past the right edge are lost. Only the exact unprefixed one-parameter CSI Pn SP A identity is admitted. Left/right margins (DECLRMM) are not implemented, so the horizontal margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
+      "description": "Shift every row of the top/bottom scrolling region right by Pn (omitted/zero = 1) columns from the left margin, whatever the cursor column, only while the cursor row is inside the region; columns pushed past the right edge are lost. Only the exact unprefixed one-parameter CSI Pn SP A identity is admitted. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them (blanks enter at the right margin); without them the margins are the page edges. Cursor, pen, pending wrap, scrollback and the image plane are untouched; introduced blanks carry the live colors and no visual attribute; shifted cells keep attributes, colors, extended text, hyperlinks, underline decoration and DECSCA protection; a wide glyph the shift would split is retired whole.",
       "matrixFeature": "SR (SP A)",
       "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
       "contractCase": "scroll-right"
