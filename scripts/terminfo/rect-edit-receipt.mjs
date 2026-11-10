@@ -43,7 +43,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
  * policy-v31 or policy-v32 run always carries them, because the worker collects this suite
  * unconditionally after the selective-erasure suite. */
 export function includesRectEditEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34'].includes(context.sourceSnapshotPolicy)
         || context.rectEditAdapterId !== undefined || context.rectEditSuiteId !== undefined
         || context.rectEditBundleSha256 !== undefined || context.rectEditContractsVersion !== undefined
         || evidence.rectEditEvidence !== undefined

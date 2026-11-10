@@ -116,7 +116,16 @@ function privateRequest(endpoint, method, params, timeoutMs, byteLimit) {
 }
 
 /** Copy and bound only requested state; absent or malformed evidence never becomes a successful snapshot. */
-export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false) {
+/** The App's stored DECLRMM state and zero-based inclusive left/right margins, validated against the page width (opt-in). */
+export function copyHorizontalMargins(value, cols) {
+    if (!value || typeof value.leftRightMarginMode !== 'boolean' || !Number.isSafeInteger(value.leftMargin) || !Number.isSafeInteger(value.rightMargin)
+        || value.leftMargin < 0 || value.rightMargin >= cols || value.leftMargin > value.rightMargin) {
+        throw new Error('Missing or invalid observed horizontal margins.');
+    }
+    return { leftRightMarginMode: value.leftRightMarginMode, leftMargin: value.leftMargin, rightMargin: value.rightMargin };
+}
+
+export function screenSnapshot(value, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false, includeHorizontalMargins = false) {
     if (!Number.isSafeInteger(value?.rows) || value.rows < 3 || value.rows > 128
         || !Number.isSafeInteger(value.cols) || value.cols < 48 || value.cols > 256
         || !Array.isArray(value.lines) || value.lines.length !== value.rows
@@ -147,12 +156,13 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
         result.bufferState = copyBufferState(value.bufferState, value.rows);
         result.history = copyHistory(value.history, result.bufferState.scrollbackLines, value.cols);
     }
+    if (includeHorizontalMargins) result.horizontalMargins = copyHorizontalMargins(value.horizontalMargins, value.cols);
     return result;
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
-        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, includeResolvedColors, includeResolvedUnderlineColors, includeProtection, prefix, rpc, endpoint });
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false, includeHorizontalMargins = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+        Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, includeResolvedColors, includeResolvedUnderlineColors, includeProtection, includeHorizontalMargins, prefix, rpc, endpoint });
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -200,7 +210,9 @@ export class OwnedCellObserver {
             projection.history = copyHistory(await this.request('readScrollback', { paneId: before.paneId, startLine: 0, maxLines: 64 }, budget),
                 projection.bufferState.scrollbackLines, projection.cols);
         }
-        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline, this.includeBufferState, this.includeResolvedColors, this.includeResolvedUnderlineColors, this.includeProtection);
+        // The margins ride in the App's buffer state; only a suite that asks for them keeps them, in their own field.
+        if (this.includeHorizontalMargins) projection.horizontalMargins = copyHorizontalMargins(raw.bufferState, projection.cols);
+        const screen = screenSnapshot(projection, this.includeAttributes, this.includeCellDetails, this.includeCursorMode, this.includeOverline, this.includeBufferState, this.includeResolvedColors, this.includeResolvedUnderlineColors, this.includeProtection, this.includeHorizontalMargins);
         const after = await this.session(budget);
         if (before.paneId !== after.paneId || before.rows !== screen.rows || before.cols !== screen.cols
             || after.rows !== screen.rows || after.cols !== screen.cols

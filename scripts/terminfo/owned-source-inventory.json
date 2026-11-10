@@ -246,5 +246,10 @@
     "rectChecksumCaptureSourceSha256": "rect-checksum-capture.mjs",
     "rectChecksumGradingSourceSha256": "rect-checksum-grading.mjs",
     "rectChecksumGradingCollectorSourceSha256": "rect-checksum-grading-collector.mjs",
-    "rectChecksumReceiptSourceSha256": "rect-checksum-receipt.mjs"
+    "rectChecksumReceiptSourceSha256": "rect-checksum-receipt.mjs",
+    "lrMarginsContractsSourceSha256": "lr-margins-contracts.mjs",
+    "lrMarginsCollectorSourceSha256": "lr-margins-collector.mjs",
+    "lrMarginsGradingSourceSha256": "lr-margins-grading.mjs",
+    "lrMarginsGradingCollectorSourceSha256": "lr-margins-grading-collector.mjs",
+    "lrMarginsReceiptSourceSha256": "lr-margins-receipt.mjs"
 }
