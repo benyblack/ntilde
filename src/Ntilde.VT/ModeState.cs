@@ -24,6 +24,12 @@ namespace Ntilde.VT
         public bool IsOriginMode { get; set; }            // ?6 - DECOM (Origin Mode)
 
         /// <summary>
+        /// ?69 - DECLRMM (left/right margin mode). While set, <c>CSI Pl ; Pr s</c> is DECSLRM instead of SCOSC and the buffer's
+        /// left/right margins bound the operations that honor them; resetting it restores full-width margins. Off by default.
+        /// </summary>
+        public bool IsLeftRightMarginMode { get; set; }
+
+        /// <summary>
         /// ?45 - reverse-wraparound (xterm). With auto-wrap (?7) also set, BS at the left edge returns to the
         /// last column of the previous row when that row ended by a soft wrap. Off by default.
         /// </summary>
@@ -146,6 +152,7 @@ namespace Ntilde.VT
                 IsAutoWrapMode = this.IsAutoWrapMode,
                 IsReverseWrapMode = this.IsReverseWrapMode,
                 IsOriginMode = this.IsOriginMode,
+                IsLeftRightMarginMode = this.IsLeftRightMarginMode,
                 IsRectangularAttributeExtent = this.IsRectangularAttributeExtent,
                 IsReverseVideo = this.IsReverseVideo,
                 IsSixelDisplayMode = this.IsSixelDisplayMode,

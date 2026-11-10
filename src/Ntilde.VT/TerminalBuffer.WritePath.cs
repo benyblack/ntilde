@@ -64,7 +64,7 @@ namespace Ntilde.VT
             // Cursor logic extracted from old WriteChar
             if (c == '\r')
             {
-                _cursorCol = 0;
+                _cursorCol = CarriageReturnColumnNoLock;
                 _prevCursorCol = _cursorCol;
                 _prevCursorRow = _cursorRow;
                 _isPendingWrap = false;
@@ -105,7 +105,7 @@ namespace Ntilde.VT
             {
                 if (!(Modes.IsReverseWrapMode && Modes.IsAutoWrapMode))
                 {
-                    _cursorCol = Math.Max(0, _cursorCol - count);
+                    _cursorCol = Math.Max(LeftEdgeForCursorNoLock, _cursorCol - count);
                     _isPendingWrap = false;
                     return;
                 }
@@ -134,14 +134,16 @@ namespace Ntilde.VT
             }
 
             _isPendingWrap = false;
-            if (_cursorCol > 0)
+            // The left margin stops the cursor while it is at or right of it; left of it, the first column does.
+            int leftEdge = LeftEdgeForCursorNoLock;
+            if (_cursorCol > leftEdge)
             {
                 _cursorCol--;
 
                 if (skipWideContinuation && _cursorRow >= 0 && _cursorRow < Rows)
                 {
                     var row = _viewport[_cursorRow];
-                    while (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation)
+                    while (_cursorCol > leftEdge && row.Cells[_cursorCol].IsWideContinuation)
                     {
                         _cursorCol--;
                     }
@@ -156,7 +158,7 @@ namespace Ntilde.VT
             if (!_viewport[_cursorRow - 1].IsWrapped) return false;
 
             _cursorRow--;
-            _cursorCol = Cols - 1;
+            _cursorCol = RightMargin;
             var previous = _viewport[_cursorRow];
             while (skipWideContinuation && _cursorCol > 0 && previous.Cells[_cursorCol].IsWideContinuation)
             {
@@ -366,30 +368,35 @@ namespace Ntilde.VT
             int width = GetGraphemeWidth(grapheme);
 
             // Handle Pending Wrap State (M1.3)
+            // With horizontal margins a wrap returns to the left margin, and the wrapped text is not one reflowable line: no soft-wrap mark.
             if (_isPendingWrap && !isZeroWidthComponent && !_isAfterZwj)
             {
-                if (_cursorRow >= 0 && _cursorRow < Rows) _viewport[_cursorRow].SetSoftWrap(Cols);
-                _cursorCol = 0;
+                if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins) _viewport[_cursorRow].SetSoftWrap(Cols);
+                _cursorCol = LeftMargin;
                 AdvanceCursorRowForLineFeed();
                 _isPendingWrap = false;
             }
 
+            // The right edge is the right margin, or the last column once the cursor is right of the right margin.
+            int rightEdge = RightEdgeForCursorNoLock;
+
             // Handle auto-wrap
             if (Modes.IsAutoWrapMode)
             {
-                if (_cursorCol + width > Cols)
+                if (_cursorCol + width > rightEdge + 1)
                 {
-                    if (_cursorRow >= 0 && _cursorRow < Rows) _viewport[_cursorRow].SetSoftWrap(_cursorCol);
-                    _cursorCol = 0;
+                    if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins) _viewport[_cursorRow].SetSoftWrap(_cursorCol);
+                    _cursorCol = LeftMargin;
                     AdvanceCursorRowForLineFeed();
                     _isPendingWrap = false;
+                    rightEdge = RightEdgeForCursorNoLock;
                 }
             }
             else
             {
-                // Clamp to end. A character wider than the whole row (wide in a 1-column terminal)
+                // Clamp to the edge. A character wider than the whole row (wide in a 1-column terminal)
                 // starts at column 0 and loses its continuation, as on the autowrap path.
-                if (_cursorCol + width > Cols) _cursorCol = Math.Max(0, Cols - width);
+                if (_cursorCol + width > rightEdge + 1) _cursorCol = Math.Max(0, rightEdge + 1 - width);
             }
 
             if (_textSizingBlocks != null) PrepareTextSizingOverwrite(Math.Max(1, width));
@@ -449,14 +456,14 @@ namespace Ntilde.VT
             }
 
             // Update Pending Wrap State
-            if (Modes.IsAutoWrapMode && _cursorCol >= Cols)
+            if (Modes.IsAutoWrapMode && _cursorCol > rightEdge)
             {
                 _isPendingWrap = true;
-                _cursorCol = Cols - 1;
+                _cursorCol = rightEdge;
             }
-            if (!Modes.IsAutoWrapMode && _cursorCol >= Cols)
+            if (!Modes.IsAutoWrapMode && _cursorCol > rightEdge)
             {
-                _cursorCol = Cols - 1;
+                _cursorCol = rightEdge;
             }
 
             if (_cursorCol > _maxColThisRow) _maxColThisRow = _cursorCol;
@@ -469,7 +476,8 @@ namespace Ntilde.VT
         {
             if (_cursorRow >= ScrollTop && _cursorRow == ScrollBottom)
             {
-                ScrollUpInternal();
+                // With horizontal margins only a cursor between them scrolls the region; outside them it stays at the bottom margin.
+                if (CursorInHorizontalMarginsNoLock) ScrollUpInternal();
                 _cursorRow = ScrollBottom;
                 return;
             }
@@ -518,6 +526,13 @@ namespace Ntilde.VT
 
         private void ScrollUpInternal()
         {
+            // Horizontal margins scroll only the band between them, never into scrollback.
+            if (HasHorizontalMargins)
+            {
+                ScrollBandNoLock(ScrollTop, ScrollBottom, LeftMargin, RightMargin, 1, up: true, ThemeBlankCell());
+                return;
+            }
+
             // Check if we are scrolling the explicit region or full screen
             bool isFullScreenScroll = (ScrollTop == 0 && ScrollBottom == Rows - 1);
 
@@ -636,6 +651,12 @@ namespace Ntilde.VT
 
         private void ScrollDownInternal()
         {
+            if (HasHorizontalMargins)
+            {
+                ScrollBandNoLock(ScrollTop, ScrollBottom, LeftMargin, RightMargin, 1, up: false, ThemeBlankCell());
+                return;
+            }
+
             int sizedTop = TextSizingAbsoluteRow(ScrollTop);
             int sizedBottom = TextSizingAbsoluteRow(ScrollBottom + 1);
             EraseTextSizingAcrossBoundary(sizedTop);
@@ -695,19 +716,31 @@ namespace Ntilde.VT
         {
             // Lock must be held by caller
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
+            // With horizontal margins ICH acts only between them, from the cursor to the right margin.
+            if (!CursorInHorizontalMarginsNoLock) return;
+            int edge = RightMargin + 1;
+            var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex, false, false, false, false, false, false);
 
-            int endCol = Math.Min(_cursorCol + count, Cols);
-            EraseTextSizingForShift(insert: true, Math.Max(0, endCol - _cursorCol));
+            int endCol = Math.Min(_cursorCol + count, edge);
             var row = _viewport[_cursorRow];
+            if (edge < Cols)
+            {
+                EraseTextSizingRange(_cursorCol, edge, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
+                RetireWideAcross(row, edge, empty); // a glyph straddling the right margin would leave a half behind
+            }
+            else
+            {
+                EraseTextSizingForShift(insert: true, Math.Max(0, endCol - _cursorCol));
+            }
             row.WrappedColumns = null;
             row.WrittenColumns = Cols;
 
             // A glyph pushed against the right edge loses its continuation off the end; its anchor must not stay protected there.
             // (A glyph that is already an edge anchor keeps its record: nothing was cut.)
-            bool edgeCut = Cols - 1 - count >= _cursorCol && row.Cells[Cols - 1 - count].IsWide;
+            bool edgeCut = edge - 1 - count >= _cursorCol && row.Cells[edge - 1 - count].IsWide;
             // Shift characters to right
             // Start from end, move char at (c - count) to c
-            for (int c = Cols - 1; c >= endCol; c--)
+            for (int c = edge - 1; c >= endCol; c--)
             {
                 row.Cells[c] = row.Cells[c - count];
             }
@@ -716,11 +749,11 @@ namespace Ntilde.VT
             // move with the cells they describe — otherwise a cell keeps HasExtendedText while its
             // string stays behind at the old column (#164). Insert mode reaches this per printable
             // character, hence the HasRowMetadata guard.
-            if (row.HasRowMetadata) row.ShiftRowMetadata(_cursorCol, count, Cols);
-            if (edgeCut) row.SetProtected(Cols - 1, false);
+            if (row.HasRowMetadata) row.ShiftRowMetadata(_cursorCol, count, Cols, edge);
+            if (edgeCut) row.SetProtected(edge - 1, false);
+            // Inside a right margin the cut glyph's anchor would sit beside cells it does not own: retire it.
+            if (edgeCut && edge < Cols) BlankCell(row, edge - 1, empty);
 
-            // Fill gap with default empty cells
-            var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex, false, false, false, false, false, false);
             for (int c = _cursorCol; c < endCol; c++)
             {
                 row.Cells[c] = empty;
@@ -742,17 +775,29 @@ namespace Ntilde.VT
         private void DeleteCharactersInternal(int count)
         {
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
+            // With horizontal margins DCH acts only between them; blanks enter at the right margin.
+            if (!CursorInHorizontalMarginsNoLock) return;
+            int edge = RightMargin + 1;
 
             // Clamp to the columns available from the cursor. Without this, a count larger than
             // the line width (e.g. CSI 9999 P, or the parser's max parameter) makes endCol go
             // negative and the fill loop below index Cells[-n] → IndexOutOfRangeException.
-            int maxDeletable = Cols - _cursorCol;
+            int maxDeletable = edge - _cursorCol;
             if (maxDeletable <= 0) return;
             if (count > maxDeletable) count = maxDeletable;
 
-            int endCol = Cols - count;
-            EraseTextSizingForShift(insert: false, count);
+            int endCol = edge - count;
+            var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex);
             var row = _viewport[_cursorRow];
+            if (edge < Cols)
+            {
+                EraseTextSizingRange(_cursorCol, edge, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
+                RetireWideAcross(row, edge, empty); // a glyph straddling the right margin would leave a half behind
+            }
+            else
+            {
+                EraseTextSizingForShift(insert: false, count);
+            }
             // Deleting a continuation leaves its anchor beside whatever shifts in next, which could be another glyph's continuation:
             // the anchor's record must go with the half that is deleted, or the two would read as one protected glyph.
             if (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation && row.Cells[_cursorCol - 1].IsWide) row.SetProtected(_cursorCol - 1, false);
@@ -767,7 +812,7 @@ namespace Ntilde.VT
 
             // Side tables follow the cells (#164). Entries in the deleted range are dropped; the
             // blanked tail columns end up with no entries, matching the empty cells written below.
-            if (row.HasRowMetadata) row.ShiftRowMetadata(_cursorCol, -count, Cols);
+            if (row.HasRowMetadata) row.ShiftRowMetadata(_cursorCol, -count, Cols, edge);
 
             // Update images on this row: shift those to the right of cursor left
             int absY = _isAltScreen ? _cursorRow : (_scrollback.Count + _cursorRow);
@@ -777,7 +822,7 @@ namespace Ntilde.VT
                 // Only the active screen's images move (see ScrollUpInternal).
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
-                if (img.IsSticky && img.CellY == absY && img.CellX >= _cursorCol)
+                if (img.IsSticky && img.CellY == absY && img.CellX >= _cursorCol && img.CellX < edge)
                 {
                     img.CellX -= count;
                     if (img.CellX < _cursorCol)
@@ -791,8 +836,7 @@ namespace Ntilde.VT
             }
 
             // Fill gap at end with empty cells
-            var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex);
-            for (int c = endCol; c < Cols; c++)
+            for (int c = endCol; c < edge; c++)
             {
                 row.Cells[c] = empty;
             }

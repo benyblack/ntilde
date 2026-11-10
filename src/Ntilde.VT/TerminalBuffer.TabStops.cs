@@ -78,12 +78,14 @@ namespace Ntilde.VT
             {
                 int remaining = System.Math.Max(1, count);
                 int col = System.Math.Clamp(_cursorCol, 0, System.Math.Max(0, Cols - 1));
+                // A cursor at or left of the right margin stops there (xterm's TabToNextStop with DECLRMM).
+                int limit = _cursorCol <= RightMargin ? RightMargin : Cols - 1;
                 while (remaining-- > 0)
                 {
                     col = FindNextTabStopNoLock(col);
                 }
 
-                _cursorCol = col;
+                _cursorCol = System.Math.Min(col, limit);
                 _isPendingWrap = false;
             }
             finally
@@ -104,7 +106,8 @@ namespace Ntilde.VT
                     col = FindPreviousTabStopNoLock(col);
                 }
 
-                _cursorCol = col;
+                // In origin mode CBT stops at the left margin.
+                _cursorCol = Modes.IsOriginMode ? System.Math.Max(col, LeftMargin) : col;
                 _isPendingWrap = false;
             }
             finally

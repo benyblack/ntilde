@@ -634,6 +634,8 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < ScrollTop || _cursorRow > ScrollBottom) return;
+                // With horizontal margins IL acts only while the cursor is between them, and moves only the band between them.
+                if (!CursorInHorizontalMarginsNoLock) return;
 
                 int top = _cursorRow;
                 int bottom = ScrollBottom;
@@ -641,6 +643,11 @@ namespace Ntilde.VT
                 int n = Math.Min(count, bottom - top + 1);
 
                 if (n <= 0) return;
+                if (HasHorizontalMargins)
+                {
+                    ScrollBandNoLock(top, bottom, LeftMargin, RightMargin, n, up: false, new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, true, true));
+                    return;
+                }
 
                 int sizedTop = TextSizingAbsoluteRow(top);
                 int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
@@ -699,6 +706,8 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < ScrollTop || _cursorRow > ScrollBottom) return;
+                // With horizontal margins DL acts only while the cursor is between them, and moves only the band between them.
+                if (!CursorInHorizontalMarginsNoLock) return;
 
                 int top = _cursorRow;
                 int bottom = ScrollBottom;
@@ -706,6 +715,11 @@ namespace Ntilde.VT
                 int n = Math.Min(count, bottom - top + 1);
 
                 if (n <= 0) return;
+                if (HasHorizontalMargins)
+                {
+                    ScrollBandNoLock(top, bottom, LeftMargin, RightMargin, n, up: true, new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, true, true));
+                    return;
+                }
 
                 int sizedTop = TextSizingAbsoluteRow(top);
                 int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
