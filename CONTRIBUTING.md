@@ -485,7 +485,7 @@ All PRs are automatically checked by CI:
 - script self-tests (`scripts/tests/*.py`, Windows + Linux — blocking): the
   CI helper scripts, such as the App.Tests shard split, tested against the
   workflow and the test sources they describe.
-- unit tests (VT, Rendering, Architecture, Platform, McpServer, Mux — blocking)
+- unit tests (VT, Rendering, Architecture, Platform, McpServer, Mux, Shots — blocking)
 - headless App.Tests, in two lanes (`Lane!=PlatformBoot` and `Lane=PlatformBoot`)
   — **blocking**, on failures and on hangs. CI splits the first lane across four
   jobs per OS by test namespace (`scripts/ci/app-tests-shard.py`: `assist`, `mux`,

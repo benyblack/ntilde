@@ -54,9 +54,9 @@ REST = "rest"
 # plus about 20 s of host start and discovery per shard): CommandAssist 71, Controls 27, Shell
 # 55 (52 of it Shell.Mux), Core 142 - of which the four MainWindowMux*Tests classes are 46 (Remote
 # 27.5, Sharing 8.7, Update 7.5, Lifecycle 2.6) - and REST's App.Tests share 47, beside the
-# non-headless projects (57 s of step, run side by side) and the PlatformBoot lane (14 s). With
-# three shards, assist-shell (153 s) and core (142 s) ended the run. Now assist 98 s, mux 101 s,
-# core 95 s, and REST's three steps about 136 s, which leaves REST the longest.
+# PlatformBoot lane (14 s). With three shards, assist-shell (153 s) and core (142 s) ended the
+# run. Now assist 98 s, mux 101 s, core 95 s; the non-headless projects then even the shards out
+# (NON_HEADLESS below).
 #
 # Before that, rebalanced from run 41296868089 (windows test-step seconds; ubuntu is lower
 # throughout): Core ~124 s of test time; CommandAssist ~62; Shell (almost all Shell.Mux) ~51;

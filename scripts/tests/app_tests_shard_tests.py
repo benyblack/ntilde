@@ -242,12 +242,21 @@ def main():
     # The non-headless step runs the shard's `projects=` list, not a list of its own, and runs them
     # one after another (#926): a list in the workflow would drift from the script's, and a `&` in
     # the loop would put them side by side again.
-    step = shard_job.split("- name: Test (unit — gating, non-headless projects)", 1)[-1]
+    step_name = "- name: Test (unit — gating, non-headless projects)"
+    check(step_name in shard_job, f"the Unit Tests job has its non-headless step ({step_name!r})")
+    step = shard_job.split(step_name, 1)[-1] if step_name in shard_job else ""
     step = step.split("\n      - name:", 1)[0]
     check("steps.shard.outputs.projects" in step and "for proj in $PROJECTS" in step,
           "the non-headless step runs the projects the shard script names")
     check(not re.search(r"\)\s*&\s*$|&\s*$", step, re.M) and "wait" not in step.split(),
           "the non-headless step runs its projects one after another")
+    # Every assigned project is in the build artifact the shards download; one that is not would
+    # fail only on its shard, with a missing-file error far from the cause.
+    upload = build_job.split("- name: Upload build artifact", 1)[-1]
+    not_uploaded = [p for p in assigned
+                    if f"tests/Ntilde.{p}.Tests/bin/${{{{ env.CONFIGURATION }}}}" not in upload]
+    check("- name: Upload build artifact" in build_job and not not_uploaded,
+          f"the build job uploads every assigned project's output (missing: {not_uploaded})")
     check(in_matrix == shards, f"the Unit Tests matrix runs exactly the script's shards "
                                f"(matrix {in_matrix}, script {shards})")
 
