@@ -34,6 +34,7 @@ import { collectSelectiveEraseGrading } from './selective-erase-collector.mjs';
 import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
+import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -301,6 +302,14 @@ try {
         const rectChecksumModule = await import(pathToFileURL(config.rectChecksumBundle).href);
         const rectChecksumRun = await collectRectChecksumGrading({ config, fence, owner, gradingModule: rectChecksumModule });
         writeFileSync(join(config.output, 'csum-run.json'), JSON.stringify(rectChecksumRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered left/right-margin qualification follows the rectangle-checksum suite on the same fence.
+        const lrMarginsSource = readFileSync(config.lrMarginsBundle);
+        if (createHash('sha256').update(lrMarginsSource).digest('hex') !== config.lrMarginsBundleSha256) {
+            throw new Error('Local left/right-margin adapter bundle changed.');
+        }
+        const lrMarginsModule = await import(pathToFileURL(config.lrMarginsBundle).href);
+        const lrMarginsRun = await collectLrMarginsGrading({ config, fence, owner, gradingModule: lrMarginsModule });
+        writeFileSync(join(config.output, 'lrmm-run.json'), JSON.stringify(lrMarginsRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

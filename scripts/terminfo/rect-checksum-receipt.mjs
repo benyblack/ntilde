@@ -42,11 +42,11 @@ const files = ['csum-observations.json', 'csum-run.json', 'csum-snapshots.jsonl'
 /** Whether a retained artifact path exists; any failure other than a missing entry is fatal. */
 const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
 
-/** Any retained rectangle-checksum artifact or declaration requires the v39 suffix, and a policy-v33 run always carries them,
+/** Any retained rectangle-checksum artifact or declaration requires the v39 suffix, and a policy-v33 or later run always carries them,
  * because the current worker collects this suite unconditionally after the column-editing suite. (initial-settings.json is
  * retained by every run, so it alone never requires the suffix.) */
 export function includesRectChecksumEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v33'
+    return ['readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34'].includes(context.sourceSnapshotPolicy)
         || context.rectChecksumAdapterId !== undefined || context.rectChecksumSuiteId !== undefined
         || context.rectChecksumBundleSha256 !== undefined || context.rectChecksumContractsVersion !== undefined
         || evidence.rectChecksumEvidence !== undefined

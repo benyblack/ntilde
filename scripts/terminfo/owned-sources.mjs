@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v33';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v34';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -465,11 +465,21 @@ export const capturedV40SourceFiles = Object.freeze({
     rectChecksumReceiptSourceSha256: "rect-checksum-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v40 inventory and manifest environment pin before trusting any captured source. */
+// Frozen v41 left/right-margin (modes.left-right-margin) grading scope; future experiments must create a distinct policy and map.
+export const capturedV41SourceFiles = Object.freeze({
+    ...capturedV40SourceFiles,
+    lrMarginsContractsSourceSha256: "lr-margins-contracts.mjs",
+    lrMarginsCollectorSourceSha256: "lr-margins-collector.mjs",
+    lrMarginsGradingSourceSha256: "lr-margins-grading.mjs",
+    lrMarginsGradingCollectorSourceSha256: "lr-margins-grading-collector.mjs",
+    lrMarginsReceiptSourceSha256: "lr-margins-receipt.mjs",
+});
+
+/** Bind the private temporary root, exact v41 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV40SourceFiles)) throw new Error('Invalid current v40 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV41SourceFiles)) throw new Error('Invalid current v41 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);
