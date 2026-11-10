@@ -40,8 +40,14 @@ corresponding full-width operation uses.
 
 ## Not bounded or not implemented
 
-ED, EL and ECH stay full-width, as in xterm. DECBI and DECFI, DECRQSS for the margins (`DCS $ q s ST` stays a failure reply) and
-the image plane under a partial-width scroll (images are removed, not moved) are not implemented.
+ED, EL and ECH stay full-width, as in xterm. DECBI and DECFI and the image plane under a partial-width scroll (images are removed, not moved) are not implemented.
+
+## DECRQSS
+
+`DCS $ q s ST` reports `DCS 1 $ r Pl ; Pr s ST` with the current one-based absolute left and right margins. As in xterm, which
+gates the `s` selector on the VT level rather than on DECLRMM, it answers whether or not DECLRMM is set (full width reports
+`1;<cols>`), and it is never origin-relative. Replaying `CSI ? 69 h` followed by `CSI Pl ; Pr s` with the reply's parameters
+restores the same margins. Framing and terminators follow the other DECRQSS replies (standard ST only; BEL recovery fails).
 
 ## Qualification
 

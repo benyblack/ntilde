@@ -214,3 +214,27 @@ test('an unauthenticated socket rejection cannot abort the owned query observer'
     assert.equal(rejectQueryOwnerRequest({ authenticated: false, observer: world.observer, error: new Error('bad capability'), request: {}, reject: () => rejected = true }), false);
     assert.equal(world.observer.failed, false); assert.equal(rejected, false);
 });
+
+test('under the v2 marker the DECRQSS s witness owes ESC P 1 $ r 1 ; cols s, a negative reply is then a mismatch, and the marker is recorded and re-derived', async () => {
+    const world = queryWorld({ marginsReport: true }); await world.collect(); const report = world.observer.report;
+    const witness = item => item.id === 'q12.decrqss.horizontal-margins';
+    assert.ok(report.observations.every(item => item.contractMatched));
+    assert.equal(report.observations.find(witness).expectedEvidence, 'positive-reply');
+    assert.equal(report.observations.find(witness).expectedHex, Buffer.from('\x1bP1$r1;60s\x1b\\').toString('hex'));
+    assert.equal(report.policy, 'owned-exact-query-paired-raw-state-v2'); assert.match(report.marginsReport, /^query policy v2/);
+    assert.deepEqual(buildQueryReport({ ...reportInput(report), marginsReport: true }), report);
+    assert.notDeepEqual(buildQueryReport(reportInput(report)), report, 'the same journal without the marker derives a different report');
+    const stale = queryWorld({ marginsReport: true, mutateReply: (id, reply) => id === 'q12.decrqss.horizontal-margins' ? '\x1bP0$r\x1b\\' : reply });
+    await stale.collect(); const mismatched = stale.observer.report.observations.find(witness);
+    assert.equal(mismatched.contractMatched, false); assert.equal(mismatched.expectedEvidence, 'positive-reply');
+    assert.equal(mismatched.receivedHex, Buffer.from('\x1bP0$r\x1b\\').toString('hex'));
+    for (const bad of ['yes', 1, null]) assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: bad }));
+});
+test('without the marker (every earlier run) the negative expectation and the v1 policy are unchanged', async () => {
+    const world = queryWorld(); await world.collect(); const report = world.observer.report;
+    assert.equal(report.observations.find(item => item.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'negative-reply');
+    assert.equal(report.policy, 'owned-exact-query-paired-raw-state-v1'); assert.equal(Object.hasOwn(report, 'marginsReport'), false);
+    const forged = buildQueryReport({ ...reportInput(report), marginsReport: true });
+    assert.notDeepEqual(forged, report, 'a forged marker cannot re-derive the archived report');
+    assert.equal(forged.observations.find(item => item.id === 'q12.decrqss.horizontal-margins').contractMatched, false);
+});

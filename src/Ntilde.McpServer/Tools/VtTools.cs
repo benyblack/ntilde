@@ -421,7 +421,7 @@ public sealed class VtTools
     }
 
     // DECRQSS settings with a positive report; each has a "DCS:<payload>" catalogue entry.
-    private static readonly string[] DecrqssReportPayloads = ["$qr", "$qm", "$q q"];
+    private static readonly string[] DecrqssReportPayloads = ["$qr", "$qs", "$qm", "$q q"];
 
     private static string ExplainDcs(string original, DcsInputRepresentation representation)
     {

@@ -2,7 +2,7 @@ import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { snapshotHash } from './agent-observer.mjs';
-import { querySuiteId, ownedQueryPolicy, buildQueryReport, checkQueries as check } from './queries.mjs';
+import { querySuiteId, ownedQueryPolicy, queryPolicies, buildQueryReport, checkQueries as check } from './queries.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const files = ['query-snapshots.jsonl', 'query-actions.jsonl', 'query-initial.json', 'query-observations.json', 'query-unavailable.json', 'query-failed-observation.json', 'query-raw-failure.json'];
 function present(path) {
@@ -32,7 +32,7 @@ export function includesQueryEvidence(output, evidence, context, proof) {
 export function checkQueryEvidence(output, binding, runId, context, proof, prefixEvidence) {
     const original = proof.proofs?.[0], marker = original?.queries;
     check(['readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5', 'readonly-owned-source-graph-v6', 'readonly-owned-source-graph-v7', 'readonly-owned-source-graph-v8', 'readonly-owned-source-graph-v9', 'readonly-owned-source-graph-v10', 'readonly-owned-source-graph-v11', 'readonly-owned-source-graph-v12', 'readonly-owned-source-graph-v13', 'readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15', 'readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34'].includes(context.sourceSnapshotPolicy) && context.querySuiteId === querySuiteId
-        && context.ownedQueryPolicy === ownedQueryPolicy && marker?.policy === ownedQueryPolicy
+        && queryPolicies.includes(context.ownedQueryPolicy) && marker?.policy === context.ownedQueryPolicy
         && Object.keys(marker).every(key => ['policy', 'binding', 'actions', 'seal'].includes(key))
         && !present(join(output, 'query-failed-observation.json')) && !present(join(output, 'query-raw-failure.json')));
     check(binding?.runId === runId && binding.suiteId === querySuiteId && ['query-observations.json', 'query-unavailable.json'].includes(binding.file)
@@ -66,8 +66,10 @@ export function checkQueryEvidence(output, binding, runId, context, proof, prefi
     check(Date.parse(initial.before.beforeOwnership.at) >= Date.parse(image.seal.ownership.at));
     // A run whose retained initial settings turn the off-by-default DECRQCRA report on owes its reply to the witness request.
     const checksumReport = json(output, 'initial-settings.json').AllowRectangleChecksumReport === true;
+    // The archived query policy is the version marker: v2 owes the DECRQSS s reply, v1 (every earlier run) keeps the negative one.
+    const marginsReport = context.ownedQueryPolicy === ownedQueryPolicy;
     const derived = buildQueryReport({ binding: marker.binding, priorChallenges: prior, initial, actions, frames, seal: marker.seal,
-        ...(checksumReport ? { checksumReport: true } : {}) });
+        ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}) });
     check(snapshotHash(report) === snapshotHash(derived) && snapshotHash(actions) === snapshotHash(marker.actions)
         && Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt));
     const b = derived.binding, sameProcess = (actual, expected) => ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual[key] === expected?.[key]);

@@ -33,6 +33,7 @@ public sealed class VtCapabilityContractTests
         new(StringComparer.Ordinal)
         {
             ["decrqss-top-bottom-margins"] = AssertDecrqssMargins,
+            ["decrqss-left-right-margins"] = AssertDecrqssLeftRightMargins,
             ["decrqss-sgr"] = AssertDecrqssSgr,
             ["decrqss-cursor-style"] = AssertDecrqssCursorStyle,
             ["xtgettcap"] = AssertXtgettcap,
@@ -72,6 +73,7 @@ public sealed class VtCapabilityContractTests
         new(StringComparer.Ordinal)
         {
             ["decrqss-top-bottom-margins"] = "\x1bP$qr\x1b\\",
+            ["decrqss-left-right-margins"] = "\x1bP$qs\x1b\\",
             ["decrqss-sgr"] = "\x1bP$qm\x1b\\",
             ["decrqss-cursor-style"] = "\x1bP$q q\x1b\\",
             ["xtgettcap"] = "\x1bP+q436f;544e\x1b\\",
@@ -341,6 +343,14 @@ public sealed class VtCapabilityContractTests
         new AnsiParser(new TerminalBuffer(40, 6)) { OnResponse = responses.Add }
             .Process("\x1b[2;5r\x1bP$qr\x1b\\");
         Assert.Equal("\x1bP1$r2;5r\x1b\\", Assert.Single(responses));
+    }
+
+    private static void AssertDecrqssLeftRightMargins()
+    {
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(40, 6)) { OnResponse = responses.Add }
+            .Process("\x1bP$qs\x1b\\\x1b[?69h\x1b[5;14s\x1bP$qs\x1b\\");
+        Assert.Equal(new[] { "\x1bP1$r1;40s\x1b\\", "\x1bP1$r5;14s\x1b\\" }, responses);
     }
 
     private static void AssertDecrqssSgr()

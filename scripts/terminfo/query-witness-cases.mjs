@@ -31,16 +31,19 @@ const tcap = [['terminal-name', '544e'], ['color-count', '436f'], ['colors', '63
  * always starts with the N of NTILDE_QRY_ (0x4E, plain), so the negated 16-bit checksum is FFB2. */
 const checksumReply = `${esc}P1!~FFB2${st}`;
 
-/** Observed geometry and absolute one-based margins, plus the optional `checksumReport` flag of a run whose initial settings turn
- * the off-by-default DECRQCRA report on. Without the flag (every run before it existed) the context is exactly the four numbers. */
+/** The optional context flags, each exactly `true` or absent: `checksumReport` (a run whose initial settings turn the off-by-default
+ * DECRQCRA report on) and `marginsReport` (a run of the query policy that expects the DECRQSS s reply, which is unconditional). */
+const contextFlags = ['checksumReport', 'marginsReport'];
+/** Observed geometry and absolute one-based margins plus the optional flags above. Without them (every run before they existed) the
+ * context is exactly the four numbers. */
 export function queryWitnessContext(value) {
     const keys = ['rows', 'cols', 'top', 'bottom'];
-    const flagged = value && Object.hasOwn(value, 'checksumReport');
-    if (!value || Object.keys(value).length !== keys.length + (flagged ? 1 : 0) || Object.keys(value).some(k => !keys.includes(k) && k !== 'checksumReport')
-        || !keys.every(k => Object.hasOwn(value, k)) || (flagged && value.checksumReport !== true)) {
+    const flags = value ? contextFlags.filter(flag => Object.hasOwn(value, flag)) : [];
+    if (!value || Object.keys(value).length !== keys.length + flags.length || Object.keys(value).some(k => !keys.includes(k) && !contextFlags.includes(k))
+        || !keys.every(k => Object.hasOwn(value, k)) || flags.some(flag => value[flag] !== true)) {
         throw new Error('Expected bounded observed geometry and absolute one-based margins.');
     }
-    const snapshot = Object.freeze(Object.fromEntries([...keys, ...(flagged ? ['checksumReport'] : [])].map(k => [k, value[k]])));
+    const snapshot = Object.freeze(Object.fromEntries([...keys, ...flags].map(k => [k, value[k]])));
     if (!keys.every(k => Number.isSafeInteger(snapshot[k]))
         || snapshot.rows < 1 || snapshot.rows > 4096 || snapshot.cols < 1 || snapshot.cols > 4096
         || snapshot.top < 1 || snapshot.bottom < snapshot.top || snapshot.bottom > snapshot.rows) {
@@ -61,7 +64,10 @@ export function queryWitnessPlan(context) {
             ? entry(`q07.${id}`, id, request, 'positive-reply', checksumReply)
             : entry(`q07.${id}`, id, request, 'silence', ''))),
         entry('q12.decrqss.vertical-margins', 'device.decrqss', `${esc}P$qr${st}`, 'positive-reply', `${esc}P1$r${c.top};${c.bottom}r${st}`),
-        ...decrqss.map(([id, setting]) => entry(`q12.decrqss.${id}`, 'device.decrqss', `${esc}P$q${setting}${st}`, 'negative-reply', `${esc}P0$r${st}`)),
+        // DECRQSS s is unconditional. The query suite runs on a reset full-width screen, so the left/right margins are 1 and cols.
+        ...decrqss.map(([id, setting]) => (id === 'horizontal-margins' && c.marginsReport
+            ? entry(`q12.decrqss.${id}`, 'device.decrqss', `${esc}P$q${setting}${st}`, 'positive-reply', `${esc}P1$r1;${c.cols}s${st}`)
+            : entry(`q12.decrqss.${id}`, 'device.decrqss', `${esc}P$q${setting}${st}`, 'negative-reply', `${esc}P0$r${st}`))),
         ...tcap.map(([id, name]) => entry(`q12.xtgettcap.${id}`, 'device.xtgettcap', `${esc}P+q${name}${st}`, 'negative-reply', `${esc}P0+r${st}`)),
     ]);
 }

@@ -5,11 +5,11 @@ import { queryAction, queryBinding, queryBound, checkQueries as check,
     queryPlan, queryPrior, queryScreen, validateQueryOwnership, pristineQuery, buildQueryReport, queryContext } from './queries.mjs';
 
 export class OwnedQueryObserver {
-    #binding; #attest; #readers; #prior; #used; #initial; #baseline; #expected; #checksumReport;
+    #binding; #attest; #readers; #prior; #used; #initial; #baseline; #expected; #checksumReport; #marginsReport;
     #actions = []; #frames = []; #pending; #seal; #report; #failed = false; #busy = false; #attempt; #failure;
     constructor(options) {
-        const { binding, attest, rpc, endpoint, appData, priorChallenges = [], checksumReport = false } = options;
-        check(typeof checksumReport === 'boolean'); this.#checksumReport = checksumReport;
+        const { binding, attest, rpc, endpoint, appData, priorChallenges = [], checksumReport = false, marginsReport = false } = options;
+        check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean'); this.#checksumReport = checksumReport; this.#marginsReport = marginsReport;
         this.#binding = queryBinding(binding); this.#prior = queryPrior(priorChallenges);
         check(this.#prior.length === 110 && typeof attest === 'function'); this.#attest = attest; this.#used = new Set(this.#prior);
         const facts = { appData, ownerPid: this.#binding.ownerPid, profileName: this.#binding.profileName,
@@ -68,7 +68,7 @@ export class OwnedQueryObserver {
         check(this.#pending?.index === index && index === this.#frames.length);
         const entry = queryPlan[index], before = this.#pending.before.screen;
         this.#pending.capture = capture;
-        const comparison = inspectQueryWitness(queryContext(before, this.#checksumReport), entry.id ?? queryPlan[1].id, capture);
+        const comparison = inspectQueryWitness(queryContext(before, this.#checksumReport, this.#marginsReport), entry.id ?? queryPlan[1].id, capture);
         const nonceKey = comparison.orderingNonces.join(','); check(!this.#used.has(nonceKey)); this.#used.add(nonceKey);
         if (entry.kind !== 'query') {
             check(capture.byteLength === 0);
@@ -82,7 +82,7 @@ export class OwnedQueryObserver {
         check(this.#frames.length === 44 && !this.#pending && !this.#seal);
         this.#seal = { status, ownership: structuredClone(await this.#attest(budget)) };
         const input = { binding: this.#binding, priorChallenges: this.#prior, initial: this.#initial,
-            actions: this.#actions, frames: this.#frames, seal: this.#seal, ...(this.#checksumReport ? { checksumReport: true } : {}) };
+            actions: this.#actions, frames: this.#frames, seal: this.#seal, ...(this.#checksumReport ? { checksumReport: true } : {}), ...(this.#marginsReport ? { marginsReport: true } : {}) };
         this.#report = buildQueryReport(input);
         check(snapshotHash(this.#report.readerCounts) === snapshotHash(this.#readers.map(reader => reader.snapshots)));
         return { sealed: true };

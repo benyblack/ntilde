@@ -59,7 +59,7 @@
       "key": "DEC:69",
       "mnemonic": "DECLRMM",
       "support": "partial",
-      "description": "Left/right margin mode. Off by default; DECRQM reports 1/2. While set, CSI Pl;Pr s is DECSLRM instead of SCOSC; resetting it, RIS, DECSTR, DECALN and a resize restore full-width margins (RIS also resets the mode). State transfer carries the mode and the margins. DECRQSS for the margins is not implemented.",
+      "description": "Left/right margin mode. Off by default; DECRQM reports 1/2. While set, CSI Pl;Pr s is DECSLRM instead of SCOSC; resetting it, RIS, DECSTR, DECALN and a resize restore full-width margins (RIS also resets the mode). State transfer carries the mode and the margins; DECRQSS reports them (DCS $ q s).",
       "matrixFeature": "DECLRMM (CSI ? 69 h/l)",
       "evidencePath": "tests/Ntilde.VT.Tests/LeftRightMarginTests.cs",
       "contractCase": "left-right-margin-mode"
@@ -179,6 +179,15 @@
       "matrixFeature": "DECRQSS top/bottom margin query",
       "evidencePath": "tests/Ntilde.VT.Tests/DecrqssMarginQueryTests.cs",
       "contractCase": "decrqss-top-bottom-margins"
+    },
+    {
+      "key": "DCS:$qs",
+      "mnemonic": "DECRQSS left/right margins",
+      "support": "supported",
+      "description": "Report current absolute one-based left and right margins as DCS 1 $ r Pl ; Pr s ST, whether or not DECLRMM is set (full width when unset), never origin-relative, only for exact complete s requests terminated by standard ST. The reply replayed after CSI ? 69 h restores the margins.",
+      "matrixFeature": "DECRQSS left/right margin query",
+      "evidencePath": "tests/Ntilde.VT.Tests/DecrqssLeftRightMarginTests.cs",
+      "contractCase": "decrqss-left-right-margins"
     },
     {
       "key": "DCS:$qm",

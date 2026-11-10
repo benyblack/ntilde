@@ -1001,3 +1001,9 @@ ICH/DCH, DECIC/DECDC/SL/SR, DECOM addressing and rectangles, DECSTR and the `?69
 (`includeHorizontalMargins`). The model was checked against the VT implementation on every control's exact bytes before measurement. CPR, wide glyphs, side
 tables, the image plane and rendered appearance are unit-tested, not qualified here. The VT implementation is in [the margin contract](terminfo/left-right-margins.md).
 Receipt schema 40 and source policy v34 (253 files) bind it; earlier policies stay frozen.
+
+The exact-query witness `q12.decrqss.horizontal-margins` is versioned like the DECRQCRA one above. DECRQSS `s` now answers unconditionally (no setting), so the marker is
+the query policy the run archives: new runs record `owned-exact-query-paired-raw-state-v2` (receipt context, run marker and report), under which the witness owes
+`ESC P 1 $ r 1 ; <cols> s ESC \` (the suite runs on a reset full-width screen, so the margins are `1;cols`); every run before it archived `...-v1` and keeps the
+negative `ESC P 0 $ r ESC \`, so all published runs re-derive unchanged. The receipt reads the policy from the archived context, never from a setting, and
+re-derivation rejects a rewritten policy (the derived report would differ from the archived one). The other DECRQSS witnesses are unchanged.

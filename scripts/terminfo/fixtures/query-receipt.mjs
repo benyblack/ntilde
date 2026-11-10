@@ -6,10 +6,12 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { queryWorld } from './query-world.mjs';
 import { capturedV11SourceFiles } from '../owned-sources.mjs';
-import { querySuiteId, ownedQueryPolicy } from '../queries.mjs';
+import { querySuiteId, legacyQueryPolicy, ownedQueryPolicy as marginsQueryPolicy } from '../queries.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export async function queryReceiptFixture(action, worldOptions = {}) {
+    // The archived query policy is the version marker: the legacy v1 (every published run) or v2 (`marginsReport`, DECRQSS s owed).
+    const ownedQueryPolicy = worldOptions.marginsReport ? marginsQueryPolicy : legacyQueryPolicy;
     const output = mkdtempSync(join(tmpdir(), 'nt-query-receipt-'));
     const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
     try {
