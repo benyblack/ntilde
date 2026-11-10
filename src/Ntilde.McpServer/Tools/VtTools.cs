@@ -250,6 +250,18 @@ public sealed class VtTools
                 return ExplainRectangleCopyFill(finalByte, prefix[..^1]) + note;
             }
 
+            if (finalByte is '}' or '~' && qualifiers == "'" && prefix.EndsWith('\''))
+            {
+                return ExplainColumnEdit("CSI:'" + finalByte, finalByte, prefix[..^1]) + note;
+            }
+
+            // SL and SR are CSI Pn SP @ / CSI Pn SP A. Whitespace is stripped above, so a literal space cannot be told apart
+            // from formatting; the ctlseqs spelling "SP" names the intermediate explicitly.
+            if (finalByte is '@' or 'A' && qualifiers == "SP" && prefix.EndsWith("SP", StringComparison.Ordinal))
+            {
+                return ExplainColumnEdit("CSI:SP" + finalByte, finalByte, prefix[..^2]);
+            }
+
             // XTSMGRAPHICS shares 'S' with SU but never scrolls (#274); it is answered (#872).
             if (finalByte == 'S' && qualifiers == "?")
             {
@@ -501,6 +513,14 @@ public sealed class VtTools
         if (parameters.Any(c => c < '0' || c > '9'))
             return "CSI select-attribute-change-extent form: only one plain parameter is admitted; Ntilde's parser ignores this form.";
         return "CSI sequence, final byte 'x': " + ContractSequenceTable["CSI:*x"];
+    }
+
+    /// <summary>DECIC, DECDC, SL and SR: at most one plain numeric parameter; anything else is ignored by the parser.</summary>
+    private static string ExplainColumnEdit(string key, char finalByte, string parameters)
+    {
+        if (parameters.Any(c => c < '0' || c > '9'))
+            return "CSI column edit form: only one plain parameter is admitted; Ntilde's parser ignores this form.";
+        return $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable[key];
     }
 
     /// <summary>Names the Partial DECFRA (up to five) or DECCRA (up to eight) plain-parameter contract; any other shape is ignored by the parser.</summary>

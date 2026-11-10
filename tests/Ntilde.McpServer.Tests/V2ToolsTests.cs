@@ -505,6 +505,50 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("DECSACE", result, StringComparison.Ordinal);
     }
 
+    /// <summary>The exact DECIC, DECDC, SL and SR spellings retain the catalogue's Partial support limitation.</summary>
+    [Theory]
+    [InlineData("CSI 2 ' }", "DECIC")]
+    [InlineData("\x1b[2'}", "DECIC")]
+    [InlineData("CSI ' }", "DECIC")]
+    [InlineData("CSI 2 ' ~", "DECDC")]
+    [InlineData("\e['~", "DECDC")]
+    [InlineData("CSI 2 SP @", "SL")]
+    [InlineData("CSI SP @", "SL")]
+    [InlineData("CSI 2 SP A", "SR")]
+    public void Column_edits_explain_the_partial_contract(string sequence, string mnemonic)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Contains(mnemonic, result, StringComparison.Ordinal);
+        Assert.Contains("PARTIALLY", result, StringComparison.Ordinal);
+    }
+
+    /// <summary>Other identities, extra parameters and subparameters cannot inherit the admitted column explanation.</summary>
+    [Theory]
+    [InlineData("CSI 2 }")]
+    [InlineData("CSI 2 ~")]
+    [InlineData("CSI ? 2 ' }")]
+    [InlineData("CSI 2;1 ' ~")]
+    [InlineData("CSI 2:1 ' }")]
+    [InlineData("CSI 2 $ ~")]
+    [InlineData("CSI 2;1 SP @")]
+    [InlineData("CSI ? 2 SP A")]
+    public void Other_column_forms_claim_no_contract(string sequence)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.DoesNotContain("DECIC", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("DECDC", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("SL —", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("PARTIALLY", result, StringComparison.Ordinal);
+    }
+
+    /// <summary>The bare finals keep ICH and CUU.</summary>
+    [Fact]
+    public void Bare_at_and_A_stay_ich_and_cuu()
+    {
+        Assert.Contains("ICH", VtTools.ExplainEscapeSequence("CSI 2 @"), StringComparison.Ordinal);
+        Assert.Contains("CUU", VtTools.ExplainEscapeSequence("CSI 2 A"), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CatalogCapabilities_AgreeWithExplainerSupportClaims()
     {

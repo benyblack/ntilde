@@ -201,10 +201,14 @@ namespace Ntilde.VT
             switch (finalByte)
             {
                 case 'A': // Cursor Up
-                          // CSI Pn SP A is SR (scroll right), not CUU.
+                          // CSI Pn SP A is SR (scroll right), not CUU; it is dispatched below.
                     if (bare)
                     {
                         MoveCursorUp(Math.Max(1, arg0), toFirstColumn: false);
+                    }
+                    else
+                    {
+                        EditColumns(csi, " ", atCursor: false, insert: true); // SR: only the exact CSI Pn SP A identity
                     }
                     break;
                 case 'F': // Cursor Preceding Line
@@ -245,11 +249,15 @@ namespace Ntilde.VT
                     }
                     break;
                 case '@': // ICH - Insert Character
-                          // CSI Pn SP @ is SL (scroll left), not ICH.
+                          // CSI Pn SP @ is SL (scroll left), not ICH; it is dispatched below.
                     if (bare)
                     {
                         int ichCount = Math.Max(1, arg0);
                         _buffer.InsertCharacters(ichCount);
+                    }
+                    else
+                    {
+                        EditColumns(csi, " ", atCursor: false, insert: false); // SL: only the exact CSI Pn SP @ identity
                     }
                     break;
                 case 'I': // CHT - Cursor Forward Tabulation
@@ -439,6 +447,12 @@ namespace Ntilde.VT
                     break;
                 case 'v': // DECCRA - Copy Rectangular Area (only the exact $ v identity)
                     CopyRectangularArea(csi);
+                    break;
+                case '}': // DECIC - Insert Column (only the exact CSI Pn ' } identity)
+                    EditColumns(csi, "'", atCursor: true, insert: true);
+                    break;
+                case '~': // DECDC - Delete Column (only the exact CSI Pn ' ~ identity)
+                    EditColumns(csi, "'", atCursor: true, insert: false);
                     break;
                 case 'X': // Erase Character (ECH)
                     if (bare)
