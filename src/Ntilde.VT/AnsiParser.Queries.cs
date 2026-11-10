@@ -15,6 +15,7 @@ namespace Ntilde.VT
                 ? dcs switch
                 {
                     "$qr" => ReportTopBottomMargins(),
+                    "$qs" => ReportLeftRightMargins(),
                     "$qm" => ReportGraphicRendition(),
                     "$q q" => ReportCursorStyle(),
                     _ => null,
@@ -29,6 +30,18 @@ namespace Ntilde.VT
             int bottom = _buffer.ScrollBottom;
             if (top < 0 || top > bottom || bottom >= _buffer.Rows) return null;
             return string.Create(CultureInfo.InvariantCulture, $"{top + 1};{bottom + 1}r");
+        }
+
+        /// <summary>
+        /// Absolute one-based left/right margins, as xterm answers on a VT420-level terminal: whether or not
+        /// DECLRMM is set (full width then), and never origin-relative. Replaying it after CSI ? 69 h restores them.
+        /// </summary>
+        private string? ReportLeftRightMargins()
+        {
+            int left = _buffer.LeftMargin;
+            int right = _buffer.RightMargin;
+            if (left < 0 || left > right || right >= _buffer.Cols) return null;
+            return string.Create(CultureInfo.InvariantCulture, $"{left + 1};{right + 1}s");
         }
 
         /// <summary>

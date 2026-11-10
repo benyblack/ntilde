@@ -46,7 +46,6 @@ public sealed class QueryVariantAuditTests
     }
 
     [Theory]
-    [InlineData("s")] // left/right margins
     [InlineData("\"p")] // conformance level
     [InlineData("\"q")] // character protection
     [InlineData("t")] // lines per page

@@ -365,6 +365,8 @@ public class ExplainEscapeSequenceTests
     [InlineData("\u0090$qm\u009c", "DECRQSS SGR report")]
     [InlineData("\\eP$qm\\e\\", "DECRQSS SGR report")]
     [InlineData("ESC P$qmESC\\", "DECRQSS SGR report")]
+    [InlineData("DCS $qs", "DECRQSS left/right margins")]
+    [InlineData("\x1bP$qs\x1b\\", "DECRQSS left/right margins")]
     [InlineData("DCS $q q", "DECRQSS cursor style report")]
     [InlineData("\x1bP$q q\x1b\\", "DECRQSS cursor style report")]
     [InlineData("\\x1bP$q q\\x1b\\", "DECRQSS cursor style report")]

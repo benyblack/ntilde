@@ -50,7 +50,6 @@ public class DecrqssMarginQueryTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("s")]
     [InlineData("r;")]
     [InlineData("0r")]
     [InlineData("r:0")]
