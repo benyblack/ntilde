@@ -397,45 +397,8 @@ jobs:
           key: ${{ steps.native-bin-cache.outputs.cache-primary-key }}
 
       # ── .NET ───────────────────────────────────────────────────────────────────
-      # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and
-      # ubuntu-latest, 2026-11-01), and global.json's rollForward: latestPatch accepts any
-      # 10.0.4xx patch from 10.0.400 up. When `dotnet --version` resolves an SDK here, under
-      # global.json, the job uses it and skips the cached ~/.dotnet copy (394 MB, ~19 s to
-      # unpack on windows) and setup-dotnet's install. When it does not - an image that has
-      # moved on from 10.0.4xx, macOS, arm64 - the two steps after this run as before.
-      - name: Use the runner's .NET SDK if global.json accepts it
-        id: sdk
-        shell: bash
-        run: |
-          if v=$(dotnet --version 2>/dev/null); then
-            echo "Preinstalled SDK $v satisfies global.json; no install needed."
-            echo "preinstalled=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "No preinstalled SDK satisfies global.json; installing one."
-            echo "preinstalled=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Cache .NET SDK
-        if: steps.sdk.outputs.preinstalled != '1'
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        if: steps.sdk.outputs.preinstalled != '1'
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       # NuGet packages (~1 GB) for the Restore step. A cache of its own rather than
       # setup-dotnet's `cache: true`, which only comes with an SDK install this job usually no
@@ -538,45 +501,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and
-      # ubuntu-latest, 2026-11-01), and global.json's rollForward: latestPatch accepts any
-      # 10.0.4xx patch from 10.0.400 up. When `dotnet --version` resolves an SDK here, under
-      # global.json, the job uses it and skips the cached ~/.dotnet copy (394 MB, ~19 s to
-      # unpack on windows) and setup-dotnet's install. When it does not - an image that has
-      # moved on from 10.0.4xx, macOS, arm64 - the two steps after this run as before.
-      - name: Use the runner's .NET SDK if global.json accepts it
-        id: sdk
-        shell: bash
-        run: |
-          if v=$(dotnet --version 2>/dev/null); then
-            echo "Preinstalled SDK $v satisfies global.json; no install needed."
-            echo "preinstalled=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "No preinstalled SDK satisfies global.json; installing one."
-            echo "preinstalled=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Cache .NET SDK
-        if: steps.sdk.outputs.preinstalled != '1'
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        if: steps.sdk.outputs.preinstalled != '1'
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       # NuGet packages (~1 GB) for the Restore step. A cache of its own rather than
       # setup-dotnet's `cache: true`, which only comes with an SDK install this job usually no
@@ -686,45 +612,8 @@ jobs:
             "$py" scripts/tests/app_tests_shard_tests.py; exit 1; }
           "$py" scripts/ci/app-tests-shard.py "$SHARD" | tee -a "$GITHUB_OUTPUT"
 
-      # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and
-      # ubuntu-latest, 2026-11-01), and global.json's rollForward: latestPatch accepts any
-      # 10.0.4xx patch from 10.0.400 up. When `dotnet --version` resolves an SDK here, under
-      # global.json, the job uses it and skips the cached ~/.dotnet copy (394 MB, ~19 s to
-      # unpack on windows) and setup-dotnet's install. When it does not - an image that has
-      # moved on from 10.0.4xx, macOS, arm64 - the two steps after this run as before.
-      - name: Use the runner's .NET SDK if global.json accepts it
-        id: sdk
-        shell: bash
-        run: |
-          if v=$(dotnet --version 2>/dev/null); then
-            echo "Preinstalled SDK $v satisfies global.json; no install needed."
-            echo "preinstalled=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "No preinstalled SDK satisfies global.json; installing one."
-            echo "preinstalled=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Cache .NET SDK
-        if: steps.sdk.outputs.preinstalled != '1'
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        if: steps.sdk.outputs.preinstalled != '1'
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       # The NuGet package cache (~1 GB, about 20 s to restore on windows) only on a shard whose
       # tests run `dotnet build` (steps.shard.outputs.restore; none today, see the Restore step).
@@ -788,21 +677,48 @@ jobs:
       # render-metrics, pty-smoke, stress, golden-shared-png). Once per OS, on the rest shard.
       # Each project runs from its compiled assembly (see the Restore step); the results
       # directory keeps each trx beside its project, where the project form put it.
+      #
+      # The projects run side by side, one `dotnet test` process each. One after another they took
+      # 118 s of this step on windows, though no project's own run exceeds about 35 s (VT.Tests,
+      # including its host start), and this shard was the last job to finish. Each process logs to
+      # its own file, printed afterwards as one group per project in a fixed order, and the step
+      # fails, naming the projects, if any process exited non-zero. Because nothing is printed until
+      # every process has exited, each one carries --blame-hang-timeout: a hung test ends its own
+      # process (named in its log) well inside the job's timeout, rather than the job being
+      # cancelled with no output from any project.
       - name: Test (unit — gating, non-headless projects)
         if: matrix.shard == 'rest'
         shell: bash
         run: |
-          set -e
           # ShotsSmoke boots a headless Avalonia session per test, which cannot share a process
           # with the rest of the Shots suite; the harness itself only ever starts one.
           filter="Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Category!=ShotsSmoke"
-          for proj in VT Rendering Architecture Platform McpServer Mux Shots; do
-            echo "::group::Ntilde.$proj.Tests"
-            dotnet test "tests/Ntilde.$proj.Tests/bin/$CONFIGURATION/net10.0/Ntilde.$proj.Tests.dll" \
-              --filter "$filter" --results-directory "tests/Ntilde.$proj.Tests/TestResults" \
-              --logger "trx;LogFileName=unit_${proj}.trx"
-            echo "::endgroup::"
+          projects="VT Rendering Architecture Platform McpServer Mux Shots"
+          logs="$RUNNER_TEMP/non-headless"
+          mkdir -p "$logs"
+          for proj in $projects; do
+            (
+              start=$SECONDS
+              dotnet test "tests/Ntilde.$proj.Tests/bin/$CONFIGURATION/net10.0/Ntilde.$proj.Tests.dll" \
+                --filter "$filter" --results-directory "tests/Ntilde.$proj.Tests/TestResults" \
+                --blame-hang-timeout 5m --blame-hang-dump-type none \
+                --logger "trx;LogFileName=unit_${proj}.trx" > "$logs/$proj.log" 2>&1 && rc=0 || rc=$?
+              echo "$rc $((SECONDS - start))" > "$logs/$proj.status"
+            ) &
           done
+          wait
+          failed=""
+          for proj in $projects; do
+            read -r rc secs < "$logs/$proj.status" || { rc=1; secs='?'; }
+            echo "::group::Ntilde.$proj.Tests (exit $rc, ${secs} s)"
+            cat "$logs/$proj.log"
+            echo "::endgroup::"
+            [ "$rc" = 0 ] || failed="$failed Ntilde.$proj.Tests"
+          done
+          if [ -n "$failed" ]; then
+            echo "::error::Non-headless test projects failed:$failed (each one's output is in its group above)."
+            exit 1
+          fi
 
       # The Avalonia-headless suite (Ntilde.App.Tests). BLOCKING - on failures, on hangs, and on
       # a non-zero exit nobody can account for - but the verdict is given by the gate step
@@ -1039,50 +955,20 @@ jobs:
   # that is not available there, and nothing under test is platform-specific — the fixture
   # exercises the same rusty_ssh library either way.
   #
-  # The same image also carries the remote-persistence E2E (Phase 4 spec §12.3:
-  # RemoteMuxDockerE2eTests in App.Tests): ntilde-mux installed through the app's installer,
-  # then a persisted SSH session over both transports through a dropped link, a killed proxy
-  # and a killed daemon, plus attach latency. It needs the linux-x64 ntilde-mux that
-  # mux_daemon_aot publishes, so this job waits for that lane. mux_daemon_aot runs only when
-  # aot_gate_detect saw src/ or a build input change; when it is skipped there is no binary,
-  # and only that step is skipped (with a notice saying so) - not the job. Hence `!cancelled()`
-  # instead of the default "every need succeeded": a skipped need would otherwise skip this
-  # whole job, and a failed macOS leg of that three-RID matrix would stop the Linux tests of
-  # the linux-x64 binary it did publish (the matrix is red on its own).
-  #
-  # 40 minutes, up from 30: the App.Tests run adds about two minutes on top of the
-  # Platform.Tests run, which is mostly the image build.
+  # The same image also carries the remote-persistence E2E (Phase 4 spec §12.3), which runs in
+  # its own job, remote_persistence_docker_e2e, below. This job no longer waits for
+  # mux_daemon_aot: only that one needs the ntilde-mux binary.
   native_ssh_docker_e2e:
     name: Native SSH Docker E2E (ubuntu-latest)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: [build, mux_daemon_aot]
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    timeout-minutes: 30
+    needs: [build]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -1103,74 +989,19 @@ jobs:
       - name: Docker preflight
         run: docker info --format 'server={{.ServerVersion}}'
 
-      - name: Restore
-        id: restore
-        run: dotnet restore
-
       # The fixture builds the image itself on first use (DockerSshFixture.EnsureImageBuiltAsync),
       # so there is no separate build step here; a failure to build surfaces as a test failure
-      # with the docker output attached.
+      # with the docker output attached. From the compiled assembly, as the Unit Tests shards run
+      # theirs: no `dotnet restore`, and so no NuGet cache.
       - name: Test (native SSH Docker E2E)
         env:
           NTILDE_ENABLE_DOCKER_E2E: '1'
-          SKIP_RUST_NATIVE_BUILD: '1'
         shell: bash
         run: |
-          dotnet test tests/Ntilde.Platform.Tests -c "$CONFIGURATION" --no-build --no-restore \
+          dotnet test "tests/Ntilde.Platform.Tests/bin/$CONFIGURATION/net10.0/Ntilde.Platform.Tests.dll" \
             --filter "Category=DockerE2E" \
+            --results-directory tests/Ntilde.Platform.Tests/TestResults \
             --logger "trx;LogFileName=native_ssh_docker_e2e.trx"
-
-      # The remote-persistence steps below run even when the Platform.Tests run above failed
-      # (`!cancelled()`), so one red run does not hide the other's result, but only once the
-      # job's setup (artifact, permissions, restore) succeeded. The download is allowed to fail:
-      # a mux_daemon_aot whose linux-x64 leg failed uploaded nothing, and that lane is red itself.
-      - name: Download ntilde-mux (linux-x64)
-        id: mux_binary
-        if: ${{ !cancelled() && steps.restore.outcome == 'success' && needs.mux_daemon_aot.result != 'skipped' }}
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: ntilde-mux-linux-x64
-          path: artifacts/mux-daemon/linux-x64
-
-      - name: Explain the skipped remote-persistence E2E
-        if: ${{ !cancelled() && steps.restore.outcome == 'success' && steps.mux_binary.outcome != 'success' }}
-        env:
-          MUX_DAEMON_AOT: ${{ needs.mux_daemon_aot.result }}
-        shell: bash
-        run: |
-          echo "::notice::Remote-persistence Docker E2E skipped: no linux-x64 ntilde-mux (mux_daemon_aot: $MUX_DAEMON_AOT)."
-
-      # zip artifacts drop the execute bit; restored so the file is the binary mux_daemon_aot
-      # published. `file` puts what it is in the log.
-      - name: Prepare ntilde-mux for the remote-persistence E2E
-        id: mux_prepare
-        if: ${{ !cancelled() && steps.mux_binary.outcome == 'success' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          bin="$GITHUB_WORKSPACE/artifacts/mux-daemon/linux-x64/ntilde-mux"
-          chmod +x "$bin"
-          file "$bin"
-          echo "NTILDE_MUX_E2E_BINARY=$bin" >> "$GITHUB_ENV"
-
-      # Category=DockerE2E only: in App.Tests that is RemoteMuxDockerE2eTests and RemoteMuxListingDockerE2eTests
-      # (the manual checklist's ls --all, agent-link and refused-password steps), which need no
-      # Avalonia platform, so neither App.Tests lane filter applies. Detailed console output,
-      # because the tests' timestamped step log (install, ConnectionLost/Reconnected, pids,
-      # latency) is the evidence this lane exists to produce.
-      - name: Test (remote persistence Docker E2E, OpenSSH and native)
-        if: ${{ !cancelled() && steps.mux_prepare.outcome == 'success' }}
-        env:
-          NTILDE_ENABLE_DOCKER_E2E: '1'
-          SKIP_RUST_NATIVE_BUILD: '1'
-        shell: bash
-        run: |
-          dotnet test tests/Ntilde.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
-            --filter "Category=DockerE2E" \
-            --blame-hang-timeout 5m \
-            --logger "trx;LogFileName=mux_remote_docker_e2e.trx" \
-            --logger "console;verbosity=detailed"
 
       # No "collect container logs" step on purpose: the fixture runs containers with --rm and
       # removes them in DisposeAsync, which still executes when a test fails, so by the time a
@@ -1183,9 +1014,109 @@ jobs:
         with:
           name: native-ssh-docker-e2e
           retention-days: 5
-          path: |
-            **/native_ssh_docker_e2e.trx
-            **/mux_remote_docker_e2e.trx
+          path: "**/native_ssh_docker_e2e.trx"
+
+  # The remote-persistence E2E (Phase 4 spec §12.3: RemoteMuxDockerE2eTests in App.Tests):
+  # ntilde-mux installed through the app's installer, then a persisted SSH session over both
+  # transports through a dropped link, a killed proxy and a killed daemon, plus attach latency.
+  # It used to be the second half of native_ssh_docker_e2e, after the Platform.Tests run (71 s
+  # and 96 s of test step, one after the other); as a job of its own the two run side by side.
+  #
+  # It needs the linux-x64 ntilde-mux that mux_daemon_aot publishes, so it waits for that lane.
+  # mux_daemon_aot runs only when aot_gate_detect saw src/ or a build input change; when it is
+  # skipped there is no binary, and only the test step is skipped (with a notice saying so) -
+  # not the job. Hence `!cancelled()` instead of the default "every need succeeded": a skipped
+  # need would otherwise skip this whole job, and a failed macOS leg of that three-RID matrix
+  # would stop the Linux tests of the linux-x64 binary it did publish (the matrix is red on its
+  # own). Blocking, Linux only, for the reasons given on native_ssh_docker_e2e.
+  remote_persistence_docker_e2e:
+    name: Remote persistence Docker E2E (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [build, mux_daemon_aot]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-build-ubuntu-latest
+          path: tests
+
+      # zip artifacts drop Unix execute bits; the test host needs them back.
+      - name: Restore execute permissions
+        run: |
+          find tests -path "*/bin/Release/net*" -type f \
+            ! -name "*.dll" ! -name "*.json" ! -name "*.pdb" ! -name "*.xml" \
+            ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
+            -exec chmod +x {} +
+
+      - name: Docker preflight
+        run: docker info --format 'server={{.ServerVersion}}'
+
+      # The download is allowed to fail: a mux_daemon_aot whose linux-x64 leg failed uploaded
+      # nothing, and that lane is red itself.
+      - name: Download ntilde-mux (linux-x64)
+        id: mux_binary
+        if: ${{ needs.mux_daemon_aot.result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ntilde-mux-linux-x64
+          path: artifacts/mux-daemon/linux-x64
+
+      - name: Explain the skipped remote-persistence E2E
+        if: ${{ steps.mux_binary.outcome != 'success' }}
+        env:
+          MUX_DAEMON_AOT: ${{ needs.mux_daemon_aot.result }}
+        shell: bash
+        run: |
+          echo "::notice::Remote-persistence Docker E2E skipped: no linux-x64 ntilde-mux (mux_daemon_aot: $MUX_DAEMON_AOT)."
+
+      # zip artifacts drop the execute bit; restored so the file is the binary mux_daemon_aot
+      # published. `file` puts what it is in the log.
+      - name: Prepare ntilde-mux for the remote-persistence E2E
+        id: mux_prepare
+        if: ${{ steps.mux_binary.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="$GITHUB_WORKSPACE/artifacts/mux-daemon/linux-x64/ntilde-mux"
+          chmod +x "$bin"
+          file "$bin"
+          echo "NTILDE_MUX_E2E_BINARY=$bin" >> "$GITHUB_ENV"
+
+      # Category=DockerE2E only: in App.Tests that is RemoteMuxDockerE2eTests and RemoteMuxListingDockerE2eTests
+      # (the manual checklist's ls --all, agent-link and refused-password steps), which need no
+      # Avalonia platform, so neither App.Tests lane filter applies. Detailed console output,
+      # because the tests' timestamped step log (install, ConnectionLost/Reconnected, pids,
+      # latency) is the evidence this lane exists to produce. The fixture builds the sshd image
+      # on first use, as in native_ssh_docker_e2e.
+      - name: Test (remote persistence Docker E2E, OpenSSH and native)
+        if: ${{ steps.mux_prepare.outcome == 'success' }}
+        env:
+          NTILDE_ENABLE_DOCKER_E2E: '1'
+        shell: bash
+        run: |
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
+            --filter "Category=DockerE2E" \
+            --blame-hang-timeout 5m \
+            --results-directory tests/Ntilde.App.Tests/TestResults \
+            --logger "trx;LogFileName=mux_remote_docker_e2e.trx" \
+            --logger "console;verbosity=detailed"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mux-remote-docker-e2e
+          retention-days: 5
+          path: "**/mux_remote_docker_e2e.trx"
 
   # Coverage measurement (#117). coverlet.collector was pinned in
   # Directory.Packages.props and referenced by all five test projects, but nothing ever
@@ -1222,12 +1153,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
+
+      # NuGet packages for the Restore step below. Its own cache now that setup-dotnet (whose
+      # `cache: true` came with the install) usually does not run; same key as the build job's,
+      # since this restores the same solution.
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
         with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Restore
         run: dotnet restore
@@ -1248,27 +1185,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
+
+      # NuGet packages for the Restore step below. Its own cache now that setup-dotnet (whose
+      # `cache: true` came with the install) usually does not run; same key as the build job's,
+      # since this restores the same solution.
+      - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
       # This job compiles from source (see below), so without this it also compiled both Rust
       # crates inside dotnet build - about 1.5 minutes every run.
@@ -1385,28 +1313,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        continue-on-error: true
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         id: download_golden_build_artifact
@@ -1430,11 +1338,17 @@ jobs:
           name: dotnet-build-windows-latest
           path: tests
 
-      - name: Restore
-        run: dotnet restore
-
+      # From the compiled App.Tests assembly, as the Unit Tests shards run it, not the solution: no
+      # `dotnet restore` (and so no NuGet cache) and no evaluation of the other test projects,
+      # none of which owns a test in this category. The results directory keeps the trx where
+      # the solution form put it.
       - name: Run Golden Shared PNG Tests
-        run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --no-restore --filter "Category=GoldenSharedPng" --blame-hang-timeout 8m --blame-hang-dump-type none --logger "trx;LogFileName=golden_shared_png_tests.trx"
+        shell: bash
+        run: |
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
+            --filter "Category=GoldenSharedPng" --blame-hang-timeout 8m --blame-hang-dump-type none \
+            --results-directory tests/Ntilde.App.Tests/TestResults \
+            --logger "trx;LogFileName=golden_shared_png_tests.trx"
 
       - name: Upload golden shared PNG test results
         if: always()
@@ -1458,27 +1372,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -1494,13 +1389,22 @@ jobs:
             ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
             | xargs chmod +x
 
-      - name: Restore
-        run: dotnet restore
-
+      # From the compiled assemblies of the two projects that own Category=Replay tests (VT.Tests
+      # and App.Tests), as the Unit Tests shards run theirs, not the solution: no `dotnet restore`
+      # and no NuGet cache. Both run even when the first fails; the step fails if either did.
       - name: Run Replay Tests
         env:
           PARITY_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/parity
-        run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --no-restore --filter "Category=Replay" --blame-hang-timeout 8m --blame-hang-dump-type none --logger "trx;LogFileName=replay_tests.trx"
+        shell: bash
+        run: |
+          rc=0
+          for proj in VT App; do
+            dotnet test "tests/Ntilde.$proj.Tests/bin/$CONFIGURATION/net10.0/Ntilde.$proj.Tests.dll" \
+              --filter "Category=Replay" --blame-hang-timeout 8m --blame-hang-dump-type none \
+              --results-directory "tests/Ntilde.$proj.Tests/TestResults" \
+              --logger "trx;LogFileName=replay_tests.trx" || rc=1
+          done
+          exit $rc
 
       - name: Prepare Replay Artifact Bundle
         if: always()
@@ -1539,27 +1443,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -1575,11 +1460,17 @@ jobs:
             ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
             | xargs chmod +x
 
-      - name: Restore
-        run: dotnet restore
-
+      # From the compiled App.Tests assembly, as the Unit Tests shards run it, not the solution: no
+      # `dotnet restore` (and so no NuGet cache) and no evaluation of the other test projects,
+      # none of which owns a test in this category. The results directory keeps the trx where
+      # the solution form put it.
       - name: Run PTY smoke tests
-        run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --no-restore --filter "Category=PtySmoke" --blame-hang-timeout 8m --blame-hang-dump-type none --logger "trx;LogFileName=pty_smoke_tests.trx"
+        shell: bash
+        run: |
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
+            --filter "Category=PtySmoke" --blame-hang-timeout 8m --blame-hang-dump-type none \
+            --results-directory tests/Ntilde.App.Tests/TestResults \
+            --logger "trx;LogFileName=pty_smoke_tests.trx"
 
       - name: Upload PTY smoke test results
         if: always()
@@ -1637,27 +1528,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -1673,14 +1545,20 @@ jobs:
             ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
             | xargs chmod +x
 
-      - name: Restore
-        run: dotnet restore
-
+      # From the compiled App.Tests assembly, as the Unit Tests shards run it, not the solution: no
+      # `dotnet restore` (and so no NuGet cache) and no evaluation of the other test projects,
+      # none of which owns a test in this category. The results directory keeps the trx where
+      # the solution form put it.
       - name: Run Render Metrics Tests
         env:
           WRITE_METRICS_ARTIFACTS: "1"
           METRICS_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/metrics
-        run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --no-restore --filter "Category=RenderMetrics" --blame-hang-timeout 8m --blame-hang-dump-type none --logger "trx;LogFileName=render_metrics.trx"
+        shell: bash
+        run: |
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
+            --filter "Category=RenderMetrics" --blame-hang-timeout 8m --blame-hang-dump-type none \
+            --results-directory tests/Ntilde.App.Tests/TestResults \
+            --logger "trx;LogFileName=render_metrics.trx"
 
       - name: Upload render metrics
         if: always()
@@ -1702,27 +1580,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -1737,14 +1596,20 @@ jobs:
             ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
             | xargs chmod +x
 
-      - name: Restore
-        run: dotnet restore
-
+      # From the compiled App.Tests assembly, as the Unit Tests shards run it, not the solution: no
+      # `dotnet restore` (and so no NuGet cache) and no evaluation of the other test projects,
+      # none of which owns a test in this category. The results directory keeps the trx where
+      # the solution form put it.
       - name: Run tab perf smoke
         env:
           WRITE_METRICS_ARTIFACTS: "1"
           METRICS_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/metrics
-        run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --no-restore --filter "Category=Performance|Category=Latency" --blame-hang-timeout 8m --blame-hang-dump-type none --logger "trx;LogFileName=tab_perf_smoke.trx"
+        shell: bash
+        run: |
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
+            --filter "Category=Performance|Category=Latency" --blame-hang-timeout 8m --blame-hang-dump-type none \
+            --results-directory tests/Ntilde.App.Tests/TestResults \
+            --logger "trx;LogFileName=tab_perf_smoke.trx"
 
       - name: Upload tab perf smoke artifacts
         if: always()
@@ -1766,27 +1631,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -1801,14 +1647,20 @@ jobs:
             ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
             | xargs chmod +x
 
-      - name: Restore
-        run: dotnet restore
-
+      # From the compiled App.Tests assembly, as the Unit Tests shards run it, not the solution: no
+      # `dotnet restore` (and so no NuGet cache) and no evaluation of the other test projects,
+      # none of which owns a test in this category. The results directory keeps the trx where
+      # the solution form put it.
       - name: Run stress lanes
         env:
           WRITE_METRICS_ARTIFACTS: "1"
           METRICS_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/metrics
-        run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --no-restore --filter "Category=Stress|Category=Performance|Category=Latency|Category=RenderMetrics" --blame-hang-timeout 8m --blame-hang-dump-type none --logger "trx;LogFileName=nightly_tab_stress.trx"
+        shell: bash
+        run: |
+          dotnet test "tests/Ntilde.App.Tests/bin/$CONFIGURATION/net10.0/Ntilde.App.Tests.dll" \
+            --filter "Category=Stress|Category=Performance|Category=Latency|Category=RenderMetrics" --blame-hang-timeout 8m --blame-hang-dump-type none \
+            --results-directory tests/Ntilde.App.Tests/TestResults \
+            --logger "trx;LogFileName=nightly_tab_stress.trx"
 
       - name: Upload nightly stress artifacts
         if: always()
@@ -2145,7 +1997,7 @@ jobs:
           # stdin, as a here-string rather than `echo |` for the SIGPIPE reason
           # linux_packaging_detect calls out, and prints run=true or run=false.
           # Beyond src/ and the build inputs it covers the test directories that feed
-          # native_ssh_docker_e2e: that job needs the linux-x64 ntilde-mux binary this gate
+          # remote_persistence_docker_e2e: that job needs the linux-x64 ntilde-mux binary this gate
           # builds, and without it the remote-persistence step skips with a notice and stays
           # green, so a PR changing only those tests never ran them.
           result="$(bash scripts/ci/aot-gate-paths.sh <<<"$changed")"
@@ -2163,27 +2015,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
+
+      # NuGet packages for the Restore step below. Its own cache now that setup-dotnet (whose
+      # `cache: true` came with the install) usually does not run. A key of its own, not the
+      # build job's: the win-x64 AOT restore also pulls the ILCompiler and runtime packs, which a
+      # cache saved by `build` would lack - a hit on that key would download them every run.
+      - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
-          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
-          # runner restores the x64 SDK the x64 runner saved and dies on the first
-          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
-          # that names neither the cache nor the architecture. Found the moment the
-          # arm64 leg first ran.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/*.csproj"
+          path: ~/.nuget/packages
+          key: nuget-aot-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-aot-${{ runner.os }}-${{ runner.arch }}-
 
       # The AOT publish compiled both Rust crates inside MSBuild (about 2.5 minutes) every run.
       # Restore-only: `build` owns saving this payload. Paths and key MUST STAY IDENTICAL to
@@ -2710,20 +2554,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os: see the build job.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -2795,20 +2627,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache .NET SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.dotnet
-          # runner.arch, not just runner.os: see the build job.
-          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ~/.dotnet
-        with:
-          global-json-file: global.json
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
 
       - name: Download build artifact
         uses: actions/download-artifact@v4

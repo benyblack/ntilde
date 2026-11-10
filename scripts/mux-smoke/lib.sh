@@ -269,12 +269,27 @@ remote_daemon_start() {
 # remote_runtime_install <app dir>: a .NET runtime and the App, copied into the container, for remote_spawn. Only the
 # App's CLI runs there (spawn-for-test talks to ntilde-mux's socket), so its runtimes/ folder (the GUI's native
 # libraries) and symbols stay behind. The runtime is the one running this script's App.
+#
+# Only the runtime the App binds to is copied: the newest Microsoft.NETCore.App patch of the App's target framework
+# (its runtimeconfig's "tfm"), which is the one the host rolls forward to. A hosted runner's own .NET install carries
+# several runtimes side by side, and copying all of them made this ~111 s instead of a few. If the target framework
+# cannot be read, or no runtime matches it, every runtime is copied, as before.
 remote_runtime_install() {
-  local app_dir=$1 dn
+  local app_dir=$1 dn tfm runtime=shared/Microsoft.NETCore.App
   dn="${DOTNET_ROOT:-$(dirname "$(readlink -f "$(command -v dotnet)")")}"
   [[ -x "$dn/dotnet" && -d "$dn/shared/Microsoft.NETCore.App" ]] || die "no .NET runtime at '$dn' (set DOTNET_ROOT)"
+  tfm=$(grep -oE '"tfm": *"net[0-9]+\.[0-9]+"' "$app_dir/Ntilde.runtimeconfig.json" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+')
+  if [[ -n "$tfm" ]]; then
+    local d patch best=-1
+    for d in "$dn/shared/Microsoft.NETCore.App/$tfm".*; do
+      patch=${d##*/"$tfm".}
+      [[ -d "$d" && "$patch" =~ ^[0-9]+$ ]] && (( patch > best )) && best=$patch
+    done
+    (( best >= 0 )) && runtime="shared/Microsoft.NETCore.App/$tfm.$best"
+  fi
+  say "copying the .NET runtime $runtime from $dn"
   docker exec "$SSHD_NAME" mkdir -p /opt/mux-smoke/dotnet /opt/mux-smoke/app || die "mkdir /opt/mux-smoke"
-  tar -C "$dn" -cf - dotnet host shared/Microsoft.NETCore.App | docker exec -i "$SSHD_NAME" tar -C /opt/mux-smoke/dotnet -xf - \
+  tar -C "$dn" -cf - dotnet host "$runtime" | docker exec -i "$SSHD_NAME" tar -C /opt/mux-smoke/dotnet -xf - \
     || die "copy the .NET runtime into $SSHD_NAME"
   tar -C "$app_dir" --exclude=./runtimes --exclude='*.pdb' -cf - . | docker exec -i "$SSHD_NAME" tar -C /opt/mux-smoke/app -xf - \
     || die "copy the App into $SSHD_NAME"
