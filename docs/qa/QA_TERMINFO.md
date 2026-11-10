@@ -988,3 +988,16 @@ every request. Because the setting is on for the whole run, the exact-query suit
 checksum of the `N` it binds at home); runs without the setting keep the original silence. Stored ASCII cells only: wide, combining and supplementary characters, the
 persistent-session path and rendered appearance are not claimed. The VT implementation is in [the rectangle-checksum contract](terminfo/rectangle-checksum.md).
 Receipt schema 39 and source policy v33 (248 files) bind it; earlier policies stay frozen.
+
+### Left/right-margin qualification (DECLRMM, DECSLRM)
+
+The [left/right-margin batch](terminfo/2026-11-10-left-right-margins-qualification.md) grades `modes.left-right-margin` through a twenty-seventh layered
+collector extension (`ntilde-owned-left-right-margins-grading-v1`) over the rectangle-checksum one. The pinned termless code (`ESC[?69h`, the mode metadata,
+`ESC[?69l`) returns inconclusive by design whatever it reads, so its verdict is preserved; its response records the mode the App reported. A separately
+identified effect contract (`ntilde-left-right-margins-effect-v1`) carries the graded verdict: an independent margins model must reproduce the App's whole
+screen, cursor, stored region, left/right margins, DECLRMM, origin and insert mode after sixteen controls over a block seed. The controls cover SCOSC without
+DECLRMM, DECSLRM homing and refusals, wrap at the right margin, insert mode, CUF/CUB/CR/HT bounds, LF/RI/SU/SD band scrolls and the outside-margin no-op, IL/DL,
+ICH/DCH, DECIC/DECDC/SL/SR, DECOM addressing and rectangles, DECSTR and the `?69` reset. The shared observer keeps the App's stored margins only for this suite
+(`includeHorizontalMargins`). The model was checked against the VT implementation on every control's exact bytes before measurement. CPR, wide glyphs, side
+tables, the image plane and rendered appearance are unit-tested, not qualified here. The VT implementation is in [the margin contract](terminfo/left-right-margins.md).
+Receipt schema 40 and source policy v34 (253 files) bind it; earlier policies stay frozen.

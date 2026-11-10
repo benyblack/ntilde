@@ -43,6 +43,11 @@ corresponding full-width operation uses.
 ED, EL and ECH stay full-width, as in xterm. DECBI and DECFI, DECRQSS for the margins (`DCS $ q s ST` stays a failure reply) and
 the image plane under a partial-width scroll (images are removed, not moved) are not implemented.
 
+## Qualification
+
+`modes.left-right-margin` is qualified by the [2026-11-10 left/right-margin qualification](2026-11-10-left-right-margins-qualification.md): the pinned probe is
+inconclusive by design and preserved; the separately identified effect contract is supported on the live App.
+
 ## Evidence
 
 - [LeftRightMarginTests](../../../tests/Ntilde.VT.Tests/LeftRightMarginTests.cs): the mode and SCOSC fallback, DECSLRM defaults,

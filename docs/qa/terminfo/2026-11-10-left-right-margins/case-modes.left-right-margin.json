@@ -1,0 +1,302 @@
+{
+  "caseId": "modes.left-right-margin",
+  "pinnedCriterion": "ESC[?69h, the mode metadata, then ESC[?69l: parserStateResult(null): always inconclusive (\"Mode metadata does not measure margins\")",
+  "pinnedFeeds": ["\u001b[?69h","\u001b[?69l"],
+  "terminalFixture": {
+    "writes": [],
+    "demand": "none: the pinned terminal path returns inconclusive without writing",
+    "minimum": {
+      "rows": 1,
+      "cols": 1
+    },
+    "note": "the pinned terminal path never touches the terminal and never carries a verdict"
+  },
+  "feeds": ["\u001b[?69l\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","\u001b[?69h","\u001b[?69l","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[2;3H\u001b[5;14s\u001b[1;1H\u001b[u","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[2;2H\u001b[9;9s\u001b[12;5sQ","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[2;12Habcdefgh","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[4h\u001b[1;6Hxy","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[3;8H\u001b[20CX\u001b[4;8H\u001b[20DY\u001b[5;8H\rZ\u001b[6;2H\rW\u001b[7;20H\u001b[500CV\u001b[8;12H\tT\u001b[9;2H\u001b[5DU","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1;10r\u001b[?69h\u001b[5;14s\u001b[10;6H\nL","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1;10r\u001b[?69h\u001b[5;14s\u001b[10;2H\nM\u001b[10;16H\nN","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;6r\u001b[?69h\u001b[5;14s\u001b[3;6H\u001bM\u001b[6;6H\n","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[1;1H\u001b[2S\u001b[1T","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[2;6H\u001b[2L\u001b[5;6H\u001b[1M\u001b[3;2H\u001b[1L","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[1;6H\u001b[2@\u001b[2;6H\u001b[3P\u001b[3;2H\u001b[1@\u001b[4;16H\u001b[1P","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[4;6H\u001b[2'}\u001b[1 @\u001b[1'~\u001b[2 A","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;8r\u001b[?69h\u001b[5;14s\u001b[?6hO\u001b[2;20HP\u001b[1;1;1;2$z","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[!p","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[?69l"],
+  "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+  "reads": [
+    [0,0],
+    [0,0],
+    [0,0],
+    [6,139],
+    [1,2],
+    [0,0],
+    [1,2],
+    [2,9],
+    [0,7],
+    [8,1],
+    [9,6],
+    [9,16],
+    [5,5],
+    [0,0],
+    [2,1],
+    [3,15],
+    [3,5],
+    [3,13],
+    [0,0],
+    [0,0]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedFeeds": ["\u001b[?69h","\u001b[?69l"],
+    "pinnedReads": {
+      "set": {
+        "mode": true,
+        "margins": [0,139]
+      },
+      "reset": {
+        "mode": false,
+        "margins": [0,139]
+      }
+    },
+    "blockSeed": {
+      "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+      "cursor": [6,139],
+      "region": [0,39],
+      "margins": [0,139],
+      "mode": false,
+      "origin": false,
+      "insert": false,
+      "ink": 140
+    },
+    "controls": {
+      "scosc": {
+        "sequences": ["\\e[2;3H","\\e[5;14s","\\e[1;1H","\\e[u"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [1,2],
+        "region": [0,39],
+        "margins": [0,139],
+        "mode": false,
+        "origin": false,
+        "insert": false,
+        "ink": 140
+      },
+      "setMargins": {
+        "sequences": ["\\e[?69h","\\e[5;14s"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [0,0],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 140
+      },
+      "refusals": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[2;2H","\\e[9;9s","\\e[12;5s","Q"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KQMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [1,2],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 140
+      },
+      "print": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[2;12H","abcdefgh"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST_abc______","UVWXdefghd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [2,9],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 143
+      },
+      "insert": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[4h","\\e[1;6H","xy"],
+        "matchesModel": true,
+        "text": ["ABCDExyFGHIJ________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [0,7],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": true,
+        "ink": 142
+      },
+      "moves": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[3;8H","\\e[20C","X","\\e[4;8H","\\e[20D","Y","\\e[5;8H","\r","Z","\\e[6;2H","\r","W","\\e[7;20H","\\e[500C","V","\\e[8;12H","\t","T","\\e[9;2H","\\e[5D","U"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd___X______","efghYjklmn__________","opqrZtuvwx__________","Wz01234567__________","89!#%&*+-=__________","_____________T______","U___________________","____________________","____________________"],
+        "cursor": [8,1],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 143
+      },
+      "lfBand": {
+        "sequences": ["\\e[1;10r","\\e[?69h","\\e[5;14s","\\e[10;6H","\n","L"],
+        "matchesModel": true,
+        "text": ["ABCDOPQRST__________","KLMNYZabcd__________","UVWXijklmn__________","efghstuvwx__________","opqr234567__________","yz01%&*+-=__________","89!#________________","____________________","____________________","_____L______________","____________________"],
+        "cursor": [9,6],
+        "region": [0,9],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 135
+      },
+      "lfOutside": {
+        "sequences": ["\\e[1;10r","\\e[?69h","\\e[5;14s","\\e[10;2H","\n","M","\\e[10;16H","\n","N"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","_M_____________N____","____________________"],
+        "cursor": [9,16],
+        "region": [0,9],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 142
+      },
+      "ri": {
+        "sequences": ["\\e[3;6r","\\e[?69h","\\e[5;14s","\\e[3;6H","\\eM","\\e[6;6H","\n"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01________________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [5,5],
+        "region": [2,5],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 134
+      },
+      "suSd": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[1;1H","\\e[2S","\\e[1T"],
+        "matchesModel": true,
+        "text": ["ABCD________________","KLMNYZabcd__________","UVWXijklmn__________","efghstuvwx__________","opqr234567__________","yz01%&*+-=__________","89!#________________","____________________","____________________","____________________","____________________"],
+        "cursor": [0,0],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 128
+      },
+      "ilDl": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[2;6H","\\e[2L","\\e[5;6H","\\e[1M","\\e[3;2H","\\e[1L"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMN________________","UVWX________________","efghOPQRST__________","opqrijklmn__________","yz01stuvwx__________","89!#234567__________","____%&*+-=__________","____________________","____________________","____________________"],
+        "cursor": [2,1],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 134
+      },
+      "ichDch": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[1;6H","\\e[2@","\\e[2;6H","\\e[3P","\\e[3;2H","\\e[1@","\\e[4;16H","\\e[1P"],
+        "matchesModel": true,
+        "text": ["ABCDE__FGHIJ________","KLMNOST_____________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [3,15],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 137
+      },
+      "columns": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[4;6H","\\e[2'}","\\e[1 @","\\e[1'~","\\e[2 A"],
+        "matchesModel": true,
+        "text": ["ABCD___FGHIJ________","KLMN___PQRST________","UVWX___Zabcd________","efgh___jklmn________","opqr___tuvwx________","yz01___34567________","89!#___&*+-=________","____________________","____________________","____________________","____________________"],
+        "cursor": [3,5],
+        "region": [0,39],
+        "margins": [4,13],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 133
+      },
+      "origin": {
+        "sequences": ["\\e[3;8r","\\e[?69h","\\e[5;14s","\\e[?6h","O","\\e[2;20H","P","\\e[1;1;1;2$z"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWX__abcd__________","efghijklmn___P______","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [3,13],
+        "region": [2,7],
+        "margins": [4,13],
+        "mode": true,
+        "origin": true,
+        "insert": false,
+        "ink": 139
+      },
+      "decstr": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[!p"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [0,0],
+        "region": [0,39],
+        "margins": [0,139],
+        "mode": true,
+        "origin": false,
+        "insert": false,
+        "ink": 140
+      },
+      "modeReset": {
+        "sequences": ["\\e[?69h","\\e[5;14s","\\e[?69l"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ__________","KLMNOPQRST__________","UVWXYZabcd__________","efghijklmn__________","opqrstuvwx__________","yz01234567__________","89!#%&*+-=__________","____________________","____________________","____________________","____________________"],
+        "cursor": [0,0],
+        "region": [0,39],
+        "margins": [0,139],
+        "mode": false,
+        "origin": false,
+        "insert": false,
+        "ink": 140
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"mode\":true}",
+    "note": "Mode metadata does not measure margins",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "parser-state",
+      "note": "Mode metadata does not measure margins"
+    },
+    "assertions": null
+  },
+  "effectContract": {
+    "id": "ntilde-left-right-margins-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-stored-cells-and-margins",
+    "grading": "pinned-termless-preserved-by-design",
+    "note": "Mode metadata does not measure margins",
+    "scope": "stored ASCII cells, the cursor, the stored top/bottom and left/right margins, DECLRMM, origin and insert mode after each control; CPR, wide glyphs, side tables, images and rendered appearance are not claimed"
+  }
+}

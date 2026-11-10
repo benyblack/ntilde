@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 84,
-    "suiteClaims": 86,
+    "uniqueBenchmarkIds": 85,
+    "suiteClaims": 87,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 84,
+    "effectSupportedIds": 85,
     "pinnedAndEffectSupportedIds": 76,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
@@ -54,11 +54,12 @@
       "editing.decsace",
       "modes.altscreen-1047",
       "modes.altscreen-47",
+      "modes.left-right-margin",
       "scrollback.alt-screen",
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 83,
+    "effectSupportedOfStockInconclusive": 84,
     "pinnedSupportedOfStockInconclusive": 75,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -72,7 +73,7 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 85,
+      "effectUnqualified": 84,
       "notPinnedSupported": 93
     }
   },
@@ -1865,6 +1866,76 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/rect-checksum-publication.test.mjs",
         "testSha256": "c6255054134a1e8b4372185dccb6d85dec3fcb706f1961b4b86679038f895995"
+      }
+    },
+    {
+      "suite": "lr-margins",
+      "suiteId": "ntilde-owned-left-right-margins-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-10-left-right-margins/",
+      "doc": "2026-11-10-left-right-margins-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "modes.left-right-margin"
+      ],
+      "evidence": {
+        "files": 24,
+        "bytes": 258168,
+        "sha256": "82b099d18e3842620aaf183742941f8f1e7a59aa8db59c5e931d8883b4ba2bd3"
+      },
+      "receipt": {
+        "schemaVersion": 40,
+        "runId": "3694bbec88a9170324cc2a238a7e36bf",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "6fbd24d2b2bda76faf5a8ca8990b5c9cbafd6ba9fcc46f42f9d694bde043b9d4"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-left-right-margins-graded-v1",
+          "file": "lrmm-observations.json",
+          "sha256": "1067fec84ea8bb87872fadf3b6fb3415e255846c6640c504958e74120ec477fb",
+          "runFile": "lrmm-run.json",
+          "runSha256": "a97d379aa3f094d94115772f190b024122058e39223f074d53525167a7612411",
+          "counts": {
+            "inconclusive/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "3694bbec88a9170324cc2a238a7e36bf",
+        "measuredAt": "2026-11-10T20:44:05.595Z",
+        "appRevision": "c8fd98de20c0ac30cf7f641a9e08917c9f917712",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "9d309a2e2af20abcace60fa08af701886e64a754",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "f1ec5de5ec86e657e84623d85ac7ca78e5a87515ad86d36c347996a0b759fedb",
+        "gradingAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+        "gradingAdapterBundleSha256": "11f564f919ddbfc8a23c2c1473cdee3e3e4dd60b697e8099fe8c2ea812d81b1a",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v34",
+        "sourceSnapshotManifestSha256": "2213299bfa52dda623893dbe14adab9b38b00cb4dc3779dc64d6df82ffa644eb"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "e48a6d34bf450e845c9a4bbcf8e2ae47",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "d46869b533655bfdbcaf8dc75bd393af0475557836a492cf005632e557c09019",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/lr-margins-publication.test.mjs",
+        "testSha256": "be2a8b2992a33c987b9488e6d4ed0585627e2f54ec2f264703713f104baac43d"
       }
     }
   ],
@@ -3721,6 +3792,58 @@
             "app-resolved-color"
           ],
           "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "modes.left-right-margin",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "lr-margins",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "lr-margins",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.left-right-margin",
+          "suite": "lr-margins",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Mode metadata does not measure margins"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Mode metadata does not measure margins"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-stored-cells-and-margins"
         }
       ]
     },

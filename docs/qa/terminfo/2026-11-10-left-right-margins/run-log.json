@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-left-right-margins-grading-v1",
+  "probeIds": ["modes.left-right-margin"],
+  "cases": [
+    {
+      "caseId": "modes.left-right-margin",
+      "feeds": ["\u001b[?69l\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","\u001b[?69h","\u001b[?69l","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[2;3H\u001b[5;14s\u001b[1;1H\u001b[u","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[2;2H\u001b[9;9s\u001b[12;5sQ","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[2;12Habcdefgh","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[4h\u001b[1;6Hxy","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[3;8H\u001b[20CX\u001b[4;8H\u001b[20DY\u001b[5;8H\rZ\u001b[6;2H\rW\u001b[7;20H\u001b[500CV\u001b[8;12H\tT\u001b[9;2H\u001b[5DU","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1;10r\u001b[?69h\u001b[5;14s\u001b[10;6H\nL","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1;10r\u001b[?69h\u001b[5;14s\u001b[10;2H\nM\u001b[10;16H\nN","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;6r\u001b[?69h\u001b[5;14s\u001b[3;6H\u001bM\u001b[6;6H\n","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[1;1H\u001b[2S\u001b[1T","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[2;6H\u001b[2L\u001b[5;6H\u001b[1M\u001b[3;2H\u001b[1L","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[1;6H\u001b[2@\u001b[2;6H\u001b[3P\u001b[3;2H\u001b[1@\u001b[4;16H\u001b[1P","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[4;6H\u001b[2'}\u001b[1 @\u001b[1'~\u001b[2 A","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;8r\u001b[?69h\u001b[5;14s\u001b[?6hO\u001b[2;20HP\u001b[1;1;1;2$z","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[!p","\u001b[?69l\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[?69h\u001b[5;14s\u001b[?69l"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,139]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2,9]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,7]
+        },
+        {
+          "kind": "cells",
+          "cursor": [8,1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [9,6]
+        },
+        {
+          "kind": "cells",
+          "cursor": [9,16]
+        },
+        {
+          "kind": "cells",
+          "cursor": [5,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2,1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,15]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,13]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        }
+      ],
+      "pinned": {
+        "probeId": "modes.left-right-margin",
+        "pass": false,
+        "response": "{\"mode\":true}",
+        "note": "Mode metadata does not measure margins",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "parser-state",
+          "note": "Mode metadata does not measure margins"
+        }
+      }
+    }
+  ]
+}
