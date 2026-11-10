@@ -15,11 +15,6 @@ description: >-
 # `analyzers` and the Unit Tests shards had the check, and eleven other jobs still spent 56-106 s
 # of every Windows run (Cache .NET SDK plus Setup .NET) installing an SDK the image already had.
 
-outputs:
-  preinstalled:
-    description: "'1' when the runner's own SDK satisfied global.json and nothing was installed."
-    value: ${{ steps.sdk.outputs.preinstalled }}
-
 runs:
   using: composite
   steps:

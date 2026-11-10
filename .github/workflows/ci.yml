@@ -682,7 +682,10 @@ jobs:
       # 118 s of this step on windows, though no project's own run exceeds about 35 s (VT.Tests,
       # including its host start), and this shard was the last job to finish. Each process logs to
       # its own file, printed afterwards as one group per project in a fixed order, and the step
-      # fails, naming the projects, if any process exited non-zero.
+      # fails, naming the projects, if any process exited non-zero. Because nothing is printed until
+      # every process has exited, each one carries --blame-hang-timeout: a hung test ends its own
+      # process (named in its log) well inside the job's timeout, rather than the job being
+      # cancelled with no output from any project.
       - name: Test (unit — gating, non-headless projects)
         if: matrix.shard == 'rest'
         shell: bash
@@ -698,6 +701,7 @@ jobs:
               start=$SECONDS
               dotnet test "tests/Ntilde.$proj.Tests/bin/$CONFIGURATION/net10.0/Ntilde.$proj.Tests.dll" \
                 --filter "$filter" --results-directory "tests/Ntilde.$proj.Tests/TestResults" \
+                --blame-hang-timeout 5m --blame-hang-dump-type none \
                 --logger "trx;LogFileName=unit_${proj}.trx" > "$logs/$proj.log" 2>&1 && rc=0 || rc=$?
               echo "$rc $((SECONDS - start))" > "$logs/$proj.status"
             ) &

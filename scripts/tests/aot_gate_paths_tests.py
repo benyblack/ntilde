@@ -28,6 +28,8 @@ CASES = [
     (["global.json"], "true"),
     ([".github/workflows/ci.yml"], "true"),
     (["scripts/mux-daemon-smoke.sh"], "true"),
+    ([".github/actions/dotnet-sdk/action.yml"], "true"),
+    ([".github/ISSUE_TEMPLATE/bug.yml"], "false"),
     (["docs/x.md"], "false"),
     (["tests/Ntilde.VT.Tests/x.cs"], "false"),
     (["tests/Ntilde.App.Tests/Shell/Other/x.cs"], "false"),
