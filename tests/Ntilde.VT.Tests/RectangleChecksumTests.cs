@@ -61,6 +61,21 @@ public sealed class RectangleChecksumTests
     }
 
     [Fact]
+    public void Full_and_soft_resets_leave_the_host_gate_as_the_host_set_it()
+    {
+        var (_, parser, replies) = Create();
+        parser.Process($"{Esc}cN");
+        Assert.True(parser.AllowRectangleChecksumReport);
+        Assert.Equal($"{Esc}P1!~FFB2{Esc}\\", Ask(parser, replies, "1;1;1;1;1;1"));
+        parser.Process($"{Esc}[!p");
+        Assert.True(parser.AllowRectangleChecksumReport);
+        var (_, silent, none) = Create(allow: false);
+        silent.Process($"{Esc}c{Esc}[!pN{Esc}[1;1;1;1;1;1*y");
+        Assert.False(silent.AllowRectangleChecksumReport);
+        Assert.Empty(none);
+    }
+
+    [Fact]
     public void Pinned_spellings_answer_with_the_checksum_of_the_seeded_cells()
     {
         var (_, parser, replies) = Create();
