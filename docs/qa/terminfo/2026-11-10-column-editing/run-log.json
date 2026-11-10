@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-column-editing-grading-v1",
+  "probeIds": ["editing.sl","editing.sr","editing.decic","editing.decdc"],
+  "cases": [
+    {
+      "caseId": "editing.sl",
+      "feeds": ["\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","\u001b[1;1HABCDEFGHIJK\u001b[2;1HJKLMNOPQRST","\u001b[1;1H","\u001b[2 @","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[1 @\u001b[4;6H\u001b[ @\u001b[4;6H\u001b[0 @\u001b[4;6H\u001b[3 @","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[999 @","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[4;6H\u001b[2 @\u001b[1;6H\u001b[2 @\u001b[7;6H\u001b[2 @","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[2 @","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4h\u001b[4;6H\u001b[2;1 @\u001b[4;6H\u001b[2:1 @\u001b[4;6H\u001b[?2 @\u001b[4;6H\u001b[2 @","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1 @w","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-\u001b[12;3H\u001b[3;33;42m\u001b[2 @P"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,11]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,139]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [7,1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,10]
+        },
+        {
+          "kind": "cells",
+          "cursor": [11,3]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.sl",
+        "pass": true,
+        "response": "{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\",\"K\"],[\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\",\"K\"],[\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\"]]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {"kind":"positive","expected":"SL shifts the first nine observed cells of two rows left by two columns","observed":"{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\",\"K\"],[\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\",\"K\"],[\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\"]]}"}
+        ]
+      }
+    },
+    {
+      "caseId": "editing.sr",
+      "feeds": ["\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","\u001b[1;1HABCDEFGHI\u001b[2;1HJKLMNOPQR","\u001b[1;1H","\u001b[2 A","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[1 A\u001b[4;6H\u001b[ A\u001b[4;6H\u001b[0 A\u001b[4;6H\u001b[3 A","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[999 A","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[4;6H\u001b[2 A\u001b[1;6H\u001b[2 A\u001b[7;6H\u001b[2 A","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[2 A","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4h\u001b[4;6H\u001b[2;1 A\u001b[4;6H\u001b[2:1 A\u001b[4;6H\u001b[?2 A\u001b[4;6H\u001b[2 A","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1 Aw","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-\u001b[12;3H\u001b[3;33;42m\u001b[2 AP"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,9]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,139]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [7,1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,10]
+        },
+        {
+          "kind": "cells",
+          "cursor": [11,3]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.sr",
+        "pass": true,
+        "response": "{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\"],[\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\" \",\" \",\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\"],[\" \",\" \",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\"]]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {"kind":"positive","expected":"SR shifts the first nine measured cells of two rows right by two columns","observed":"{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\"],[\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\"]],\"setup\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[[\" \",\" \",\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\"],[\" \",\" \",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\"]]}"}
+        ]
+      }
+    },
+    {
+      "caseId": "editing.decic",
+      "feeds": ["\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","\u001b[1;1HABCDEFGH\u001b[2;1HIJKLMNOP\u001b[3;1HQRSTUVWX","\u001b[2;3H","\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[1'}\u001b[4;6H\u001b['}\u001b[4;6H\u001b[0'}\u001b[4;6H\u001b[3'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[999'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[4;6H\u001b[2'}\u001b[1;6H\u001b[2'}\u001b[7;6H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4h\u001b[4;6H\u001b[2;1'}\u001b[4;6H\u001b[2:1'}\u001b[4;6H\u001b[?2'}\u001b[4;6H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;1H\u001b[2'}\u001b[4;999H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1'}w","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-\u001b[12;3H\u001b[3;33;42m\u001b[2'}P"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2,8]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,139]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,139]
+        },
+        {
+          "kind": "cells",
+          "cursor": [7,1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,10]
+        },
+        {
+          "kind": "cells",
+          "cursor": [11,3]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.decic",
+        "pass": true,
+        "response": "{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\"],[\"I\",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\"],[\"Q\",\"R\",\"S\",\"T\",\"U\",\"V\",\"W\",\"X\"]],\"setup\":{\"x\":2,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"B\",\" \",\" \",\"C\",\"D\",\"E\",\"F\"],[\"I\",\"J\",\" \",\" \",\"K\",\"L\",\"M\",\"N\"],[\"Q\",\"R\",\" \",\" \",\"S\",\"T\",\"U\",\"V\"]]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {"kind":"positive","expected":"DECIC inserts two blank columns at column 3 on three measured rows","observed":"{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\"],[\"I\",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\"],[\"Q\",\"R\",\"S\",\"T\",\"U\",\"V\",\"W\",\"X\"]],\"setup\":{\"x\":2,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"B\",\" \",\" \",\"C\",\"D\",\"E\",\"F\"],[\"I\",\"J\",\" \",\" \",\"K\",\"L\",\"M\",\"N\"],[\"Q\",\"R\",\" \",\" \",\"S\",\"T\",\"U\",\"V\"]]}"}
+        ]
+      }
+    },
+    {
+      "caseId": "editing.decdc",
+      "feeds": ["\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","\u001b[1;1HABCDEFGHIJ\u001b[2;1HIJKLMNOPQR\u001b[3;1HQRSTUVWXab","\u001b[2;3H","\u001b[2'~","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[1'~\u001b[4;6H\u001b['~\u001b[4;6H\u001b[0'~\u001b[4;6H\u001b[3'~","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[999'~","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[4;6H\u001b[2'~\u001b[1;6H\u001b[2'~\u001b[7;6H\u001b[2'~","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[2'~","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4h\u001b[4;6H\u001b[2;1'~\u001b[4;6H\u001b[2:1'~\u001b[4;6H\u001b[?2'~\u001b[4;6H\u001b[2'~","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;1H\u001b[2'~\u001b[4;999H\u001b[2'~","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1'~w","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-\u001b[12;3H\u001b[3;33;42m\u001b[2'~P"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [2,10]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [1,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,139]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [6,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,2]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,5]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,139]
+        },
+        {
+          "kind": "cells",
+          "cursor": [7,1]
+        },
+        {
+          "kind": "cells",
+          "cursor": [3,10]
+        },
+        {
+          "kind": "cells",
+          "cursor": [11,3]
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.decdc",
+        "pass": true,
+        "response": "{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\"],[\"I\",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\"],[\"Q\",\"R\",\"S\",\"T\",\"U\",\"V\",\"W\",\"X\",\"a\",\"b\"]],\"setup\":{\"x\":2,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"B\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\"],[\"I\",\"J\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\"],[\"Q\",\"R\",\"U\",\"V\",\"W\",\"X\",\"a\",\"b\"]]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {"kind":"positive","expected":"DECDC deletes two columns at column 3 on three measured rows","observed":"{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\"],[\"I\",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\"],[\"Q\",\"R\",\"S\",\"T\",\"U\",\"V\",\"W\",\"X\",\"a\",\"b\"]],\"setup\":{\"x\":2,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"B\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\"],[\"I\",\"J\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\"],[\"Q\",\"R\",\"U\",\"V\",\"W\",\"X\",\"a\",\"b\"]]}"}
+        ]
+      }
+    }
+  ]
+}

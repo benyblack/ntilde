@@ -27,3 +27,12 @@ test('metadata full-state replies use the existing bounded snapshot budget',asyn
 test('metadata replies still reject evidence larger than the snapshot ceiling',async()=>{
     await withServer(JSON.stringify({ok:true,detail:'x'.repeat(512*1024)})+'\n',config=>assert.rejects(requestOwner(config,'metadata-read'),/Oversized/));
 });
+test('column-editing reads (protection and attribute runs over a full screen) use the cell snapshot budget, not the control budget',async()=>{
+    const reply=JSON.stringify({ok:true,ownerPid:100,screen:'x'.repeat(40000)})+'\n';
+    await withServer(reply,async config=>{
+        for (const kind of ['cole-start','cole-bind','cole-read','cole-finish']) assert.equal((await requestOwner(config,kind)).screen.length,40000,kind);
+        await assert.rejects(requestOwner(config,'colex-read'),/Oversized/);
+        await assert.rejects(requestOwner(config,'rect-read'),/Oversized/);
+    });
+    await withServer(JSON.stringify({ok:true,screen:'x'.repeat(512*1024)})+'\n',config=>assert.rejects(requestOwner(config,'cole-read'),/Oversized/));
+});

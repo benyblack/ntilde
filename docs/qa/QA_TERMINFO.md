@@ -961,3 +961,16 @@ DECSCA-marked text and, for DECCRA, overlap in every direction, a page copied on
 pages are an Ntilde policy that is observed and never graded. The pinned terminal cursor-query paths never carry a verdict and are not qualified. Checksums,
 Unicode, the image plane and rendered appearance are not claimed; DECSERA is graded by the selective-erasure batch and DECCARA, DECRARA and DECSACE by the attribute-rectangle batch, not here. Receipt schema 37
 and source policy v31 (236 files) bind it; earlier policies stay frozen.
+
+### Column-editing qualification (SL, SR, DECIC, DECDC)
+
+The [column-editing batch](terminfo/2026-11-10-column-editing-qualification.md) grades exactly `editing.sl`, `editing.sr`, `editing.decic` and `editing.decdc`
+through a twenty-fifth layered collector extension (`ntilde-owned-column-editing-grading-v1`) over the rectangle-editing one, replaying the pinned bytes and running the
+pinned termless code over parent-journaled stored cells of the whole screen, the cursor, the App-stored margins, origin and insert mode, stored attribute tuples and per-cell
+DECSCA protection. An independent column model is compared with the whole screen over a seed at both page edges. Controls cover one, omitted, zero, three and oversized
+(clamped) counts, the scrolling region with the cursor inside, above and below it, origin mode, insert mode, non-admitted identities, the start column (SL/SR from the left
+margin whatever the cursor column; DECIC/DECDC at the first and last column), moved attributed and protected cells under a different pen, and attribute-free introduced
+blanks. Related controls share a read so a suite stays within the observer's 64-capture budget. The pending-wrap state after an edit at the last column is observed, never
+graded. Left/right margins (DECLRMM) are not implemented, so `modes.left-right-margin` is not claimed; DECRQCRA, Unicode, the image plane and rendered appearance are not
+claimed either. The pinned terminal cursor-query paths never carry a verdict and are not qualified. The VT implementation is in
+[the column-editing contract](terminfo/column-editing.md). Receipt schema 38 and source policy v32 (241 files) bind it; earlier policies stay frozen.

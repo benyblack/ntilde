@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { privateClipboardReceiptFixture } from './fixtures/private-clipboard-receipt.mjs';
 
 test('schema12 rederives the complete private suffix and preserves every original sixteen-suite binding and negative', () => privateClipboardReceiptFixture(f => {
-    const receipt = f.finish(); assert.equal(receipt.schemaVersion, 37);
-    for (const key of Object.keys(f.evidence).filter(key => !['privateClipboardEvidence', 'gradingEvidence', 'sgrColorsEvidence', 'sgrRgbEvidence', 'sgrAttrsEvidence', 'sgrPaletteEvidence', 'sgrTruecolorEvidence', 'truecolorFindingEvidence', 'sgrUnderlineEvidence', 'sgrUnderlineColorEvidence', 'underlineResolvedEvidence', 'sgrResetEvidence', 'sgrClosureEvidence', 'eraseLineEvidence', 'charEditEvidence', 'eraseDisplayEvidence', 'lineEditEvidence', 'charsetsEvidence', 'scrollbackEvidence', 'savedResetEvidence', 'eraseAttrsRegionEvidence', 'attrRectEvidence', 'cursorQualEvidence', 'eraseCharsHistoryEvidence', 'selectiveEraseEvidence', 'rectEditEvidence'].includes(key))) assert.deepEqual(receipt[key], f.old[key]);
+    const receipt = f.finish(); assert.equal(receipt.schemaVersion, 38);
+    for (const key of Object.keys(f.evidence).filter(key => !['privateClipboardEvidence', 'gradingEvidence', 'sgrColorsEvidence', 'sgrRgbEvidence', 'sgrAttrsEvidence', 'sgrPaletteEvidence', 'sgrTruecolorEvidence', 'truecolorFindingEvidence', 'sgrUnderlineEvidence', 'sgrUnderlineColorEvidence', 'underlineResolvedEvidence', 'sgrResetEvidence', 'sgrClosureEvidence', 'eraseLineEvidence', 'charEditEvidence', 'eraseDisplayEvidence', 'lineEditEvidence', 'charsetsEvidence', 'scrollbackEvidence', 'savedResetEvidence', 'eraseAttrsRegionEvidence', 'attrRectEvidence', 'cursorQualEvidence', 'eraseCharsHistoryEvidence', 'selectiveEraseEvidence', 'rectEditEvidence', 'colEditEvidence'].includes(key))) assert.deepEqual(receipt[key], f.old[key]);
     assert.deepEqual(f.report.observations.map(value => value.originalPass), [false, true, false]);
     assert.equal(f.report.frames.length, 22); assert.equal(f.report.controller.events.at(-1).request.operation, 'close');
 }));
@@ -68,7 +68,7 @@ test('raw JSON object-key order is not confused with a changed original packet o
         : Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reorder(item)])) : value;
     for (const id of ['extensions.osc52-clipboard', 'extensions.osc52-write', 'extensions.osc52-read', 'collector.ntildePrivateClipboard'])
         f.raw.rawReplies[id] = JSON.stringify(reorder(JSON.parse(f.raw.rawReplies[id])));
-    f.write('raw.json', reorder(f.raw)); assert.equal(f.finish().schemaVersion, 37);
+    f.write('raw.json', reorder(f.raw)); assert.equal(f.finish().schemaVersion, 38);
 }));
 
 for (const prefix of ['cell', 'sgr', 'rgb', 'rendition', 'cursor']) test('schema12 refuses a coherently rehashed ' + prefix + ' grade change with unchanged original captures', () => privateClipboardReceiptFixture(f => {
@@ -99,7 +99,7 @@ for (const [prefix, cases] of [['rgb', rgbCases], ['rendition', renditionCases],
         writeFileSync(join(f.output, prefix + '-snapshots.jsonl'), '');
         Object.assign(f.evidence[prefix + 'Evidence'], { file: prefix + '-unavailable.json', status: 'unavailable',
             reason: 'screenDetailsUnavailable', counts: {}, sha256: hash(readFileSync(join(f.output, prefix + '-unavailable.json'))) });
-        assert.equal(f.finish().schemaVersion, 37, 'the marker alone is a valid original pre-start refusal');
+        assert.equal(f.finish().schemaVersion, 38, 'the marker alone is a valid original pre-start refusal');
         rmSync(join(f.output, 'cell-receipt.json'));
         writeFileSync(join(f.output, prefix + '-observations.json'), observations);
         assert.throws(f.finish);
