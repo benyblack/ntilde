@@ -1,0 +1,275 @@
+{
+  "caseId": "editing.decic",
+  "pinnedCriterion": "DECIC (ESC[2'}) keeps columns 1-2, blanks columns 3-4 and shifts columns 5-8 of rows 1-3 right by two, after a setup cursor of 1,2",
+  "pinnedFeeds": ["\u001b[1;1HABCDEFGH\u001b[2;1HIJKLMNOP\u001b[3;1HQRSTUVWX","\u001b[2;3H","\u001b[2'}"],
+  "terminalFixture": {
+    "writes": ["\u001b[1;1HABCDEFGH\u001b[2;1HIJKLMNOP\u001b[3;1HQRSTUVWX","\u001b[2;3H","\u001b[2'}"],
+    "demand": "two blank columns inserted at the cursor column on every row of the scrolling region; columns past the right edge lost",
+    "minimum": {
+      "rows": 3,
+      "cols": 8
+    },
+    "note": "upstream pixel path (a cursor move and the edit, then a cursor position report) is never a verdict and is not qualified"
+  },
+  "feeds": ["\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","\u001b[1;1HABCDEFGH\u001b[2;1HIJKLMNOP\u001b[3;1HQRSTUVWX","\u001b[2;3H","\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[1'}\u001b[4;6H\u001b['}\u001b[4;6H\u001b[0'}\u001b[4;6H\u001b[3'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;6H\u001b[999'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[4;6H\u001b[2'}\u001b[1;6H\u001b[2'}\u001b[7;6H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[3;5r\u001b[?6h\u001b[2;3H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4h\u001b[4;6H\u001b[2;1'}\u001b[4;6H\u001b[2:1'}\u001b[4;6H\u001b[?2'}\u001b[4;6H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[4;1H\u001b[2'}\u001b[4;999H\u001b[2'}","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;1HABCDEFGHIJ\u001b[1;999H\u001b[9D0123456789\u001b[2;1HKLMNOPQRST\u001b[2;999H\u001b[9D9876543210\u001b[3;1HUVWXYZabcd\u001b[3;999H\u001b[9Dzyxwvutsrq\u001b[4;1Hefghijklmn\u001b[4;999H\u001b[9Dponmlkjihg\u001b[5;1Hopqrstuvwx\u001b[5;999H\u001b[9DfedcbaZYXW\u001b[6;1Hyz01234567\u001b[6;999H\u001b[9DVUTSRQPONM\u001b[7;1H89!#%&*+-=\u001b[7;999H\u001b[9DLKJIHGFEDC\u001b[1'}w","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-","\u001b[r\u001b[?6l\u001b[4l\u001b[0m\u001b[0\"q\u001b[2J\u001b[H\u001b[1;999H\u001b[2D\u001b[1\"qXYZ\u001b[0\"q\u001b[1;1HKEEP-TOP--\u001b[2;1H\u001b[1mBOLD-ROW--\u001b[0m\u001b[3;1H\u001b[31;44mRED-ON-BLU\u001b[0m\u001b[4;1HPLAIN-\u001b[1\"qROW\u001b[0\"q-\u001b[12;3H\u001b[3;33;42m\u001b[2'}P"],
+  "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+  "reads": [
+    [0,0],
+    [2,8],
+    [1,2],
+    [1,2],
+    [6,139],
+    [3,5],
+    [3,5],
+    [6,5],
+    [3,2],
+    [3,5],
+    [3,139],
+    [7,1],
+    [3,10],
+    [11,3]
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "reverseVideo": false,
+    "pinnedSequence": "\u001b[2'}",
+    "pinnedFeeds": ["\u001b[1;1HABCDEFGH\u001b[2;1HIJKLMNOP\u001b[3;1HQRSTUVWX","\u001b[2;3H","\u001b[2'}"],
+    "initial": {
+      "ink": 0,
+      "cursor": [0,0],
+      "margins": [0,39]
+    },
+    "before": {
+      "text": ["ABCDEFGH________","IJKLMNOP________","QRSTUVWX________","________________","________________","________________","________________","________________","________________","________________","________________","________________"],
+      "rightEdge": ["____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________"],
+      "lastRow": "________________",
+      "protectedCells": [],
+      "ink": 24,
+      "cursor": [2,8],
+      "margins": [0,39],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "setup": {
+      "text": ["ABCDEFGH________","IJKLMNOP________","QRSTUVWX________","________________","________________","________________","________________","________________","________________","________________","________________","________________"],
+      "rightEdge": ["____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________"],
+      "lastRow": "________________",
+      "protectedCells": [],
+      "ink": 24,
+      "cursor": [1,2],
+      "margins": [0,39],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "edited": {
+      "text": ["AB__CDEFGH______","IJ__KLMNOP______","QR__STUVWX______","________________","________________","________________","________________","________________","________________","________________","________________","________________"],
+      "rightEdge": ["____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________"],
+      "lastRow": "________________",
+      "protectedCells": [],
+      "ink": 24,
+      "cursor": [1,2],
+      "margins": [0,39],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "blockSeed": {
+      "text": ["ABCDEFGHIJ______","KLMNOPQRST______","UVWXYZabcd______","efghijklmn______","opqrstuvwx______","yz01234567______","89!#%&*+-=______","________________","________________","________________","________________","________________"],
+      "rightEdge": ["__0123456789","__9876543210","__zyxwvutsrq","__ponmlkjihg","__fedcbaZYXW","__VUTSRQPONM","__LKJIHGFEDC","____________","____________","____________","____________","____________"],
+      "lastRow": "________________",
+      "protectedCells": [],
+      "ink": 140,
+      "cursor": [6,139],
+      "margins": [0,39],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "controls": {
+      "policy": "graded controls: each is one fenced write over the measured block seed (left and right edges), compared with the independent column model over the whole screen",
+      "counts": {
+        "sequences": ["\u001b[1'}","\u001b['}","\u001b[0'}","\u001b[3'}"],
+        "matchesModel": true,
+        "text": ["ABCDE______FGHIJ","KLMNO______PQRST","UVWXY______Zabcd","efghi______jklmn","opqrs______tuvwx","yz012______34567","89!#%______&*+-=","________________","________________","________________","________________","________________"],
+        "rightEdge": ["________0123","________9876","________zyxw","________ponm","________fedc","________VUTS","________LKJI","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [],
+        "ink": 98,
+        "cursor": [3,5],
+        "margins": [0,39],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "clip": {
+        "sequences": ["\u001b[999'}"],
+        "matchesModel": true,
+        "text": ["ABCDE___________","KLMNO___________","UVWXY___________","efghi___________","opqrs___________","yz012___________","89!#%___________","________________","________________","________________","________________","________________"],
+        "rightEdge": ["____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [],
+        "ink": 35,
+        "cursor": [3,5],
+        "margins": [0,39],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "region": {
+        "sequences": ["\u001b[2'}","\u001b[2'}","\u001b[2'}"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ______","KLMNOPQRST______","UVWXY__Zabcd____","efghi__jklmn____","opqrs__tuvwx____","yz01234567______","89!#%&*+-=______","________________","________________","________________","________________","________________"],
+        "rightEdge": ["__0123456789","__9876543210","____zyxwvuts","____ponmlkji","____fedcbaZY","__VUTSRQPONM","__LKJIHGFEDC","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [],
+        "ink": 134,
+        "cursor": [6,5],
+        "margins": [2,4],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "origin": {
+        "sequences": ["\u001b[2'}"],
+        "matchesModel": true,
+        "text": ["ABCDEFGHIJ______","KLMNOPQRST______","UV__WXYZabcd____","ef__ghijklmn____","op__qrstuvwx____","yz01234567______","89!#%&*+-=______","________________","________________","________________","________________","________________"],
+        "rightEdge": ["__0123456789","__9876543210","____zyxwvuts","____ponmlkji","____fedcbaZY","__VUTSRQPONM","__LKJIHGFEDC","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [],
+        "ink": 134,
+        "cursor": [3,2],
+        "margins": [2,4],
+        "origin": true,
+        "insert": false,
+        "scrollback": 0
+      },
+      "modes": {
+        "sequences": ["\u001b[2;1'}","\u001b[2:1'}","\u001b[?2'}","\u001b[2'}"],
+        "matchesModel": true,
+        "text": ["ABCDE__FGHIJ____","KLMNO__PQRST____","UVWXY__Zabcd____","efghi__jklmn____","opqrs__tuvwx____","yz012__34567____","89!#%__&*+-=____","________________","________________","________________","________________","________________"],
+        "rightEdge": ["____01234567","____98765432","____zyxwvuts","____ponmlkji","____fedcbaZY","____VUTSRQPO","____LKJIHGFE","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [],
+        "ink": 126,
+        "cursor": [3,5],
+        "margins": [0,39],
+        "origin": false,
+        "insert": true,
+        "scrollback": 0
+      },
+      "columns": {
+        "sequences": ["\u001b[2'}","\u001b[2'}"],
+        "matchesModel": true,
+        "text": ["__ABCDEFGHIJ____","__KLMNOPQRST____","__UVWXYZabcd____","__efghijklmn____","__opqrstuvwx____","__yz01234567____","__89!#%&*+-=____","________________","________________","________________","________________","________________"],
+        "rightEdge": ["____0123456_","____9876543_","____zyxwvut_","____ponmlkj_","____fedcbaZ_","____VUTSRQP_","____LKJIHGF_","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [],
+        "ink": 119,
+        "cursor": [3,139],
+        "margins": [0,39],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      }
+    },
+    "attributes": {
+      "policy": "moved cells carry their stored tuples and DECSCA protection while a different pen is active, introduced blanks carry no visual attribute and no protection, and protected text pushed past the edge or deleted disappears (required); the colors of introduced blanks are observed, not required",
+      "before": {
+        "text": ["KEEP-TOP--______","BOLD-ROW--______","RED-ON-BLU______","PLAIN-ROW-______","________________","________________","________________","________________","________________","________________","________________","________________"],
+        "rightEdge": ["_________XYZ","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [
+          [0,137],
+          [0,138],
+          [0,139],
+          [3,6],
+          [3,7],
+          [3,8]
+        ],
+        "ink": 43,
+        "cursor": [3,10],
+        "margins": [0,39],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "after": {
+        "text": ["KE__EP-TOP--____","BO__LD-ROW--____","RE__D-ON-BLU____","PL__AIN-ROW-____","________________","________________","________________","________________","________________","________________","________________","__P_____________"],
+        "rightEdge": ["___________X","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________","____________"],
+        "lastRow": "________________",
+        "protectedCells": [
+          [0,139],
+          [3,8],
+          [3,9],
+          [3,10]
+        ],
+        "ink": 121,
+        "cursor": [11,3],
+        "margins": [0,39],
+        "origin": false,
+        "insert": false,
+        "scrollback": 0
+      },
+      "referenceMeasured": true,
+      "penMeasured": true,
+      "changedOk": true,
+      "cursorOk": true,
+      "blankFill": "introduced blanks carry the current colors"
+    },
+    "pendingWrap": {
+      "policy": "observed, not graded: whether a column edit at the last column keeps the pending-wrap state is not defined by DEC",
+      "sequences": ["\u001b[1'}"],
+      "reading": "kept: the next character wrapped to the next row",
+      "text": ["ABCDEFGHIJ______","KLMNOPQRST______","UVWXYZabcd______","efghijklmn______","opqrstuvwx______","yz01234567______","89!#%&*+-=______","w_______________","________________","________________","________________","________________"],
+      "rightEdge": ["__012345678_","__987654321_","__zyxwvutsr_","__ponmlkjih_","__fedcbaZYX_","__VUTSRQPON_","__LKJIHGFED_","____________","____________","____________","____________","____________"],
+      "lastRow": "________________",
+      "protectedCells": [],
+      "ink": 134,
+      "cursor": [7,1],
+      "margins": [0,39],
+      "origin": false,
+      "insert": false,
+      "scrollback": 0
+    },
+    "history": {
+      "policy": "observed, not graded: column edits never scroll",
+      "scrollbackLines": [0],
+      "historyLines": 0
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\"],[\"I\",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\"],[\"Q\",\"R\",\"S\",\"T\",\"U\",\"V\",\"W\",\"X\"]],\"setup\":{\"x\":2,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"B\",\" \",\" \",\"C\",\"D\",\"E\",\"F\"],[\"I\",\"J\",\" \",\" \",\"K\",\"L\",\"M\",\"N\"],[\"Q\",\"R\",\" \",\" \",\"S\",\"T\",\"U\",\"V\"]]}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "assertions": [
+      {"kind":"positive","expected":"DECIC inserts two blank columns at column 3 on three measured rows","observed":"{\"before\":[[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\"],[\"I\",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\"],[\"Q\",\"R\",\"S\",\"T\",\"U\",\"V\",\"W\",\"X\"]],\"setup\":{\"x\":2,\"y\":1,\"visible\":true},\"after\":[[\"A\",\"B\",\" \",\" \",\"C\",\"D\",\"E\",\"F\"],[\"I\",\"J\",\" \",\" \",\"K\",\"L\",\"M\",\"N\"],[\"Q\",\"R\",\" \",\" \",\"S\",\"T\",\"U\",\"V\"]]}"}
+    ]
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-and-resolved-cells",
+    "grading": "pinned-termless-plus-contract-v1",
+    "scope": "stored ASCII cells only: exact contents of the whole screen, the cursor, observed margins, origin and insert mode, stored attribute tuples and per-cell protection of moved cells and introduced blanks; left/right margins, the pinned pixel path, Unicode and wide cells, the image plane, the pending-wrap state and rendered appearance are not claimed"
+  }
+}

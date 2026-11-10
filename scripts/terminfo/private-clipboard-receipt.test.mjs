@@ -99,7 +99,7 @@ for (const [prefix, cases] of [['rgb', rgbCases], ['rendition', renditionCases],
         writeFileSync(join(f.output, prefix + '-snapshots.jsonl'), '');
         Object.assign(f.evidence[prefix + 'Evidence'], { file: prefix + '-unavailable.json', status: 'unavailable',
             reason: 'screenDetailsUnavailable', counts: {}, sha256: hash(readFileSync(join(f.output, prefix + '-unavailable.json'))) });
-        assert.equal(f.finish().schemaVersion, 37, 'the marker alone is a valid original pre-start refusal');
+        assert.equal(f.finish().schemaVersion, 38, 'the marker alone is a valid original pre-start refusal');
         rmSync(join(f.output, 'cell-receipt.json'));
         writeFileSync(join(f.output, prefix + '-observations.json'), observations);
         assert.throws(f.finish);
