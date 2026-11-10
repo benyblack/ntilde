@@ -204,7 +204,7 @@ const controls = Object.freeze([
     control('print', [...margins, ops.cup(2, 12), ops.text('abcdefgh')]),
     control('insert', [...margins, ops.irm(true), ops.cup(1, 6), ops.text('xy')]),
     control('moves', [...margins, ops.cup(3, 8), ops.cuf(20), ops.text('X'), ops.cup(4, 8), ops.cub(20), ops.text('Y'), ops.cup(5, 8), ops.cr(), ops.text('Z'),
-        ops.cup(6, 2), ops.cr(), ops.text('W'), ops.cup(7, 20), ops.cuf(500), ops.text('V'), ops.cup(8, 6), ops.ht(), ops.text('T'), ops.cup(9, 2), ops.cub(5), ops.text('U')]),
+        ops.cup(6, 2), ops.cr(), ops.text('W'), ops.cup(7, 20), ops.cuf(500), ops.text('V'), ops.cup(8, 12), ops.ht(), ops.text('T'), ops.cup(9, 2), ops.cub(5), ops.text('U')]),
     control('lfBand', [ops.stbm(1, 10), ...margins, ops.cup(10, 6), ops.lf(), ops.text('L')]),
     control('lfOutside', [ops.stbm(1, 10), ...margins, ops.cup(10, 2), ops.lf(), ops.text('M'), ops.cup(10, 16), ops.lf(), ops.text('N')]),
     control('ri', [ops.stbm(3, 6), ...margins, ops.cup(3, 6), ops.ri(), ops.cup(6, 6), ops.lf()]),
