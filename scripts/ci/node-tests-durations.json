@@ -1,0 +1,21 @@
+{
+  "rest_head_start_seconds": 15,
+  "seconds": {
+    "scripts/terminfo/attr-rect-receipt.test.mjs": 52.0,
+    "scripts/terminfo/erase-attrs-region-receipt.test.mjs": 41.0,
+    "scripts/terminfo/erase-chars-history-receipt.test.mjs": 47.0,
+    "scripts/terminfo/image-publication.test.mjs": 31.0,
+    "scripts/terminfo/line-edit-receipt.test.mjs": 5.0,
+    "scripts/terminfo/metadata-receipt.test.mjs": 20.0,
+    "scripts/terminfo/query-integration.test.mjs": 20.0,
+    "scripts/terminfo/query-receipt.test.mjs": 50.0,
+    "scripts/terminfo/rect-edit-contracts.test.mjs": 24.0,
+    "scripts/terminfo/rect-edit-receipt.test.mjs": 17.0,
+    "scripts/terminfo/saved-reset-receipt.test.mjs": 36.0,
+    "scripts/terminfo/scrollback-receipt.test.mjs": 28.0,
+    "scripts/terminfo/selective-erase-contracts.test.mjs": 21.0,
+    "scripts/terminfo/selective-erase-receipt.test.mjs": 102.0,
+    "scripts/terminfo/static-images-capture.test.mjs": 4.0,
+    "scripts/terminfo/static-images-receipt.test.mjs": 100.0
+  }
+}
