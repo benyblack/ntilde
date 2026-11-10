@@ -72,7 +72,7 @@ function repliesOf(contract, recorded, readFrames) {
 /** The pinned checksumResult, key order included. */
 export function replayRectChecksumPinned(contract, replies) {
     const response = replies[contract.pinnedRead]?.raw ?? '';
-    const supported = pinnedFixture.pattern.test(response);
+    const supported = pinnedFixture.framed(response);
     return { pass: supported, response, note: pinnedFixture.note,
         observation: { outcome: supported ? 'supported' : 'inconclusive', evidence: 'query', ...(!supported && { reason: response ? 'invalid-reply' : 'no-response' }) },
         ...(supported && { assertions: [{ kind: 'positive', expected: pinnedFixture.expected, observed: response }] }) };

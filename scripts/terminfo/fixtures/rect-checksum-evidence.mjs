@@ -11,8 +11,7 @@ import { syntheticColEditScreen, colEditRows, colEditCols, paletteBinding, color
 import { paletteChannel, literalChannel } from './sgr-palette-evidence.mjs';
 
 /** The synthetic geometry: thirteen rows of sixty columns. */
-export const rectChecksumRows = colEditRows;
-export const rectChecksumCols = colEditCols;
+export { colEditRows as rectChecksumRows, colEditCols as rectChecksumCols } from './col-edit-evidence.mjs';
 const W = colEditCols, H = colEditRows;
 const paneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
 const deviceAttribute = '\x1b[?62;4;22c';
@@ -37,8 +36,8 @@ const attrCells = () => {
 /** The value of every cell of the seeded screen: its character code (blank 0x20) plus its weight. */
 function values(withAttributes) {
     const grid = Array.from({ length: H }, () => Array.from({ length: W }, () => 0x20));
-    [...'ABCDE'].forEach((char, col) => { grid[0][col] = char.charCodeAt(0); });
-    if (withAttributes) for (const [col, spec, weight] of attrRow) grid[2][col] = spec.char.charCodeAt(0) + weight;
+    [...'ABCDE'].forEach((char, col) => { grid[0][col] = char.codePointAt(0); });
+    if (withAttributes) for (const [col, spec, weight] of attrRow) grid[2][col] = spec.char.codePointAt(0) + weight;
     return grid;
 }
 /** The reply for request `id` over the inclusive rectangle, or 0000 when it is inverted. */
@@ -77,9 +76,9 @@ export function syntheticRectChecksumReads() {
         else if (role === 'seed') screen = seeded;
         else if (role === 'attrSeed') screen = attributed;
         else if (role === 'originSeed') screen = origin;
-        const exchange = exchanges[role];
         const grid = values(screen === attributed || screen === origin);
-        reads[role] = { ...screen, reply: exchange === undefined ? undefined : exchange && reply(exchange[0], exchange[1], grid) };
+        reads[role] = { ...screen };
+        if (Object.hasOwn(exchanges, role)) reads[role].reply = exchanges[role] && reply(exchanges[role][0], exchanges[role][1], grid);
     }
     return reads;
 }
@@ -96,7 +95,7 @@ export function syntheticRectChecksumScreens(binding = paletteBinding(), mutate 
     return contract.roles.map(role => {
         const read = mutate?.(role, structuredClone(reads[role])) ?? reads[role];
         const screen = alternate(syntheticColEditScreen(read.rows, read.cursor, read.state, [], binding));
-        return { role, screen, reply: read.reply === undefined ? undefined : read.reply };
+        return { role, screen, reply: read.reply };
     });
 }
 
@@ -108,7 +107,7 @@ export function syntheticRectChecksumEvidence(runId = 'a'.repeat(32), bundleSha2
     const bound = alternate({ ...blank, lines: [nonce, ...Array.from({ length: H - 1 }, () => '')], cursorCol: nonce.length });
     const frames = [frame(0, 'csum-start', blank, null), frame(1, 'csum-bind', bound, deviceAttribute)];
     const reads = syntheticRectChecksumScreens(binding, mutate);
-    const replies = reads.map(read => (read.reply === undefined ? null : read.reply === null ? null : { raw: read.reply }));
+    const replies = reads.map(read => (typeof read.reply === 'string' ? { raw: read.reply } : null));
     const records = reads.map((read, index) => {
         const report = read.reply === undefined ? undefined : { barrier: deviceAttribute, reply: replies[index] };
         frames.push(frame(frames.length, 'csum-read', read.screen, deviceAttribute, report));

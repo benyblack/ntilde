@@ -47,19 +47,30 @@ export const rectChecksumNoncePrefix = 'NTILDE_CK_';
 /** The measured reset every plan begins with: protection, DECSCNM, DECOM, margins, IRM and SGR off, screen cleared, cursor home. */
 export const rectChecksumReset = '\x1b[0"q' + sgrAttrsReset;
 /** Checksum screens carry stored attributes, per-cell protection, buffer state and history (the selective-erasure screen). */
-export const validateRectChecksumScreen = validateSelectiveEraseScreen;
+export { validateSelectiveEraseScreen as validateRectChecksumScreen } from './selective-erase-contracts.mjs';
 /** The stored projection of one cell. */
-export const rectChecksumCellAt = sgrAttrsCellAt;
+export { sgrAttrsCellAt as rectChecksumCellAt } from './sgr-attrs-contracts.mjs';
 
 /** One plan step: write exact request bytes through the owned fence and capture the reply before the ordering barrier. */
 export const planCapture = bytes => ({ feed: bytes, capture: true });
+
+/** The pinned checksumResult criterion: anywhere in the response, ESC P 1 ! ~, four hex digits of either case, then ST (the pinned
+ * pattern is unanchored). Written without a regex so no control character sits in a pattern literal. */
+function framedReply(response) {
+    const head = '\x1bP1!~', hex = '0123456789ABCDEFabcdef';
+    for (let at = response.indexOf(head); at >= 0; at = response.indexOf(head, at + 1)) {
+        const digits = response.slice(at + head.length, at + head.length + 4);
+        if (digits.length === 4 && [...digits].every(char => hex.includes(char)) && response.startsWith('\x1b\\', at + head.length + 4)) return true;
+    }
+    return false;
+}
 
 /** The pinned fixture, byte for byte, and the pinned criterion texts. */
 export const pinned = Object.freeze({
     seed: 'ABCDE\x1b[1;1H', request: '\x1b[1;1;1;1;1;5*y', terminalRequest: '\x1b[1;1;1;1;1;1*y',
     note: 'Checks framed reply and request id; checksum arithmetic is not verified',
     expected: 'Complete four-digit checksum reply for request 1',
-    pattern: /\x1bP1!~[0-9A-Fa-f]{4}\x1b\\/,
+    framed: framedReply,
 });
 
 /** The measured geometry the controls need. */
@@ -136,7 +147,7 @@ const groups = Object.freeze([
 /** The margins, origin mode and screen each group's setup contracts (report groups inherit the cells group before them). */
 const stateOf = role => {
     const index = groups.findIndex(item => item.role === role);
-    const setup = groups.slice(0, index + 1).filter(item => item.feeds).at(-1).role;
+    const setup = groups.slice(0, index + 1).findLast(item => item.feeds).role;
     if (setup === 'originSeed') return { margins: [originTop, originBottom], origin: true, alternate: true };
     return { margins: null, origin: false, alternate: true };
 };
@@ -146,8 +157,7 @@ function makeContract() {
     const plan = [planFeed(rectChecksumReset)];
     for (const item of groups) {
         if (item.request) {
-            plan.push(planCapture(item.request.bytes));
-            plan.push(planRead('report'));
+            plan.push(planCapture(item.request.bytes), planRead('report'));
         } else {
             for (const feed of item.feeds) plan.push(planFeed(feed));
             plan.push(planRead('cells'));
@@ -231,7 +241,7 @@ const inkChars = (state, cells) => state.ink.length === cells.length
     && cells.every(([row, col, char], index) => state.ink[index].row === row && state.ink[index].col === col && state.ink[index].char === char);
 /** The roles of report groups and the cells group each follows. */
 const reportRoles = contract.roles.filter((role, index) => groups[index].request);
-const previousCells = role => groups.slice(0, contract.roles.indexOf(role)).filter(item => item.feeds).at(-1).role;
+const previousCells = role => groups.slice(0, contract.roles.indexOf(role)).findLast(item => item.feeds).role;
 /** Whether a state's margins, origin mode and screen match what its group's setup contracts. */
 function stateIsContracted(state, role) {
     const expected = stateOf(role);
@@ -319,7 +329,7 @@ function gradeRectChecksum(observation) {
 }
 
 /** A printable spelling of raw bytes: ESC as \e. */
-const printable = raw => (raw === null ? null : raw.replaceAll('\x1b', '\\e'));
+const printable = raw => (raw === null ? null : raw.replaceAll('\x1b', String.raw`\e`));
 
 /** The observed record: the pinned exchange, every request with its demanded and received reply, and the seeds. */
 function briefRectChecksum(observation) {

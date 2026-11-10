@@ -30,42 +30,46 @@ export function rectChecksumRecordingContext(contract, replies) {
     };
 }
 
-/** Run the contracted case serially with parent-journaled reads and replies. */
-export async function collectRectChecksumGrading({ config, fence, owner, gradingModule }) {
-    const adapter = gradingModule.ntildeRectChecksumAdapter;
-    const nonce = rectChecksumNoncePrefix + config.runId;
+/** One plan step of one case. A capture step is a fenced exchange whose reply the next read journals; a feed step clears it. */
+async function runStep(step, record, { fence, owner, caseId }) {
+    if (step.feed) {
+        record.feeds.push(step.feed);
+        if (step.capture) {
+            record.report = await fence.checksumReport(step.feed);
+            record.barriers.push(record.report.barrier);
+        } else {
+            record.report = null;
+            record.barriers.push(await fence.write(step.feed));
+        }
+        return;
+    }
+    const isReport = step.read === 'report';
+    if (isReport && record.report === null) throw new Error(`${caseId} report read without an exchange.`);
+    const observed = await owner('csum-read', record.barriers.at(-1), isReport ? { report: record.report } : {});
+    record.reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol], ...(isReport ? { report: record.report } : {}) });
+    record.screens.push(observed.screen);
+    record.replies.push(isReport ? record.report.reply : null);
+    record.report = null;
+}
+
+/** Every step of one case, serially: each write, exchange and read must settle before the next changes state. */
+async function collectCase(contract, io) {
+    const record = { feeds: [], barriers: [], reads: [], screens: [], replies: [], report: null };
+    for (const step of contract.plan) await runStep(step, record, { ...io, caseId: contract.caseId }); // NOSONAR - serial by design
+    if (record.feeds.length !== rectChecksumFeeds(contract).length || record.screens.length !== rectChecksumReads(contract)) {
+        throw new Error(`Incomplete ${contract.caseId} rectangle-checksum fixture.`);
+    }
+    const { feeds, barriers, reads, screens, replies } = record;
+    return { caseId: contract.caseId, feeds, barriers, reads, screens, replies };
+}
+
+/** Restore the screen whatever happened, aggregating a collection failure with a restoration failure instead of dropping either. */
+async function collectAndRestore({ fence, owner, nonce }) {
     const cases = [];
-    await owner('csum-start');
     let primary, failed = false;
     try {
         await owner('csum-bind', await fence.write('\x1b[?1049h' + rectChecksumReset + nonce));
-        for (const contract of rectChecksumContracts) {
-            const feeds = [], barriers = [], reads = [], screens = [], replies = [];
-            let report = null;
-            for (const step of contract.plan) {
-                if (step.feed && step.capture) {
-                    feeds.push(step.feed);
-                    report = await fence.checksumReport(step.feed); // serial by design: the reply orders against the next read (NOSONAR)
-                    barriers.push(report.barrier);
-                } else if (step.feed) {
-                    feeds.push(step.feed);
-                    report = null;
-                    barriers.push(await fence.write(step.feed)); // serial by design: each write must settle before the next (NOSONAR)
-                } else {
-                    const extra = step.read === 'report' ? { report } : {};
-                    if (step.read === 'report' && report === null) throw new Error(`${contract.caseId} report read without an exchange.`);
-                    const observed = await owner('csum-read', barriers.at(-1), extra); // serial by design: reads journal between writes (NOSONAR)
-                    reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol], ...(step.read === 'report' ? { report } : {}) });
-                    screens.push(observed.screen);
-                    replies.push(step.read === 'report' ? report.reply : null);
-                    report = null;
-                }
-            }
-            if (feeds.length !== rectChecksumFeeds(contract).length || screens.length !== rectChecksumReads(contract)) {
-                throw new Error(`Incomplete ${contract.caseId} rectangle-checksum fixture.`);
-            }
-            cases.push({ caseId: contract.caseId, feeds, barriers, reads, screens, replies });
-        }
+        for (const contract of rectChecksumContracts) cases.push(await collectCase(contract, { fence, owner })); // NOSONAR - serial by design
     } catch (error) { primary = error; failed = true; }
     let restoreFailed = false, restoreError;
     try {
@@ -74,6 +78,14 @@ export async function collectRectChecksumGrading({ config, fence, owner, grading
     if (failed && restoreFailed) throw new AggregateError([primary, restoreError], 'csum collection and restoration failed.');
     if (restoreFailed) throw restoreError;
     if (failed) throw primary;
+    return cases;
+}
+
+/** Run the contracted case serially with parent-journaled reads and replies. */
+export async function collectRectChecksumGrading({ config, fence, owner, gradingModule }) {
+    const adapter = gradingModule.ntildeRectChecksumAdapter;
+    await owner('csum-start');
+    const cases = await collectAndRestore({ fence, owner, nonce: rectChecksumNoncePrefix + config.runId });
     const run = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds], cases: [] };
     for (const item of cases) {
         const contract = rectChecksumContracts.find(entry => entry.caseId === item.caseId);

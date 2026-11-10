@@ -3,8 +3,20 @@
 // an explicitly absent reply.
 const esc = '\x1b';
 const barrierPattern = /^\x1b\[\?[\d;]+c$/;
-/** Any one complete DCS string: ESC P, at most 48 bytes without ESC, then ST. */
-const dcsPattern = /^\x1bP[^\x1b]{0,48}\x1b\\$/;
+/** The longest DCS body (the bytes between ESC P and ST) the exchange retains. */
+const bodyLimit = 48;
+/** Whether `text` is ESC P, at most 48 bytes without ESC, then (when `closed`) ST or (when not) at most a lone trailing ESC. */
+function dcsShape(text, closed) {
+    if (!text.startsWith(esc + 'P')) return false;
+    let body = text.slice(2);
+    if (closed) {
+        if (!body.endsWith(esc + '\\')) return false;
+        body = body.slice(0, -2);
+    } else if (body.endsWith(esc)) {
+        body = body.slice(0, -1);
+    }
+    return body.length <= bodyLimit && !body.includes(esc);
+}
 /** The longest exchange: a bounded DCS reply plus a DA barrier. */
 const exchangeLimit = 192;
 
@@ -13,7 +25,7 @@ export const checksumReportExpectation = Object.freeze({ kind: 'rectangle-checks
 
 /** Refuse anything but one complete bounded DCS string. */
 export function parseChecksumReply(raw) {
-    if (typeof raw !== 'string' || !dcsPattern.test(raw)) throw new Error('Unexpected rectangle checksum reply.');
+    if (typeof raw !== 'string' || !dcsShape(raw, true)) throw new Error('Unexpected rectangle checksum reply.');
     return { raw };
 }
 
@@ -28,7 +40,7 @@ export function parseChecksumReportFrame(bytes) {
     if (rest.startsWith(esc + 'P')) {
         const end = rest.indexOf(esc + '\\');
         if (end < 0) {
-            if (!/^\x1bP[^\x1b]{0,48}\x1b?$/.test(rest)) throw new Error('Unexpected rectangle checksum bytes.');
+            if (!dcsShape(rest, false)) throw new Error('Unexpected rectangle checksum bytes.');
             return null;
         }
         reply = parseChecksumReply(rest.slice(0, end + 2));
