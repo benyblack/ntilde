@@ -110,15 +110,23 @@ public sealed class SettingsScreenshotHarness
 
             vm.Forwards.Add(new Ntilde.Platform.Ssh.Models.PortForward
             {
-                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Local, SourcePort = 8080, DestinationHost = "db.internal", DestinationPort = 5432,
+                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Local,
+                SourcePort = 8080,
+                DestinationHost = "db.internal",
+                DestinationPort = 5432,
             });
             vm.Forwards.Add(new Ntilde.Platform.Ssh.Models.PortForward
             {
-                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Remote, BindAddress = "0.0.0.0", SourcePort = 9000, DestinationHost = "localhost", DestinationPort = 3000,
+                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Remote,
+                BindAddress = "0.0.0.0",
+                SourcePort = 9000,
+                DestinationHost = "localhost",
+                DestinationPort = 3000,
             });
             vm.Forwards.Add(new Ntilde.Platform.Ssh.Models.PortForward
             {
-                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Dynamic, SourcePort = 1080,
+                Kind = Ntilde.Platform.Ssh.Models.PortForwardKind.Dynamic,
+                SourcePort = 1080,
             });
             Save(window, output!, $"ssh-forwards-{slug}-list.png");
 
