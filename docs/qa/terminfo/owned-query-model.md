@@ -2,7 +2,7 @@
 
 The optional owned driver adds a sixteenth suite under receipt schema 11,
 `readonly-owned-source-graph-v4` and the fixed 74-file `capturedV11SourceFiles`
-map. The query experiment is `owned-exact-query-paired-raw-state-v1`.
+map. The query experiment is `owned-exact-query-paired-raw-state-v1` for every run up to the left/right-margin collection and `...-v2` after DECRQSS `s` began reporting the margins (only the `q12.decrqss.horizontal-margins` witness differs).
 The separately announced [v11 collection](2026-11-05-query-observations.md)
 retains actual runtime evidence with operator-supplied App build source
 `630fe126` and independently retained adapter source inputs. The build-source

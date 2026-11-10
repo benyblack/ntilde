@@ -93,3 +93,27 @@ test('a run whose initial settings turn DECRQCRA on owes the reply, so retained 
     assert.equal(f.report.observations.find(x => x.id === 'q07.editing.decrqcra').observedEvidence, 'silence');
     assert.throws(f.finish);
 }));
+
+test('a v2 query policy run owes the DECRQSS s reply; the receipt re-derives it from the archived policy alone', () => queryReceiptFixture(f => {
+    assert.equal(f.context.ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v2'); assert.equal(f.report.policy, f.context.ownedQueryPolicy);
+    assert.equal(f.report.observations.filter(x => x.expectedEvidence === 'negative-reply').length, 20);
+    assert.equal(f.report.observations.find(x => x.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'positive-reply');
+    assert.deepEqual(f.finish().queryEvidence.counts, { matched: 40 });
+}, { marginsReport: true }));
+test('a v2 run whose switch reply stayed negative is a recorded mismatch, not a refusal', () => queryReceiptFixture(f => {
+    assert.deepEqual(f.finish().queryEvidence.counts, { matched: 39, mismatched: 1 });
+}, { marginsReport: true, mutateReply: (id, value) => id === 'q12.decrqss.horizontal-margins' ? '\x1bP0$r\x1b\\' : value }));
+test('rewriting the archived query policy cannot move a run between the negative and positive expectation', async () => {
+    for (const [options, forged] of [[{}, 'owned-exact-query-paired-raw-state-v2'], [{ marginsReport: true }, 'owned-exact-query-paired-raw-state-v1']]) {
+        await queryReceiptFixture(f => {
+            f.context.ownedQueryPolicy = forged; f.proof.proofs[0].queries.policy = forged;
+            f.write('context.json', f.context); f.write('ownership-proof.json', f.proof);
+            assert.throws(f.finish);
+        }, options);
+    }
+    await queryReceiptFixture(f => {
+        f.context.ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v3'; f.proof.proofs[0].queries.policy = f.context.ownedQueryPolicy;
+        f.write('context.json', f.context); f.write('ownership-proof.json', f.proof);
+        assert.throws(f.finish);
+    });
+});

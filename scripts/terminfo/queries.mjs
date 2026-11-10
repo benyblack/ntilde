@@ -7,7 +7,12 @@ import { inspectQueryWitness } from './query-witness-frame.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
 
 export const querySuiteId = 'ntilde-owned-exact-queries-v1';
-export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v1';
+/** v1 is every run before DECRQSS s reported the margins: its horizontal-margins witness keeps the negative reply. v2 (the policy new
+ * runs record) owes the positive one; the policy is archived in the receipt context, the run marker and the report, so re-derivation
+ * reads the version from the run itself and a flipped policy cannot re-derive (the derived report would differ). */
+export const legacyQueryPolicy = 'owned-exact-query-paired-raw-state-v1';
+export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v2';
+export const queryPolicies = Object.freeze([legacyQueryPolicy, ownedQueryPolicy]);
 export const pristineQuery = screen => typeof screen.cursorVisible === 'boolean' && pristineEditing({ ...screen, cursorVisible: true });
 export const checkQueries = value => { if (!value) throw new Error('Invalid or incomplete owned query evidence.'); };
 const check = checkQueries;
@@ -101,12 +106,13 @@ function inspectCapture(capture, context, id, used) {
     const result = inspectQueryWitness(context, id, capture), key = result.orderingNonces.join(',');
     check(!used.has(key)); used.add(key); return result;
 }
-/** The witness context of one query frame; `checksumReport` only when the run turned the off-by-default DECRQCRA report on. */
-export const queryContext = (screen, checksumReport = false) => ({ rows: screen.rows, cols: screen.cols, top: screen.bufferState.scrollTop + 1,
-    bottom: screen.bufferState.scrollBottom + 1, ...(checksumReport ? { checksumReport: true } : {}) });
+/** The witness context of one query frame; `checksumReport` only when the run turned the off-by-default DECRQCRA report on and
+ * `marginsReport` only under the v2 query policy. */
+export const queryContext = (screen, checksumReport = false, marginsReport = false) => ({ rows: screen.rows, cols: screen.cols, top: screen.bufferState.scrollTop + 1,
+    bottom: screen.bufferState.scrollBottom + 1, ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}) });
 export function buildQueryReport(input) {
-    const { binding: supplied, priorChallenges, initial, actions, frames, seal, checksumReport = false } = structuredClone(input);
-    check(typeof checksumReport === 'boolean');
+    const { binding: supplied, priorChallenges, initial, actions, frames, seal, checksumReport = false, marginsReport = false } = structuredClone(input);
+    check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean');
     const binding = queryBinding(supplied), prior = queryPrior(priorChallenges), clock = { time: -Infinity };
     check(prior.length === 110 && actions?.length === 44 && frames?.length === 44);
     const baseline = validateSample(initial.before, binding, null, clock), original = initial.before.beforeOwnership;
@@ -119,7 +125,7 @@ export function buildQueryReport(input) {
         const before = validateSample(frame.before, binding, original, clock);
         const after = validateSample(frame.after, binding, original, clock);
         check(snapshotHash(before) === snapshotHash(expected));
-        const comparison = inspectCapture(frame.capture, queryContext(before, checksumReport), entry.id ?? fixed[0].id, used);
+        const comparison = inspectCapture(frame.capture, queryContext(before, checksumReport, marginsReport), entry.id ?? fixed[0].id, used);
         if (entry.kind === 'query') observations.push(comparison);
         else {
             check(frame.capture.byteLength === 0);
@@ -135,8 +141,9 @@ export function buildQueryReport(input) {
         && status.lastAttempt?.completed === true && status.lastAttempt.fenceRequested === true && status.lastAttempt.error === null
         && status.lastAttempt.hex === final.hex + Buffer.from(final.barrier).toString('hex')
         && snapshotHash(status.lastAttempt.nonces) === snapshotHash(final.nonces));
-    return { schemaVersion: 1, suiteId: querySuiteId, policy: ownedQueryPolicy, runId: binding.runId, binding, priorChallenges: prior, readerCounts: counts,
+    return { schemaVersion: 1, suiteId: querySuiteId, policy: marginsReport ? ownedQueryPolicy : legacyQueryPolicy, runId: binding.runId, binding, priorChallenges: prior, readerCounts: counts,
         ...(checksumReport ? { checksumReport: 'AllowRectangleChecksumReport on in the initial settings: q07.editing.decrqcra owes the DECRQCRA reply' } : {}),
+        ...(marginsReport ? { marginsReport: 'query policy v2: q12.decrqss.horizontal-margins owes the DECRQSS s reply, ESC P 1 $ r 1 ; cols s ESC \\' } : {}),
         unobservedState: ['reverseVideo'],
         scope: 'Exact original query spellings and exposed cells/attributes/cursor/modes/margins/history. Reverse-video memory and appearance are unobserved; no preservation claim. Contract matches include explicit negative replies and observed silence; no feature-support score, hidden parser/title/native-state or physical-geometry claim.',
         observations, initial, actions, frames, seal };

@@ -114,3 +114,25 @@ test('a run that turns the off-by-default DECRQCRA report on owes the exact chec
         assert.throws(() => queryWitnessContext(bad), /bounded observed geometry/, JSON.stringify(bad));
     }
 });
+
+test('a run of the v2 query policy owes the exact DECRQSS s reply; absent the marker the negative expectation is unchanged', () => {
+    const plain = queryWitnessPlan(context), marked = queryWitnessPlan({ ...context, marginsReport: true });
+    const witness = plan => plan.find(item => item.id === 'q12.decrqss.horizontal-margins');
+    assert.deepEqual({ ...witness(plain) }, { id: 'q12.decrqss.horizontal-margins', featureId: 'device.decrqss', request: '\x1bP$qs\x1b\\',
+        expectedEvidence: 'negative-reply', expectedReply: '\x1bP0$r\x1b\\' });
+    // The query suite runs on a reset full-width screen: left 1, right cols (90 here), not the vertical margins.
+    assert.deepEqual({ ...witness(marked) }, { ...witness(plain), expectedEvidence: 'positive-reply', expectedReply: '\x1bP1$r1;90s\x1b\\' });
+    const others = plan => plan.filter(item => item.id !== 'q12.decrqss.horizontal-margins').map(item => ({ ...item }));
+    assert.deepEqual(others(marked), others(plain), 'every other witness, including the other decrqss ones, is unchanged');
+    assert.equal(marked.filter(item => item.expectedEvidence === 'negative-reply').length, 20);
+    assert.equal(marked.filter(item => item.expectedEvidence === 'positive-reply').length, 4);
+    const both = queryWitnessPlan({ ...context, checksumReport: true, marginsReport: true });
+    assert.equal(both.find(item => item.id === 'q07.editing.decrqcra').expectedEvidence, 'positive-reply');
+    assert.equal(both.find(item => item.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'positive-reply');
+    assert.equal(queryWitnessContext({ ...context, marginsReport: true }).marginsReport, true);
+    assert.equal(Object.hasOwn(queryWitnessContext(context), 'marginsReport'), false);
+    for (const bad of [{ ...context, marginsReport: false }, { ...context, marginsReport: 1 }, { ...context, marginsReport: 'true' }, { ...context, marginsReport: undefined },
+        { ...context, marginsReport: true, extra: 1 }]) {
+        assert.throws(() => queryWitnessContext(bad), /bounded observed geometry/, JSON.stringify(bad));
+    }
+});

@@ -12,7 +12,7 @@ export class QueryInput extends EventEmitter {
     resume() { this.paused = false; }
     pause() { this.paused = true; }
 }
-export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(',')), mutateReply, mutateState, mutateOwnership, mutateRpc, mutateAction, nextNonces, cursorVisible = true, binding: suppliedBinding, initialScreen, processFacts, transport = false, beforeDispatch, atStart = Date.UTC(2026, 10, 4, 12) } = {}) {
+export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(',')), mutateReply, mutateState, mutateOwnership, mutateRpc, mutateAction, nextNonces, cursorVisible = true, binding: suppliedBinding, initialScreen, processFacts, transport = false, marginsReport = false, beforeDispatch, atStart = Date.UTC(2026, 10, 4, 12) } = {}) {
     const binding = suppliedBinding ?? { runId: 'a'.repeat(32), ownerPid: 42, workerPid: 43, uid: 1000, appExecutable: '/owned/app',
         workerExecutable: '/node', tty: '/dev/ttys100', profileName: 'fixture', paneId: '11111111-1111-1111-1111-111111111111' };
     const initial = initialScreen ? structuredClone(initialScreen) : initialInputScreen(10, 60); initial.cursorVisible = cursorVisible;
@@ -27,6 +27,7 @@ export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, i
         if (id === 'q07.device.tertiary-da') return '\x1bP!|00000000\x1b\\';
         if (id === 'q07.device.xtwinops-18') return '\x1b[8;' + screen.rows + ';' + screen.cols + 't';
         if (id === 'q12.decrqss.vertical-margins') return '\x1bP1$r' + (screen.bufferState.scrollTop + 1) + ';' + (screen.bufferState.scrollBottom + 1) + 'r\x1b\\';
+        if (marginsReport && id === 'q12.decrqss.horizontal-margins') return '\x1bP1$r1;' + screen.cols + 's\x1b\\';
         if (id.startsWith('q12.decrqss.')) return '\x1bP0$r\x1b\\';
         if (id.startsWith('q12.xtgettcap.')) return '\x1bP0+r\x1b\\';
         return '';
@@ -80,7 +81,7 @@ export function queryWorld({ priorChallenges = Array.from({ length: 110 }, (_, i
         else throw new Error('Synthetic observer received an acting method.');
         return mutateRpc?.(method, result, params) ?? result;
     };
-    const observer = new OwnedQueryObserver({ binding, attest, appData: '/not-a-real-app', rpc,
+    const observer = new OwnedQueryObserver({ binding, attest, marginsReport, appData: '/not-a-real-app', rpc,
         endpoint: () => 'synthetic-only', priorChallenges });
     const owner = async (kind, ignored, extra = {}) => {
         const request = { kind, ...extra };
