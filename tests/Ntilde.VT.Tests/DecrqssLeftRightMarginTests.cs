@@ -66,8 +66,8 @@ public class DecrqssLeftRightMarginTests
         parser.Process($"{Esc}[?69h{Esc}[5;10s");
         buffer.Resize(20, 6);
         parser.Process(Request);
-        Assert.Equal((buffer.LeftMargin + 1, buffer.RightMargin + 1), ParseReply(Assert.Single(replies)));
-        Assert.Equal(buffer.Cols, buffer.RightMargin + 1 + (buffer.Cols - buffer.RightMargin - 1));
+        Assert.Equal(20, buffer.Cols);
+        Assert.Equal((1, 20), ParseReply(Assert.Single(replies)));
     }
 
     [Fact]

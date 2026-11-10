@@ -59,7 +59,7 @@
       "key": "DEC:69",
       "mnemonic": "DECLRMM",
       "support": "partial",
-      "description": "Left/right margin mode. Off by default; DECRQM reports 1/2. While set, CSI Pl;Pr s is DECSLRM instead of SCOSC; resetting it, RIS, DECSTR, DECALN and a resize restore full-width margins (RIS also resets the mode). State transfer carries the mode and the margins. DECRQSS for the margins is not implemented.",
+      "description": "Left/right margin mode. Off by default; DECRQM reports 1/2. While set, CSI Pl;Pr s is DECSLRM instead of SCOSC; resetting it, RIS, DECSTR, DECALN and a resize restore full-width margins (RIS also resets the mode). State transfer carries the mode and the margins; DECRQSS reports them (DCS $ q s).",
       "matrixFeature": "DECLRMM (CSI ? 69 h/l)",
       "evidencePath": "tests/Ntilde.VT.Tests/LeftRightMarginTests.cs",
       "contractCase": "left-right-margin-mode"

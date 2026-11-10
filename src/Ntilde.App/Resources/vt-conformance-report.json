@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "d077afb0b6059d61b5210e4638cd4710d04b57e34e6b634a12c9cd2f8cc41302",
+  "matrixSha256": "1ea7af70c0f0f3b7aaf894552275fedba7edd4c6f4711f29281eb549f58afb59",
   "summary": {
     "totalRows": 117,
     "supportedCount": 55,
@@ -1183,7 +1183,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser",
-      "knownDeviations": "Answers only from \u0060TerminalCapabilities\u0060 (#844): \u0060Co\u0060/\u0060colors\u0060, \u0060RGB\u0060, \u0060Tc\u0060, \u0060setrgbf\u0060/\u0060setrgbb\u0060, \u0060Su\u0060, \u0060Smulx\u0060, \u0060Setulc\u0060, \u0060Sync\u0060, \u0060Ss\u0060/\u0060Se\u0060, \u0060Ms\u0060, \u0060hs\u0060, \u0060tsl\u0060/\u0060fsl\u0060. Every string value is expanded and run through the parser by a test. Names are case-sensitive; \u0060TN\u0060 and capabilities inherited from \u0060xterm-256color\u0060 (such as \u0060kcuu1\u0060) stay negative. A truncated, BEL-terminated, malformed or more-than-16-name list gets one \u0060DCS 0\u002Br ST\u0060; only validated hex is echoed. \u0060Ms\u0060 is answered only while the host accepts OSC 52 writes, so mux sessions never advertise it. Checked with Neovim 0.12.6 (\u0060docs/qa/terminfo/2026-11-05-neovim-capability-check.md\u0060).",
+      "knownDeviations": "Answers only from \u0060TerminalCapabilities\u0060 (#844): \u0060Co\u0060/\u0060colors\u0060, \u0060RGB\u0060, \u0060Tc\u0060, \u0060setrgbf\u0060/\u0060setrgbb\u0060, \u0060Su\u0060, \u0060Smulx\u0060, \u0060Setulc\u0060, \u0060Sync\u0060, \u0060Ss\u0060/\u0060Se\u0060, \u0060Ms\u0060, \u0060Enmg\u0060/\u0060Dsmg\u0060/\u0060Clmg\u0060/\u0060Cmg\u0060, \u0060hs\u0060, \u0060tsl\u0060/\u0060fsl\u0060. Every string value is expanded and run through the parser by a test. Names are case-sensitive; \u0060TN\u0060 and capabilities inherited from \u0060xterm-256color\u0060 (such as \u0060kcuu1\u0060) stay negative. A truncated, BEL-terminated, malformed or more-than-16-name list gets one \u0060DCS 0\u002Br ST\u0060; only validated hex is echoed. \u0060Ms\u0060 is answered only while the host accepts OSC 52 writes, so mux sessions never advertise it. Checked with Neovim 0.12.6 (\u0060docs/qa/terminfo/2026-11-05-neovim-capability-check.md\u0060).",
       "sourceLine": 123
     },
     {
@@ -1317,7 +1317,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Only while DECLRMM is set (otherwise \u0060CSI s\u0060 stays SCOSC). Omitted/zero Pl is 1; omitted, zero or oversized Pr is the last column; Pl not left of Pr is ignored; applied margins home the cursor (the top-left margin corner under DECOM). The margins bound printing and autowrap (a wrap returns to the left margin and is not marked as a soft wrap), CR/NEL/CNL/CPL, CUF/CUB/BS, HT, CUP/HVP/CHA/HPA and CPR under DECOM, IND/RI/LF at the region edges (outside the margins they neither scroll nor move there), SU/SD, IL/DL, ICH/DCH and insert mode, DECIC/DECDC/SL/SR and DECOM rectangle columns. Partial-width scrolls never feed scrollback; side tables move with their cells, wide glyphs cut by a margin are retired, and images overlapping the moved band are removed. ED/EL/ECH stay full-width; DECBI/DECFI and DECRQSS for the margins are not implemented.",
+      "knownDeviations": "Only while DECLRMM is set (otherwise \u0060CSI s\u0060 stays SCOSC). Omitted/zero Pl is 1; omitted, zero or oversized Pr is the last column; Pl not left of Pr is ignored; applied margins home the cursor (the top-left margin corner under DECOM). The margins bound printing and autowrap (a wrap returns to the left margin and is not marked as a soft wrap), CR/NEL/CNL/CPL, CUF/CUB/BS, HT, CUP/HVP/CHA/HPA and CPR under DECOM, IND/RI/LF at the region edges (outside the margins they neither scroll nor move there), SU/SD, IL/DL, ICH/DCH and insert mode, DECIC/DECDC/SL/SR and DECOM rectangle columns. Partial-width scrolls never feed scrollback; side tables move with their cells, wide glyphs cut by a margin are retired, and images overlapping the moved band are removed. ED/EL/ECH stay full-width; DECRQSS \u0060s\u0060 reports the margins; DECBI/DECFI are not implemented.",
       "sourceLine": 128
     },
     {
