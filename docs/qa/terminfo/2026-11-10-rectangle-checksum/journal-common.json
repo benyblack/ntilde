@@ -2,12 +2,12 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-rectangle-checksum-graded-v1",
-    "runId": "46d9aee12fc2dd116afafed84353a21d",
+    "runId": "8df25c8c0f658a7a9d8b9ed996763709",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-rectangle-checksum-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-column-editing-grading-v1",
-      "bundleSha256": "5591668e9f4cc2e401c6ca63d217babfaaa5a8f711d4cc3a4eeb2fbdeef3fbdd",
+      "bundleSha256": "c1055f2aa14d8fa44e5f3e5ca3d0b7eb4d059653023513f67db67b3a1b3ef4d6",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 rectangle-checksum termless criterion (editing.decrqcra: ESC[1;1;1;1;1;5*y after the seed ABCDE ESC[1;1H answers a framed DCS 1 ! ~ hhhh ST) replayed byte-exactly on a disposable App whose run turns on AllowRectangleChecksumReport (off by default), and graded from the raw replies bound to their ordering barriers and the parent-journaled stored cells of the screen each request saw: an independent checksum model demands the exact reply (character sum with the bold, blink, reverse and underline weights, negated modulo 2^16, the echoed request id) of the pinned and terminal-path spellings and of controls for each weighted attribute, attributes that must add nothing, omitted, zero, partly omitted and oversized borders, an ignored page parameter, the largest and an omitted request id, inverted rectangles, DECOM row offsets with page clipping, and six non-admitted spellings that must stay unanswered; no request may change the screen, cursor, margins or modes. Stored ASCII cells only: no wide, combining or supplementary character, persistent-session, default-off-gate or rendered-appearance claim; no stock grades.",
@@ -19,7 +19,7 @@
     "start": {
       "index": 0,
       "kind": "csum-start",
-      "paneId": "0c44e263-0137-4d6d-b2fa-fd8107c3db7a",
+      "paneId": "382f9819-fe79-4d2c-85fc-685de00f0dbf",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -71,12 +71,12 @@
     "bind": {
       "index": 1,
       "kind": "csum-bind",
-      "paneId": "0c44e263-0137-4d6d-b2fa-fd8107c3db7a",
+      "paneId": "382f9819-fe79-4d2c-85fc-685de00f0dbf",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
-        "lines": ["NTILDE_CK_46d9aee12fc2dd116afafed84353a21d","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+        "lines": ["NTILDE_CK_8df25c8c0f658a7a9d8b9ed996763709","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
         "cursorRow": 0,
         "cursorCol": 42,
         "cursorVisible": true,
@@ -118,12 +118,12 @@
           "lines": []
         }
       },
-      "sha256": "61f76f473a4d1276fb76b5c7cea4f2038ea13797af0876fa922057d9f2790419"
+      "sha256": "8b1376687e0b817396278370f61c0a447762b5f831bb26ef4269626534f91597"
     },
     "finish": {
       "index": 36,
       "kind": "csum-finish",
-      "paneId": "0c44e263-0137-4d6d-b2fa-fd8107c3db7a",
+      "paneId": "382f9819-fe79-4d2c-85fc-685de00f0dbf",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,

@@ -53,11 +53,11 @@ stale palette binding or a cell outside the ASCII scope is inconclusive or refus
 
 ## Measurement
 
-Scripts (adapter) revision `6669794fd2e3614a46fa3a67883f1ae5a8c8ba12`; App source revision `7fbffce766c4eb2fbe6fb7065c3549d56e9aac68` (the last commit that
+Scripts (adapter) revision `a9dc35f7` (full SHA in `summary.json`); App source revision `7fbffce766c4eb2fbe6fb7065c3549d56e9aac68` (the last commit that
 touched `src/`: PR 922's DECRQCRA; main `c46feca5` has the same tree); the Release sidecar was built from that tree with the repository wrappers. Owned run
-`46d9aee12fc2dd116afafed84353a21d`, receipt schema 39, source policy v33 (inventory v40, 248 files), initial settings with `AllowRectangleChecksumReport: true`,
+`8df25c8c0f658a7a9d8b9ed996763709`, receipt schema 39, source policy v33 (inventory v40, 248 files), initial settings with `AllowRectangleChecksumReport: true`,
 default theme, 40x140, App version 0.13.0 (operator supplied; not independently verified), disposable sidecar `artifacts/sidecar-decrqcra`, stock collector run
-`96fa0d7bbd257844ff068fe56669ad85`, measured 2026-11-10T19:44Z on macOS with Node 24, under the shared desktop-collection lock.
+`ca33e124f4136171261dcf2f8a1e86cd`, measured 2026-11-10T20:00Z on macOS with Node 24, under the shared desktop-collection lock.
 
 | Case | Pinned (parent replay + live pinned code) | Contract | Stock grade (same settings) |
 |---|---|---|---|
@@ -78,7 +78,9 @@ run (33 matched, 7 mismatched: the same seven frozen expectations of features im
 **Predecessors and findings.** Every merged predecessor suite (twenty-four, including column editing) and both finding suites reconfirm in the same run with the
 same outcomes as their own publications; the receipt re-derives all of them.
 
-**Attempts:** the published run is the only attempt.
+**Preserved attempts:** (1) run `46d9aee12fc2dd116afafed84353a21d` (scripts `6669794f`, same App source and sidecar), complete with the same observations;
+superseded because the Sonar review of PR 923 then changed measured scripts (regex literals without control characters, the collector split into helpers), so the
+suite was measured again with the final scripts; retained under `artifacts/terminfo/owned-JYZvJO`. (2) The published run.
 
 ## Layout
 

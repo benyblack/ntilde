@@ -163,12 +163,13 @@ test('every publication file stays small enough to review in one piece', () => {
     }
 });
 
-test('prior publications still rederive beside this batch and the only attempt is the published run', () => {
+test('prior publications still rederive beside this batch and every attempt is preserved', () => {
     const earlier = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-10-column-editing/summary.json', import.meta.url)));
     assert.equal(earlier.receipt.schemaVersion, 38);
     assert.equal(earlier.receipt.rectChecksumEvidence, undefined);
     const { attempts, context } = load().summary;
-    assert.equal(attempts.length, 1);
-    assert.equal(attempts[0].runId, context.runId);
-    assert.equal(attempts[0].receiptCompleted, true);
+    assert.equal(attempts.length, 2);
+    assert.match(attempts[0].outcome, /superseded because the Sonar review/);
+    assert.equal(attempts.at(-1).runId, context.runId);
+    assert.ok(attempts.every(attempt => attempt.receiptCompleted && /^[0-9a-f]{32}$/.test(attempt.runId) && /^[0-9a-f]{40}$/.test(attempt.scriptsRevision)));
 });
