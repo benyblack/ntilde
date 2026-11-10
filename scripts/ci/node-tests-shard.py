@@ -60,7 +60,7 @@ def plan(files, table=None):
     with the least time so far (ties to the earlier shard, then by file name, so it is stable)."""
     table = load_table() if table is None else table
     weight = weights(files, table)
-    totals = {name: 0.0 for name in SHARDS}
+    totals = dict.fromkeys(SHARDS, 0.0)
     totals[REST] = float(table.get("rest_head_start_seconds", 0))
     owner = {}
     for path in sorted(files, key=lambda p: (-weight[p], p)):
