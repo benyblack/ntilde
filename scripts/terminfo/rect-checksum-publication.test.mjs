@@ -78,7 +78,7 @@ test('every exchange returned the exact model reply over the 40x140 screen and c
     assert.equal(reply('page-omitted'), reply('page-oversized'));
     assert.equal(reply('page-parameter'), '\x1bP7!~FEB1\x1b\\', 'the page parameter is not interpreted');
     assert.equal(reply('id-omitted'), '\x1bP0!~FEB1\x1b\\');
-    assert.match(reply('id-largest'), /^\x1bP65535!~/);
+    assert.ok(reply('id-largest').startsWith('\x1bP65535!~'));
     assert.equal(reply('inverted-rows'), '\x1bP7!~0000\x1b\\');
     assert.equal(reply('inverted-cols'), '\x1bP7!~0000\x1b\\');
     assert.deepEqual(record.requests['origin-clip'].rectangle, { top: 2, left: 0, bottom: 39, right: 139 }, 'clipped to the page, not the margins');

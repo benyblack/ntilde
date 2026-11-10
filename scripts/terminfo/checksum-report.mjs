@@ -2,7 +2,8 @@
 // is the right checksum is the contract's business, never this parser's. A complete DA reply orders the exchange and establishes
 // an explicitly absent reply.
 const esc = '\x1b';
-const barrierPattern = /^\x1b\[\?[\d;]+c$/;
+/** A complete DA reply: ESC, then [?, parameters and c (the ESC is checked outside the pattern). */
+const isBarrier = text => typeof text === 'string' && text.startsWith(esc) && /^\[\?[\d;]+c$/.test(text.slice(1));
 /** The longest DCS body (the bytes between ESC P and ST) the exchange retains. */
 const bodyLimit = 48;
 /** Whether `text` is ESC P, at most 48 bytes without ESC, then (when `closed`) ST or (when not) at most a lone trailing ESC. */
@@ -47,14 +48,14 @@ export function parseChecksumReportFrame(bytes) {
         rest = rest.slice(end + 2);
     }
     if (!rest || (esc + '[?').startsWith(rest)) return null;
-    if (barrierPattern.test(rest)) return { barrier: rest, reply };
-    if (!/^\x1b\[\?[\d;]*$/.test(rest)) throw new Error('Unexpected rectangle checksum barrier bytes.');
+    if (isBarrier(rest)) return { barrier: rest, reply };
+    if (!rest.startsWith(esc) || !/^\[\?[\d;]*$/.test(rest.slice(1))) throw new Error('Unexpected rectangle checksum barrier bytes.');
     return null;
 }
 
 /** A retained exchange: its raw reply (or explicit absence) and DA barrier. */
 export function validateChecksumReport(value) {
-    if (!value || typeof value !== 'object' || Object.keys(value).length !== 2 || !barrierPattern.test(value.barrier ?? '')
+    if (!value || typeof value !== 'object' || Object.keys(value).length !== 2 || !isBarrier(value.barrier)
         || value.barrier.length > 128 || !Object.hasOwn(value, 'reply')) {
         throw new Error('Invalid retained rectangle checksum report.');
     }
