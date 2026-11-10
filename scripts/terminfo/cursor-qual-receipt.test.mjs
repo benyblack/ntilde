@@ -14,7 +14,7 @@ const pngs = f => readFileSync(join(f.output, 'curq-snapshots.jsonl'), 'utf8').t
 const rebind = (f, field, file) => { f.evidence.cursorQualEvidence[field] = hash(readFileSync(join(f.output, file))); };
 
 test('a complete run carries the cursor suffix: counts, adapter identity and every retained PNG are rederived without the collector', () => privateClipboardReceiptFixture(f => {
-    assert.equal(f.finish().schemaVersion, 37);
+    assert.equal(f.finish().schemaVersion, 38);
     assert.deepEqual(f.evidence.cursorQualEvidence.counts, { supported: 4 });
     assert.equal(f.context.cursorQualAdapterId, cursorQualAdapterId);
     assert.equal(f.context.cursorQualSuiteId, cursorQualSuiteId);

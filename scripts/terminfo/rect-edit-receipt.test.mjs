@@ -13,7 +13,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const rebind = (f, field, file) => { f.evidence.rectEditEvidence[field] = hash(readFileSync(join(f.output, file))); };
 
 test('a complete run carries the rectangle-editing suffix: counts, adapter identity and the layered derivation are rederived without the collector', () => privateClipboardReceiptFixture(f => {
-    assert.equal(f.finish().schemaVersion, 37);
+    assert.equal(f.finish().schemaVersion, 38);
     assert.deepEqual(f.evidence.rectEditEvidence.counts, { supported: 3 });
     assert.equal(f.context.rectEditAdapterId, rectEditAdapterId);
     assert.equal(f.context.rectEditSuiteId, rectEditSuiteId);

@@ -234,5 +234,10 @@
     "rectEditCollectorSourceSha256": "rect-edit-collector.mjs",
     "rectEditGradingSourceSha256": "rect-edit-grading.mjs",
     "rectEditGradingCollectorSourceSha256": "rect-edit-grading-collector.mjs",
-    "rectEditReceiptSourceSha256": "rect-edit-receipt.mjs"
+    "rectEditReceiptSourceSha256": "rect-edit-receipt.mjs",
+    "colEditContractsSourceSha256": "col-edit-contracts.mjs",
+    "colEditCollectorSourceSha256": "col-edit-collector.mjs",
+    "colEditGradingSourceSha256": "col-edit-grading.mjs",
+    "colEditGradingCollectorSourceSha256": "col-edit-grading-collector.mjs",
+    "colEditReceiptSourceSha256": "col-edit-receipt.mjs"
 }

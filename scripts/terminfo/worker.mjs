@@ -32,6 +32,7 @@ import { collectCursorQualGrading } from './cursor-qual-collector.mjs';
 import { collectEraseCharsHistoryGrading } from './erase-chars-history-collector.mjs';
 import { collectSelectiveEraseGrading } from './selective-erase-collector.mjs';
 import { collectRectEditGrading } from './rect-edit-collector.mjs';
+import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -283,6 +284,14 @@ try {
         const rectEditModule = await import(pathToFileURL(config.rectEditBundle).href);
         const rectEditRun = await collectRectEditGrading({ config, fence, owner, gradingModule: rectEditModule });
         writeFileSync(join(config.output, 'rect-run.json'), JSON.stringify(rectEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered column-editing qualification follows the rectangle-editing suite on the same fence.
+        const colEditSource = readFileSync(config.colEditBundle);
+        if (createHash('sha256').update(colEditSource).digest('hex') !== config.colEditBundleSha256) {
+            throw new Error('Local column-editing adapter bundle changed.');
+        }
+        const colEditModule = await import(pathToFileURL(config.colEditBundle).href);
+        const colEditRun = await collectColEditGrading({ config, fence, owner, gradingModule: colEditModule });
+        writeFileSync(join(config.output, 'cole-run.json'), JSON.stringify(colEditRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

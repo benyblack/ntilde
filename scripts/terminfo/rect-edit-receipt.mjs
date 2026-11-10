@@ -40,10 +40,10 @@ const files = ['rect-observations.json', 'rect-run.json', 'rect-snapshots.jsonl'
 const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
 
 /** Any retained rectangle-editing artifact or declaration requires the v37 suffix, and a
- * policy-v31 run always carries them, because the current worker collects this suite
+ * policy-v31 or policy-v32 run always carries them, because the worker collects this suite
  * unconditionally after the selective-erasure suite. */
 export function includesRectEditEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v31'
+    return ['readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32'].includes(context.sourceSnapshotPolicy)
         || context.rectEditAdapterId !== undefined || context.rectEditSuiteId !== undefined
         || context.rectEditBundleSha256 !== undefined || context.rectEditContractsVersion !== undefined
         || evidence.rectEditEvidence !== undefined
