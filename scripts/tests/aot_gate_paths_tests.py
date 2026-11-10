@@ -2,7 +2,7 @@
 Behaviour matrix for scripts/ci/aot-gate-paths.sh, the path filter behind the aot_gate_detect job.
 
 The filter decides whether mux_daemon_aot runs on a PR, and that job produces the linux-x64
-ntilde-mux binary native_ssh_docker_e2e needs. When it said "false" for a PR that touched only
+ntilde-mux binary remote_persistence_docker_e2e needs. When it said "false" for a PR that touched only
 the E2E tests, the remote-persistence step skipped with a notice and the job stayed green, so
 the tests never ran. Rows here are scoped by directory on purpose: the guard must not be an
 allowlist of file spellings.

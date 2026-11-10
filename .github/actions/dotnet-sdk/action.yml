@@ -1,0 +1,57 @@
+name: .NET SDK (the runner's when global.json accepts it)
+description: >-
+  Uses the hosted image's preinstalled .NET SDK when global.json accepts it, and otherwise
+  restores the cached ~/.dotnet and installs the pinned SDK with setup-dotnet. No NuGet cache:
+  a job that restores packages adds its own "Cache NuGet packages" step.
+
+# The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and ubuntu-latest,
+# 2026-11-01), and global.json's rollForward: latestPatch accepts any 10.0.4xx patch from 10.0.400
+# up. When `dotnet --version` resolves an SDK here, under global.json, the job uses it and skips
+# the cached ~/.dotnet copy (394 MB, ~19 s to unpack on windows) and setup-dotnet's install. When
+# it does not - an image that has moved on from 10.0.4xx, macOS, arm64 - the two steps after this
+# run as before.
+#
+# One action rather than the same three steps in every job: until this existed only `build`,
+# `analyzers` and the Unit Tests shards had the check, and eleven other jobs still spent 56-106 s
+# of every Windows run (Cache .NET SDK plus Setup .NET) installing an SDK the image already had.
+
+outputs:
+  preinstalled:
+    description: "'1' when the runner's own SDK satisfied global.json and nothing was installed."
+    value: ${{ steps.sdk.outputs.preinstalled }}
+
+runs:
+  using: composite
+  steps:
+    - name: Use the runner's .NET SDK if global.json accepts it
+      id: sdk
+      shell: bash
+      run: |
+        if v=$(dotnet --version 2>/dev/null); then
+          echo "Preinstalled SDK $v satisfies global.json; no install needed."
+          echo "preinstalled=1" >> "$GITHUB_OUTPUT"
+        else
+          echo "No preinstalled SDK satisfies global.json; installing one."
+          echo "preinstalled=" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Cache .NET SDK
+      if: steps.sdk.outputs.preinstalled != '1'
+      uses: actions/cache@v4
+      with:
+        path: ~/.dotnet
+        # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH ubuntu-latest (x64)
+        # and ubuntu-24.04-arm, so without the arch an arm64 runner restores the x64 SDK the x64
+        # runner saved and dies on the first exec with `/home/runner/.dotnet/dotnet: 1: ELF: not
+        # found` - a message that names neither the cache nor the architecture. Found the moment
+        # the arm64 leg first ran.
+        key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+        restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Setup .NET
+      if: steps.sdk.outputs.preinstalled != '1'
+      uses: actions/setup-dotnet@v4
+      env:
+        DOTNET_INSTALL_DIR: ~/.dotnet
+      with:
+        global-json-file: global.json
