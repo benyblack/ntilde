@@ -70,13 +70,12 @@ export function syntheticRectChecksumReads() {
     const attributed = { rows: [seedRow, [], attrCells()], cursor: [0, 0] };
     const origin = { ...attributed, cursor: [2, 0], state: { margins: [2, 5], origin: true } };
     const reads = {};
-    let screen = blank;
+    // Each cells group sets the screen its later report groups see; the attribute row exists from the attribute seed on.
+    const setups = { initial: [blank, false], seed: [seeded, false], attrSeed: [attributed, true], originSeed: [origin, true] };
+    let [screen, withAttributes] = setups.initial;
     for (const role of contract.roles) {
-        if (role === 'initial') screen = blank;
-        else if (role === 'seed') screen = seeded;
-        else if (role === 'attrSeed') screen = attributed;
-        else if (role === 'originSeed') screen = origin;
-        const grid = values(screen === attributed || screen === origin);
+        if (Object.hasOwn(setups, role)) [screen, withAttributes] = setups[role];
+        const grid = values(withAttributes);
         reads[role] = { ...screen };
         if (Object.hasOwn(exchanges, role)) reads[role].reply = exchanges[role] && reply(exchanges[role][0], exchanges[role][1], grid);
     }
