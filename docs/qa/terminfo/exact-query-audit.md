@@ -227,13 +227,14 @@ XTGETTCAP (#844) answers from `TerminalCapabilities` in `Ntilde.VT`, the one tab
 what Ntilde advertises beyond `xterm-256color`. The opt-in `xterm-ntilde` terminfo
 entry is generated from the same table, so the two cannot disagree. The table holds
 `Co`/`colors` (256), the `RGB`, `Tc`, `Su` and `hs` flags, and the strings `setrgbf`,
-`setrgbb`, `Smulx`, `Setulc`, `Sync`, `Ss`, `Se`, `Ms`, `tsl` and `fsl`. The terminfo
+`setrgbb`, `Smulx`, `Setulc`, `Sync`, `Ss`, `Se`, `Enmg`, `Dsmg`, `Clmg`, `Cmg`, `Ms`,
+`tsl` and `fsl`. The terminfo
 entry leaves out `Co` (a termcap name), `RGB` (ncurses would read it as direct-color
 `setaf`) and `Ms` (setting- and session-dependent); see
 `packaging/terminfo/README.md`.
 `TerminalCapabilityTests` expands every string value the way curses does and runs it
-through the parser, checking the pen, mode, cursor style, clipboard write or title
-it claims to produce; each entry also lists the owning tests for that feature.
+through the parser, checking the pen, mode, margins, cursor style, clipboard write or
+title it claims to produce; each entry also lists the owning tests for that feature.
 
 Replies follow kitty and foot: one per name, in request order. A string or number
 is reported as `DCS 1 + r name=value ST` with the value as uppercase hex of its
