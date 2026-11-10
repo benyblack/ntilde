@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "beb0ffd35fa8b909902b7437a42b06f18eda04d779861b8355d017a8c24230e3",
+  "matrixSha256": "6523ed644a54a3862d48e8b79c0d898cf69444bac5ccfe38f0f838a61e782027",
   "summary": {
     "totalRows": 116,
     "supportedCount": 54,
@@ -1157,7 +1157,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser",
-      "knownDeviations": "Answers only from \u0060TerminalCapabilities\u0060 (#844): \u0060Co\u0060/\u0060colors\u0060, \u0060RGB\u0060, \u0060Tc\u0060, \u0060setrgbf\u0060/\u0060setrgbb\u0060, \u0060Su\u0060, \u0060Smulx\u0060, \u0060Setulc\u0060, \u0060Sync\u0060, \u0060Ss\u0060/\u0060Se\u0060, \u0060Ms\u0060, \u0060hs\u0060, \u0060tsl\u0060/\u0060fsl\u0060. Every string value is expanded and run through the parser by a test. Names are case-sensitive; \u0060TN\u0060 and capabilities inherited from \u0060xterm-256color\u0060 (such as \u0060kcuu1\u0060) stay negative. A truncated, BEL-terminated, malformed or more-than-16-name list gets one \u0060DCS 0\u002Br ST\u0060; only validated hex is echoed. \u0060Ms\u0060 is answered only while the host accepts OSC 52 writes, so mux sessions never advertise it. Checked with Neovim 0.12.6 (\u0060docs/qa/terminfo/2026-11-05-neovim-capability-check.md\u0060).",
+      "knownDeviations": "Answers only from \u0060TerminalCapabilities\u0060 (#844): \u0060Co\u0060/\u0060colors\u0060, \u0060RGB\u0060, \u0060Tc\u0060, \u0060setrgbf\u0060/\u0060setrgbb\u0060, \u0060Su\u0060, \u0060Smulx\u0060, \u0060Setulc\u0060, \u0060Sync\u0060, \u0060Ss\u0060/\u0060Se\u0060, \u0060Ms\u0060, \u0060Enmg\u0060/\u0060Dsmg\u0060/\u0060Clmg\u0060/\u0060Cmg\u0060, \u0060hs\u0060, \u0060tsl\u0060/\u0060fsl\u0060. Every string value is expanded and run through the parser by a test. Names are case-sensitive; \u0060TN\u0060 and capabilities inherited from \u0060xterm-256color\u0060 (such as \u0060kcuu1\u0060) stay negative. A truncated, BEL-terminated, malformed or more-than-16-name list gets one \u0060DCS 0\u002Br ST\u0060; only validated hex is echoed. \u0060Ms\u0060 is answered only while the host accepts OSC 52 writes, so mux sessions never advertise it. Checked with Neovim 0.12.6 (\u0060docs/qa/terminfo/2026-11-05-neovim-capability-check.md\u0060).",
       "sourceLine": 122
     },
     {
