@@ -603,9 +603,15 @@ function fixtureTemplate() {
     template ??= (async () => {
         const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-template-'));
         process.once('exit', () => rmSync(output, { recursive: true, force: true }));
-        const state = await buildFixture(output);
-        if (JSON.stringify(state).includes(output)) throw new Error('The fixture state names its template directory; it cannot be copied.');
-        return { output, state };
+        try {
+            const state = await buildFixture(output);
+            if (JSON.stringify(state).includes(output)) throw new Error('The fixture state names its template directory; it cannot be copied.');
+            return { output, state };
+        } catch (error) {
+            // A failed build is reported to every test of this process; its directory is not kept until exit.
+            rmSync(output, { recursive: true, force: true });
+            throw error;
+        }
     })();
     return template;
 }
