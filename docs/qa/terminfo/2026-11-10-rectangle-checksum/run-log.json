@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-rectangle-checksum-grading-v1",
+  "probeIds": ["editing.decrqcra"],
+  "cases": [
+    {
+      "caseId": "editing.decrqcra",
+      "feeds": ["\u001b[0\"q\u001b[?5l\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H","ABCDE\u001b[1;1H","\u001b[1;1;1;1;1;5*y","\u001b[1;1;1;1;1;1*y","\u001b[3;1H\u001b[0mP\u001b[0m\u001b[3;3H\u001b[1mB\u001b[0m\u001b[3;5H\u001b[5mK\u001b[0m\u001b[3;7H\u001b[7mR\u001b[0m\u001b[3;9H\u001b[4mU\u001b[0m\u001b[3;11H\u001b[4:3mC\u001b[0m\u001b[3;13H\u001b[4:2mD\u001b[0m\u001b[3;15H\u001b[1;5;7;4mX\u001b[0m\u001b[3;17H\u001b[7m \u001b[0m\u001b[3;19H\u001b[3mI\u001b[0m\u001b[3;21H\u001b[2mF\u001b[0m\u001b[3;23H\u001b[8mH\u001b[0m\u001b[3;25H\u001b[9mS\u001b[0m\u001b[3;27H\u001b[53mO\u001b[0m\u001b[3;29H\u001b[31mr\u001b[0m\u001b[3;31H\u001b[48;2;10;20;30mg\u001b[0m\u001b[3;33H\u001b[38;5;200mp\u001b[0m\u001b[1;1H","\u001b[2;1;3;3;3;3*y","\u001b[2;1;3;5;3;5*y","\u001b[2;1;3;7;3;7*y","\u001b[2;1;3;9;3;9*y","\u001b[2;1;3;11;3;11*y","\u001b[2;1;3;13;3;13*y","\u001b[2;1;3;15;3;15*y","\u001b[2;1;3;17;3;17*y","\u001b[2;1;3;1;3;999*y","\u001b[2;1;3;19;3;33*y","\u001b[7*y","\u001b[7;0;0;0;0;0*y","\u001b[7;;3;5*y","\u001b[7;1;1;1;999;999*y","\u001b[7;9;1;1;1;5*y","\u001b[65535;1;3;1;3;40*y","\u001b[;1;1;1;1;5*y","\u001b[7;1;3;1;2;8*y","\u001b[7;1;1;5;1;1*y","\u001b[?1;1;1;1;1;5*y","\u001b[>1;1;1;1;1;5*y","\u001b[1;1;1;1;1;5;1*y","\u001b[1;1;1:2;1;1;5*y","\u001b[1;1;1;1;1;5$y","\u001b[1;1;1;1;1;5 *y","\u001b[3;6r\u001b[?6h","\u001b[7;1;1;1;2;12*y","\u001b[7;1;1;1;99;999*y","\u001b[7;1;0;0;0;0*y"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP1!~FEB1\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP1!~FFBF\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "cells",
+          "cursor": [0,0]
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FF3E\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FF75\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FF8E\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FF9B\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FFAD\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FFAC\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FEB8\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FFC0\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~E93B\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP2!~FC5E\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~3E0C\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~3E0C\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~758D\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~3E0C\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~FEB1\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP65535!~F5BB\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP0!~FEB1\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~0000\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~0000\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": null
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": null
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": null
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": null
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": null
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [0,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": null
+          }
+        },
+        {
+          "kind": "cells",
+          "cursor": [2,0]
+        },
+        {
+          "kind": "report",
+          "cursor": [2,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~FAF9\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [2,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~61BB\u001b\\"
+            }
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [2,0],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "reply": {
+              "raw": "\u001bP7!~61BB\u001b\\"
+            }
+          }
+        }
+      ],
+      "pinned": {
+        "probeId": "editing.decrqcra",
+        "pass": true,
+        "response": "\u001bP1!~FEB1\u001b\\",
+        "note": "Checks framed reply and request id; checksum arithmetic is not verified",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {"kind":"positive","expected":"Complete four-digit checksum reply for request 1","observed":"\u001bP1!~FEB1\u001b\\"}
+        ]
+      }
+    }
+  ]
+}

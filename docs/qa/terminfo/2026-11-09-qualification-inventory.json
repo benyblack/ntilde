@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 83,
-    "suiteClaims": 85,
+    "uniqueBenchmarkIds": 84,
+    "suiteClaims": 86,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 83,
-    "pinnedAndEffectSupportedIds": 75,
+    "effectSupportedIds": 84,
+    "pinnedAndEffectSupportedIds": 76,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
@@ -58,12 +58,12 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 82,
-    "pinnedSupportedOfStockInconclusive": 74,
+    "effectSupportedOfStockInconclusive": 83,
+    "pinnedSupportedOfStockInconclusive": 75,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 75,
+    "pinnedSupportedIds": 76,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -72,8 +72,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 86,
-      "notPinnedSupported": 94
+      "effectUnqualified": 85,
+      "notPinnedSupported": 93
     }
   },
   "suites": [
@@ -1796,6 +1796,76 @@
         "command": "node --test scripts/terminfo/col-edit-publication.test.mjs",
         "testSha256": "fb006578cd9f3294b35ab2d814a9b537135ada381ed765f44b688b598e8bd1b6"
       }
+    },
+    {
+      "suite": "rect-checksum",
+      "suiteId": "ntilde-owned-rectangle-checksum-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-10-rectangle-checksum/",
+      "doc": "2026-11-10-rectangle-checksum-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "editing.decrqcra"
+      ],
+      "evidence": {
+        "files": 38,
+        "bytes": 558836,
+        "sha256": "9172762d32175fa036e836701c8fb0a5b1fa142d6b2a882b533f8f06e18b40da"
+      },
+      "receipt": {
+        "schemaVersion": 39,
+        "runId": "46d9aee12fc2dd116afafed84353a21d",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "fd0f1866f16bb761ae96d07e6c18402bcea6bcbbc5b70751d215a3e638abba48"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-rectangle-checksum-graded-v1",
+          "file": "csum-observations.json",
+          "sha256": "07c27b715c253060322a2f392c256d9d5e0307029ec012f2821991ec729f291f",
+          "runFile": "csum-run.json",
+          "runSha256": "1cbd8082b7483bcbc945e218efb0fb75d7393be31a1cdf5b0d0e2c5e77c7f7e3",
+          "counts": {
+            "supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "46d9aee12fc2dd116afafed84353a21d",
+        "measuredAt": "2026-11-10T19:44:52.940Z",
+        "appRevision": "7fbffce766c4eb2fbe6fb7065c3549d56e9aac68",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "6669794fd2e3614a46fa3a67883f1ae5a8c8ba12",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "26b2f293fae08f7dc9fc8a50b48d21b9a02033d887176aa3ed9a57bcf73737c7",
+        "gradingAdapterId": "ntilde-owned-rectangle-checksum-grading-v1",
+        "gradingAdapterBundleSha256": "5591668e9f4cc2e401c6ca63d217babfaaa5a8f711d4cc3a4eeb2fbdeef3fbdd",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v33",
+        "sourceSnapshotManifestSha256": "8bd3da201c907490525c18c205d956bc1281f042a008d0a385cb3dc07d441ee2"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "96fa0d7bbd257844ff068fe56669ad85",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "0c64a55c4ac684efb6ecbf6fff65a440f8a06dd299274f5a164fbc569fc8d2c9",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/rect-checksum-publication.test.mjs",
+        "testSha256": "bddb421895a4e71885526127ca04784aa0910b16b45e411ddc8f230652822f6d"
+      }
     }
   ],
   "benchmark": [
@@ -2508,6 +2578,52 @@
             "stored-state"
           ],
           "evidenceTag": "owned-stored-cells"
+        }
+      ]
+    },
+    {
+      "id": "editing.decrqcra",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-checksum",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "rect-checksum",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "editing.decrqcra",
+          "suite": "rect-checksum",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": "Checks framed reply and request id; checksum arithmetic is not verified"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-stored-cells-and-exact-replies"
         }
       ]
     },

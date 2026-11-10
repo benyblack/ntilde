@@ -128,7 +128,11 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
     assert.ok(Object.keys(base.ungradedDiagnostics).every(id => !(id in base.outcomes)));
     for (const suite of stored.suites) {
         assert.ok(['collected-run-id-recorded', 'collected-raw-digest-recorded', 'carried-forward'].includes(suite.stock.basis), suite.suite);
-        if (suite.stock.basis !== 'carried-forward') assert.deepEqual(suite.stock.counts, base.counts, suite.suite);
+        // The rectangle-checksum run turns the off-by-default DECRQCRA report on in its initial settings, so its stock run answers
+        // editing.decrqcra: exactly that one case moves from inconclusive to supported. Every other collected suite matches the baseline.
+        const expected = suite.suite === 'rect-checksum'
+            ? { ...base.counts, inconclusive: base.counts.inconclusive - 1, supported: base.counts.supported + 1 } : base.counts;
+        if (suite.stock.basis !== 'carried-forward') assert.deepEqual(suite.stock.counts, expected, suite.suite);
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock.basis === 'carried-forward');
