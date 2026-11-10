@@ -36,5 +36,6 @@ public sealed class PortForward
                 $"{listen} -> {OpenSshEndpoint.FormatHost(DestinationHost ?? string.Empty)}:{DestinationPort}");
     }
 
+    /// <summary>The kind followed by <see cref="DescribeEndpoints"/>, e.g. "Local localhost:8080 -> db:5432".</summary>
     public override string ToString() => $"{Kind} {DescribeEndpoints()}";
 }

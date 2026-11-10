@@ -51,6 +51,7 @@ public partial class NewSshConnectionView : Window
     private bool _sourcePortEdited;
     private bool _settingSourcePortDefault;
 
+    /// <summary>The combo's selected kind, or Local while nothing is selected yet.</summary>
     private static PortForwardKind KindOrDefault(object? kind) => kind as PortForwardKind? ?? PortForwardKind.Local;
 
     public NewSshConnectionView()
@@ -255,6 +256,7 @@ public partial class NewSshConnectionView : Window
         list.SelectedItem = selected;
     }
 
+    /// <summary>Swaps the listen port between the tunnel and SOCKS defaults until the user edits it.</summary>
     private void OnForwardKindChanged(object? sender, SelectionChangedEventArgs e)
     {
         // The hint, label and destination row are bound to the combo in XAML; only the default
@@ -268,6 +270,7 @@ public partial class NewSshConnectionView : Window
         SetSourcePortDefault(kind == PortForwardKind.Dynamic ? DefaultSocksPort : DefaultTunnelPort);
     }
 
+    /// <summary>Sets the listen port without marking it as edited by the user.</summary>
     private void SetSourcePortDefault(int port)
     {
         if (this.FindControl<NumericUpDown>("ForwardSourcePortInput") is not { } sourcePort)
@@ -286,6 +289,7 @@ public partial class NewSshConnectionView : Window
         }
     }
 
+    /// <summary>Records that the user chose the listen port, so kind switches stop overwriting it.</summary>
     private void OnForwardSourcePortChanged(object? sender, NumericUpDownValueChangedEventArgs e)
     {
         if (!_settingSourcePortDefault)
@@ -294,6 +298,7 @@ public partial class NewSshConnectionView : Window
         }
     }
 
+    /// <summary>Enter anywhere in the add form (except the kind combo) adds the forward.</summary>
     private void OnForwardEditorKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter && e.Source is not ComboBox)
