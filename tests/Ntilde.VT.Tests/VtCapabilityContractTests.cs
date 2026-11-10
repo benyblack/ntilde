@@ -54,6 +54,7 @@ public sealed class VtCapabilityContractTests
             ["delete-column"] = () => AssertColumnEdit("\u001b[2'~", "ABEF  ", "GHKL  "),
             ["scroll-left"] = () => AssertColumnEdit("\u001b[2 @", "CDEF  ", "IJKL  "),
             ["scroll-right"] = () => AssertColumnEdit("\u001b[2 A", "  ABCD", "  GHIJ"),
+            ["rectangle-checksum"] = AssertRectangleChecksum,
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["color-scheme-query"] = AssertColorSchemeQuery,
@@ -90,6 +91,7 @@ public sealed class VtCapabilityContractTests
             ["delete-column"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2'~",
             ["scroll-left"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 @",
             ["scroll-right"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 A",
+            ["rectangle-checksum"] = "ABCDE\u001b[1;1H\u001b[1;1;1;1;1;5*y",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
             ["color-scheme-query"] = "\x1b[?996n",
@@ -124,6 +126,29 @@ public sealed class VtCapabilityContractTests
         Assert.Equal(mnemonic, capability.Mnemonic);
         Assert.Equal(contractCase, capability.ContractCase);
         ContractCases[contractCase]();
+    }
+
+    /// <summary>Pins the advertised partial DECRQCRA contract: silent by default, the checksum reply once the host gate is on.</summary>
+    [Fact]
+    public void Partial_DECRQCRA_catalogue_entry_is_gated_and_has_an_executable_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "CSI:*y");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("DECRQCRA", capability.Mnemonic);
+        Assert.Equal("rectangle-checksum", capability.ContractCase);
+        ContractCases["rectangle-checksum"]();
+    }
+
+    /// <summary>The pinned terminfo.dev seed: A-E sum to 0x14F, so the negated 16-bit checksum is FEB1; the default gate stays silent.</summary>
+    private static void AssertRectangleChecksum()
+    {
+        var silent = new List<string>();
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = silent.Add }.Process("ABCDE\u001b[1;1H\u001b[1;1;1;1;1;5*y");
+        Assert.Empty(silent);
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = responses.Add, AllowRectangleChecksumReport = true }
+            .Process("ABCDE\u001b[1;1H\u001b[1;1;1;1;1;5*y");
+        Assert.Equal("\u001bP1!~FEB1\u001b\\", Assert.Single(responses));
     }
 
     /// <summary>Two seeded rows, the cursor at row 1 column 3: both rows of the default region move and the cursor stays put.</summary>

@@ -445,6 +445,9 @@ namespace Ntilde.VT
                     if (intermediates.SequenceEqual("*")) SelectAttributeChangeExtent(csi);
                     else FillRectangularArea(csi);
                     break;
+                case 'y': // DECRQCRA - Request Checksum of Rectangular Area (only the exact * y identity, behind its gate)
+                    RequestRectangleChecksum(csi);
+                    break;
                 case 'v': // DECCRA - Copy Rectangular Area (only the exact $ v identity)
                     CopyRectangularArea(csi);
                     break;

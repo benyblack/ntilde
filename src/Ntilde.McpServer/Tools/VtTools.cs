@@ -254,6 +254,11 @@ public sealed class VtTools
                 return ExplainAttributeChangeExtent(prefix[..^1]) + note;
             }
 
+            if (finalByte == 'y' && qualifiers == "*")
+            {
+                return ExplainRectangleChecksum(prefix[..^1]) + note;
+            }
+
             if (finalByte is 'x' or 'v' && qualifiers == "$")
             {
                 return ExplainRectangleCopyFill(finalByte, prefix[..^1]) + note;
@@ -522,6 +527,15 @@ public sealed class VtTools
         if (parameters.Any(c => c < '0' || c > '9'))
             return "CSI select-attribute-change-extent form: only one plain parameter is admitted; Ntilde's parser ignores this form.";
         return "CSI sequence, final byte 'x': " + ContractSequenceTable["CSI:*x"];
+    }
+
+    /// <summary>DECRQCRA: up to six plain, possibly omitted parameters; any other shape is ignored by the parser.</summary>
+    private static string ExplainRectangleChecksum(string parameters)
+    {
+        if (parameters.Count(c => c == ';') >= 6
+            || parameters.Any(c => c != ';' && (c < '0' || c > '9')))
+            return "CSI rectangular checksum form: only up to six plain parameters are admitted; Ntilde's parser ignores this form.";
+        return "CSI sequence, final byte 'y': " + ContractSequenceTable["CSI:*y"];
     }
 
     /// <summary>DECIC, DECDC, SL and SR: at most one plain numeric parameter; anything else is ignored by the parser.</summary>

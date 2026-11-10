@@ -90,6 +90,10 @@ namespace Ntilde.Shell
         // profile-scoped opt-in (e.g. disabling for untrusted SSH hosts specifically) is
         // future work rather than a v1 requirement.
         public bool AllowOsc52ClipboardWrite { get; set; } = true;
+        // DECRQCRA rectangle checksum report (CSI Pi;Pg;Pt;Pl;Pb;Pr * y). Default off, as in xterm: the checksum of a
+        // one-cell rectangle names the character in it, so a program answered cell by cell can read back the whole screen,
+        // including earlier commands' output. Direct panes only; persistent (mux) sessions stay silent.
+        public bool AllowRectangleChecksumReport { get; set; }
         // Scroll units forwarded per wheel notch. For own-buffer scrolling this is lines
         // per notch; for a mouse-reporting TUI it is wheel clicks per notch. Higher =
         // smoother/finer (more steps per notch), lower = coarser. Matters most for

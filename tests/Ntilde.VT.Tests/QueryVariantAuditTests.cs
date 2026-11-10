@@ -1,6 +1,10 @@
 namespace Ntilde.VT.Tests;
 
-/// <summary>Exact currently unavailable spellings, not an assertion that their feature families are absent.</summary>
+/// <summary>
+/// Exact spellings unanswered with default settings, not an assertion that their feature families are absent. DECRQCRA is
+/// implemented behind the off-by-default <see cref="AnsiParser.AllowRectangleChecksumReport"/> gate, so with the default
+/// parser this row is the witness that the gate starts off.
+/// </summary>
 public sealed class QueryVariantAuditTests
 {
     public static TheoryData<string, string> UnavailableVariants => new()

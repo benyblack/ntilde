@@ -269,6 +269,15 @@
       "contractCase": "select-attribute-change-extent"
     },
     {
+      "key": "CSI:*y",
+      "mnemonic": "DECRQCRA",
+      "support": "partial",
+      "description": "Off by default: answered only when the host turns on the AllowRectangleChecksumReport setting (a one-cell checksum names that cell's character, so the report can read the screen back); otherwise silent. When on, CSI Pi;Pg;Pt;Pl;Pb;Pr * y replies DCS Pi ! ~ XXXX ST: four uppercase hex digits of the negated 16-bit sum of each cell's Unicode scalar plus bold 0x80, blink 0x40, reverse 0x20 and underline 0x10. Blanks count as spaces, a wide glyph once at its lead cell, combining marks and other attributes add nothing. Omitted Pi is 0; Pg is not interpreted; the rectangle uses the DECERA defaults, DECOM row offset and page clipping, and an inverted rectangle sums nothing. Only the exact unprefixed identity with at most six plain parameters is admitted. Checksum agreement with a particular xterm checksumExtension or a DEC terminal is not claimed. Direct panes only; persistent sessions stay silent.",
+      "matrixFeature": "DECRQCRA (* y)",
+      "evidencePath": "tests/Ntilde.VT.Tests/RectangleChecksumTests.cs",
+      "contractCase": "rectangle-checksum"
+    },
+    {
       "key": "CSI:'}",
       "mnemonic": "DECIC",
       "support": "partial",

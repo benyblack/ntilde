@@ -57,6 +57,7 @@ public sealed class SettingsTools
         | `EnableKittyKeyboardProtocol` | bool | Default true. Kill switch for the kitty keyboard protocol's disambiguate-escape-codes tier (issue #266). When false, key encoding always falls back to legacy sequences and the `CSI ? u` query always reports flags 0, even if a TUI pushed a flag onto the stack. |
         | `AllowOsc52ClipboardWrite` | bool | Default true. Settings gate for OSC 52 and OSC 5522 clipboard **write** (issue #268). OSC 5522 reads require approval or a one-use paste token. When false, a decoded OSC 52 write is not applied to the system clipboard. OSC 52 **read** (answering a query with real clipboard contents) is never implemented regardless of this setting — queries always get an empty-payload denial reply. |
         | `AllowNativeKittyGraphics` | bool | Default true. Allow native (non-tunneled) kitty graphics APC on Windows, where ConPTY was historically assumed to strip image escapes. When true, capability probes are answered OK and images decode; when false, probes get ERR and images are skipped. The OSC 1339 tunnel is unaffected either way. |
+        | `AllowRectangleChecksumReport` | bool | Default false. Answer DECRQCRA (`CSI Pi;Pg;Pt;Pl;Pb;Pr * y`) with `DCS Pi ! ~ XXXX ST`, a 16-bit checksum of the rectangle. Off by default, as in xterm: a one-cell checksum names the character in that cell, so a program can read back the whole screen, including earlier output. Direct panes only. |
         | `WheelLinesPerNotch` | number | > 0 (≤ 0 falls back to 3.0). Default 3.0. |
         | `PaneClosePolicy` | string (enum-like) | e.g. "Confirm", "Force". Type-checked only. |
         | `ShellExitPolicy` | string (enum-like) | "Never"/"Graceful"/"Always". Default "Graceful". What happens to a pane when its shell exits: keep it with a banner, close it on a clean exit, or always close it. "Graceful" closes the pane on exit code 0 only, so closing the last pane of the last tab quits the app the way `exit` does in any terminal. SSH panes ignore this and always keep their reconnect banner. Type-checked only; unrecognised values behave as "Never" (a typo must not be more destructive than the default). |
@@ -127,6 +128,7 @@ public sealed class SettingsTools
           "EnableKittyKeyboardProtocol": true,
           "AllowOsc52ClipboardWrite": true,
           "AllowNativeKittyGraphics": true,
+          "AllowRectangleChecksumReport": false,
           "WheelLinesPerNotch": 3.0,
           "PaneClosePolicy": "Confirm",
           "ShellExitPolicy": "Graceful",
@@ -171,7 +173,7 @@ public sealed class SettingsTools
     {
         "EnableLigatures", "EnableComplexShaping", "CursorBlink", "BellAudioEnabled",
         "BellVisualEnabled", "SmoothScrolling", "AlternateScroll", "EnableLinkDetection", "EnableKittyKeyboardProtocol",
-        "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics",
+        "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics", "AllowRectangleChecksumReport",
         "QuakeModeEnabled",
         "CommandAssistEnabled", "CommandAssistHistoryEnabled", "CommandAssistPassiveBubbleEnabled",
         "CommandAssistShellIntegrationEnabled", "CommandAssistPowerShellIntegrationEnabled",
@@ -197,7 +199,7 @@ public sealed class SettingsTools
         "FontSize", "MaxHistory", "FontFamily", "ThemeName", "WindowOpacity", "UiScale", "BlurEffect",
         "EnableLigatures", "EnableComplexShaping", "MinimumContrast", "CursorStyle", "CursorBlink", "TabStripOrientation", "VerticalTabStripWidth",
         "BellAudioEnabled", "BellVisualEnabled", "SmoothScrolling", "AlternateScroll", "EnableLinkDetection",
-        "EnableKittyKeyboardProtocol", "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics",
+        "EnableKittyKeyboardProtocol", "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics", "AllowRectangleChecksumReport",
         "WheelLinesPerNotch", "PaneClosePolicy", "ShellExitPolicy", "AgentIndicatorTabRollup", "SessionPersistence",
         "Keybindings", "TabTemplateRules",
         "BackgroundImagePath", "BackgroundImageOpacity", "BackgroundImageStretch",
