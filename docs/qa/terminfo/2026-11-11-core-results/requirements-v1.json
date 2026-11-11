@@ -6,15 +6,18 @@
   "upstreamRevision": "4ca7feef1b4f93887e0d02ecf170f87fdc4fe9ba",
   "frozenCatalogueRevision": "2ee594d336a6ac8030e6bc0d938f22361d5e7447",
   "archives": {
-    "owned-run.zip": "cfb6301d19311525c0df236ba1e8ca21ddd7f7e5039ff82b26facdf9f1aaa669",
+    "owned-run.zip": "5b6e5bc880d0680f5ba87c6af6dd4593cdf6b40869c97f3dc2d4299b373eae8a",
     "attempt-1-refused.zip": "2ea9281b9d6133e97afa1487e23beeea62f7a927989f7dcddb0e2107b8591eee",
-    "catalogue-sources.zip": "157a59cf685f8e7779ada3ebef3c074a8c511111aa0935a6d082f68a84996a56"
+    "catalogue-sources.zip": "157a59cf685f8e7779ada3ebef3c074a8c511111aa0935a6d082f68a84996a56",
+    "attempt-2-superseded.zip": "cfb6301d19311525c0df236ba1e8ca21ddd7f7e5039ff82b26facdf9f1aaa669",
+    "attempt-3-superseded.zip": "20aae066fe7619b35990e39df3140c07c3208bf1a103341857524b4d9d6c0a87",
+    "attempt-4-invalid-input.zip": "dc7fa18234f3edcbd0207d3d28adef1a71f71a1d655341d3bab7b0a7bdf34f6d"
   },
   "appSourceManifestSha256": "cb44b698d459edef414869b1573e383f886ff9b5f68a35b0c64d4598564301a1",
   "measurement": {
-    "runId": "ad050e3bafba7f1935f3cc806d301089",
+    "runId": "a326903275d4439257113d05d8450b04",
     "appRevision": "1c3400f492c41fce836575999b2166dcbdbe3a29",
-    "scriptsRevision": "3c5b616f9c7a85a639a4fb55ca9fcfae355b6e33",
+    "scriptsRevision": "3cca8daff5c0cc7474d8ad227a9e0d0be49f32d7",
     "appSrcTree": "9612cbcb3c107ff153120999d1c7e2d819063c68",
     "sourcePolicy": "readonly-owned-source-graph-v35",
     "receiptSchema": 41
@@ -27,8 +30,23 @@
     },
     {
       "runId": "ad050e3bafba7f1935f3cc806d301089",
+      "status": "superseded",
+      "reason": "Valid original receipt and pinned results retained. Codex later found that alternate-only DECOM setup could restore a clean main bank and mask an incomplete API reset. Not used for current positive conclusions."
+    },
+    {
+      "runId": "5e6eb59e16241ce0240d88d14c459817",
+      "status": "superseded",
+      "reason": "Removed dynamic parent callback execution and independently replayed pinned results; complete receipt retained. Superseded by the same later Codex dirty-main DECOM finding."
+    },
+    {
+      "runId": "1d2b4faf9f9f3a09239c8e166e831a59",
+      "status": "invalid",
+      "reason": "Unexpected input at the initial ASCII fence. Stopped before the gap experiments; no semantic verdict or positive claim is taken from this attempt."
+    },
+    {
+      "runId": "a326903275d4439257113d05d8450b04",
       "status": "complete",
-      "reason": "Explicit IRM reset added to the backend API; complete fresh collection, independent report replay and verified cleanup."
+      "reason": "Final API explicitly normalizes the promised modes. Three measured API calls include a standalone dirty main screen and dirty main before alternate entry. Full chain remeasured after independent-replay and Codex control fixes; receipt and cleanup completed."
     }
   ],
   "rows": [
@@ -1518,7 +1536,7 @@
       "catalogueChanged": false,
       "pinnedCriterion": "Actual asynchronous desktop backend reset() call; sequence implementation is retained separately from runner preparation.",
       "criterionMatch": "matched",
-      "rationale": "The independently rederived contract directly observes Actual asynchronous desktop backend reset() call; sequence implementation is retained separately from runner preparation..",
+      "rationale": "Actual desktop backend reset() calls are observed after Hello World, after a dirty main screen, and after entering alternate from a dirty main bank. Origins, insert, wrap, visibility, margins, rendition, cursor and history are checked. The API sequence explicitly normalizes those named modes; a clean main bank cannot mask DECOM.",
       "evidence": [
         {
           "file": "cg-observations.json",

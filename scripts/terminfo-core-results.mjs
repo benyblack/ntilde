@@ -10,7 +10,7 @@ import { completeOwnedReceipt } from './terminfo/receipt.mjs';
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const publication = 'docs/qa/terminfo/2026-11-11-core-results';
-export const mappingSha256 = '889c9c06c756d6ec5864928ed5e9573ccb60e331ae49446b1617ce11dcce1b72';
+export const mappingSha256 = '400e1911272c8f311347f6b99d70a8ab28c088dc09e4fa86460470ac174c63b2';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (condition, reason) => { if (!condition) throw new Error('Core results: ' + reason); };
 const read = path => JSON.parse(readFileSync(path));
@@ -150,6 +150,7 @@ function qualifiedPinnedVerdict(source) {
 export function deriveReport(directory, mapping, identity) {
     const raw = read(join(directory, 'raw.json'));
     const core = read(join(directory, 'cg-observations.json'));
+    const launchProfile = read(join(directory, 'initial-settings.json')).Profiles[0];
     const geometry = { rows: core.snapshots[0].screen.rows, cols: core.snapshots[0].screen.cols };
     const rows = mapping.rows.map(entry => {
         const sources = entry.evidence.map(ref => qualifiedSource(directory, ref, raw, geometry));
@@ -180,7 +181,8 @@ export function deriveReport(directory, mapping, identity) {
         measurement: { ...mapping.measurement, stockRunId: raw.runId, startedAt: identity.context.startedAt,
             executableSha256: identity.context.executableSha256, assemblySha256: identity.context.assemblySha256,
             sourceSnapshotManifestSha256: identity.context.sourceSnapshotManifestSha256, geometry,
-            initialSettingsSha256: identity.context.initialSettingsSha256, child: core.child,
+            initialSettingsSha256: identity.context.initialSettingsSha256,
+            launchProfile: { id: launchProfile.Id, name: launchProfile.Name, type: launchProfile.Type }, child: core.child,
             appVersion: identity.context.appVersion, appVersionSource: identity.context.appVersionSource,
             rawIdentity: raw.identity, suiteComplete: raw.suiteComplete },
         mappingSha256, archives: mapping.archives, attempts: mapping.attempts,
@@ -198,14 +200,14 @@ export function readable(report, mapping) {
         `Owned run \`${m.runId}\`; stock run \`${m.stockRunId}\`; started ${m.startedAt}. App source \`${m.appRevision}\`, scripts \`${m.scriptsRevision}\`, receipt ${m.receiptSchema}, source policy \`${m.sourcePolicy}\`. The App was built with the repository wrapper; later integration of CI-only changes did not change its source tree. The app version ${m.appVersion} is operator supplied, not independently verified. The raw collector identity remains \`${m.rawIdentity}\` and suiteComplete remains \`${m.suiteComplete}\`; the independent receipt binds the disposable measured process, executable/assembly digests, source graph, settings, geometry and cleanup.`, '',
         '## Four gaps', '',
         '- **RI:** newly verified existing behavior. Exact pinned MARKER fixture, whole viewport before/after, blank top row, downward shifts, discarded bottom row, cursor and margins; separate interior-region and below-boundary controls. This is distinct from scrollback.reverse-index.',
-        '- **reset():** a new explicit asynchronous desktop backend API, implemented by a retained sequence and called twice under measurement. The dirty experiment seeds history, alternate buffer, origin mode, margins, insert mode, disabled wrap, hidden cursor and styling. Attempt 1 exposed IRM surviving RIS; the API now explicitly resets IRM. The pinned Hello World test and the broader clean-state promise both pass. This qualifies that named adapter API, not an upstream stock App reset endpoint or RIS alone.',
+        '- **reset():** a new explicit asynchronous desktop backend API, implemented by a retained sequence and called three times under measurement. The dirty experiment seeds history, alternate buffer, origin mode, margins, insert mode, disabled wrap, hidden cursor and styling. Attempt 1 exposed IRM surviving RIS, and Codex found that alternate-only DECOM setup could restore a clean main bank. The API now explicitly normalizes the promised modes; standalone dirty-main and dirty-main-before-alternate controls prevent that masking. The pinned Hello World test and the broader clean-state promise both pass. This qualifies that named adapter API, not an upstream stock App reset endpoint or RIS alone.',
         '- **TERM:** actual child output is retained on the qualified screen and bound to the independently proved worker, run and disposable launch profile. It reports xterm-256color without switching profiles. Upstream remains manual/ungraded; this independent environment conclusion is included in the 80-row denominator.',
         '- **OSC 1:** new bounded read-only production observation; existing parser behavior newly verified. Distinct icon payloads, OSC 2 title independence, icon-only stack restoration, unrelated cells/cursor and original title/icon restoration pass. Parser icon state, stack and actual tab title are distinct observations. Host icon presentation is not claimed. The pinned callback remains diagnostic/inconclusive.', '',
         '## Reproduce and validate', '', '```sh', 'node scripts/terminfo-core-results.mjs --check',
         'node scripts/terminfo-core-results.mjs --assert-current-source',
         'node --test scripts/terminfo/core-gaps.test.mjs scripts/terminfo/core-results.test.mjs', '```', '',
         'Requires Node 24+ and Python 3; no desktop, network, git history or archived-code execution is needed for --check. The command validates archive/mapping digests, extracts bounded data, reissues the complete receipt with trusted graders, rebuilds all 80 rows and compares JSON and Markdown. --assert-current-source additionally verifies the integrated checkout against the measured production-source manifest. The frozen historical publications remain unchanged.', '',
-        'Sources: [current Core list](https://terminfo.dev/baseline/core), [current catalogue](https://github.com/beorn/terminfo.dev/blob/' + mapping.upstreamRevision + '/content/features.json). The versioned [mapping](requirements-v1.json) contains all exact site criteria, current catalogue criteria, frozen-catalogue differences, evidence references and per-row match rationales. [Catalogue source bytes](catalogue-sources.zip), [complete owned evidence](owned-run.zip), [refused first attempt](attempt-1-refused.zip), [machine-readable report](report.json), [production-source manifest](app-source-manifest.json).', '',
+        'Sources: [current Core list](https://terminfo.dev/baseline/core), [current catalogue](https://github.com/beorn/terminfo.dev/blob/' + mapping.upstreamRevision + '/content/features.json). The versioned [mapping](requirements-v1.json) contains all exact site criteria, current catalogue criteria, frozen-catalogue differences, evidence references and per-row match rationales. [Catalogue source bytes](catalogue-sources.zip), [complete owned evidence](owned-run.zip), [refused first attempt](attempt-1-refused.zip), [superseded run 2](attempt-2-superseded.zip), [superseded run 3](attempt-3-superseded.zip), [invalid-input attempt](attempt-4-invalid-input.zip), [machine-readable report](report.json), [production-source manifest](app-source-manifest.json).', '',
         'The seven remaining criteria are listed in the rows below. They are missing or mismatched experiments, so no terminal failure is inferred. The three stock-inconclusive-by-design scrolling cases (set-region, alt-screen, decstbm-reset) use their separately identified same-run effect contracts; their original pinned inconclusive verdicts are preserved.', '',
         '## All 80 Core requirements', '', '| Exact ID / current site requirement | Core | Layer / evidence | Pinned stock / qualified; effect | Match / limitation |', '|---|---|---|---|---|'];
     for (const row of report.rows) {
