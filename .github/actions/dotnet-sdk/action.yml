@@ -1,8 +1,10 @@
 name: .NET SDK (the runner's when global.json accepts it)
 description: >-
   Uses the hosted image's preinstalled .NET SDK when global.json accepts it, and otherwise
-  restores the cached ~/.dotnet and installs the pinned SDK with setup-dotnet. No NuGet cache:
-  a job that restores packages adds its own "Cache NuGet packages" step.
+  restores the cached ~/.dotnet and installs the pinned SDK with setup-dotnet. On windows it also
+  puts the NuGet package folder on the workspace disk (NUGET_PACKAGES). No NuGet cache: a job
+  that restores packages adds its own "Cache NuGet packages" step, whose path must be
+  `${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}` (scripts/tests/nuget_cache_path_tests.py).
 
 # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and ubuntu-latest,
 # 2026-11-01), and global.json's rollForward: latestPatch accepts any 10.0.4xx patch from 10.0.400
@@ -18,6 +20,25 @@ description: >-
 runs:
   using: composite
   steps:
+    # The NuGet package folder on the workspace disk (D:, under RUNNER_TEMP) rather than in the
+    # profile on C:. C: is the OS disk and much slower at writing many small files: run
+    # 43004464469 (PR #936) copied the 4,759-file package folder in 21.8 s onto C: and 3.1 s onto
+    # D:, built the solution in 109 s with everything on C: and 92 s on D:, and the AOT Gate's
+    # NuGet cache spent 20 s of its 26 s step unpacking onto C:. A Dev Drive measured no better
+    # than D: (2.3 s, 98 s): Windows Defender, which a Dev Drive is mostly about, is already off
+    # on the hosted runners.
+    #
+    # An env var rather than a path, so every later dotnet command and the job's NuGet cache step
+    # use the same folder. A cache step that kept ~/.nuget/packages here would restore into a
+    # folder nothing reads and, on a miss, save an empty one; the self-test refuses that.
+    - name: Keep NuGet packages on the workspace disk (windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $packages = Join-Path $env:RUNNER_TEMP 'nuget-packages'
+        "NUGET_PACKAGES=$packages" >> $env:GITHUB_ENV
+        Write-Output "NuGet packages go to $packages"
+
     - name: Use the runner's .NET SDK if global.json accepts it
       id: sdk
       shell: bash
