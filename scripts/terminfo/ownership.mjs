@@ -142,7 +142,7 @@ export function requestOwner(config, kind, extra = {}) {
         /** Parse the first capped response line; malformed or refused replies never become ownership evidence. */
         socket.on('data', chunk => {
             buffer += chunk;
-            const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize|saved|metadata|input|images|sels|cole|csum|lrmm|crst|shi)-/.test(kind) || (typeof kind === 'string' && kind.startsWith('cw-')) ? 512 * 1024 : 16384;
+            const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize|saved|metadata|input|images|sels|cole|csum|lrmm|crst|shi|lnk)-/.test(kind) || (typeof kind === 'string' && kind.startsWith('cw-')) ? 512 * 1024 : 16384;
             if (Buffer.byteLength(buffer) > limit) return finish(new Error('Oversized owner response.'));
             if (!buffer.includes('\n')) return;
             try {
@@ -155,7 +155,8 @@ export function requestOwner(config, kind, extra = {}) {
                         || (kind === 'images-start' && response.code === 'imageGeometryUnavailable')
                         || (kind === 'saved-start' && response.code === 'savedGeometryUnavailable')
                         || (kind === 'metadata-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
-                        || (kind === 'shi-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))) error.code = response.code;
+                        || (kind === 'shi-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
+                        || (kind === 'lnk-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))) error.code = response.code;
                     return finish(error);
                 }
                 finish(null, response);

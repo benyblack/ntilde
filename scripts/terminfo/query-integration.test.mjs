@@ -11,8 +11,8 @@ import { historicalArchive } from './fixtures/captured-sources.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
 test('live query graph includes all query and shared-scanner dependencies under its next fixed policy', () => {
-    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v44');
-    assert.equal(Object.keys(ownedSourceFiles).length, 295);
+    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v45');
+    assert.equal(Object.keys(ownedSourceFiles).length, 300);
     for (const file of ['queries.mjs', 'query-capture.mjs', 'query-collector.mjs', 'query-receipt.mjs', 'query-witness-cases.mjs', 'query-witness-frame.mjs', 'source-imports.mjs'])
         assert.ok(Object.values(ownedSourceFiles).includes(file), file);
 });
@@ -40,11 +40,11 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
             }
             if (policy) {
                 const path = join(modules, 'owned-sources.mjs'); writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v45';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v46';"));
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 296 : 295); assert.equal(Object.keys(sources.capturedV11SourceFiles).length, 74);
-            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v45' : 'readonly-owned-source-graph-v44');
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 301 : 300); assert.equal(Object.keys(sources.capturedV11SourceFiles).length, 74);
+            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v46' : 'readonly-owned-source-graph-v45');
             const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href);
             const receipt = next.completeOwnedReceipt(f.output, join(f.output, 'removed-fixture'), f.evidence);
             assert.equal(receipt.schemaVersion, 11); assert.deepEqual(receipt.queryEvidence.counts, { matched: 40 });
