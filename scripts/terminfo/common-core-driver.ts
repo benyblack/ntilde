@@ -1,6 +1,10 @@
 // Parent-owned local native launch adapter. This file never assigns feature verdicts.
 import { pollCommonCore } from './common-core-poll.mjs';
-import { spawnCommonCoreApplication } from './common-core-process.mjs';
+import {
+    spawnCommonCoreApplication,
+    commonCoreCollectionReady,
+    assertCommonCoreLaunchKnown,
+} from './common-core-process.mjs';
 import { publishCommonCoreJson } from './common-core-handshake.mjs';
 import { terminateCommonCoreOwner } from './common-core-cleanup.mjs';
 import { commonCoreGit, assertCleanCommonCoreSource } from './common-core-tools.mjs';
@@ -100,6 +104,7 @@ writeFileSync(
 );
 closeSync(lockFd);
 let applicationState: any;
+let launchAttempted = false;
 let launch: any, windowId: number | undefined, worker: any, ownedWindow: any;
 const nativeApps: Record<string, string> = { iterm2: '/Applications/iTerm.app', ghostty: '/Applications/Ghostty.app' };
 const appPath = nativeApps[appId];
@@ -272,6 +277,7 @@ try {
             readFileSync(prepared.marker.value, 'utf8') + 'window-width = 140\nwindow-height = 41\n',
             { mode: 0o600 },
         );
+        launchAttempted = true;
         launch = launchPreparedCli(prepared, output);
     } else if (appId === 'iterm2') {
         const apple = `tell application "iTerm"
@@ -298,9 +304,11 @@ print(json.dumps({'source':'iTerm default profile display fields only','fields':
         );
         write('display-settings.json', JSON.parse(displaySettings));
         write('launch-request.json', { command: 'osascript', args: ['-e', apple] });
-        windowId = Number(String(execFileSync('/usr/bin/osascript', ['-e', apple], { timeout: 30000 })).trim());
-        if (!Number.isSafeInteger(windowId) || windowId < 1)
+        launchAttempted = true;
+        const launchedId = Number(String(execFileSync('/usr/bin/osascript', ['-e', apple], { timeout: 30000 })).trim());
+        if (!Number.isSafeInteger(launchedId) || launchedId < 1)
             throw new Error('iTerm returned no newly owned window id.');
+        windowId = launchedId;
         execFileSync(
             '/usr/bin/osascript',
             [
@@ -341,6 +349,7 @@ end tell`,
         };
         writeFileSync(join(appData, 'settings.json'), JSON.stringify(settings), { flag: 'wx', mode: 0o600 });
         const log = openSync(join(output, 'app-output.log'), 'wx', 0o600);
+        launchAttempted = true;
         applicationState = spawnCommonCoreApplication(executable, [`--ntilde-terminfo-owner=${runId}`], {
             cwd: dirname(executable),
             env: { ...process.env, NTILDE_APPDATA_ROOT: appData },
@@ -438,13 +447,16 @@ end tell`,
     const complete = join(output, 'worker-complete.json'),
         error = join(output, 'worker-error.json');
     // Match the upstream native macOS job's 25-minute collection bound.
+    const { processCommand } = await importUpstream('packages/terminfo.dev/src/owned-process.ts');
     await pollCommonCore(
-        () => {
-            if (applicationState?.error) throw applicationState.error;
-            if (existsSync(error)) throw new Error(readFileSync(error, 'utf8'));
-            return existsSync(complete);
-        },
-        { timeoutMs: 25 * 60000, intervalMs: 250, message: 'Upstream Core collection exceeded 25 minutes.' },
+        () =>
+            commonCoreCollectionReady({
+                completed: () => existsSync(complete),
+                failure: () =>
+                    applicationState?.error ?? (existsSync(error) ? new Error(readFileSync(error, 'utf8')) : null),
+                running: () => processCommand(worker.pid)?.includes(join(output, 'config.json')) === true,
+            }),
+        { timeoutMs: 25 * 60000, intervalMs: 1000, message: 'Upstream Core collection exceeded 25 minutes.' },
     );
     assertCleanCommonCoreSource(upstream, upstreamRevision);
     const stableHarness = harnessNames.every(
@@ -594,6 +606,7 @@ async function closeRunOwner() {
         return true;
     }
     if (!launch) {
+        assertCommonCoreLaunchKnown(launchAttempted);
         return false;
     }
     await closeCLIWithFallback();
@@ -652,6 +665,9 @@ async function cleanupLaunch() {
         failures.push(String(error));
     }
     try {
+        if (!worker && launchAttempted && !ownedWindowAbsent) {
+            throw new Error('Worker exit is unverified after an unconfirmed launch.');
+        }
         await confirmWorkerExit();
         workerExited = true;
     } catch (error) {
