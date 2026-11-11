@@ -28,10 +28,10 @@
       }
     },
     "idParameter": {
-      "sent": "osc8-48abc463",
-      "observed": ["osc8-48abc463"],
-      "uriSent": "https://example.invalid/osc8-id-48abc463",
-      "uriObserved": ["https://example.invalid/osc8-id-48abc463"]
+      "sent": "osc8-8c948815",
+      "observed": ["osc8-8c948815"],
+      "uriSent": "https://example.invalid/osc8-id-8c948815",
+      "uriObserved": ["https://example.invalid/osc8-id-8c948815"]
     },
     "twoLinks": {
       "runs": [
@@ -39,14 +39,14 @@
           "row": 2,
           "col": 1,
           "length": 3,
-          "uri": "https://example.invalid/osc8-one-48abc463",
+          "uri": "https://example.invalid/osc8-one-8c948815",
           "id": null
         },
         {
           "row": 2,
           "col": 4,
           "length": 3,
-          "uri": "https://example.invalid/osc8-two-48abc463",
+          "uri": "https://example.invalid/osc8-two-8c948815",
           "id": null
         }
       ],
@@ -64,11 +64,11 @@
           "row": 0,
           "col": 1,
           "length": 4,
-          "uri": "https://example.invalid/osc8-second-48abc463",
+          "uri": "https://example.invalid/osc8-second-8c948815",
           "id": null
         }
       ],
-      "secondUriSent": "https://example.invalid/osc8-second-48abc463"
+      "secondUriSent": "https://example.invalid/osc8-second-8c948815"
     },
     "sameAnchor": {
       "runs": [
@@ -76,15 +76,15 @@
           "row": 3,
           "col": 0,
           "length": 2,
-          "uri": "https://example.invalid/osc8-id-48abc463",
-          "id": "osc8-48abc463"
+          "uri": "https://example.invalid/osc8-id-8c948815",
+          "id": "osc8-8c948815"
         },
         {
           "row": 3,
           "col": 3,
           "length": 2,
-          "uri": "https://example.invalid/osc8-id-48abc463",
-          "id": "osc8-48abc463"
+          "uri": "https://example.invalid/osc8-id-8c948815",
+          "id": "osc8-8c948815"
         }
       ],
       "identities": [0,0]
@@ -133,7 +133,7 @@
       "id": "extensions.osc8/stock",
       "name": "stock",
       "role": "stock",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -146,8 +146,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -187,8 +187,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -214,7 +214,7 @@
       "id": "extensions.osc8/effect",
       "name": "effect",
       "role": "effect",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[5;1Hlater"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[5;1Hlater"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -227,8 +227,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -250,8 +250,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [9,42],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -271,8 +271,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -294,8 +294,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -315,8 +315,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -356,8 +356,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -386,8 +386,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -427,8 +427,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [4,5],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -454,7 +454,7 @@
       "id": "extensions.osc8/gate-close",
       "name": "gate-close",
       "role": "gate",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;\u0007LINK\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;\u0007LINK\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -467,8 +467,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -490,8 +490,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -504,7 +504,7 @@
       ],
       "priorObserved": {
         "cwd": "/ntilde-qa/osc78-base",
-        "title": "LK-base-48abc463",
+        "title": "LK-base-8c948815",
         "links": []
       }
     },
@@ -512,7 +512,7 @@
       "id": "extensions.osc8/id",
       "name": "id",
       "role": "required",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[2;1HB\u001b]8;id=osc8-48abc463;https://example.invalid/osc8-id-48abc463\u0007IDLN\u001b]8;;\u0007Y"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[2;1HB\u001b]8;id=osc8-8c948815;https://example.invalid/osc8-id-8c948815\u0007IDLN\u001b]8;;\u0007Y"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -525,8 +525,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -541,8 +541,8 @@
                     "col": 1,
                     "length": 4,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-id-48abc463",
-                    "id": "osc8-48abc463"
+                    "uri": "https://example.invalid/osc8-id-8c948815",
+                    "id": "osc8-8c948815"
                   }
                 ],
                 "observed": [
@@ -551,8 +551,8 @@
                     "col": 1,
                     "length": 4,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-id-48abc463",
-                    "id": "osc8-48abc463"
+                    "uri": "https://example.invalid/osc8-id-8c948815",
+                    "id": "osc8-8c948815"
                   }
                 ],
                 "match": true
@@ -566,8 +566,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [1,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -575,8 +575,8 @@
                   "col": 1,
                   "length": 4,
                   "identity": 0,
-                  "uri": "https://example.invalid/osc8-id-48abc463",
-                  "id": "osc8-48abc463"
+                  "uri": "https://example.invalid/osc8-id-8c948815",
+                  "id": "osc8-8c948815"
                 }
               ],
               "alternateScreen": false,
@@ -593,7 +593,7 @@
       "id": "extensions.osc8/two-links",
       "name": "two-links",
       "role": "required",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[3;1HA\u001b]8;;https://example.invalid/osc8-one-48abc463\u0007one\u001b]8;;https://example.invalid/osc8-two-48abc463\u0007two\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[3;1HA\u001b]8;;https://example.invalid/osc8-one-8c948815\u0007one\u001b]8;;https://example.invalid/osc8-two-8c948815\u0007two\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -606,8 +606,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -622,7 +622,7 @@
                     "col": 1,
                     "length": 3,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-one-48abc463",
+                    "uri": "https://example.invalid/osc8-one-8c948815",
                     "id": null
                   },
                   {
@@ -630,7 +630,7 @@
                     "col": 4,
                     "length": 3,
                     "identity": 1,
-                    "uri": "https://example.invalid/osc8-two-48abc463",
+                    "uri": "https://example.invalid/osc8-two-8c948815",
                     "id": null
                   }
                 ],
@@ -640,7 +640,7 @@
                     "col": 1,
                     "length": 3,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-one-48abc463",
+                    "uri": "https://example.invalid/osc8-one-8c948815",
                     "id": null
                   },
                   {
@@ -648,7 +648,7 @@
                     "col": 4,
                     "length": 3,
                     "identity": 1,
-                    "uri": "https://example.invalid/osc8-two-48abc463",
+                    "uri": "https://example.invalid/osc8-two-8c948815",
                     "id": null
                   }
                 ],
@@ -663,8 +663,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [2,8],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -672,7 +672,7 @@
                   "col": 1,
                   "length": 3,
                   "identity": 0,
-                  "uri": "https://example.invalid/osc8-one-48abc463",
+                  "uri": "https://example.invalid/osc8-one-8c948815",
                   "id": null
                 },
                 {
@@ -680,7 +680,7 @@
                   "col": 4,
                   "length": 3,
                   "identity": 1,
-                  "uri": "https://example.invalid/osc8-two-48abc463",
+                  "uri": "https://example.invalid/osc8-two-8c948815",
                   "id": null
                 }
               ],
@@ -698,7 +698,7 @@
       "id": "extensions.osc8/stale",
       "name": "stale",
       "role": "required",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.invalid/osc8-second-48abc463\u0007LINK\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.invalid/osc8-second-8c948815\u0007LINK\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -711,8 +711,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -752,8 +752,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -782,8 +782,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -805,8 +805,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -826,8 +826,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -842,7 +842,7 @@
                     "col": 1,
                     "length": 4,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-second-48abc463",
+                    "uri": "https://example.invalid/osc8-second-8c948815",
                     "id": null
                   }
                 ],
@@ -852,7 +852,7 @@
                     "col": 1,
                     "length": 4,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-second-48abc463",
+                    "uri": "https://example.invalid/osc8-second-8c948815",
                     "id": null
                   }
                 ],
@@ -867,8 +867,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -876,7 +876,7 @@
                   "col": 1,
                   "length": 4,
                   "identity": 0,
-                  "uri": "https://example.invalid/osc8-second-48abc463",
+                  "uri": "https://example.invalid/osc8-second-8c948815",
                   "id": null
                 }
               ],
@@ -894,7 +894,7 @@
       "id": "extensions.osc8/same-anchor",
       "name": "same-anchor",
       "role": "observed",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[4;1H\u001b]8;id=osc8-48abc463;https://example.invalid/osc8-id-48abc463\u0007ab\u001b]8;;\u0007-\u001b]8;id=osc8-48abc463;https://example.invalid/osc8-id-48abc463\u0007cd\u001b]8;;\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[4;1H\u001b]8;id=osc8-8c948815;https://example.invalid/osc8-id-8c948815\u0007ab\u001b]8;;\u0007-\u001b]8;id=osc8-8c948815;https://example.invalid/osc8-id-8c948815\u0007cd\u001b]8;;\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -907,8 +907,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -923,16 +923,16 @@
                     "col": 0,
                     "length": 2,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-id-48abc463",
-                    "id": "osc8-48abc463"
+                    "uri": "https://example.invalid/osc8-id-8c948815",
+                    "id": "osc8-8c948815"
                   },
                   {
                     "row": 3,
                     "col": 3,
                     "length": 2,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-id-48abc463",
-                    "id": "osc8-48abc463"
+                    "uri": "https://example.invalid/osc8-id-8c948815",
+                    "id": "osc8-8c948815"
                   }
                 ],
                 "observed": [
@@ -941,16 +941,16 @@
                     "col": 0,
                     "length": 2,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-id-48abc463",
-                    "id": "osc8-48abc463"
+                    "uri": "https://example.invalid/osc8-id-8c948815",
+                    "id": "osc8-8c948815"
                   },
                   {
                     "row": 3,
                     "col": 3,
                     "length": 2,
                     "identity": 0,
-                    "uri": "https://example.invalid/osc8-id-48abc463",
-                    "id": "osc8-48abc463"
+                    "uri": "https://example.invalid/osc8-id-8c948815",
+                    "id": "osc8-8c948815"
                   }
                 ],
                 "match": true
@@ -964,8 +964,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [3,5],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -973,16 +973,16 @@
                   "col": 0,
                   "length": 2,
                   "identity": 0,
-                  "uri": "https://example.invalid/osc8-id-48abc463",
-                  "id": "osc8-48abc463"
+                  "uri": "https://example.invalid/osc8-id-8c948815",
+                  "id": "osc8-8c948815"
                 },
                 {
                   "row": 3,
                   "col": 3,
                   "length": 2,
                   "identity": 0,
-                  "uri": "https://example.invalid/osc8-id-48abc463",
-                  "id": "osc8-48abc463"
+                  "uri": "https://example.invalid/osc8-id-8c948815",
+                  "id": "osc8-8c948815"
                 }
               ],
               "alternateScreen": false,
@@ -995,7 +995,7 @@
       ],
       "priorObserved": {
         "cwd": "/ntilde-qa/osc78-base",
-        "title": "LK-base-48abc463",
+        "title": "LK-base-8c948815",
         "links": []
       }
     },
@@ -1003,7 +1003,7 @@
       "id": "extensions.osc8/st-terminator",
       "name": "st-terminator",
       "role": "observed",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u001b\\LINK\u001b]8;;\u001b\\Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u001b\\LINK\u001b]8;;\u001b\\Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -1016,8 +1016,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-48abc463",
-                "observed": "LK-base-48abc463",
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
                 "match": true
               },
               "cwd": {
@@ -1057,8 +1057,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0,6],
-              "title": "LK-base-48abc463",
-              "displayTitle": "LK-base-48abc463",
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [
                 {
@@ -1080,7 +1080,7 @@
       ],
       "priorObserved": {
         "cwd": "/ntilde-qa/osc78-base",
-        "title": "LK-base-48abc463",
+        "title": "LK-base-8c948815",
         "links": []
       }
     }
@@ -1141,6 +1141,10 @@
     ],
     "required": [
       {
+        "id": "stock-pinned-fixture",
+        "held": true
+      },
+      {
         "id": "pinned-fixture-effect",
         "held": true
       },
@@ -1161,7 +1165,7 @@
         "held": true
       }
     ],
-    "notes": ["Prepared baseline read: every fact as predicted."],
+    "notes": ["Stock read (the exact pinned fixture): every fact as predicted."],
     "attribution": "separately identified Ntilde effect contract; not the pinned probe"
   },
   "divergences": [

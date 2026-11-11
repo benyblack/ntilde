@@ -5,7 +5,7 @@
   "experiments": [
     {
       "caseId": "extensions.osc7-cwd/stock",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9"],
       "barriers": ["\u001b[?62;4;22c"],
       "reads": [
         {
@@ -16,7 +16,7 @@
     },
     {
       "caseId": "extensions.osc7-cwd/effect",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[2;1Hosc7-ordinary","\u001b]7;file://localhost/ntilde-qa/osc7-48abc463/first\u0007","\u001b]7;file://localhost/ntilde-qa/osc7-48abc463/second\u0007","\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[2;1Hosc7-ordinary","\u001b]7;file://localhost/ntilde-qa/osc7-8c948815/first\u0007","\u001b]7;file://localhost/ntilde-qa/osc7-8c948815/second\u0007","\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -43,7 +43,7 @@
     },
     {
       "caseId": "extensions.osc7-cwd/space",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]7;file://localhost/ntilde-qa/osc7%20space/48abc463\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]7;file://localhost/ntilde-qa/osc7%20space/8c948815\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -54,7 +54,7 @@
     },
     {
       "caseId": "extensions.osc7-cwd/gate-title",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]2;LK-title-48abc463\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]2;LK-title-8c948815\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -65,7 +65,7 @@
     },
     {
       "caseId": "extensions.osc7-cwd/authority",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]7;file://remote-host.example/ntilde-qa/osc7-authority/48abc463\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]7;file://remote-host.example/ntilde-qa/osc7-authority/8c948815\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -76,7 +76,7 @@
     },
     {
       "caseId": "extensions.osc7-cwd/st-terminator",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]7;file://localhost/ntilde-qa/osc7-48abc463/first\u001b\\"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]7;file://localhost/ntilde-qa/osc7-8c948815/first\u001b\\"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -87,7 +87,7 @@
     },
     {
       "caseId": "extensions.osc8/stock",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -98,7 +98,7 @@
     },
     {
       "caseId": "extensions.osc8/effect",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[5;1Hlater"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[5;1Hlater"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -121,7 +121,7 @@
     },
     {
       "caseId": "extensions.osc8/gate-close",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;\u0007LINK\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;\u0007LINK\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -132,7 +132,7 @@
     },
     {
       "caseId": "extensions.osc8/id",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[2;1HB\u001b]8;id=osc8-48abc463;https://example.invalid/osc8-id-48abc463\u0007IDLN\u001b]8;;\u0007Y"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[2;1HB\u001b]8;id=osc8-8c948815;https://example.invalid/osc8-id-8c948815\u0007IDLN\u001b]8;;\u0007Y"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -143,7 +143,7 @@
     },
     {
       "caseId": "extensions.osc8/two-links",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[3;1HA\u001b]8;;https://example.invalid/osc8-one-48abc463\u0007one\u001b]8;;https://example.invalid/osc8-two-48abc463\u0007two\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[3;1HA\u001b]8;;https://example.invalid/osc8-one-8c948815\u0007one\u001b]8;;https://example.invalid/osc8-two-8c948815\u0007two\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -154,7 +154,7 @@
     },
     {
       "caseId": "extensions.osc8/stale",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.invalid/osc8-second-48abc463\u0007LINK\u001b]8;;\u0007Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.invalid/osc8-second-8c948815\u0007LINK\u001b]8;;\u0007Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -173,7 +173,7 @@
     },
     {
       "caseId": "extensions.osc8/same-anchor",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[4;1H\u001b]8;id=osc8-48abc463;https://example.invalid/osc8-id-48abc463\u0007ab\u001b]8;;\u0007-\u001b]8;id=osc8-48abc463;https://example.invalid/osc8-id-48abc463\u0007cd\u001b]8;;\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[4;1H\u001b]8;id=osc8-8c948815;https://example.invalid/osc8-id-8c948815\u0007ab\u001b]8;;\u0007-\u001b]8;id=osc8-8c948815;https://example.invalid/osc8-id-8c948815\u0007cd\u001b]8;;\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -184,7 +184,7 @@
     },
     {
       "caseId": "extensions.osc8/st-terminator",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u001b\\LINK\u001b]8;;\u001b\\Z"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u001b\\LINK\u001b]8;;\u001b\\Z"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {

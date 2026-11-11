@@ -68,13 +68,13 @@ digests, incomplete restoration and an unavailable record that forges graded art
 ## Identities
 
 App 0.13.0 (operator supplied), sidecar built from `ca34a1d9` (arm64 Release, executable SHA-256 `f5814e51…9bf8`, assembly `c96eb8c4…8c1f`; no production file differs from `main` at `926199a6`);
-scripts at the committed revision `6bced5dc` (the measured scripts are the committed ones); source policy v45 (300 files, manifest `3bb07304…96c4`); receipt schema 51; Node v24.22.2; owned run
-`48abc463…a27c`, stock run `a09b05d8…e426`, measured 2026-11-11T18:20Z on macOS 27.0.1; private settings digest `3767097e…062f`; layered adapter `ntilde-owned-osc78-grading-v1`
-(bundle `d5d928d3…9c95`). Predecessor suites reconfirmed in the same run through the established runner (the receipt re-derived every earlier suite's evidence before completing; the query suite and
-the Core suites included). Three earlier attempts are retained with their reasons: an aborted first launch (`Unexpected input during cell collection` two seconds in; `superseded/attempt-1-aborted.zip`), a
-complete exploratory run on uncommitted scripts with the same outcome (`superseded/attempt-2-superseded.zip`; measured files were edited afterwards) and a complete run on the first committed scripts
-(`f1ff205e…3726`, `superseded/attempt-3-superseded.zip`; again the same outcome), superseded because the SonarCloud gate on the PR (5.0% duplicated new code and 14 issues in measured modules) required
-changes to measured files.
+scripts at the committed revision `fed325ec` (the measured scripts are the committed ones); source policy v45 (300 files, manifest `61cb0e07…c7ca`); receipt schema 51; Node v24.22.2; owned run
+`8c948815…94d9`, stock run `1370f859…ef6a`, measured 2026-11-11T18:35Z on macOS 27.0.1; private settings digest `0c6b08ef…fda6`; layered adapter `ntilde-owned-osc78-grading-v1`
+(bundle `f99fb71d…e0c4`). Predecessor suites reconfirmed in the same run through the established runner (the receipt re-derived every earlier suite's evidence before completing; the query suite and
+the Core suites included). Four earlier attempts are retained with their reasons: an aborted first launch (`Unexpected input during cell collection` two seconds in; `superseded/attempt-1-aborted.zip`), a
+complete exploratory run on uncommitted scripts (`attempt-2`; measured files were edited afterwards), a complete run on the first committed scripts (`f1ff205e…3726`, `attempt-3`) superseded by the SonarCloud
+gate on the PR (5.0% duplicated new code and 14 issues in measured modules), and a complete run on the Sonar-fixed scripts (`48abc463…a27c`, `attempt-4`) superseded by a Codex finding (the OSC 8 stock read
+carries the pinned fixture under test, so it is a required read, not a validity control). All four had both effect contracts supported.
 
 ## Evidence
 

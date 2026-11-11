@@ -5,13 +5,13 @@
     {
       "index": 17,
       "kind": "lnk-read",
-      "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
+      "paneId": "93e3aeff-a9e7-467d-98be-e8c93be008e3",
       "barrier": "\u001b[?62;4;22c",
       "before": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["ALINKZ","","","","","","","","","NTILDE_LK_48abc463664047ac8142374d7a64a27c","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+          "lines": ["ALINKZ","","","","","","","","","NTILDE_LK_8c948815239c18d8e7e36f3379e994d9","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
           "cursorRow": 0,
           "cursorCol": 6,
           "cursorVisible": true,
@@ -79,10 +79,10 @@
           }
         },
         "metadata": {
-          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
-          "oscTitle": "LK-base-48abc463",
+          "paneId": "93e3aeff-a9e7-467d-98be-e8c93be008e3",
+          "oscTitle": "LK-base-8c948815",
           "workingDirectory": "/ntilde-qa/osc78-base",
-          "displayTitle": "LK-base-48abc463",
+          "displayTitle": "LK-base-8c948815",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -104,19 +104,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "LK-base-48abc463 ⌨",
+            "tabText": "LK-base-8c948815 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "Recording started",
-            "toastMessage": ""
+            "toastTitle": "MD-base-8c948815",
+            "toastMessage": "Owned notification 8c948815239c18d8e7e36f3379e994d9"
           }
         },
         "status": {
-          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
+          "paneId": "93e3aeff-a9e7-467d-98be-e8c93be008e3",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -127,22 +127,22 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
+          "paneId": "93e3aeff-a9e7-467d-98be-e8c93be008e3",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794421247329,
-          "lastOutputAtMs": 1794421247450,
+          "statusSinceMs": 1794422089308,
+          "lastOutputAtMs": 1794422089512,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "sha256": "0464c3ef90eeca0628036b7fe063d43e663eb20bdc93110fcb7e48fd08b32098",
+      "sha256": "be57ac1fd1946c9711d210f8bdab5244a8fdf66306f435ed664655dbc3fa3673",
       "after": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["ALINKZ","","","","","","","","","NTILDE_LK_48abc463664047ac8142374d7a64a27c","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+          "lines": ["ALINKZ","","","","","","","","","NTILDE_LK_8c948815239c18d8e7e36f3379e994d9","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
           "cursorRow": 0,
           "cursorCol": 6,
           "cursorVisible": true,
@@ -210,10 +210,10 @@
           }
         },
         "metadata": {
-          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
-          "oscTitle": "LK-base-48abc463",
+          "paneId": "93e3aeff-a9e7-467d-98be-e8c93be008e3",
+          "oscTitle": "LK-base-8c948815",
           "workingDirectory": "/ntilde-qa/osc78-base",
-          "displayTitle": "LK-base-48abc463",
+          "displayTitle": "LK-base-8c948815",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -235,19 +235,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "LK-base-48abc463 ⌨",
+            "tabText": "LK-base-8c948815 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "Recording started",
-            "toastMessage": ""
+            "toastTitle": "MD-base-8c948815",
+            "toastMessage": "Owned notification 8c948815239c18d8e7e36f3379e994d9"
           }
         },
         "status": {
-          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
+          "paneId": "93e3aeff-a9e7-467d-98be-e8c93be008e3",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -258,17 +258,17 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
+          "paneId": "93e3aeff-a9e7-467d-98be-e8c93be008e3",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794421247329,
-          "lastOutputAtMs": 1794421247450,
+          "statusSinceMs": 1794422089308,
+          "lastOutputAtMs": 1794422089512,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "afterSha256": "0464c3ef90eeca0628036b7fe063d43e663eb20bdc93110fcb7e48fd08b32098",
+      "afterSha256": "be57ac1fd1946c9711d210f8bdab5244a8fdf66306f435ed664655dbc3fa3673",
       "caseId": null,
       "stageId": null
     }
