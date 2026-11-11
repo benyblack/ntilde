@@ -30,7 +30,7 @@ test('evidence traversal and symlink escapes are refused', t => {
     writeFileSync(join(outside, 'outside.json'), bytes);
     try { symlinkSync(join(outside, 'outside.json'), join(directory, 'link.json')); } catch (error) { if (process.platform === 'win32' && error.code === 'EPERM') return t.skip('Windows runner does not allow file symlinks'); throw error; }
     assert.throws(() => verifiedEvidenceFile(directory, { path: 'link.json', sha256: sha256(bytes) }), /escapes/);
-    assert.throws(() => verifiedEvidenceFile(directory, { path: join(outside, 'outside.json'), sha256: sha256(bytes) }), /escapes/);
+    assert.throws(() => verifiedEvidenceFile(directory, { path: join(outside, 'outside.json'), sha256: sha256(bytes) }), /escapes|Invalid/);
 });
 test('every cited screenshot must retain its exact digest-addressed bytes', t => {
     const directory = temporary(t), image = 'test bytes, not a measured image', hash = sha256(Buffer.from(image));

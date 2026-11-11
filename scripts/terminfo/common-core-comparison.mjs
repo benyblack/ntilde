@@ -70,9 +70,9 @@ function readSubject(subject, ids, requirementsSha256) {
         const status = result?.status ?? 'not-scheduled';
         if (!Object.hasOwn(comparisonStatusLabels, status)) fail(`${subject.id} has an unknown upstream status.`);
         const assertions = raw.assertions?.filter(assertion => assertion.featureId === id) ?? [];
-        if (status === 'supported' && (!assertions.length || !result.rawReplyRef ||
+        if (['supported', 'unsupported'].includes(status) && (!assertions.length || !result.rawReplyRef ||
             !Object.hasOwn(raw.rawReplies ?? {}, result.rawReplyRef) || result.attempt?.scope !== 'probe')) {
-            fail(`${subject.id} ${id} claims support without a measured observation and assertion.`);
+            fail(`${subject.id} ${id} claims a conclusive result without a measured observation and assertion.`);
         }
         counts[status]++;
         results[id] = { status, scheduled: scheduled.includes(id), probeId: result?.probeId ?? null,
@@ -83,7 +83,7 @@ function readSubject(subject, ids, requirementsSha256) {
     const calibration = diagnostic('collector.captureCalibration');
     const ownership = diagnostic('collector.disposableOwnership');
     return { id: subject.id, label: subject.label, version: source.version, versionBasis: source.versionBasis, measuredAt: raw.measuredAt,
-        runId: raw.runId, rawSha256: hash(subject.rawBytes), executableSha256: source.executableSha256, launchDriverSha256: source.driverSha256,
+        runId: raw.runId, rawSha256: hash(subject.rawBytes), executableSha256: source.executableSha256, launchDriverSha256: source.driverSha256, buildPayloadSha256: source.buildPayloadSha256 ?? null,
         measurementLimits: { captureOutcome: calibration?.outcome ?? null, captureRefusal: calibration?.refusal ?? null, disposableOwnership: ownership?.kind ?? null },
         counts, supportedShare: counts.supported / ids.length * 100,
         geometry, method: { probeHash: raw.probeHash, sourceRevision: raw.sourceRevision,

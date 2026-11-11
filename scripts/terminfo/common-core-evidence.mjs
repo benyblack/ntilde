@@ -1,5 +1,5 @@
 import { readFileSync, realpathSync } from 'node:fs';
-import { resolve, relative, isAbsolute } from 'node:path';
+import { resolve, relative, isAbsolute, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
@@ -7,11 +7,11 @@ export const pythonCommand = process.platform === 'win32' ? 'python' : 'python3'
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Resolve retained evidence only within its publication, including through symlinks. */
 export function verifiedEvidenceFile(directory, entry) {
-    if (!entry || typeof entry.path !== 'string' || !/^[a-zA-Z0-9._/-]+$/.test(entry.path) ||
+    if (!entry || typeof entry.path !== 'string' || isAbsolute(entry.path) || !/^[a-zA-Z0-9._/-]+$/.test(entry.path) ||
         !/^[a-f0-9]{64}$/.test(entry.sha256)) throw new Error('Invalid evidence path or digest.');
     const base = realpathSync(directory), path = realpathSync(resolve(base, entry.path));
     const inside = relative(base, path);
-    if (inside === '..' || inside.startsWith('../') || isAbsolute(inside)) throw new Error('Evidence path escapes its publication.');
+    if (inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error('Evidence path escapes its publication.');
     const bytes = readFileSync(path);
     if (sha256(bytes) !== entry.sha256) throw new Error(`Evidence digest differs: ${entry.path}`);
     return { path, bytes };

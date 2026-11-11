@@ -18,6 +18,8 @@ const manifest = JSON.parse(manifestBytes);
 if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.subjects)) throw new Error('Invalid common-harness publication manifest.');
 const verifiedFile = entry => verifiedEvidenceFile(publication, entry).bytes;
 for (const file of manifest.artifacts ?? []) verifiedFile(file);
+const attempts = JSON.parse(verifiedFile((manifest.artifacts ?? []).find(entry => entry.path === 'attempts.json')));
+for (const attempt of attempts.attempts ?? []) verifiedFile(attempt.archive);
 const requirementsBytes = verifiedFile(manifest.requirements);
 const subjects = manifest.subjects.map(subject => {
     const files = Object.fromEntries(Object.entries(subject.files).map(([name, entry]) => [name + 'Bytes', verifiedFile(entry)]));
@@ -34,6 +36,7 @@ const subjects = manifest.subjects.map(subject => {
 const report = buildCommonCoreComparison({ requirementsBytes, subjects });
 const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.json'), 'utf8'));
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true) throw new Error('Retained upstream source differs from the measured comparison.');
+report.method.upstreamBaseRevision = sourceProof.baseRevision;
 const sourcePath = 'upstream-source.json';
 if (!(manifest.artifacts ?? []).some(entry => entry.path === sourcePath)) throw new Error('Source proof is not digest-bound to the manifest.');
 report.manifestSha256 = digest(manifestBytes);

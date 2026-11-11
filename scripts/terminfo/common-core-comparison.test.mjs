@@ -75,6 +75,7 @@ for (const [name, key, mutate] of [
     ['legacy boolean-only support', 'rawBytes', r => { r.assertions = []; }],
     ['missing observation bytes', 'rawBytes', r => { delete r.rawReplies[ids[0]]; }],
     ['invented execution', 'rawBytes', r => { r.results[0].attempt.scope = 'none'; }],
+    ['unsupported without observations', 'rawBytes', r => { r.results[0].status = 'unsupported'; r.assertions = []; }],
     ['unknown status', 'rawBytes', r => { r.results[0].status = 'pass'; }],
 ]) {
     test(`refuses ${name}`, () => { const input = fixture(); change(input, key, mutate); assert.throws(() => buildCommonCoreComparison(input)); });

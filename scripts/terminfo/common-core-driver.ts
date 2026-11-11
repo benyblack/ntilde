@@ -37,7 +37,7 @@ try {
     if (typeof version !== 'string' || !version) throw new Error('Application version is missing.');
     const buildPayload = appId === 'ntilde' ? payload(dirname(executable)) : undefined;
     const buildPayloadSha256 = buildPayload ? createHash('sha256').update(JSON.stringify(buildPayload)).digest('hex') : undefined;
-    if (buildPayload) write('build-payload.json', { files: buildPayload, sha256: buildPayloadSha256, sourceRevision: String(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root })).trim() });
+    if (buildPayload) write('build-payload.json', { files: buildPayload, sha256: buildPayloadSha256, checkoutRevisionAtCollection: String(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root })).trim() });
     const versionBasis = appId === 'ntilde' ? 'explicit build version; executable digest retained' : 'installed application Info.plist CFBundleShortVersionString';
     const { probeSuiteSnapshot, ensureSourceSuiteEnvironment } = await importUpstream('packages/admin/versions.ts');
     const suite = probeSuiteSnapshot();
