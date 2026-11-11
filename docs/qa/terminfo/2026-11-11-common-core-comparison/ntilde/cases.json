@@ -1,0 +1,3127 @@
+{
+  "runId": "af1f5c275a0b3aab10fdd216ca668d10",
+  "rawSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b",
+  "fullRunArchive": "owned-run.zip",
+  "records": [
+    {
+      "featureId": "sgr.bold",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:43:23.425Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:43:23.425Z"
+          },
+          "assertionRefs": [
+            45
+          ],
+          "rawReplyRef": "sgr.bold"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bold",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.bold: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"frameDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:34c64e1c73fcb729f0293ea86bdb31b2235b11a564393eac022a7baeabe06bc5\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\"}}",
+          "rawReplyRef": "sgr.bold"
+        }
+      ],
+      "rawReplyRef": "sgr.bold",
+      "rawReplySha256": "c6e44b292bb49bbb1a479d3f460c23b943fc28ac0dcad6d86841a7ea5d5fb184",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:00e72ec58d10557684e4fac85e98468b82cdf6846de33a3d5c68a682f085c07e",
+        "sha256:c552679d952a88a1baccf13ad3437569b4a2293c8c453b67a03aedfc652ffcbc",
+        "sha256:8e8b94c2e62db0bba06bfc659fa4aa77441ed9c754fd7d2be90b39ed77a5de37",
+        "sha256:926c0a6e308d8ede9a944b85074408b82d616e32fff605d8f0a4be147538d9c8",
+        "sha256:e73956e6967b653779c674750ba14638981cc8a265b5f6d2c3a48e1fe413b97e",
+        "sha256:fafb734f2492246545f9558d3636c4249b82d5c68a7667d1587a1f1315d6b786",
+        "sha256:ce9c21f8849e658b494cd37ea90bd72f7929b3196619ae754cab1ef064323fcd",
+        "sha256:0c38bb80e0e793ccba8acd92f251076cf55bc3ded45b25b923077e6c1015ec93",
+        "sha256:5210d96b7ebd406ae55e68f34c2ae129256397e254a81d9f838babfe6bcd6ed6",
+        "sha256:be0a541e7618db376280dfac9c983dda9c6672e624a4900e0530b1fe92a7ae2a",
+        "sha256:4fa03583a23378b8cc699ebf23685599c35b466cf5b582bb30fae711042b4b88"
+      ]
+    },
+    {
+      "featureId": "sgr.faint",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:43:48.838Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:43:48.838Z"
+          },
+          "assertionRefs": [
+            46
+          ],
+          "rawReplyRef": "sgr.faint"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.faint",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.faint: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"frameDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:355899d6d04278836e6d5bd64e43aea05705bbe284702b7bfa4ef4e5c762bb4e\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\"}}",
+          "rawReplyRef": "sgr.faint"
+        }
+      ],
+      "rawReplyRef": "sgr.faint",
+      "rawReplySha256": "f39ec281e7f1cf693441315cd15ba3295832d3ed9c2cf081a896a4b09ef911f0",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:00e72ec58d10557684e4fac85e98468b82cdf6846de33a3d5c68a682f085c07e",
+        "sha256:a877fc8a95ccea01ea0272ad2fd18fbb0fda5822c9ed6bb4f4b96721fd5a35d9",
+        "sha256:4cf72f2dd66dbf3737b9f5d32b43feeacc5c8042ef93f0a6c0caff418ca185f2",
+        "sha256:32b6ba2cf89c6958db6e94ee4c0d2e4c819d55b16ef108b5aa6e475e916a14b3",
+        "sha256:98264f66b9139f4439c879976de78ed2001598760e889df4f23160ef429af9d2",
+        "sha256:8ed62db0482a254baec73a0eb62be878822c70a1471813b3a297e6f9e847ea61",
+        "sha256:4d12060feaa4cb3609cc6129e5a37b911e1cee5b8e04d44cd818ac29302c8cb5",
+        "sha256:0c38bb80e0e793ccba8acd92f251076cf55bc3ded45b25b923077e6c1015ec93",
+        "sha256:894c56eddab7f0ad1e7a69605150c5c0fa338e3596bd05c56759545fea40a6f4",
+        "sha256:970f4ad6a36ab06fd851210d9cf44935c99aee12972f11182192384db5a25eac",
+        "sha256:59eb2f91618432ab86e28bc0b1d13600bd07b06e8b6ff93ab16980d66b48ab60"
+      ]
+    },
+    {
+      "featureId": "sgr.italic",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:45:31.292Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:45:31.292Z"
+          },
+          "assertionRefs": [
+            50
+          ],
+          "rawReplyRef": "sgr.italic"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.italic",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.italic: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"frameDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:32fdc9a61478f5c233585dd5c7a8f5f7fd35bf47b5944fc5c894c2aff942df9b\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\"}}",
+          "rawReplyRef": "sgr.italic"
+        }
+      ],
+      "rawReplyRef": "sgr.italic",
+      "rawReplySha256": "ec08be362703b712535e12e7ba9f7cb2f740fbcdd5818427676058aea59de6ad",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:00e72ec58d10557684e4fac85e98468b82cdf6846de33a3d5c68a682f085c07e",
+        "sha256:7387aafda8d5207531a11c4718a70ecd51c7c8b72e151087d19afd289eb9a81b",
+        "sha256:e501f2fa73b30ee17b2e73727ed51726a3f57ed3d056e0ef844734a9cd3392e3",
+        "sha256:136761f21cb46c9798eaf60ba27795d1707b8376363fd211f55f40ac5464e2c4",
+        "sha256:464e815f589043c8967c7d430c46fd74350dc9ee0824518a9dbdd0419d40d092",
+        "sha256:adfb6c70056ef23eb852784dbd5f20d1b73d5cfcc20dd2eaaa92f20621bdb4ed",
+        "sha256:659dda1cf885577610513f5a26b6a88ab2141871f335f5f9715d7e870e254b44",
+        "sha256:0c38bb80e0e793ccba8acd92f251076cf55bc3ded45b25b923077e6c1015ec93",
+        "sha256:7f02f8f73a1dbe19d63c778b949b827adcfc81ac03069b18d6cb9166606298c7",
+        "sha256:d21ae4b1ff048a8eb98fc8b749976f4f85f2d1b824b1737d49ea11b8c57824ce",
+        "sha256:c3d5fb04b32b6fa13f268961c2cc2a63db1fcf7591c816f81ccdd763e2d7dd82"
+      ]
+    },
+    {
+      "featureId": "sgr.underline.single",
+      "status": "probe-invalid",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.490Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-invalid",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.490Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.underline.single",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.underline.single",
+      "rawReplySha256": "cc07209a6e76f531005ca66b7b927ee9f8539075fafcae27d55354dcc2d0c34b",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.inverse",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:45:10.498Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.inverse: target differs from plain, made-up does not; sgr.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;7\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:45:10.498Z"
+          },
+          "assertionRefs": [
+            49
+          ],
+          "rawReplyRef": "sgr.inverse"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.inverse",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.inverse: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"frameDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:b258a935da224dcc14913ca07c701a52a8f6170cdacc340260b09a2d60da701e\"}}",
+          "rawReplyRef": "sgr.inverse"
+        }
+      ],
+      "rawReplyRef": "sgr.inverse",
+      "rawReplySha256": "6238c1571c0c8e043f6445b2b755fe3f3b6cd1231197fde5d7176417a33c02aa",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:00e72ec58d10557684e4fac85e98468b82cdf6846de33a3d5c68a682f085c07e",
+        "sha256:e3e9094399c1bb6b1fed6928dbc20c9c4564e776beca93a9b9c1e972686351df",
+        "sha256:bfe8eaa65f2b2c14986ab4a104c0e00556261b8a34d225b0f9d8df9662509467",
+        "sha256:0c38bb80e0e793ccba8acd92f251076cf55bc3ded45b25b923077e6c1015ec93",
+        "sha256:150402f8a72aa59e1943509f97d59faf0de5f6d26c65caa1718167b72cdf767f",
+        "sha256:de8d7ec429e094dbdaef35aba83d0bcce81b8afd74d4b37854255491493646ac",
+        "sha256:62c6c82beb387dd3c021804526e6b4398af42633e7cb0d453467837690a07778",
+        "sha256:4dc9aa2729d75b17c5774eebd2291a050499fbe05d3b2760592b71d91b6b4d77",
+        "sha256:f4670b31bc04f4026bd5b018b023c707de3db44d885c93bb54ded5d964d6d067",
+        "sha256:fb6d9853f00341ddece8cf8246307e30792923682663afe2615dce302b79bd66"
+      ]
+    },
+    {
+      "featureId": "sgr.hidden",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:44:40.476Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.hidden",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.hidden",
+      "rawReplySha256": "1c52bc5389bb8e534e2fca859e291f7df140e72fdeb26b741fba7ce128dbe9bb",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.strikethrough",
+      "status": "probe-invalid",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.085Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-invalid",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.085Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.strikethrough",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.strikethrough",
+      "rawReplySha256": "d01a8a7b867c1b673f723b663abed6a50e0dfb138bcbaea259ba048bdcbac8de",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.fg.standard",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:44:27.437Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:44:27.437Z"
+          },
+          "assertionRefs": [
+            48
+          ],
+          "rawReplyRef": "sgr.fg.standard",
+          "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.fg.standard",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.fg.standard: cell-aligned region {\"top\":3,\"left\":3,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[0m\\u001b[2J\\u001b[3;3H\\u001b[31mAaBb\\u001b[5;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:c95b6b7f86a76e505b63893e9906414f4826e8e14a7dd328c0769877b781606f",
+          "rawReplyRef": "sgr.fg.standard"
+        }
+      ],
+      "rawReplyRef": "sgr.fg.standard",
+      "rawReplySha256": "4fa13f5b564b75745ec3704df831f2e400ba8ad28f2ed8e91316beaf11fcd890",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:666e3a381d37b66116e68c0baa252ebc599617b8fc23e8510100f82a60772446",
+        "sha256:5113c9b146f04152305c6197074c93dc61be214e22e07831eec6a789e686f6d2",
+        "sha256:d93dda78b22dbbb3baa0f02d15244dd384dc613effe144d89626b207e5751360",
+        "sha256:912a153f113463530d8ebf99f97b67ad777c902729527304742d0894e1255a3a",
+        "sha256:d5bd33d4b856ea5143354504484a0f5f21aa13af62f0bfc4112d7c1bd88f4660",
+        "sha256:09f7332176fd552eccf542856b1bdb252038b0357de3c28f1a03a55923a6157a",
+        "sha256:7fb8da08bf8ae7726e3511676b96aa7da37a6a377de5699377c2aefe8469c9d1"
+      ]
+    },
+    {
+      "featureId": "sgr.bg.standard",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:43:10.147Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:43:10.147Z"
+          },
+          "assertionRefs": [
+            44
+          ],
+          "rawReplyRef": "sgr.bg.standard",
+          "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bg.standard",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.bg.standard: cell-aligned region {\"top\":3,\"left\":3,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[0m\\u001b[2J\\u001b[3;3H\\u001b[41mAaBb\\u001b[5;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:057a3aad8a411885e12a47527b5a9d005b269725392d46228ab6aef384660c68",
+          "rawReplyRef": "sgr.bg.standard"
+        }
+      ],
+      "rawReplyRef": "sgr.bg.standard",
+      "rawReplySha256": "0a1c79e05719e9ce19483564b4bdc4cb9a5b48efee244260408584ca5698348d",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:666e3a381d37b66116e68c0baa252ebc599617b8fc23e8510100f82a60772446",
+        "sha256:5113c9b146f04152305c6197074c93dc61be214e22e07831eec6a789e686f6d2",
+        "sha256:8aff3129901aa0e58e243040e36184c5f08d686b8ca7c9053b5dacfd72deb30f",
+        "sha256:55cd5f3714f1b312feb81417a6c3afc82c455857c11f5928599c7546aadbcca2",
+        "sha256:e4e4a51280112200dcd5846a4520ade05ac28276a1d02a4bfb562b2a2a21f5e6",
+        "sha256:8cb78f1b289774ee5a36d973f7630d1f7b8350bb9f9ffe230d126550806ac857",
+        "sha256:b698a3e57126abb0b33db02590d09244b872b8ee1a622817bb9526a5ca62e048"
+      ]
+    },
+    {
+      "featureId": "sgr.fg.default",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:44:14.128Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:44:14.128Z"
+          },
+          "assertionRefs": [
+            47
+          ],
+          "rawReplyRef": "sgr.fg.default",
+          "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.fg.default",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.fg.default: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[31mXX\\u001b[39mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:cd189381a9fc22ebd69ccd2cc483febed9aaf06a0db9b9330c0a957c877327fa",
+          "rawReplyRef": "sgr.fg.default"
+        }
+      ],
+      "rawReplyRef": "sgr.fg.default",
+      "rawReplySha256": "db55e4b598147116a58938c8719b17235417dea86948cf402f9ca436366b98a8",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:00f34b51ee697af9674a0e185fefd08bc9500312e7740008097f8a210a636938",
+        "sha256:745482efbebc563187cbcab15f962cf929086625db49427c99623e70c6e6fd15",
+        "sha256:41ac96f0d2f391e05c92b61e281d9e6691fda5b6fa50c5c9f3a31a848b51b7b0",
+        "sha256:f92e0be428d63a16ff546715ad39a3993b14a80c863052a3190e27a1ad5487e4",
+        "sha256:03856ff41c2ae98e9ba9ab82b1676e1a7ec43fcbfaee1553d77dc53beeae9e44",
+        "sha256:55c11d29ef2f9b17764726f6fed7979932344b55cc4b8bd61a57c0a6a4b09979"
+      ]
+    },
+    {
+      "featureId": "sgr.bg.default",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:42:56.369Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:42:56.369Z"
+          },
+          "assertionRefs": [
+            43
+          ],
+          "rawReplyRef": "sgr.bg.default",
+          "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bg.default",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.bg.default: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[42mXX\\u001b[49mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:cd189381a9fc22ebd69ccd2cc483febed9aaf06a0db9b9330c0a957c877327fa",
+          "rawReplyRef": "sgr.bg.default"
+        }
+      ],
+      "rawReplyRef": "sgr.bg.default",
+      "rawReplySha256": "50d1ab310d8d73da592b1fd841388d0cf731909b63d3265c68da65750e006a85",
+      "screenshotRefs": [
+        "sha256:06e7a3709a64a84f97b4adead444f81f8080e1b2487778d00c0f13c3a6bb51d7",
+        "sha256:0137953a89bd9f5957b6567fba9baf700f4da116ac973f5ec2a01f0bf88ca69e",
+        "sha256:943a6c9b25aa65a06f52eea35a7ff042a05aa1cf2509fae86ab22deb2651dd1c",
+        "sha256:7b820676288044d5e909f8f3f8847776ff0d7c1f9fd6b4b58438ee01e0050bf4",
+        "sha256:54e29dc360846a4fadfe0ea6f00fa74910c545724805c7202f4c6648e9c0ff76",
+        "sha256:dcd5dfc29e69b9346bbb6fcc8264b3985fe1b6600dba3dd286e403935668acfb",
+        "sha256:60bc0a0618a49623dc939dd554845904bf361df9876464375dac4bde314ba341",
+        "sha256:497a5b0b9c81effe75b91190f30368e751d66ba9271f9b245ad024b2e3b58074",
+        "sha256:bacf6554963990d38ea3244ca31ff13972120e9b53b9ee5bace2e735bc07fb7b"
+      ]
+    },
+    {
+      "featureId": "sgr.selective-reset.bold",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:47:57.016Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:47:57.016Z"
+          },
+          "assertionRefs": [
+            51
+          ],
+          "rawReplyRef": "sgr.selective-reset.bold",
+          "reason": "sgr.selective-reset.bold: subset SGR 1: saved rendition qualification failed; target was not sent"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.bold",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.bold: DECRQSS reports 3 after \u001b[22m",
+          "observed": "0;3",
+          "rawReplyRef": "sgr.selective-reset.bold"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.bold",
+      "rawReplySha256": "35d2a8d17c3c1e32afcf45bc8ff53a05f2c7329807b8d1b375b42e88b21b8fe3",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.selective-reset.underline",
+      "status": "probe-invalid",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:33.697Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-invalid",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:33.697Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.selective-reset.underline",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.selective-reset.underline",
+      "rawReplySha256": "ba2b89dcb5d3bb33f5f9bc1b8203f5c208094954cb5de46f79a146750c9786e9",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.selective-reset.inverse",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:13.117Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:13.117Z"
+          },
+          "assertionRefs": [
+            52
+          ],
+          "rawReplyRef": "sgr.selective-reset.inverse",
+          "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.inverse",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.inverse: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[1;7mXX\\u001b[27mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:759660d530d773fd1a7f73f637e67701f4340bb938e2cf4e98ce462ca3aef896",
+          "rawReplyRef": "sgr.selective-reset.inverse"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.inverse",
+      "rawReplySha256": "a9b714d484aa03c2069aa4896593a7f552d55248318318cb0a90124a0c40bf0e",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:9f7180c47cb4ae5bb583d05ae4aaba85ba533515c6e5cfb6abc6a0d7feac0a7b",
+        "sha256:05c9710634971a215a7b98391d23188752b6ab71bb866b87878a09fc6066a7ff",
+        "sha256:81e476b8bb37671fdcf1f6f343fa70a3bb7451a409d1d10f74e6455135b2fcd9",
+        "sha256:4b66462c223ae40c8d17732c09837751ee39c6bc40ab6dd7a1981ee593042a12",
+        "sha256:03fc29b745cf9bcf756edf61b9ac75362928711acee29e94eb1632f40156376a",
+        "sha256:c78b0be87f02c52e1f2307b14d5566ea56056fc99918d62fa27edcc1e71bb30b",
+        "sha256:9ad55fd3d01e973eaf76babb9413c2813ac5eb41c57939d99e05e8b5a8529f8d",
+        "sha256:62a3c6332bf8c6164702431f04cdb7df0f5c76d545437965e848a59c98f0445c"
+      ]
+    },
+    {
+      "featureId": "sgr.selective-reset.italic",
+      "status": "probe-invalid",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:29.483Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-invalid",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:29.483Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.selective-reset.italic",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.selective-reset.italic",
+      "rawReplySha256": "ab3c3ffb7ba8f45055438687095850dbf99fc6b3aa1770ec49719b658de1afe0",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.reset",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:45:56.986Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 120000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.reset",
+          "reason": "Probe exceeded 120000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.reset",
+      "rawReplySha256": "dbab5e392b444ca1a94f3fc67280afb2b66d3d416c34a30c5fe2271392f0991a",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.hide",
+      "status": "probe-invalid",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:19.273Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "Three equal digests cannot separate an absent, off-phase or unpainted cursor in the control from an ineffective hide; no visible-cursor control was established, so this is not a negative",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-invalid",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:19.273Z"
+          },
+          "assertionRefs": [
+            9
+          ],
+          "rawReplyRef": "cursor.hide",
+          "reason": "Three equal digests cannot separate an absent, off-phase or unpainted cursor in the control from an ineffective hide; no visible-cursor control was established, so this is not a negative"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.hide",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "Three equal digests cannot separate an absent, off-phase or unpainted cursor in the control from an ineffective hide; no visible-cursor control was established, so this is not a negative",
+          "observed": "{\"rows\":41,\"cols\":140,\"cursor\":{\"row\":2,\"col\":3},\"digests\":[{\"cells\":\"sha256:156d4a855b628328e6bd5f31754f299ba32c8a120fc4fd75db07d5b4ee248652\"},{\"cells\":\"sha256:156d4a855b628328e6bd5f31754f299ba32c8a120fc4fd75db07d5b4ee248652\"},{\"cells\":\"sha256:156d4a855b628328e6bd5f31754f299ba32c8a120fc4fd75db07d5b4ee248652\"}],\"rectangles\":[{\"x\":42,\"y\":109,\"width\":17,\"height\":37},{\"x\":42,\"y\":109,\"width\":17,\"height\":37},{\"x\":42,\"y\":109,\"width\":17,\"height\":37}]}",
+          "rawReplyRef": "cursor.hide"
+        }
+      ],
+      "rawReplyRef": "cursor.hide",
+      "rawReplySha256": "e61d86fc23daf5b95a11205612b4987c7188a56fce514397e4cf4e086fdfe850",
+      "screenshotRefs": [
+        "sha256:da618facf64dd9a8825659b51a3b2e56b4029c08365048d29e029fbe53aad208"
+      ]
+    },
+    {
+      "featureId": "cursor.move.absolute",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.186Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.186Z"
+          },
+          "assertionRefs": [
+            11
+          ],
+          "rawReplyRef": "cursor.move.absolute"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.absolute",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=5, col=10 after \"\\u001b[5;10H\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":1},\"final\":{\"row\":5,\"col\":10}}",
+          "rawReplyRef": "cursor.move.absolute"
+        }
+      ],
+      "rawReplyRef": "cursor.move.absolute",
+      "rawReplySha256": "62d2a9a0a09e31c8e9535619fbf700f696575e9b9b4ad5919050c590297fa159",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.up",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.247Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.247Z"
+          },
+          "assertionRefs": [
+            16
+          ],
+          "rawReplyRef": "cursor.move.up"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.up",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=4, col=1 after \"\\u001b[2A\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":6,\"col\":1},\"final\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "cursor.move.up"
+        }
+      ],
+      "rawReplyRef": "cursor.move.up",
+      "rawReplySha256": "dc9d0961251b002ae035e6eb4e4a8d160cfebcbeb02da1d5a99f010f99861a09",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.down",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.209Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.209Z"
+          },
+          "assertionRefs": [
+            13
+          ],
+          "rawReplyRef": "cursor.move.down"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.down",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=4, col=1 after \"\\u001b[3B\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":1},\"final\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "cursor.move.down"
+        }
+      ],
+      "rawReplyRef": "cursor.move.down",
+      "rawReplySha256": "880c8a981451fb14b19f613a8d8431ef4c59d820585333e20a3664e959e30d12",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.forward",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.226Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.226Z"
+          },
+          "assertionRefs": [
+            14
+          ],
+          "rawReplyRef": "cursor.move.forward"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.forward",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=6 after \"\\u001b[5C\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":1},\"final\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "cursor.move.forward"
+        }
+      ],
+      "rawReplyRef": "cursor.move.forward",
+      "rawReplySha256": "e6a49027f50f063715decf5b59c2043e3ddda2728b8bc18f95950285f27b131f",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.back",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.198Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.198Z"
+          },
+          "assertionRefs": [
+            12
+          ],
+          "rawReplyRef": "cursor.move.back"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.back",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=2 after \"\\u001b[2D\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":4},\"final\":{\"row\":1,\"col\":2}}",
+          "rawReplyRef": "cursor.move.back"
+        }
+      ],
+      "rawReplyRef": "cursor.move.back",
+      "rawReplySha256": "b77a6884703abb7a7810ffb4c4e3c5503d82b2cd8d1c84c46e8a1e5b3fe36e1d",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.home",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.237Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.237Z"
+          },
+          "assertionRefs": [
+            15
+          ],
+          "rawReplyRef": "cursor.move.home"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.home",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=1 after \"\\u001b[H\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":4},\"final\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "cursor.move.home"
+        }
+      ],
+      "rawReplyRef": "cursor.move.home",
+      "rawReplySha256": "f8081eb4da154a465ce1d8e3bd823d7660c969c1aef1591f0843ee240266218f",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.save-restore",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.261Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.261Z"
+          },
+          "assertionRefs": [
+            17
+          ],
+          "rawReplyRef": "cursor.save-restore"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.save-restore",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "saved cursor returns to 3;5 after measured displacement",
+          "observed": "{\"setup\":{\"row\":3,\"col\":5},\"displaced\":{\"row\":10,\"col\":10},\"final\":{\"row\":3,\"col\":5}}",
+          "rawReplyRef": "cursor.save-restore"
+        }
+      ],
+      "rawReplyRef": "cursor.save-restore",
+      "rawReplySha256": "ccd0676c0801575164cbd01e3efb363f736272b1ca37760e0987f04396124f56",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cup-boundaries",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:08.003Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:08.003Z"
+          },
+          "assertionRefs": [
+            6
+          ],
+          "rawReplyRef": "cursor.cup-boundaries"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cup-boundaries",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CUP 999;999 clamps to measured 41;140 after qualified edge",
+          "observed": "{\"rows\":41,\"cols\":140,\"origin\":{\"row\":1,\"col\":1},\"edge\":{\"row\":41,\"col\":140},\"beforeTarget\":{\"row\":1,\"col\":1},\"final\":{\"row\":41,\"col\":140}}",
+          "rawReplyRef": "cursor.cup-boundaries"
+        }
+      ],
+      "rawReplyRef": "cursor.cup-boundaries",
+      "rawReplySha256": "fa0675b06ea6a124f99826fa3679cce3b4472ecaf7cf7ceb5b05a061a717b697",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cuu-past-top",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:19.262Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:19.262Z"
+          },
+          "assertionRefs": [
+            8
+          ],
+          "rawReplyRef": "cursor.cuu-past-top"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cuu-past-top",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=1 after \"\\u001b[999A\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":4,\"col\":1},\"final\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "cursor.cuu-past-top"
+        }
+      ],
+      "rawReplyRef": "cursor.cuu-past-top",
+      "rawReplySha256": "a8089f415194ea989b8aa2b309d4917b3ac9abd79223b86722f4f42faa971e2d",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cud-past-bottom",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:07.989Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:07.989Z"
+          },
+          "assertionRefs": [
+            5
+          ],
+          "rawReplyRef": "cursor.cud-past-bottom"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cud-past-bottom",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CUD past the newline-measured bottom clamps at the last row",
+          "observed": "{\"rows\":41,\"measured\":[{\"step\":\"origin\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"bottom\",\"report\":{\"row\":41,\"col\":1}},{\"step\":\"before-target\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"clamped\",\"report\":{\"row\":41,\"col\":1}}]}",
+          "rawReplyRef": "cursor.cud-past-bottom"
+        }
+      ],
+      "rawReplyRef": "cursor.cud-past-bottom",
+      "rawReplySha256": "1b15c8538c2673118c9793d89bf3ebf5835dba85026f30b98a0040cf3a6d0b2f",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cup-scroll-region",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:08.017Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:08.017Z"
+          },
+          "assertionRefs": [
+            7
+          ],
+          "rawReplyRef": "cursor.cup-scroll-region"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cup-scroll-region",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "cursor.cup-scroll-region: cell-aligned region {\"top\":5,\"left\":1,\"bottom\":5,\"right\":2} equals the same-run expected frame after \"\\u001b[5;15r\\u001b[?6h\\u001b[1;1H<\\u001b[?6l\\u001b[r\\u001b[16;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:8846e6af0fe0897402e53bcc0899924e4228324e4954269bec383753870b9920",
+          "rawReplyRef": "cursor.cup-scroll-region"
+        }
+      ],
+      "rawReplyRef": "cursor.cup-scroll-region",
+      "rawReplySha256": "9c8f0ebaa4247d0796f2751585aac3f8464192a23eef413eadccccad045f991c",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:fc108baf57d5153e47dcab17905a8b85381f662df7db33293719c8efa30e0fd7",
+        "sha256:7bd767900aadc0f4ef4fb5f64fb95b2799bc01ce3dd4f661cf646c7ba9cdb6ab",
+        "sha256:25f71649eb47b2660528d4e411d43af05ff2a0057a6994fa287000a0b76fecfd",
+        "sha256:f075f20a3afeca426e9cd4122ecab9b0e1fd58312c7f8271aa931f485514c0eb"
+      ]
+    },
+    {
+      "featureId": "cursor.vpa",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.271Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.271Z"
+          },
+          "assertionRefs": [
+            18
+          ],
+          "rawReplyRef": "cursor.vpa"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.vpa",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=10, col=5 after \"\\u001b[10d\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":3,\"col\":5},\"final\":{\"row\":10,\"col\":5}}",
+          "rawReplyRef": "cursor.vpa"
+        }
+      ],
+      "rawReplyRef": "cursor.vpa",
+      "rawReplySha256": "f4cba6df112504c479746cbc67b010f294fc76696c346deb8d290a1a9bb419ee",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cpl",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:07.972Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:07.972Z"
+          },
+          "assertionRefs": [
+            4
+          ],
+          "rawReplyRef": "cursor.cpl"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cpl",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=4, col=1 after \"\\u001b[2F\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":6,\"col\":10},\"final\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "cursor.cpl"
+        }
+      ],
+      "rawReplyRef": "cursor.cpl",
+      "rawReplySha256": "d3507c55b3050ba250ed63d8168a3d61017aa2ff5bd884b837f90ced754cf605",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.hpa",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.175Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.175Z"
+          },
+          "assertionRefs": [
+            10
+          ],
+          "rawReplyRef": "cursor.hpa"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.hpa",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=3, col=15 after \"\\u001b[15`\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":3,\"col\":1},\"final\":{\"row\":3,\"col\":15}}",
+          "rawReplyRef": "cursor.hpa"
+        }
+      ],
+      "rawReplyRef": "cursor.hpa",
+      "rawReplySha256": "a7e358f0fdc7e7c7714848998d72160af4496c11571d3c2dad952ac1901c839d",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.line.right",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:38:20.889Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:38:20.889Z"
+          },
+          "assertionRefs": [
+            24
+          ],
+          "rawReplyRef": "erase.line.right"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.line.right",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.line.right: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":5} equals the same-run expected frame after \"\\u001b[1;3H\\u001b[K\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:cce70bce627947d67e96e4fa439910b8b9d0b30877d69f36c4c337a7e1c7e82f",
+          "rawReplyRef": "erase.line.right"
+        }
+      ],
+      "rawReplyRef": "erase.line.right",
+      "rawReplySha256": "aea1c101ccab9bda6c39a99c8a264fe0cccbb6b673189ae28e67dae18b9305e8",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:dac6d0f73607a8463053bdaa3c45a74b2d798c6ebdbb28ec6247a25b2a3f6112",
+        "sha256:46622326117bf98bbbaa52138f202af68ac1840a74a36af353adf5484c1b2c58",
+        "sha256:c375e521ef61b9512e5c0af16cb38f2a976402a9f3d37b035d539071993b27cc",
+        "sha256:b616798a8af5c5ba3c34f54a7f02a8fbe7e24351f2315c5e99b6a4a1ed2f6231",
+        "sha256:f9dc135588b09285c9a9d1614b9e1ab0245bc4a852eb9057c9ad64a0823c6d84"
+      ]
+    },
+    {
+      "featureId": "erase.line.left",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:38:09.806Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:38:09.806Z"
+          },
+          "assertionRefs": [
+            23
+          ],
+          "rawReplyRef": "erase.line.left"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.line.left",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.line.left: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":5} equals the same-run expected frame after \"\\u001b[1;3H\\u001b[1K\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:54e67e2b10df28195e09bee82af99bc1d88cf1f17108264b2c82cd9266474151",
+          "rawReplyRef": "erase.line.left"
+        }
+      ],
+      "rawReplyRef": "erase.line.left",
+      "rawReplySha256": "dcfc7caf7cfe01b5ec9b7a4756f52da4954a8664a881e46861e8c7ce12bf2476",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:dac6d0f73607a8463053bdaa3c45a74b2d798c6ebdbb28ec6247a25b2a3f6112",
+        "sha256:46622326117bf98bbbaa52138f202af68ac1840a74a36af353adf5484c1b2c58",
+        "sha256:d6b98b7b8a08aa1b255013ce8a618469bf499bf227f767ebe54e211803f27e99",
+        "sha256:5c974ecc73c6574a993691c00896605416f1d099c28b1891269ecdce05004598",
+        "sha256:3044cee2327ec1236b564028b01720c5c1915e94e7ad5c7239926b1ccb27cf8e"
+      ]
+    },
+    {
+      "featureId": "erase.line.all",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:59.194Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:59.194Z"
+          },
+          "assertionRefs": [
+            22
+          ],
+          "rawReplyRef": "erase.line.all"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.line.all",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.line.all: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":5} equals the same-run expected frame after \"\\u001b[1;3H\\u001b[2K\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:7f675a5795d4f1fb8742fd44bc2af40cd72b661839b3b0e7fc361a919a8ae7dc",
+          "rawReplyRef": "erase.line.all"
+        }
+      ],
+      "rawReplyRef": "erase.line.all",
+      "rawReplySha256": "07c57593a1d3c140fcbc69e6fe95d78183bf1f2566914c8bb963fbf35bc1a32f",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:dac6d0f73607a8463053bdaa3c45a74b2d798c6ebdbb28ec6247a25b2a3f6112",
+        "sha256:46622326117bf98bbbaa52138f202af68ac1840a74a36af353adf5484c1b2c58",
+        "sha256:178da5b2ba31656ce48c7909ca1c0adc17fe22eacc20dcde52ac33c919620719",
+        "sha256:5b9ebcbed1bf690c78e0025d124d6a126a7455c187853683e15cf29e755bd81f",
+        "sha256:83be9c755c15926382ed3e8c7b6c277bdba2325e3924e6837997df746897f09a"
+      ]
+    },
+    {
+      "featureId": "erase.screen.above",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:38:31.772Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:38:31.772Z"
+          },
+          "assertionRefs": [
+            25
+          ],
+          "rawReplyRef": "erase.screen.above"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.screen.above",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.screen.above: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[2;3H\\u001b[1J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:98997549e56418e1d52705deac003973426a0ce8ec2ac359e08eea19f3bb648a",
+          "rawReplyRef": "erase.screen.above"
+        }
+      ],
+      "rawReplyRef": "erase.screen.above",
+      "rawReplySha256": "17d78782f533beefe10069dbcd9a4bd9643c952a0be63c72646fb72e9b472e82",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:9ead7964c79daaa32a5bbbac674f54939087663007567d23e9bf32e7b068fd93",
+        "sha256:0b3343cea4432de10ee40e7a910b9d83d01d8256ead3d95c10a216529ddc4cef",
+        "sha256:4253a237ca0f33a804478718c00a96978ffe6da7b225816eccdb51e66966b3df",
+        "sha256:93e4937d25fa647bf8258060f7736dfe177fcadee3500731e79ad396cd1d4c7a",
+        "sha256:d3ff7247120372abd72b3076b36aa72eb57e1cbd4505ef2539a35c0ac5112852"
+      ]
+    },
+    {
+      "featureId": "erase.screen.all",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:38:48.858Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:38:48.858Z"
+          },
+          "assertionRefs": [
+            26
+          ],
+          "rawReplyRef": "erase.screen.all"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.screen.all",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.screen.all: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[2;3H\\u001b[2J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:73bd72bbcbb5fb3bfc0b81947968532d8bae206d8f9e392352245eb76f863996",
+          "rawReplyRef": "erase.screen.all"
+        }
+      ],
+      "rawReplyRef": "erase.screen.all",
+      "rawReplySha256": "66da57477e66c960370c4fbbbbba6420fbe0cf91cf9a27c8c1da254547e41fd8",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:9ead7964c79daaa32a5bbbac674f54939087663007567d23e9bf32e7b068fd93",
+        "sha256:0b3343cea4432de10ee40e7a910b9d83d01d8256ead3d95c10a216529ddc4cef",
+        "sha256:13e24e52609409ed4cc3d14af324e0f92db9864042234f6104bbc4fc83abca32",
+        "sha256:39bbd3e5fa528abc13950b26c7fcab0514b483f2a00b0950f372d7b6e1604f5d"
+      ]
+    },
+    {
+      "featureId": "erase.screen.below",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:00.326Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:00.326Z"
+          },
+          "assertionRefs": [
+            27
+          ],
+          "rawReplyRef": "erase.screen.below"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.screen.below",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.screen.below: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[2;3H\\u001b[J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:ff4ad4e507ae1c353cd23bf318de7889b58e4dad8880deb3040bbec5687816fd",
+          "rawReplyRef": "erase.screen.below"
+        }
+      ],
+      "rawReplyRef": "erase.screen.below",
+      "rawReplySha256": "ff8fb5a5db383042a800f4f969e465b6077538a97d0f20d7b46c69b66822c7ee",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:9ead7964c79daaa32a5bbbac674f54939087663007567d23e9bf32e7b068fd93",
+        "sha256:0b3343cea4432de10ee40e7a910b9d83d01d8256ead3d95c10a216529ddc4cef",
+        "sha256:2ae24dcfdc4301cadebee24393a52888dbb2ae85ef9c497feda37323f77125ec",
+        "sha256:be2b53b16e8ce87d09b752d8ed28006880b1026c2fea734ede507414e786cdb9",
+        "sha256:80090366b55dae3da5517c028778c136736e5033a77b36a90d0b208319ab12b5"
+      ]
+    },
+    {
+      "featureId": "erase.screen.scrollback",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:11.343Z"
+      },
+      "assertionType": null,
+      "reason": "OS-level scrollback dump or XTEST wheel+capture",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.screen.scrollback",
+          "reason": "OS-level scrollback dump or XTEST wheel+capture"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.screen.scrollback",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.character",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:22.283Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:22.283Z"
+          },
+          "assertionRefs": [
+            19
+          ],
+          "rawReplyRef": "erase.character"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.character",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.character: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;2H\\u001b[2X\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:fa111c118c983b45134b9e5dd87d84568869b888f83681aa362f97c7cf52f926",
+          "rawReplyRef": "erase.character"
+        }
+      ],
+      "rawReplyRef": "erase.character",
+      "rawReplySha256": "eb511e2edbf3d10403ce70e25c55b37ce0502213e308390f511585cb4611bf7d",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:707186ce558101a3d40102613d522547bb5925e4caace9cbad90aaf87d26f9c2",
+        "sha256:08cf71ad4fe697d79255841dc0c36fae92f6a85701aeafd68660ecba70f7cfbf",
+        "sha256:5365d9d46edf5032e405e75a8e450299485910c73b4c9a60c9c0047a0c330e5a",
+        "sha256:0d75e4aefb92a523e7a6f3d21f7bc70a13a8fb5f7431ce7169d222c0fe843d3a",
+        "sha256:93a363597aac65393c4c8d3bef891874cbb8cc4231210b460da40ba045cda5b2"
+      ]
+    },
+    {
+      "featureId": "erase.el-with-attrs",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:44.419Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:44.419Z"
+          },
+          "assertionRefs": [
+            21
+          ],
+          "rawReplyRef": "erase.el-with-attrs"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.el-with-attrs",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.el-with-attrs: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;1H\\u001b[42m\\u001b[0K\\u001b[0m\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:a6c354eeb1d87ff2358e40580e7b7027f31f0425d0a3da8d6f87d3258661bb8b",
+          "rawReplyRef": "erase.el-with-attrs"
+        }
+      ],
+      "rawReplyRef": "erase.el-with-attrs",
+      "rawReplySha256": "129d33854f5db944c2439cc6cda886a66d4b258b1b137af1a392f6420262bfba",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:7bc9c143f0f5027663ab32a4853d80f9ca7b86a211fe9559d4cdcb77433d5319",
+        "sha256:e057e38457278609d83f41e4da851a43aaa51d80001a404f7996c4f3f3e9bf52",
+        "sha256:7f85ec520ed77ee2a8e1d2873814812872093f2cf7e1826d754bccbcc08dad11",
+        "sha256:b1f79ea22db803a2b6afccc39532b998261048155fc12ed42afe34b36a76afac",
+        "sha256:9896279227910bb07657094b12def1f0a1f8040cd4e692a2e56413d87582e48b",
+        "sha256:8b9ccf445b53aee137ba063790a40c19c198fd659895fded8e019aaebc385d5b",
+        "sha256:f02c720b5b9d37d6d357e38d875a90218fcb8825e9d56dc699dee818ae7d3540"
+      ]
+    },
+    {
+      "featureId": "erase.ed-scroll-region",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:37:33.094Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:37:33.094Z"
+          },
+          "assertionRefs": [
+            20
+          ],
+          "rawReplyRef": "erase.ed-scroll-region"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.ed-scroll-region",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.ed-scroll-region: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[3;10r\\u001b[3;1H\\u001b[J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:10460a7e46bbd9deb4c941db551ecaf1cb504ece4a20d195fa37d124d2ddcd07",
+          "rawReplyRef": "erase.ed-scroll-region"
+        }
+      ],
+      "rawReplyRef": "erase.ed-scroll-region",
+      "rawReplySha256": "6d8e5a100119f7006a6cb67bc79afc1cf6ff0c4185bdb9ece25ca25dcd2bc725",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:3fc71120d5f3ec0f59501a78551932770ddcbb787c1f0d752bca2b8e32428fc8",
+        "sha256:b54ad85c4129a6332b6cc45863fb9e479259013562fa8043f7da5da83bb32f95",
+        "sha256:7cb1fe56e35bebcc8c805774e2af40bca2cbc7e6ee5e630e82aff9c245fa9165",
+        "sha256:0f5234268b4ed931dd09717c29f626eb96a8b5229a26ea7a71ab7aeb4efc48d2",
+        "sha256:97b5e49594c0abde9a195445faf2f4a6f6b5a73ca0c38537b3b0c024921a8f0c"
+      ]
+    },
+    {
+      "featureId": "modes.alt-screen.enter",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:11.363Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:11.363Z"
+          },
+          "assertionRefs": [
+            28
+          ],
+          "rawReplyRef": "modes.alt-screen.enter",
+          "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "modes.alt-screen.enter",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "DECRPM mode 1049 recognized (set or reset)",
+          "observed": "reset (Ps 2)",
+          "rawReplyRef": "modes.alt-screen.enter"
+        }
+      ],
+      "rawReplyRef": "modes.alt-screen.enter",
+      "rawReplySha256": "e9f7594ea3e775bb25f6fb09cd81fd92b08819ce091042506d3652f041cf7f7b",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "modes.alt-screen.exit",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:11.377Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+      "tests": [
+        {
+          "id": "primary-marker-restored",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:11.377Z"
+          },
+          "assertionRefs": [
+            29
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "id": "alternate-marker-control",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:11.377Z"
+          },
+          "assertionRefs": [
+            30
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "id": "saved-cursor-restored",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:11.377Z"
+          },
+          "assertionRefs": [
+            31
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "modes.alt-screen.exit (primary-marker-restored, expected change): cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":7} equals the same-run expected frame after \"\\u001b[?1049l\", behind a paint witness in cell 2,1",
+          "observed": "sha256:1d3d338cfb22c9a1f11fc91669ab29fb982d31627144de376e2b144b9a3ce762",
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "modes.alt-screen.exit: actual alternate marker ALTONLY differs from the independently painted primary PRIMARY in the same crop behind its paint witness",
+          "observed": "{\"stability\":{\"regionDigest\":[\"sha256:7bf377138136508eed00774e6856476768ecf05f67aec152c3f41b4cadc75de6\",\"sha256:7bf377138136508eed00774e6856476768ecf05f67aec152c3f41b4cadc75de6\"],\"pixelsDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"frameDigest\":[\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\",\"sha256:a856b74d056033df84f749856efe5c6a0892adb4a0047c5e2aa2e5cdf54d831b\"],\"wholeWindowChanged\":false},\"region\":{\"top\":1,\"left\":1,\"bottom\":1,\"right\":7},\"sentinel\":{\"row\":2,\"col\":1},\"cursorRow\":3,\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"seed\":\"sha256:68f720dbfbfbb1821b519c029a1abbe03d4ec253f592611f3a12156c44d860e7\",\"after\":\"sha256:1d3d338cfb22c9a1f11fc91669ab29fb982d31627144de376e2b144b9a3ce762\",\"expected\":\"sha256:1d3d338cfb22c9a1f11fc91669ab29fb982d31627144de376e2b144b9a3ce762\",\"ignored\":\"sha256:68f720dbfbfbb1821b519c029a1abbe03d4ec253f592611f3a12156c44d860e7\",\"discriminator\":{\"signal\":\"primary-marker-restored\",\"expected\":\"change\"}}",
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+          "observed": "{\"before\":{\"row\":2,\"col\":3},\"inside\":{\"row\":3,\"col\":2},\"after\":{\"row\":2,\"col\":3}}",
+          "rawReplyRef": "modes.alt-screen.exit"
+        }
+      ],
+      "rawReplyRef": "modes.alt-screen.exit",
+      "rawReplySha256": "0f062d589f707170473d923261982f38e736509cee32380628ef73ea2a748c99",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:a20753c29db418956731868ac9738fe6ff76242731ea033cc44e30f53e2b434a",
+        "sha256:fc58ba18e7817af23021cf6bea9abee70edba6e4503ae52cbae928ba229d13fe",
+        "sha256:5708daf4d965217a0eb8f492b0b53112a6957e12445d139b1160c4e045723a85",
+        "sha256:99b067432634dffdd554ed545b9c81b4aaee380c939d4c95ab728cb62a0c7a64",
+        "sha256:b160f09c94ec505998d176a0b289f272a9812d35ca5ddfdcdcc2603bab505598",
+        "sha256:289dc804884872eb440f13700ba388398801951d800f56d5acefbe86295e10b1"
+      ]
+    },
+    {
+      "featureId": "modes.reverse-video",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:32.874Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:32.874Z"
+          },
+          "assertionRefs": [
+            33
+          ],
+          "rawReplyRef": "modes.reverse-video",
+          "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "modes.reverse-video",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "DECRPM mode 5 set or permanently set",
+          "observed": "{\"snapshot\":2,\"afterSet\":1}",
+          "rawReplyRef": "modes.reverse-video"
+        }
+      ],
+      "rawReplyRef": "modes.reverse-video",
+      "rawReplySha256": "817b794ab7a22857cfa5ae4a24bb96ef82cd2eaa2fd9e17ac35f8403b1a9a869",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "modes.auto-wrap",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:32.861Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:32.861Z"
+          },
+          "assertionRefs": [
+            32
+          ],
+          "rawReplyRef": "modes.auto-wrap",
+          "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "modes.auto-wrap",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "DECRPM mode 7 recognized (set or reset)",
+          "observed": "set (Ps 1)",
+          "rawReplyRef": "modes.auto-wrap"
+        }
+      ],
+      "rawReplyRef": "modes.auto-wrap",
+      "rawReplySha256": "b70d83a1c94c5060ac250c88a363c6948a6bedca7a21cadc2c770abffa3d9394",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.accumulate",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:41:32.950Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.accumulate",
+          "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.accumulate",
+      "rawReplySha256": "205fd0cd5e6b7e366a6c8b0b93045cba1212644848c140150c85a4360db9835a",
+      "screenshotRefs": [
+        "sha256:58920e4579912d47f0199938ebc24131d16fe533c0ed01b43007bea4cafab388",
+        "sha256:9c266c3a15c35bedf7059e485aa8c56aa35dde96fcb4fa58c60ebe7ea69f5979"
+      ]
+    },
+    {
+      "featureId": "scrollback.total-lines",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:42:54.382Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.total-lines",
+          "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.total-lines",
+      "rawReplySha256": "a60ec872df13a99d1f301858a7399142025a9494aa91bd28b1902df2a74b4e2c",
+      "screenshotRefs": [
+        "sha256:1ae37f9177053d1f9921f14c0feb7d195ff32992e0c26f30a25bd8e38f131c6b",
+        "sha256:50635f5084f9a057481faba60c88f50dab61d1fbf5cad404a7b37d148f225fc2"
+      ]
+    },
+    {
+      "featureId": "scrollback.scroll-up",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:42:32.522Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:42:32.522Z"
+          },
+          "assertionRefs": [
+            41
+          ],
+          "rawReplyRef": "scrollback.scroll-up"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.scroll-up",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.scroll-up: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":5,\"right\":1} equals the same-run expected frame after \"\\u001b[2;1H\\u001b[S\\u001b[r\\u001b[6;1H\", behind a paint witness in cell 7,1",
+          "observed": "sha256:b51d603933ae380f1815217bb98644e041610d5c258f6aad2b9bcb3efa0a4284",
+          "rawReplyRef": "scrollback.scroll-up"
+        }
+      ],
+      "rawReplyRef": "scrollback.scroll-up",
+      "rawReplySha256": "8277d14ad07bb90f490241238a11ff8e04eb9106a7e274f2d5649cae31f9ea05",
+      "screenshotRefs": [
+        "sha256:b6fd892ec7a63819b0900dd2f97e966bddaf252e30263b61fdb9c45c54ef1b4e",
+        "sha256:b63564263eb1a45e5558343ced80e4168d36b9094120b5d32f4fe253b8495684",
+        "sha256:90425a9631c289c57e66f27e255e56900979dd7b50a749f595f3050f9a06dec4",
+        "sha256:0e6ca7069c0cd3d2341fc160eac124102c867b3ae908dface6734f4dff834147",
+        "sha256:0914528197271efbae7f2b9dafbb5274dc71eba77feec3cf85e9e947b1970006",
+        "sha256:8ebc14ad50ecd7a57222386bb56c0153df076eaa95868e1d78ef563e9797770b"
+      ]
+    },
+    {
+      "featureId": "scrollback.scroll-down",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:42:21.866Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:42:21.866Z"
+          },
+          "assertionRefs": [
+            40
+          ],
+          "rawReplyRef": "scrollback.scroll-down"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.scroll-down",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.scroll-down: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":4,\"right\":5} equals the same-run expected frame after \"\\u001b[H\\u001b[T\\u001b[5;1H\", behind a paint witness in cell 6,1",
+          "observed": "sha256:6953e0e12706f8dc87b567e825031459f4b9f05c891b0dd0716a818a56fcefad",
+          "rawReplyRef": "scrollback.scroll-down"
+        }
+      ],
+      "rawReplyRef": "scrollback.scroll-down",
+      "rawReplySha256": "4a444e5d0b8b2812a530827a42a752568c6b010300c2ef66aa7a44fc5d4960a9",
+      "screenshotRefs": [
+        "sha256:b6fd892ec7a63819b0900dd2f97e966bddaf252e30263b61fdb9c45c54ef1b4e",
+        "sha256:ef2b0e36d429774d5d49d276b9e1a3c77adfa4744105784f2cc3d443a8b8f293",
+        "sha256:1ce0713407836780ce5306becb69dce669ab59cc4b92308bc3c398e897391a8e",
+        "sha256:5d783ef81b9fbd13f91da5da57eae92c1ecee974471984a800ecaf01648eed17",
+        "sha256:fa213f685c78a5ab0a0d23cf373d2c49d76a98fa21ef6d67adddcb1e4ba9957e",
+        "sha256:910d1c89ad1601a93bc6b3873203a54db72ec2f8e346b6b7fab33b43ff3fe518"
+      ]
+    },
+    {
+      "featureId": "scrollback.reverse-index",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:42:11.441Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:42:11.441Z"
+          },
+          "assertionRefs": [
+            39
+          ],
+          "rawReplyRef": "scrollback.reverse-index"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.reverse-index",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.reverse-index: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":1} equals the same-run expected frame after \"\\u001b[H\\u001bM\\u001b[6;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:ce8cb203249ec54a24cfb4cb016faba36f5515f8ebdef1968f3002d7435d5051",
+          "rawReplyRef": "scrollback.reverse-index"
+        }
+      ],
+      "rawReplyRef": "scrollback.reverse-index",
+      "rawReplySha256": "ac915504803ee1808e5379dea1c4af492577f949f8ce9d652d947d21a067318a",
+      "screenshotRefs": [
+        "sha256:b6fd892ec7a63819b0900dd2f97e966bddaf252e30263b61fdb9c45c54ef1b4e",
+        "sha256:86e2c59f17498686cfc02d15e7a11554e3f3007433c2143b2187eea30e88ea89",
+        "sha256:9623a5c5eac160fe856b04a04461b82967f7cc315fc440725621a8d0a33c6f6c",
+        "sha256:cac1610935126eabb0a105edde8732a52a76500da9684bcda89597251ce8876e",
+        "sha256:e7996c6d64eee55c0ca6c4d8b6e932e0da7c5ace6bd7191e1df9da2f9030e5ff",
+        "sha256:815fe2f01fdc14cc697fcd6920f8cb7f596914a293fea07ae3d265549fbdbde5",
+        "sha256:1dbd09ad9120ef6874ace549a8e9e972695e43843518a90c665420c3ff74464d"
+      ]
+    },
+    {
+      "featureId": "scrollback.set-region",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:42:43.232Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:42:43.232Z"
+          },
+          "assertionRefs": [
+            42
+          ],
+          "rawReplyRef": "scrollback.set-region"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.set-region",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.set-region: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":7,\"right\":1} equals the same-run expected frame after \"\\u001b[5;10r\\u001b[10;1H\\n\\u001b[r\\u001b[11;1H\", behind a paint witness in cell 12,1",
+          "observed": "sha256:3a09e917cffd155c79e9d1ce7694df7b5a6d8582886c4a5430a957007a929888",
+          "rawReplyRef": "scrollback.set-region"
+        }
+      ],
+      "rawReplyRef": "scrollback.set-region",
+      "rawReplySha256": "3cc3cc480f3a6325918d6279227d12443edde8a40ad5b825df37b3b037e29e26",
+      "screenshotRefs": [
+        "sha256:b6fd892ec7a63819b0900dd2f97e966bddaf252e30263b61fdb9c45c54ef1b4e",
+        "sha256:1c8077b63b04ed42e68d1dca25e21dc48575a3350b979d6dffb9ab4ab9e9356b",
+        "sha256:14d50d1188c5f387fc74308222daa1bb640f7224a1dff4060b858f5e6e94e7b2",
+        "sha256:824a9d2f449998c468a56ce027c5be69b6ae42a8a756c1d84a7c721bde578127",
+        "sha256:b318a94689778dc8676858df75bc06a897ddc0c3a55e3ed8fe78633f19df3590",
+        "sha256:6d05ca15c04b2e61446b7de4f6334473e7964606598918f1ebe1d240e664f657",
+        "sha256:9a5ae16ecc7610d8fa2a57779ae5e7e3fc64852ad5cd47074c9db4710d7cbb7e"
+      ]
+    },
+    {
+      "featureId": "scrollback.alt-screen",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:41:34.886Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:41:34.886Z"
+          },
+          "assertionRefs": [
+            36
+          ],
+          "rawReplyRef": "scrollback.alt-screen"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.alt-screen",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.alt-screen: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":18} equals the same-run expected frame after \"\\u001b[?1049h\\u001b[2;1HALT_SCREEN_MARKER\\u001b[?1049l\\u001b[2;1HOK\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:c2a8d3fc6a938bc963dfcb35e7059a73c112a1d8321844d5a2f9b8d5266cf1ef",
+          "rawReplyRef": "scrollback.alt-screen"
+        }
+      ],
+      "rawReplyRef": "scrollback.alt-screen",
+      "rawReplySha256": "2a27ad35fc933685dca5252734cca862f39ed33430803303917fe3deacd86647",
+      "screenshotRefs": [
+        "sha256:b6fd892ec7a63819b0900dd2f97e966bddaf252e30263b61fdb9c45c54ef1b4e",
+        "sha256:132ae34836ab36884256bc71d1dc2bd36b4698335c1a33eb8a63e75a47191b96",
+        "sha256:d9fe94bd361e2a0d16432ec2473bb4e1e63ec1964ab20c027453f9d5f033af57",
+        "sha256:eff2dacf0080ba9604ccdc53710f36c005134e79d94c2956bb4461e94d85fb6e",
+        "sha256:619312e4b294878f635afb86e8a635de43ba3d32117fdbf5ed181eb0a9dd0d47",
+        "sha256:7010140074be419237a8fc572b7a8bf07cfe3616ef9551734fe96f9b6fd5b04c",
+        "sha256:4c734f2ebffdd655728b2cecfc682d857c59103df9fdc5262ce7dc28a35f61eb",
+        "sha256:f279277eb22f3ce73854066e03863c5dd3a99fcd07fa6e06dbd0aff7cde91c4b"
+      ]
+    },
+    {
+      "featureId": "scrollback.decstbm",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:41:48.012Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:41:48.012Z"
+          },
+          "assertionRefs": [
+            37
+          ],
+          "rawReplyRef": "scrollback.decstbm"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.decstbm",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.decstbm: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":5,\"right\":1} equals the same-run expected frame after \"\\u001b[3;6r\\u001b[6;1H\\n\\u001b[r\\u001b[7;1H\", behind a paint witness in cell 8,1",
+          "observed": "sha256:64186a319e6cd728a3266eb674f4980f7152caabdc8117e812a81479ed2f41ba",
+          "rawReplyRef": "scrollback.decstbm"
+        }
+      ],
+      "rawReplyRef": "scrollback.decstbm",
+      "rawReplySha256": "8f0421a85a38f99b9abc9053eefc1967a2c45f95cb26aa5907f2374f37d1672b",
+      "screenshotRefs": [
+        "sha256:b6fd892ec7a63819b0900dd2f97e966bddaf252e30263b61fdb9c45c54ef1b4e",
+        "sha256:8c278efcee4b4b8b6f41a81a1886191f2c92c185204e60a7fb351a29f8559367",
+        "sha256:7b0485327413314532ddd0399627118ccbc442adf5c0fe5ed8c4d0501f1ef053",
+        "sha256:7627f7ddd197ea729e934a8626362f1cc2231c87c887f996474fe1b57aa05d79",
+        "sha256:f45b2c869692531394a646f828cf8466b4190326081cf395201e41e1393aac59",
+        "sha256:44b2806b3d32278d52b9c4d83ff5f1eb98b98bd9313f5fbd687c636422c0eaea",
+        "sha256:94c754e2dd43a3803f828d2298f2c1b85e11caa98befc048fb3397702f59d410"
+      ]
+    },
+    {
+      "featureId": "scrollback.decstbm-reset",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:41:58.386Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:41:58.386Z"
+          },
+          "assertionRefs": [
+            38
+          ],
+          "rawReplyRef": "scrollback.decstbm-reset"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.decstbm-reset",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.decstbm-reset: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":6,\"right\":1} equals the same-run expected frame after \"\\u001b[4;6r\\u001b[4;1H\\u001bM\\u001b[r\\u001b[1;1H\\u001bM\\u001b[7;1H\", behind a paint witness in cell 8,1",
+          "observed": "sha256:a2b09825ffcabf3b846f37106ca6cc72d70d8b90d28fbb636c2b2f3b13adf426",
+          "rawReplyRef": "scrollback.decstbm-reset"
+        }
+      ],
+      "rawReplyRef": "scrollback.decstbm-reset",
+      "rawReplySha256": "164205a566237aef25c89177e45598b357126237af157c4cd1925a686e7f0b1a",
+      "screenshotRefs": [
+        "sha256:b6fd892ec7a63819b0900dd2f97e966bddaf252e30263b61fdb9c45c54ef1b4e",
+        "sha256:901b63c999c69eda5066fdf7f5c5ac769934c5d579c342e9c70b946664bc028f",
+        "sha256:1a20e021d29f41de4967f5d456e76237e9dda97f36ab354760a139db33092cbf",
+        "sha256:7bb9c186bce1e183c5c9d262fba5eb61875c194b48c294563039f3de21174262",
+        "sha256:b23bed0ff775009606053a50fbc134cfa4ca9a17f23c6241fc633dd6c244142b",
+        "sha256:692bfff0f3bb3c537fc8614b62b0c3e6f4d5fc08ffd3e56bbfcce200ba657d6e",
+        "sha256:ce12a8ad105eb2aabf8facf1855aca72d34d61bb00bf9aad175e5fa59ad7c1c0",
+        "sha256:05cb6d75ef7ca123b6572992b97cfc01d3e0772f95d2ee95a717b33efc78b999"
+      ]
+    },
+    {
+      "featureId": "text.basic",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.913Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.913Z"
+          },
+          "assertionRefs": [
+            54
+          ],
+          "rawReplyRef": "text.basic"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.basic",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "writing Hello advances the cursor five columns to row 1, column 6",
+          "observed": "{\"before\":{\"row\":1,\"col\":1},\"pos\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "text.basic"
+        }
+      ],
+      "rawReplyRef": "text.basic",
+      "rawReplySha256": "905e0e54f13c861f9905972c5f4723c59cc80e30e360fd79e64e512e79617dce",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.wrap",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.899Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.899Z"
+          },
+          "assertionRefs": [
+            65
+          ],
+          "rawReplyRef": "text.wrap",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.wrap",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "wrap after 140 columns lands the cursor at row 2, column 2",
+          "observed": "{\"home\":{\"row\":1,\"col\":1},\"control\":{\"row\":1,\"col\":140},\"target\":{\"row\":2,\"col\":2}}",
+          "rawReplyRef": "text.wrap"
+        }
+      ],
+      "rawReplyRef": "text.wrap",
+      "rawReplySha256": "9129303ed7c819b75924a3c932aa0956ec2cbbe248e13e1e843a2a102ac3482a",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.wide.cjk",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.878Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.878Z"
+          },
+          "assertionRefs": [
+            64
+          ],
+          "rawReplyRef": "text.wide.cjk"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.wide.cjk",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "中 occupies two columns after ASCII calibration",
+          "observed": "{\"ascii\":2,\"width\":2}",
+          "rawReplyRef": "text.wide.cjk"
+        }
+      ],
+      "rawReplyRef": "text.wide.cjk",
+      "rawReplySha256": "c2e495e4b6da2c96a2b6042ee34d4f7513746e2044e653e5ae69999afbd0e17c",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.tab",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.840Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.840Z"
+          },
+          "assertionRefs": [
+            62
+          ],
+          "rawReplyRef": "text.tab"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.tab",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "combined HT/HTS fixture advances to the nearest owned stop at row 1, column 6",
+          "observed": "{\"home\":{\"row\":1,\"col\":1},\"comparison\":{\"row\":1,\"col\":9},\"owned\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "text.tab"
+        }
+      ],
+      "rawReplyRef": "text.tab",
+      "rawReplySha256": "c9b00dba4ddf925ed5040e6d20217f204a500cf9e2ce3089c4f3b8d8179629d3",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "unicode.tab-stops",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.917Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.917Z"
+          },
+          "assertionRefs": [
+            66
+          ],
+          "rawReplyRef": "unicode.tab-stops"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "unicode.tab-stops",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor column 10 after tab",
+          "observed": "{\"row\":1,\"col\":10}",
+          "rawReplyRef": "unicode.tab-stops"
+        }
+      ],
+      "rawReplyRef": "unicode.tab-stops",
+      "rawReplySha256": "83a9699c463f60a3204b34e0d19f93533d4d8762673df830d8621444e39ad24e",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.cr",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.973Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.973Z"
+          },
+          "assertionRefs": [
+            57
+          ],
+          "rawReplyRef": "text.cr"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.cr",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CR moves cursor from 1;3 to 1;1",
+          "observed": "{\"before\":{\"row\":1,\"col\":3},\"pos\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "text.cr"
+        }
+      ],
+      "rawReplyRef": "text.cr",
+      "rawReplySha256": "134575f6c38880f5ae77f8e05c352704e51c00a88c5755b5f7186bd4924df569",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.newline",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.026Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.026Z"
+          },
+          "assertionRefs": [
+            60
+          ],
+          "rawReplyRef": "text.newline",
+          "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.newline",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "LF advances from row 3 to row 4",
+          "observed": "{\"before\":{\"row\":3,\"col\":5},\"pos\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "text.newline"
+        }
+      ],
+      "rawReplyRef": "text.newline",
+      "rawReplySha256": "398810a297cbae50f4ec5fa36bd53dfe8b0dc0522074d6eb233de94761e2123c",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.backspace",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.894Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.894Z"
+          },
+          "assertionRefs": [
+            53
+          ],
+          "rawReplyRef": "text.backspace"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.backspace",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "BS moves from 1;5 to 1;4",
+          "observed": "{\"before\":{\"row\":1,\"col\":5},\"pos\":{\"row\":1,\"col\":4}}",
+          "rawReplyRef": "text.backspace"
+        }
+      ],
+      "rawReplyRef": "text.backspace",
+      "rawReplySha256": "5d7ec77710e4566f215866f03585de6e731e9f434b77040845a6a0b41f708586",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.index",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.009Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.009Z"
+          },
+          "assertionRefs": [
+            59
+          ],
+          "rawReplyRef": "text.index"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.index",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "IND advances cursor from 3;5 to 4;5",
+          "observed": "{\"before\":{\"row\":3,\"col\":5},\"pos\":{\"row\":4,\"col\":5}}",
+          "rawReplyRef": "text.index"
+        }
+      ],
+      "rawReplyRef": "text.index",
+      "rawReplySha256": "fd0c3208add23daf2a84f98d1364b58526bc1e736155a5eaee078d3647644e53",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.next-line",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.044Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.044Z"
+          },
+          "assertionRefs": [
+            61
+          ],
+          "rawReplyRef": "text.next-line"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.next-line",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "NEL advances cursor from 3;5 to 4;1",
+          "observed": "{\"before\":{\"row\":3,\"col\":5},\"pos\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "text.next-line"
+        }
+      ],
+      "rawReplyRef": "text.next-line",
+      "rawReplySha256": "4449d8cfe850c678426a5e34470954bbc614f848638cb786a5736c4c26a5ce09",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.reverse-index-scroll",
+      "status": "probe-invalid",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.452Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-invalid",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.452Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "text.reverse-index-scroll",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "text.reverse-index-scroll",
+      "rawReplySha256": "79ed3733ff206b44594a02e6de297679633358c89c48d726fbd7832b5afed766",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.overwrite",
+      "status": "probe-invalid",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.061Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-invalid",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.061Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "text.overwrite",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "text.overwrite",
+      "rawReplySha256": "a18802a5249a32ada1c316a3f260ea0f3678b7124a9d8193eff2a51f7096df89",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.hts",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.991Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.991Z"
+          },
+          "assertionRefs": [
+            58
+          ],
+          "rawReplyRef": "text.hts"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.hts",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "combined HT/HTS fixture advances to the nearest owned stop at row 1, column 6",
+          "observed": "{\"home\":{\"row\":1,\"col\":1},\"comparison\":{\"row\":1,\"col\":9},\"owned\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "text.hts"
+        }
+      ],
+      "rawReplyRef": "text.hts",
+      "rawReplySha256": "c9b00dba4ddf925ed5040e6d20217f204a500cf9e2ce3089c4f3b8d8179629d3",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.tbc",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:35.859Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:35.859Z"
+          },
+          "assertionRefs": [
+            63
+          ],
+          "rawReplyRef": "text.tbc"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.tbc",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "After clearing old stops at columns 9, 17 and 25, tab reaches the right margin",
+          "observed": "{\"cols\":140,\"oldFirst\":{\"row\":1,\"col\":9},\"oldSecond\":{\"row\":1,\"col\":17},\"oldThird\":{\"row\":1,\"col\":25},\"after\":{\"row\":1,\"col\":140}}",
+          "rawReplyRef": "text.tbc"
+        }
+      ],
+      "rawReplyRef": "text.tbc",
+      "rawReplySha256": "b85e9a8117eacda5f8120ee74b0f1282a67c10f09b5568042f8591d21a00a7c6",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.cht",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.954Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.954Z"
+          },
+          "assertionRefs": [
+            56
+          ],
+          "rawReplyRef": "text.cht"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.cht",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "row 1, col 17",
+          "observed": "{\"row\":1,\"col\":17}",
+          "rawReplyRef": "text.cht"
+        }
+      ],
+      "rawReplyRef": "text.cht",
+      "rawReplySha256": "2e7118d9002ebc57a91e69f952e77aabd93c01b0c9cb08ede1a91152d29095e5",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.cbt",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:34.934Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:48:34.934Z"
+          },
+          "assertionRefs": [
+            55
+          ],
+          "rawReplyRef": "text.cbt"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.cbt",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "row 1, col 17",
+          "observed": "{\"row\":1,\"col\":17}",
+          "rawReplyRef": "text.cbt"
+        }
+      ],
+      "rawReplyRef": "text.cbt",
+      "rawReplySha256": "8d39cd7d37bd9a5f5ccacbd2f79883695cfec3baf973364e25108243506e46b5",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.sgr",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:32.909Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 120000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "reset.sgr",
+          "reason": "Probe exceeded 120000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "reset.sgr",
+      "rawReplySha256": "0484f222f29da99ef0653856c147d50568cd902d711b8313a5a662907520f9af",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.ris",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:32.892Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Measured RIS cursor reset; other reset effects were not inspected",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:32.892Z"
+          },
+          "assertionRefs": [
+            34
+          ],
+          "rawReplyRef": "reset.ris",
+          "reason": "Measured RIS cursor reset; other reset effects were not inspected"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "reset.ris",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "RIS homes cursor from 5;5",
+          "observed": "{\"before\":{\"row\":5,\"col\":5},\"after\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "reset.ris"
+        }
+      ],
+      "rawReplyRef": "reset.ris",
+      "rawReplySha256": "4099713d3d5406c99bda13cc7ff8a4e483603c820848e55e60acaaac62173818",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.soft",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:41:32.931Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:41:32.931Z"
+          },
+          "assertionRefs": [
+            35
+          ],
+          "rawReplyRef": "reset.soft",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "reset.soft",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "DECSTR resets previously enabled DECCKM mode 1",
+          "observed": "{\"before\":\"reset (Ps 2)\",\"enabled\":\"set (Ps 1)\",\"after\":\"reset (Ps 2)\"}",
+          "rawReplyRef": "reset.soft"
+        }
+      ],
+      "rawReplyRef": "reset.soft",
+      "rawReplySha256": "afaf315020341b861801fcd337c8dccdfafb3c37f90a8bc949a267de55b51734",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.method",
+      "status": "untestable",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:32.884Z"
+      },
+      "assertionType": null,
+      "reason": "The app context has no reset() method or equivalent state readback",
+      "tests": [
+        {
+          "id": "declared-untestable",
+          "status": "untestable",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:39:32.884Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "reset.method",
+          "reason": "The app context has no reset() method or equivalent state readback"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "reset.method",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "charsets.dec-special",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:36:36.216Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:36:36.216Z"
+          },
+          "assertionRefs": [
+            1
+          ],
+          "rawReplyRef": "charsets.dec-special"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.dec-special",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.dec-special: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":3} equals the same-run expected frame after \"\\u001b[1;2H\\u001b(0q\\u001b(B\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:18baae5e7bbfbfc3b249785059ffd87afc20ef23d92c03b9d58e261f3595fba4",
+          "rawReplyRef": "charsets.dec-special"
+        }
+      ],
+      "rawReplyRef": "charsets.dec-special",
+      "rawReplySha256": "77f429d23fa3fe66d5be3a06a852385abfa6c723e9b0ecf06750eef5f1fd9551",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:dc7829f7f0ea45391aa5a846a65495207d4aa63420f75a72577f13df55fcd76d",
+        "sha256:efd8f7da43b60b69464f0dff7e7886bcf268dffb2b279e16136f8ccfd714f43d",
+        "sha256:c9aba3d3da6b7788c095084815483edb9d614e41e4f22a447ef1008ad70b05dd",
+        "sha256:3b2f028f49dd14a9597c964d80b57ed5e2dfb1a3c4807b6f51b7401590512a7b",
+        "sha256:fc2fb3ec748d6968d275ba5b2297dc862791621a8b3c5ff3abc392298b8a8dc6"
+      ]
+    },
+    {
+      "featureId": "charsets.utf8",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:36:57.134Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:36:57.134Z"
+          },
+          "assertionRefs": [
+            3
+          ],
+          "rawReplyRef": "charsets.utf8"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.utf8",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.utf8: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;2Hé\\u001b[1;3H世\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:96790572009b6aee659b59e2ca430c78b21bce5d43096275028a0a5ebb2a1465",
+          "rawReplyRef": "charsets.utf8"
+        }
+      ],
+      "rawReplyRef": "charsets.utf8",
+      "rawReplySha256": "1643898ead75c2076f6b4cd69e34550056915e2a3e191c7f2805900ac69a6191",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:9b91f715bbb014f259ac37ce977287018149bc43e7084806c3a2a15ceada52e3",
+        "sha256:1ab24d10f5590342f92d4ddbeda50cafa67b827e31e539dafd14cd15360382b6",
+        "sha256:f94c2de01a10899b957d8af251a1934967385db8c3c32f042a7e682d3f13c024",
+        "sha256:16922371be3cbaaf24c31f90a65d3f4237c566452502e425c893e32029bd4c22",
+        "sha256:201331fd64c271adbacef7fca8e03f06a2ae70c9082b437b2ee35e395f634615"
+      ]
+    },
+    {
+      "featureId": "charsets.g0-g1-switching",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:36:46.694Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:36:46.694Z"
+          },
+          "assertionRefs": [
+            2
+          ],
+          "rawReplyRef": "charsets.g0-g1-switching"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.g0-g1-switching",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.g0-g1-switching: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;2H\\u001b(B\\u001b)0l\\u000el\\u000fl\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:3c36159bef104ddb6633310c00685fb8a6d5a29e374d3f2cf8104dc229b2b743",
+          "rawReplyRef": "charsets.g0-g1-switching"
+        }
+      ],
+      "rawReplyRef": "charsets.g0-g1-switching",
+      "rawReplySha256": "dfce1a4bbe373f3b066cff6c4276760c7bc9ff71ad60f69e97b79e5535b2c8f8",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:536cdd92d9dd5abee0002be5716fb8894b525f3e47298656638f16c0a7a3ae30",
+        "sha256:4ec7caf1ee6b4fb828ca8fb364846be11655ca6705d1de0b9116e8bea860c0af",
+        "sha256:53967071ddce949bdad4d7381d9816d616ec644b5e54adc5d23c5a7f778287fd",
+        "sha256:10f693f72eec201aa16ef82fd08dd14f27b5de32db03808b7b7b2f47d86aee55",
+        "sha256:8c20ee784687e0d9e6a36831cec3e9a0d21bb73fd0695d5f662af251c4446512"
+      ]
+    },
+    {
+      "featureId": "charsets.dec-line-drawing",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:36:25.634Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:36:25.634Z"
+          },
+          "assertionRefs": [
+            0
+          ],
+          "rawReplyRef": "charsets.dec-line-drawing"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.dec-line-drawing",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.dec-line-drawing: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":7} equals the same-run expected frame after \"\\u001b[1;1H\\u001b(0jklmqx\\u001b(B\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:bce49c190483d93294418ed4a39902cce3c1751de2da618f0ae00fc5eb09a1ec",
+          "rawReplyRef": "charsets.dec-line-drawing"
+        }
+      ],
+      "rawReplyRef": "charsets.dec-line-drawing",
+      "rawReplySha256": "53820f99b81ec1155fe734647dc18c5aa16f27a156e3314897f0a7be5db59705",
+      "screenshotRefs": [
+        "sha256:cf01267a7d4d9f6b502367ba84587defb96dd949887d1448317cae9b242541ff",
+        "sha256:cc6064638b2e00287f7860731d38ce456138639e1ee533c2134ec27e32238b8a",
+        "sha256:a7ab3bb842742341f04b14cb233454009cb9deeebdcf0406084ba724ab690c8f",
+        "sha256:0067c2a65fc7af7c3f3886fba9925bbd678c10a1feed72581b453a2ae2d2f31b",
+        "sha256:ff73d21a4daa1a23a530d977cd1883f3f16e66deadc70616fe07d437175c2b19",
+        "sha256:433ede30b014360d36cfe1546688fc69dbd114cba062e1bbdcee0f238ecef342"
+      ]
+    },
+    {
+      "featureId": "device.env-term",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "none"
+      },
+      "assertionType": null,
+      "reason": "Not selected for this collection; no test was attempted.",
+      "tests": [],
+      "assertions": [],
+      "rawReplyRef": null,
+      "rawReplySha256": null,
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "extensions.osc1-icon",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:39:11.355Z"
+      },
+      "assertionType": null,
+      "reason": "No icon-name readback for OSC 1",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "extensions.osc1-icon",
+          "reason": "No icon-name readback for OSC 1"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "extensions.osc1-icon",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    }
+  ]
+}

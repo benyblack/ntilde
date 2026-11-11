@@ -1,0 +1,3096 @@
+{
+  "schemaVersion": 1,
+  "requirementCount": 80,
+  "method": {
+    "probeHash": "e122f23e91e1",
+    "sourceRevision": "ff37d198914b870281a2c0461cc682b37fce07ef",
+    "workerSha256": "7159efdd5bc56e0d804532c3f013ef7bc81afaf8cdf9469df18b63219efe8b11",
+    "workerBundleSha256": null,
+    "os": "27.0.1",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "upstreamBaseRevision": "b0c8c62500199b381478a02b1f144a4de60693e5"
+  },
+  "manifestSha256": "ce0ca8487dd12d7718fd903adcc70bfce11949fd6cc6ef6b1afd759b8d57957f",
+  "subjects": [
+    {
+      "id": "ntilde",
+      "label": "Ntilde",
+      "version": "0.13.0",
+      "versionBasis": "explicit build version; executable digest retained",
+      "measuredAt": "2026-11-11T16:48:36.937Z",
+      "runId": "af1f5c275a0b3aab10fdd216ca668d10",
+      "rawSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b",
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "launchDriverSha256": "d3a54000ca53e9db6f9e6678638cfadd6f4190f76372c27ea4d89fc366c2d581",
+      "buildPayloadSha256": "464b9ea225794bd579854334d34d8e6d5567005be4465305fb400199ce8a3cbc",
+      "measurementLimits": {
+        "captureOutcome": "installed",
+        "captureRefusal": null,
+        "disposableOwnership": "shared",
+        "withheldProbeCount": 0,
+        "invalidWindowBoundsCount": 6
+      },
+      "counts": {
+        "supported": 63,
+        "unsupported": 0,
+        "untestable": 1,
+        "probe-todo": 8,
+        "probe-invalid": 7,
+        "not-scheduled": 1
+      },
+      "supportedShare": 78.75,
+      "focusedRetest": {
+        "subjectId": "ntilde",
+        "runId": "0d6902eb35805785d3b67ed55c05d499",
+        "measuredAt": "2026-11-11T17:04:43.472Z",
+        "baselineRunId": "af1f5c275a0b3aab10fdd216ca668d10",
+        "baselineRawSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b",
+        "rawSha256": "1aca79c5c2117f518b9fd7b8f68399892fc7c2b85d49f5bbdbdae33a1718f714",
+        "launchDriverSha256": "cd03422ff7f4e4c112b13d55a212d01d0cdc935b17a1623fcdd9727e2de0dfd5",
+        "caseIds": [
+          "sgr.selective-reset.italic",
+          "sgr.selective-reset.underline",
+          "sgr.strikethrough",
+          "sgr.underline.single",
+          "text.overwrite",
+          "text.reverse-index-scroll"
+        ],
+        "counts": {
+          "supported": 6,
+          "unsupported": 0,
+          "untestable": 0,
+          "probe-todo": 0,
+          "probe-invalid": 0,
+          "not-scheduled": 0
+        },
+        "currentCounts": {
+          "supported": 69,
+          "unsupported": 0,
+          "untestable": 1,
+          "probe-todo": 8,
+          "probe-invalid": 1,
+          "not-scheduled": 1
+        }
+      }
+    },
+    {
+      "id": "iterm2",
+      "label": "iTerm2",
+      "version": "3.7.7",
+      "versionBasis": "installed application Info.plist CFBundleShortVersionString",
+      "measuredAt": "2026-11-11T16:49:30.988Z",
+      "runId": "a1729873b939d8afc6c4d32eccc7b05d",
+      "rawSha256": "40c0329b411bbad37446d11186b4daac86951114867e74253566f9d770821afb",
+      "executableSha256": "53b9badbabf1ab32e20fd8ffa720ac97a6edf0fc5e7f68573778a61d9b6a0d29",
+      "launchDriverSha256": "d3a54000ca53e9db6f9e6678638cfadd6f4190f76372c27ea4d89fc366c2d581",
+      "buildPayloadSha256": null,
+      "measurementLimits": {
+        "captureOutcome": "refused",
+        "captureRefusal": "Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+        "disposableOwnership": "shared",
+        "withheldProbeCount": 5,
+        "invalidWindowBoundsCount": 0
+      },
+      "counts": {
+        "supported": 28,
+        "unsupported": 0,
+        "untestable": 1,
+        "probe-todo": 50,
+        "probe-invalid": 0,
+        "not-scheduled": 1
+      },
+      "supportedShare": 35
+    },
+    {
+      "id": "ghostty",
+      "label": "Ghostty",
+      "version": "1.4.0",
+      "measuredAt": "2026-11-11T16:34:05.593Z",
+      "runId": "6bb1ae0967e46b2e2f113175c5921177",
+      "rawSha256": "c98ec59fe48cedd236f6459fde4d66fa71076e2736b91b9d17cf437c597f31aa",
+      "executableSha256": "4b30ac9b049cdf9eb75b6d8c7764856c2b882de97c688dce8a1b80916b55271b",
+      "launchDriverSha256": "b0fa1720c627941ce4a1b32ae6d0ee8ff8459a7a1297d0a05f0604137c19840f",
+      "buildPayloadSha256": null,
+      "measurementLimits": {
+        "captureOutcome": "installed",
+        "captureRefusal": null,
+        "disposableOwnership": "shared",
+        "withheldProbeCount": 0,
+        "invalidWindowBoundsCount": 0
+      },
+      "counts": {
+        "supported": 69,
+        "unsupported": 0,
+        "untestable": 1,
+        "probe-todo": 9,
+        "probe-invalid": 0,
+        "not-scheduled": 1
+      },
+      "supportedShare": 86.25
+    }
+  ],
+  "evidencePath": "docs/qa/terminfo/2026-11-11-common-core-comparison",
+  "rows": [
+    {
+      "id": "sgr.bold",
+      "name": "Bold (SGR 1)",
+      "requirement": "Send \\x1b[1m X, verify the cell at (0,0) has bold=true . Confirms the SGR 1 attribute is parsed and applied to the character cell.",
+      "url": "https://terminfo.dev/sgr/1-bold",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 7,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 7,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 7,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.faint",
+      "name": "Faint/dim (SGR 2)",
+      "requirement": "Send \\x1b[2m X, verify the cell at (0,0) has dim=true . Confirms SGR 2 (faint) is parsed and stored as a distinct attribute.",
+      "url": "https://terminfo.dev/sgr/2-faint-dim",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 57,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 53,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 57,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.italic",
+      "name": "Italic (SGR 3)",
+      "requirement": "Send \\x1b[3m X, verify the cell at (0,0) has italic=true .",
+      "url": "https://terminfo.dev/sgr/3-italic",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 107,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 99,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 107,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.underline.single",
+      "name": "Underline (SGR 4)",
+      "requirement": "Send \\x1b[4m X, verify the cell has a truthy underline attribute.",
+      "url": "https://terminfo.dev/sgr/4-underline",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 7,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:03:55.362Z"
+                },
+                "assertionRefs": [
+                  3
+                ],
+                "rawReplyRef": "sgr.underline.single"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidenceLine": 157,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 145,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 157,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.inverse",
+      "name": "Inverse video (SGR 7)",
+      "requirement": "Send \\x1b[7m X, verify inverse=true on the cell.",
+      "url": "https://terminfo.dev/sgr/7-inverse-video",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 184,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.inverse: target differs from plain, made-up does not; sgr.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;7\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 191,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 207,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.inverse: target differs from plain, made-up does not; sgr.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;7\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.hidden",
+      "name": "Hidden/invisible (SGR 8)",
+      "requirement": "Send \\x1b[8m X, verify hidden=true on the cell.",
+      "url": "https://terminfo.dev/sgr/8-hidden",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 233,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 237,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 256,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.strikethrough",
+      "name": "Strikethrough (SGR 9)",
+      "requirement": "Send \\x1b[9m X, verify strikethrough=true on the cell.",
+      "url": "https://terminfo.dev/sgr/9-strikethrough",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 57,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.strikethrough: target differs from plain, made-up does not; sgr.strikethrough: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;9\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:03:26.434Z"
+                },
+                "assertionRefs": [
+                  2
+                ],
+                "rawReplyRef": "sgr.strikethrough"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidenceLine": 259,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 283,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 282,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.fg.standard",
+      "name": "Standard fg colors (SGR 30-37)",
+      "requirement": "Send \\x1b[31m X (red), verify the cell's foreground color has a red channel > 100.",
+      "url": "https://terminfo.dev/sgr/30-37-standard-fg",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 286,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 329,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 308,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.bg.standard",
+      "name": "Standard bg colors (SGR 40-47)",
+      "requirement": "Send \\x1b[42m X (green bg), verify the cell's background color has a green channel > 100.",
+      "url": "https://terminfo.dev/sgr/40-47-standard-bg",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 333,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 375,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 355,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.fg.default",
+      "name": "Default fg color (SGR 39)",
+      "requirement": "Send \\x1b[31m X \\x1b[39m Y, verify the second cell's foreground is reset to default (null).",
+      "url": "https://terminfo.dev/sgr/39-default-fg",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 380,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 421,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 402,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.bg.default",
+      "name": "Default bg color (SGR 49)",
+      "requirement": "Send \\x1b[42m X \\x1b[49m Y, verify the second cell's background is reset to default (null).",
+      "url": "https://terminfo.dev/sgr/49-default-bg",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 426,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 467,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 448,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.selective-reset.bold",
+      "name": "Reset bold/dim (SGR 22)",
+      "requirement": "Send \\x1b[1m X \\x1b[22m Y, verify the second cell has bold=false and dim=false .",
+      "url": "https://terminfo.dev/sgr/22-reset-bold",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 474,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 513,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 494,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.selective-reset.underline",
+      "name": "Reset underline (SGR 24)",
+      "requirement": "Send \\x1b[4m X \\x1b[24m Y, verify the second cell has no underline.",
+      "url": "https://terminfo.dev/sgr/24-reset-underline",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 110,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:03:11.174Z"
+                },
+                "assertionRefs": [
+                  1
+                ],
+                "rawReplyRef": "sgr.selective-reset.underline",
+                "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidenceLine": 521,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 559,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 541,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.selective-reset.inverse",
+      "name": "Reset inverse (SGR 27)",
+      "requirement": "Send \\x1b[7m X \\x1b[27m Y, verify the second cell has inverse=false .",
+      "url": "https://terminfo.dev/sgr/27-reset-inverse",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 548,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 605,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 589,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.selective-reset.italic",
+      "name": "Reset italic (SGR 23)",
+      "requirement": "Send \\x1b[3m X \\x1b[23m Y, verify the second cell has italic=false .",
+      "url": "https://terminfo.dev/sgr/23-reset-italic",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 158,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:02:55.813Z"
+                },
+                "assertionRefs": [
+                  0
+                ],
+                "rawReplyRef": "sgr.selective-reset.italic",
+                "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidenceLine": 596,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 651,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 637,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "sgr.reset",
+      "name": "Reset all (SGR 0)",
+      "requirement": "Send \\x1b[1;3;4m X \\x1b[0m Y, verify the second cell has bold, italic, and underline all cleared.",
+      "url": "https://terminfo.dev/sgr/0-reset",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 623,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 120000ms",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 697,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 688,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 120000ms",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.hide",
+      "name": "Hide cursor (DECTCEM)",
+      "requirement": "Send ESC [ ? 25 l (DECTCEM reset) and verify the cursor is no longer visible.",
+      "url": "https://terminfo.dev/cursor/dectcem-hide-cursor",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 649,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "Three equal digests cannot separate an absent, off-phase or unpainted cursor in the control from an ineffective hide; no visible-cursor control was established, so this is not a negative",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 743,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Cursor pixel fixture needs capture and measured 3x6 geometry; measured 41x140",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 714,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.move.absolute",
+      "name": "Cursor position (CUP)",
+      "requirement": "Send \\x1b[5;10H (CUP), verify cursor is at row 4, col 9 (0-based). In app mode, query with DSR 6 and verify response \\x1b[5;10R .",
+      "url": "https://terminfo.dev/cursor/cup-cursor-position",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 689,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 769,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 755,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.move.up",
+      "name": "Cursor up (CUU)",
+      "requirement": "Move cursor down 5 then up 2 via \\x1b[5B\\x1b[2A , verify cursor row is 3 (0-based).",
+      "url": "https://terminfo.dev/cursor/cuu-cursor-up",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 726,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 806,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 792,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.move.down",
+      "name": "Cursor down (CUD)",
+      "requirement": "Send \\x1b[3B (CUD 3), verify cursor row is 3 (0-based).",
+      "url": "https://terminfo.dev/cursor/cud-cursor-down",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 763,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 843,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 829,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.move.forward",
+      "name": "Cursor forward (CUF)",
+      "requirement": "Send \\x1b[5C (CUF 5), verify cursor column is 5 (0-based).",
+      "url": "https://terminfo.dev/cursor/cuf-cursor-forward",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 800,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 880,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 866,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.move.back",
+      "name": "Cursor back (CUB)",
+      "requirement": "Write \"ABC\" then send \\x1b[2D (CUB 2), verify cursor column is 1 (0-based).",
+      "url": "https://terminfo.dev/cursor/cub-cursor-back",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 837,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 917,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 903,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.move.home",
+      "name": "Cursor home",
+      "requirement": "Write \"ABC\" then send \\x1b[H ( CUP no params), verify cursor is at (0, 0).",
+      "url": "https://terminfo.dev/cursor/home",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 874,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 954,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 940,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.save-restore",
+      "name": "Save/restore cursor (DECSC)",
+      "requirement": "Write \"AB\", save with \\x1b7 (DECSC), move to (5,5), restore with \\x1b8 (DECRC), verify cursor returned to col 2, row 0.",
+      "url": "https://terminfo.dev/cursor/decsc-save-restore-cursor",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 911,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 991,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 977,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.cup-boundaries",
+      "name": "CUP at screen boundaries",
+      "requirement": "Send \\x1b[999;999H , verify cursor is at (rows-1, cols-1) — not beyond the screen boundaries.",
+      "url": "https://terminfo.dev/cursor/cup-screen-boundaries",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 948,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1028,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1014,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.cuu-past-top",
+      "name": "CUU stops at top",
+      "requirement": "Position at row 3, send \\x1b[999A (CUU with count 999), verify cursor stopped at row 0.",
+      "url": "https://terminfo.dev/cursor/cuu-past-top",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 985,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1065,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1051,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.cud-past-bottom",
+      "name": "CUD stops at bottom",
+      "requirement": "Position at row 0, send \\x1b[999B (CUD with count 999), verify cursor stopped at the last row.",
+      "url": "https://terminfo.dev/cursor/cud-past-bottom",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1022,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1102,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1088,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.cup-scroll-region",
+      "name": "CUP with DECOM",
+      "requirement": "Set DECSTBM 5;15, enable DECOM , send \\x1b[1;1H , verify cursor is at row 4 (0-based scroll region top). Disable DECOM and reset scroll region.",
+      "url": "https://terminfo.dev/cursor/cup-decom-scroll-region",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1059,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1139,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "DECOM makes CPR region-relative (VT100: region top is 1, bottom is 11); measured 1;1, 2;1, 11;1 — the physical row 5 and the margins still need an independent observable",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1125,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.vpa",
+      "name": "VPA vertical position absolute (CSI d)",
+      "requirement": "Position cursor at row 3, col 5, then send \\x1b[10d (VPA row 10), verify cursor moved to row 9 (0-based) while column remained at 5.",
+      "url": "https://terminfo.dev/cursor/vpa-vertical-position-absolute",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1102,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1165,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1169,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.cpl",
+      "name": "CPL cursor preceding line (CSI F)",
+      "requirement": "Position cursor at row 5, col 10, send \\x1b[2F (CPL 2), verify cursor is at row 3, column 0.",
+      "url": "https://terminfo.dev/cursor/cpl-cursor-preceding-line",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1139,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1202,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1206,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "cursor.hpa",
+      "name": "HPA horizontal position absolute (CSI `)",
+      "requirement": "Write \"ABCDEFGH\" then send \\x1b[5` (HPA col 5), verify cursor column is 4 (0-based).",
+      "url": "https://terminfo.dev/cursor/hpa-horizontal-position-absolute",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1176,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1239,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1243,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.line.right",
+      "name": "Erase to EOL (EL 0)",
+      "requirement": "Write \"XXXXX\", move to col 1 via \\x1b[1G , send \\x1b[K ( EL 0), verify cell at (0,0) is blank.",
+      "url": "https://terminfo.dev/erase/el-0-erase-to-eol",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1213,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1276,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.line.right: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1280,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.line.left",
+      "name": "Erase to BOL (EL 1)",
+      "requirement": "Write \"XXXXX\", move to col 3, send \\x1b[1K ( EL 1), verify cell at (0,0) is blank.",
+      "url": "https://terminfo.dev/erase/el-1-erase-to-bol",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1257,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1302,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.line.left: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1324,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.line.all",
+      "name": "Erase line (EL 2)",
+      "requirement": "Write \"XXXXX\", send \\x1b[2K ( EL 2), verify cell at (0,0) is blank.",
+      "url": "https://terminfo.dev/erase/el-2-erase-line",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1301,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1328,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.line.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1368,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.screen.above",
+      "name": "Erase above (ED 1)",
+      "requirement": "Write three lines, position cursor at row 3 col 2, send \\x1b[1J ( ED 1), verify cell at (0,0) is blank.",
+      "url": "https://terminfo.dev/erase/ed-1-erase-above",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1345,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1354,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.screen.above: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1412,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.screen.all",
+      "name": "Erase screen (ED 2)",
+      "requirement": "Write three lines, send \\x1b[2J ( ED 2), verify all visible content is cleared.",
+      "url": "https://terminfo.dev/erase/ed-2-erase-screen",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1389,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1380,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.screen.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1456,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.screen.below",
+      "name": "Erase below (ED 0)",
+      "requirement": "Write three lines, move home, send \\x1b[J ( ED 0), verify line 2 content is gone.",
+      "url": "https://terminfo.dev/erase/ed-0-erase-below",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1432,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1406,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.screen.below: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1499,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.screen.scrollback",
+      "name": "Erase scrollback (ED 3)",
+      "requirement": "Write 30 lines to fill scrollback , send \\x1b[3J ( ED 3), verify total line count is at most screen height.",
+      "url": "https://terminfo.dev/erase/ed-3-erase-scrollback",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1476,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "OS-level scrollback dump or XTEST wheel+capture",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1432,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "OS-level scrollback dump or XTEST wheel+capture",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1543,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "OS-level scrollback dump or XTEST wheel+capture",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.character",
+      "name": "Erase character (ECH)",
+      "requirement": "Write \"ABCDE\", move to col 1, send \\x1b[3X ( ECH 3), verify first 3 cells are blank and \"D\" remains at col 3.",
+      "url": "https://terminfo.dev/erase/ech-erase-character",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1502,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1458,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.character: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1569,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.el-with-attrs",
+      "name": "EL erases with bg color",
+      "requirement": "Set green background with \\x1b[42m , write text, move to start of line, send \\x1b[K ( EL 0 ), verify erased cells have the green background color.",
+      "url": "https://terminfo.dev/erase/el-erase-with-bg-color",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1546,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1484,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.el-with-attrs: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1613,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "erase.ed-scroll-region",
+      "name": "ED at scroll region boundary",
+      "requirement": "Write \"KEEP_THIS\" on row 0, set scroll region 3;10, move cursor inside region, send \\x1b[J ( ED 0 ), verify row 0 still contains \"KEEP_THIS\".",
+      "url": "https://terminfo.dev/erase/ed-scroll-region-boundary",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1592,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1510,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "erase.ed-scroll-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1659,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "modes.alt-screen.enter",
+      "name": "Enter alt screen (DECSET 1049)",
+      "requirement": "Send \\x1b[?1049h ( DECSET 1049), verify altScreen mode is active.",
+      "url": "https://terminfo.dev/modes/decset-1049-alt-screen-enter",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1636,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1536,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1703,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "modes.alt-screen.exit",
+      "name": "Exit alt screen (DECRST 1049)",
+      "requirement": "Enter then exit alt screen via \\x1b[?1049h / \\x1b[?1049l , verify altScreen mode is off.",
+      "url": "https://terminfo.dev/modes/decrst-1049-alt-screen-exit",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1674,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1560,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "Cursor responsiveness after exit does not measure the restored buffer",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1741,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "modes.reverse-video",
+      "name": "Reverse video (DECSCNM)",
+      "requirement": "Send \\x1b[?5h ( DECSCNM ), verify reverseVideo mode is active.",
+      "url": "https://terminfo.dev/modes/decscnm-reverse-video",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1759,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1586,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1826,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "modes.auto-wrap",
+      "name": "Auto-wrap (DECAWM)",
+      "requirement": "Write 80+ characters, verify text wraps to the next row.",
+      "url": "https://terminfo.dev/modes/decawm-auto-wrap",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1797,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1610,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1864,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.accumulate",
+      "name": "Scrollback accumulates",
+      "requirement": "Write 30 lines (exceeding the 24-row screen), verify total line count exceeds 24.",
+      "url": "https://terminfo.dev/scrollback/accumulates",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1835,
+          "status": "probe-todo",
+          "method": "screenshot",
+          "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1634,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "Cursor position does not measure scrollback history",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1902,
+          "status": "probe-todo",
+          "method": "screenshot",
+          "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.total-lines",
+      "name": "Total line count",
+      "requirement": "Write 30 lines, verify total line count is at least 30.",
+      "url": "https://terminfo.dev/scrollback/total-lines",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1864,
+          "status": "probe-todo",
+          "method": "screenshot",
+          "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1660,
+          "status": "probe-todo",
+          "method": "query_reply",
+          "reason": "Cursor position does not measure total scrollback lines",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1931,
+          "status": "probe-todo",
+          "method": "screenshot",
+          "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.scroll-up",
+      "name": "Scroll up (SU)",
+      "requirement": "Write \"TOP\" on row 1 then fill the screen, send \\x1b[S ( SU 1), verify row 0 no longer starts with \"T\".",
+      "url": "https://terminfo.dev/scrollback/su-scroll-up",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1893,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1686,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "scrollback.scroll-up: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 1960,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.scroll-down",
+      "name": "Scroll down (SD)",
+      "requirement": "Write 3 lines, send \\x1b[T ( SD 1), verify row 0 is now blank (content shifted down).",
+      "url": "https://terminfo.dev/scrollback/sd-scroll-down",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1937,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1712,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "scrollback.scroll-down: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2004,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.reverse-index",
+      "name": "Reverse index (RI)",
+      "requirement": "Write 3 lines, move to row 0, send \\x1bM (RI), verify row 0 is now blank.",
+      "url": "https://terminfo.dev/scrollback/ri-reverse-index",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 1981,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1738,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "scrollback.reverse-index: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2048,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.set-region",
+      "name": "Scroll region (DECSTBM)",
+      "requirement": "Send \\x1b[5;10r ( DECSTBM ), verify cursor moves to home position (0,0). Then reset with \\x1b[r .",
+      "url": "https://terminfo.dev/scrollback/decstbm-scroll-region",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2026,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1764,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "scrollback.set-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2093,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.alt-screen",
+      "name": "Alt screen separate scrollback",
+      "requirement": "Write \"NORMAL\", enter alt screen with \\x1b[?1049h , verify altScreen mode is active.",
+      "url": "https://terminfo.dev/scrollback/alt-screen-separate-scrollback",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2071,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1790,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "scrollback.alt-screen: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2138,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.decstbm",
+      "name": "DECSTBM constrains scrolling",
+      "requirement": "Write \"FIXED_TOP\" on row 0, set DECSTBM 3;10, move inside region, write enough lines to trigger scrolling, verify row 0 still contains \"FIXED_TOP\".",
+      "url": "https://terminfo.dev/scrollback/decstbm-constrained-scrolling",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2117,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1816,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "scrollback.decstbm: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2184,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "scrollback.decstbm-reset",
+      "name": "DECSTBM reset to full screen",
+      "requirement": "Set DECSTBM 5;10, then send \\x1b[r (no params), write 30 lines, verify full-screen scrolling works (total lines > screen height).",
+      "url": "https://terminfo.dev/scrollback/decstbm-reset-full-screen",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2162,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1842,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "scrollback.decstbm-reset: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2229,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.basic",
+      "name": "Basic text rendering",
+      "requirement": "Write \"Hello\", verify the text buffer contains \"Hello\". In app mode, verify cursor advanced to column 6.",
+      "url": "https://terminfo.dev/text/basic-text-rendering",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2208,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1868,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2275,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.wrap",
+      "name": "Text wraps at width",
+      "requirement": "Write 85 characters, verify text wrapped and a character appears on row 1.",
+      "url": "https://terminfo.dev/text/wrap-at-width",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2245,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1905,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2312,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.wide.cjk",
+      "name": "CJK wide chars (2 cols)",
+      "requirement": "Write U+4E2D ( CJK character), verify the cell has wide=true (occupies 2 columns).",
+      "url": "https://terminfo.dev/text/cjk-wide-chars",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2283,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1929,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2350,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.tab",
+      "name": "Tab stops",
+      "requirement": "Write tab then \"X\", verify X appears at column 8 (after the default 8-column tab stop).",
+      "url": "https://terminfo.dev/text/ht-tab-stops",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2320,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 1966,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2387,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "unicode.tab-stops",
+      "name": "Tab Stops (HT)",
+      "requirement": "Send a tab character, verify cursor moves to column 8.",
+      "url": "https://terminfo.dev/unicode/tab-stops",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2357,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2003,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2424,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.cr",
+      "name": "Carriage return",
+      "requirement": "Write \"AB\\rC\", verify C overwrote A at col 0 while B remains at col 1.",
+      "url": "https://terminfo.dev/text/cr-carriage-return",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2394,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2040,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2461,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.newline",
+      "name": "Line feed",
+      "requirement": "Write \"A\\r\\nB\", verify A is at cell (0,0) and B is at cell (1,0).",
+      "url": "https://terminfo.dev/text/lf-line-feed",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2431,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2077,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2498,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.backspace",
+      "name": "Backspace (BS)",
+      "requirement": "Write \"AB\\x08C\", verify backspace moved cursor back so C overwrote B at col 1, while A remains at col 0.",
+      "url": "https://terminfo.dev/text/bs-backspace",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2469,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2115,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2536,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.index",
+      "name": "Index (IND)",
+      "requirement": "Write \"A\" then send \\x1bD (IND), verify cursor moved down to row 1.",
+      "url": "https://terminfo.dev/text/ind-index",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2506,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2152,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2573,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.next-line",
+      "name": "Next line (NEL)",
+      "requirement": "Write \"ABC\" then send \\x1bE (NEL), verify cursor is at row 1, col 0.",
+      "url": "https://terminfo.dev/text/nel-next-line",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2543,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2189,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2610,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.reverse-index-scroll",
+      "name": "Reverse Index at Scroll Top",
+      "requirement": "Set scroll region , write text at top row, send Reverse Index ( ESC M ), verify content shifted down by one line.",
+      "url": "https://terminfo.dev/text/reverse-index-scroll",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 206,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:04:29.848Z"
+                },
+                "assertionRefs": [
+                  5
+                ],
+                "rawReplyRef": "text.reverse-index-scroll"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidenceLine": 2580,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2226,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "text.reverse-index-scroll: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2647,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.overwrite",
+      "name": "Overwrite at cursor",
+      "requirement": "Write \"AB\", move to col 1 via \\x1b[1G , write \"C\", verify cell (0,0) is \"C\" (overwrote \"A\").",
+      "url": "https://terminfo.dev/text/overwrite-at-cursor",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 251,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:04:19.847Z"
+                },
+                "assertionRefs": [
+                  4
+                ],
+                "rawReplyRef": "text.overwrite"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidenceLine": 2607,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2252,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "text.overwrite: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2692,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.hts",
+      "name": "HTS set tab stop (ESC H)",
+      "requirement": "Clear all tab stops with \\x1b[3g , position cursor at column 5 and send \\x1bH ( HTS ), return to column 0 and send a tab — verify cursor advances to column 5.",
+      "url": "https://terminfo.dev/text/hts-set-tab-stop",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2634,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2278,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2736,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.tbc",
+      "name": "TBC clear tab stop (CSI g)",
+      "requirement": "Clear all tab stops with \\x1b[3g , send a tab from column 1 — verify the cursor advances to the right margin ( DEC VT220 reference manual §4.8), confirming no tab stop remained.",
+      "url": "https://terminfo.dev/text/tbc-clear-tab-stop",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2671,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2315,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2773,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.cht",
+      "name": "CHT forward tab (CSI I)",
+      "requirement": "From column 0, send \\x1b[2I (CHT 2) with default 8-column tab stops, verify cursor advanced to column 16 (two tab stops forward).",
+      "url": "https://terminfo.dev/text/cht-forward-tab",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2708,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2352,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2810,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "text.cbt",
+      "name": "CBT backward tab (CSI Z)",
+      "requirement": "Position cursor at column 20, send \\x1b[Z (CBT 1) with default 8-column tab stops, verify cursor moved back to column 16.",
+      "url": "https://terminfo.dev/text/cbt-backward-tab",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2745,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2389,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2847,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "reset.sgr",
+      "name": "SGR reset clears attributes",
+      "requirement": "Apply bold+italic+inverse via \\x1b[1;3;7m X then send \\x1b[0m Y, verify the second cell has all attributes cleared.",
+      "url": "https://terminfo.dev/reset/sgr-0-reset-clears-attributes",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2782,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 120000ms",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2426,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": null,
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2884,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 120000ms",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "reset.ris",
+      "name": "Full reset (RIS)",
+      "requirement": "Write text, send \\x1bc ( RIS ), verify cursor reset to (0,0).",
+      "url": "https://terminfo.dev/reset/ris-full-reset",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2808,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Measured RIS cursor reset; other reset effects were not inspected",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2463,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Measured RIS cursor reset; other reset effects were not inspected",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2910,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Measured RIS cursor reset; other reset effects were not inspected",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "reset.soft",
+      "name": "Soft reset (DECSTR)",
+      "requirement": "Enable app cursor mode ( \\x1b[?1h ), write text, send \\x1b[!p (DECSTR), verify applicationCursor mode is off.",
+      "url": "https://terminfo.dev/reset/decstr-soft-reset",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2846,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2501,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2948,
+          "status": "supported",
+          "method": "query_reply",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "reset.method",
+      "name": "Backend reset() method",
+      "requirement": "Write text, call backend reset() method, verify cursor returned to (0,0). Specific to the Termless testing framework.",
+      "url": "https://terminfo.dev/reset/backend-reset-method",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2884,
+          "status": "untestable",
+          "method": null,
+          "reason": "The app context has no reset() method or equivalent state readback",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2525,
+          "status": "untestable",
+          "method": null,
+          "reason": "The app context has no reset() method or equivalent state readback",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 2986,
+          "status": "untestable",
+          "method": null,
+          "reason": "The app context has no reset() method or equivalent state readback",
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "charsets.dec-special",
+      "name": "DEC Special Graphics",
+      "requirement": "Send \\x1b(0 to designate DEC Special Graphics , write \"q\", send \\x1b(B to restore ASCII . Verify the cell does not contain literal \"q\" (should be box-drawing U+2500).",
+      "url": "https://terminfo.dev/charsets/dec-special-graphics",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2911,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2552,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "charsets.dec-special: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 3013,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "charsets.utf8",
+      "name": "UTF-8 mode",
+      "requirement": "Write é (e-acute, 2-byte UTF-8) and 世 (CJK, 3-byte UTF-8), verify each renders as the correct Unicode character.",
+      "url": "https://terminfo.dev/charsets/utf8-mode",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2955,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2578,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "charsets.utf8: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 3057,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "charsets.g0-g1-switching",
+      "name": "G0/G1 character set switching",
+      "requirement": "Send \\x1b(0 to designate G0 as DEC Special Graphics , write 'l', verify the cell renders as a box-drawing character (not literal 'l'). Restore with \\x1b(B .",
+      "url": "https://terminfo.dev/charsets/g0-g1-charset-switching",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 2999,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2604,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "charsets.g0-g1-switching: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 3101,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "charsets.dec-line-drawing",
+      "name": "DEC line drawing character set",
+      "requirement": "Send \\x1b(0jklmqx\\x1b(B , verify all six characters rendered as box-drawing glyphs (none are the literal ASCII characters j, k, l, m, q, x).",
+      "url": "https://terminfo.dev/charsets/dec-line-drawing-chars",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 3043,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2630,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "charsets.dec-line-drawing: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 3145,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
+          "scheduled": true
+        }
+      }
+    },
+    {
+      "id": "device.env-term",
+      "name": "TERM env variable",
+      "requirement": "Manual verification required — no automated probe available.",
+      "url": "https://terminfo.dev/device/env-term",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 3087,
+          "status": "not-scheduled",
+          "method": null,
+          "reason": "Not selected for this collection; no test was attempted.",
+          "scheduled": false
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2656,
+          "status": "not-scheduled",
+          "method": null,
+          "reason": "Not selected for this collection; no test was attempted.",
+          "scheduled": false
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 3189,
+          "status": "not-scheduled",
+          "method": null,
+          "reason": "Not selected for this collection; no test was attempted.",
+          "scheduled": false
+        }
+      }
+    },
+    {
+      "id": "extensions.osc1-icon",
+      "name": "Icon name (OSC 1)",
+      "requirement": "Send \\x1b]1;test-icon\\x07 and verify the terminal remains responsive (icon name accepted without error).",
+      "url": "https://terminfo.dev/extensions/osc-1-icon-name",
+      "results": {
+        "ntilde": {
+          "evidencePath": "ntilde/cases.json",
+          "retest": null,
+          "evidenceLine": 3101,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "No icon-name readback for OSC 1",
+          "scheduled": true
+        },
+        "iterm2": {
+          "evidencePath": "iterm2/cases.json",
+          "retest": null,
+          "evidenceLine": 2670,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "No icon-name readback for OSC 1",
+          "scheduled": true
+        },
+        "ghostty": {
+          "evidencePath": "ghostty/cases.json",
+          "retest": null,
+          "evidenceLine": 3203,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "No icon-name readback for OSC 1",
+          "scheduled": true
+        }
+      }
+    }
+  ]
+}

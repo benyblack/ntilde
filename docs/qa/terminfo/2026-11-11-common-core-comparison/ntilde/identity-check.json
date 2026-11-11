@@ -1,0 +1,22 @@
+{
+  "runId": "af1f5c275a0b3aab10fdd216ca668d10",
+  "subject": {
+    "kind": "term",
+    "id": "ntilde",
+    "version": "0.13.0",
+    "os": "macos",
+    "osVersion": "27.0.1",
+    "outerTerminal": null,
+    "mux": null,
+    "config": null,
+    "permissions": null
+  },
+  "rawSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b",
+  "upstreamRevision": "ff37d198914b870281a2c0461cc682b37fce07ef",
+  "checkerSha256": "8232508beb40a0b2dfd16596d5bc050b8e6f043fe0470a0085590b28b41c7964",
+  "check": {
+    "ok": true,
+    "checked": true
+  },
+  "verifiedAt": "2026-11-11T16:48:47.490Z"
+}

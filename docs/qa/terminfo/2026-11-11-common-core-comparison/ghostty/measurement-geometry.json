@@ -1,0 +1,10 @@
+{
+  "runId": "6bb1ae0967e46b2e2f113175c5921177",
+  "pid": 92789,
+  "tty": "/dev/ttys002",
+  "geometry": {
+    "rows": 41,
+    "cols": 140
+  },
+  "source": "stty size on the actual worker stdin after parent ownership and launch configuration"
+}

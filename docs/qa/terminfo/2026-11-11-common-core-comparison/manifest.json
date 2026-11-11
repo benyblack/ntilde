@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "requirements": {
+    "path": "requirements.json",
+    "sha256": "a0c95ead8a653c1555379f89d3ae420172926966ebfd86eb6e92de77d683479c"
+  },
+  "artifacts": [
+    {
+      "path": "upstream-source.zip",
+      "sha256": "d46a93d84e3a43c0bcf1d4b8fc7363b3285fd83a8a4c9d71d7396df4f2f83d9c"
+    },
+    {
+      "path": "upstream-source.json",
+      "sha256": "d24f6d24ac0bd4eb62be324d16dbbcebf0e50d3888f8c91467ab8d0a296cc20a"
+    },
+    {
+      "path": "native-adapter.bundle",
+      "sha256": "b02b23fc4feb9bd4b2bd374077487c4ecc8a3ef1ee3c388a9ed5a790d58e9c63"
+    },
+    {
+      "path": "attempts.json",
+      "sha256": "57bc112e41ca281b4dd6ba9edb5069b71f06281fbc4f4748e24c3a08b044f3b7"
+    },
+    {
+      "path": "environment.json",
+      "sha256": "ac8821f5b82c4e1a05b09f8c1de69578073dc1501b3260a611ff0d530171d775"
+    },
+    {
+      "path": "native-adapter.patch.gz",
+      "sha256": "9ae34c45819893217f8f71f99d444c561403f29a3eeb6a47163ee0874ec2e396"
+    },
+    {
+      "path": "source-proof.zip",
+      "sha256": "757708112d0854d836fa695f4aa7a61c083040123f6569277bd45da4d84d5cfc"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "ntilde",
+      "label": "Ntilde",
+      "files": {
+        "identity": {
+          "path": "ntilde/identity-check.json",
+          "sha256": "adb7d009644a9f726611623cef6802172b1b6a22e686d3d27c50d7f7e65965f5"
+        },
+        "source": {
+          "path": "ntilde/source.json",
+          "sha256": "3d304fcc4544d549cf0817a10ac6d903a8837f8da7cc51381beacd3723ff4324"
+        },
+        "config": {
+          "path": "ntilde/config.json",
+          "sha256": "18fd235ed8375f34423fd806b728d6173df2f8dd27fe8d6163d891a2d0fdf014"
+        },
+        "ready": {
+          "path": "ntilde/worker-ready.json",
+          "sha256": "99a799f075b641c1e376e28f535f2d8a764933670d98c531bd99f5e5f7acbb5d"
+        },
+        "completion": {
+          "path": "ntilde/worker-complete.json",
+          "sha256": "84842bf0903920d45de4c16b15a34694cf0565d30f2286111f036398f1155aae"
+        },
+        "cleanup": {
+          "path": "ntilde/cleanup.json",
+          "sha256": "f2af9f52a05d1579c60f90efcc61614fb9f0bbfcf5fd432587584b8b6f642836"
+        },
+        "geometry": {
+          "path": "ntilde/measurement-geometry.json",
+          "sha256": "d6e408eed9b59ac2276f1630b793227c55108ac85d1437137a86c4c56387fae0"
+        },
+        "raw": {
+          "path": "ntilde/owned-run.zip",
+          "sha256": "0ab33fe8d54c81374e94b4021ca0b429491211f028b282167c113f70f7a580ca",
+          "member": "raw.json",
+          "contentSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b"
+        }
+      },
+      "archive": {
+        "path": "ntilde/owned-run.zip",
+        "sha256": "0ab33fe8d54c81374e94b4021ca0b429491211f028b282167c113f70f7a580ca"
+      }
+    },
+    {
+      "id": "iterm2",
+      "label": "iTerm2",
+      "files": {
+        "identity": {
+          "path": "iterm2/identity-check.json",
+          "sha256": "7c63e86c4e472874233319c2ec1ba89faf69a8f7204846444e20405c88aa5e85"
+        },
+        "source": {
+          "path": "iterm2/source.json",
+          "sha256": "5743ea33c8ff9ba6b6473518a7e9a294e01bfb7f39dcb7d7856898e43aa0fad8"
+        },
+        "config": {
+          "path": "iterm2/config.json",
+          "sha256": "bd3e098f2f50750636726a1d2d875131f6677516260d1b2131c4d229a8dd69cf"
+        },
+        "ready": {
+          "path": "iterm2/worker-ready.json",
+          "sha256": "63b31cf8369a518b60163db3374dd2fe97e9ee0eee08d7287f0f30817615a8d6"
+        },
+        "completion": {
+          "path": "iterm2/worker-complete.json",
+          "sha256": "0ef90926fcfe2c40d1d0d7d3a830e879e8ce44ed7f4bb69510e7de3333f2fbd4"
+        },
+        "cleanup": {
+          "path": "iterm2/cleanup.json",
+          "sha256": "9dae022d37fd12181a9d17c71602833eb4a076c394185a838b6cd641329b9403"
+        },
+        "geometry": {
+          "path": "iterm2/measurement-geometry.json",
+          "sha256": "4eda728ca8cffbfbaa7926206c59ff53de29e10c6857d2f9f03a4a097d49f3c1"
+        },
+        "raw": {
+          "path": "iterm2/owned-run.zip",
+          "sha256": "1192c03536ab8fc80b8e81666be9e50832299fea8e4b14431fe6b678f114f8ad",
+          "member": "raw.json",
+          "contentSha256": "40c0329b411bbad37446d11186b4daac86951114867e74253566f9d770821afb"
+        }
+      },
+      "archive": {
+        "path": "iterm2/owned-run.zip",
+        "sha256": "1192c03536ab8fc80b8e81666be9e50832299fea8e4b14431fe6b678f114f8ad"
+      }
+    },
+    {
+      "id": "ghostty",
+      "label": "Ghostty",
+      "files": {
+        "identity": {
+          "path": "ghostty/identity-check.json",
+          "sha256": "2e5c622f1b40c1950d69981fb086c386a5f9afec356d803435e837cc7f72f901"
+        },
+        "source": {
+          "path": "ghostty/source.json",
+          "sha256": "89a8be72ad77b7640bcdbfc960e1d7d1eb9b2ecabeb9e6558155fe711b41315d"
+        },
+        "config": {
+          "path": "ghostty/config.json",
+          "sha256": "39d387b3d27bbd1d056ea5024434b5488f65bb034a592d81a1c50d8bc3f330ca"
+        },
+        "ready": {
+          "path": "ghostty/worker-ready.json",
+          "sha256": "7710769dc76189959b3a37d4c40d7c2e6afd473a396c21d3c7bcd9b896b8ee3d"
+        },
+        "completion": {
+          "path": "ghostty/worker-complete.json",
+          "sha256": "d1c026f5a7eaa9820e6201d255b3e639b1704ae7ee80bb2b375988f6cb80289a"
+        },
+        "cleanup": {
+          "path": "ghostty/cleanup.json",
+          "sha256": "b8f4b0624927b594bf30172542c5623e3be1b6ff0d06f75b96cd2794cc120fc3"
+        },
+        "geometry": {
+          "path": "ghostty/measurement-geometry.json",
+          "sha256": "426c0d8f23611490f292f484d18270929b73c5479a2a564780e0cf8ccf87a5b7"
+        },
+        "raw": {
+          "path": "ghostty/owned-run.zip",
+          "sha256": "da522d29a127b0d58a71fac6a68215cae70351573238f54329ab6903bbc2a5d9",
+          "member": "raw.json",
+          "contentSha256": "c98ec59fe48cedd236f6459fde4d66fa71076e2736b91b9d17cf437c597f31aa"
+        }
+      },
+      "archive": {
+        "path": "ghostty/owned-run.zip",
+        "sha256": "da522d29a127b0d58a71fac6a68215cae70351573238f54329ab6903bbc2a5d9"
+      }
+    }
+  ],
+  "retests": [
+    {
+      "id": "ntilde",
+      "label": "Ntilde",
+      "files": {
+        "identity": {
+          "path": "ntilde/movement-retest/identity-check.json",
+          "sha256": "4812f9bff0fc77181a3c48408eba87e38831421e232184669b595929ed1eab42"
+        },
+        "source": {
+          "path": "ntilde/movement-retest/source.json",
+          "sha256": "c865ab036849038939b542c36ae30721c521d9efc9a5e8acfeab4e7d4b28559e"
+        },
+        "config": {
+          "path": "ntilde/movement-retest/config.json",
+          "sha256": "7078a1b0ae4573aeed228558e9c7b50ccf4ea4744f54f862794c3b506a49d337"
+        },
+        "ready": {
+          "path": "ntilde/movement-retest/worker-ready.json",
+          "sha256": "004791a288256b04cc5699123c5fe8d1849ad281f90b5546311e27e7d6158b0f"
+        },
+        "completion": {
+          "path": "ntilde/movement-retest/worker-complete.json",
+          "sha256": "ce6ba277ed2229b40b22e64822a550e7ddf8ed5a5012464e1984ce07c253bf33"
+        },
+        "cleanup": {
+          "path": "ntilde/movement-retest/cleanup.json",
+          "sha256": "88afba21a8562b2ce1e993b4f6700006d331cd741a8890594fbc52d62f115287"
+        },
+        "geometry": {
+          "path": "ntilde/movement-retest/measurement-geometry.json",
+          "sha256": "b36da21ffc27d10f331afeddc74df3822a1575d329a519305b07bab01245fd6f"
+        },
+        "raw": {
+          "path": "ntilde/movement-retest/owned-run.zip",
+          "sha256": "f395b54fb16127f4c5a4f421f1e476b6747f20dd284f13aaad02dc4b5fbfddbb",
+          "member": "raw.json",
+          "contentSha256": "1aca79c5c2117f518b9fd7b8f68399892fc7c2b85d49f5bbdbdae33a1718f714"
+        }
+      },
+      "archive": {
+        "path": "ntilde/movement-retest/owned-run.zip",
+        "sha256": "f395b54fb16127f4c5a4f421f1e476b6747f20dd284f13aaad02dc4b5fbfddbb"
+      }
+    }
+  ]
+}

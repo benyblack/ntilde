@@ -1,0 +1,22 @@
+{
+  "runId": "6bb1ae0967e46b2e2f113175c5921177",
+  "subject": {
+    "kind": "term",
+    "id": "ghostty",
+    "version": "1.4.0",
+    "os": "macos",
+    "osVersion": "27.0.1",
+    "outerTerminal": null,
+    "mux": null,
+    "config": null,
+    "permissions": null
+  },
+  "rawSha256": "c98ec59fe48cedd236f6459fde4d66fa71076e2736b91b9d17cf437c597f31aa",
+  "upstreamRevision": "ff37d198914b870281a2c0461cc682b37fce07ef",
+  "checkerSha256": "8232508beb40a0b2dfd16596d5bc050b8e6f043fe0470a0085590b28b41c7964",
+  "check": {
+    "ok": true,
+    "checked": true
+  },
+  "verifiedAt": "2026-11-11T16:41:47.192Z"
+}

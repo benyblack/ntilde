@@ -1,0 +1,279 @@
+diff --git a/packages/admin/versions.ts b/packages/admin/versions.ts
+index 3905916381bebf25be41bd5df0a483a41c52118a..a5d41d184cd509a67ddb449d166eb5b8a71a9bc8 100644
+--- a/packages/admin/versions.ts
++++ b/packages/admin/versions.ts
+@@ -44,6 +44,7 @@ const ADAPTER_SOURCE_PATHS = [
+   "packages/terminfo.dev/src/linux-screen-text.ts",
+   "packages/terminfo.dev/src/linux-kitty-text.ts",
+   "packages/terminfo.dev/src/owned-terminal.ts",
++  "packages/terminfo.dev/src/iterm-window-owner.ts",
+   "packages/terminfo.dev/src/terminal-child-environment.ts",
+   "packages/terminfo.dev/src/app-semantic-state.ts",
+   "packages/terminfo.dev/src/owned-process.ts",
+diff --git a/packages/terminfo.dev/src/darwin-capture.ts b/packages/terminfo.dev/src/darwin-capture.ts
+index b16bb912f2c73b77c020be6d4a4de60b0dcb6725..3f610b32de4d6fb69c6e951107c16dc3d8cfa18b 100644
+--- a/packages/terminfo.dev/src/darwin-capture.ts
++++ b/packages/terminfo.dev/src/darwin-capture.ts
+@@ -182,6 +182,16 @@ export function requireDarwinScale(window: DarwinWindow, pixels: { width: number
+   }
+ }
+ 
++/** Local comparison adapter: retain native Retina pixels, without resizing or changing point bounds. */
++export function measuredDarwinBackingScale(window: DarwinWindow, pixels: { width: number; height: number }): 1 | 2 {
++  for (const scale of [1, 2] as const) {
++    if (window.bounds.width > 0 && window.bounds.height > 0 &&
++        Number.isSafeInteger(pixels.width) && Number.isSafeInteger(pixels.height) &&
++        pixels.width === window.bounds.width * scale && pixels.height === window.bounds.height * scale) return scale
++  }
++  throw new Error(`Native screenshot dimensions do not match complete 1x or 2x owned window bounds: ${pixels.width}x${pixels.height}`)
++}
++
+ /**
+  * Every window the server knows (not only the onscreen ones), so a refusal names the windows that
+  * were excluded and why: layer, alpha and the onscreen flag beside the identity and point bounds.
+@@ -221,6 +231,7 @@ export async function createDarwinCapture(
+     appPid,
+     hostedAppId,
+     expectedWindowId,
++    allowNativeBackingScale = false,
+     onRetained,
+   }: {
+     appPid: number
+@@ -228,6 +239,7 @@ export async function createDarwinCapture(
+     hostedAppId?: string
+     /** The launch receipt window id this run owns, when the caller already resolved it. */
+     expectedWindowId?: number
++    allowNativeBackingScale?: boolean
+     onRetained: Parameters<typeof finishCapture>[0]["onRetained"]
+   },
+ ) {
+@@ -255,7 +267,7 @@ export async function createDarwinCapture(
+   const assertOwned = async (deadline?: number) => {
+     const current = await census(deadline)
+     if (JSON.stringify(current.window) !== JSON.stringify(window)) {
+-      throw new Error(`Darwin owned window ${window.id} identity or bounds changed during capture`)
++      throw new Error(`Darwin owned window ${window.id} identity or bounds changed during capture: expected ${JSON.stringify(window)}, observed ${JSON.stringify(current.window)}`)
+     }
+     return current
+   }
+@@ -342,14 +354,15 @@ export async function createDarwinCapture(
+     const pixels = capturePixels(
+       (await command("magick", ["png:-", "-format", "%wx%h", "info:"], bytes, deadline)).toString(),
+     )
+-    requireDarwinScale(window, pixels)
++    const backingScale = allowNativeBackingScale ? measuredDarwinBackingScale(window, pixels) : (requireDarwinScale(window, pixels), 1)
+     const trace = {
+       platform: "darwin",
+       window,
+       // The census the frame was taken under: the other owned windows and why each was passed over (30685).
+       ownedWindows: preCapture.ownedWindows,
+       measuredAppPid: appPid,
+-      scale: 1,
++      scale: backingScale,
++      ...(allowNativeBackingScale && { nativePixelsPreserved: true, pointBounds: window.bounds }),
+       captureCommand: [producing.file, ...producing.args.slice(0, -1)],
+       ...(refused
+         ? {
+diff --git a/packages/terminfo.dev/src/identity-guard.ts b/packages/terminfo.dev/src/identity-guard.ts
+index 9c3d456c30f1ed371c9ca4179f137c9fc18c0733..cc6f5da727250ee82c707019a05cfa18e0f85091 100644
+--- a/packages/terminfo.dev/src/identity-guard.ts
++++ b/packages/terminfo.dev/src/identity-guard.ts
+@@ -19,6 +19,11 @@ export interface TerminalIdentityRule {
+ }
+ 
+ export const TERMINAL_IDENTITY_RULES: Record<string, TerminalIdentityRule> = {
++  ntilde: {
++    terminal: "ntilde",
++    xtversionPattern: /^Ntilde\s+(?<version>\d+(?:\.\d+){1,3}(?:[-+][a-zA-Z0-9.-]+)?)$/,
++    requireXtversion: true,
++  },
+   // Detached Linux specimens: tmux 3.6 and Screen 4.09.01. Raw source hashes live in
+   // fixtures/mux-identity.json. Identity alone does not establish an owned outer context.
+   tmux: {
+diff --git a/packages/terminfo.dev/src/iterm-window-owner.test.ts b/packages/terminfo.dev/src/iterm-window-owner.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..776df2c93bd542fde06793496694660fbda36387
+--- /dev/null
++++ b/packages/terminfo.dev/src/iterm-window-owner.test.ts
+@@ -0,0 +1,29 @@
++import { describe, expect, it } from "vitest"
++import { parseTerminalAppOwner } from "./owned-terminal.ts"
++import { measuredDarwinBackingScale } from "./darwin-capture.ts"
++
++const claim = { asserter: "terminfo-admin", application: "iterm2", launchRunId: "a".repeat(32), workerPid: 123, windowId: 456, tabTty: "/dev/ttys100", intendedVersion: "3.7.7" }
++describe("local native-window comparison adapter", () => {
++  it("retains only complete, isotropic native 1x/2x window frames", () => {
++    const window = { bounds: { x: 0, y: 0, width: 80, height: 63 } } as any
++    expect(measuredDarwinBackingScale(window, { width: 80, height: 63 })).toBe(1)
++    expect(measuredDarwinBackingScale(window, { width: 160, height: 126 })).toBe(2)
++    for (const pixels of [{ width: 160, height: 125 }, { width: 80, height: 126 }, { width: 240, height: 189 }, { width: 0, height: 0 }]) {
++      expect(() => measuredDarwinBackingScale(window, pixels)).toThrow()
++    }
++  })
++  it("retains the explicit iTerm identity instead of reinterpreting it as Terminal.app", () => {
++    expect(parseTerminalAppOwner(claim).application).toBe("iterm2")
++    const { application: _, ...terminal } = claim
++    expect(parseTerminalAppOwner(terminal).application).toBeUndefined()
++  })
++  it("refuses other application declarations and extra owner fields", () => {
++    expect(() => parseTerminalAppOwner({ ...claim, application: "ghostty" })).toThrow()
++    expect(() => parseTerminalAppOwner({ ...claim, trusted: true })).toThrow()
++  })
++  it("does not relax the window, worker, TTY or launch identity requirements", () => {
++    for (const change of [{ windowId: 0 }, { workerPid: -1 }, { tabTty: "not a tty" }, { launchRunId: "other" }]) {
++      expect(() => parseTerminalAppOwner({ ...claim, ...change })).toThrow()
++    }
++  })
++})
+diff --git a/packages/terminfo.dev/src/iterm-window-owner.ts b/packages/terminfo.dev/src/iterm-window-owner.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9393c5ad41e5b9271e32f04219cad560a4c5e5d7
+--- /dev/null
++++ b/packages/terminfo.dev/src/iterm-window-owner.ts
+@@ -0,0 +1,29 @@
++/** Native iTerm window custody for the local comparison adapter; never selects a personal window. */
++import { execFileSync } from "node:child_process"
++import { realpathSync } from "node:fs"
++import { descendToOwner, parentOf, processExecutable, tty } from "./owned-process.ts"
++
++export function assertITermWindow(windowId: number, tabTty: string, workerPid: number): number {
++  if (!Number.isSafeInteger(windowId) || windowId < 1) throw new Error("Invalid iTerm window id")
++  const expectedTty = tty(tabTty)
++  const script = `tell application "iTerm"
++    set matches to every window whose id is ${windowId}
++    if (count of matches) is not 1 then error "owned iTerm window disappeared or is ambiguous"
++    set w to item 1 of matches
++    if (count of tabs of w) is not 1 then error "owned iTerm window acquired another tab"
++    if (count of sessions of tab 1 of w) is not 1 then error "owned iTerm tab acquired another session"
++    if (tty of session 1 of tab 1 of w) is not ${JSON.stringify(expectedTty)} then error "owned iTerm TTY changed"
++    return true
++  end tell`
++  execFileSync("/usr/bin/osascript", ["-e", script], { timeout: 15000 })
++  const census = String(execFileSync("/usr/bin/osascript", ["-l", "JavaScript", "-e", `ObjC.import("AppKit"); var a=$.NSRunningApplication.runningApplicationsWithBundleIdentifier("com.googlecode.iterm2"); var rows=[]; for(var i=0;i<a.count;i++){var x=a.objectAtIndex(i);rows.push({pid:Number(x.processIdentifier),path:ObjC.unwrap(x.executableURL.path)});} JSON.stringify(rows)`], { timeout: 15000 }))
++  const apps = JSON.parse(census)
++  if (!Array.isArray(apps) || apps.length !== 1) throw new Error("iTerm process census is ambiguous")
++  const app = apps[0]
++  const expected = realpathSync("/Applications/iTerm.app/Contents/MacOS/iTerm2")
++  if (!Number.isSafeInteger(app.pid) || app.pid < 1 || realpathSync(app.path) !== expected || processExecutable(app.pid, "iTerm") !== expected) throw new Error("iTerm executable does not match the measured bundle")
++  const workerTty = tty(String(execFileSync("/bin/ps", ["-p", String(workerPid), "-o", "tty="], { timeout: 5000 })))
++  if (workerTty !== expectedTty) throw new Error("iTerm child TTY differs from the owned session")
++  descendToOwner(workerPid, app.pid, parentOf, "iTerm")
++  return app.pid
++}
+diff --git a/packages/terminfo.dev/src/owned-terminal.ts b/packages/terminfo.dev/src/owned-terminal.ts
+index 8a948ea1327bbba661fa4192c0bdd50f46263b32..b58d5c387ef8b11bdee50601fdf7c536fdfc2ac7 100644
+--- a/packages/terminfo.dev/src/owned-terminal.ts
++++ b/packages/terminfo.dev/src/owned-terminal.ts
+@@ -62,6 +62,7 @@ import {
+ } from "./darwin-terminal-text.ts"
+ import { readConsoleGeometry } from "./windows-console-geometry.ts"
+ import { readITermCells } from "./iterm2-protocol.ts"
++import { assertITermWindow } from "./iterm-window-owner.ts"
+ import {
+   HOSTED_WINDOWS_EXECUTABLE,
+   hostedWindowsAppFromExecutablePath,
+@@ -113,6 +114,8 @@ export type GeometryMeasurement =
+   | { status: "unavailable"; at: string; source: GeometrySource; diagnostic: string; stdout: string; stderr: string }
+ 
+ export interface TerminalAppOwnerAssertion {
++  /** The local comparison's native iTerm window arm; absent retains Terminal.app semantics. */
++  application?: "iterm2"
+   asserter: "terminfo-admin"
+   launchRunId: string
+   workerPid: number
+@@ -227,6 +230,10 @@ export function parseTerminalAppOwner(value: unknown): TerminalAppOwnerAssertion
+   if (!value || typeof value !== "object" || Array.isArray(value)) throw invalid()
+   const object = value as Record<string, unknown>
+   const keys = ["asserter", "launchRunId", "workerPid", "windowId", "tabTty", "intendedVersion"]
++  if (Object.hasOwn(object, "application")) {
++    if (object.application !== "iterm2") throw invalid()
++    keys.push("application")
++  }
+   if (Object.keys(object).length !== keys.length || keys.some((key) => !Object.hasOwn(object, key))) throw invalid()
+   if (
+     object.asserter !== "terminfo-admin" ||
+@@ -246,6 +253,7 @@ export function parseTerminalAppOwner(value: unknown): TerminalAppOwnerAssertion
+     throw invalid()
+   }
+   return {
++    ...(object.application === "iterm2" && { application: "iterm2" as const }),
+     asserter: object.asserter,
+     launchRunId: object.launchRunId,
+     workerPid: object.workerPid,
+@@ -284,6 +292,7 @@ export interface OwnedTerminal {
+    * A hosted arm measures the receipt-named app in this collector's process ancestry; the owned-process
+    * arm takes the owner that assertOwnedProcess proved. Absent on every other arm. */
+   readonly appPid?: number
++  readonly captureWindowId?: number
+   /** Canonical identity from the hosted receipt's executable mapping, shared by both platforms. */
+   readonly hostedAppId?: HostedDarwinAppId | HostedWindowsAppId
+   /** The hosted app's declared self-repainting chrome strip, for capture calibration (33056). Absent: whole window. */
+@@ -1119,6 +1128,9 @@ export async function createOwnedTerminal(options: {
+     if (process.platform !== "darwin") throw new Error("Terminal.app owner requires Darwin")
+     const assertion = parseTerminalAppOwner(terminalApp)
+     requireOwnWorker(assertion, expectedLaunchRunId, "Terminal.app")
++    if (assertion.application === "iterm2") {
++      processOwnerPid = assertITermWindow(assertion.windowId, assertion.tabTty, process.pid)
++    }
+     binding = darwinOutput(out, assertion.tabTty)
+   } else if (processOwner) {
+     if (process.platform !== "darwin") throw new Error("Owned process owner requires Darwin")
+@@ -1241,7 +1253,7 @@ export async function createOwnedTerminal(options: {
+       ? kittyOwner
+         ? "kitty"
+         : terminalApp
+-          ? "terminal-app"
++          ? terminalApp.application === "iterm2" ? "iterm2" : "terminal-app"
+           : hostedApp?.id === "terminal-app" || hostedApp?.id === "iterm2"
+             ? hostedApp.id
+             : undefined
+@@ -1383,7 +1395,7 @@ export async function createOwnedTerminal(options: {
+         },
+       }),
+     })
+-    const hostedAppId = hostedApp?.id ?? hostedWindowsApp?.id
++    const hostedAppId = hostedApp?.id ?? hostedWindowsApp?.id ?? (terminalApp?.application === "iterm2" ? "iterm2" : undefined)
+     const appPid = hostedAncestor?.pid ?? processOwnerPid
+     // WT uses UIA; WezTerm's candidate uses the owned pane CLI. Both must pass the shared writer's
+     // mapping and host-ownership witnesses. Alacritty retains its explicitly unqualified host read.
+@@ -1425,6 +1437,7 @@ export async function createOwnedTerminal(options: {
+       summary,
+       ...(appPid !== undefined && { appPid }),
+       ...(hostedAppId && { hostedAppId }),
++      ...(terminalApp?.application === "iterm2" && { captureWindowId: terminalApp.windowId }),
+       ...(hostedApp?.captureChromeBand && { captureChromeBand: hostedApp.captureChromeBand }),
+       ...(clipboard && { clipboard }),
+       ...(readTitle && {
+@@ -1509,6 +1522,9 @@ export async function createOwnedTerminal(options: {
+       }),
+       async readGeometry() {
+         if (!verifiedTerminalOwners.has(owner)) throw new Error("Owned geometry read has no live bound capture")
++        if (terminalApp?.application === "iterm2") {
++          assertITermWindow(terminalApp.windowId, terminalApp.tabTty, process.pid)
++        }
+         // A Windows console has no device to re-open, so the re-read is the console's own identity:
+         // a changed window handle means these probes no longer write where the geometry came from.
+         if (binding.platform === "windows") {
+diff --git a/packages/terminfo.dev/src/serve.ts b/packages/terminfo.dev/src/serve.ts
+index c814047ab1e9051ecbe835db7dcc5ce7127276eb..9ba07b35cc018ba8688cc65c92de8e5d3ed1af0c 100644
+--- a/packages/terminfo.dev/src/serve.ts
++++ b/packages/terminfo.dev/src/serve.ts
+@@ -834,6 +834,8 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+       const darwinCapture = await createDarwinCapture(captureDirectory, {
+         appPid,
+         hostedAppId: terminal.hostedAppId,
++        expectedWindowId: terminal.captureWindowId,
++        allowNativeBackingScale: true,
+         onRetained,
+       })
+       installPixelCapture(darwinCapture, darwinCapture.installCensus, terminal.captureChromeBand)
+@@ -871,7 +873,8 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+         expectedLaunchRunId: options.expectedLaunchRunId ?? process.env.TERMINFO_RUN_ID ?? "",
+         terminalApp: options.terminalAppOwner,
+       })
+-      installTextCapture(ownedTerminal)
++      if (options.terminalAppOwner.application === "iterm2") await installDarwinCapture(ownedTerminal)
++      else installTextCapture(ownedTerminal)
+     } else if (kind === "process") {
+       if (!options.processOwner) throw new Error("Owned process collection lacks owner assertion")
+       ownedTerminal = await createOwnedTerminal({

@@ -1,0 +1,67 @@
+{
+  "recordedAt": "2026-11-11T16:54:57.549915+00:00",
+  "tools": [
+    {
+      "command": [
+        "/opt/homebrew/bin/bun",
+        "--version"
+      ],
+      "stdout": "1.4.4",
+      "stderr": "",
+      "executable": "/opt/homebrew/Cellar/bun/1.4.4_1/bin/bun",
+      "executableSha256": "e355743bfb04bdc3dbcf254ed5e9f81eb9870b87a9bb9496abca5a56a874400e"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/magick",
+        "-version"
+      ],
+      "stdout": "Version: ImageMagick 7.1.2-35 Q16-HDRI aarch64 acaf7e418:20261031 https://imagemagick.org\nCopyright: (C) 1999 ImageMagick Studio LLC\nLicense: https://imagemagick.org/license/\nFeatures: Cipher DPC HDRI Modules \nDelegates (built-in): bzlib freetype heic jng jpeg lcms ltdl lzma png tiff webp xml zlib zstd\nCompiler: clang (21.0.0)",
+      "stderr": "",
+      "executable": "/opt/homebrew/Cellar/imagemagick/7.1.2-35/bin/magick",
+      "executableSha256": "dcde6b9fc1ad978af361df0528de3f0e6e51da985ef92f557db30aaa7fe0b4bc"
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/node@24/bin/node",
+        "--version"
+      ],
+      "stdout": "v24.22.2",
+      "stderr": "",
+      "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node",
+      "executableSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e"
+    },
+    {
+      "command": [
+        "/usr/bin/python3",
+        "--version"
+      ],
+      "stdout": "Python 3.9.6",
+      "stderr": "",
+      "executable": "/usr/bin/python3",
+      "executableSha256": "34129c71a01a74f7f3b2443521519b2e5447553fa187f5fcafaaf8c42cc192e2"
+    },
+    {
+      "command": [
+        "/usr/bin/sw_vers"
+      ],
+      "stdout": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+      "stderr": "",
+      "executable": "/usr/bin/sw_vers",
+      "executableSha256": "b822969762f22f30bfdd9139e5188949ddbc75b5f0c8e58788d7bb88b3c11e25"
+    },
+    {
+      "command": [
+        "/usr/bin/uname",
+        "-m"
+      ],
+      "stdout": "arm64",
+      "stderr": "",
+      "executable": "/usr/bin/uname",
+      "executableSha256": "1e2f0483336d6c89259878f8d4880affd9743727ed8afacddfd68d8857e62f93"
+    }
+  ],
+  "ntildeProductionSourceBase": "926199a64b6efaa7027c8528b3251d4b6acfa663",
+  "productionSourceUnchanged": true,
+  "buildVersionBasis": "Directory.Build.props Version and explicit Ntilde launch version; exact sidecar payload digests are in its run archive"
+}
