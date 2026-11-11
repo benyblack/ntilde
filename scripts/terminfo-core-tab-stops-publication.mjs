@@ -3,7 +3,7 @@ import { deriveTabStopsCoreReport, readableTabStopsReport } from './terminfo-cor
 
 export const publication = 'docs/qa/terminfo/2026-11-11-core-tab-stops-results';
 // Pinned after the owned run is retained; replacement evidence needs review.
-export const manifestSha256 = 'b3db271ea17bfeff75d1a5fe752a435866ffab4d8e506941b52c245a840748d2';
+export const manifestSha256 = '3d5fac2ba2d6c07a0434b70292df1b2f700466f458033bde91f373c039a3c3ab';
 const shared = createCorePublication({ publication, manifestSha256, label: 'tab-stops',
     derive: (directory, mapping, identity, measurement) => deriveTabStopsCoreReport(directory, mapping, identity, measurement), readable: readableTabStopsReport });
 export const { loadMeasurement, buildPublication, verifyOutput } = shared;

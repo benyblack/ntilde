@@ -4,7 +4,7 @@
 
 This version uses the frozen #937 denominator. The earlier [#932](../2026-11-11-core-results/report.md), [#937](../2026-11-11-core-text-cursor-results/report.md) and [erase](../2026-11-11-core-erase-results/report.md) publications remain unchanged. The historical pinned verdict, this run’s pinned-code result and the exact-fixture effects are distinct.
 
-Owned run `5fb23342ce1a1b476acf995a84b9b9c7`; App source `736d7a462ab8a44f290353a1e0adcecd78921fe6`; scripts `5b92eaf3f9d9451342407d7e711a2526bca98075`; source policy `readonly-owned-source-graph-v41`; receipt schema 47; geometry 40 × 140. Physical positions are zero-based (row, column); CPR is one-based.
+Owned run `b516c43d719d4d8f775f5dbcf652c950`; App source `736d7a462ab8a44f290353a1e0adcecd78921fe6`; scripts `5e60300d38c2806fe39fce7bd99df91220bb80e1`; source policy `readonly-owned-source-graph-v41`; receipt schema 47; geometry 40 × 140. Physical positions are zero-based (row, column); CPR is one-based.
 
 Changes from the #937 baseline: erase.line.right: inconclusive to pass; erase.screen.above: inconclusive to pass; erase.screen.below: inconclusive to pass; text.tab: inconclusive to pass; unicode.tab-stops: inconclusive to pass. Evidence for the three erase rows comes from the separately merged erase publication and is re-derived unchanged from this run's receipt.
 
@@ -98,7 +98,8 @@ Evidence: [owned run](owned-run.zip), [requirements](../2026-11-11-core-results/
 ## Attempts
 
 - `6ce4f48381ece3ed18f96ad5680ba9ea` — superseded: First complete measurement of the new layer, taken on the stacked, then-unmerged erase layer. It passed both rows, but the erase suite was refreshed and merged afterwards and a report-builder defect (specimen expectations shared by reference) was fixed, so the combined source chain changed. ([evidence](attempt-1-superseded.zip))
-- `5fb23342ce1a1b476acf995a84b9b9c7` — complete: Both exact specimens, the custom-stop control, reset restoration, false-positive controls and the merged erase and predecessor suites completed; receipt and cleanup verified.
+- `5fb23342ce1a1b476acf995a84b9b9c7` — superseded: Complete and passing on the merged erase chain, measured from scripts 5b92eaf3. Replaced because a Sonar duplication fix restructured the measured suite module (observer and read validation, behavior unchanged); measured scripts must be the final committed scripts. ([evidence](attempt-2-superseded.zip))
+- `b516c43d719d4d8f775f5dbcf652c950` — complete: Both exact specimens, the custom-stop control, reset restoration, false-positive controls and the merged erase and predecessor suites completed; receipt and cleanup verified.
 
 ## Reproduction
 

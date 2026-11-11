@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "measurement": {
-    "runId": "5fb23342ce1a1b476acf995a84b9b9c7",
+    "runId": "b516c43d719d4d8f775f5dbcf652c950",
     "appRevision": "736d7a462ab8a44f290353a1e0adcecd78921fe6",
-    "scriptsRevision": "5b92eaf3f9d9451342407d7e711a2526bca98075",
+    "scriptsRevision": "5e60300d38c2806fe39fce7bd99df91220bb80e1",
     "receiptSchema": 47,
     "sourcePolicy": "readonly-owned-source-graph-v41"
   },
-  "ownedArchiveSha256": "b2bd397e3696ec389db609a80fc139717ad196cd28fcd6c2b47554d103ad4893",
+  "ownedArchiveSha256": "2596ba502d18535de479cbe1060d3e5bcc9f908093a4105478097490accdb198",
   "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
   "attempts": [
     {
@@ -19,6 +19,13 @@
     },
     {
       "runId": "5fb23342ce1a1b476acf995a84b9b9c7",
+      "status": "superseded",
+      "reason": "Complete and passing on the merged erase chain, measured from scripts 5b92eaf3. Replaced because a Sonar duplication fix restructured the measured suite module (observer and read validation, behavior unchanged); measured scripts must be the final committed scripts.",
+      "archive": "attempt-2-superseded.zip",
+      "sha256": "b2bd397e3696ec389db609a80fc139717ad196cd28fcd6c2b47554d103ad4893"
+    },
+    {
+      "runId": "b516c43d719d4d8f775f5dbcf652c950",
       "status": "complete",
       "reason": "Both exact specimens, the custom-stop control, reset restoration, false-positive controls and the merged erase and predecessor suites completed; receipt and cleanup verified."
     }
