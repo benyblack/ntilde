@@ -119,13 +119,15 @@ test('text.tab needs the stored X and blank preceding cells; a cursor-only obser
     assert.equal(grade(cursorOnlyOk).effects['unicode.tab-stops'].outcome, 'unsupported');
     assert.equal(grade(cursorOnlyOk).effects['text.tab'].outcome, 'supported');
 });
+/** Blank exactly the first stop marker, as if that stop had been lost. */
+const dropFirstMarker = line => { const at = line.indexOf('*'); return line.slice(0, at) + ' ' + line.slice(at + 1); };
 test('missing default-state proof or leftover custom stops is inconclusive, never a verdict', () => {
     for (const [mutate, reason] of [
         [r => { r['taint:ht1'].screen.cursorCol = 8; }, 'default-state-not-established'], // the custom state was never measured
         [r => { r['taint:ht3'].screen.cursorCol = 24; }, 'default-state-not-established'],
-        [r => { r['reset:walk'] = frame([defaultWalk(cols).line.replace('*', ' ')], defaultWalk(cols).cursor); }, 'default-state-not-established'], // RIS did not restore
+        [r => { r['reset:walk'] = frame([dropFirstMarker(defaultWalk(cols).line)], defaultWalk(cols).cursor); }, 'default-state-not-established'], // RIS did not restore
         [r => { r['reset:walk'].screen.cursorCol = 4; }, 'default-state-not-established'],
-        [r => { r['final:walk'].screen.lines[0] = r['final:walk'].screen.lines[0].replace('*', ' '); }, 'default-state-not-established'], // controls altered stops
+        [r => { r['final:walk'].screen.lines[0] = dropFirstMarker(r['final:walk'].screen.lines[0]); }, 'default-state-not-established'], // controls altered stops
     ]) {
         const roles = good(); mutate(roles);
         const { effects } = grade(roles);
