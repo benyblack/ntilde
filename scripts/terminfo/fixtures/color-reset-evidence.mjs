@@ -101,12 +101,13 @@ function drawRender(screen, theme) {
     const key = createHash('sha256').update(snapshotHash(screen) + snapshotHash(theme)).digest();
     const pixels = Buffer.alloc(width * height * 4);
     const paint = (x, y, argb) => { const at = (y * width + x) * 4; pixels[at] = (argb >>> 16) & 255; pixels[at + 1] = (argb >>> 8) & 255; pixels[at + 2] = argb & 255; pixels[at + 3] = 255; };
-    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) paint(x, y, theme.backgroundArgb);
+    const fill = (left, top, right, bottom, argb, step = 1) => {
+        for (let y = top; y < bottom; y++) for (let x = left; x < right; x += step) paint(x, y, argb);
+    };
+    fill(0, 0, width, height, theme.backgroundArgb);
     for (let at = 0; at < key.length; at++) paint(at, 0, 0xff000000 | (key[at] << 16) | (key[at] << 8) | key[at]);
-    if (screen.lines[1] !== '') for (let y = cellHeight + 4; y < cellHeight + 14; y++) for (let x = 4 * cellWidth; x < 11 * cellWidth; x += 2) paint(x, y, theme.foregroundArgb);
-    if (screen.cursorVisible && screen.cursorMode.style === 0) {
-        for (let y = 8 * cellHeight; y < 9 * cellHeight; y++) for (let x = 8 * cellWidth; x < 9 * cellWidth; x++) paint(x, y, theme.cursorArgb);
-    }
+    if (screen.lines[1] !== '') fill(4 * cellWidth, cellHeight + 4, 11 * cellWidth, cellHeight + 14, theme.foregroundArgb, 2);
+    if (screen.cursorVisible && screen.cursorMode.style === 0) fill(8 * cellWidth, 8 * cellHeight, 9 * cellWidth, 9 * cellHeight, theme.cursorArgb);
     return { width, height, pixels };
 }
 
