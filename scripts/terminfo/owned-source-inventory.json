@@ -274,5 +274,7 @@
     "colorResetGradingCollectorSourceSha256": "color-reset-grading-collector.mjs",
     "colorResetReceiptSourceSha256": "color-reset-receipt.mjs",
     "textCursorSourceSha256": "core-text-cursor.mjs",
-    "textCursorReceiptSourceSha256": "core-text-cursor-receipt.mjs"
+    "textCursorReceiptSourceSha256": "core-text-cursor-receipt.mjs",
+    "coreEraseSourceSha256": "core-erase.mjs",
+    "coreEraseReceiptSourceSha256": "core-erase-receipt.mjs"
 }
