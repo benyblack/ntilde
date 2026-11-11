@@ -289,6 +289,52 @@ jobs:
         shell: bash
         run: node --test scripts/terminfo/ownership.test.mjs scripts/terminfo/private-clipboard-request.test.mjs scripts/terminfo/private-clipboard-source.test.mjs scripts/terminfo/private-clipboard-controller.test.mjs scripts/terminfo/private-clipboard-bridge.test.mjs scripts/terminfo/private-clipboard-worker.test.mjs scripts/terminfo/private-clipboard-collector.test.mjs scripts/terminfo/private-clipboard-capture.test.mjs scripts/terminfo/private-clipboard-errors.test.mjs scripts/terminfo/private-clipboard-receipt.test.mjs scripts/terminfo/private-clipboard-receipt-refusals.test.mjs scripts/terminfo/private-clipboard-receipt-prefix.test.mjs
 
+  # TEMPORARY - not for merge. Times the windows build and script self-tests on C:, D: and a
+  # Dev Drive (scripts/ci/dev-drive-probe.ps1) to decide whether the windows jobs should use one.
+  dev_drive_probe:
+    name: Dev Drive probe (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
+      - name: Restore native binaries
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
+            src/Ntilde.App/native/rusty_ssh/target/release/rusty_ssh.dll
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.so
+            src/Ntilde.App/native/rusty_ssh/target/release/librusty_ssh.dylib
+          key: native-bin-v5-windows-latest-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock', 'src/Ntilde.App/native/rusty_ssh/src/**', 'src/Ntilde.App/native/rusty_ssh/Cargo.toml', 'src/Ntilde.App/native/rusty_ssh/Cargo.lock') }}
+          fail-on-cache-miss: true
+      - name: Restore NuGet packages
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
+      - name: Create a Dev Drive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-Volume | Where-Object DriveLetter | Format-Table DriveLetter, FileSystem, Size, SizeRemaining -AutoSize | Out-String | Write-Host
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $part = New-VHD -Path D:\dev_drive.vhdx -SizeBytes 40GB -Dynamic | Mount-VHD -PassThru | Initialize-Disk -PassThru | New-Partition -AssignDriveLetter -UseMaximumSize
+          $part | Format-Volume -DevDrive -Confirm:$false -Force | Out-Null
+          Write-Host "Dev Drive $($part.DriveLetter): created in $([math]::Round($sw.Elapsed.TotalSeconds, 1)) s"
+          fsutil devdrv query "$($part.DriveLetter):"
+          Get-MpPreference | Select-Object DisableRealtimeMonitoring | Format-List | Out-String | Write-Host
+          "DEV_DRIVE=$($part.DriveLetter):" >> $env:GITHUB_ENV
+      - name: Probe
+        shell: pwsh
+        run: scripts/ci/dev-drive-probe.ps1
+
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
