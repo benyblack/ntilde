@@ -123,3 +123,10 @@ The exact patch bytes are retained in `native-adapter.patch.gz`. The readable pa
 and other generated text projections tolerate Windows checkout line endings;
 immutable measurement JSON and archived source/capture bytes are still checked by
 exact digest. No per-batch `.gitattributes` rule is needed.
+
+Offline verification initializes the Git-verified upstream probe definitions without
+executing feature callbacks, derives their terminal/library/mux membership, and
+replays the retained upstream identity checker and measured-version resolver over
+each raw run's replies. Consistent omissions or fabricated success receipts cannot
+replace those executable-source checks. Node 24 supplies the native TypeScript
+loader; verification needs no Bun installation, dependencies, desktop or network.

@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import { commonCoreGit } from './common-core-tools.mjs';
 import { pythonCommand } from './common-core-evidence.mjs';
+import { derivePinnedRuntime, verifyRuntimeClaims } from './common-core-runtime.mjs';
 
 /** Match the upstream catalogue SHA-256 binding. */
 const sha = (value) => createHash('sha256').update(value).digest('hex');
@@ -81,6 +82,8 @@ export function verifyCommonCoreSource(directory, source, metadataPath, subjects
     );
     for (const subject of subjects) verifyRetainedSuite(proof, JSON.parse(subject.sourceBytes).suite);
     verifyIdentityChecker(proof, source, subjects);
+    proof.runtime = derivePinnedRuntime(proof, subjects);
+    verifyRuntimeClaims(proof.runtime, subjects);
     const patch = gunzipSync(readFileSync(join(directory, 'native-adapter.patch.gz')));
     if (sha(patch) !== source.adapterPatchSha256) throw new Error('Retained patch content identity differs.');
     if (readFileSync(join(directory, 'native-adapter.patch'), 'utf8').replaceAll('\r\n', '\n') !== patch.toString())
