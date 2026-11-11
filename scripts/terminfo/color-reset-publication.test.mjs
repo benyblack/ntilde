@@ -44,7 +44,7 @@ test('the published evidence re-derives exactly from its retained journal, run l
     assert.equal(report.adapter.id, colorResetAdapterId);
     assert.equal(report.adapter.derivedFromAdapterId, 'ntilde-owned-left-right-margins-grading-v1');
     assert.equal(report.snapshots.length, 3 + colorResetContracts.reduce((sum, contract) => sum + contract.roles.length, 0));
-    assert.equal(report.snapshots.length, 43);
+    assert.equal(report.snapshots.length, 47);
     assert.deepEqual(readdirSync(new URL('crst-pixels/', dirUrl)).sort(), report.snapshots.map(frame => frame.pixel.file.split('/')[1]).sort());
 });
 
@@ -60,7 +60,7 @@ test('all four pinned cases: the pinned termless code is supported, the independ
         assert.equal(item.conclusion.pinnedTerminal, 'inconclusive-by-design');
         assert.deepEqual([item.pinnedTerminal.outcome, item.pinnedTerminal.evidence, item.pinnedTerminal.byDesign], ['inconclusive', 'none', true]);
         assert.equal(item.divergence, undefined, 'the pinned and effect verdicts agree');
-        assert.equal(item.contractResult.experiments.length, 3);
+        assert.equal(item.contractResult.experiments.length, item.caseId.endsWith('palette') ? 4 : 3);
         for (const experiment of item.contractResult.experiments) {
             assert.equal(experiment.outcome, 'supported', `${item.caseId} ${experiment.id}`);
             assert.ok(experiment.controls.every(entry => entry.passed) && experiment.assertions.every(entry => entry.passed));
@@ -101,6 +101,9 @@ test('individual and whole-palette resets: unrelated slots stay overridden, and 
     assert.deepEqual(slots, [[], [1, 9, 16, 200, 255], [9, 16, 200, 255], [16, 255], []]);
     const whole = experiment(item, 'whole-palette').stages.map(stage => stage.binding.paletteOverrideIndices.length);
     assert.deepEqual(whole, [0, 256, 0], 'a partial whole-palette reset could not pass');
+    const apart = experiment(item, 'isolation').stages;
+    assert.deepEqual(apart.map(stage => stage.binding.paletteOverrideIndices), [[], [5, 6], [6], []]);
+    assert.ok(apart.slice(1).every(stage => stage.binding.foregroundOverride && stage.binding.backgroundOverride && stage.theme.cursorOverride), 'palette resets left the dynamic colors overridden');
     const render = item.contractResult.experiments.find(entry => entry.id === 'whole-palette');
     assert.ok(render.assertions.some(entry => /complete theme, derived values included, equals the baseline/.test(entry.description) && entry.passed));
 });
@@ -111,6 +114,9 @@ test('the other overrides survive a dynamic-color reset, and SGR 39/49 neither s
     assert.deepEqual(flags('osc110-reset-fg'), [[false, false, false], [true, true, true], [false, true, true]]);
     assert.deepEqual(flags('osc111-reset-bg'), [[false, false, false], [true, true, true], [true, false, true]]);
     assert.deepEqual(flags('osc112-reset-cursor'), [[false, false, false], [true, true, true], [true, true, false]]);
+    for (const id of ['osc110-reset-fg', 'osc111-reset-bg', 'osc112-reset-cursor']) {
+        assert.deepEqual(experiment(items[id], 'isolation').stages.map(stage => stage.binding.paletteOverrideIndices), [[], [5], [5]], `${id}: the unrelated palette slot stays overridden`);
+    }
     for (const id of ['osc110-reset-fg', 'osc111-reset-bg']) {
         const overrides = experiment(items[id], 'sgr-default').stages.map(stage => [stage.binding.foregroundOverride, stage.binding.backgroundOverride]);
         const at = id === 'osc110-reset-fg' ? 0 : 1;

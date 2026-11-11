@@ -48,8 +48,8 @@ if any experiment is, else inconclusive if any is, else supported.
 
 | Case | Experiments |
 |---|---|
-| OSC 104 | `pinned` (slot 0, BEL); `individual-slots` (slots 1, 9, 16, 200, 255 overridden; reset 1 alone, then 9 and 200, then 16 and 255, the unrelated slots staying overridden each time); `whole-palette` (all 256 slots overridden; `ESC]104 BEL` must restore all 256 and clear the override list; a control, the pinned fixture resets one slot) |
-| OSC 110 | `pinned`; `isolation` (background and cursor overrides survive an `ESC]110 ESC\`); `sgr-default` (SGR 39 changes the pen, not the runtime default; OSC 110 does not change the pen; explicit palette and literal cells never move) |
+| OSC 104 | `pinned` (slot 0, BEL); `individual-slots` (slots 1, 9, 16, 200, 255 overridden; reset 1 alone, then 9 and 200, then 16 and 255, the unrelated slots staying overridden each time); `isolation` (slots 5 and 6 overridden beside the foreground, background and cursor; reset slot 5 alone, then the whole palette: the three dynamic colors stay overridden); `whole-palette` (all 256 slots overridden; `ESC]104 BEL` must restore all 256 and clear the override list; a control, the pinned fixture resets one slot) |
+| OSC 110 | `pinned`; `isolation` (background, cursor and an unrelated palette slot stay overridden through an `ESC]110 ESC\`); `sgr-default` (SGR 39 changes the pen, not the runtime default; OSC 110 does not change the pen; explicit palette and literal cells never move) |
 | OSC 111 | the same three for the background and SGR 49 |
 | OSC 112 | `pinned` (steady visible block); `isolation` (foreground and background overrides survive; shape and visibility unchanged); `hidden-beam` (a hidden steady-beam cursor stays hidden and beam) |
 
