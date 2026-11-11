@@ -110,10 +110,12 @@ test('a newer Core publication is detected, and unrelated reports are ignored', 
         mkdirSync(join(root, '2099-core-results'), { recursive: true }); writeFileSync(join(root, '2099-core-results/report.json'), JSON.stringify(later));
         const earlier = structuredClone(report); earlier.measurement.startedAt = '2001-01-01T00:00:00.000Z';
         mkdirSync(join(root, '2001-core-results'), { recursive: true }); writeFileSync(join(root, '2001-core-results/report.json'), JSON.stringify(earlier));
-        mkdirSync(join(root, 'other-kind'), { recursive: true }); writeFileSync(join(root, 'other-kind/report.json'), JSON.stringify({ policy: 'x', rows: [], measurement: { startedAt: '2099-01-01' } }));
+        const reshaped = structuredClone(later); reshaped.policy = 'a-later-policy'; reshaped.rows.pop(); reshaped.measurement.startedAt = '2098-01-01T00:00:00.000Z';
+        mkdirSync(join(root, '2098-core-results'), { recursive: true }); writeFileSync(join(root, '2098-core-results/report.json'), JSON.stringify(reshaped));
+        mkdirSync(join(root, 'other-kind'), { recursive: true }); writeFileSync(join(root, 'other-kind/report.json'), JSON.stringify({ policy: 'x', rows: [{ id: 'a', supported: true }], measurement: { startedAt: '2099-01-01' } }));
         mkdirSync(join(root, 'broken'), { recursive: true }); writeFileSync(join(root, 'broken/report.json'), '{nope');
         mkdirSync(join(root, 'empty'), { recursive: true });
-        assert.deepEqual(findNewerCorePublications({ base, pin }).map(p => p.publication), ['docs/qa/terminfo/2099-core-results']);
+        assert.deepEqual(findNewerCorePublications({ base, pin }).map(p => p.publication), ['docs/qa/terminfo/2098-core-results', 'docs/qa/terminfo/2099-core-results']);
     } finally { rmSync(base, { recursive: true, force: true }); }
 });
 

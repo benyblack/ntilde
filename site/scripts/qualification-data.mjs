@@ -465,11 +465,22 @@ export function assertPublishable(data) {
   for (const [pattern, what] of patterns) check(!pattern.test(text), `the generated data would publish ${what}`);
 }
 
+function looksLikeCoreReport(report) {
+  return (
+    Array.isArray(report?.rows) &&
+    report.rows.length > 0 &&
+    report.rows.every((row) => typeof row?.id === 'string' && OUTCOMES.has(row.conclusion)) &&
+    OUTCOMES.size === Object.keys(report.totals ?? {}).filter((key) => OUTCOMES.has(key)).length
+  );
+}
+
 /**
  * Core publications under docs/qa/terminfo/ that were measured after the pinned one. The page
  * claims one frozen run, so a newer publication must be adopted (or set aside) on purpose: the
  * self-test fails while one exists and the pin has not moved. A publication is recognised by the
- * pinned report's own policy and row count, so other kinds of report are ignored.
+ * shape of a Core qualification report (per-requirement pass/fail/inconclusive conclusions, totals and
+ * a measurement time), not by its policy or row count, so a later one that changes either is still
+ * found; other kinds of report are ignored.
  */
 export function findNewerCorePublications({ base = repoRoot, pin = loadPin() } = {}) {
   const { value: pinned } = readJson(base, `${pin.publication}/report.json`, 'the pinned report');
@@ -486,7 +497,7 @@ export function findNewerCorePublications({ base = repoRoot, pin = loadPin() } =
       continue;
     }
     const startedAt = Date.parse(report?.measurement?.startedAt);
-    if (report?.policy === pinned.policy && Array.isArray(report.rows) && report.rows.length === pinned.rows.length && startedAt > pinnedAt) {
+    if (looksLikeCoreReport(report) && startedAt > pinnedAt) {
       newer.push({ publication: `docs/qa/terminfo/${entry.name}`, startedAt: report.measurement.startedAt, totals: report.totals });
     }
   }
