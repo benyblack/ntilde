@@ -5,13 +5,13 @@
     {
       "index": 19,
       "kind": "shi-read",
-      "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+      "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
       "barrier": "\u001b[?62;4;22c",
       "before": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "", "", "", "NTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "", "", "", "NTILDE_SH_650b9b8230a59a84b0e506f087594395", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
           "cursorRow": 4,
           "cursorCol": 9,
           "cursorVisible": true,
@@ -68,10 +68,10 @@
           }
         },
         "metadata": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
-          "oscTitle": "SH-base-dd0203ec",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
+          "oscTitle": "SH-base-650b9b82",
           "workingDirectory": "/ntilde-qa/osc133-base",
-          "displayTitle": "SH-base-dd0203ec",
+          "displayTitle": "SH-base-650b9b82",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -79,7 +79,7 @@
             "cursorCol": 9,
             "alternateScreen": false,
             "scrollbackLines": 0,
-            "historyGeneration": 190,
+            "historyGeneration": 205,
             "rowsEvicted": 0,
             "acceptingCommandInput": false,
             "commandStart": null,
@@ -93,19 +93,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "SH-base-dd0203ec ⌨",
+            "tabText": "SH-base-650b9b82 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "Recording started",
-            "toastMessage": ""
+            "toastTitle": "MD-base-650b9b82",
+            "toastMessage": "Owned notification 650b9b8230a59a84b0e506f087594395"
           }
         },
         "status": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -116,22 +116,22 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794396617627,
-          "lastOutputAtMs": 1794396617627,
+          "statusSinceMs": 1794398475429,
+          "lastOutputAtMs": 1794398475429,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "sha256": "b7b67d70519a9ead24b791d20413de8cf97e5f03845ae012345a76ac2f043699",
+      "sha256": "3228322825677c8edf660bd1ef2c20c61294be0a6431a14bed88354c63d5265e",
       "after": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "", "", "", "NTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "", "", "", "NTILDE_SH_650b9b8230a59a84b0e506f087594395", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
           "cursorRow": 4,
           "cursorCol": 9,
           "cursorVisible": true,
@@ -188,10 +188,10 @@
           }
         },
         "metadata": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
-          "oscTitle": "SH-base-dd0203ec",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
+          "oscTitle": "SH-base-650b9b82",
           "workingDirectory": "/ntilde-qa/osc133-base",
-          "displayTitle": "SH-base-dd0203ec",
+          "displayTitle": "SH-base-650b9b82",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -199,7 +199,7 @@
             "cursorCol": 9,
             "alternateScreen": false,
             "scrollbackLines": 0,
-            "historyGeneration": 190,
+            "historyGeneration": 205,
             "rowsEvicted": 0,
             "acceptingCommandInput": false,
             "commandStart": null,
@@ -213,19 +213,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "SH-base-dd0203ec ⌨",
+            "tabText": "SH-base-650b9b82 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "Recording started",
-            "toastMessage": ""
+            "toastTitle": "MD-base-650b9b82",
+            "toastMessage": "Owned notification 650b9b8230a59a84b0e506f087594395"
           }
         },
         "status": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -236,30 +236,30 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794396617627,
-          "lastOutputAtMs": 1794396617627,
+          "statusSinceMs": 1794398475429,
+          "lastOutputAtMs": 1794398475429,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "afterSha256": "b7b67d70519a9ead24b791d20413de8cf97e5f03845ae012345a76ac2f043699",
+      "afterSha256": "3228322825677c8edf660bd1ef2c20c61294be0a6431a14bed88354c63d5265e",
       "caseId": null,
       "stageId": null
     },
     {
       "index": 20,
       "kind": "shi-read",
-      "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+      "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
       "barrier": "\u001b[?62;4;22c",
       "before": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "ntilde$ echo b-two", "", "", "NTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "ntilde$ echo b-two", "", "", "NTILDE_SH_650b9b8230a59a84b0e506f087594395", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
           "cursorRow": 6,
           "cursorCol": 18,
           "cursorVisible": true,
@@ -316,10 +316,10 @@
           }
         },
         "metadata": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
-          "oscTitle": "SH-base-dd0203ec",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
+          "oscTitle": "SH-base-650b9b82",
           "workingDirectory": "/ntilde-qa/osc133-base",
-          "displayTitle": "SH-base-dd0203ec",
+          "displayTitle": "SH-base-650b9b82",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -327,14 +327,14 @@
             "cursorCol": 18,
             "alternateScreen": false,
             "scrollbackLines": 0,
-            "historyGeneration": 190,
+            "historyGeneration": 205,
             "rowsEvicted": 0,
             "acceptingCommandInput": true,
             "commandStart": {
               "row": 6,
               "col": 8,
               "absoluteRow": 6,
-              "generation": 190,
+              "generation": 205,
               "alternateScreen": false
             },
             "outputStart": null,
@@ -347,19 +347,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "SH-base-dd0203ec ⌨",
+            "tabText": "SH-base-650b9b82 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "Recording started",
-            "toastMessage": ""
+            "toastTitle": "MD-base-650b9b82",
+            "toastMessage": "Owned notification 650b9b8230a59a84b0e506f087594395"
           }
         },
         "status": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -370,22 +370,22 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794396617627,
-          "lastOutputAtMs": 1794396617634,
+          "statusSinceMs": 1794398475429,
+          "lastOutputAtMs": 1794398475436,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "sha256": "a3a34a7d400dcd4c2195f1bd0c4aae700d5f82d3ce6da14b1ec66bda8b1cd48b",
+      "sha256": "3333fbda25e966193ba2c10cf1cfb6e22fd35346549474ef8b2280a3c42d62ad",
       "after": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "ntilde$ echo b-two", "", "", "NTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+          "lines": ["", "", "", "ntilde$ echo b-one", "b-one-out", "", "ntilde$ echo b-two", "", "", "NTILDE_SH_650b9b8230a59a84b0e506f087594395", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
           "cursorRow": 6,
           "cursorCol": 18,
           "cursorVisible": true,
@@ -442,10 +442,10 @@
           }
         },
         "metadata": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
-          "oscTitle": "SH-base-dd0203ec",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
+          "oscTitle": "SH-base-650b9b82",
           "workingDirectory": "/ntilde-qa/osc133-base",
-          "displayTitle": "SH-base-dd0203ec",
+          "displayTitle": "SH-base-650b9b82",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -453,14 +453,14 @@
             "cursorCol": 18,
             "alternateScreen": false,
             "scrollbackLines": 0,
-            "historyGeneration": 190,
+            "historyGeneration": 205,
             "rowsEvicted": 0,
             "acceptingCommandInput": true,
             "commandStart": {
               "row": 6,
               "col": 8,
               "absoluteRow": 6,
-              "generation": 190,
+              "generation": 205,
               "alternateScreen": false
             },
             "outputStart": null,
@@ -473,19 +473,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "SH-base-dd0203ec ⌨",
+            "tabText": "SH-base-650b9b82 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "Recording started",
-            "toastMessage": ""
+            "toastTitle": "MD-base-650b9b82",
+            "toastMessage": "Owned notification 650b9b8230a59a84b0e506f087594395"
           }
         },
         "status": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -496,17 +496,17 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "88a50d2e-df41-41c1-a269-8c26624d242e",
+          "paneId": "24e6d7a2-3e1c-4dd6-96fd-fb9f6668cd2f",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794396617627,
-          "lastOutputAtMs": 1794396617634,
+          "statusSinceMs": 1794398475429,
+          "lastOutputAtMs": 1794398475436,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "afterSha256": "a3a34a7d400dcd4c2195f1bd0c4aae700d5f82d3ce6da14b1ec66bda8b1cd48b",
+      "afterSha256": "3333fbda25e966193ba2c10cf1cfb6e22fd35346549474ef8b2280a3c42d62ad",
       "caseId": null,
       "stageId": null
     }

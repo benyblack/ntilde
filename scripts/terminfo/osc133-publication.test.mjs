@@ -145,11 +145,11 @@ test('restoration is exactly what the observation API can show: prepared baselin
 
 test('the receipt binds the run, adapter and counts, and every predecessor and finding reconfirm in the same run', async () => {
     const { summary, report } = load(), { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 44);
+    assert.equal(receipt.schemaVersion, 45);
     assert.equal(receipt.osc133Evidence.runId, summary.context.runId);
     assert.equal(receipt.osc133Evidence.suiteId, osc133SuiteId);
     assert.deepEqual(receipt.osc133Evidence.counts, osc133Counts(report));
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v38');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v39');
     const predecessors = benchmarkSuites.slice(0, benchmarkSuites.findIndex(item => item.suite === 'osc133'));
     const expected = [];
     for (const suite of predecessors) expected.push(...(await import(new URL(suite.module, import.meta.url)))[suite.exports[2]]);
@@ -180,7 +180,7 @@ test('revisions, attempts (the superseded one keeps its actual reason) and file 
     const { summary } = load();
     assert.match(summary.appRevision, /^[0-9a-f]{40}$/);
     assert.match(summary.scriptsRevision, /^[0-9a-f]{40}$/);
-    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [true, true, true]);
+    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [true, true, true, true]);
     assert.equal(summary.attempts.at(-1).runId, summary.context.runId);
     assert.equal(summary.attempts.at(-1).scriptsRevision, summary.scriptsRevision);
     assert.match(summary.attempts[0].outcome, /superseded/);
@@ -188,6 +188,8 @@ test('revisions, attempts (the superseded one keeps its actual reason) and file 
     assert.match(summary.attempts[1].outcome, /Codex P2/);
     assert.ok(existsSync(new URL('superseded/attempt-1-superseded.zip', dir)));
     assert.ok(existsSync(new URL('superseded/attempt-2-superseded.zip', dir)));
+    assert.match(summary.attempts[2].outcome, /text\/cursor batch \(PR 937\)/);
+    assert.ok(existsSync(new URL('superseded/attempt-3-superseded.zip', dir)));
     for (const name of readdirSync(dir)) {
         if (name === 'superseded') continue;
         assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2000 : 1500), name);

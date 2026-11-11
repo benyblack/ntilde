@@ -1035,3 +1035,15 @@ controls differ from the ten stored-state colors experiments in spelling (BEL, a
 survive alternate-screen exit and DECSTR, so the finish write clears them explicitly and requires the original screen, theme and render back. Cadence, desktop
 appearance, selection and pointer colors, Kitty named colors and other themes are not claimed. Receipt schema 43 and source policy v37 (274 files) bind it; earlier
 policies stay frozen.
+
+### OSC 133 qualification (A, B, C, D)
+
+The [OSC 133 batch](terminfo/2026-11-11-osc133-qualification.md) qualifies `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c` and `extensions.osc133-d`
+(prompt start, command-input start, command execution start, command completion) through a layered collector extension (`ntilde-owned-osc133-grading-v1`) over the
+left/right-margin one. All four pinned probes only check that `ESC ] 133;<marker> BEL X` was consumed (`promptConsumptionResult` is always inconclusive); the retained
+termless and terminal code is replayed over the journal, preserved, and leaves the stock grades untouched. A separately identified [effect contract](terminfo/osc133.md)
+(`ntilde-osc133-shell-lifecycle-effect-v1`) is graded by an independent lifecycle oracle from paired complete stored cells, raw pane metadata (input window, command and
+output anchors, title, cwd) and session status, executing each exact pinned fixture from a measured prior state beside an unmarked control and gating markers, with canonical
+boundary, payload and consecutive-cycle experiments and recorded (never graded) terminator-variant and exit-payload observations. The suite reuses the frozen metadata
+suite's paired observer under its own prefix; no production code changed. The qualification covers protocol handling in a disposable direct-local App, not Bash, Zsh, Fish,
+PowerShell, SSH or remote delivery. Receipt schema 45 and source policy v39 (281 files) bind it; earlier policies stay frozen. Inventory: 96 qualified ids.

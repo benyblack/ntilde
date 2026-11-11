@@ -57,11 +57,11 @@ the snapshot and metadata expose no command exit status, so the payload's interp
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `dfef22bb` (arm64 Release, executable SHA-256 `f5814e51…9bf8`, assembly `eb66596a…df8388`); scripts at the same
-revision; source policy v38 (279 files, manifest `b7ec2356…2e66`); receipt schema 44; Node v24.22.2; owned run `dd0203ec…3ba8`, stock run `1a3d239a…dc07`,
-measured 2026-11-11T11:30Z on macOS 27.0.1; private settings digest `c1c84d41…5d0c`. Predecessor suites reconfirmed in the same run through the established runner:
+App 0.13.0 (operator supplied) built from `45f0e09c` (arm64 Release, executable SHA-256 `f5814e51…9bf8`, assembly `bc9ff8b9…6f9825`); scripts at the same
+revision; source policy v39 (281 files, manifest `96ffe9a0…14b0`); receipt schema 45; Node v24.22.2; owned run `650b9b82…4395`, stock run `7e393c09…9ea247`,
+measured 2026-11-11T12:01Z on macOS 27.0.1; private settings digest `ab4811db…6469`. Predecessor suites reconfirmed in the same run through the established runner:
 every earlier suite's cases are supported (or their effect contracts supported), the query suite reproduces its frozen 33 matched / 7 mismatched, and the two findings
-reconfirm. Two earlier measurements are retained, both with all four effect contracts supported: the first, uncommitted one (26 experiments; `superseded/attempt-1-superseded.zip`), and the committed-script run `58f5357e…007a` (`superseded/attempt-2-superseded.zip`), superseded by a Codex review finding (the worker and the parent both created the typed unavailable marker, aborting a run whose first observation is unavailable); the worker is a measured file, so the fix required a fresh measurement.
+reconfirm. Three earlier measurements are retained, each with all four effect contracts supported: the first, uncommitted one (26 experiments; `superseded/attempt-1-superseded.zip`); the committed-script run `58f5357e…007a` (`superseded/attempt-2-superseded.zip`), superseded by a Codex review finding (the worker and the parent both created the typed unavailable marker, aborting a run whose first observation is unavailable; the worker is a measured file, so the fix required a fresh measurement); and the run `dd0203ec…3ba8` on the fixed worker (`superseded/attempt-3-superseded.zip`), superseded because the text/cursor batch (PR 937) merged first and took policy v38 / receipt 44, so this layer was restacked to policy v39 / receipt 45 and measured again.
 
 ## Evidence
 

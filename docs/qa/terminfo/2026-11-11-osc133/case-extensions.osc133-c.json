@@ -41,7 +41,7 @@
       "id": "extensions.osc133-c/stock",
       "name": "stock",
       "role": "stock",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -91,13 +91,13 @@
               "commandStart": null,
               "outputStart": [1, 0],
               "cursor": [0, 1],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -109,7 +109,7 @@
       "id": "extensions.osc133-c/effect",
       "name": "effect",
       "role": "effect",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "X", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "X", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -158,13 +158,13 @@
               "commandStart": [2, 8],
               "outputStart": null,
               "cursor": [2, 20],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -215,13 +215,13 @@
               "commandStart": [2, 8],
               "outputStart": null,
               "cursor": [0, 1],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -273,13 +273,13 @@
               "commandStart": [2, 8],
               "outputStart": [1, 0],
               "cursor": [0, 1],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -291,7 +291,7 @@
       "id": "extensions.osc133-c/payload",
       "name": "payload",
       "role": "required",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;ZWNobyBjLXBheWxvYWQ=\u0007", "\r\nc-output"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;ZWNobyBjLXBheWxvYWQ=\u0007", "\r\nc-output"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -340,13 +340,13 @@
               "commandStart": [2, 8],
               "outputStart": null,
               "cursor": [2, 20],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -397,13 +397,13 @@
               "commandStart": [2, 8],
               "outputStart": [3, 0],
               "cursor": [2, 20],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -454,13 +454,13 @@
               "commandStart": [2, 8],
               "outputStart": [3, 0],
               "cursor": [3, 8],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -472,7 +472,7 @@
       "id": "extensions.osc133-c/gate-a",
       "name": "gate-a",
       "role": "gate",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -522,13 +522,13 @@
               "commandStart": [2, 8],
               "outputStart": null,
               "cursor": [0, 1],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -546,7 +546,7 @@
       "id": "extensions.osc133-c/gate-b",
       "name": "gate-b",
       "role": "gate",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -595,13 +595,13 @@
               "commandStart": [0, 0],
               "outputStart": null,
               "cursor": [0, 1],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -619,7 +619,7 @@
       "id": "extensions.osc133-c/gate-d",
       "name": "gate-d",
       "role": "gate",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -668,13 +668,13 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [0, 1],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -692,7 +692,7 @@
       "id": "extensions.osc133-c/st-terminator",
       "name": "st-terminator",
       "role": "observed",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u001b\\X"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u001b\\X"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -742,13 +742,13 @@
               "commandStart": [2, 8],
               "outputStart": [1, 0],
               "cursor": [0, 1],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -766,7 +766,7 @@
       "id": "extensions.osc133-c/payload-attribute",
       "name": "payload-attribute",
       "role": "observed",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;aid=7\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;aid=7\u0007"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -816,13 +816,13 @@
               "commandStart": [2, 8],
               "outputStart": [3, 0],
               "cursor": [2, 20],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -840,7 +840,7 @@
       "id": "extensions.osc133-c/payload-plain",
       "name": "payload-plain",
       "role": "observed",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;echo c-plain\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;echo c-plain\u0007"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -890,13 +890,13 @@
               "commandStart": [2, 8],
               "outputStart": [3, 0],
               "cursor": [2, 20],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -914,7 +914,7 @@
       "id": "extensions.osc133-c/cycles",
       "name": "cycles",
       "role": "required",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b]133;B\u0007echo c-one", "\u001b]133;C;ZWNobyBjLW9uZQ==\u0007", "\r\nc-one-out", "\u001b]133;D;0\u0007", "\u001b]133;A\u0007", "\u001b[7;1Hntilde$ ", "\u001b]133;B\u0007echo c-two", "\u001b]133;C;ZWNobyBjLXR3bw==\u0007", "\r\nc-two-out"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b]133;B\u0007echo c-one", "\u001b]133;C;ZWNobyBjLW9uZQ==\u0007", "\r\nc-one-out", "\u001b]133;D;0\u0007", "\u001b]133;A\u0007", "\u001b[7;1Hntilde$ ", "\u001b]133;B\u0007echo c-two", "\u001b]133;C;ZWNobyBjLXR3bw==\u0007", "\r\nc-two-out"],
       "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
       "reads": [
         {
@@ -963,13 +963,13 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [4, 9],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
@@ -1020,13 +1020,13 @@
               "commandStart": [6, 8],
               "outputStart": [7, 0],
               "cursor": [7, 9],
-              "title": "SH-base-dd0203ec",
-              "displayTitle": "SH-base-dd0203ec",
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
               "cwd": "/ntilde-qa/osc133-base",
               "links": 0,
               "alternateScreen": false,
               "scrollbackLines": 0,
-              "historyGeneration": 190,
+              "historyGeneration": 205,
               "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
             }
           }
