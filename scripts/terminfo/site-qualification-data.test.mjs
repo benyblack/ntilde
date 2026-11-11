@@ -38,7 +38,8 @@ function damaged(base, relative, change, pinKey) {
     const next = change(original.toString('utf8'));
     writeFileSync(file, next);
     const changed = structuredClone(pin);
-    if (pinKey) changed.sha256[pinKey] = sha(Buffer.from(next));
+    // Text pins are LF digests (a Windows checkout may hold report.md as CRLF), as the generator computes them.
+    if (pinKey) changed.sha256[pinKey] = sha(Buffer.from(next.replaceAll('\r\n', '\n')));
     return { pin: changed, restore: () => writeFileSync(file, original) };
 }
 function refuses(change, expected, { file = 'report.json', pinKey = 'report.json', json = true } = {}) {
