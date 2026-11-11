@@ -9,7 +9,9 @@ const navLinks = [
   { href: `${homeHref}#how-it-works`, label: 'How it works' },
   { href: `${homeHref}#agent-host`, label: 'Agent access' },
   { href: `${homeHref}docs/`, label: 'Docs' },
+  { href: `${homeHref}compatibility/`, label: 'Compatibility' },
   { href: `${homeHref}blog/`, label: 'Blog' },
+  { href: `${homeHref}qualification/`, label: 'Qualification', wideOnly: true },
   { href: `${homeHref}#install`, label: 'Install' },
   { href: `${homeHref}#developers`, label: 'Developers' },
 ];
@@ -51,12 +53,16 @@ const repoUrl = 'https://github.com/benyblack/ntilde';
       </span>
     </a>
 
-    <nav class="hidden items-center gap-6 md:flex" aria-label="Primary">
+    <nav class="hidden items-center gap-6 xl:flex" aria-label="Primary">
       {
         navLinks.map((link) => (
           <a
             href={link.href}
-            class="text-sm text-ink-300 hover:text-white"
+            class:list={[
+              'text-sm text-ink-300 hover:text-white',
+              // The bar already runs out of room at tablet width; the footer links this page there.
+              link.wideOnly && 'hidden lg:inline',
+            ]}
           >
             {link.label}
           </a>
@@ -65,6 +71,12 @@ const repoUrl = 'https://github.com/benyblack/ntilde';
     </nav>
 
     <div class="flex items-center gap-2">
+      <details id="mobile-navigation" class="relative xl:hidden">
+        <summary class="btn-ghost cursor-pointer list-none text-sm text-ink-200">Menu</summary>
+        <nav class="absolute right-0 top-full z-50 mt-3 grid w-56 gap-1 rounded-lg border border-ink-800 bg-ink-950 p-3 shadow-xl" aria-label="Primary mobile">
+          {navLinks.map(link => <a href={link.href} class="rounded px-3 py-2 text-sm text-ink-200 hover:bg-ink-900 hover:text-white">{link.label}</a>)}
+        </nav>
+      </details>
       <a
         href={repoUrl}
         class="btn-ghost hidden sm:inline-flex"
@@ -86,3 +98,8 @@ const repoUrl = 'https://github.com/benyblack/ntilde';
     </div>
   </div>
 </header>
+
+<script>
+  const menu = document.querySelector<HTMLDetailsElement>('#mobile-navigation');
+  menu?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => { menu.open = false; }));
+</script>
