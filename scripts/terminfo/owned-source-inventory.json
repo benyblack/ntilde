@@ -274,5 +274,10 @@
     "colorResetGradingCollectorSourceSha256": "color-reset-grading-collector.mjs",
     "colorResetReceiptSourceSha256": "color-reset-receipt.mjs",
     "textCursorSourceSha256": "core-text-cursor.mjs",
-    "textCursorReceiptSourceSha256": "core-text-cursor-receipt.mjs"
+    "textCursorReceiptSourceSha256": "core-text-cursor-receipt.mjs",
+    "osc133ContractsSourceSha256": "osc133-contracts.mjs",
+    "osc133CollectorSourceSha256": "osc133-collector.mjs",
+    "osc133GradingSourceSha256": "osc133-grading.mjs",
+    "osc133GradingCollectorSourceSha256": "osc133-grading-collector.mjs",
+    "osc133ReceiptSourceSha256": "osc133-receipt.mjs"
 }

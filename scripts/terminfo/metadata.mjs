@@ -7,9 +7,9 @@ const same = (a, b) => snapshotHash(a) === snapshotHash(b);
 const check = value => { if (!value) throw new Error('Invalid or incomplete owned metadata evidence.'); };
 export function metadataProjection(value) { return { screen: value.screen, metadata: value.metadata, status: value.status }; }
 /** Validate the full cell and host payload, preserving both raw timestamp-bearing status reads. */
-export function validateMetadataSnapshot(value, first) {
+export function validateMetadataSnapshot(value, first, resolvedColors = false) {
     check(value && Object.keys(value).length === 4 && ['screen', 'metadata', 'status', 'rawStatus'].every(key => Object.hasOwn(value, key)));
-    const screen = screenSnapshot(value.screen, false, true, true, true, true);
+    const screen = screenSnapshot(value.screen, false, true, true, true, true, resolvedColors);
     const metadata = copyPaneMetadata(value.metadata), status = copyMetadataStatus(value.rawStatus, metadata.paneId);
     check(same(screen, value.screen) && same(metadata, value.metadata) && same(status, value.status));
     const b = metadata.buffer;
@@ -19,13 +19,14 @@ export function validateMetadataSnapshot(value, first) {
             && b.historyGeneration === first.metadata.buffer.historyGeneration));
     return { screen, metadata, status, rawStatus: structuredClone(value.rawStatus) };
 }
-function frameOperation(index, last) {
+export function frameOperation(index, last) {
     if (index === 0) return 'start';
     if (index === 1) return 'bind';
     if (index === last) return 'finish';
     return 'read';
 }
-function validateFrame(frame, index, last, first, stage) {
+/** Validate one paired frame. `prefix` and `resolvedColors` default to the frozen metadata suite; another suite on the same observer names its own. */
+export function validateFrame(frame, index, last, first, stage, prefix = 'metadata', resolvedColors = false) {
     const keys = ['index', 'kind', 'paneId', 'barrier', 'before', 'sha256', 'after', 'afterSha256', 'caseId', 'stageId'];
     if (Object.hasOwn(frame ?? {}, 'settling')) keys.push('settling');
     check(frame && Object.keys(frame).length === keys.length && keys.every(key => Object.hasOwn(frame, key)));
@@ -33,14 +34,14 @@ function validateFrame(frame, index, last, first, stage) {
         check(Array.isArray(frame.settling) && frame.settling.length > 0 && frame.settling.length <= 2);
         for (const pair of frame.settling) {
             check(pair && Object.keys(pair).length === 2 && Object.hasOwn(pair, 'before') && Object.hasOwn(pair, 'after'));
-            const left = validateMetadataSnapshot(pair.before, first), right = validateMetadataSnapshot(pair.after, first);
+            const left = validateMetadataSnapshot(pair.before, first, resolvedColors), right = validateMetadataSnapshot(pair.after, first, resolvedColors);
             check(!same(metadataProjection(left), metadataProjection(right)));
         }
     }
-    const before = validateMetadataSnapshot(frame.before, first), after = validateMetadataSnapshot(frame.after, first);
+    const before = validateMetadataSnapshot(frame.before, first, resolvedColors), after = validateMetadataSnapshot(frame.after, first, resolvedColors);
     const sha = snapshotHash(metadataProjection(before));
     const operation = frameOperation(index, last);
-    check(frame.index === index && frame.kind === 'metadata-' + operation && frame.paneId === first.metadata.paneId
+    check(frame.index === index && frame.kind === prefix + '-' + operation && frame.paneId === first.metadata.paneId
         && before.metadata.paneId === frame.paneId && after.metadata.paneId === frame.paneId
         && same(metadataProjection(before), metadataProjection(after)) && frame.sha256 === sha && frame.afterSha256 === sha
         && frame.caseId === (stage?.caseId ?? null) && frame.stageId === (stage?.stageId ?? null)

@@ -1,0 +1,533 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-osc133-grading-v1",
+  "probeIds": ["extensions.osc133-a", "extensions.osc133-b", "extensions.osc133-c", "extensions.osc133-d"],
+  "experiments": [
+    {
+      "caseId": "extensions.osc133-a/stock",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-a/effect",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo a-run", "\u001b]133;C;ZWNobyBhLXJ1bg==\u0007", "\r\na-out", "\u001b[1;1H\u001b[2K", "X", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "prior",
+          "cursor": [3, 5]
+        },
+        {
+          "kind": "ordinary",
+          "cursor": [0, 1]
+        },
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-a/gate-b",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo a-run", "\u001b]133;C;ZWNobyBhLXJ1bg==\u0007", "\r\na-out", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-a/gate-c",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo a-run", "\u001b]133;C;ZWNobyBhLXJ1bg==\u0007", "\r\na-out", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-a/disclose-d",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo a-run", "\u001b]133;C;ZWNobyBhLXJ1bg==\u0007", "\r\na-out", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-a/st-terminator",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo a-run", "\u001b]133;C;ZWNobyBhLXJ1bg==\u0007", "\r\na-out", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u001b\\X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/stock",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/effect",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b[1;1H\u001b[2K", "X", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "prior",
+          "cursor": [3, 8]
+        },
+        {
+          "kind": "ordinary",
+          "cursor": [0, 1]
+        },
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/boundary",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b]133;B\u0007echo b-input"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "input",
+          "cursor": [3, 20]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/gate-a",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/gate-c",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/gate-d",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/st-terminator",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u001b\\X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-b/cycles",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b]133;B\u0007echo b-one", "\u001b]133;C;ZWNobyBiLW9uZQ==\u0007", "\r\nb-one-out", "\u001b]133;D;0\u0007", "\u001b]133;A\u0007", "\u001b[7;1Hntilde$ ", "\u001b]133;B\u0007echo b-two"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "after-d",
+          "cursor": [4, 9]
+        },
+        {
+          "kind": "second",
+          "cursor": [6, 18]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/stock",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/effect",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "X", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "prior",
+          "cursor": [2, 20]
+        },
+        {
+          "kind": "ordinary",
+          "cursor": [0, 1]
+        },
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/payload",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;ZWNobyBjLXBheWxvYWQ=\u0007", "\r\nc-output"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "input",
+          "cursor": [2, 20]
+        },
+        {
+          "kind": "accepted",
+          "cursor": [2, 20]
+        },
+        {
+          "kind": "output",
+          "cursor": [3, 8]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/gate-a",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/gate-b",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/gate-d",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/st-terminator",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u001b\\X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/payload-attribute",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;aid=7\u0007"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "accepted",
+          "cursor": [2, 20]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/payload-plain",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;echo c-plain\u0007"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "accepted",
+          "cursor": [2, 20]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-c/cycles",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b]133;B\u0007echo c-one", "\u001b]133;C;ZWNobyBjLW9uZQ==\u0007", "\r\nc-one-out", "\u001b]133;D;0\u0007", "\u001b]133;A\u0007", "\u001b[7;1Hntilde$ ", "\u001b]133;B\u0007echo c-two", "\u001b]133;C;ZWNobyBjLXR3bw==\u0007", "\r\nc-two-out"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "after-d",
+          "cursor": [4, 9]
+        },
+        {
+          "kind": "second",
+          "cursor": [7, 9]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/stock",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/effect",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo d-run", "\u001b]133;C;ZWNobyBkLXJ1bg==\u0007", "\r\nd-out", "\u001b[1;1H\u001b[2K", "X", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "prior",
+          "cursor": [3, 5]
+        },
+        {
+          "kind": "ordinary",
+          "cursor": [0, 1]
+        },
+        {
+          "kind": "pinned",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/exit-payload",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo d-run", "\u001b]133;C;ZWNobyBkLXJ1bg==\u0007", "\r\nd-out", "\u001b]133;D;7\u0007"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "prior",
+          "cursor": [3, 5]
+        },
+        {
+          "kind": "post",
+          "cursor": [3, 5]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/gate-a",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo d-run", "\u001b]133;C;ZWNobyBkLXJ1bg==\u0007", "\r\nd-out", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/gate-b",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo d-run", "\u001b]133;C;ZWNobyBkLXJ1bg==\u0007", "\r\nd-out", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/gate-c",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo d-run", "\u001b]133;C;ZWNobyBkLXJ1bg==\u0007", "\r\nd-out", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/st-terminator",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo d-run", "\u001b]133;C;ZWNobyBkLXJ1bg==\u0007", "\r\nd-out", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u001b\\X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "post",
+          "cursor": [0, 1]
+        }
+      ]
+    },
+    {
+      "caseId": "extensions.osc133-d/cycles",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-dd0203ec\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_dd0203ec7a28bcc08a3a352c78403ba8", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b]133;B\u0007echo d-one", "\u001b]133;C;ZWNobyBkLW9uZQ==\u0007", "\r\nd-one-out", "\u001b]133;D;0\u0007", "\u001b]133;A\u0007", "\u001b[7;1Hntilde$ ", "\u001b]133;B\u0007echo d-two", "\u001b]133;C;ZWNobyBkLXR3bw==\u0007", "\r\nd-two-out", "\u001b]133;D;0\u0007"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "kind": "after-d1",
+          "cursor": [4, 9]
+        },
+        {
+          "kind": "after-d2",
+          "cursor": [7, 9]
+        }
+      ]
+    }
+  ],
+  "pinned": [
+    {
+      "caseId": "extensions.osc133-a",
+      "termless": {
+        "feeds": ["\u001b]133;A\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      },
+      "terminal": {
+        "writes": ["\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      }
+    },
+    {
+      "caseId": "extensions.osc133-b",
+      "termless": {
+        "feeds": ["\u001b]133;B\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      },
+      "terminal": {
+        "writes": ["\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      }
+    },
+    {
+      "caseId": "extensions.osc133-c",
+      "termless": {
+        "feeds": ["\u001b]133;C\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      },
+      "terminal": {
+        "writes": ["\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      }
+    },
+    {
+      "caseId": "extensions.osc133-d",
+      "termless": {
+        "feeds": ["\u001b]133;D;0\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      },
+      "terminal": {
+        "writes": ["\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+        "result": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        }
+      }
+    }
+  ]
+}

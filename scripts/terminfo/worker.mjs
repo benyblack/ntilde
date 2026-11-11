@@ -1,4 +1,5 @@
 import { collectTextCursor } from './core-text-cursor.mjs';
+import { collectOsc133 } from './osc133-collector.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -329,6 +330,12 @@ try {
         writeFileSync(join(config.output, 'crst-run.json'), JSON.stringify(colorResetRun) + '\n', { flag: 'wx', mode: 0o600 });
         const textCursorRun = await collectTextCursor({ config, fence, owner });
         writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered OSC 133 qualification follows the text/cursor suite on the same exclusively owned fence. A typed refusal of its first
+        // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+        const osc133Source = readFileSync(config.osc133Bundle);
+        if (createHash('sha256').update(osc133Source).digest('hex') !== config.osc133BundleSha256) throw new Error('Local OSC 133 adapter bundle changed.');
+        const osc133Result = await collectOsc133({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc133Bundle).href) });
+        if (osc133Result.status === 'complete') writeFileSync(join(config.output, 'shi-run.json'), JSON.stringify(osc133Result.run) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
