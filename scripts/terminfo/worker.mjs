@@ -1,3 +1,4 @@
+import { collectTextCursor } from './core-text-cursor.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -314,6 +315,8 @@ try {
         if (createHash('sha256').update(readFileSync(config.coreGapsBundle)).digest('hex') !== config.coreGapsBundleSha256) throw new Error('Core-gap bundle changed.');
         const coreRun = await collectCoreGaps({ config, fence, owner, gradingModule: await import(pathToFileURL(config.coreGapsBundle).href) });
         writeFileSync(join(config.output, 'cg-run.json'), JSON.stringify(coreRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const textCursorRun = await collectTextCursor({ config, fence, owner });
+        writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

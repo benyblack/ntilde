@@ -1,3 +1,4 @@
+import { includesTextCursorEvidence, checkTextCursorEvidence } from './core-text-cursor-receipt.mjs';
 import { includesPrivateClipboardEvidence, checkPrivateClipboardEvidence } from './private-clipboard-receipt.mjs';
 import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
 import { includesInputEvidence, checkInputEvidence } from './input-receipt.mjs';
@@ -182,6 +183,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesRectChecksum',
     'includesLrMargins',
     'includesCoreGaps',
+    'includesTextCursor',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
@@ -229,6 +231,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesColEdit = includesColEditEvidence(output, evidence, context);
     const includesRectChecksum = includesRectChecksumEvidence(output, evidence, context);
     const includesCoreGaps = includesCoreGapsEvidence(output, evidence, context);
+    const includesTextCursor = includesTextCursorEvidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
@@ -237,7 +240,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesTextCursor };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -280,6 +283,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesRectChecksum) checkRectChecksumEvidence(output, evidence, runId, context);
     if (suffixes.includesLrMargins) checkLrMarginsEvidence(output, evidence, runId, context);
     if (suffixes.includesCoreGaps) checkCoreGapsEvidence(output, evidence, runId, context, proof);
+    if (suffixes.includesTextCursor) checkTextCursorEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

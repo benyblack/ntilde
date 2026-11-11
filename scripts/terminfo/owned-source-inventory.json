@@ -258,5 +258,7 @@
     "coreIconVtSourceSha256": "core-icon-vt.cs",
     "coreIconCaptureSourceSha256": "core-icon-capture.cs",
     "coreIconContractSourceSha256": "core-icon-contract.cs",
-    "coreIconWindowSourceSha256": "core-icon-window.cs"
+    "coreIconWindowSourceSha256": "core-icon-window.cs",
+    "textCursorSourceSha256": "core-text-cursor.mjs",
+    "textCursorReceiptSourceSha256": "core-text-cursor-receipt.mjs"
 }
