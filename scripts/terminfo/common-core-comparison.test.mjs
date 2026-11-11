@@ -65,7 +65,6 @@ for (const [name, key, mutate] of [
     ['different suite', 'rawBytes', r => { r.probeHash = 'other'; }],
     ['different source', 'rawBytes', r => { r.sourceRevision = 'other'; }],
     ['different mapping', 'sourceBytes', r => { r.requirementsSha256 = 'other'; }],
-    ['different driver', 'sourceBytes', r => { r.driverSha256 = 'other'; }],
     ['different worker script', 'sourceBytes', r => { r.workerSha256 = 'other'; }],
     ['different OS', 'sourceBytes', r => { r.os = 'other'; }],
     ['different geometry', 'geometryBytes', r => { r.geometry.cols = 80; }],
@@ -85,4 +84,12 @@ test('refuses duplicate target rows and duplicate comparison subjects', () => {
     assert.throws(() => buildCommonCoreComparison({ ...input, requirementsBytes: bytes(mapping) }));
     const other = fixture(); other.subjects[1] = other.subjects[0];
     assert.throws(() => buildCommonCoreComparison(other));
+});
+
+test('per-application launch adapter identities remain explicit without changing the shared probe engine', () => {
+    const input = fixture();
+    change(input, 'sourceBytes', source => { source.driverSha256 = 'another-recorded-launcher'; });
+    const result = buildCommonCoreComparison(input);
+    assert.equal(result.subjects[0].launchDriverSha256, 'another-recorded-launcher');
+    assert.equal(result.subjects[1].launchDriverSha256, 'driver');
 });

@@ -20,7 +20,7 @@ export function buildCommonCoreComparison({ requirementsBytes, subjects }) {
     if (!Array.isArray(subjects) || subjects.length !== 3 || new Set(subjects.map(s => s.id)).size !== 3 ||
         subjects.some(s => !['ntilde', 'iterm2', 'ghostty'].includes(s.id))) fail('Expected exactly Ntilde, iTerm2 and Ghostty.');
     const readings = subjects.map(subject => readSubject(subject, ids, hash(requirementsBytes)));
-    for (const key of ['probeHash', 'sourceRevision', 'workerSha256', 'driverSha256', 'os']) {
+    for (const key of ['probeHash', 'sourceRevision', 'workerSha256', 'os']) {
         if (new Set(readings.map(s => s.method[key])).size !== 1) fail(`Comparison subjects have different ${key}.`);
     }
     if (new Set(readings.map(s => JSON.stringify(s.geometry))).size !== 1) fail('Comparison subjects have different observed PTY geometry.');
@@ -82,10 +82,10 @@ function readSubject(subject, ids, requirementsSha256) {
     const diagnostic = key => { const text = raw.rawReplies?.[key]; if (!text) return null; try { return JSON.parse(text); } catch { return { raw: text }; } };
     const calibration = diagnostic('collector.captureCalibration');
     const ownership = diagnostic('collector.disposableOwnership');
-    return { id: subject.id, label: subject.label, version: source.version, measuredAt: raw.measuredAt,
-        runId: raw.runId, rawSha256: hash(subject.rawBytes), executableSha256: source.executableSha256,
+    return { id: subject.id, label: subject.label, version: source.version, versionBasis: source.versionBasis, measuredAt: raw.measuredAt,
+        runId: raw.runId, rawSha256: hash(subject.rawBytes), executableSha256: source.executableSha256, launchDriverSha256: source.driverSha256,
         measurementLimits: { captureOutcome: calibration?.outcome ?? null, captureRefusal: calibration?.refusal ?? null, disposableOwnership: ownership?.kind ?? null },
         counts, supportedShare: counts.supported / ids.length * 100,
         geometry, method: { probeHash: raw.probeHash, sourceRevision: raw.sourceRevision,
-            workerSha256: source.workerSha256, driverSha256: source.driverSha256, os: source.os }, results };
+            workerSha256: source.workerSha256, os: source.os }, results };
 }

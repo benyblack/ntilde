@@ -1,18 +1,24 @@
 // Parent-owned local native launch adapter. This file never assigns feature verdicts.
-import { existsSync, mkdirSync, readFileSync, writeFileSync, openSync, closeSync, unlinkSync, realpathSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, openSync, closeSync, unlinkSync, realpathSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const [upstreamArg, appId, outputArg, executableArg] = process.argv.slice(2);
-if (!upstreamArg || !['ntilde', 'iterm2', 'ghostty'].includes(appId) || !outputArg || (appId === 'ntilde' && !executableArg)) throw new Error('Usage: bun common-core-driver.ts <upstream> <ntilde|iterm2|ghostty> <new-output> [Ntilde-sidecar]');
+const [upstreamArg, appId, outputArg, executableArg, versionArg] = process.argv.slice(2);
+if (!upstreamArg || !['ntilde', 'iterm2', 'ghostty'].includes(appId) || !outputArg || (appId === 'ntilde' && (!executableArg || !versionArg || !/^\d+(?:\.\d+){1,3}(?:[-+][a-zA-Z0-9.-]+)?$/.test(versionArg)))) throw new Error('Usage: bun common-core-driver.ts <upstream> <ntilde|iterm2|ghostty> <new-output> [Ntilde-sidecar Ntilde-version]');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const upstream = realpathSync(upstreamArg), output = resolve(outputArg);
 const importUpstream = (path: string) => import(pathToFileURL(join(upstream, path)).href);
 const write = (name: string, value: unknown) => writeFileSync(join(output, name), JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
 const quote = (text: string) => "'" + text.replaceAll("'", "'\\''") + "'";
+const payload = (directory: string, prefix = ''): Record<string, string> => Object.fromEntries(readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const relative = prefix + entry.name, path = join(directory, entry.name);
+    if (entry.isDirectory()) return Object.entries(payload(path, relative + '/'));
+    if (entry.isFile() || entry.isSymbolicLink()) return [[relative, sha(path)]];
+    throw new Error('Unsupported sidecar payload entry: ' + relative);
+}).sort(([a], [b]) => a.localeCompare(b)));
 const sha = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const lockPath = join(homedir(), '.ntilde-qa-sidecars', '.desktop-collection.lock');
@@ -27,7 +33,12 @@ const appPath = appId === 'iterm2' ? '/Applications/iTerm.app' : appId === 'ghos
 try {
     const executable = appId === 'ntilde' ? realpathSync(executableArg) : join(appPath!, 'Contents/MacOS', appId === 'iterm2' ? 'iTerm2' : 'ghostty');
     const plist = appPath ? JSON.parse(String(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', join(appPath, 'Contents/Info.plist')], { timeout: 5000 }))) : undefined;
-    const version = plist?.CFBundleShortVersionString ?? '0.13.0';
+    const version = appId === 'ntilde' ? versionArg : plist?.CFBundleShortVersionString;
+    if (typeof version !== 'string' || !version) throw new Error('Application version is missing.');
+    const buildPayload = appId === 'ntilde' ? payload(dirname(executable)) : undefined;
+    const buildPayloadSha256 = buildPayload ? createHash('sha256').update(JSON.stringify(buildPayload)).digest('hex') : undefined;
+    if (buildPayload) write('build-payload.json', { files: buildPayload, sha256: buildPayloadSha256, sourceRevision: String(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root })).trim() });
+    const versionBasis = appId === 'ntilde' ? 'explicit build version; executable digest retained' : 'installed application Info.plist CFBundleShortVersionString';
     const { probeSuiteSnapshot, ensureSourceSuiteEnvironment } = await importUpstream('packages/admin/versions.ts');
     const suite = probeSuiteSnapshot();
     const suiteEnv = ensureSourceSuiteEnvironment();
@@ -39,7 +50,7 @@ try {
     const scheduledIds = preflight ? applicableIds.filter((id: string) => ['text.basic', 'cursor.move.absolute'].includes(id)) : applicableIds;
     const config = { purpose: preflight ? 'preflight-only' : 'comparison', upstream, output, appId, version, runId, coreIds, scheduledIds, probeHash: suite.probeHash };
     write('config.json', config);
-    write('source.json', { upstreamRevision: String(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: upstream })).trim(), suite, requirementsSha256: sha(requirementsPath), workerSha256: sha(join(root, 'scripts/terminfo/common-core-worker.ts')), driverSha256: sha(fileURLToPath(import.meta.url)), executable, executableSha256: sha(executable), version, os: String(execFileSync('/usr/bin/sw_vers', ['-productVersion'])).trim(), startedAt: new Date().toISOString() });
+    write('source.json', { upstreamRevision: String(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: upstream })).trim(), suite, requirementsSha256: sha(requirementsPath), workerSha256: sha(join(root, 'scripts/terminfo/common-core-worker.ts')), driverSha256: sha(fileURLToPath(import.meta.url)), executable, executableSha256: sha(executable), buildPayloadSha256, version, versionBasis, os: String(execFileSync('/usr/bin/sw_vers', ['-productVersion'])).trim(), startedAt: new Date().toISOString() });
     const scriptPath = join(output, `worker-${runId}.sh`);
     const identityPath = join(output, 'owner-tty.txt');
     const envAssignments = { PATH: '/opt/homebrew/bin:/opt/homebrew/opt/node@24/bin:/usr/bin:/bin:/usr/sbin:/sbin', ...suiteEnv, TERMINFO_RUN_ID: runId, TERMINFO_CAPTURE_DIRECTORY: join(output, 'artifacts'), TERMINFO_TARGET_ID: appId, TERMINFO_TARGET_VERSION: version };
@@ -129,6 +140,7 @@ end tell`], { timeout: 15000 });
         if (performance.now() > deadline) throw new Error('Upstream Core collection exceeded 25 minutes.');
         await sleep(250);
     }
+    if (buildPayloadSha256 && createHash('sha256').update(JSON.stringify(payload(dirname(executable)))).digest('hex') !== buildPayloadSha256) throw new Error('Ntilde build payload changed during collection.');
     const run = JSON.parse(readFileSync(join(output, 'raw.json'), 'utf8'));
     console.log(JSON.stringify({ subject: run.subject, counts: run.results.filter((r: any) => coreIds.includes(r.featureId)).reduce((a: any,r: any) => { a[r.status] = (a[r.status] ?? 0) + 1; return a; }, {}) }));
 } catch (error) {

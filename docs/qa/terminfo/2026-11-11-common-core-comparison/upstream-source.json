@@ -12,6 +12,7 @@
     "packages/terminfo.dev/src/serve.ts"
   ],
   "probeDefinitionsUnchanged": true,
-  "sourceArchiveSha256": "53d5f67f914807ff5425c0038ca1c0d9abb13c020149a666382816fa97ce1ca3",
-  "adapterPatchSha256": "a88c1c12341f848cf15136ddbc9d3b8394b6c3405572b654e33cbe19147ea968"
+  "sourceArchiveSha256": "eec9b2650a34d1b5a82f41f5d86039b4da4ffa1178c9b546cce218ea59faba22",
+  "adapterPatchSha256": "a88c1c12341f848cf15136ddbc9d3b8394b6c3405572b654e33cbe19147ea968",
+  "adapterBundleSha256": "3dc36d7571776339e1cf29b48a34b6878202550c7473a46f8571444b4280e8b7"
 }

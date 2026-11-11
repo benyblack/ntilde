@@ -11,7 +11,11 @@ All subjects run serially on this macOS desktop under the shared collection lock
 Each launch creates a disposable window and runs the identical worker through its
 actual PTY. The parent records executable digest, version, upstream source identity,
 worker/driver digests, native-window ownership and actual `stty` geometry after
-launch configuration. The comparison refuses different grids or collector identities.
+launch configuration. The comparison refuses different grids, shared workers or upstream collector identities.
+Application launch adapters may differ; each exact driver and worker snapshot must
+match its recorded digest. The final driver requires an explicit Ntilde build version;
+the earlier Ghostty launcher is retained unchanged and obtains its version from the
+installed application plist. That version-argument fix changes no upstream test.
 
 The upstream collector owns the fixture bytes, controls, assertions, result statuses
 and finalization. Our launch adapter adds Ntilde identity and native iTerm window
@@ -52,7 +56,7 @@ Extract the source snapshot, install its lock with `bun install --frozen-lockfil
 ```sh
 bun scripts/terminfo/common-core-driver.ts <upstream> iterm2 <new-output>
 bun scripts/terminfo/common-core-driver.ts <upstream> ghostty <new-output>
-bun scripts/terminfo/common-core-driver.ts <upstream> ntilde <new-output> <sidecar>
+bun scripts/terminfo/common-core-driver.ts <upstream> ntilde <new-output> <sidecar> <build-version>
 ```
 
 `COMMON_CORE_PREFLIGHT=1` selects a two-probe diagnostic run. Preflights are refused

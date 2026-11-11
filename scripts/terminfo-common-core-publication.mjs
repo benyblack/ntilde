@@ -23,6 +23,8 @@ const subjects = manifest.subjects.map(subject => {
     const files = Object.fromEntries(Object.entries(subject.files).map(([name, entry]) => [name + 'Bytes', verifiedFile(entry)]));
     const archive = verifiedEvidenceFile(publication, subject.archive);
     const members = verifyCommonCoreArchive(archive.path, files.rawBytes);
+    const source = JSON.parse(files.sourceBytes);
+    if (members['launch-driver.ts'] !== source.driverSha256 || members['collection-worker.ts'] !== source.workerSha256) throw new Error(`${subject.id} measured script snapshots differ from source identity.`);
     for (const [name, entry] of Object.entries(subject.files)) {
         const member = entry.path.split('/').at(-1);
         if (members[member] !== entry.sha256) throw new Error(`Archived ${name} differs from published ${entry.path}`);
@@ -30,15 +32,20 @@ const subjects = manifest.subjects.map(subject => {
     return { id: subject.id, label: subject.label, ...files };
 });
 const report = buildCommonCoreComparison({ requirementsBytes, subjects });
+const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.json'), 'utf8'));
+if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true) throw new Error('Retained upstream source differs from the measured comparison.');
+const sourcePath = 'upstream-source.json';
+if (!(manifest.artifacts ?? []).some(entry => entry.path === sourcePath)) throw new Error('Source proof is not digest-bound to the manifest.');
 report.manifestSha256 = digest(manifestBytes);
 const json = JSON.stringify(report, null, 2) + '\n';
 const table = report.subjects.map(s => `| ${s.label} ${s.version} | ${s.counts.supported} | ${s.counts.unsupported} | ${s.counts['probe-todo']} | ${s.counts['probe-invalid']} | ${s.counts.untestable + s.counts['not-scheduled']} |`).join('\n');
 const cell = value => String(value ?? '').replaceAll('|', '\\|').replaceAll('\n', ' ');
+const limits = report.subjects.map(s => `- **${s.label}:** capture ${s.measurementLimits.captureOutcome ?? 'not recorded'}${s.measurementLimits.captureRefusal ? ' — ' + s.measurementLimits.captureRefusal : ''}. Disposable ownership receipt: ${s.measurementLimits.disposableOwnership ?? 'not recorded'} (a separate run-scoped process proof may authorize writes).`).join('\n');
 const markdown = `# Common-harness Core comparison\n\nThese are fresh application runs through the same upstream terminal probes. Ntilde's separate 80/80 detailed qualification is not substituted into this comparison.\n\n` +
     `Upstream/adapter source: \`${report.method.sourceRevision}\`; suite \`${report.method.probeHash}\`. Measured macOS version: ${report.method.os}; PTY geometry: ${report.method.geometry.rows} × ${report.method.geometry.cols}.\n\n` +
     `| Application | Supported | Unsupported | Not concluded | Invalid measurement | Untestable / not tested |\n|---|---:|---:|---:|---:|---:|\n${table}\n\n` +
-    `All counts use the same 80 feature IDs. The exact upstream application probe decides each result. A missing observer, invalid measurement or untestable framework API is not a terminal failure. Defaults and capture conditions are retained with the evidence.\n\n` +
-    `The local adapter adds native launch/ownership and preserves measured Retina screenshots without resampling. Probe definitions and grading rules are unchanged; the upstream revision, adapter patch and sources are retained. Historical website scores are not mixed with these runs.\n\n` +
+    `All counts use the same 80 feature IDs. The exact upstream application probe decides each result. A missing observer, invalid measurement or untestable framework API is not a terminal failure. Defaults and capture conditions are retained with the evidence. Observer availability differs across applications, so these counts are not a capability ranking.\n\n` +
+    `The local adapter adds native launch/ownership and preserves measured Retina screenshots without resampling. Probe definitions and grading rules are unchanged; the upstream revision, adapter patch and sources are retained. Historical website scores are not mixed with these runs.\n\n${limits}\n\n` +
     `Reproduce the published projection: \`node scripts/terminfo-common-core-publication.mjs --check\`. A new native collection additionally needs the recorded applications, upstream dependencies and desktop access.\n\n` +
     `| Feature | ${report.subjects.map(s => cell(s.label)).join(' | ')} |\n|---|${report.subjects.map(() => '---').join('|')}|\n` +
     report.rows.map(row => `| [${row.id}](${row.url}) | ${report.subjects.map(s => comparisonStatusLabels[row.results[s.id].status]).join(' | ')} |`).join('\n') + '\n';
