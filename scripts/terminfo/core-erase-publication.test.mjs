@@ -24,7 +24,7 @@ test('changed measurement, evidence archive or retained failed attempt is refuse
     const dir = mkdtempSync(join(tmpdir(), 'nt-ce-pub-'));
     try {
         const path = join(dir, publication); cpSync(join(root, publication), path, { recursive: true });
-        for (const file of ['owned-run.zip', 'attempt-1-failed.zip', 'attempt-2-superseded.zip', 'attempt-3-superseded.zip', 'attempt-4-superseded.zip', 'measurement.json']) {
+        for (const file of ['owned-run.zip', 'attempt-1-failed.zip', 'attempt-2-superseded.zip', 'attempt-3-superseded.zip', 'attempt-4-superseded.zip', 'attempt-5-superseded.zip', 'measurement.json']) {
             const f = join(path, file), original = readFileSync(f); writeFileSync(f, Buffer.concat([original, Buffer.from('x')]));
             assert.throws(() => loadMeasurement(dir), /changed/); writeFileSync(f, original);
         }
