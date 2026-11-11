@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "0a3ffb020e2bd233f8c3e99f57bb2590",
+    "appRevision": "736d7a462ab8a44f290353a1e0adcecd78921fe6",
+    "scriptsRevision": "109f551e09a28b2c74b948c6bb8c804aa83eeee7",
+    "receiptSchema": 49,
+    "sourcePolicy": "readonly-owned-source-graph-v43"
+  },
+  "ownedArchiveSha256": "9c65273c7846d7a9f05f263493c3c3543f59658f7383df9036c10853606f96f0",
+  "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
+  "attempts": [
+    {
+      "runId": "17519d6700da382a0d6a1d46c9b6fb24",
+      "status": "superseded",
+      "reason": "Complete first measurement of the new layer on the chain before the Core wrap layer merged (policy v42, receipt 48, scripts 4003a6ed): every control qualified and all three rows passed through the raster route. Replaced because Sonar flagged the response-size regexp alternative this batch had added to ownership.mjs (S5843); that line was restored to main, so the measured source graph changed.",
+      "archive": "attempt-1-superseded.zip",
+      "sha256": "a480eafc89f46425a56c8cefd1187a12065226692829468adfc5a1f4e86004e3"
+    },
+    {
+      "runId": "97fa2332330b3560e5acfaa6e0d80c9e",
+      "status": "superseded",
+      "reason": "Complete and passing on the same pre-wrap chain from the final committed scripts (policy v42, receipt 48, scripts fc549fa9). Replaced because the Core wrap layer (#948) merged first: it took policy v42 and receipt 48, so this layer was restacked onto it (policy v43, receipt 49, source inventory v50), the wrap suite joined the run and the publication now builds on the merged wrap publication.",
+      "archive": "attempt-2-superseded.zip",
+      "sha256": "2fe948c460fc447616ef27e5800b082fa7115c9a1878a011239376c1790ed096"
+    },
+    {
+      "runId": "f434e65fb30d44027acd14572d96ab9d",
+      "status": "aborted",
+      "reason": "Aborted in the first (cell) suite with Unexpected input during cell collection, before the new suite ran; no verdict. It coincided with another session\u2019s desktop collection activity (its run directory was written during the same minutes). Retried after that activity ended.",
+      "archive": "attempt-3-aborted.zip",
+      "sha256": "ff532a4da22aa54eb2b83cb1b65609190d8546a9d50780b61cc924745a7a228b"
+    },
+    {
+      "runId": "890b8daa7f112e297f11aaf40f43f95c",
+      "status": "aborted",
+      "reason": "Same abort in the first (cell) suite (Unexpected input during cell collection) on the immediate retry, again overlapping the other session\u2019s activity; no verdict. The third attempt ran after it finished.",
+      "archive": "attempt-4-aborted.zip",
+      "sha256": "5c785996c832c79c94cd8d99df4df5f7f0fd23ba87dd5eaf5bc3555291b92f1d"
+    },
+    {
+      "runId": "0a3ffb020e2bd233f8c3e99f57bb2590",
+      "status": "complete",
+      "reason": "All three experiments (seven subsets, DECRC restorations, SGR 99 controls, reset under test), the neutral/all-set/SGR 99/final DECRQSS exchanges, the merged Core wrap suite and every predecessor suite completed on the final committed scripts at the original geometry; receipt and cleanup verified."
+    }
+  ]
+}
