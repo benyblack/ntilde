@@ -126,6 +126,8 @@ function checkUnavailable(output, evidence, runId, context) {
         && binding.contractsVersion === titleStackContractsVersion && context.titleStackContractsVersion === binding.contractsVersion
         && sameJson(binding.counts, {}) && isDigest(binding.sha256) && isDigest(binding.adapterBundleSha256);
     if (!identity) throw new Error('Invalid Title stack unavailable receipt binding.');
+    // Every existing graded artifact must be a regular file before it is read (a symlink could name an external empty file, a FIFO could block the check).
+    requireRegularFiles(output, ['tst-observations.json', 'tst-run.json', 'tst-snapshots.jsonl'].filter(file => present(join(output, file))));
     if (['tst-observations.json', 'tst-run.json', 'tst-snapshots.jsonl'].some(file => present(join(output, file)) && readFileSync(join(output, file)).length > 0)) {
         throw new Error('Title stack unavailable run retains graded artifacts.');
     }

@@ -48,7 +48,7 @@ function titleFacts(state, observed) {
 const lines = screen => screen.lines.map(line => line.trimEnd());
 
 /** The cells and context a read must show. `strict` also fixes the cursor and every stored fact; `preserved` (after DECSTR) only the written cells; `cleared` (after RIS) blank cells at home. */
-function screenFacts(frame, state, bound, fixture, scopeName) {
+function screenFacts(frame, state, bound, fixture, scopeName, initial) {
     const observed = observeFrame(frame), boundObserved = observeFrame(bound), screen = frame.before.screen;
     const generation = scopeName === 'cleared' ? observed.historyGeneration >= boundObserved.historyGeneration : observed.historyGeneration === boundObserved.historyGeneration;
     const common = observed.links === 0 && observed.alternateScreen === false && observed.scrollbackLines === 0 && generation;
@@ -61,12 +61,14 @@ function screenFacts(frame, state, bound, fixture, scopeName) {
     const expected = expectedTitleStackScreen(bound.before.screen, state);
     const cellsMatch = same(lines(screen), lines(expected));
     if (scopeName === 'preserved') return { screenMatches: cellsMatch, preserved: common };
-    return { screenMatches: cellsMatch && observed.cursor[0] === 0 && observed.cursor[1] === 0, preserved: common };
+    // RIS must clear the stored cells, not only their text: the cell details (attributes, colors) must be the pristine initial screen's.
+    const cellsClear = same(screen.cellDetails, initial.before.screen.cellDetails);
+    return { screenMatches: cellsMatch && cellsClear && observed.cursor[0] === 0 && observed.cursor[1] === 0, preserved: common };
 }
 
 /** Compare one read with the oracle: cells (and cursor and stored facts when strict) plus the four title facts. */
-export function evaluateRead(frame, state, bound, fixture, scopeName = 'strict') {
-    const observed = observeFrame(frame), required = titleFacts(state, observed), context = screenFacts(frame, state, bound, fixture, scopeName);
+export function evaluateRead(frame, state, bound, fixture, scopeName = 'strict', initial = bound) {
+    const observed = observeFrame(frame), required = titleFacts(state, observed), context = screenFacts(frame, state, bound, fixture, scopeName, initial);
     const passed = context.screenMatches && context.preserved && Object.values(required).every(entry => entry.match);
     return { passed, scope: scopeName, ...context, required, observed };
 }
@@ -102,6 +104,10 @@ function validateJournal(frames, experiments, runId) {
     for (const [index, frame] of frames.entries()) validateMonotonicFrame(frame, index, count - 1, first, { caseId: null, stageId: null }, titleStackPrefix, true);
     check(matchesTitleStackBaseline(frames[1].before, first, runId, false) && matchesTitleStackBaseline(frames.at(-1).before, first, runId, true),
         `${label} baseline binding or restoration failed.`);
+    for (const [index, frame] of frames.entries()) {
+        // RIS raises the history generation; nothing ever lowers it (the observer only accepts a generation at or above the first).
+        check(index === 0 || frame.before.metadata.buffer.historyGeneration >= frames[index - 1].before.metadata.buffer.historyGeneration, `${label} history generation fell between consecutive observations.`);
+    }
     for (const frame of frames.slice(1)) {
         check(frame.before.screen.colorBinding !== undefined && typeof frame.before.metadata.oscTitle === 'string' && typeof frame.before.metadata.buffer.requestedIconName === 'string',
             `${label} snapshots need their resolved color binding, raw title and raw icon name.`);
@@ -153,7 +159,7 @@ function evaluateExperiments(frames, run, experiments, fixture) {
             if (step.feed !== undefined) { feeds.push(step.feed); continue; }
             const frame = readFrames[reads.length], state = simulateTitleStack(feeds, fixture);
             reads.push({ label: step.read, kind: step.kind, snapshot: frame.index, cursor: recorded.reads[reads.length].cursor,
-                evaluation: evaluateRead(frame, state, bound, fixture, step.scope) });
+                evaluation: evaluateRead(frame, state, bound, fixture, step.scope, frames[0]) });
         }
         evaluated.push({ id: contract.caseId, owner: contract.owner, name: contract.name, role: contract.role, feeds, barriers: recorded.barriers, reads });
     }

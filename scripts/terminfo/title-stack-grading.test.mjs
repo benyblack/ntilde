@@ -223,6 +223,20 @@ test('RIS is graded with cleared cells at home and any history generation at or 
     assert.equal(evaluateRead(uncleared, model, boundFrame, fixture, 'cleared').passed, false);
 });
 
+test('RIS must clear the stored cells and never lower the history generation: residual cell colors and a generation that falls after rising are refused', () => {
+    const colored = syntheticTitleStackEvidence();
+    coherent(readFrame(colored, `${pop}/ris`, 'after-ris'), value => { value.screen.cellDetails = [{ ...value.screen.cellDetails[0], count: 779 }, { ...value.screen.cellDetails[0], count: 1, flags: (value.screen.cellDetails[0].flags & ~512) | 32768, bg: 4 }]; });
+    const report = build(colored), read = caseOf(report, pop).experiments.find(entry => entry.name === 'ris').reads.find(entry => entry.label === 'after-ris');
+    assert.equal(read.evaluation.screenMatches, false, 'the text is blank but a stored cell still carries a color');
+    assert.equal(caseOf(report, pop).effectContract.boundaries.outcome, 'unsupported');
+    const falling = syntheticTitleStackEvidence();
+    coherent(readFrame(falling, `${pop}/ris`, 'after-ris'), value => { value.metadata.buffer.historyGeneration += 1; });
+    assert.throws(() => build(falling), /history generation fell/, 'after-ris at 5 and after-pop back at 4');
+    const rising = syntheticTitleStackEvidence();
+    for (const frame of [readFrame(rising, `${pop}/ris`, 'after-ris'), readFrame(rising, `${pop}/ris`, 'after-pop'), rising.frames.at(-1)]) coherent(frame, value => { value.metadata.buffer.historyGeneration += 1; });
+    assert.equal(caseOf(build(rising), pop).effectContract.boundaries.outcome, 'supported', 'a generation that rises once and stays is the documented RIS effect');
+});
+
 test('cross-case substitution: another case\'s frames, pinned results or experiments cannot stand in for this one', () => {
     const swapped = syntheticTitleStackEvidence();
     const a = swapped.run.experiments.findIndex(entry => entry.caseId === `${push}/stock`), b = swapped.run.experiments.findIndex(entry => entry.caseId === `${pop}/stock`);

@@ -59,6 +59,11 @@ test('RIS may raise the history generation for this suite only; a lower generati
     assert.equal(accepting.observer.frames.length, 5, 'the raised generation was accepted');
     const frozen = fixture(undefined, { monotonicHistory: false }); for (const frame of frozen.frames.slice(0, 4)) { frozen.set(frame); await frozen.call(frame); }
     frozen.set(bumped); await assert.rejects(frozen.call(bumped), 'the default observer demands the first generation');
+    const falls = fixture(); for (const frame of falls.frames.slice(0, 4)) { falls.set(frame); await falls.call(frame); }
+    const rose = structuredClone(falls.frames[4]); rose.before.metadata.buffer.historyGeneration += 1; rose.after.metadata.buffer.historyGeneration += 1;
+    falls.set(rose); await falls.call(rose);
+    const back = structuredClone(falls.frames[5]); falls.set(back);
+    await assert.rejects(falls.call(back), 'a generation that rose after RIS and then fell back is refused between consecutive captures');
     const lower = fixture(); for (const frame of lower.frames.slice(0, 4)) { lower.set(frame); await lower.call(frame); }
     const down = structuredClone(lower.frames[4]); down.before.metadata.buffer.historyGeneration -= 1; down.after.metadata.buffer.historyGeneration -= 1;
     lower.set(down); await assert.rejects(lower.call(down), 'a generation below the first is refused even in monotonic mode');

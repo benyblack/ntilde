@@ -86,6 +86,12 @@ export class OwnedMetadataObserver {
             status: copyMetadataStatus(rawStatus, this.paneId) }, this.baseline, this.before.includeResolvedColors, this.monotonicHistory);
     }
     acceptPair(operation, snapshot) {
+        // A suite that opted into a raised history generation (RIS) still never accepts one that falls between consecutive observations.
+        const generation = snapshot.metadata.buffer.historyGeneration;
+        if (this.monotonicHistory) {
+            check(generation >= (this.lastGeneration ?? generation));
+            this.lastGeneration = generation;
+        }
         if (operation === 'start') {
             check(pristineEditing(snapshot.screen));
             const plan = this.planOf(snapshot, this.runId);

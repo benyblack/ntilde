@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { privateClipboardReceiptFixture as baseFixture } from './fixtures/private-clipboard-receipt.mjs';
@@ -118,4 +118,20 @@ test('a typed unavailable marker keeps no graded artifact, and cannot be forged 
     f.evidence.titleStackEvidence = binding;
     writeFileSync(join(f.output, 'tst-run.json'), '{}');
     assert.throws(own(f), /retains graded artifacts/);
+}));
+
+test('an unavailable run refuses a graded artifact that is not a regular file before reading it', () => privateClipboardReceiptFixture(f => {
+    const marker = { schemaVersion: 1, runId: f.context.runId, suiteId: titleStackSuiteId, status: 'unavailable', reason: 'paneMetadataUnavailable', plannedCases: 2 };
+    const bytes = JSON.stringify(marker) + '\n';
+    for (const file of ['tst-observations.json', 'tst-run.json', 'tst-snapshots.jsonl']) rmSync(join(f.output, file));
+    writeFileSync(join(f.output, 'tst-unavailable.json'), bytes);
+    f.evidence.titleStackEvidence = { runId: f.context.runId, suiteId: titleStackSuiteId, file: 'tst-unavailable.json', sha256: hash(bytes), status: 'unavailable', reason: 'paneMetadataUnavailable', counts: {},
+        adapterBundleSha256: f.context.titleStackBundleSha256, contractsVersion: f.context.titleStackContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    assert.doesNotThrow(own(f), 'the unavailable record alone is complete');
+    const outside = join(f.output, '..', `tst-outside-${process.pid}.jsonl`);
+    writeFileSync(outside, '');
+    try {
+        symlinkSync(outside, join(f.output, 'tst-snapshots.jsonl'));
+        assert.throws(own(f), /not a regular file/, 'a symlink to an empty external file is not evidence');
+    } finally { rmSync(join(f.output, 'tst-snapshots.jsonl'), { force: true }); rmSync(outside, { force: true }); }
 }));
