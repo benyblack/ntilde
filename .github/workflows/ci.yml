@@ -2092,7 +2092,9 @@ jobs:
           fi
           base="$BASE_SHA"
           echo "Diffing against PR merge base: $base"
-          changed="$(git diff --name-only "$base"...HEAD)"
+          # --no-renames: a moved file must list its old path too, or a move out of a watched path
+          # reads as a change only to where it went (the .NET gate's diff carries the same flag).
+          changed="$(git diff --no-renames --name-only "$base"...HEAD)"
           echo "Changed files vs merge base:"
           echo "$changed"
           # The path rule lives in scripts/ci/aot-gate-paths.sh (self-tested by the step above),
@@ -2899,7 +2901,9 @@ jobs:
           fi
           base="$BASE_SHA"
           echo "Diffing against PR merge base: $base"
-          changed="$(git diff --name-only "$base"...HEAD)"
+          # --no-renames: a moved file must list its old path too, or a move out of a watched path
+          # reads as a change only to where it went (the .NET gate's diff carries the same flag).
+          changed="$(git diff --no-renames --name-only "$base"...HEAD)"
           echo "Changed files vs merge base:"
           echo "$changed"
           # <<< the here-string, not `echo ... | grep`: under pipefail, a changed-file

@@ -10,7 +10,9 @@ been a run (a .NET change going untested, with every check green) and a .NET job
   - that the five jobs which start the .NET and Rust work carry the gate, and that every other
     job that builds or tests .NET or Rust waits for one of them or sits behind another gate;
   - the Unit Tests roll-up's verdict, by running its own shell script with every combination
-    that matters: a skip passes only after dotnet_detect said run=false.
+    that matters: a skip passes only after dotnet_detect said run=false;
+  - that a moved file reaches every path gate (this one, the AOT Gate's, Linux Packaging's) by
+    its old path too: dotnet_detect's own diff command runs on a real merge commit.
 Then that each of those checks refuses a mutated workflow.
 """
 import os
@@ -177,6 +179,15 @@ def diff_problems(text, bash):
     return [] if ran.stdout == 'run=true\n' else [f'a merge moving src/ under docs/qa/ gave {ran.stdout.strip() or ran.stderr.strip()!r}']
 
 
+def gate_diffs(text):
+    """Every path gate in the workflow (this one, the AOT Gate's and Linux Packaging's) lists the
+    changed files with rename detection off. With it on, a move is listed by its new path only,
+    and a file moved out of a watched path reads as a change to where it went."""
+    diffs = re.findall(r'^\s*changed="\$\((git diff [^)]*)\)"', text, re.M)
+    found = [] if len(diffs) >= 3 else [f'expected the three path gates\' diffs, found {len(diffs)}']
+    return found + [f'a path gate diffs with rename detection on: {d}' for d in diffs if '--no-renames' not in d.split()]
+
+
 def main():
     bash = find_bash()
     assert bash, 'bash not found'
@@ -187,7 +198,7 @@ def main():
     text = WORKFLOW.read_text(encoding='utf-8')
     problems = wiring(text)
     assert not problems, problems
-    problems = diff_problems(text, bash)
+    problems = diff_problems(text, bash) + gate_diffs(text)
     assert not problems, problems
     script = rollup_script(text)
     problems = rollup_problems(script, bash)
@@ -199,6 +210,7 @@ def main():
         'a new ungated .NET job': wiring(text + '\n  late_tests:\n    runs-on: ubuntu-latest\n    steps:\n      - run: dotnet test\n'),
         'a diff against the wrong commit': wiring(text.replace('git diff --no-renames --name-only HEAD^1 HEAD', 'git diff --name-only HEAD', 1)),
         'a diff that detects renames': diff_problems(text.replace('git diff --no-renames --name-only', 'git diff --name-only', 1), bash),
+        'the AOT Gate diffing with renames': gate_diffs(text.replace('git diff --no-renames --name-only "$base"...HEAD', 'git diff --name-only "$base"...HEAD', 1)),
         'a roll-up that passes any skip': rollup_problems(script.replace('if [ "$dotnet" = false ] && ', 'if ', 1), bash),
         'a roll-up that ignores the shards': rollup_problems(script.replace('[ "$result" = success ] ||', 'true ||', 1), bash),
     }
