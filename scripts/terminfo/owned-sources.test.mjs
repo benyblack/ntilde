@@ -144,10 +144,10 @@ test('private v41 fixed253 source scope adds the five left/right-margin scripts 
     const targets = [...Object.values(privateClipboardReferencePaths), ...Object.values(sgrRgbReferencePaths)];
     assert.equal(new Set(targets).size, targets.length);
     const bootstrap = readFileSync(new URL('../terminfo-owned.mjs', import.meta.url), 'utf8');
-    const start = bootstrap.indexOf('Object.freeze(') + 'Object.freeze('.length;
+    const start = bootstrap.indexOf('Object.freeze(', bootstrap.indexOf('const privateClipboardReferencePaths')) + 'Object.freeze('.length;
     const literal = bootstrap.slice(start, bootstrap.indexOf(');', start));
     assert.deepEqual(JSON.parse(literal), privateClipboardReferencePaths);
-    const second = bootstrap.indexOf('Object.freeze(', start) + 'Object.freeze('.length;
+    const second = bootstrap.indexOf('Object.freeze(', bootstrap.indexOf('const sgrRgbReferencePaths')) + 'Object.freeze('.length;
     assert.deepEqual(JSON.parse(bootstrap.slice(second, bootstrap.indexOf(');', second))), sgrRgbReferencePaths);
     assert.ok([...Object.values(privateClipboardReferencePaths), ...Object.values(sgrRgbReferencePaths)]
         .every(path => path.startsWith('src/') && path.endsWith('.cs')));

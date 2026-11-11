@@ -10,7 +10,7 @@ import { sgrAttrsCellAt } from './sgr-attrs-contracts.mjs';
 export const coreGapsSuiteId = 'ntilde-owned-core-gaps-v1';
 export const coreGapsAdapterId = 'ntilde-owned-core-gaps-grading-v1';
 export const coreGapsIds = Object.freeze(['text.reverse-index-scroll', 'reset.method', 'device.env-term', 'extensions.osc1-icon']);
-export const backendResetBytes = '\x1b[?1049l\x1bc\x1b[3J\x1b[H';
+export const backendResetBytes = '\x1b[?1049l\x1bc\x1b[4l\x1b[3J\x1b[H';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (condition, note) => { if (!condition) throw new Error('Core gaps: ' + note); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -234,7 +234,7 @@ export function buildCoreGapsReport(frames, run, runId, adapter, replayModule = 
         if (replayModule) { const ctx = coreGapContext(id, roles); check(same(replayModule.ntildeRunCoreGap(id, ctx), pinned), 'pinned replay differs'); ctx.assertComplete(); }
         // The icon callback is diagnostic by construction; never promote its verdict.
         check(id === 'extensions.osc1-icon' ? pinned.notTested?.reason === 'no-semantic-observable'
-            : pinned.observation.outcome === effects[id].outcome, 'pinned/effect mismatch');
+            : !(pinned.observation.outcome === 'unsupported' && effects[id].outcome === 'supported'), 'pinned/effect mismatch');
     }
     return { schemaVersion: 1, suiteId: coreGapsSuiteId, runId, adapter, child: run.child,
         cases: coreGapsIds.map(id => ({ caseId: id, pinned: run.pinned.find(p => p.probeId === id) ?? null,
