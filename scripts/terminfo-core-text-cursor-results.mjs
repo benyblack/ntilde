@@ -78,8 +78,9 @@ export function readableTextCursorReport(report, mapping) {
         const layers = describeLayers(row.observationLayers).join(', ');
         const refs = row.evidence.map(e => `${e.file}#${e.caseId}`).join('; ');
         const effects = row.effectVerdicts.map(e => `${e.caseId}:${e.verdict}`).join(', ') || 'query trace';
+        const controls = Object.keys(row.observed?.controls ?? {}).length ? '; controls ' + literal(row.observed.controls) : '';
         const observation = row.observed
-            ? `Bytes ${literal(row.fixture)}; observed rows ${literal(row.observed.lines)}, cursor ${literal(row.observed.cursor)}, guard ${literal(row.observed.guard)}, CPR ${literal(row.observed.cpr)}${Object.keys(row.observed.controls ?? {}).length ? `; controls ${literal(row.observed.controls)}` : ''}.`
+            ? `Bytes ${literal(row.fixture)}; observed rows ${literal(row.observed.lines)}, cursor ${literal(row.observed.cursor)}, guard ${literal(row.observed.guard)}, CPR ${literal(row.observed.cpr)}${controls}.`
             : row.explanation;
         lines.push(`| [\`${row.id}\`](${mappingRow.url}) — ${tableCell(row.requirement)} | **${row.conclusion}** | ${tableCell(layers)}; ${tableCell(refs)}; stock ${tableCell(row.pinnedProbe.stockVerdict)}, effect ${tableCell(effects)} | ${tableCell(observation)} |`);
     }
