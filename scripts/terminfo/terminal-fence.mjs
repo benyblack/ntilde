@@ -76,7 +76,7 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         /** One OSC color query exchange with the exact request bytes the caller chose (BEL or ST spelling): the raw reply (or its explicit absence) and the DA ordering barrier. */
         colorExchange(sequence, expected) {
             if (typeof sequence !== 'string' || !sequence.length || sequence.length > 64) return Promise.reject(new Error('Invalid owned color query request.'));
-            return request(sequence, querySpec(expected));
+            try { return request(sequence, querySpec(expected)); } catch (error) { return Promise.reject(error); }
         },
         query(expected, prefix = '') {
             const spec = querySpec(expected);

@@ -152,6 +152,8 @@ export function checkColorResetEvidence(output, evidence, runId, context) {
     const journalText = readFileSync(join(output, 'crst-snapshots.jsonl'), 'utf8').trim();
     if (!journalText) throw new Error('runtime-color reset journal is empty.');
     const frames = journalText.split('\n').map(line => JSON.parse(line));
+    const renders = readdirSync(join(output, 'crst-pixels')).sort(), named = frames.map(frame => frame.pixel?.file?.split('/')[1]).sort();
+    if (!sameJson(renders, named)) throw new Error('runtime-color reset renders are not exactly the journal captures.');
     const derived = buildColorResetGradingReport(frames, run, runId, report.adapter, { contractsVersion: report.contractsVersion, output });
     if (!sameJson(report, derived)) throw new Error('runtime-color reset observations do not match retained evidence.');
     if (!sameJson(frames, report.snapshots)) throw new Error('runtime-color reset journal does not match the report.');
