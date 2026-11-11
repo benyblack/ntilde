@@ -4,7 +4,7 @@
 
 The earlier [#932 publication](../2026-11-11-core-results/report.md) remains unchanged. This publication re-derives the same 80 frozen criteria from the retained, independently checked current run. Pinned stock results and independent effects are separate.
 
-Owned run: `c91f87874915f90ff3ecfabe047bf6b1`; App source: `94e2dc121ef43b4ad50c7694c4d7f5606c776c98`; scripts: `47542df6378c8225e52327d92bfa748ff85dd080`; source policy: `readonly-owned-source-graph-v37`; receipt schema: 43. Geometry: 40 rows by 140 columns. Physical coordinates are zero-based (row, column); CPR is one-based.
+Owned run: `51fa1fb62df5c66a7b071982d8f02aa7`; App source: `94e2dc121ef43b4ad50c7694c4d7f5606c776c98`; scripts: `bca5e0d83b6d2c4861565bd5c41f161d36ccf0ec`; source policy: `readonly-owned-source-graph-v38`; receipt schema: 44. Geometry: 40 rows by 140 columns. Physical coordinates are zero-based (row, column); CPR is one-based.
 
 The DECSC control transmits `ESC [ 5 ; 5 H`, a one-based CUP destination, and observes physical row 4, column 4 before restoring. The original live-page line-feed fixture remains distinct from the catalogue LF-only App alternative.
 
@@ -99,9 +99,10 @@ Evidence: [owned run](owned-run.zip), [versioned requirements](../2026-11-11-cor
 
 - `36c664a07ce17e23e995f6013c88e1df` — superseded: The fixture changed the main saved-cursor register; the following run isolates it on the alternate screen.
 - `ff0979c4942d75017002b1f4229fb69a` — superseded: The fixture passed but lacked a separate interior-row IND control.
-- `c91f87874915f90ff3ecfabe047bf6b1` — complete: The exact fixtures, interior IND control and full predecessor chain completed; receipt and cleanup verified.
+- `c91f87874915f90ff3ecfabe047bf6b1` — superseded: The runtime-color qualification subsequently merged and changed the shared collector and source-policy chain.
+- `51fa1fb62df5c66a7b071982d8f02aa7` — complete: The exact fixtures, interior IND control and combined predecessor chain completed; receipt and cleanup verified.
 
-The superseded [first](attempt-1-superseded.zip) and [second](attempt-2-superseded.zip) runs are retained for audit. Neither supplies current conclusions.
+The superseded [first](attempt-1-superseded.zip), [second](attempt-2-superseded.zip), and [third](attempt-3-superseded.zip) runs are retained for audit. None supplies current conclusions.
 
 ## Reproduction
 

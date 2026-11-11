@@ -93,7 +93,7 @@ export function readableTextCursorReport(report, mapping) {
 // Digests pin this versioned publication; a replacement run requires a new
 // version and an explicit code review of its manifest, not an editable label.
 export const textCursorPublication = 'docs/qa/terminfo/2026-11-11-core-text-cursor-results';
-export const measurementSha256 = '693330f04ac5ef2cab4200c902bd412dd744c38aac5c879e21fd6bbe5d082774';
+export const measurementSha256 = '62463a3f53f0519f44f39c34029ad3bc98caa8b471e7cc7db54a3499ed64720b';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export function loadTextCursorMeasurement(base = root) {
