@@ -40,8 +40,7 @@ export function loadMapping(base = root) {
 }
 
 /** Extract only regular bounded data entries under the fresh directory. */
-export function extractOwnedArchive(base, mapping, directory) {
-    const archive = join(base, publication, 'owned-run.zip');
+export function extractOwnedArchive(base, mapping, directory, archive = join(base, publication, 'owned-run.zip')) {
     check(digest(readFileSync(archive)) === mapping.archives['owned-run.zip'], 'owned archive digest differs');
     const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
     const script = String.raw`import zipfile,pathlib,sys,stat

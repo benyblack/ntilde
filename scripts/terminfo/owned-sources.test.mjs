@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV45SourceFiles, capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -18,7 +18,7 @@ function fixture(action) {
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
 test('all 274 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 274); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+    assert.equal(Object.keys(ownedSourceFiles).length, 276); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -80,7 +80,9 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
 });
 
 test('private v43 fixed267 source scope adds the seven routed-input scripts to v42 fixed260 (Core gaps) to v41 fixed253; v41 adds the five left/right-margin scripts to v40 fixed248 (seven rectangle-checksum scripts) to v39 fixed241 (five column-editing scripts) to v38 fixed236 (five rectangle-editing scripts) to v37 fixed231 (five selective-erase scripts) to v36 fixed226 (five erase-character/saved-lines scripts) to v35 fixed221 (seven cursor scripts) to v34 fixed214 (five attribute-rectangle scripts) to v33 fixed209 (five erase attributes / erase margins scripts) to v32 fixed204 (five saved-state/reset scripts) to v31 fixed199 (six scrolling/history scripts) to v30 fixed193 (five charsets scripts), v29 fixed188 (five line-editing scripts), v28 fixed183 (five erase-in-display scripts), v27 fixed178 (five character-editing scripts), v26 fixed173 (five erase-in-line scripts), v25 fixed168 (five SGR closure scripts), v24 fixed163 (five SGR selective-reset scripts), v23 fixed158 (four App-observed underline-resolution scripts), v22 fixed154 (five SGR-underline-color scripts), v21 fixed149 (five SGR-underline scripts), v20 fixed144 (four truecolor-finding scripts) and v19 fixed140 (five truecolor scripts and two shared color cores) while v18 remains fixed133, v17 fixed128, v16 fixed123 and v15 fixed114', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV44SourceFiles);
+    assert.deepEqual(ownedSourceFiles, capturedV45SourceFiles);
+    assert.deepEqual(Object.keys(capturedV45SourceFiles).slice(0, 274), Object.keys(capturedV44SourceFiles));
+    assert.deepEqual(Object.values(capturedV45SourceFiles).slice(274), ['core-text-cursor.mjs', 'core-text-cursor-receipt.mjs']);
     assert.equal(Object.keys(capturedV43SourceFiles).length, 267);
     assert.deepEqual(Object.keys(capturedV44SourceFiles).slice(0, 267), Object.keys(capturedV43SourceFiles));
     assert.deepEqual(Object.values(capturedV44SourceFiles).slice(267), ['color-reset-contracts.mjs', 'color-reset-model.mjs', 'color-reset-collector.mjs',

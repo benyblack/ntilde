@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "51fa1fb62df5c66a7b071982d8f02aa7",
+    "appRevision": "94e2dc121ef43b4ad50c7694c4d7f5606c776c98",
+    "scriptsRevision": "bca5e0d83b6d2c4861565bd5c41f161d36ccf0ec",
+    "receiptSchema": 44,
+    "sourcePolicy": "readonly-owned-source-graph-v38"
+  },
+  "ownedArchiveSha256": "d0349e41047588e0246be88986a50d26eed96c4dd277c6c20c467ed2571f281e",
+  "supersededArchiveSha256": "16a4947b0263dafdc04647d3d685ad26a47450fbac1e624946bf082d22281856",
+  "secondSupersededArchiveSha256": "ffb001e3f205ed955de231570fd7c1a9327e6a05e4a611eac106251d7be8a476",
+  "thirdSupersededArchiveSha256": "1a938a71799dd5a998cdd45e7aa2ec0b5a1bb0467031d6c188843f48b2c92aa2",
+  "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
+  "attempts": [
+    {
+      "runId": "36c664a07ce17e23e995f6013c88e1df",
+      "status": "superseded",
+      "reason": "The fixture changed the main saved-cursor register; the following run isolates it on the alternate screen."
+    },
+    {
+      "runId": "ff0979c4942d75017002b1f4229fb69a",
+      "status": "superseded",
+      "reason": "The fixture passed but lacked a separate interior-row IND control."
+    },
+    {
+      "runId": "c91f87874915f90ff3ecfabe047bf6b1",
+      "status": "superseded",
+      "reason": "The runtime-color qualification subsequently merged and changed the shared collector and source-policy chain."
+    },
+    {
+      "runId": "51fa1fb62df5c66a7b071982d8f02aa7",
+      "status": "complete",
+      "reason": "The exact fixtures, interior IND control and combined predecessor chain completed; receipt and cleanup verified."
+    }
+  ]
+}

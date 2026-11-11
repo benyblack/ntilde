@@ -1,3 +1,4 @@
+import { collectTextCursor } from './core-text-cursor.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -326,6 +327,8 @@ try {
         const colorResetModule = await import(pathToFileURL(config.colorResetBundle).href);
         const colorResetRun = await collectColorResetGrading({ config, fence, owner, gradingModule: colorResetModule });
         writeFileSync(join(config.output, 'crst-run.json'), JSON.stringify(colorResetRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const textCursorRun = await collectTextCursor({ config, fence, owner });
+        writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
