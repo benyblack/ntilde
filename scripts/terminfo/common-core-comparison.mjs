@@ -37,6 +37,7 @@ export function buildCommonCoreComparison({ requirementsBytes, subjects }) {
 }
 
 function readSubject(subject, ids, requirementsSha256) {
+    const identity = parse(subject.identityBytes, `${subject.id} upstream identity check`);
     const raw = parse(subject.rawBytes, `${subject.id} raw run`);
     const config = parse(subject.configBytes, `${subject.id} configuration`);
     const source = parse(subject.sourceBytes, `${subject.id} source identity`);
@@ -44,6 +45,14 @@ function readSubject(subject, ids, requirementsSha256) {
     const ready = parse(subject.readyBytes, `${subject.id} worker identity`);
     const completion = parse(subject.completionBytes, `${subject.id} completion`);
     const measurement = parse(subject.geometryBytes, `${subject.id} measurement geometry`);
+    if (identity.runId !== raw.runId || identity.subject?.id !== subject.id || identity.subject?.version !== source.version || identity.rawSha256 !== hash(subject.rawBytes) || identity.upstreamRevision !== source.upstreamRevision || identity.check?.ok !== true || identity.check?.checked !== true) fail(`${subject.id} lacks a matching upstream identity guard result.`);
+    for (const [key, size] of [['upstreamRevision', 40], ['workerSha256', 64], ['driverSha256', 64], ['executableSha256', 64]]) {
+        if (typeof source[key] !== 'string' || !new RegExp(`^[a-f0-9]{${size}}$`).test(source[key])) fail(`${subject.id} lacks a source or executable digest: ${key}.`);
+    }
+    if (!/^[a-f0-9]{12}$/.test(raw.probeHash ?? '')) fail(`${subject.id} lacks a suite fingerprint.`);
+    const times = [raw.measuredAt, completion.completedAt, cleanup.completedAt].map(value => Date.parse(value));
+    if (times.some(time => !Number.isFinite(time)) || times[1] < times[0] || times[2] < times[1]) fail(`${subject.id} has invalid measurement/cleanup chronology.`);
+    if (raw.subject?.osVersion !== source.os) fail(`${subject.id} operating-system records disagree.`);
     if (config.purpose !== 'comparison') fail(`${subject.id} is a preflight, not a complete comparison run.`);
     if (raw.schemaVersion !== 4 || raw.source?.kind !== 'live' || raw.subject?.kind !== 'term' ||
         raw.subject.id !== subject.id || raw.subject.version !== source.version || raw.subject.os !== 'macos') fail(`${subject.id} has mismatched measured subject identity.`);
@@ -61,6 +70,7 @@ function readSubject(subject, ids, requirementsSha256) {
     if (measurement.runId !== raw.runId || measurement.pid !== ready.pid || measurement.tty !== ready.tty) fail(`${subject.id} geometry belongs to another worker.`);
     const geometry = measurement.geometry;
     if (!Number.isSafeInteger(geometry?.rows) || !Number.isSafeInteger(geometry?.cols) || geometry.rows < 1 || geometry.cols < 1) fail(`${subject.id} lacks measured PTY geometry.`);
+    const rawLines = subject.rawBytes.toString().split('\n');
     const results = {}, counts = Object.fromEntries(Object.keys(comparisonStatusLabels).map(status => [status, 0]));
     for (const id of ids) {
         const matches = raw.results.filter(result => result.featureId === id);
@@ -75,7 +85,8 @@ function readSubject(subject, ids, requirementsSha256) {
             fail(`${subject.id} ${id} claims a conclusive result without a measured observation and assertion.`);
         }
         counts[status]++;
-        results[id] = { status, scheduled: scheduled.includes(id), probeId: result?.probeId ?? null,
+        const evidenceLine = rawLines.findIndex(line => line.trim() === `\"featureId\": ${JSON.stringify(id)},`) + 1;
+        results[id] = { evidenceLine: evidenceLine || null, status, scheduled: scheduled.includes(id), probeId: result?.probeId ?? null,
             method: result?.assertionType ?? null, reason: result?.reason ?? null,
             note: result?.note ?? null, tests: result?.tests ?? [] };
     }

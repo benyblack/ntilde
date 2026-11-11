@@ -36,6 +36,9 @@ const subjects = manifest.subjects.map(subject => {
 const report = buildCommonCoreComparison({ requirementsBytes, subjects });
 const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.json'), 'utf8'));
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true) throw new Error('Retained upstream source differs from the measured comparison.');
+for (const subject of subjects) {
+    if (JSON.parse(subject.identityBytes).checkerSha256 !== sourceProof.identityGuardSha256) throw new Error(`${subject.id} used a different identity guard.`);
+}
 report.method.upstreamBaseRevision = sourceProof.baseRevision;
 const sourcePath = 'upstream-source.json';
 if (!(manifest.artifacts ?? []).some(entry => entry.path === sourcePath)) throw new Error('Source proof is not digest-bound to the manifest.');
@@ -56,7 +59,7 @@ const site = { schemaVersion: report.schemaVersion, requirementCount: report.req
     manifestSha256: report.manifestSha256, subjects: report.subjects,
     evidencePath: 'docs/qa/terminfo/2026-11-11-common-core-comparison',
     rows: report.rows.map(row => ({ ...row, results: Object.fromEntries(Object.entries(row.results).map(([id, result]) => [id,
-        { status: result.status, method: result.method, reason: result.reason, scheduled: result.scheduled }])) })) };
+        { evidenceLine: result.evidenceLine, status: result.status, method: result.method, reason: result.reason, scheduled: result.scheduled }])) })) };
 const outputs = [[join(publication, 'report.json'), json], [join(publication, 'report.md'), markdown],
     [join(root, 'site/src/data/common-core-comparison.json'), JSON.stringify(site, null, 2) + '\n']];
 for (const [path, expected] of outputs) {

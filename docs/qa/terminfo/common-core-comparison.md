@@ -35,6 +35,11 @@ calibration can refuse an application's reported geometry, and its ownership pol
 can withhold state-changing probes. Each affected row retains the exact reason.
 Counts must not be presented as a capability ranking when those limits differ.
 
+Collector drafts deliberately retain `identity: unverified`. After collection we
+apply the upstream app launcher's own `verifyTerminalIdentity` guard to the raw
+replies, retaining a separate digest-bound result. This does not rewrite the raw
+capture or change any feature verdict. A failed or missing guard blocks publication.
+
 ## Results and evidence
 
 The dated publication contains exact raw schema-4 runs, parent/worker records,
@@ -61,6 +66,12 @@ bun scripts/terminfo/common-core-driver.ts <upstream> ntilde <new-output> <sidec
 
 `COMMON_CORE_PREFLIGHT=1` selects a two-probe diagnostic run. Preflights are refused
 by the publication reader and cannot enter the final comparison.
+
+After each native run, retain the separate upstream identity guard result:
+
+```sh
+bun scripts/terminfo/common-core-identity.ts <upstream> <completed-run>
+```
 
 Verify an existing publication without desktop access:
 

@@ -10,14 +10,14 @@ const requirementsSha256 = createHash('sha256').update(requirementsBytes).digest
 function fixture() {
     return { requirementsBytes, subjects: ['ntilde', 'iterm2', 'ghostty'].map(id => {
         const runId = id + '-synthetic-test-only';
-        const raw = { schemaVersion: 4, source: { kind: 'live' }, subject: { kind: 'term', id, version: '1.0', os: 'macos' }, runId,
-            probeHash: 'suite-test-only', sourceRevision: 'revision-test-only', measuredAt: '2026-11-11T12:00:00Z',
+        const raw = { schemaVersion: 4, source: { kind: 'live' }, subject: { kind: 'term', id, version: '1.0', os: 'macos', osVersion: 'test-os' }, runId,
+            probeHash: 'a'.repeat(12), sourceRevision: 'a'.repeat(40), measuredAt: '2026-11-11T12:00:00Z',
             results: ids.map(featureId => ({ featureId, status: 'supported', attempt: { scope: 'probe' }, rawReplyRef: featureId, tests: [] })),
             assertions: ids.map(featureId => ({ featureId, assertionType: 'query_reply', expected: 'test', observed: 'test' })),
             rawReplies: Object.fromEntries(ids.map(id => [id, '{"synthetic":true}'])) };
-        return { id, label: id, rawBytes: bytes(raw),
+        return { id, label: id, rawBytes: bytes(raw), identityBytes: bytes({ runId, subject: raw.subject, rawSha256: createHash('sha256').update(bytes(raw)).digest('hex'), upstreamRevision: raw.sourceRevision, check: { ok: true, checked: true } }),
             sourceBytes: bytes({ version: '1.0', suite: { probeHash: raw.probeHash, probes: { term: ids } }, upstreamRevision: raw.sourceRevision,
-                requirementsSha256, workerSha256: 'worker', driverSha256: 'driver', os: 'test-os', executableSha256: 'executable' }),
+                requirementsSha256, workerSha256: 'b'.repeat(64), driverSha256: 'c'.repeat(64), os: 'test-os', executableSha256: 'd'.repeat(64) }),
             configBytes: bytes({ purpose: 'comparison', runId, probeHash: raw.probeHash, coreIds: ids, scheduledIds: ids }),
             readyBytes: bytes({ runId, pid: 123, tty: '/dev/ttys123' }),
             geometryBytes: bytes({ runId, pid: 123, tty: '/dev/ttys123', geometry: { rows: 40, cols: 140 } }),
@@ -29,6 +29,7 @@ function change(input, key, mutate) {
     const value = JSON.parse(input.subjects[0][key]);
     mutate(value);
     input.subjects[0][key] = bytes(value);
+    if (key === 'rawBytes') { const identity = JSON.parse(input.subjects[0].identityBytes); identity.rawSha256 = createHash('sha256').update(input.subjects[0].rawBytes).digest('hex'); input.subjects[0].identityBytes = bytes(identity); }
 }
 test('projects each upstream status without promoting TODO, invalid or unsupported', () => {
     const input = fixture();
@@ -46,6 +47,7 @@ test('a manual catalogue position stays untested, with no invented execution', (
     const input = fixture();
     for (const subject of input.subjects) {
         const raw = JSON.parse(subject.rawBytes); raw.results.pop(); subject.rawBytes = bytes(raw);
+        const identity = JSON.parse(subject.identityBytes); identity.rawSha256 = createHash('sha256').update(subject.rawBytes).digest('hex'); subject.identityBytes = bytes(identity);
         const source = JSON.parse(subject.sourceBytes); source.suite.probes.term = ids.slice(0, -1); subject.sourceBytes = bytes(source);
         const config = JSON.parse(subject.configBytes); config.scheduledIds = ids.slice(0, -1); subject.configBytes = bytes(config);
     }
@@ -55,6 +57,13 @@ test('a manual catalogue position stays untested, with no invented execution', (
 });
 for (const [name, key, mutate] of [
     ['preflight-only run', 'configBytes', r => { r.purpose = 'preflight-only'; }],
+    ['failed identity check', 'identityBytes', r => { r.check.ok = false; }],
+    ['uncorroborated identity', 'identityBytes', r => { r.check.checked = false; }],
+    ['identity for different bytes', 'identityBytes', r => { r.rawSha256 = 'other'; }],
+    ['identity for different run', 'identityBytes', r => { r.runId = 'other'; }],
+    ['missing executable digest', 'sourceBytes', r => { delete r.executableSha256; }],
+    ['invalid timestamp', 'cleanupBytes', r => { r.completedAt = 'not-a-date'; }],
+    ['cleanup before completion', 'cleanupBytes', r => { r.completedAt = '2026-11-11T11:59:00Z'; }],
     ['wrong subject', 'rawBytes', r => { r.subject.id = 'ghostty'; }],
     ['wrong version', 'sourceBytes', r => { r.version = '2.0'; }],
     ['different run', 'completionBytes', r => { r.runId = 'other'; }],
@@ -89,8 +98,8 @@ test('refuses duplicate target rows and duplicate comparison subjects', () => {
 
 test('per-application launch adapter identities remain explicit without changing the shared probe engine', () => {
     const input = fixture();
-    change(input, 'sourceBytes', source => { source.driverSha256 = 'another-recorded-launcher'; });
+    change(input, 'sourceBytes', source => { source.driverSha256 = 'e'.repeat(64); });
     const result = buildCommonCoreComparison(input);
-    assert.equal(result.subjects[0].launchDriverSha256, 'another-recorded-launcher');
-    assert.equal(result.subjects[1].launchDriverSha256, 'driver');
+    assert.equal(result.subjects[0].launchDriverSha256, 'e'.repeat(64));
+    assert.equal(result.subjects[1].launchDriverSha256, 'c'.repeat(64));
 });
