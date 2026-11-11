@@ -177,7 +177,7 @@ version — see "Dry run without cutting a release" below.
 
 ## Dry run without cutting a release
 
-Three jobs in `.github/workflows/ci.yml` cover this without cutting a release:
+Four jobs in `.github/workflows/ci.yml` cover this without cutting a release:
 
 - **`linux_packaging_detect`** (runner, no container) — the change-detection
   gate. Always signals "run" on `push` and `workflow_dispatch`; on a
@@ -189,10 +189,14 @@ Three jobs in `.github/workflows/ci.yml` cover this without cutting a release:
   `build-deb.sh` and `vpk pack` at version `0.0.1-ci`, asserts every asset name,
   and uploads the `linux-packaging-dryrun` artifact.
 - **`linux_packaging_smoke`** (runner, no container) — downloads that artifact
-  and runs `test-build-deb.sh` and `smoke-test.sh` against it. It has to run
-  outside the container: both scripts start their own bare `docker run`
-  containers as their entire test premise, and a `container:` job has no Docker
-  daemon or socket to do that with.
+  and runs `smoke-test.sh` against it.
+- **`linux_packaging_deb_tests`** (runner, no container) — runs
+  `test-build-deb.sh`, beside the build rather than after it, since the harness
+  fabricates its own publish directory.
+
+The last two have to run outside the container: both scripts start their own bare
+`docker run` containers as their entire test premise, and a `container:` job has
+no Docker daemon or socket to do that with.
 
 Trigger the lane manually with `gh workflow run ci.yml`, or by touching a file
 under `packaging/linux/` in a PR.

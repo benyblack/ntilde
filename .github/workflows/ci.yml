@@ -2664,15 +2664,20 @@ jobs:
   # Linux packaging: dry run + smoke gate (#91 Linux leg). Two callers of the same
   # scripts release.yml uses, so packaging breaks land on a PR rather than on a tag.
   #
-  # THREE jobs, not one, and the split is load-bearing - read this before merging
+  # FOUR jobs, not one, and the split is load-bearing - read this before merging
   # them back together.
   #
   # 1. `linux_packaging_detect` (runner, no container): the change-detection gate.
-  #    Cheap, needs `git` + full history, and its output gates the other two.
+  #    Cheap, needs `git` + full history, and its output gates the other three.
   # 2. `linux_packaging_build` (runner + `container: ubuntu:22.04`): everything that
   #    produces artifacts - cargo, AOT publish, build-deb.sh, vpk pack, assertions.
-  # 3. `linux_packaging_smoke` (runner, no container): the docker-based gates -
-  #    test-build-deb.sh and smoke-test.sh - consuming job 2's artifacts.
+  # 3. `linux_packaging_smoke` (runner, no container): the docker-based gate -
+  #    smoke-test.sh - consuming job 2's artifacts.
+  # 4. `linux_packaging_deb_tests` (runner, no container): test-build-deb.sh, also
+  #    docker-based. It fabricates its own publish directory and reads nothing job 2
+  #    makes, so it runs beside job 2 rather than after it. Job 2 then job 3 is
+  #    usually the last thing a run that has this lane waits for, and in job 3 this
+  #    harness added about 24 s to that chain.
   #
   # WHY A CONTAINER AT ALL. NativeAOT links against the build machine's glibc with
   # no runtime fallback, so whatever builds the binary IS the minimum supported
@@ -3231,10 +3236,11 @@ jobs:
             artifacts/linux/*.nupkg
             artifacts/linux/releases.*.json
 
-  # The docker half. Runs on the runner, NOT in a container, because both scripts
-  # below start their own bare containers - see the block comment at the top of
-  # this lane for why docker-in-docker is not an option. This is the release gate:
-  # if it is ever skipped or made non-blocking, the lane has lost its point.
+  # The docker half. Runs on the runner, NOT in a container, because smoke-test.sh
+  # (like test-build-deb.sh in the job after this one) starts its own bare
+  # containers - see the block comment at the top of this lane for why
+  # docker-in-docker is not an option. This is the release gate: if it is ever
+  # skipped or made non-blocking, the lane has lost its point.
   linux_packaging_smoke:
     name: Linux Packaging (smoke)
     needs: [linux_packaging_detect, linux_packaging_build]
@@ -3242,8 +3248,8 @@ jobs:
       needs.linux_packaging_detect.outputs.run == 'true' &&
       needs.linux_packaging_build.result == 'success'
     runs-on: ubuntu-latest
-    # Two cold smoke containers that each apt-install their own tooling, plus the
-    # test-build-deb.sh harness container. No compilation happens here.
+    # Two cold smoke containers, side by side, that each apt-install their own
+    # tooling. No compilation happens here.
     timeout-minutes: 30
     steps:
       # The scripts live in the repo, the artifacts come from the build job.
@@ -3257,6 +3263,22 @@ jobs:
 
       - name: Show downloaded artifacts
         run: ls -la artifacts/linux
+
+      - name: Smoke test (bare containers)
+        run: |
+          chmod +x packaging/linux/*.sh
+          packaging/linux/smoke-test.sh artifacts/linux
+
+  # test-build-deb.sh, the build-deb.sh harness: see job 4 in the lane overview above.
+  # Docker-based like the smoke gate, so on the runner rather than in a `container:`.
+  linux_packaging_deb_tests:
+    name: Linux Packaging (build-deb.sh tests)
+    needs: linux_packaging_detect
+    if: needs.linux_packaging_detect.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
 
       # fontconfig + x11-utils: test-build-deb.sh's own header comment documents
       # these as the donor-ELF providers (fc-match, xdpyinfo) its dedupe check
@@ -3274,11 +3296,6 @@ jobs:
           docker run --rm -v "$PWD:/w:ro" -w /w ubuntu:22.04 bash -c \
             'apt-get update -qq && apt-get install -y -qq file imagemagick fontconfig x11-utils binutils >/dev/null &&
              packaging/linux/test-build-deb.sh'
-
-      - name: Smoke test (bare containers)
-        run: |
-          chmod +x packaging/linux/*.sh
-          packaging/linux/smoke-test.sh artifacts/linux
 
   # ===========================================================================
   # The Arch / AUR lane. Mirrors linux_packaging_smoke's shape - runner, no
