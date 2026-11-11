@@ -8,13 +8,14 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core text/cursor receipt: ' + message); };
 
 export function includesTextCursorEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v37' || context.textCursorSuiteId !== undefined || evidence.textCursorEvidence !== undefined
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v38' || context.textCursorSuiteId !== undefined || evidence.textCursorEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
 export function checkTextCursorEvidence(output, evidence, runId, context) {
     const binding = evidence.textCursorEvidence;
-    check(context.textCursorSuiteId === textCursorSuiteId && evidence.coreGapsEvidence !== undefined, 'suite or predecessor missing');
+    check(context.textCursorSuiteId === textCursorSuiteId && evidence.coreGapsEvidence !== undefined
+        && evidence.colorResetEvidence !== undefined, 'suite or predecessor missing');
     check(binding?.runId === runId && binding.suiteId === textCursorSuiteId
         && binding.file === 'tc-observations.json' && binding.runFile === 'tc-run.json'
         && binding.provisionalUntil === 'cell-receipt.json', 'binding mismatch');

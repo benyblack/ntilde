@@ -136,7 +136,7 @@ test('receipt refuses stripped artifacts and a coherently rehashed fixture alter
         const result = Buffer.from(JSON.stringify(buildTextCursorReport(frames, run, id)));
         writeFileSync(join(dir, 'tc-run.json'), runBytes); writeFileSync(join(dir, 'tc-observations.json'), result);
         writeFileSync(join(dir, 'tc-snapshots.jsonl'), frames.map(f => JSON.stringify(f)).join('\n') + '\n');
-        const context = { textCursorSuiteId }, evidence = { coreGapsEvidence: {}, textCursorEvidence: { runId: id, suiteId: textCursorSuiteId,
+        const context = { textCursorSuiteId }, evidence = { coreGapsEvidence: {}, colorResetEvidence: {}, textCursorEvidence: { runId: id, suiteId: textCursorSuiteId,
             file: 'tc-observations.json', runFile: 'tc-run.json', sha256: hash(result), runSha256: hash(runBytes), provisionalUntil: 'cell-receipt.json' } };
         assert.ok(includesTextCursorEvidence(dir, evidence, context));
         assert.doesNotThrow(() => checkTextCursorEvidence(dir, evidence, id, context));
@@ -146,7 +146,7 @@ test('receipt refuses stripped artifacts and a coherently rehashed fixture alter
         writeFileSync(join(dir, 'tc-run.json'), runBytes); evidence.textCursorEvidence.runSha256 = hash(runBytes);
         const bytes = readFileSync(join(dir, 'tc-snapshots.jsonl')); writeFileSync(join(dir, 'tc-snapshots.jsonl'), bytes.subarray(0, 10));
         assert.throws(() => checkTextCursorEvidence(dir, evidence, id, context));
-        assert.equal(includesTextCursorEvidence(dir, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v37' }), true);
+        assert.equal(includesTextCursorEvidence(dir, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v38' }), true);
     } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

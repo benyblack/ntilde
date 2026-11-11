@@ -130,3 +130,23 @@ for (const detached of [false, true]) test('private stock handoff retires the fe
     assert.throws(() => fence.detachInput()); assert.throws(() => fence.retireInput());
     fence.dispose(); assert.equal(input.isRaw, false); assert.equal(input.paused, true);
 });
+
+test('a color exchange writes the caller\'s exact BEL or ST request and retains the raw reply or its explicit absence before the DA barrier', async () => {
+    const input = new Input(); let written;
+    const fence = terminalFence(input, { write(value, callback) { written = value; callback(); } });
+    const answered = fence.colorExchange('\x1b]10;?\x07', { code: 10 });
+    assert.equal(written, '\x1b]10;?\x07\x1b[c', 'the pinned BEL spelling reaches the terminal byte for byte');
+    input.emit('data', Buffer.from('\x1b]10;rgb:d3d3/d3d3/d3d3\x1b\\\x1b[?62;4;22c'));
+    assert.deepEqual(await answered, { barrier: '\x1b[?62;4;22c', reply: { raw: '\x1b]10;rgb:d3d3/d3d3/d3d3\x1b\\', channels16: [0xd3d3, 0xd3d3, 0xd3d3] } });
+    const silent = fence.colorExchange('\x1b]4;7;?\x1b\\', { code: 4, index: 7 });
+    input.emit('data', Buffer.from('\x1b[?62;4;22c'));
+    assert.deepEqual(await silent, { barrier: '\x1b[?62;4;22c', reply: null });
+    const wrong = fence.colorExchange('\x1b]11;?\x07', { code: 11 });
+    input.emit('data', Buffer.from('\x1b]12;rgb:0000/0000/0000\x1b\\'));
+    await assert.rejects(wrong, /Unexpected color reply/);
+    await assert.rejects(fence.colorExchange('\x1b]11;?\x07', { code: 11 }), /Unexpected color reply/);
+    const another = terminalFence(new Input(), { write(_, callback) { callback(); } });
+    await assert.rejects(another.colorExchange('', { code: 10 }), /Invalid owned color query request/);
+    await assert.rejects(another.colorExchange('x'.repeat(65), { code: 10 }), /Invalid owned color query request/);
+    await assert.rejects(another.colorExchange('\x1b]10;?\x07', { code: 99 }), /Invalid owned color query/);
+});

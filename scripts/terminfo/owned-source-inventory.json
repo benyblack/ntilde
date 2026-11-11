@@ -266,6 +266,13 @@
     "routedInputGradingSourceSha256": "routed-input-grading.mjs",
     "routedInputGradingCollectorSourceSha256": "routed-input-grading-collector.mjs",
     "routedInputReceiptSourceSha256": "routed-input-receipt.mjs",
+    "colorResetContractsSourceSha256": "color-reset-contracts.mjs",
+    "colorResetModelSourceSha256": "color-reset-model.mjs",
+    "colorResetCollectorSourceSha256": "color-reset-collector.mjs",
+    "colorResetCaptureSourceSha256": "color-reset-capture.mjs",
+    "colorResetGradingSourceSha256": "color-reset-grading.mjs",
+    "colorResetGradingCollectorSourceSha256": "color-reset-grading-collector.mjs",
+    "colorResetReceiptSourceSha256": "color-reset-receipt.mjs",
     "textCursorSourceSha256": "core-text-cursor.mjs",
     "textCursorReceiptSourceSha256": "core-text-cursor-receipt.mjs"
 }

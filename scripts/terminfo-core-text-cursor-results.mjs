@@ -84,7 +84,7 @@ export function readableTextCursorReport(report, mapping) {
         lines.push(`| [\`${row.id}\`](${mappingRow.url}) — ${tableCell(row.requirement)} | **${row.conclusion}** | ${tableCell(layers)}; ${tableCell(refs)}; stock ${tableCell(row.pinnedProbe.stockVerdict)}, effect ${tableCell(effects)} | ${tableCell(observation)} |`);
     }
     lines.push('', '## Attempts', '', ...report.attempts.map(a => `- \`${a.runId}\` — ${a.status}: ${a.reason}`), '',
-        'The superseded [first](attempt-1-superseded.zip) and [second](attempt-2-superseded.zip) runs are retained for audit. Neither supplies current conclusions.',
+        'The superseded [first](attempt-1-superseded.zip), [second](attempt-2-superseded.zip), and [third](attempt-3-superseded.zip) runs are retained for audit. None supplies current conclusions.',
         '', '## Reproduction', '', '```sh', 'node scripts/terminfo-core-text-cursor-results.mjs --check', '```', '',
         'The check requires Node 24+ and Python 3. It validates the immutable source and archive digests, reissues the cleanup receipt using the trusted local graders, and derives all rows from the retained run. A missing setup, stale frame, failed restoration or incomplete observation cannot establish a result.', '', mapping.sourceAttribution, '');
     return lines.join('\n');
@@ -106,6 +106,7 @@ export function loadTextCursorMeasurement(base = root) {
     check(digest(readFileSync(join(dir, 'app-source-manifest.json'))) === manifest.appSourceManifestSha256, 'production source manifest changed');
     check(digest(readFileSync(join(dir, 'attempt-1-superseded.zip'))) === manifest.supersededArchiveSha256, 'superseded archive changed');
     check(digest(readFileSync(join(dir, 'attempt-2-superseded.zip'))) === manifest.secondSupersededArchiveSha256, 'second superseded archive changed');
+    check(digest(readFileSync(join(dir, 'attempt-3-superseded.zip'))) === manifest.thirdSupersededArchiveSha256, 'third superseded archive changed');
     return manifest;
 }
 

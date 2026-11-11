@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV41SourceFiles, capturedV43SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
+import { capturedV41SourceFiles, capturedV44SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
 import { inputPlanForPolicy } from '../input-plan.mjs';
 import { inputCounts } from '../input-receipt.mjs';
 import { boundInputScreen, buildInputReport } from '../input-state.mjs';
@@ -27,16 +27,16 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
 
 /** Synthetic old-scope source projection. Normalize checkout line endings before
- * dropping only the new suffix's imports; the historical production maps stay fixed. */
+ * dropping only the newer suffixes' imports (Core gaps, runtime-color reset); the historical production maps stay fixed. */
 export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+)\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
 async function buildFixture(output, routed) {
     const write = writerFor(output);
-    const sourceSnapshotPolicy = routed ? 'readonly-owned-source-graph-v36' : legacyPolicy, scope = routed ? capturedV43SourceFiles : capturedV41SourceFiles;
+    const sourceSnapshotPolicy = routed ? 'readonly-owned-source-graph-v37' : legacyPolicy, scope = routed ? capturedV44SourceFiles : capturedV41SourceFiles;
     {
         const archive = historicalArchive('2026-11-05-query-observations');
         for (const [file, bytes] of archive) { const path = join(output, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
@@ -719,6 +719,28 @@ async function buildFixture(output, routed) {
                     adapterBundleSha256: hash(routedInputBytes), contractsVersion: routedInputContractsVersion,
                     counts: routedInputCounts(routedInputReport), provisionalUntil: 'cell-receipt.json' };
             }
+            // Policy v35 always carries the layered runtime-color reset suffix as well.
+            const { syntheticColorResetEvidence, writeColorResetPngs } = await import('./color-reset-evidence.mjs');
+            const { buildColorResetGradingReport } = await import('../color-reset-grading.mjs');
+            const { adaptColorResetCollector, colorResetAdapterId } = await import('../color-reset-grading-collector.mjs');
+            const { colorResetSuiteId, colorResetContractsVersion } = await import('../color-reset-contracts.mjs');
+            const { colorResetCounts } = await import('../color-reset-receipt.mjs');
+            const colorResetBytes = Buffer.from(adaptColorResetCollector(lrMarginsBytes.toString()));
+            const colorReset = syntheticColorResetEvidence(context.runId, hash(colorResetBytes));
+            colorReset.adapter = { id: colorResetAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+                bundleSha256: hash(colorResetBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+            writeColorResetPngs(colorReset, output);
+            const colorResetReport = buildColorResetGradingReport(colorReset.frames, colorReset.run, context.runId, colorReset.adapter, { output });
+            write('crst-observations.json', colorResetReport);
+            write('crst-run.json', colorReset.run);
+            writeFileSync(join(output, 'crst-snapshots.jsonl'), colorReset.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-crst.mjs'), colorResetBytes);
+            Object.assign(context, { colorResetAdapterId, colorResetSuiteId, colorResetBundleSha256: hash(colorResetBytes), colorResetContractsVersion });
+            evidence.colorResetEvidence = { runId: context.runId, suiteId: colorResetSuiteId,
+                file: 'crst-observations.json', sha256: hash(readFileSync(join(output, 'crst-observations.json'))),
+                runFile: 'crst-run.json', runSha256: hash(readFileSync(join(output, 'crst-run.json'))),
+                adapterBundleSha256: hash(colorResetBytes), contractsVersion: colorResetContractsVersion,
+                counts: colorResetCounts(colorResetReport), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;
