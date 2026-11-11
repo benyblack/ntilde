@@ -57,7 +57,7 @@ function present(path) {
  * policy-v30 run always carries them, because the current worker collects this suite
  * unconditionally after the erase-character/saved-lines suite. */
 export function includesSelectiveEraseEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35'].includes(context.sourceSnapshotPolicy)
         || context.selectiveEraseAdapterId !== undefined || context.selectiveEraseSuiteId !== undefined
         || context.selectiveEraseBundleSha256 !== undefined || context.selectiveEraseContractsVersion !== undefined
         || evidence.selectiveEraseEvidence !== undefined

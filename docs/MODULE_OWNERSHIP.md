@@ -1154,6 +1154,13 @@ requires public test classes.
   settled requires the view and successful current-session callback to agree.
   Changing the buffer or session invalidates older completion evidence. Neither the
   leaf DTOs nor this completion signal attest kernel PTY size or undo reflow.
+- **Core icon-name observation is semantic state.** VT retains the bounded requested
+  OSC 1 name; App reads it under the existing nonblocking buffer read lock alongside
+  pane metadata. It is distinct from the App title and actual tab control, and cannot
+  establish a native host icon change. The Core QA backend's explicit `reset()` API
+  belongs to the collector, with a measured sequence implementation and dirty-state
+  controls; it is not a production AgentHost acting endpoint. Source policy v35 and
+  receipt 41 bind this supplement beside every frozen predecessor.
 - **Owned metadata QA observes host effects independently.** The adapter pairs
   complete active-cell/attribute reads with actual bounded UI/host/status facts.
   Controls and fixed inputs qualify prepared title/cwd restoration, per-cell links,
