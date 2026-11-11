@@ -18,7 +18,7 @@ if not os.path.isabs(git):
 
 def git_hash(kind, data):
     """Compute the Git object identifier required by the retained repository format."""
-    return hashlib.sha1(kind.encode()+b" "+str(len(data)).encode()+b"\0"+data).hexdigest()
+    return hashlib.sha1(kind.encode()+b" "+str(len(data)).encode()+b"\0"+data, usedforsecurity=False).hexdigest()
 
 def read_zip(path):
     """Refuse unsafe names and bound the complete source expansion."""

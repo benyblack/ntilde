@@ -574,11 +574,12 @@ async function closeMarkedStartupOwner() {
 async function closeCLIWithFallback() {
     try {
         await closeCLIWindow();
-    } catch (primary) {
+    } catch (error) {
+        const primaryError = String(error);
         try {
             await closeMarkedStartupOwner();
-        } catch (fallback) {
-            throw new Error('Owned cleanup failed: ' + String(primary) + '; startup fallback: ' + String(fallback));
+        } catch (error) {
+            throw new Error('Owned cleanup failed: ' + primaryError + '; startup fallback: ' + String(error));
         }
     }
 }
@@ -602,17 +603,16 @@ async function closeRunOwner() {
 /** Confirm that the recorded worker no longer executes this run's configuration. */
 async function confirmWorkerExit() {
     if (!worker) {
-        return true;
+        return;
     }
     const { processCommand } = await importUpstream('packages/terminfo.dev/src/owned-process.ts');
     await pollCommonCore(
         () => {
             const command = processCommand(worker.pid);
-            return !command || !command.includes(join(output, 'config.json'));
+            return !command?.includes(join(output, 'config.json'));
         },
         { timeoutMs: 5000, message: 'Recorded worker survived owned-window cleanup.' },
     );
-    return true;
 }
 
 /** Publish cleanup evidence before releasing the owned lock; failures keep the lock for inspection. */
@@ -652,7 +652,8 @@ async function cleanupLaunch() {
         failures.push(String(error));
     }
     try {
-        workerExited = await confirmWorkerExit();
+        await confirmWorkerExit();
+        workerExited = true;
     } catch (error) {
         failures.push(String(error));
     }

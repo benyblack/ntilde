@@ -9,11 +9,18 @@ import { pythonCommand } from './common-core-evidence.mjs';
 
 /** Match the upstream catalogue SHA-256 binding. */
 const sha = (value) => createHash('sha256').update(value).digest('hex');
+/** Preserve upstream JavaScript code-unit order, independent of host locale. */
+function comparePinnedStrings(a, b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
 /** Reproduce the pinned upstream canonical JSON rule. */
 const canonical = (value) =>
     JSON.stringify(value, (_key, current) =>
         current !== null && typeof current === 'object' && !Array.isArray(current)
-            ? Object.fromEntries(Object.entries(current).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+            ? Object.fromEntries(Object.entries(current).sort(([a], [b]) => comparePinnedStrings(a, b)))
             : current,
     );
 
@@ -27,10 +34,10 @@ export function verifyRetainedSuite(proof, suite) {
     const end = versions.indexOf(']\n', start);
     if (start < 0 || end < 0) throw new Error('Pinned adapter inventory declaration is missing.');
     const adapters = Array.from(versions.slice(start, end).matchAll(/"([^"\r\n]+)"/g), (match) => match[1]);
-    const probeFiles = proof.paths.filter((path) => /^packages\/probes\/[^/]+\.probe\.ts$/.test(path)).sort();
+    const probeFiles = proof.paths.filter((path) => /^packages\/probes\/[^/]+\.probe\.ts$/.test(path)).sort(comparePinnedStrings);
     const definitionFiles = proof.paths
         .filter((path) => /^packages\/probe-defs\/src\/[^/]+\.ts$/.test(path) && !/\.(test|spec)\.ts$/.test(path))
-        .sort();
+        .sort(comparePinnedStrings);
     const packagePath = 'packages/terminfo.dev/package.json';
     const paths = [...probeFiles, ...definitionFiles, 'packages/probes/vitest.config.ts', ...adapters, packagePath];
     if (JSON.stringify(paths) !== JSON.stringify(suite.sourcePaths))
@@ -40,7 +47,7 @@ export function verifyRetainedSuite(proof, suite) {
     for (const [id, feature] of Object.entries(features))
         if (!id.startsWith('$'))
             hashes[id] = sha(canonical(Object.fromEntries(Object.entries(feature).filter(([key]) => key !== 'body'))));
-    const ids = Object.keys(hashes).sort();
+    const ids = Object.keys(hashes).sort(comparePinnedStrings);
     if (
         JSON.stringify(ids) !== JSON.stringify(suite.catalogIds) ||
         JSON.stringify(hashes) !== JSON.stringify(suite.catalogEntrySha256)
@@ -82,7 +89,8 @@ export function verifyCommonCoreSource(directory, source, metadataPath, subjects
 
 /** Reproduce the pinned byte-order hash after its inventory and catalogue have been verified. */
 function pinnedSuiteHash(paths, files, packagePath, version, ids, hashes) {
-    const hash = createHash('md5');
+    // Upstream mandates MD5 for this non-security suite label; SHA-256 artifact pins and Git-bound source verification protect evidence integrity.
+    const hash = createHash('md5'); // NOSONAR — exact upstream fingerprint compatibility, never authentication or an integrity authority.
     hash.update('catalogIds');
     hash.update(JSON.stringify(ids));
     hash.update(JSON.stringify(hashes));
