@@ -37,7 +37,7 @@ function links(values, rows, cols) {
 }
 function buffer(value) {
     shape(value, ['rows', 'cols', 'cursorRow', 'cursorCol', 'alternateScreen', 'scrollbackLines',
-        'historyGeneration', 'rowsEvicted', 'acceptingCommandInput', 'links'], ['commandStart', 'outputStart']);
+        'historyGeneration', 'rowsEvicted', 'acceptingCommandInput', 'links'], ['commandStart', 'outputStart', 'requestedIconName']);
     check(integer(value.rows, 3, 128) && integer(value.cols, 48, 256) && value.rows * value.cols <= 8192
         && integer(value.cursorRow, 0, value.rows - 1) && integer(value.cursorCol, 0, value.cols - 1)
         && integer(value.scrollbackLines, 0) && integer(value.historyGeneration, 0) && integer(value.rowsEvicted, 0));

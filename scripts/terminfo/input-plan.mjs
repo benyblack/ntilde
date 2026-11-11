@@ -15,7 +15,7 @@ export const inputPlans = Object.freeze([inputPlanV1, inputPlanV2]);
 export const inputFrameCount = count => 2 * count + 3;
 export const inputAttemptCount = count => 2 * count + 2;
 /** First source policy whose runs execute the v2 plan; earlier policies carry the frozen v1 plan. */
-export const routedInputFirstPolicy = 35;
+export const routedInputFirstPolicy = 36;
 export function inputPlanForPolicy(policy) {
     const version = /^readonly-owned-source-graph-v(\d+)$/.exec(policy ?? '')?.[1];
     return version !== undefined && Number(version) >= routedInputFirstPolicy ? inputPlanV2 : inputPlanV1;

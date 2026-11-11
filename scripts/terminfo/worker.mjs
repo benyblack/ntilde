@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { collectCoreGaps } from './core-gaps.mjs';
 import { adapterId } from './collector.mjs';
 import { assertPrivateFile, processRecord, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { collectCells } from './cells.mjs';
@@ -312,6 +313,9 @@ try {
         const lrMarginsModule = await import(pathToFileURL(config.lrMarginsBundle).href);
         const lrMarginsRun = await collectLrMarginsGrading({ config, fence, owner, gradingModule: lrMarginsModule });
         writeFileSync(join(config.output, 'lrmm-run.json'), JSON.stringify(lrMarginsRun) + '\n', { flag: 'wx', mode: 0o600 });
+        if (createHash('sha256').update(readFileSync(config.coreGapsBundle)).digest('hex') !== config.coreGapsBundleSha256) throw new Error('Core-gap bundle changed.');
+        const coreRun = await collectCoreGaps({ config, fence, owner, gradingModule: await import(pathToFileURL(config.coreGapsBundle).href) });
+        writeFileSync(join(config.output, 'cg-run.json'), JSON.stringify(coreRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         if (inputResult?.status !== 'complete') throw new Error('Routed-input qualification requires the completed owned input suite.');

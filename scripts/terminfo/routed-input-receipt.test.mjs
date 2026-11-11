@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { privateClipboardReceiptFixture } from './fixtures/private-clipboard-receipt.mjs';
+import { privateClipboardReceiptFixture as baseFixture } from './fixtures/private-clipboard-receipt.mjs';
+const privateClipboardReceiptFixture = action => baseFixture(action, { routed: true });
 import { includesRoutedInputEvidence, checkRoutedInputEvidence } from './routed-input-receipt.mjs';
 import { routedInputAdapterId } from './routed-input-grading-collector.mjs';
 import { routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -21,7 +22,7 @@ const predecessors = ['sgrColors', 'sgrRgb', 'sgrAttrs', 'sgrPalette', 'sgrTruec
 
 test('a complete run carries the routed-input suffix: counts, adapter identity, owned input suite and the layered derivation rederive without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 41);
+    assert.equal(f.finish().schemaVersion, 42);
     assert.deepEqual(f.evidence.routedInputEvidence.counts, { 'inconclusive/supported': 3 });
     assert.equal(f.context.routedInputAdapterId, routedInputAdapterId);
     assert.equal(f.context.routedInputSuiteId, routedInputGradedSuiteId);
@@ -31,9 +32,9 @@ test('a complete run carries the routed-input suffix: counts, adapter identity, 
 }));
 
 test('the suffix is required whenever the policy, a declaration or an artifact names it', () => privateClipboardReceiptFixture(f => {
-    const empty = join(f.output, 'no-such-directory'), earlier = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v34' };
+    const empty = join(f.output, 'no-such-directory'), earlier = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v35' };
     assert.equal(includesRoutedInputEvidence(f.output, f.evidence, f.context), true);
-    assert.equal(includesRoutedInputEvidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v35' }), true, 'the current policy always carries the suffix');
+    assert.equal(includesRoutedInputEvidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v36' }), true, 'the current policy always carries the suffix');
     assert.equal(includesRoutedInputEvidence(empty, {}, earlier), false, 'an earlier policy without any artifact or declaration does not');
     assert.equal(includesRoutedInputEvidence(empty, {}, { ...earlier, routedInputSuiteId: 'x' }), true);
     assert.equal(includesRoutedInputEvidence(empty, { routedInputEvidence: {} }, earlier), true);

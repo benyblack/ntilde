@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { inputPlanForPolicy, inputPlanV1 } from './input-plan.mjs';
 import { buildInputReport, checkInput, sameInputFact } from './input-state.mjs';
 import { capturedV9SourceFiles } from './owned-sources.mjs';
-/** Every policy from v2 on carries the routed-input suite (v2..v34 the frozen v1 plan, later ones the benchmark plan). */
+/** Every policy from v2 on carries the routed-input suite (v2..v35 the frozen v1 plan, later ones the benchmark plan). */
 export const inputPolicyAdmitted = policy => Number(/^readonly-owned-source-graph-v(\d+)$/.exec(policy ?? '')?.[1] ?? 0) >= 2;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export const inputSources = Object.freeze(Object.fromEntries(Object.entries(capturedV9SourceFiles).filter(([key]) => key.startsWith('input'))));

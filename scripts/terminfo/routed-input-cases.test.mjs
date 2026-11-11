@@ -83,9 +83,9 @@ test('geometry below the pointer cell is refused, never replaced by a smaller te
 });
 
 test('plan selection keeps the frozen v1 foundation for earlier source policies', () => {
-    assert.equal(inputPlanForPolicy('readonly-owned-source-graph-v34'), inputPlanV1);
+    assert.equal(inputPlanForPolicy('readonly-owned-source-graph-v35'), inputPlanV1);
     assert.equal(inputPlanForPolicy('readonly-owned-source-graph-v2'), inputPlanV1);
-    assert.equal(inputPlanForPolicy('readonly-owned-source-graph-v35'), inputPlanV2);
+    assert.equal(inputPlanForPolicy('readonly-owned-source-graph-v36'), inputPlanV2);
     assert.equal(makeInputCases(40, 140).length, 39);
     assert.ok(makeRoutedInputCases(40, 140).slice(0, 4).every(item => item.setup.startsWith(inputReset)));
 });

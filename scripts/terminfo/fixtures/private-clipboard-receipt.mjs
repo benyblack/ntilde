@@ -7,25 +7,36 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV42SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV41SourceFiles, capturedV43SourceFiles, ownedSourcePath, sourceSnapshotPolicy as currentPolicy } from '../owned-sources.mjs';
+import { inputPlanForPolicy } from '../input-plan.mjs';
+import { inputCounts } from '../input-receipt.mjs';
+import { boundInputScreen, buildInputReport } from '../input-state.mjs';
+import { syntheticInputJournal } from './input-journal.mjs';
 import { buildQueryReport, queryPlan } from '../queries.mjs';
-import { adaptCollector } from '../collector.mjs';
+import { rederivePrivateAdapter } from '../private-clipboard-receipt.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
 import { privateClipboardOutputPolicy } from '../terminal-output.mjs';
 import { emptyPrivateClipboardReply, privateClipboardEvidenceJson } from '../private-clipboard.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
-import { inputPlanForPolicy } from '../input-plan.mjs';
-import { inputCounts } from '../input-receipt.mjs';
-import { boundInputScreen, buildInputReport } from '../input-state.mjs';
-import { syntheticInputJournal } from './input-journal.mjs';
+// By default this fixture is the v34 / receipt-40 prefix. Core gaps have separate retained-evidence tests. The `routed` variant is the
+// current policy: the benchmark input plan replaces the archived 39-event one and the layered routed-input suffix is added.
+const legacyPolicy = 'readonly-owned-source-graph-v34';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** The JSON writer of one fixture directory. */
 const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
 
+/** Synthetic old-scope source projection. Normalize checkout line endings before
+ * dropping only the new suffix's imports; the historical production maps stay fixed. */
+export function legacyPrefixSource(bytes) {
+    return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?core-gaps(?:-receipt)?\.mjs';\n/gm, ''));
+}
+
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
-async function buildFixture(output) {
+async function buildFixture(output, routed) {
     const write = writerFor(output);
+    const sourceSnapshotPolicy = routed ? currentPolicy : legacyPolicy, scope = routed ? capturedV43SourceFiles : capturedV41SourceFiles;
     {
         const archive = historicalArchive('2026-11-05-query-observations');
         for (const [file, bytes] of archive) { const path = join(output, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
@@ -45,11 +56,12 @@ async function buildFixture(output) {
         Object.assign(witness, { hex: witnessReply.toString('hex'), byteLength: witnessReply.length });
         writeFileSync(join(output, 'query-snapshots.jsonl'), queryFrames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
         const priorOf = file => JSON.parse(archive.get(file)).snapshots.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
-        // The archive froze the v1 input plan. A run on a policy whose plan is newer executes that plan, so the input suite is rebuilt from the
-        // archived real screens and process facts with the plan's own events (synthetic child bytes, never collected ones).
-        const inputPlan = inputPlanForPolicy(sourceSnapshotPolicy);
+        // The archive froze the v1 input plan. The routed variant executes the current plan, so the input suite is rebuilt from the archived
+        // real screens and process facts with the plan's own events (synthetic child bytes, never collected ones), and the image suite's
+        // report over the new challenges.
         let inputPrior = null;
-        if (inputPlan.id !== 'v1') {
+        if (routed) {
+            const inputPlan = inputPlanForPolicy(sourceSnapshotPolicy);
             const frames0 = journalOf('input-snapshots.jsonl'), actions0 = journalOf('input-actions.jsonl'), template = actions0[0].observed;
             const synthetic = syntheticInputJournal(context.runId, { paneId: frames0[0].paneId, initial: frames0[0].screen, plan: inputPlan });
             for (const action of synthetic.actions) {
@@ -65,7 +77,6 @@ async function buildFixture(output) {
             evidence.inputEvidence = { runId: context.runId, suiteId: inputPlan.suiteId, file: 'input-observations.json',
                 sha256: hash(readFileSync(join(output, 'input-observations.json'))), counts: inputCounts(inputReport), provisionalUntil: 'cell-receipt.json' };
             inputPrior = inputReport.snapshots.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
-            // The image suite recorded the v1 input challenges as its prior; rebuild its report over the new ones (same frames, actions and seal).
             const { buildStaticImageReport } = await import('../static-images.mjs');
             const imageReport = buildStaticImageReport(journalOf('image-snapshots.jsonl'), journalOf('image-actions.jsonl'), process.staticImages.seal, context.runId, output, inputPrior);
             write('image-observations.json', imageReport);
@@ -75,12 +86,14 @@ async function buildFixture(output) {
             initial: JSON.parse(archive.get('query-initial.json')), actions: journalOf('query-actions.jsonl'), frames: queryFrames, seal: process.queries.seal, checksumReport: true });
         write('query-observations.json', queryReport);
         evidence.queryEvidence = { ...evidence.queryEvidence, sha256: hash(readFileSync(join(output, 'query-observations.json'))) };
-        for (const [key, file] of Object.entries(capturedV42SourceFiles)) {
-            const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+        for (const [key, file] of Object.entries(scope)) {
+            let data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+            if (!routed && file.endsWith('.mjs')) data = legacyPrefixSource(data);
+            if (!routed && file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(capturedV41SourceFiles, null, 2) + '\n');
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV42SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(scope).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -106,8 +119,7 @@ async function buildFixture(output) {
         settings.AllowOsc52ClipboardWrite = true; write('initial-settings.json', settings);
         context.initialSettingsSha256 = hash(readFileSync(join(output, 'initial-settings.json')));
         writeFileSync(join(output, 'collector-original.mjs'), originalCollector);
-        const adapted = adaptCollector(originalCollector, join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'ownership.mjs'),
-            { privateClipboardModulePath: join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'private-clipboard-worker.mjs') });
+        const adapted = rederivePrivateAdapter(originalCollector, context.sourceSnapshotRoot);
         writeFileSync(join(output, 'collector-adapter.mjs'), adapted); context.adapterBundleSha256 = hash(adapted);
         // Policy v6 always carries the grading suffix; add the synthetic
         // grading evidence beside the private-clipboard one.
@@ -679,32 +691,33 @@ async function buildFixture(output) {
                 runFile: 'lrmm-run.json', runSha256: hash(readFileSync(join(output, 'lrmm-run.json'))),
                 adapterBundleSha256: hash(lrMarginsBytes), contractsVersion: lrMarginsContractsVersion,
                 counts: lrMarginsCounts(lrMarginsReport), provisionalUntil: 'cell-receipt.json' };
-            // Policy v35 always carries the layered routed-input suffix over the owned input suite as well.
-            const { syntheticRoutedInputEvidence, fakeGradingModule } = await import('./routed-input-evidence.mjs');
-            const { buildRoutedInputGradingReport, routedInputCounts } = await import('../routed-input-grading.mjs');
-            const { adaptRoutedInputCollector, routedInputAdapterId } = await import('../routed-input-grading-collector.mjs');
-            const { routedInputGradedSuiteId, routedInputContractsVersion } = await import('../routed-input-contracts.mjs');
-            const { collectRoutedInputPinned } = await import('../routed-input-collector.mjs');
-            const routedInputBytes = Buffer.from(adaptRoutedInputCollector(lrMarginsBytes.toString()));
-            const inputFrames = readFileSync(join(output, 'input-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
-            const inputActions = readFileSync(join(output, 'input-actions.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
-            const controls = {};
-            for (const frame of inputFrames) if (frame.kind === 'input-control') controls[frame.caseId] = frame.capture.hex;
-            const routedInputRun = collectRoutedInputPinned({ geometry: { rows: inputFrames[0].screen.rows, cols: inputFrames[0].screen.cols }, controls,
-                restored: inputFrames.at(-1).capture.hex, gradingModule: fakeGradingModule });
-            const routedInputAdapter = { id: routedInputAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
-                bundleSha256: hash(routedInputBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
-            const routedInputReport = buildRoutedInputGradingReport({ frames: inputFrames, actions: inputActions, seal: process.input.seal }, routedInputRun, context.runId,
-                routedInputAdapter, { inputReportSha256: evidence.inputEvidence.sha256 });
-            write('rin-observations.json', routedInputReport);
-            write('rin-run.json', routedInputRun);
-            writeFileSync(join(output, 'collector-rin.mjs'), routedInputBytes);
-            Object.assign(context, { routedInputAdapterId: routedInputAdapterId, routedInputSuiteId: routedInputGradedSuiteId, routedInputBundleSha256: hash(routedInputBytes), routedInputContractsVersion });
-            evidence.routedInputEvidence = { runId: context.runId, suiteId: routedInputGradedSuiteId,
-                file: 'rin-observations.json', sha256: hash(readFileSync(join(output, 'rin-observations.json'))),
-                runFile: 'rin-run.json', runSha256: hash(readFileSync(join(output, 'rin-run.json'))),
-                adapterBundleSha256: hash(routedInputBytes), contractsVersion: routedInputContractsVersion,
-                counts: routedInputCounts(routedInputReport), provisionalUntil: 'cell-receipt.json' };
+            // The current policy always carries the layered routed-input suffix over the owned input suite as well.
+            if (routed) {
+                const { fakeGradingModule } = await import('./routed-input-evidence.mjs');
+                const { buildRoutedInputGradingReport, routedInputCounts } = await import('../routed-input-grading.mjs');
+                const { adaptRoutedInputCollector, routedInputAdapterId } = await import('../routed-input-grading-collector.mjs');
+                const { routedInputGradedSuiteId, routedInputContractsVersion } = await import('../routed-input-contracts.mjs');
+                const { collectRoutedInputPinned } = await import('../routed-input-collector.mjs');
+                const routedInputBytes = Buffer.from(adaptRoutedInputCollector(lrMarginsBytes.toString()));
+                const lines = file => readFileSync(join(output, file), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+                const inputFrames = lines('input-snapshots.jsonl'), inputActions = lines('input-actions.jsonl'), controls = {};
+                for (const frame of inputFrames) if (frame.kind === 'input-control') controls[frame.caseId] = frame.capture.hex;
+                const routedInputRun = collectRoutedInputPinned({ geometry: { rows: inputFrames[0].screen.rows, cols: inputFrames[0].screen.cols }, controls,
+                    restored: inputFrames.at(-1).capture.hex, gradingModule: fakeGradingModule });
+                const routedInputAdapter = { id: routedInputAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+                    bundleSha256: hash(routedInputBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+                const routedInputReport = buildRoutedInputGradingReport({ frames: inputFrames, actions: inputActions, seal: process.input.seal }, routedInputRun, context.runId,
+                    routedInputAdapter, { inputReportSha256: evidence.inputEvidence.sha256 });
+                write('rin-observations.json', routedInputReport);
+                write('rin-run.json', routedInputRun);
+                writeFileSync(join(output, 'collector-rin.mjs'), routedInputBytes);
+                Object.assign(context, { routedInputAdapterId, routedInputSuiteId: routedInputGradedSuiteId, routedInputBundleSha256: hash(routedInputBytes), routedInputContractsVersion });
+                evidence.routedInputEvidence = { runId: context.runId, suiteId: routedInputGradedSuiteId,
+                    file: 'rin-observations.json', sha256: hash(readFileSync(join(output, 'rin-observations.json'))),
+                    runFile: 'rin-run.json', runSha256: hash(readFileSync(join(output, 'rin-run.json'))),
+                    adapterBundleSha256: hash(routedInputBytes), contractsVersion: routedInputContractsVersion,
+                    counts: routedInputCounts(routedInputReport), provisionalUntil: 'cell-receipt.json' };
+            }
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;
@@ -732,13 +745,13 @@ async function buildFixture(output) {
 
 /** The fixture is deterministic and expensive (every synthetic suite is built and graded), so one process builds it once into a template
  * directory and every test receives its own copy of the files and a deep clone of the state; the template is removed when the process exits. */
-let template;
-function fixtureTemplate() {
-    template ??= (async () => {
+const templates = new Map();
+function fixtureTemplate(routed) {
+    if (!templates.has(routed)) templates.set(routed, (async () => {
         const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-template-'));
         process.once('exit', () => rmSync(output, { recursive: true, force: true }));
         try {
-            const state = await buildFixture(output);
+            const state = await buildFixture(output, routed);
             if (JSON.stringify(state).includes(output)) throw new Error('The fixture state names its template directory; it cannot be copied.');
             return { output, state };
         } catch (error) {
@@ -746,13 +759,13 @@ function fixtureTemplate() {
             rmSync(output, { recursive: true, force: true });
             throw error;
         }
-    })();
-    return template;
+    })());
+    return templates.get(routed);
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action) {
-    const { output: source, state } = await fixtureTemplate();
+export async function privateClipboardReceiptFixture(action, { routed = false } = {}) {
+    const { output: source, state } = await fixtureTemplate(routed);
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
         cpSync(source, output, { recursive: true, verbatimSymlinks: true });

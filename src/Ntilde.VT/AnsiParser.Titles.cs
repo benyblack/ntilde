@@ -61,6 +61,9 @@ namespace Ntilde.VT
         private string? _windowTitle = string.Empty;
         private string? _iconName = string.Empty;
 
+        /// <summary>Retained OSC 1 semantic state; null means over the retention limit. Read under the buffer lock.</summary>
+        public string? RequestedIconName => _iconName;
+
         // Oldest first. Entries are immutable, so exporting copies only the list.
         private readonly List<SavedTitleEntry> _savedTitles = new();
 

@@ -52,3 +52,7 @@ docs/qa/terminfo/2026-11-05-query-observations.json text eol=lf
 # The generated xterm-ntilde terminfo source is pinned byte for byte to the capability table and
 # read by tic on POSIX hosts.
 packaging/terminfo/*.terminfo text eol=lf
+
+# New Core criteria and pinned callback bytes are digest-checked on all platforms.
+scripts/terminfo/core-gaps-pinned.json text eol=lf
+docs/qa/terminfo/2026-11-11-core-results/*.json text eol=lf

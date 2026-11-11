@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v35';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v36';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -93,6 +93,12 @@ export const capturedV11SourceFiles = Object.freeze({
     sourceImportsSourceSha256: 'source-imports.mjs',
 });
 // Selected observational App/VT reference inputs, not a complete App closure or binary-source attestation.
+export const coreGapsReferencePaths = Object.freeze({
+    "core-icon-vt.cs": "src/Ntilde.VT/AnsiParser.Titles.cs",
+    "core-icon-capture.cs": "src/Ntilde.App/AgentHost/AgentPaneMetadataCapture.cs",
+    "core-icon-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneMetadataContracts.cs",
+    "core-icon-window.cs": "src/Ntilde.App/MainWindow.AgentMetadata.cs",
+});
 export const privateClipboardReferencePaths = Object.freeze({
     "clipboard-app-program.cs": "src/Ntilde.App/Program.cs",
     "clipboard-app.cs": "src/Ntilde.App/App.axaml.cs",
@@ -214,6 +220,7 @@ export const capturedV18SourceFiles = Object.freeze({
 });
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
 export function ownedSourcePath(root, file) {
+    if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
     if (Object.hasOwn(sgrRgbReferencePaths, file)) return join(root, sgrRgbReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file;
@@ -475,9 +482,21 @@ export const capturedV41SourceFiles = Object.freeze({
     lrMarginsReceiptSourceSha256: "lr-margins-receipt.mjs",
 });
 
-// Frozen v42 routed-input (input.x10-mouse, input.button-event-mouse, modes.application-keypad) grading scope; future experiments must create a distinct policy and map.
+// Frozen Core-gap scope, source policy v35.
 export const capturedV42SourceFiles = Object.freeze({
     ...capturedV41SourceFiles,
+    coreGapsSourceSha256: "core-gaps.mjs",
+    coreGapsReceiptSourceSha256: "core-gaps-receipt.mjs",
+    coreGapsPinnedSha256: "core-gaps-pinned.json",
+    coreIconVtSourceSha256: "core-icon-vt.cs",
+    coreIconCaptureSourceSha256: "core-icon-capture.cs",
+    coreIconContractSourceSha256: "core-icon-contract.cs",
+    coreIconWindowSourceSha256: "core-icon-window.cs",
+});
+
+// Frozen v43 routed-input (input.x10-mouse, input.button-event-mouse, modes.application-keypad) grading scope; future experiments must create a distinct policy and map.
+export const capturedV43SourceFiles = Object.freeze({
+    ...capturedV42SourceFiles,
     inputPlanSourceSha256: "input-plan.mjs",
     routedInputCasesSourceSha256: "routed-input-cases.mjs",
     routedInputContractsSourceSha256: "routed-input-contracts.mjs",
@@ -487,11 +506,11 @@ export const capturedV42SourceFiles = Object.freeze({
     routedInputReceiptSourceSha256: "routed-input-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v42 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v43 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV42SourceFiles)) throw new Error('Invalid current v42 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV43SourceFiles)) throw new Error('Invalid current v43 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);
