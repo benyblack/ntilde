@@ -16,7 +16,7 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
 /** The publication this one builds on: its report bytes are pinned, its rows are re-derived from the same run and compared. */
 export const erasePublicationReport = 'docs/qa/terminfo/2026-11-11-core-erase-results/report.json';
-export const erasePublicationReportSha256 = '0000000000000000000000000000000000000000000000000000000000000000';
+export const erasePublicationReportSha256 = '3f45ff2f12a2117917a9e32597000a9104cc0854d43a921b195335ff364e801e';
 export const defaultPrevious = Object.freeze({ derive: deriveEraseCoreReport, report: erasePublicationReport, sha256: erasePublicationReportSha256 });
 
 const explanation = {

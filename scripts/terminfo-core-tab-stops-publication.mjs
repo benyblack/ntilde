@@ -9,7 +9,7 @@ import { deriveTabStopsCoreReport, readableTabStopsReport } from './terminfo-cor
 
 export const publication = 'docs/qa/terminfo/2026-11-11-core-tab-stops-results';
 // Pinned after the owned run is retained; replacement evidence needs review.
-export const manifestSha256 = '3dfc2a79bd4d90dc55a7fc5e8203c42236ff9c0bcf701ddc626ce1fa40802218';
+export const manifestSha256 = '4414640ccc3ff8391fbdb86132226f8cfe596b3a2d10ffa3bf78e21b4a63d3d1';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Core tab-stops publication: ' + message); };
 export function loadMeasurement(base = root) {
