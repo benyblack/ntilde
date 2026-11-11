@@ -12,8 +12,9 @@
     "packages/terminfo.dev/src/serve.ts"
   ],
   "probeDefinitionsUnchanged": true,
-  "sourceArchiveSha256": "eec9b2650a34d1b5a82f41f5d86039b4da4ffa1178c9b546cce218ea59faba22",
-  "adapterPatchSha256": "a88c1c12341f848cf15136ddbc9d3b8394b6c3405572b654e33cbe19147ea968",
-  "adapterBundleSha256": "3dc36d7571776339e1cf29b48a34b6878202550c7473a46f8571444b4280e8b7",
-  "identityGuardSha256": "8232508beb40a0b2dfd16596d5bc050b8e6f043fe0470a0085590b28b41c7964"
+  "sourceArchiveSha256": "d46a93d84e3a43c0bcf1d4b8fc7363b3285fd83a8a4c9d71d7396df4f2f83d9c",
+  "adapterPatchSha256": "49ae026c36cee64f3c615f383c20d4bb9d7550aabafa7bc4acecf7b1e4056423",
+  "adapterBundleSha256": "b02b23fc4feb9bd4b2bd374077487c4ecc8a3ef1ee3c388a9ed5a790d58e9c63",
+  "identityGuardSha256": "8232508beb40a0b2dfd16596d5bc050b8e6f043fe0470a0085590b28b41c7964",
+  "sourceObjectProofSha256": "757708112d0854d836fa695f4aa7a61c083040123f6569277bd45da4d84d5cfc"
 }

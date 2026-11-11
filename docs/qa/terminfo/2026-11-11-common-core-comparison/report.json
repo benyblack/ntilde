@@ -7,6 +7,7 @@
     "probeHash": "e122f23e91e1",
     "sourceRevision": "ff37d198914b870281a2c0461cc682b37fce07ef",
     "workerSha256": "7159efdd5bc56e0d804532c3f013ef7bc81afaf8cdf9469df18b63219efe8b11",
+    "workerBundleSha256": null,
     "os": "27.0.1",
     "geometry": {
       "rows": 41,
@@ -37,11 +38,44 @@
         "supported": 63,
         "unsupported": 0,
         "untestable": 1,
-        "probe-todo": 9,
+        "probe-todo": 8,
         "probe-invalid": 7,
-        "not-scheduled": 0
+        "not-scheduled": 1
       },
-      "supportedShare": 78.75
+      "supportedShare": 78.75,
+      "focusedRetest": {
+        "subjectId": "ntilde",
+        "runId": "0d6902eb35805785d3b67ed55c05d499",
+        "measuredAt": "2026-11-11T17:04:43.472Z",
+        "baselineRunId": "af1f5c275a0b3aab10fdd216ca668d10",
+        "baselineRawSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b",
+        "rawSha256": "1aca79c5c2117f518b9fd7b8f68399892fc7c2b85d49f5bbdbdae33a1718f714",
+        "launchDriverSha256": "cd03422ff7f4e4c112b13d55a212d01d0cdc935b17a1623fcdd9727e2de0dfd5",
+        "caseIds": [
+          "sgr.selective-reset.italic",
+          "sgr.selective-reset.underline",
+          "sgr.strikethrough",
+          "sgr.underline.single",
+          "text.overwrite",
+          "text.reverse-index-scroll"
+        ],
+        "counts": {
+          "supported": 6,
+          "unsupported": 0,
+          "untestable": 0,
+          "probe-todo": 0,
+          "probe-invalid": 0,
+          "not-scheduled": 0
+        },
+        "currentCounts": {
+          "supported": 69,
+          "unsupported": 0,
+          "untestable": 1,
+          "probe-todo": 8,
+          "probe-invalid": 1,
+          "not-scheduled": 1
+        }
+      }
     },
     {
       "id": "iterm2",
@@ -65,9 +99,9 @@
         "supported": 28,
         "unsupported": 0,
         "untestable": 1,
-        "probe-todo": 51,
+        "probe-todo": 50,
         "probe-invalid": 0,
-        "not-scheduled": 0
+        "not-scheduled": 1
       },
       "supportedShare": 35
     },
@@ -92,9 +126,9 @@
         "supported": 69,
         "unsupported": 0,
         "untestable": 1,
-        "probe-todo": 10,
+        "probe-todo": 9,
         "probe-invalid": 0,
-        "not-scheduled": 0
+        "not-scheduled": 1
       },
       "supportedShare": 86.25
     }
@@ -107,6 +141,7 @@
       "url": "https://terminfo.dev/sgr/1-bold",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 7,
           "status": "supported",
           "scheduled": true,
@@ -127,9 +162,11 @@
               ],
               "rawReplyRef": "sgr.bold"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 7,
           "status": "probe-todo",
           "scheduled": true,
@@ -159,9 +196,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 7,
           "status": "supported",
           "scheduled": true,
@@ -182,7 +221,8 @@
               ],
               "rawReplyRef": "sgr.bold"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -193,6 +233,7 @@
       "url": "https://terminfo.dev/sgr/2-faint-dim",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 57,
           "status": "supported",
           "scheduled": true,
@@ -213,9 +254,11 @@
               ],
               "rawReplyRef": "sgr.faint"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 53,
           "status": "probe-todo",
           "scheduled": true,
@@ -245,9 +288,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 57,
           "status": "supported",
           "scheduled": true,
@@ -268,7 +313,8 @@
               ],
               "rawReplyRef": "sgr.faint"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -279,6 +325,7 @@
       "url": "https://terminfo.dev/sgr/3-italic",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 107,
           "status": "supported",
           "scheduled": true,
@@ -299,9 +346,11 @@
               ],
               "rawReplyRef": "sgr.italic"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 99,
           "status": "probe-todo",
           "scheduled": true,
@@ -331,9 +380,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 107,
           "status": "supported",
           "scheduled": true,
@@ -354,7 +405,8 @@
               ],
               "rawReplyRef": "sgr.italic"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -365,6 +417,7 @@
       "url": "https://terminfo.dev/sgr/4-underline",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-invalid",
           "evidenceLine": 157,
           "status": "probe-invalid",
           "scheduled": true,
@@ -384,9 +437,38 @@
               "rawReplyRef": "sgr.underline.single",
               "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
             }
-          ]
+          ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 7,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:03:55.362Z"
+                },
+                "assertionRefs": [
+                  3
+                ],
+                "rawReplyRef": "sgr.underline.single"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 145,
           "status": "probe-todo",
           "scheduled": true,
@@ -416,9 +498,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 157,
           "status": "supported",
           "scheduled": true,
@@ -439,7 +523,8 @@
               ],
               "rawReplyRef": "sgr.underline.single"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -450,6 +535,7 @@
       "url": "https://terminfo.dev/sgr/7-inverse-video",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 184,
           "status": "supported",
           "scheduled": true,
@@ -470,9 +556,11 @@
               ],
               "rawReplyRef": "sgr.inverse"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 191,
           "status": "probe-todo",
           "scheduled": true,
@@ -502,9 +590,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 207,
           "status": "supported",
           "scheduled": true,
@@ -525,7 +615,8 @@
               ],
               "rawReplyRef": "sgr.inverse"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -536,6 +627,7 @@
       "url": "https://terminfo.dev/sgr/8-hidden",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 233,
           "status": "probe-todo",
           "scheduled": true,
@@ -554,9 +646,11 @@
               "rawReplyRef": "sgr.hidden",
               "reason": "Probe exceeded 30000ms"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 237,
           "status": "probe-todo",
           "scheduled": true,
@@ -586,9 +680,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 256,
           "status": "probe-todo",
           "scheduled": true,
@@ -607,7 +703,8 @@
               "rawReplyRef": "sgr.hidden",
               "reason": "Probe exceeded 30000ms"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -618,6 +715,7 @@
       "url": "https://terminfo.dev/sgr/9-strikethrough",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-invalid",
           "evidenceLine": 259,
           "status": "probe-invalid",
           "scheduled": true,
@@ -637,9 +735,38 @@
               "rawReplyRef": "sgr.strikethrough",
               "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
             }
-          ]
+          ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 57,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.strikethrough: target differs from plain, made-up does not; sgr.strikethrough: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;9\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:03:26.434Z"
+                },
+                "assertionRefs": [
+                  2
+                ],
+                "rawReplyRef": "sgr.strikethrough"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 283,
           "status": "probe-todo",
           "scheduled": true,
@@ -669,9 +796,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 282,
           "status": "probe-todo",
           "scheduled": true,
@@ -690,7 +819,8 @@
               "rawReplyRef": "sgr.strikethrough",
               "reason": "Probe exceeded 30000ms"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -701,6 +831,7 @@
       "url": "https://terminfo.dev/sgr/30-37-standard-fg",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 286,
           "status": "supported",
           "scheduled": true,
@@ -722,9 +853,11 @@
               "rawReplyRef": "sgr.fg.standard",
               "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 329,
           "status": "probe-todo",
           "scheduled": true,
@@ -754,9 +887,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 308,
           "status": "supported",
           "scheduled": true,
@@ -778,7 +913,8 @@
               "rawReplyRef": "sgr.fg.standard",
               "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -789,6 +925,7 @@
       "url": "https://terminfo.dev/sgr/40-47-standard-bg",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 333,
           "status": "supported",
           "scheduled": true,
@@ -810,9 +947,11 @@
               "rawReplyRef": "sgr.bg.standard",
               "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 375,
           "status": "probe-todo",
           "scheduled": true,
@@ -842,9 +981,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 355,
           "status": "supported",
           "scheduled": true,
@@ -866,7 +1007,8 @@
               "rawReplyRef": "sgr.bg.standard",
               "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -877,6 +1019,7 @@
       "url": "https://terminfo.dev/sgr/39-default-fg",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 380,
           "status": "supported",
           "scheduled": true,
@@ -898,9 +1041,11 @@
               "rawReplyRef": "sgr.fg.default",
               "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 421,
           "status": "probe-todo",
           "scheduled": true,
@@ -930,9 +1075,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 402,
           "status": "supported",
           "scheduled": true,
@@ -954,7 +1101,8 @@
               "rawReplyRef": "sgr.fg.default",
               "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -965,6 +1113,7 @@
       "url": "https://terminfo.dev/sgr/49-default-bg",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 426,
           "status": "supported",
           "scheduled": true,
@@ -986,9 +1135,11 @@
               "rawReplyRef": "sgr.bg.default",
               "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 467,
           "status": "probe-todo",
           "scheduled": true,
@@ -1018,9 +1169,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 448,
           "status": "supported",
           "scheduled": true,
@@ -1042,7 +1195,8 @@
               "rawReplyRef": "sgr.bg.default",
               "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1053,6 +1207,7 @@
       "url": "https://terminfo.dev/sgr/22-reset-bold",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 474,
           "status": "probe-todo",
           "scheduled": true,
@@ -1083,9 +1238,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 513,
           "status": "probe-todo",
           "scheduled": true,
@@ -1115,9 +1272,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 494,
           "status": "probe-todo",
           "scheduled": true,
@@ -1148,7 +1307,8 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1159,6 +1319,7 @@
       "url": "https://terminfo.dev/sgr/24-reset-underline",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-invalid",
           "evidenceLine": 521,
           "status": "probe-invalid",
           "scheduled": true,
@@ -1178,9 +1339,39 @@
               "rawReplyRef": "sgr.selective-reset.underline",
               "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
             }
-          ]
+          ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 110,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:03:11.174Z"
+                },
+                "assertionRefs": [
+                  1
+                ],
+                "rawReplyRef": "sgr.selective-reset.underline",
+                "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 559,
           "status": "probe-todo",
           "scheduled": true,
@@ -1210,9 +1401,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 541,
           "status": "supported",
           "scheduled": true,
@@ -1234,7 +1427,8 @@
               "rawReplyRef": "sgr.selective-reset.underline",
               "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1245,6 +1439,7 @@
       "url": "https://terminfo.dev/sgr/27-reset-inverse",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 548,
           "status": "supported",
           "scheduled": true,
@@ -1266,9 +1461,11 @@
               "rawReplyRef": "sgr.selective-reset.inverse",
               "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 605,
           "status": "probe-todo",
           "scheduled": true,
@@ -1298,9 +1495,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 589,
           "status": "supported",
           "scheduled": true,
@@ -1322,7 +1521,8 @@
               "rawReplyRef": "sgr.selective-reset.inverse",
               "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1333,6 +1533,7 @@
       "url": "https://terminfo.dev/sgr/23-reset-italic",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-invalid",
           "evidenceLine": 596,
           "status": "probe-invalid",
           "scheduled": true,
@@ -1352,9 +1553,39 @@
               "rawReplyRef": "sgr.selective-reset.italic",
               "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
             }
-          ]
+          ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 158,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:02:55.813Z"
+                },
+                "assertionRefs": [
+                  0
+                ],
+                "rawReplyRef": "sgr.selective-reset.italic",
+                "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 651,
           "status": "probe-todo",
           "scheduled": true,
@@ -1384,9 +1615,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 637,
           "status": "supported",
           "scheduled": true,
@@ -1408,7 +1641,8 @@
               "rawReplyRef": "sgr.selective-reset.italic",
               "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1419,6 +1653,7 @@
       "url": "https://terminfo.dev/sgr/0-reset",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 623,
           "status": "probe-todo",
           "scheduled": true,
@@ -1437,9 +1672,11 @@
               "rawReplyRef": "sgr.reset",
               "reason": "Probe exceeded 120000ms"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 697,
           "status": "probe-todo",
           "scheduled": true,
@@ -1469,9 +1706,11 @@
               "assertionRefs": [],
               "reason": "graded from a status reply only; this row is decided by what is painted"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 688,
           "status": "probe-todo",
           "scheduled": true,
@@ -1490,7 +1729,8 @@
               "rawReplyRef": "sgr.reset",
               "reason": "Probe exceeded 120000ms"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1501,6 +1741,7 @@
       "url": "https://terminfo.dev/cursor/dectcem-hide-cursor",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-invalid",
           "evidenceLine": 649,
           "status": "probe-invalid",
           "scheduled": true,
@@ -1522,9 +1763,11 @@
               "rawReplyRef": "cursor.hide",
               "reason": "Three equal digests cannot separate an absent, off-phase or unpainted cursor in the control from an ineffective hide; no visible-cursor control was established, so this is not a negative"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 743,
           "status": "probe-todo",
           "scheduled": true,
@@ -1543,9 +1786,11 @@
               "rawReplyRef": "cursor.hide",
               "reason": "Cursor pixel fixture needs capture and measured 3x6 geometry; measured 41x140"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 714,
           "status": "supported",
           "scheduled": true,
@@ -1567,7 +1812,8 @@
               "rawReplyRef": "cursor.hide",
               "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1578,6 +1824,7 @@
       "url": "https://terminfo.dev/cursor/cup-cursor-position",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 689,
           "status": "supported",
           "scheduled": true,
@@ -1598,9 +1845,11 @@
               ],
               "rawReplyRef": "cursor.move.absolute"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 769,
           "status": "supported",
           "scheduled": true,
@@ -1621,9 +1870,11 @@
               ],
               "rawReplyRef": "cursor.move.absolute"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 755,
           "status": "supported",
           "scheduled": true,
@@ -1644,7 +1895,8 @@
               ],
               "rawReplyRef": "cursor.move.absolute"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1655,6 +1907,7 @@
       "url": "https://terminfo.dev/cursor/cuu-cursor-up",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 726,
           "status": "supported",
           "scheduled": true,
@@ -1675,9 +1928,11 @@
               ],
               "rawReplyRef": "cursor.move.up"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 806,
           "status": "supported",
           "scheduled": true,
@@ -1698,9 +1953,11 @@
               ],
               "rawReplyRef": "cursor.move.up"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 792,
           "status": "supported",
           "scheduled": true,
@@ -1721,7 +1978,8 @@
               ],
               "rawReplyRef": "cursor.move.up"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1732,6 +1990,7 @@
       "url": "https://terminfo.dev/cursor/cud-cursor-down",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 763,
           "status": "supported",
           "scheduled": true,
@@ -1752,9 +2011,11 @@
               ],
               "rawReplyRef": "cursor.move.down"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 843,
           "status": "supported",
           "scheduled": true,
@@ -1775,9 +2036,11 @@
               ],
               "rawReplyRef": "cursor.move.down"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 829,
           "status": "supported",
           "scheduled": true,
@@ -1798,7 +2061,8 @@
               ],
               "rawReplyRef": "cursor.move.down"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1809,6 +2073,7 @@
       "url": "https://terminfo.dev/cursor/cuf-cursor-forward",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 800,
           "status": "supported",
           "scheduled": true,
@@ -1829,9 +2094,11 @@
               ],
               "rawReplyRef": "cursor.move.forward"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 880,
           "status": "supported",
           "scheduled": true,
@@ -1852,9 +2119,11 @@
               ],
               "rawReplyRef": "cursor.move.forward"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 866,
           "status": "supported",
           "scheduled": true,
@@ -1875,7 +2144,8 @@
               ],
               "rawReplyRef": "cursor.move.forward"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1886,6 +2156,7 @@
       "url": "https://terminfo.dev/cursor/cub-cursor-back",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 837,
           "status": "supported",
           "scheduled": true,
@@ -1906,9 +2177,11 @@
               ],
               "rawReplyRef": "cursor.move.back"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 917,
           "status": "supported",
           "scheduled": true,
@@ -1929,9 +2202,11 @@
               ],
               "rawReplyRef": "cursor.move.back"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 903,
           "status": "supported",
           "scheduled": true,
@@ -1952,7 +2227,8 @@
               ],
               "rawReplyRef": "cursor.move.back"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -1963,6 +2239,7 @@
       "url": "https://terminfo.dev/cursor/home",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 874,
           "status": "supported",
           "scheduled": true,
@@ -1983,9 +2260,11 @@
               ],
               "rawReplyRef": "cursor.move.home"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 954,
           "status": "supported",
           "scheduled": true,
@@ -2006,9 +2285,11 @@
               ],
               "rawReplyRef": "cursor.move.home"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 940,
           "status": "supported",
           "scheduled": true,
@@ -2029,7 +2310,8 @@
               ],
               "rawReplyRef": "cursor.move.home"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2040,6 +2322,7 @@
       "url": "https://terminfo.dev/cursor/decsc-save-restore-cursor",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 911,
           "status": "supported",
           "scheduled": true,
@@ -2060,9 +2343,11 @@
               ],
               "rawReplyRef": "cursor.save-restore"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 991,
           "status": "supported",
           "scheduled": true,
@@ -2083,9 +2368,11 @@
               ],
               "rawReplyRef": "cursor.save-restore"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 977,
           "status": "supported",
           "scheduled": true,
@@ -2106,7 +2393,8 @@
               ],
               "rawReplyRef": "cursor.save-restore"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2117,6 +2405,7 @@
       "url": "https://terminfo.dev/cursor/cup-screen-boundaries",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 948,
           "status": "supported",
           "scheduled": true,
@@ -2137,9 +2426,11 @@
               ],
               "rawReplyRef": "cursor.cup-boundaries"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1028,
           "status": "supported",
           "scheduled": true,
@@ -2160,9 +2451,11 @@
               ],
               "rawReplyRef": "cursor.cup-boundaries"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1014,
           "status": "supported",
           "scheduled": true,
@@ -2183,7 +2476,8 @@
               ],
               "rawReplyRef": "cursor.cup-boundaries"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2194,6 +2488,7 @@
       "url": "https://terminfo.dev/cursor/cuu-past-top",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 985,
           "status": "supported",
           "scheduled": true,
@@ -2214,9 +2509,11 @@
               ],
               "rawReplyRef": "cursor.cuu-past-top"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1065,
           "status": "supported",
           "scheduled": true,
@@ -2237,9 +2534,11 @@
               ],
               "rawReplyRef": "cursor.cuu-past-top"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1051,
           "status": "supported",
           "scheduled": true,
@@ -2260,7 +2559,8 @@
               ],
               "rawReplyRef": "cursor.cuu-past-top"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2271,6 +2571,7 @@
       "url": "https://terminfo.dev/cursor/cud-past-bottom",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1022,
           "status": "supported",
           "scheduled": true,
@@ -2291,9 +2592,11 @@
               ],
               "rawReplyRef": "cursor.cud-past-bottom"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1102,
           "status": "supported",
           "scheduled": true,
@@ -2314,9 +2617,11 @@
               ],
               "rawReplyRef": "cursor.cud-past-bottom"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1088,
           "status": "supported",
           "scheduled": true,
@@ -2337,7 +2642,8 @@
               ],
               "rawReplyRef": "cursor.cud-past-bottom"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2348,6 +2654,7 @@
       "url": "https://terminfo.dev/cursor/cup-decom-scroll-region",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1059,
           "status": "supported",
           "scheduled": true,
@@ -2368,9 +2675,11 @@
               ],
               "rawReplyRef": "cursor.cup-scroll-region"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1139,
           "status": "probe-todo",
           "scheduled": true,
@@ -2389,9 +2698,11 @@
               "rawReplyRef": "cursor.cup-scroll-region",
               "reason": "DECOM CPR is region-relative; the physical row 5 and the margins still need an independent observable"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1125,
           "status": "supported",
           "scheduled": true,
@@ -2412,7 +2723,8 @@
               ],
               "rawReplyRef": "cursor.cup-scroll-region"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2423,6 +2735,7 @@
       "url": "https://terminfo.dev/cursor/vpa-vertical-position-absolute",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1102,
           "status": "supported",
           "scheduled": true,
@@ -2443,9 +2756,11 @@
               ],
               "rawReplyRef": "cursor.vpa"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1165,
           "status": "supported",
           "scheduled": true,
@@ -2466,9 +2781,11 @@
               ],
               "rawReplyRef": "cursor.vpa"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1169,
           "status": "supported",
           "scheduled": true,
@@ -2489,7 +2806,8 @@
               ],
               "rawReplyRef": "cursor.vpa"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2500,6 +2818,7 @@
       "url": "https://terminfo.dev/cursor/cpl-cursor-preceding-line",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1139,
           "status": "supported",
           "scheduled": true,
@@ -2520,9 +2839,11 @@
               ],
               "rawReplyRef": "cursor.cpl"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1202,
           "status": "supported",
           "scheduled": true,
@@ -2543,9 +2864,11 @@
               ],
               "rawReplyRef": "cursor.cpl"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1206,
           "status": "supported",
           "scheduled": true,
@@ -2566,7 +2889,8 @@
               ],
               "rawReplyRef": "cursor.cpl"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2577,6 +2901,7 @@
       "url": "https://terminfo.dev/cursor/hpa-horizontal-position-absolute",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1176,
           "status": "supported",
           "scheduled": true,
@@ -2597,9 +2922,11 @@
               ],
               "rawReplyRef": "cursor.hpa"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1239,
           "status": "supported",
           "scheduled": true,
@@ -2620,9 +2947,11 @@
               ],
               "rawReplyRef": "cursor.hpa"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1243,
           "status": "supported",
           "scheduled": true,
@@ -2643,7 +2972,8 @@
               ],
               "rawReplyRef": "cursor.hpa"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2654,6 +2984,7 @@
       "url": "https://terminfo.dev/erase/el-0-erase-to-eol",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1213,
           "status": "supported",
           "scheduled": true,
@@ -2674,9 +3005,11 @@
               ],
               "rawReplyRef": "erase.line.right"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1276,
           "status": "probe-todo",
           "scheduled": true,
@@ -2695,9 +3028,11 @@
               "rawReplyRef": "erase.line.right",
               "reason": "erase.line.right: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1280,
           "status": "supported",
           "scheduled": true,
@@ -2718,7 +3053,8 @@
               ],
               "rawReplyRef": "erase.line.right"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2729,6 +3065,7 @@
       "url": "https://terminfo.dev/erase/el-1-erase-to-bol",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1257,
           "status": "supported",
           "scheduled": true,
@@ -2749,9 +3086,11 @@
               ],
               "rawReplyRef": "erase.line.left"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1302,
           "status": "probe-todo",
           "scheduled": true,
@@ -2770,9 +3109,11 @@
               "rawReplyRef": "erase.line.left",
               "reason": "erase.line.left: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1324,
           "status": "supported",
           "scheduled": true,
@@ -2793,7 +3134,8 @@
               ],
               "rawReplyRef": "erase.line.left"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2804,6 +3146,7 @@
       "url": "https://terminfo.dev/erase/el-2-erase-line",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1301,
           "status": "supported",
           "scheduled": true,
@@ -2824,9 +3167,11 @@
               ],
               "rawReplyRef": "erase.line.all"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1328,
           "status": "probe-todo",
           "scheduled": true,
@@ -2845,9 +3190,11 @@
               "rawReplyRef": "erase.line.all",
               "reason": "erase.line.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1368,
           "status": "supported",
           "scheduled": true,
@@ -2868,7 +3215,8 @@
               ],
               "rawReplyRef": "erase.line.all"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2879,6 +3227,7 @@
       "url": "https://terminfo.dev/erase/ed-1-erase-above",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1345,
           "status": "supported",
           "scheduled": true,
@@ -2899,9 +3248,11 @@
               ],
               "rawReplyRef": "erase.screen.above"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1354,
           "status": "probe-todo",
           "scheduled": true,
@@ -2920,9 +3271,11 @@
               "rawReplyRef": "erase.screen.above",
               "reason": "erase.screen.above: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1412,
           "status": "supported",
           "scheduled": true,
@@ -2943,7 +3296,8 @@
               ],
               "rawReplyRef": "erase.screen.above"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -2954,6 +3308,7 @@
       "url": "https://terminfo.dev/erase/ed-2-erase-screen",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1389,
           "status": "supported",
           "scheduled": true,
@@ -2974,9 +3329,11 @@
               ],
               "rawReplyRef": "erase.screen.all"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1380,
           "status": "probe-todo",
           "scheduled": true,
@@ -2995,9 +3352,11 @@
               "rawReplyRef": "erase.screen.all",
               "reason": "erase.screen.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1456,
           "status": "supported",
           "scheduled": true,
@@ -3018,7 +3377,8 @@
               ],
               "rawReplyRef": "erase.screen.all"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3029,6 +3389,7 @@
       "url": "https://terminfo.dev/erase/ed-0-erase-below",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1432,
           "status": "supported",
           "scheduled": true,
@@ -3049,9 +3410,11 @@
               ],
               "rawReplyRef": "erase.screen.below"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1406,
           "status": "probe-todo",
           "scheduled": true,
@@ -3070,9 +3433,11 @@
               "rawReplyRef": "erase.screen.below",
               "reason": "erase.screen.below: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1499,
           "status": "supported",
           "scheduled": true,
@@ -3093,7 +3458,8 @@
               ],
               "rawReplyRef": "erase.screen.below"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3104,6 +3470,7 @@
       "url": "https://terminfo.dev/erase/ed-3-erase-scrollback",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1476,
           "status": "probe-todo",
           "scheduled": true,
@@ -3122,9 +3489,11 @@
               "rawReplyRef": "erase.screen.scrollback",
               "reason": "OS-level scrollback dump or XTEST wheel+capture"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1432,
           "status": "probe-todo",
           "scheduled": true,
@@ -3143,9 +3512,11 @@
               "rawReplyRef": "erase.screen.scrollback",
               "reason": "OS-level scrollback dump or XTEST wheel+capture"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1543,
           "status": "probe-todo",
           "scheduled": true,
@@ -3164,7 +3535,8 @@
               "rawReplyRef": "erase.screen.scrollback",
               "reason": "OS-level scrollback dump or XTEST wheel+capture"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3175,6 +3547,7 @@
       "url": "https://terminfo.dev/erase/ech-erase-character",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1502,
           "status": "supported",
           "scheduled": true,
@@ -3195,9 +3568,11 @@
               ],
               "rawReplyRef": "erase.character"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1458,
           "status": "probe-todo",
           "scheduled": true,
@@ -3216,9 +3591,11 @@
               "rawReplyRef": "erase.character",
               "reason": "erase.character: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1569,
           "status": "supported",
           "scheduled": true,
@@ -3239,7 +3616,8 @@
               ],
               "rawReplyRef": "erase.character"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3250,6 +3628,7 @@
       "url": "https://terminfo.dev/erase/el-erase-with-bg-color",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1546,
           "status": "supported",
           "scheduled": true,
@@ -3270,9 +3649,11 @@
               ],
               "rawReplyRef": "erase.el-with-attrs"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1484,
           "status": "probe-todo",
           "scheduled": true,
@@ -3291,9 +3672,11 @@
               "rawReplyRef": "erase.el-with-attrs",
               "reason": "erase.el-with-attrs: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1613,
           "status": "supported",
           "scheduled": true,
@@ -3314,7 +3697,8 @@
               ],
               "rawReplyRef": "erase.el-with-attrs"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3325,6 +3709,7 @@
       "url": "https://terminfo.dev/erase/ed-scroll-region-boundary",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1592,
           "status": "supported",
           "scheduled": true,
@@ -3345,9 +3730,11 @@
               ],
               "rawReplyRef": "erase.ed-scroll-region"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1510,
           "status": "probe-todo",
           "scheduled": true,
@@ -3366,9 +3753,11 @@
               "rawReplyRef": "erase.ed-scroll-region",
               "reason": "erase.ed-scroll-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1659,
           "status": "supported",
           "scheduled": true,
@@ -3389,7 +3778,8 @@
               ],
               "rawReplyRef": "erase.ed-scroll-region"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3400,6 +3790,7 @@
       "url": "https://terminfo.dev/modes/decset-1049-alt-screen-enter",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1636,
           "status": "supported",
           "scheduled": true,
@@ -3421,9 +3812,11 @@
               "rawReplyRef": "modes.alt-screen.enter",
               "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1536,
           "status": "probe-todo",
           "scheduled": true,
@@ -3441,9 +3834,11 @@
               "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
               "rawReplyRef": "modes.alt-screen.enter"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1703,
           "status": "supported",
           "scheduled": true,
@@ -3465,7 +3860,8 @@
               "rawReplyRef": "modes.alt-screen.enter",
               "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3476,6 +3872,7 @@
       "url": "https://terminfo.dev/modes/decrst-1049-alt-screen-exit",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1674,
           "status": "supported",
           "scheduled": true,
@@ -3520,9 +3917,11 @@
               ],
               "rawReplyRef": "modes.alt-screen.exit"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1560,
           "status": "probe-todo",
           "scheduled": true,
@@ -3541,9 +3940,11 @@
               "rawReplyRef": "modes.alt-screen.exit",
               "reason": "Cursor responsiveness after exit does not measure the restored buffer"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1741,
           "status": "supported",
           "scheduled": true,
@@ -3588,7 +3989,8 @@
               ],
               "rawReplyRef": "modes.alt-screen.exit"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3599,6 +4001,7 @@
       "url": "https://terminfo.dev/modes/decscnm-reverse-video",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1759,
           "status": "supported",
           "scheduled": true,
@@ -3620,9 +4023,11 @@
               "rawReplyRef": "modes.reverse-video",
               "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1586,
           "status": "probe-todo",
           "scheduled": true,
@@ -3640,9 +4045,11 @@
               "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
               "rawReplyRef": "modes.reverse-video"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1826,
           "status": "supported",
           "scheduled": true,
@@ -3664,7 +4071,8 @@
               "rawReplyRef": "modes.reverse-video",
               "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3675,6 +4083,7 @@
       "url": "https://terminfo.dev/modes/decawm-auto-wrap",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1797,
           "status": "supported",
           "scheduled": true,
@@ -3696,9 +4105,11 @@
               "rawReplyRef": "modes.auto-wrap",
               "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1610,
           "status": "probe-todo",
           "scheduled": true,
@@ -3716,9 +4127,11 @@
               "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
               "rawReplyRef": "modes.auto-wrap"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1864,
           "status": "supported",
           "scheduled": true,
@@ -3740,7 +4153,8 @@
               "rawReplyRef": "modes.auto-wrap",
               "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3751,6 +4165,7 @@
       "url": "https://terminfo.dev/scrollback/accumulates",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1835,
           "status": "probe-todo",
           "scheduled": true,
@@ -3769,9 +4184,11 @@
               "rawReplyRef": "scrollback.accumulate",
               "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1634,
           "status": "probe-todo",
           "scheduled": true,
@@ -3790,9 +4207,11 @@
               "rawReplyRef": "scrollback.accumulate",
               "reason": "Cursor position does not measure scrollback history"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1902,
           "status": "probe-todo",
           "scheduled": true,
@@ -3811,7 +4230,8 @@
               "rawReplyRef": "scrollback.accumulate",
               "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3822,6 +4242,7 @@
       "url": "https://terminfo.dev/scrollback/total-lines",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1864,
           "status": "probe-todo",
           "scheduled": true,
@@ -3840,9 +4261,11 @@
               "rawReplyRef": "scrollback.total-lines",
               "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1660,
           "status": "probe-todo",
           "scheduled": true,
@@ -3861,9 +4284,11 @@
               "rawReplyRef": "scrollback.total-lines",
               "reason": "Cursor position does not measure total scrollback lines"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1931,
           "status": "probe-todo",
           "scheduled": true,
@@ -3882,7 +4307,8 @@
               "rawReplyRef": "scrollback.total-lines",
               "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3893,6 +4319,7 @@
       "url": "https://terminfo.dev/scrollback/su-scroll-up",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1893,
           "status": "supported",
           "scheduled": true,
@@ -3913,9 +4340,11 @@
               ],
               "rawReplyRef": "scrollback.scroll-up"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1686,
           "status": "probe-todo",
           "scheduled": true,
@@ -3934,9 +4363,11 @@
               "rawReplyRef": "scrollback.scroll-up",
               "reason": "scrollback.scroll-up: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 1960,
           "status": "supported",
           "scheduled": true,
@@ -3957,7 +4388,8 @@
               ],
               "rawReplyRef": "scrollback.scroll-up"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -3968,6 +4400,7 @@
       "url": "https://terminfo.dev/scrollback/sd-scroll-down",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1937,
           "status": "supported",
           "scheduled": true,
@@ -3988,9 +4421,11 @@
               ],
               "rawReplyRef": "scrollback.scroll-down"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1712,
           "status": "probe-todo",
           "scheduled": true,
@@ -4009,9 +4444,11 @@
               "rawReplyRef": "scrollback.scroll-down",
               "reason": "scrollback.scroll-down: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2004,
           "status": "supported",
           "scheduled": true,
@@ -4032,7 +4469,8 @@
               ],
               "rawReplyRef": "scrollback.scroll-down"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4043,6 +4481,7 @@
       "url": "https://terminfo.dev/scrollback/ri-reverse-index",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 1981,
           "status": "supported",
           "scheduled": true,
@@ -4063,9 +4502,11 @@
               ],
               "rawReplyRef": "scrollback.reverse-index"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1738,
           "status": "probe-todo",
           "scheduled": true,
@@ -4084,9 +4525,11 @@
               "rawReplyRef": "scrollback.reverse-index",
               "reason": "scrollback.reverse-index: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2048,
           "status": "supported",
           "scheduled": true,
@@ -4107,7 +4550,8 @@
               ],
               "rawReplyRef": "scrollback.reverse-index"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4118,6 +4562,7 @@
       "url": "https://terminfo.dev/scrollback/decstbm-scroll-region",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2026,
           "status": "supported",
           "scheduled": true,
@@ -4138,9 +4583,11 @@
               ],
               "rawReplyRef": "scrollback.set-region"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1764,
           "status": "probe-todo",
           "scheduled": true,
@@ -4159,9 +4606,11 @@
               "rawReplyRef": "scrollback.set-region",
               "reason": "scrollback.set-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2093,
           "status": "supported",
           "scheduled": true,
@@ -4182,7 +4631,8 @@
               ],
               "rawReplyRef": "scrollback.set-region"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4193,6 +4643,7 @@
       "url": "https://terminfo.dev/scrollback/alt-screen-separate-scrollback",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2071,
           "status": "supported",
           "scheduled": true,
@@ -4213,9 +4664,11 @@
               ],
               "rawReplyRef": "scrollback.alt-screen"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1790,
           "status": "probe-todo",
           "scheduled": true,
@@ -4234,9 +4687,11 @@
               "rawReplyRef": "scrollback.alt-screen",
               "reason": "scrollback.alt-screen: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2138,
           "status": "supported",
           "scheduled": true,
@@ -4257,7 +4712,8 @@
               ],
               "rawReplyRef": "scrollback.alt-screen"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4268,6 +4724,7 @@
       "url": "https://terminfo.dev/scrollback/decstbm-constrained-scrolling",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2117,
           "status": "supported",
           "scheduled": true,
@@ -4288,9 +4745,11 @@
               ],
               "rawReplyRef": "scrollback.decstbm"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1816,
           "status": "probe-todo",
           "scheduled": true,
@@ -4309,9 +4768,11 @@
               "rawReplyRef": "scrollback.decstbm",
               "reason": "scrollback.decstbm: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2184,
           "status": "supported",
           "scheduled": true,
@@ -4332,7 +4793,8 @@
               ],
               "rawReplyRef": "scrollback.decstbm"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4343,6 +4805,7 @@
       "url": "https://terminfo.dev/scrollback/decstbm-reset-full-screen",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2162,
           "status": "supported",
           "scheduled": true,
@@ -4363,9 +4826,11 @@
               ],
               "rawReplyRef": "scrollback.decstbm-reset"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1842,
           "status": "probe-todo",
           "scheduled": true,
@@ -4384,9 +4849,11 @@
               "rawReplyRef": "scrollback.decstbm-reset",
               "reason": "scrollback.decstbm-reset: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2229,
           "status": "supported",
           "scheduled": true,
@@ -4407,7 +4874,8 @@
               ],
               "rawReplyRef": "scrollback.decstbm-reset"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4418,6 +4886,7 @@
       "url": "https://terminfo.dev/text/basic-text-rendering",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2208,
           "status": "supported",
           "scheduled": true,
@@ -4438,9 +4907,11 @@
               ],
               "rawReplyRef": "text.basic"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1868,
           "status": "supported",
           "scheduled": true,
@@ -4461,9 +4932,11 @@
               ],
               "rawReplyRef": "text.basic"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2275,
           "status": "supported",
           "scheduled": true,
@@ -4484,7 +4957,8 @@
               ],
               "rawReplyRef": "text.basic"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4495,6 +4969,7 @@
       "url": "https://terminfo.dev/text/wrap-at-width",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2245,
           "status": "supported",
           "scheduled": true,
@@ -4516,9 +4991,11 @@
               "rawReplyRef": "text.wrap",
               "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 1905,
           "status": "probe-todo",
           "scheduled": true,
@@ -4536,9 +5013,11 @@
               "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
               "rawReplyRef": "text.wrap"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2312,
           "status": "supported",
           "scheduled": true,
@@ -4560,7 +5039,8 @@
               "rawReplyRef": "text.wrap",
               "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4571,6 +5051,7 @@
       "url": "https://terminfo.dev/text/cjk-wide-chars",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2283,
           "status": "supported",
           "scheduled": true,
@@ -4591,9 +5072,11 @@
               ],
               "rawReplyRef": "text.wide.cjk"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1929,
           "status": "supported",
           "scheduled": true,
@@ -4614,9 +5097,11 @@
               ],
               "rawReplyRef": "text.wide.cjk"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2350,
           "status": "supported",
           "scheduled": true,
@@ -4637,7 +5122,8 @@
               ],
               "rawReplyRef": "text.wide.cjk"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4648,6 +5134,7 @@
       "url": "https://terminfo.dev/text/ht-tab-stops",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2320,
           "status": "supported",
           "scheduled": true,
@@ -4668,9 +5155,11 @@
               ],
               "rawReplyRef": "text.tab"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 1966,
           "status": "supported",
           "scheduled": true,
@@ -4691,9 +5180,11 @@
               ],
               "rawReplyRef": "text.tab"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2387,
           "status": "supported",
           "scheduled": true,
@@ -4714,7 +5205,8 @@
               ],
               "rawReplyRef": "text.tab"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4725,6 +5217,7 @@
       "url": "https://terminfo.dev/unicode/tab-stops",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2357,
           "status": "supported",
           "scheduled": true,
@@ -4745,9 +5238,11 @@
               ],
               "rawReplyRef": "unicode.tab-stops"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2003,
           "status": "supported",
           "scheduled": true,
@@ -4768,9 +5263,11 @@
               ],
               "rawReplyRef": "unicode.tab-stops"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2424,
           "status": "supported",
           "scheduled": true,
@@ -4791,7 +5288,8 @@
               ],
               "rawReplyRef": "unicode.tab-stops"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4802,6 +5300,7 @@
       "url": "https://terminfo.dev/text/cr-carriage-return",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2394,
           "status": "supported",
           "scheduled": true,
@@ -4822,9 +5321,11 @@
               ],
               "rawReplyRef": "text.cr"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2040,
           "status": "supported",
           "scheduled": true,
@@ -4845,9 +5346,11 @@
               ],
               "rawReplyRef": "text.cr"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2461,
           "status": "supported",
           "scheduled": true,
@@ -4868,7 +5371,8 @@
               ],
               "rawReplyRef": "text.cr"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4879,6 +5383,7 @@
       "url": "https://terminfo.dev/text/lf-line-feed",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2431,
           "status": "supported",
           "scheduled": true,
@@ -4900,9 +5405,11 @@
               "rawReplyRef": "text.newline",
               "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2077,
           "status": "supported",
           "scheduled": true,
@@ -4924,9 +5431,11 @@
               "rawReplyRef": "text.newline",
               "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2498,
           "status": "supported",
           "scheduled": true,
@@ -4948,7 +5457,8 @@
               "rawReplyRef": "text.newline",
               "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -4959,6 +5469,7 @@
       "url": "https://terminfo.dev/text/bs-backspace",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2469,
           "status": "supported",
           "scheduled": true,
@@ -4979,9 +5490,11 @@
               ],
               "rawReplyRef": "text.backspace"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2115,
           "status": "supported",
           "scheduled": true,
@@ -5002,9 +5515,11 @@
               ],
               "rawReplyRef": "text.backspace"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2536,
           "status": "supported",
           "scheduled": true,
@@ -5025,7 +5540,8 @@
               ],
               "rawReplyRef": "text.backspace"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5036,6 +5552,7 @@
       "url": "https://terminfo.dev/text/ind-index",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2506,
           "status": "supported",
           "scheduled": true,
@@ -5056,9 +5573,11 @@
               ],
               "rawReplyRef": "text.index"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2152,
           "status": "supported",
           "scheduled": true,
@@ -5079,9 +5598,11 @@
               ],
               "rawReplyRef": "text.index"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2573,
           "status": "supported",
           "scheduled": true,
@@ -5102,7 +5623,8 @@
               ],
               "rawReplyRef": "text.index"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5113,6 +5635,7 @@
       "url": "https://terminfo.dev/text/nel-next-line",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2543,
           "status": "supported",
           "scheduled": true,
@@ -5133,9 +5656,11 @@
               ],
               "rawReplyRef": "text.next-line"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2189,
           "status": "supported",
           "scheduled": true,
@@ -5156,9 +5681,11 @@
               ],
               "rawReplyRef": "text.next-line"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2610,
           "status": "supported",
           "scheduled": true,
@@ -5179,7 +5706,8 @@
               ],
               "rawReplyRef": "text.next-line"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5190,6 +5718,7 @@
       "url": "https://terminfo.dev/text/reverse-index-scroll",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-invalid",
           "evidenceLine": 2580,
           "status": "probe-invalid",
           "scheduled": true,
@@ -5209,9 +5738,38 @@
               "rawReplyRef": "text.reverse-index-scroll",
               "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
             }
-          ]
+          ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 206,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:04:29.848Z"
+                },
+                "assertionRefs": [
+                  5
+                ],
+                "rawReplyRef": "text.reverse-index-scroll"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2226,
           "status": "probe-todo",
           "scheduled": true,
@@ -5230,9 +5788,11 @@
               "rawReplyRef": "text.reverse-index-scroll",
               "reason": "text.reverse-index-scroll: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2647,
           "status": "supported",
           "scheduled": true,
@@ -5253,7 +5813,8 @@
               ],
               "rawReplyRef": "text.reverse-index-scroll"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5264,6 +5825,7 @@
       "url": "https://terminfo.dev/text/overwrite-at-cursor",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-invalid",
           "evidenceLine": 2607,
           "status": "probe-invalid",
           "scheduled": true,
@@ -5283,9 +5845,38 @@
               "rawReplyRef": "text.overwrite",
               "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}"
             }
-          ]
+          ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 251,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-11T17:04:19.847Z"
+                },
+                "assertionRefs": [
+                  4
+                ],
+                "rawReplyRef": "text.overwrite"
+              }
+            ],
+            "runId": "0d6902eb35805785d3b67ed55c05d499",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/movement-retest/cases.json"
+          },
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2252,
           "status": "probe-todo",
           "scheduled": true,
@@ -5304,9 +5895,11 @@
               "rawReplyRef": "text.overwrite",
               "reason": "text.overwrite: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2692,
           "status": "supported",
           "scheduled": true,
@@ -5327,7 +5920,8 @@
               ],
               "rawReplyRef": "text.overwrite"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5338,6 +5932,7 @@
       "url": "https://terminfo.dev/text/hts-set-tab-stop",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2634,
           "status": "supported",
           "scheduled": true,
@@ -5358,9 +5953,11 @@
               ],
               "rawReplyRef": "text.hts"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2278,
           "status": "supported",
           "scheduled": true,
@@ -5381,9 +5978,11 @@
               ],
               "rawReplyRef": "text.hts"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2736,
           "status": "supported",
           "scheduled": true,
@@ -5404,7 +6003,8 @@
               ],
               "rawReplyRef": "text.hts"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5415,6 +6015,7 @@
       "url": "https://terminfo.dev/text/tbc-clear-tab-stop",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2671,
           "status": "supported",
           "scheduled": true,
@@ -5435,9 +6036,11 @@
               ],
               "rawReplyRef": "text.tbc"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2315,
           "status": "supported",
           "scheduled": true,
@@ -5458,9 +6061,11 @@
               ],
               "rawReplyRef": "text.tbc"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2773,
           "status": "supported",
           "scheduled": true,
@@ -5481,7 +6086,8 @@
               ],
               "rawReplyRef": "text.tbc"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5492,6 +6098,7 @@
       "url": "https://terminfo.dev/text/cht-forward-tab",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2708,
           "status": "supported",
           "scheduled": true,
@@ -5512,9 +6119,11 @@
               ],
               "rawReplyRef": "text.cht"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2352,
           "status": "supported",
           "scheduled": true,
@@ -5535,9 +6144,11 @@
               ],
               "rawReplyRef": "text.cht"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2810,
           "status": "supported",
           "scheduled": true,
@@ -5558,7 +6169,8 @@
               ],
               "rawReplyRef": "text.cht"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5569,6 +6181,7 @@
       "url": "https://terminfo.dev/text/cbt-backward-tab",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2745,
           "status": "supported",
           "scheduled": true,
@@ -5589,9 +6202,11 @@
               ],
               "rawReplyRef": "text.cbt"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2389,
           "status": "supported",
           "scheduled": true,
@@ -5612,9 +6227,11 @@
               ],
               "rawReplyRef": "text.cbt"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2847,
           "status": "supported",
           "scheduled": true,
@@ -5635,7 +6252,8 @@
               ],
               "rawReplyRef": "text.cbt"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5646,6 +6264,7 @@
       "url": "https://terminfo.dev/reset/sgr-0-reset-clears-attributes",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2782,
           "status": "probe-todo",
           "scheduled": true,
@@ -5664,9 +6283,11 @@
               "rawReplyRef": "reset.sgr",
               "reason": "Probe exceeded 120000ms"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2426,
           "status": "supported",
           "scheduled": true,
@@ -5687,9 +6308,11 @@
               ],
               "rawReplyRef": "reset.sgr"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2884,
           "status": "probe-todo",
           "scheduled": true,
@@ -5708,7 +6331,8 @@
               "rawReplyRef": "reset.sgr",
               "reason": "Probe exceeded 120000ms"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5719,6 +6343,7 @@
       "url": "https://terminfo.dev/reset/ris-full-reset",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2808,
           "status": "supported",
           "scheduled": true,
@@ -5740,9 +6365,11 @@
               "rawReplyRef": "reset.ris",
               "reason": "Measured RIS cursor reset; other reset effects were not inspected"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "supported",
           "evidenceLine": 2463,
           "status": "supported",
           "scheduled": true,
@@ -5764,9 +6391,11 @@
               "rawReplyRef": "reset.ris",
               "reason": "Measured RIS cursor reset; other reset effects were not inspected"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2910,
           "status": "supported",
           "scheduled": true,
@@ -5788,7 +6417,8 @@
               "rawReplyRef": "reset.ris",
               "reason": "Measured RIS cursor reset; other reset effects were not inspected"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5799,6 +6429,7 @@
       "url": "https://terminfo.dev/reset/decstr-soft-reset",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2846,
           "status": "supported",
           "scheduled": true,
@@ -5820,9 +6451,11 @@
               "rawReplyRef": "reset.soft",
               "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2501,
           "status": "probe-todo",
           "scheduled": true,
@@ -5840,9 +6473,11 @@
               "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
               "rawReplyRef": "reset.soft"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 2948,
           "status": "supported",
           "scheduled": true,
@@ -5864,7 +6499,8 @@
               "rawReplyRef": "reset.soft",
               "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5875,6 +6511,7 @@
       "url": "https://terminfo.dev/reset/backend-reset-method",
       "results": {
         "ntilde": {
+          "rawStatus": "untestable",
           "evidenceLine": 2884,
           "status": "untestable",
           "scheduled": true,
@@ -5894,9 +6531,11 @@
               "rawReplyRef": "reset.method",
               "reason": "The app context has no reset() method or equivalent state readback"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "untestable",
           "evidenceLine": 2525,
           "status": "untestable",
           "scheduled": true,
@@ -5916,9 +6555,11 @@
               "rawReplyRef": "reset.method",
               "reason": "The app context has no reset() method or equivalent state readback"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "untestable",
           "evidenceLine": 2986,
           "status": "untestable",
           "scheduled": true,
@@ -5938,7 +6579,8 @@
               "rawReplyRef": "reset.method",
               "reason": "The app context has no reset() method or equivalent state readback"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -5949,6 +6591,7 @@
       "url": "https://terminfo.dev/charsets/dec-special-graphics",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2911,
           "status": "supported",
           "scheduled": true,
@@ -5969,9 +6612,11 @@
               ],
               "rawReplyRef": "charsets.dec-special"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2552,
           "status": "probe-todo",
           "scheduled": true,
@@ -5990,9 +6635,11 @@
               "rawReplyRef": "charsets.dec-special",
               "reason": "charsets.dec-special: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 3013,
           "status": "supported",
           "scheduled": true,
@@ -6013,7 +6660,8 @@
               ],
               "rawReplyRef": "charsets.dec-special"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -6024,6 +6672,7 @@
       "url": "https://terminfo.dev/charsets/utf8-mode",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2955,
           "status": "supported",
           "scheduled": true,
@@ -6044,9 +6693,11 @@
               ],
               "rawReplyRef": "charsets.utf8"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2578,
           "status": "probe-todo",
           "scheduled": true,
@@ -6065,9 +6716,11 @@
               "rawReplyRef": "charsets.utf8",
               "reason": "charsets.utf8: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 3057,
           "status": "supported",
           "scheduled": true,
@@ -6088,7 +6741,8 @@
               ],
               "rawReplyRef": "charsets.utf8"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -6099,6 +6753,7 @@
       "url": "https://terminfo.dev/charsets/g0-g1-charset-switching",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 2999,
           "status": "supported",
           "scheduled": true,
@@ -6119,9 +6774,11 @@
               ],
               "rawReplyRef": "charsets.g0-g1-switching"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2604,
           "status": "probe-todo",
           "scheduled": true,
@@ -6140,9 +6797,11 @@
               "rawReplyRef": "charsets.g0-g1-switching",
               "reason": "charsets.g0-g1-switching: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 3101,
           "status": "supported",
           "scheduled": true,
@@ -6163,7 +6822,8 @@
               ],
               "rawReplyRef": "charsets.g0-g1-switching"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -6174,6 +6834,7 @@
       "url": "https://terminfo.dev/charsets/dec-line-drawing-chars",
       "results": {
         "ntilde": {
+          "rawStatus": "supported",
           "evidenceLine": 3043,
           "status": "supported",
           "scheduled": true,
@@ -6194,9 +6855,11 @@
               ],
               "rawReplyRef": "charsets.dec-line-drawing"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2630,
           "status": "probe-todo",
           "scheduled": true,
@@ -6215,9 +6878,11 @@
               "rawReplyRef": "charsets.dec-line-drawing",
               "reason": "charsets.dec-line-drawing: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "supported",
           "evidenceLine": 3145,
           "status": "supported",
           "scheduled": true,
@@ -6238,7 +6903,8 @@
               ],
               "rawReplyRef": "charsets.dec-line-drawing"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -6249,34 +6915,40 @@
       "url": "https://terminfo.dev/device/env-term",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 3087,
-          "status": "probe-todo",
+          "status": "not-scheduled",
           "scheduled": false,
           "probeId": null,
           "method": null,
           "reason": "Not selected for this collection; no test was attempted.",
           "note": null,
-          "tests": []
+          "tests": [],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2656,
-          "status": "probe-todo",
+          "status": "not-scheduled",
           "scheduled": false,
           "probeId": null,
           "method": null,
           "reason": "Not selected for this collection; no test was attempted.",
           "note": null,
-          "tests": []
+          "tests": [],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 3189,
-          "status": "probe-todo",
+          "status": "not-scheduled",
           "scheduled": false,
           "probeId": null,
           "method": null,
           "reason": "Not selected for this collection; no test was attempted.",
           "note": null,
-          "tests": []
+          "tests": [],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     },
@@ -6287,6 +6959,7 @@
       "url": "https://terminfo.dev/extensions/osc-1-icon-name",
       "results": {
         "ntilde": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 3101,
           "status": "probe-todo",
           "scheduled": true,
@@ -6305,9 +6978,11 @@
               "rawReplyRef": "extensions.osc1-icon",
               "reason": "No icon-name readback for OSC 1"
             }
-          ]
+          ],
+          "evidencePath": "ntilde/cases.json"
         },
         "iterm2": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 2670,
           "status": "probe-todo",
           "scheduled": true,
@@ -6326,9 +7001,11 @@
               "rawReplyRef": "extensions.osc1-icon",
               "reason": "No icon-name readback for OSC 1"
             }
-          ]
+          ],
+          "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
+          "rawStatus": "probe-todo",
           "evidenceLine": 3203,
           "status": "probe-todo",
           "scheduled": true,
@@ -6347,10 +7024,11 @@
               "rawReplyRef": "extensions.osc1-icon",
               "reason": "No icon-name readback for OSC 1"
             }
-          ]
+          ],
+          "evidencePath": "ghostty/cases.json"
         }
       }
     }
   ],
-  "manifestSha256": "43c33017291fad97ea27e49c9722d38c2db5fb1e8056a692afa3281971d1a3d0"
+  "manifestSha256": "ce0ca8487dd12d7718fd903adcc70bfce11949fd6cc6ef6b1afd759b8d57957f"
 }

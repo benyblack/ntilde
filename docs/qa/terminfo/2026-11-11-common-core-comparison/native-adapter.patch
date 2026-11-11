@@ -1,5 +1,5 @@
 diff --git a/packages/admin/versions.ts b/packages/admin/versions.ts
-index 390591638..a5d41d184 100644
+index 3905916381bebf25be41bd5df0a483a41c52118a..a5d41d184cd509a67ddb449d166eb5b8a71a9bc8 100644
 --- a/packages/admin/versions.ts
 +++ b/packages/admin/versions.ts
 @@ -44,6 +44,7 @@ const ADAPTER_SOURCE_PATHS = [
@@ -11,7 +11,7 @@ index 390591638..a5d41d184 100644
    "packages/terminfo.dev/src/app-semantic-state.ts",
    "packages/terminfo.dev/src/owned-process.ts",
 diff --git a/packages/terminfo.dev/src/darwin-capture.ts b/packages/terminfo.dev/src/darwin-capture.ts
-index b16bb912f..3f610b32d 100644
+index b16bb912f2c73b77c020be6d4a4de60b0dcb6725..3f610b32de4d6fb69c6e951107c16dc3d8cfa18b 100644
 --- a/packages/terminfo.dev/src/darwin-capture.ts
 +++ b/packages/terminfo.dev/src/darwin-capture.ts
 @@ -182,6 +182,16 @@ export function requireDarwinScale(window: DarwinWindow, pixels: { width: number
@@ -75,7 +75,7 @@ index b16bb912f..3f610b32d 100644
        ...(refused
          ? {
 diff --git a/packages/terminfo.dev/src/identity-guard.ts b/packages/terminfo.dev/src/identity-guard.ts
-index 9c3d456c3..cc6f5da72 100644
+index 9c3d456c30f1ed371c9ca4179f137c9fc18c0733..cc6f5da727250ee82c707019a05cfa18e0f85091 100644
 --- a/packages/terminfo.dev/src/identity-guard.ts
 +++ b/packages/terminfo.dev/src/identity-guard.ts
 @@ -19,6 +19,11 @@ export interface TerminalIdentityRule {
@@ -92,7 +92,7 @@ index 9c3d456c3..cc6f5da72 100644
    tmux: {
 diff --git a/packages/terminfo.dev/src/iterm-window-owner.test.ts b/packages/terminfo.dev/src/iterm-window-owner.test.ts
 new file mode 100644
-index 000000000..776df2c93
+index 0000000000000000000000000000000000000000..776df2c93bd542fde06793496694660fbda36387
 --- /dev/null
 +++ b/packages/terminfo.dev/src/iterm-window-owner.test.ts
 @@ -0,0 +1,29 @@
@@ -127,7 +127,7 @@ index 000000000..776df2c93
 +})
 diff --git a/packages/terminfo.dev/src/iterm-window-owner.ts b/packages/terminfo.dev/src/iterm-window-owner.ts
 new file mode 100644
-index 000000000..9393c5ad4
+index 0000000000000000000000000000000000000000..9393c5ad41e5b9271e32f04219cad560a4c5e5d7
 --- /dev/null
 +++ b/packages/terminfo.dev/src/iterm-window-owner.ts
 @@ -0,0 +1,29 @@
@@ -161,7 +161,7 @@ index 000000000..9393c5ad4
 +  return app.pid
 +}
 diff --git a/packages/terminfo.dev/src/owned-terminal.ts b/packages/terminfo.dev/src/owned-terminal.ts
-index 8a948ea13..b58d5c387 100644
+index 8a948ea1327bbba661fa4192c0bdd50f46263b32..b58d5c387ef8b11bdee50601fdf7c536fdfc2ac7 100644
 --- a/packages/terminfo.dev/src/owned-terminal.ts
 +++ b/packages/terminfo.dev/src/owned-terminal.ts
 @@ -62,6 +62,7 @@ import {
@@ -255,7 +255,7 @@ index 8a948ea13..b58d5c387 100644
          // a changed window handle means these probes no longer write where the geometry came from.
          if (binding.platform === "windows") {
 diff --git a/packages/terminfo.dev/src/serve.ts b/packages/terminfo.dev/src/serve.ts
-index c814047ab..9ba07b35c 100644
+index c814047ab1e9051ecbe835db7dcc5ce7127276eb..9ba07b35cc018ba8688cc65c92de8e5d3ed1af0c 100644
 --- a/packages/terminfo.dev/src/serve.ts
 +++ b/packages/terminfo.dev/src/serve.ts
 @@ -834,6 +834,8 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro

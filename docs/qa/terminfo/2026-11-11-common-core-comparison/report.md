@@ -6,9 +6,9 @@ Upstream/adapter source: `ff37d198914b870281a2c0461cc682b37fce07ef`; suite `e122
 
 | Application | Supported | Unsupported | Not concluded | Invalid measurement | Untestable / not tested |
 |---|---:|---:|---:|---:|---:|
-| Ntilde 0.13.0 | 63 | 0 | 9 | 7 | 1 |
-| iTerm2 3.7.7 | 28 | 0 | 51 | 0 | 1 |
-| Ghostty 1.4.0 | 69 | 0 | 10 | 0 | 1 |
+| Ntilde 0.13.0 | 63 | 0 | 8 | 7 | 2 |
+| iTerm2 3.7.7 | 28 | 0 | 50 | 0 | 2 |
+| Ghostty 1.4.0 | 69 | 0 | 9 | 0 | 2 |
 
 All counts use the same 80 feature IDs. The exact upstream application probe decides each result. A missing observer, invalid measurement or untestable framework API is not a terminal failure. Defaults and capture conditions are retained with the evidence. Observer availability differs across applications, so these counts are not a capability ranking.
 
@@ -100,5 +100,20 @@ Reproduce the published projection: `node scripts/terminfo-common-core-publicati
 | [charsets.utf8](https://terminfo.dev/charsets/utf8-mode) | Supported | Not concluded | Supported |
 | [charsets.g0-g1-switching](https://terminfo.dev/charsets/g0-g1-charset-switching) | Supported | Not concluded | Supported |
 | [charsets.dec-line-drawing](https://terminfo.dev/charsets/dec-line-drawing-chars) | Supported | Not concluded | Supported |
-| [device.env-term](https://terminfo.dev/device/env-term) | Not concluded | Not concluded | Not concluded |
+| [device.env-term](https://terminfo.dev/device/env-term) | Not tested | Not tested | Not tested |
 | [extensions.osc1-icon](https://terminfo.dev/extensions/osc-1-icon-name) | Not concluded | Not concluded | Not concluded |
+
+## Focused movement retest
+
+The original full-run results remain retained above. One unattempted manual position is labeled not tested while its original raw status is preserved. Every movement-invalidated case was retested with the same upstream collector, shared worker, executable/payload identity and grid. Latest combined counts include every retest outcome, including any unsupported or inconclusive result.
+
+- ntilde: 6/6 supported in retest `0d6902eb35805785d3b67ed55c05d499`; latest combined evidence 69 supported / 0 unsupported / 1 invalid / 8 not concluded / 1 untestable / 1 not tested. Original run `af1f5c275a0b3aab10fdd216ca668d10` remains retained.
+
+| Retested case | New outcome |
+|---|---|
+| sgr.selective-reset.italic | Supported |
+| sgr.selective-reset.underline | Supported |
+| sgr.strikethrough | Supported |
+| sgr.underline.single | Supported |
+| text.overwrite | Supported |
+| text.reverse-index-scroll | Supported |

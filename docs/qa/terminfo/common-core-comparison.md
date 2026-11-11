@@ -92,3 +92,34 @@ git checkout --detach FETCH_HEAD
 The bundle records the actual local commits and requires that upstream base. The
 source zip and readable patch allow independent inspection without executing the
 bundle. A different source identity constitutes a new measurement.
+
+## Focused movement retests
+
+`COMMON_CORE_RETEST_FROM=<original-owned-run-directory>` selects every Core result
+whose original status was invalid and whose recorded cause was changed native
+window bounds. It refuses a different upstream identity, executable/payload or
+shared worker. Missing controls, unsupported cases and unrelated IDs are never
+selected. The retest has its own raw run, identity and cleanup records. Publication
+includes every selected outcome, including any unsupported or inconclusive result,
+and retains the original full-run results. Latest combined counts are labeled as
+such, with original and retest evidence links on each affected row.
+
+The measured driver/worker snapshots are retained inside each archive. Subsequent
+launcher hardening (dirty-source refusal, atomic handoffs, startup cleanup and
+absolute Git dispatch) is not retroactively attributed to those measurements. It
+changes future orchestration, not the retained upstream fixtures, controls or
+grades. A changed shared worker requires a new compatible measurement baseline.
+
+## Offline source proof and checkout formatting
+
+`source-proof.zip` retains content-addressed Git commit/tree objects and the base
+blobs needed to verify the local adapter. Verification reconstructs the bundle in
+an isolated bare repository, checks its source ancestry and exact patch, binds each
+source-archive member to the reported Git tree, proves that both upstream probe
+subtrees are unchanged, and independently recomputes the recorded catalogue and
+suite fingerprint. A proof boolean alone grants nothing.
+
+The exact patch bytes are retained in `native-adapter.patch.gz`. The readable patch
+and other generated text projections tolerate Windows checkout line endings;
+immutable measurement JSON and archived source/capture bytes are still checked by
+exact digest. No per-batch `.gitattributes` rule is needed.
