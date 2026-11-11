@@ -4,7 +4,7 @@
 Reads the real workflow: the matrix must name exactly the shards the script lists, the sharded
 step must pass every file through the script (and record each file's seconds), and the shards
 must cover every file exactly once. Checks the durations table against that list, that the cut
-is balanced and deterministic, and that a file the table does not know still runs. Then proves
+is balanced and deterministic, that each shard lists its longest files first, and that a file the table does not know still runs. Then proves
 the refusals - an unknown shard, a repeated file, too few files, an empty shard - and the
 `--update` path that refreshes the table from a CI run's timings.
 """
@@ -80,6 +80,10 @@ def main():
             assert path not in owners, f'{path} runs in {owners[path]} and {name}'
             owners[path] = name
     assert sorted(owners) == sorted(files), 'every file runs in exactly one shard'
+    # Longest first: node starts files in the order given, so a long file listed late ends the shard late.
+    for name in shard.names():
+        chosen = [seconds[path] for path in shard.select(name, files)]
+        assert chosen == sorted(chosen, reverse=True), f'shard {name} does not print its files longest first'
 
     # Balanced: dealing longest-first to the least-loaded shard ends with no shard more than one
     # file's weight above the lightest.
@@ -116,11 +120,13 @@ def main():
         table_path.write_text(json.dumps({'rest_head_start_seconds': 5, 'seconds': {'scripts/terminfo/a.test.mjs': 1.0}}), encoding='utf-8')
         timing = Path(tmp) / 'timing.json'
         timing.write_text(json.dumps({'D:\\a\\ntilde\\ntilde\\scripts\\terminfo\\b.test.mjs': 12.345,
-                                      '/home/runner/work/ntilde/ntilde/scripts/terminfo/a.test.mjs': 3.04}), encoding='utf-8')
-        assert shard.update([timing], table_path) == 2
+                                      '/home/runner/work/ntilde/ntilde/scripts/terminfo/a.test.mjs': 3.04,
+                                      '/home/runner/work/ntilde/ntilde/scripts/terminfo/c.test.mjs': 0.004}), encoding='utf-8')
+        assert shard.update([timing], table_path) == 3
         updated = json.loads(table_path.read_text(encoding='utf-8'))
         assert updated == {'rest_head_start_seconds': 5,
-                           'seconds': {'scripts/terminfo/a.test.mjs': 3.0, 'scripts/terminfo/b.test.mjs': 12.3}}, updated
+                           'seconds': {'scripts/terminfo/a.test.mjs': 3.0, 'scripts/terminfo/b.test.mjs': 12.3,
+                                       'scripts/terminfo/c.test.mjs': 0.1}}, updated
 
     # The workflow reads the output through bash command substitution: it must be LF-only on every OS.
     output = subprocess.run([sys.executable, str(ROOT / 'scripts/ci/node-tests-shard.py'), shard.REST, *files], capture_output=True, check=True).stdout

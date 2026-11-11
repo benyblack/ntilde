@@ -14,6 +14,11 @@ the hand-made claims this replaced (#920), always in REST, which made REST the j
 again within a day (351 s of node beside 122 and 283 on windows, run 42907696288). The cut is
 deterministic: the same file list and table give the same shards on every OS and every run.
 
+A shard prints its files longest first. `node --test` runs a few files at a time, starting them in
+the order given, so a long file listed late starts late and ends the shard after everything else:
+on the first run of this cut, windows shard b's 257 s file started some three minutes in, and the
+shard took 456 s beside 248 and 183.
+
 The table is measured, not hand-tuned. Each shard's step records every file's seconds on that
 runner (scripts/ci/node-tests-timing.mjs) and uploads them; `--update` folds such files into the
 table, so refreshing it from a windows run is one command (see the table's own notes).
@@ -71,15 +76,18 @@ def plan(files, table=None):
 
 
 def select(shard, files, table=None):
-    """The files of `shard`, in the order given, or a ValueError when the request cannot partition `files`."""
+    """The files of `shard`, longest first (see the module notes), or a ValueError when the request
+    cannot partition `files`."""
     if shard not in SHARDS:
         raise ValueError(f"unknown shard {shard!r}; expected one of {', '.join(SHARDS)}")
     if len(set(files)) != len(files):
         raise ValueError("the file list repeats a file")
     if len(files) < len(SHARDS):
         raise ValueError(f"{len(files)} files cannot fill {len(SHARDS)} shards")
+    table = load_table() if table is None else table
     owner, _ = plan(files, table)
-    chosen = [path for path in files if owner[path] == shard]
+    weight = weights(files, table)
+    chosen = sorted((path for path in files if owner[path] == shard), key=lambda p: (-weight[p], p))
     if not chosen:
         raise ValueError(f"shard {shard!r} owns no file; `node --test` without files would run every test it can find")
     return chosen
@@ -94,14 +102,15 @@ def normalize(path):
 
 def update(paths, table_path=DURATIONS):
     """Fold timing files written by scripts/ci/node-tests-timing.mjs into the table, rounded to
-    tenths of a second. A file measured in several inputs keeps the largest value."""
+    tenths of a second and at least 0.1 (a file of quick tests still costs its start). A file
+    measured in several inputs keeps the largest value."""
     table = load_table(table_path)
     measured = {}
     for path in paths:
         for name, seconds in json.loads(Path(path).read_text(encoding="utf-8")).items():
             name = normalize(name)
             measured[name] = max(measured.get(name, 0.0), float(seconds))
-    table["seconds"].update({name: round(seconds, 1) for name, seconds in measured.items()})
+    table["seconds"].update({name: max(round(seconds, 1), 0.1) for name, seconds in measured.items()})
     table["seconds"] = dict(sorted(table["seconds"].items()))
     Path(table_path).write_text(json.dumps(table, indent=2) + "\n", encoding="utf-8")
     return len(measured)
