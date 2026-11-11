@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -83,7 +84,7 @@ def wiring(text):
     detect = all_jobs.get('dotnet_detect')
     if not detect:
         return ['no dotnet_detect job']
-    if 'bash scripts/ci/dotnet-gate-paths.sh' not in detect or 'git diff --name-only HEAD^1 HEAD' not in detect:
+    if 'bash scripts/ci/dotnet-gate-paths.sh' not in detect or 'git diff --no-renames --name-only HEAD^1 HEAD' not in detect:
         found.append('dotnet_detect does not decide with dotnet-gate-paths.sh on the merge commit against its base')
     if 'fetch-depth: 2' not in detect:
         found.append('dotnet_detect checks out too little history for HEAD^1')
@@ -141,6 +142,41 @@ def rollup_problems(script, bash):
     return found
 
 
+def diff_problems(text, bash):
+    """Runs dotnet_detect's own diff command on a scratch repo's merge commit that moves a .NET
+    source file under docs/qa/ and changes a terminfo script, then the path rule on its output.
+    A rename-detecting diff lists the move by its new path only, which the rule would skip."""
+    match = re.search(r'changed="\$\((git diff [^)]*)\)"', jobs(text)['dotnet_detect'])
+    if not match:
+        return ['dotnet_detect assigns no git diff to `changed`']
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {**os.environ, 'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1',
+               'GIT_AUTHOR_NAME': 't', 'GIT_AUTHOR_EMAIL': 't@example.invalid',
+               'GIT_COMMITTER_NAME': 't', 'GIT_COMMITTER_EMAIL': 't@example.invalid'}
+
+        def git(*args):
+            subprocess.run(['git', *args], cwd=tmp, env=env, check=True, capture_output=True)
+
+        git('init', '-q', '-b', 'main')
+        source = Path(tmp) / 'src/Ntilde.VT/AnsiParser.cs'
+        source.parent.mkdir(parents=True)
+        source.write_text('namespace Ntilde.VT;\n' + 'internal static class AnsiParser { }\n' * 20, encoding='utf-8')
+        script = Path(tmp) / 'scripts/terminfo/x.mjs'
+        script.parent.mkdir(parents=True)
+        script.write_text('export const x = 1;\n', encoding='utf-8')
+        git('add', '-A')
+        git('commit', '-q', '-m', 'base')
+        git('checkout', '-q', '-b', 'pr')
+        (Path(tmp) / 'docs/qa').mkdir(parents=True)
+        git('mv', 'src/Ntilde.VT/AnsiParser.cs', 'docs/qa/AnsiParser.cs')
+        script.write_text('export const x = 2;\n', encoding='utf-8')
+        git('commit', '-q', '-am', 'move')
+        git('checkout', '-q', 'main')
+        git('merge', '-q', '--no-ff', '-m', 'merge', 'pr')
+        ran = subprocess.run([bash, '-c', f'{match[1]} | bash {SCRIPT.as_posix()}'], cwd=tmp, env=env, capture_output=True, text=True)
+    return [] if ran.stdout == 'run=true\n' else [f'a merge moving src/ under docs/qa/ gave {ran.stdout.strip() or ran.stderr.strip()!r}']
+
+
 def main():
     bash = find_bash()
     assert bash, 'bash not found'
@@ -151,6 +187,8 @@ def main():
     text = WORKFLOW.read_text(encoding='utf-8')
     problems = wiring(text)
     assert not problems, problems
+    problems = diff_problems(text, bash)
+    assert not problems, problems
     script = rollup_script(text)
     problems = rollup_problems(script, bash)
     assert not problems, problems
@@ -159,7 +197,8 @@ def main():
     mutants = {
         'build without the gate': wiring(text.replace(build, build.replace(f'    if: {GATE}\n', '', 1), 1)),
         'a new ungated .NET job': wiring(text + '\n  late_tests:\n    runs-on: ubuntu-latest\n    steps:\n      - run: dotnet test\n'),
-        'a diff against the wrong commit': wiring(text.replace('git diff --name-only HEAD^1 HEAD', 'git diff --name-only HEAD', 1)),
+        'a diff against the wrong commit': wiring(text.replace('git diff --no-renames --name-only HEAD^1 HEAD', 'git diff --name-only HEAD', 1)),
+        'a diff that detects renames': diff_problems(text.replace('git diff --no-renames --name-only', 'git diff --name-only', 1), bash),
         'a roll-up that passes any skip': rollup_problems(script.replace('if [ "$dotnet" = false ] && ', 'if ', 1), bash),
         'a roll-up that ignores the shards': rollup_problems(script.replace('[ "$result" = success ] ||', 'true ||', 1), bash),
     }

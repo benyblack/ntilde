@@ -82,7 +82,9 @@ jobs:
             echo "$EVENT_NAME: always runs the .NET jobs."
             exit 0
           fi
-          changed="$(git diff --name-only HEAD^1 HEAD)"
+          # --no-renames: with rename detection on, a moved file is listed by its new path only,
+          # so src/ moved under docs/qa/ would read as a docs change and skip the .NET jobs.
+          changed="$(git diff --no-renames --name-only HEAD^1 HEAD)"
           echo "Changed files against the base:"
           echo "$changed"
           result="$(bash scripts/ci/dotnet-gate-paths.sh <<<"$changed")"
