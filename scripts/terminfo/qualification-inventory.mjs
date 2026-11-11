@@ -57,6 +57,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('routed-input', '2026-11-11-routed-input', '2026-11-11-routed-input-qualification.md'), module: 'routed-input-contracts.mjs', exports: ['routedInputGradedSuiteId', 'routedInputContractsVersion', 'routedInputCaseIds'], test: 'routed-input-publication.test.mjs' },
     { ...directory('color-reset', '2026-11-11-runtime-color-reset', '2026-11-11-runtime-color-reset-qualification.md'), module: 'color-reset-contracts.mjs', exports: ['colorResetSuiteId', 'colorResetContractsVersion', 'colorResetCaseIds'], test: 'color-reset-publication.test.mjs' },
     { ...directory('osc133', '2026-11-11-osc133', '2026-11-11-osc133-qualification.md'), module: 'osc133-contracts.mjs', exports: ['osc133SuiteId', 'osc133ContractsVersion', 'osc133CaseIds'], test: 'osc133-publication.test.mjs' },
+    { ...directory('osc78', '2026-11-11-osc7-osc8', '2026-11-11-osc7-osc8-qualification.md'), module: 'osc78-contracts.mjs', exports: ['osc78SuiteId', 'osc78ContractsVersion', 'osc78CaseIds'], test: 'osc78-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */

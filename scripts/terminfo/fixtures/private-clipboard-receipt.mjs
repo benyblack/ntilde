@@ -32,7 +32,8 @@ export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+|osc133-[a-z-]+)\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -40,7 +41,7 @@ export function routedPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+)\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
@@ -770,6 +771,25 @@ async function buildFixture(output, routed) {
                 runFile: 'shi-run.json', runSha256: hash(readFileSync(join(output, 'shi-run.json'))),
                 adapterBundleSha256: hash(osc133Bytes), contractsVersion: osc133ContractsVersion,
                 counts: osc133Counts(osc133Report), provisionalUntil: 'cell-receipt.json' };
+            // The OSC 7/8 suffix is admitted by its retained artifacts (synthetic frames from the suite's own oracle, never collected ones), whatever the frozen policy.
+            const { syntheticOsc78Evidence } = await import('./osc78-evidence.mjs');
+            const { buildOsc78GradingReport, osc78Counts } = await import('../osc78-grading.mjs');
+            const { adaptOsc78Collector, osc78AdapterId } = await import('../osc78-grading-collector.mjs');
+            const { osc78SuiteId, osc78ContractsVersion } = await import('../osc78-contracts.mjs');
+            const osc78Bytes = Buffer.from(adaptOsc78Collector(lrMarginsBytes.toString()));
+            const osc78 = syntheticOsc78Evidence({ runId: context.runId, bundleSha256: hash(osc78Bytes) });
+            osc78.adapter = { ...osc78.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+            const osc78Report = buildOsc78GradingReport(osc78.frames, osc78.run, context.runId, osc78.adapter);
+            write('lnk-observations.json', osc78Report);
+            write('lnk-run.json', osc78.run);
+            writeFileSync(join(output, 'lnk-snapshots.jsonl'), osc78.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-lnk.mjs'), osc78Bytes);
+            Object.assign(context, { osc78AdapterId, osc78SuiteId, osc78BundleSha256: hash(osc78Bytes), osc78ContractsVersion });
+            evidence.osc78Evidence = { runId: context.runId, suiteId: osc78SuiteId,
+                file: 'lnk-observations.json', sha256: hash(readFileSync(join(output, 'lnk-observations.json'))),
+                runFile: 'lnk-run.json', runSha256: hash(readFileSync(join(output, 'lnk-run.json'))),
+                adapterBundleSha256: hash(osc78Bytes), contractsVersion: osc78ContractsVersion,
+                counts: osc78Counts(osc78Report), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

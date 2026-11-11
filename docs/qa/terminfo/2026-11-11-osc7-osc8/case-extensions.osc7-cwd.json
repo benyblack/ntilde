@@ -1,0 +1,665 @@
+{
+  "caseId": "extensions.osc7-cwd",
+  "pinnedFixture": {
+    "fixtureBytes": false,
+    "termlessFeeds": [],
+    "terminalWrites": []
+  },
+  "observed": {
+    "transmitted": {
+      "base": {
+        "uri": "file://localhost/ntilde-qa/osc78-base",
+        "expectedPath": "/ntilde-qa/osc78-base"
+      },
+      "first": {
+        "uri": "file://localhost/ntilde-qa/osc7-8c948815/first",
+        "expectedPath": "/ntilde-qa/osc7-8c948815/first"
+      },
+      "second": {
+        "uri": "file://localhost/ntilde-qa/osc7-8c948815/second",
+        "expectedPath": "/ntilde-qa/osc7-8c948815/second"
+      },
+      "space": {
+        "uri": "file://localhost/ntilde-qa/osc7%20space/8c948815",
+        "expectedPath": "/ntilde-qa/osc7 space/8c948815"
+      },
+      "authority": {
+        "uri": "file://remote-host.example/ntilde-qa/osc7-authority/8c948815",
+        "expectedPath": "/ntilde-qa/osc7-authority/8c948815"
+      }
+    },
+    "observedCwd": {
+      "baseline": "/ntilde-qa/osc78-base",
+      "afterOrdinaryText": "/ntilde-qa/osc78-base",
+      "first": "/ntilde-qa/osc7-8c948815/first",
+      "second": "/ntilde-qa/osc7-8c948815/second",
+      "restored": "/ntilde-qa/osc78-base",
+      "encodedSpace": "/ntilde-qa/osc7 space/8c948815",
+      "foreignAuthority": "/ntilde-qa/osc7-authority/8c948815",
+      "stTerminatedFirst": "/ntilde-qa/osc7-8c948815/first",
+      "afterTitleChange": "/ntilde-qa/osc78-base"
+    },
+    "freshness": {
+      "baselineFirstSecondDistinct": true
+    },
+    "hostComponent": {
+      "exposed": false,
+      "note": "The pane metadata carries the decoded path only; the file URI authority is dropped by documented design, so the host component of the transmitted URI is not reported."
+    },
+    "titleAfterUpdates": {
+      "first": "LK-base-8c948815",
+      "second": "LK-base-8c948815"
+    },
+    "notObserved": ["child process working directory","existence of the named path","remote-host validity"]
+  },
+  "experiments": [
+    {
+      "id": "extensions.osc7-cwd/stock",
+      "name": "stock",
+      "role": "stock",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9"],
+      "barriers": ["\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "baseline",
+          "snapshot": 2,
+          "cursor": [9,42],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [9,42],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc7-cwd/effect",
+      "name": "effect",
+      "role": "effect",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b[2;1Hosc7-ordinary","\u001b]7;file://localhost/ntilde-qa/osc7-8c948815/first\u0007","\u001b]7;file://localhost/ntilde-qa/osc7-8c948815/second\u0007","\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "prior",
+          "snapshot": 3,
+          "cursor": [9,42],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [9,42],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "ordinary",
+          "snapshot": 4,
+          "cursor": [1,13],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [1,13],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "first",
+          "snapshot": 5,
+          "cursor": [1,13],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc7-8c948815/first",
+                "observed": "/ntilde-qa/osc7-8c948815/first",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [1,13],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc7-8c948815/first",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "second",
+          "snapshot": 6,
+          "cursor": [1,13],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc7-8c948815/second",
+                "observed": "/ntilde-qa/osc7-8c948815/second",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [1,13],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc7-8c948815/second",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "restored",
+          "snapshot": 7,
+          "cursor": [1,13],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [1,13],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc7-cwd/space",
+      "name": "space",
+      "role": "required",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]7;file://localhost/ntilde-qa/osc7%20space/8c948815\u0007"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "encoded",
+          "snapshot": 8,
+          "cursor": [9,42],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc7 space/8c948815",
+                "observed": "/ntilde-qa/osc7 space/8c948815",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [9,42],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc7 space/8c948815",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc7-cwd/gate-title",
+      "name": "gate-title",
+      "role": "gate",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]2;LK-title-8c948815\u0007"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 9,
+          "cursor": [9,42],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-title-8c948815",
+                "observed": "LK-title-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [9,42],
+              "title": "LK-title-8c948815",
+              "displayTitle": "LK-title-8c948815",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "cwd": "/ntilde-qa/osc78-base",
+        "title": "LK-base-8c948815",
+        "links": []
+      }
+    },
+    {
+      "id": "extensions.osc7-cwd/authority",
+      "name": "authority",
+      "role": "observed",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]7;file://remote-host.example/ntilde-qa/osc7-authority/8c948815\u0007"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 10,
+          "cursor": [9,42],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc7-authority/8c948815",
+                "observed": "/ntilde-qa/osc7-authority/8c948815",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [9,42],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc7-authority/8c948815",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "cwd": "/ntilde-qa/osc78-base",
+        "title": "LK-base-8c948815",
+        "links": []
+      }
+    },
+    {
+      "id": "extensions.osc7-cwd/st-terminator",
+      "name": "st-terminator",
+      "role": "observed",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-8c948815\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_8c948815239c18d8e7e36f3379e994d9","\u001b]7;file://localhost/ntilde-qa/osc7-8c948815/first\u001b\\"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 11,
+          "cursor": [9,42],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-8c948815",
+                "observed": "LK-base-8c948815",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc7-8c948815/first",
+                "observed": "/ntilde-qa/osc7-8c948815/first",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [9,42],
+              "title": "LK-base-8c948815",
+              "displayTitle": "LK-base-8c948815",
+              "cwd": "/ntilde-qa/osc7-8c948815/first",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "cwd": "/ntilde-qa/osc78-base",
+        "title": "LK-base-8c948815",
+        "links": []
+      }
+    }
+  ],
+  "pinned": {
+    "pass": false,
+    "note": "Declared OSC 7 capability does not establish working-directory metadata delivery",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "legacy",
+      "note": "Declared OSC 7 capability does not establish working-directory metadata delivery"
+    },
+    "termless": {
+      "pass": false,
+      "response": "{\"declared\":true}",
+      "note": "Declared OSC 7 capability does not establish working-directory metadata delivery",
+      "observation": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "legacy",
+        "note": "Declared OSC 7 capability does not establish working-directory metadata delivery"
+      }
+    },
+    "terminal": {
+      "pass": false,
+      "note": "No working-directory metadata readback for OSC 7",
+      "observation": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No working-directory metadata readback for OSC 7"
+      }
+    }
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "effectContract": {
+    "id": "ntilde-osc7-cwd-metadata-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "validity": [
+      {
+        "id": "prior-state",
+        "held": true
+      },
+      {
+        "id": "unmarked-control",
+        "held": true
+      },
+      {
+        "id": "gate-title",
+        "held": true
+      },
+      {
+        "id": "prepared-baseline",
+        "held": true
+      }
+    ],
+    "required": [
+      {
+        "id": "first-update",
+        "held": true
+      },
+      {
+        "id": "fresh-second-update",
+        "held": true
+      },
+      {
+        "id": "restoration-to-baseline",
+        "held": true
+      },
+      {
+        "id": "encoded-space",
+        "held": true
+      }
+    ],
+    "notes": ["Stock read (the prepared baseline): every fact as predicted."],
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "divergences": [
+    {
+      "pinnedOutcome": "inconclusive",
+      "contractOutcome": "supported",
+      "kind": "pinned-inconclusive-by-design"
+    }
+  ],
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-pane-metadata-and-session-status",
+    "grading": "pinned-declaration-only-preserved-by-design",
+    "note": "Declared OSC 7 capability does not establish working-directory metadata delivery",
+    "scope": "Pinned terminfo.dev@4.0.0 extensions.osc7-cwd (no fixture bytes: a declared-capability report and a no-readback result, both inconclusive by design) and extensions.osc8 (termless: stored cells and hyperlink metadata of the pinned fixture; terminal: cursor position, inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, host working directory, hyperlink runs with snapshot-local identities) and session status by an independent oracle: OSC 7 reported working-directory metadata only, never the child process working directory or the existence of the named path; OSC 8 stored hyperlink-bearing cells only, never click handling, URL opening, URI safety policy or underline rendering. Protocol handling in a disposable direct-local App only: no shell, remote delivery, OSC title, OSC 133 P, OSC 633, semantic-prompts aggregate or stock grade claim."
+  }
+}

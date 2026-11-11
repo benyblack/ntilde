@@ -1047,3 +1047,16 @@ output anchors, title, cwd) and session status, executing each exact pinned fixt
 boundary, payload and consecutive-cycle experiments and recorded (never graded) terminator-variant and exit-payload observations. The suite reuses the frozen metadata
 suite's paired observer under its own prefix; no production code changed. The qualification covers protocol handling in a disposable direct-local App, not Bash, Zsh, Fish,
 PowerShell, SSH or remote delivery. Receipt schema 45 and source policy v39 (281 files) bind it; earlier policies stay frozen. Inventory: 96 qualified ids.
+
+### OSC 7 and OSC 8 qualification (working-directory metadata, stored hyperlink cells)
+
+The [OSC 7 / OSC 8 batch](terminfo/2026-11-11-osc7-osc8-qualification.md) qualifies `extensions.osc7-cwd` and `extensions.osc8` through a layered collector extension
+(`ntilde-owned-osc78-grading-v1`) over the left/right-margin one, outside the frozen 80-row Core target. The pinned `extensions.osc7-cwd` probe carries **no fixture bytes** (a
+declared-capability report and a no-readback result, both inconclusive by design), so it is preserved unchanged and a separately identified [effect contract](terminfo/osc78.md)
+(`ntilde-osc7-cwd-metadata-effect-v1`) grades the pane's reported working-directory metadata with its own bytes. The pinned `extensions.osc8` termless probe is executed
+unchanged over the journaled stored cells and hyperlink runs and decides; its terminal path (a cursor position) stays inconclusive by design and is recorded beside it, next to
+the effect contract (`ntilde-osc8-hyperlink-cells-effect-v1`). Both effect contracts come from an independent oracle over paired complete stored cells, raw pane metadata and
+session status, with unmarked controls, gates and the named defect controls (ignored link-open, text without link metadata, wrong URI or id, ranges reaching the closed-link
+witness, stale, merged and leaked links; an undecoded encoded space, a stale second cwd, an unrestored baseline). Only reported metadata and stored cells are qualified: not the
+child's real working directory, path existence, click handling, URL opening or rendering. The suite reuses the paired metadata observer under its own prefix; no production
+code changed. Receipt schema 51 and source policy v45 (300 files) bind it; earlier policies stay frozen.

@@ -5,6 +5,7 @@ import { includesTabStopsEvidence, checkTabStopsEvidence } from './core-tab-stop
 import { includesCoreEraseEvidence, checkCoreEraseEvidence } from './core-erase-receipt.mjs';
 import { includesTextCursorEvidence, checkTextCursorEvidence } from './core-text-cursor-receipt.mjs';
 import { includesOsc133Evidence, checkOsc133Evidence } from './osc133-receipt.mjs';
+import { includesOsc78Evidence, checkOsc78Evidence } from './osc78-receipt.mjs';
 import { includesPrivateClipboardEvidence, checkPrivateClipboardEvidence } from './private-clipboard-receipt.mjs';
 import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
 import { includesInputEvidence, checkInputEvidence } from './input-receipt.mjs';
@@ -200,6 +201,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesCoreWrap',
     'includesSgrRaster',
     'includesReverseWide',
+    'includesOsc78',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
@@ -254,6 +256,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesCoreWrap = includesCoreWrapEvidence(output, evidence, context, proof);
     const includesSgrRaster = includesSgrRasterEvidence(output, evidence, context);
     const includesReverseWide = includesReverseWideEvidence(output, evidence, context);
+    const includesOsc78 = includesOsc78Evidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
     const includesColorReset = includesColorResetEvidence(output, evidence, context);
@@ -264,7 +267,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -316,6 +319,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesCoreWrap) checkCoreWrapEvidence(output, evidence, runId, context, proof);
     if (suffixes.includesSgrRaster) checkSgrRasterEvidence(output, evidence, runId, context);
     if (suffixes.includesReverseWide) checkReverseWideEvidence(output, evidence, runId, context);
+    if (suffixes.includesOsc78) checkOsc78Evidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

@@ -21,7 +21,7 @@ const predecessors = ['sgrColors', 'sgrRgb', 'sgrAttrs', 'sgrPalette', 'sgrTruec
 
 test('a complete run carries the OSC 133 suffix: counts, adapter identity and the layered derivation rederive without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 45);
+    assert.equal(f.finish().schemaVersion, 51);
     assert.deepEqual(f.evidence.osc133Evidence.counts, { 'inconclusive/supported': 4 });
     assert.equal(f.context.osc133AdapterId, osc133AdapterId);
     assert.equal(f.context.osc133SuiteId, osc133SuiteId);

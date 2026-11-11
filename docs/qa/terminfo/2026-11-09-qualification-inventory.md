@@ -9,16 +9,16 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 96 |
-| Suite claims (an id covered by two suites has two claims) | 98 |
+| Unique benchmark ids with qualified effect evidence | 98 |
+| Suite claims (an id covered by two suites has two claims) | 100 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 96 |
-| Supported by both the pinned probe and the effect contract | 80 |
-| Effect supported, pinned verdict inconclusive | 16 |
+| Effect contract supported | 98 |
+| Supported by both the pinned probe and the effect contract | 81 |
+| Effect supported, pinned verdict inconclusive | 17 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
-Effect supported but pinned inconclusive: `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `input.button-event-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc7-cwd`, `input.button-event-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 ## Remaining cases against an explicit baseline
 
@@ -26,12 +26,12 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Effect-unqualified (168 − 95) | 73 |
-| Not pinned-supported (168 − 79) | 89 |
+| Effect-unqualified (168 − 97) | 71 |
+| Not pinned-supported (168 − 80) | 88 |
 
 Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 89 not-pinned-supported inconclusive cases are the 90 cases outside the 86 stock-supported plus 79 pinned-supported ones.
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 88 not-pinned-supported inconclusive cases are the 89 cases outside the 86 stock-supported plus 80 pinned-supported ones.
 
 ### Ungraded diagnostic
 
@@ -70,6 +70,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `routed-input` | 3 | v1 | passed | 42 | `de5d921e` | v36 | 68 | `131fbc08` |
 | `color-reset` | 4 | v1 | passed | 43 | `de5d921e` | v37 | 98 | `d4efa921` |
 | `osc133` | 4 | v1 | passed | 45 | `45f0e09c` | v39 | 42 | `fecb7942` |
+| `osc78` | 2 | v1 | passed | 51 | `ca34a1d9` | v45 | 23 | `3e83213a` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -108,6 +109,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `routed-input` | collected-run-id-recorded | `5f9325e8` | 167/87/1 | `cf7d8759` |
 | `color-reset` | collected-run-id-recorded | `91a4bb30` | 167/87/1 | `cf7d8759` |
 | `osc133` | collected-run-id-recorded | `7e393c09` | 167/87/1 | `45f0e09c` |
+| `osc78` | collected-run-id-recorded | `1370f859` | 167/87/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -160,6 +162,8 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc133-b` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
 | `extensions.osc133-c` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
 | `extensions.osc133-d` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
+| `extensions.osc7-cwd` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc78 | osc78: pinned-inconclusive-by-design |
+| `extensions.osc8` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc78 | - |
 | `input.button-event-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `input.x10-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `modes.alt-screen.exit` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |

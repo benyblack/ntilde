@@ -5,6 +5,7 @@ import { collectTabStops } from './core-tab-stops.mjs';
 import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
+import { collectOsc78 } from './osc78-collector.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -351,6 +352,12 @@ try {
         writeFileSync(join(config.output, 'sr-run.json'), JSON.stringify(sgrRasterRun) + '\n', { flag: 'wx', mode: 0o600 });
         const reverseWideRun = await collectReverseWide({ config, fence, owner });
         writeFileSync(join(config.output, 'rw-run.json'), JSON.stringify(reverseWideRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered OSC 7 / OSC 8 qualification follows the Core reverse-video/wide-cell suite on the same exclusively owned fence. A typed refusal of its first
+        // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+        const osc78Source = readFileSync(config.osc78Bundle);
+        if (createHash('sha256').update(osc78Source).digest('hex') !== config.osc78BundleSha256) throw new Error('Local OSC 7/8 adapter bundle changed.');
+        const osc78Result = await collectOsc78({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc78Bundle).href) });
+        if (osc78Result.status === 'complete') writeFileSync(join(config.output, 'lnk-run.json'), JSON.stringify(osc78Result.run) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
