@@ -38,7 +38,10 @@ Every stage is read from four separately retained layers, and each must match th
    explicit cell's resolved color.
 3. **Stored state**: default markers, palette-indexed and literal-RGB cells, text, cursor position, stored cursor mode and visibility.
 4. **Controlled render**: the offscreen render theme (sources, override flags, derived cursor text and selection paint), the presentation phase
-   (clock 0, cursor phase fixed visible, scale 1) and the original PNG, bound to the observed cursor state.
+   (clock 0, cursor phase fixed visible, scale 1) and the original PNG, bound to the observed cursor state. Three samples are read from the PNG itself and compared
+   with the model's colors, independently of the theme the App reported: an untouched default-background cell (one solid color), the dominant ink color of the
+   default-colored text row, and the cursor cell of a visible steady block (one solid color). Whole-image digests add that a reset render differs from the previous
+   stage's render, differs from the baseline render where an override the scene draws remains, and equals it byte for byte where none remains.
 
 Each experiment is `baseline → override → reset…`. The baseline and the override are **controls**: no runtime override in any layer, two App
 layers agreeing, the scene as written, the intended override present in every layer, each overridden target distinct from its baseline, the

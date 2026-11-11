@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { colorResetContracts, colorResetCaseIds, colorResetFixture, colorResetModel, colorResetReadPlan, gradeColorResetCase, colorResetObservation,
     colorResetFeeds, colorResetReads, queryBytes } from './color-reset-contracts.mjs';
 import { parseColorSpec, oscStrings, applyColorWrites, noOverrides, effectiveColors, overrideIndices, channels16 } from './color-reset-model.mjs';
-import { syntheticColorResetEvidence, syntheticColorResetGrades, syntheticBaseline } from './fixtures/color-reset-evidence.mjs';
+import { syntheticColorResetEvidence, syntheticColorResetGrades, syntheticBaseline, syntheticRenderSamples } from './fixtures/color-reset-evidence.mjs';
 import { canonicalPalette } from './fixtures/sgr-palette-evidence.mjs';
 
 const outcomes = behavior => syntheticColorResetGrades(syntheticColorResetEvidence('a'.repeat(32), 'f'.repeat(64), behavior)).map(item => item.outcome);
@@ -145,6 +145,8 @@ test('grading: a correct App is supported in every case; each injected defect is
     assert.deepEqual(outcomes({ stalePng: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     // Where other overrides remain drawn, a reset render equal to the baseline render means the renderer dropped them too.
     assert.deepEqual(outcomes({ baselinePng: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
+    // A reset render that differs from the baseline and the previous render but draws a remaining override in the wrong color: the sampled colors catch it.
+    assert.deepEqual(outcomes({ wrongRender: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     // A reply that never arrived at the reset readback cannot establish unsupported: the pinned probe is inconclusive too.
     assert.deepEqual(outcomes({ noResetReplies: true }), ['inconclusive', 'inconclusive', 'inconclusive', 'inconclusive']);
 });
@@ -173,7 +175,7 @@ function grade(evidence, frames) {
     let at = 2;
     return colorResetContracts.map(contract => {
         const reads = evidence.run.cases.find(item => item.caseId === contract.caseId).reads.map(() => frames[at++]);
-        return gradeColorResetCase(contract, colorResetObservation(contract, reads.map(item => ({ screen: item.screen, queries: item.queries, details: item.pixel.renderDetails, pixelSha256: item.pixel.sha256 }))));
+        return gradeColorResetCase(contract, colorResetObservation(contract, reads.map(item => ({ screen: item.screen, queries: item.queries, details: item.pixel.renderDetails, pixelSha256: item.pixel.sha256, render: syntheticRenderSamples(evidence, item) }))));
     });
 }
 
@@ -183,7 +185,7 @@ test('grading refuses missing captures and an unknown contracts revision', () =>
     assert.throws(() => colorResetObservation(contract, []), /Missing runtime-color read captures/);
     assert.throws(() => gradeColorResetCase(contract, {}), /Missing extensions.osc104-reset-palette read captures/);
     const reads = evidence.run.cases[0].reads.map((_, index) => evidence.frames[2 + index]);
-    const observation = colorResetObservation(contract, reads.map(item => ({ screen: item.screen, queries: item.queries, details: item.pixel.renderDetails, pixelSha256: item.pixel.sha256 })));
+    const observation = colorResetObservation(contract, reads.map(item => ({ screen: item.screen, queries: item.queries, details: item.pixel.renderDetails, pixelSha256: item.pixel.sha256, render: syntheticRenderSamples(evidence, item) })));
     assert.throws(() => gradeColorResetCase(contract, observation, 2), /Unknown runtime-color reset contracts revision 2/);
     assert.equal(gradeColorResetCase(contract, observation).outcome, 'supported');
 });

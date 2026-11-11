@@ -11,7 +11,7 @@ import { screenSnapshot, snapshotHash } from '../agent-observer.mjs';
 import { planFeeds } from '../graded-plan.mjs';
 import { colorResetContracts, colorResetFixture, colorResetObservation, gradeColorResetCase, colorResetModel } from '../color-reset-contracts.mjs';
 import { opaqueArgb, channels16, overrideIndices } from '../color-reset-model.mjs';
-import { replayColorResetPinned } from '../color-reset-grading.mjs';
+import { replayColorResetPinned, renderSamples } from '../color-reset-grading.mjs';
 import { colorResetAdapterId } from '../color-reset-grading-collector.mjs';
 import { syntheticColEditScreen, colEditRows, colEditCols, paletteBinding, colorCell, plainCell } from './col-edit-evidence.mjs';
 import { paletteChannel, literalChannel } from './sgr-palette-evidence.mjs';
@@ -95,12 +95,19 @@ function renderTheme(colors, overrides) {
         effectiveSelectionBackgroundArgb: 0x80336699, effectiveSelectionForegroundArgb: null, paletteOverrideIndices: overrideIndices(overrides) };
 }
 
-/** A PNG whose bytes depend on exactly what the render shows: the screen and the theme. */
-function renderPng(screen, theme) {
+/** A render of one screen under one theme: a background fill, ink on the default-colored text row, a filled block cursor when one is visible, and (in the top band, where nothing is
+ * sampled) a digest of the whole state, so any state change the scene does not draw still changes the bytes. */
+function drawRender(screen, theme) {
     const key = createHash('sha256').update(snapshotHash(screen) + snapshotHash(theme)).digest();
-    const pixels = Buffer.alloc(width * height * 4, 0);
-    for (let at = 0; at < key.length; at++) pixels[at * 4] = key[at];
-    return encodePng({ width, height, pixels });
+    const pixels = Buffer.alloc(width * height * 4);
+    const paint = (x, y, argb) => { const at = (y * width + x) * 4; pixels[at] = (argb >>> 16) & 255; pixels[at + 1] = (argb >>> 8) & 255; pixels[at + 2] = argb & 255; pixels[at + 3] = 255; };
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) paint(x, y, theme.backgroundArgb);
+    for (let at = 0; at < key.length; at++) paint(at, 0, 0xff000000 | (key[at] << 16) | (key[at] << 8) | key[at]);
+    if (screen.lines[1] !== '') for (let y = cellHeight + 4; y < cellHeight + 14; y++) for (let x = 4 * cellWidth; x < 11 * cellWidth; x += 2) paint(x, y, theme.foregroundArgb);
+    if (screen.cursorVisible && screen.cursorMode.style === 0) {
+        for (let y = 8 * cellHeight; y < 9 * cellHeight; y++) for (let x = 8 * cellWidth; x < 9 * cellWidth; x++) paint(x, y, theme.cursorArgb);
+    }
+    return { width, height, pixels };
 }
 
 const reply = (spec, argb) => {
@@ -116,10 +123,11 @@ const pixelOf = (index, screen, theme, png) => {
         mode: 'render', scale: 1, downscaled: false, inlineOmitted: false, presentationTimeMs: 0, renderDetails: { ...details, theme } };
 };
 /** One journaled frame; `view` is `{ theme, extra, repeat }`: the render theme, the read's case/stage/replies and a frame whose render is repeated (a stale render). */
-const frame = (index, kind, screen, barrier, view, pngs) => {
-    const { theme, extra = {}, repeat = null } = view;
-    const png = repeat === null ? renderPng(screen, theme) : pngs.get(repeat.pixel.file), pixel = pixelOf(index, screen, theme, png);
-    pngs.set(pixel.file, png);
+const frame = (index, kind, screen, barrier, view, { pngs, images }) => {
+    const { theme, extra = {}, repeat = null, drawn = theme } = view;
+    const image = repeat === null ? drawRender(screen, drawn) : images.get(repeat.pixel.file), png = repeat === null ? encodePng(image) : pngs.get(repeat.pixel.file);
+    const pixel = pixelOf(index, screen, theme, png);
+    pngs.set(pixel.file, png); images.set(pixel.file, image);
     return { index, kind, paneId, barrier, screen, sha256: snapshotHash(screen), afterScreen: structuredClone(screen), afterSha256: snapshotHash(screen),
         caseId: null, experimentId: null, stageId: null, queries: [], ...extra, pixel };
 };
@@ -145,7 +153,7 @@ function stageTheme(spec, step, colors, overrides, baseline, behavior) {
 }
 
 /** The frames and worker reads of one case. */
-function caseFrames(contract, frames, pngs, baseline, behavior) {
+function caseFrames(contract, frames, store, baseline, behavior) {
     const reads = [];
     for (const spec of contract.experiments) {
         const firstFrame = frames.length;
@@ -156,8 +164,9 @@ function caseFrames(contract, frames, pngs, baseline, behavior) {
             const screen = stageScreen(spec, index, colors, overrides);
             const queries = stageQueries(spec, step, colors, baseline, behavior);
             const view = { theme: stageTheme(spec, step, colors, overrides, baseline, behavior), extra: { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries },
+                drawn: behavior.wrongRender && step.kind === 'reset' ? { ...stageTheme(spec, step, colors, overrides, baseline, behavior), backgroundArgb: 0xff123456 } : undefined,
                 repeat: behavior.stalePng && step.kind === 'reset' ? frames.at(-1) : (behavior.baselinePng && step.kind === 'reset' ? frames[firstFrame] : null) };
-            frames.push(frame(frames.length, 'crst-read', screen, deviceAttribute, view, pngs));
+            frames.push(frame(frames.length, 'crst-read', screen, deviceAttribute, view, store));
             reads.push({ kind: 'state', cursor: [screen.cursorRow, screen.cursorCol], queries: structuredClone(queries) });
         }
     }
@@ -166,22 +175,22 @@ function caseFrames(contract, frames, pngs, baseline, behavior) {
 
 /** A complete, valid synthetic run: frames, worker run log, adapter facts and the retained PNGs. `behavior` builds negative evidence. */
 export function syntheticColorResetEvidence(runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), behavior = {}) {
-    const baseline = syntheticBaseline(), pngs = new Map();
+    const baseline = syntheticBaseline(), pngs = new Map(), images = new Map(), store = { pngs, images };
     const host = hostScreen(), hostTheme = renderTheme(baseline, { palette: new Map(), foreground: null, background: null, cursor: null });
     const nonce = 'NTILDE_CR_' + runId;
-    const frames = [frame(0, 'crst-start', host, null, { theme: hostTheme }, pngs)];
-    frames.push(frame(1, 'crst-bind', { ...host, lines: [nonce, ...host.lines.slice(1)], cursorCol: nonce.length }, deviceAttribute, { theme: hostTheme }, pngs));
+    const frames = [frame(0, 'crst-start', host, null, { theme: hostTheme }, store)];
+    frames.push(frame(1, 'crst-bind', { ...host, lines: [nonce, ...host.lines.slice(1)], cursorCol: nonce.length }, deviceAttribute, { theme: hostTheme }, store));
     const cases = colorResetContracts.map(contract => {
-        const reads = caseFrames(contract, frames, pngs, baseline, behavior);
+        const reads = caseFrames(contract, frames, store, baseline, behavior);
         const feeds = planFeeds(contract);
         const pinned = { probeId: contract.caseId, ...replayColorResetPinned(contract, contract.pinnedRoles.map(role => reads[contract.roles.indexOf(role)].queries[0].reply)) };
         return { caseId: contract.caseId, feeds, barriers: feeds.map(() => deviceAttribute), reads, pinned };
     });
-    frames.push(frame(frames.length, 'crst-finish', host, deviceAttribute, { theme: hostTheme }, pngs));
+    frames.push(frame(frames.length, 'crst-finish', host, deviceAttribute, { theme: hostTheme }, store));
     const run = { schemaVersion: 1, adapterId: colorResetAdapterId, probeIds: colorResetContracts.map(item => item.caseId), cases };
     const adapter = { id: colorResetAdapterId, derivedFromAdapterId: 'ntilde-owned-left-right-margins-grading-v1', bundleSha256,
         upstreamBundleSha256: 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6' };
-    return { frames, run, runId, adapter, pngs, captureOf: item => ({ details: item.pixel.renderDetails }) };
+    return { frames, run, runId, adapter, pngs, images, captureOf: item => ({ details: item.pixel.renderDetails, image: images.get(item.pixel.file) }) };
 }
 
 /** Write the retained PNGs of one synthetic run under `output/crst-pixels`, as the real observer does. */
@@ -196,7 +205,7 @@ export function syntheticColorResetGrades(evidence) {
     return colorResetContracts.map(contract => {
         const reads = evidence.run.cases.find(item => item.caseId === contract.caseId).reads.map(() => evidence.frames[at++]);
         return gradeColorResetCase(contract, colorResetObservation(contract, reads.map(item => ({ screen: item.screen, queries: item.queries,
-            details: item.pixel.renderDetails, pixelSha256: item.pixel.sha256 }))));
+            details: item.pixel.renderDetails, pixelSha256: item.pixel.sha256, render: syntheticRenderSamples(evidence, item) }))));
     });
 }
 
@@ -204,3 +213,6 @@ export { defaultChannel } from './sgr-palette-evidence.mjs';
 
 /** A deep copy of the mutable parts of a run (journal, run log, adapter), sharing the retained PNG bytes. */
 export const cloneColorResetEvidence = evidence => ({ ...evidence, frames: structuredClone(evidence.frames), run: structuredClone(evidence.run), adapter: structuredClone(evidence.adapter) });
+
+/** The colors the synthetic render of one frame drew, read the way the report builder reads a real one. */
+export const syntheticRenderSamples = (evidence, frame) => renderSamples({ image: evidence.images.get(frame.pixel.file), details: frame.pixel.renderDetails });

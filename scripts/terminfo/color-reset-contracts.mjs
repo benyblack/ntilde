@@ -280,6 +280,14 @@ function expectedLines(rows, steps, upTo) {
     return lines;
 }
 
+/** The colors the controlled render actually drew, sampled from the original PNG: an untouched default-background cell, the dominant ink color of the default-colored text row
+ * and (only for a visible steady block) the cursor cell. They are compared with the model's colors, independently of the render theme the App reported. */
+function renderMatches(render, effective, wanted) {
+    if (!render) return false;
+    const cursorDrawn = wanted.visible && wanted.style === 0;
+    return render.background === effective.background && render.ink === effective.foreground && (!cursorDrawn || render.cursor === effective.cursor);
+}
+
 /** The mode the scene's cursor configuration must read back as. */
 const cursorWanted = scene => scene.cursor ?? { visible: false, style: null, blink: null };
 
@@ -297,7 +305,7 @@ export function colorResetObservation(item, reads) {
     return Object.fromEntries(item.experiments.map(spec => [spec.id, spec.stages.map(step => {
         const read = reads[at++];
         return { id: step.id, kind: step.kind, screen: read.screen, queries: read.queries, theme: read.details.theme,
-            presentation: read.details.presentation, pixelSha256: read.pixelSha256 };
+            presentation: read.details.presentation, pixelSha256: read.pixelSha256, render: read.render };
     })]));
 }
 
@@ -313,6 +321,7 @@ function stageChecks({ spec, base, observed, index, overrides, effective, cells,
         check(`${label}: the App's resolved colors and override metadata match`, bindingMatches(observed.screen.colorBinding, base.screen.colorBinding, effective, overrides)),
         check(`${label}: the render theme sources and override flags match`, themeMatches(observed.theme, base.theme, effective, overrides)),
         check(`${label}: default markers, palette-indexed and literal cells resolve to the model`, cellsMatch(observed.screen, stepCells, effective)),
+        check(`${label}: the controlled render draws the effective background, text ink and (a visible block) cursor colors`, renderMatches(observed.render, effective, wanted)),
         check(`${label}: stored text, cursor position, shape and visibility are as written`, sameJson(observed.screen.lines, expectedLines(observed.screen.rows, spec.stages, index))
             && cursorMatches(observed.screen, { presentation: observed.presentation }, wanted) && (wanted.style === null || observed.presentation.cursorStyle === wanted.style))];
     if (noneOverridden(overrides)) checks.push(check(`${label}: the complete theme, derived values included, equals the baseline`, snapshotHash(observed.theme) === snapshotHash(base.theme)));

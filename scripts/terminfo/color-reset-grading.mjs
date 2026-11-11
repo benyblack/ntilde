@@ -12,6 +12,7 @@ import { colorResetContracts, colorResetCaseIds, colorResetContractsVersion, col
 import { colorResetAdapterId } from './color-reset-grading-collector.mjs';
 import { colorResetRecordingContext, pinnedReplies } from './color-reset-collector.mjs';
 import { retainedColorResetCapture } from './color-reset-capture.mjs';
+import { regionPixels } from './pixels.mjs';
 
 const label = 'Runtime-color reset';
 const derivedFrom = 'ntilde-owned-left-right-margins-grading-v1';
@@ -92,6 +93,38 @@ export function replayColorResetPinned(contract, replies) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
+// The colors the controlled render drew, read from the original PNG.
+
+/** An opaque ARGB integer of the first pixel of a region's RGBA bytes. */
+const argbAt = (bytes, offset = 0) => (0xff000000 | (bytes[offset] << 16) | (bytes[offset + 1] << 8) | bytes[offset + 2]) >>> 0;
+
+/** The one color a region is filled with, or null when it is not a single color. */
+function solidColor(bytes) {
+    for (let offset = 4; offset < bytes.length; offset += 4) if (bytes.readUInt32LE(offset) !== bytes.readUInt32LE(0)) return null;
+    return argbAt(bytes);
+}
+
+/** The most frequent color of a region other than `background`, or null when the region holds only the background. */
+function dominantInk(bytes, background) {
+    const counts = new Map();
+    for (let offset = 0; offset < bytes.length; offset += 4) {
+        const color = argbAt(bytes, offset);
+        if (color !== background) counts.set(color, (counts.get(color) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+/** The scene cells the samples read: an untouched default cell, the default-colored text row and the cursor cell. */
+const sampleAreas = Object.freeze({ background: { row: 12, col: 50, rows: 1, cols: 1 }, text: { row: 1, col: 4, rows: 1, cols: 7 }, cursor: { row: 8, col: 8, rows: 1, cols: 1 } });
+
+/** What one controlled render drew: the background, the cursor cell fill and the dominant text ink (each null when not a single color or absent). */
+export function renderSamples({ image, details }) {
+    const read = area => regionPixels(image, details.grid, area);
+    const background = solidColor(read(sampleAreas.background));
+    return { background, cursor: solidColor(read(sampleAreas.cursor)), ink: background === null ? null : dominantInk(read(sampleAreas.text), background) };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
 // Journal validation.
 
 /** One frame's render: the original PNG bytes against the frame's screen and the shared render context. */
@@ -167,13 +200,13 @@ function checkPinned(contract, recorded, readFrames, replayModule) {
 }
 
 /** The report entry of one case, after every cross-check of its journal slice. */
-function caseReport({ contract, recorded, readFrames, frames, contractsVersion, replayModule }) {
+function caseReport({ contract, recorded, readFrames, frames, samples, contractsVersion, replayModule }) {
     validateGradedCaptureRecord(contract, recorded, label);
     crossCheckGradedCapture(contract, recorded, readFrames, label);
     checkReplies(contract, recorded, readFrames);
     for (const frame of readFrames) if (frame.caseId !== contract.caseId) throw new Error(`${label} ${contract.caseId} read frame belongs to another case.`);
     const observation = colorResetObservation(contract, readFrames.map(frame => ({ screen: frame.screen, queries: frame.queries,
-        details: frame.pixel.renderDetails, pixelSha256: frame.pixel.sha256 })));
+        details: frame.pixel.renderDetails, pixelSha256: frame.pixel.sha256, render: samples.get(frame) })));
     const contractResult = gradeColorResetCase(contract, observation, contractsVersion);
     const pinned = checkPinned(contract, recorded, readFrames, replayModule);
     const divergence = reconcile(contract, pinned.observation.outcome, contractResult);
@@ -197,13 +230,14 @@ export function buildColorResetGradingReport(frames, run, runId, adapter, { cont
     const load = captureOf ?? (output === null ? null : frame => retainedColorResetCapture(output, frame));
     if (load === null) throw new Error(`${label} evidence needs its retained captures.`);
     validateColorResetEvidence(frames, run, runId, adapter, load);
+    const samples = new Map(frames.map(frame => [frame, renderSamples(load(frame))]));
     let frameIndex = 2;
     const cases = [];
     for (const [position, contract] of colorResetContracts.entries()) {
         const recorded = run.cases[position];
         if (recorded.caseId !== contract.caseId) throw new Error(`${label} case order differs from the contracts.`);
         const readFrames = recorded.reads.map(() => frames[frameIndex++]);
-        cases.push(caseReport({ contract, recorded, readFrames, frames, contractsVersion, replayModule }));
+        cases.push(caseReport({ contract, recorded, readFrames, frames, samples, contractsVersion, replayModule }));
     }
     return { schemaVersion: 1, suiteId: colorResetSuiteId, runId, contractsVersion, adapter, scope,
         initialSnapshot: 0, restoredSnapshot: frames.length - 1, cases, snapshots: frames };
