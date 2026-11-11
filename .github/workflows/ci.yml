@@ -253,6 +253,17 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/trim_test_outputs_tests.py
 
+      # On windows the .NET SDK action puts NuGet packages on the workspace disk, so a job's NuGet
+      # cache must follow NUGET_PACKAGES or it caches a folder nothing reads:
+      # scripts/tests/nuget_cache_path_tests.py.
+      - name: Self-test the NuGet cache paths
+        if: matrix.shard == 'rest'
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/nuget_cache_path_tests.py
+
   # Preserve the existing portable lane's bounded budget. Frozen v11 publication
   # rederivation runs independently on every CI event and gates the same required roll-up.
   query_publication_guards:
@@ -425,7 +436,7 @@ jobs:
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
+          path: ${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}
           key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
@@ -529,7 +540,7 @@ jobs:
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
+          path: ${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}
           key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
@@ -644,7 +655,7 @@ jobs:
         if: steps.shard.outputs.restore == '1'
         uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
+          path: ${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}
           key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
@@ -1175,7 +1186,7 @@ jobs:
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
+          path: ${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}
           key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
@@ -1207,7 +1218,7 @@ jobs:
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
+          path: ${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}
           key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-
 
@@ -2038,7 +2049,7 @@ jobs:
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
+          path: ${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}
           key: nuget-aot-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
           restore-keys: nuget-aot-${{ runner.os }}-${{ runner.arch }}-
 
