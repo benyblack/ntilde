@@ -99,42 +99,48 @@ export function osc78ObserverPlan(snapshot, runId) {
 }
 
 function validateJournal(frames, experiments, runId) {
-    const reads = experiments.reduce((sum, item) => sum + planReads(item), 0), count = 3 + reads;
+    const count = 3 + experiments.reduce((sum, item) => sum + planReads(item), 0);
     check(/^[a-f\d]{32}$/.test(runId ?? '') && Array.isArray(frames) && frames.length === count && count <= 64, `Incomplete ${label} snapshot sequence.`);
     const first = validateMetadataSnapshot(frames[0]?.before, undefined, true);
     check(pristineEditing(first.screen) && first.screen.rows >= osc78Minimum.rows && first.screen.cols >= osc78Minimum.cols, `${label} fixture needs a pristine private main screen.`);
     for (const [index, frame] of frames.entries()) validateFrame(frame, index, count - 1, first, { caseId: null, stageId: null }, osc78Prefix, true);
-    check(matchesOsc78Baseline(frames[1].before, first, runId, false) && matchesOsc78Baseline(frames.at(-1).before, first, runId, true), `${label} baseline binding or restoration failed.`);
-    for (const frame of frames) check(frame.before.screen.colorBinding !== undefined, `${label} snapshots need their resolved color binding.`);
+    const bindings = [[frames[1].before, false], [frames.at(-1).before, true]];
+    check(bindings.every(([snapshot, finish]) => matchesOsc78Baseline(snapshot, first, runId, finish)), `${label} baseline binding or restoration failed.`);
+    check(frames.every(frame => frame.before.screen.colorBinding !== undefined), `${label} snapshots need their resolved color binding.`);
     return first;
 }
 
-/** Every read frame carries the barrier and cursor of the feed it follows. */
+/** Every read frame carries the barrier, cursor and kind of the plan step it follows. */
 function crossCheck(contract, recorded, readFrames) {
-    let feedSteps = 0, readSteps = 0;
+    const expected = [];
+    let fed = 0;
     for (const step of contract.plan) {
-        if (step.feed !== undefined) { feedSteps++; continue; }
-        const frame = readFrames[readSteps];
-        check(frame.barrier === recorded.barriers[feedSteps - 1], `${label} ${contract.caseId} barrier differs from its read frame.`);
-        check(same(recorded.reads[readSteps].cursor, [frame.before.screen.cursorRow, frame.before.screen.cursorCol]), `${label} ${contract.caseId} cursor differs from its read frame.`);
-        check(recorded.reads[readSteps].kind === step.read, `Wrong ${contract.caseId} read kind (${label}).`);
-        readSteps++;
+        if (step.feed !== undefined) fed++;
+        else expected.push({ kind: step.read, barrier: recorded.barriers[fed - 1] });
+    }
+    for (const [position, want] of expected.entries()) {
+        const frame = readFrames[position], record = recorded.reads[position];
+        check(frame.barrier === want.barrier, `${label} ${contract.caseId} barrier differs from its read frame.`);
+        check(same(record.cursor, [frame.before.screen.cursorRow, frame.before.screen.cursorCol]), `${label} ${contract.caseId} cursor differs from its read frame.`);
+        check(record.kind === want.kind, `Wrong ${contract.caseId} read kind (${label}).`);
     }
 }
 
 /** Validate a retained worker run record's shape against the contracts. */
 function validateRun(run, experiments, adapter) {
-    check(adapter && adapter.id === osc78AdapterId && run.adapterId === osc78AdapterId && /^[a-f\d]{64}$/.test(adapter.bundleSha256 ?? '')
-        && /^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? '') && adapter.derivedFromAdapterId === derivedFrom, `Invalid ${label} adapter identity.`);
+    const digest = value => /^[a-f\d]{64}$/.test(value ?? '');
+    const identity = adapter?.id === osc78AdapterId && run.adapterId === osc78AdapterId && digest(adapter.bundleSha256) && digest(adapter.upstreamBundleSha256)
+        && adapter.derivedFromAdapterId === derivedFrom;
+    check(identity, `Invalid ${label} adapter identity.`);
     check(same(run.probeIds, [...osc78CaseIds]) && Array.isArray(run.experiments) && run.experiments.length === experiments.length
         && Array.isArray(run.pinned) && run.pinned.length === osc78CaseIds.length, `${label} run does not cover the contracted cases.`);
     for (const [position, contract] of experiments.entries()) {
         const recorded = run.experiments[position];
         check(recorded.caseId === contract.caseId, `${label} experiment order differs from the contracts.`);
         validateExactFeeds(contract, recorded.feeds, 'contract');
-        check(Array.isArray(recorded.barriers) && recorded.barriers.length === planFeeds(contract).length
-            && recorded.barriers.every(barrier => /^\x1b\[\?[\d;]+c$/.test(barrier ?? '')) && Array.isArray(recorded.reads) && recorded.reads.length === planReads(contract),
-        `Invalid ${contract.caseId} capture record (${label}).`);
+        const barriers = recorded.barriers;
+        check(Array.isArray(barriers) && barriers.length === planFeeds(contract).length && barriers.every(barrier => /^\x1b\[\?[\d;]+c$/.test(barrier ?? ''))
+            && Array.isArray(recorded.reads) && recorded.reads.length === planReads(contract), `Invalid ${contract.caseId} capture record (${label}).`);
     }
 }
 

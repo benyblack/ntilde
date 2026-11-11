@@ -1976,6 +1976,25 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeJson(join(output, 'lnk-unavailable.json'), { schemaVersion: 1, runId, suiteId: osc78SuiteId, status: 'unavailable', reason, plannedCases: 2 });
             osc78State.unavailable = true;
         };
+        /** The typed refusal of the very first OSC 7/8 observation: an earlier metadata or saved-state refusal, or a grid below the fixture minimum. */
+        const osc78StartRefusal = () => {
+            const { rows, cols } = cellObserver.baseline;
+            const reason = metadataState?.unavailable?.reason ?? savedState?.unavailable?.reason
+                ?? (rows < osc78Minimum.rows || cols < osc78Minimum.cols ? 'metadataGeometryUnavailable' : null);
+            if (reason === null) return;
+            if (!['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC 7/8 unavailability reason.');
+            recordOsc78Unavailable(reason);
+            throw Object.assign(new Error('OSC 7/8 fixture is unavailable.'), { code: reason });
+        };
+        /** Journal the accepted frame; a read also answers with the stored link runs the worker's pinned OSC 8 termless replay reads (the parent re-derives them). */
+        const answerOsc78 = (request, result, observer) => {
+            const isStart = request.kind === `${osc78Prefix}-start`, frame = observer.frames.at(-1);
+            if (isStart && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
+                throw new Error('Original geometry changed before OSC 7/8 observations.');
+            }
+            appendFileSync(join(output, 'lnk-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+            return request.kind === `${osc78Prefix}-read` ? { ...result, links: structuredClone(frame.before.metadata.buffer.links) } : result;
+        };
         /** The OSC 7/8 suite reuses the paired metadata/status observer under its own prefix and plan; it runs after the Core reverse-video/wide-cell suite. */
         const observeOsc78 = async (request, budget) => {
             if (reverseWideObserver?.frames.at(-1)?.kind !== 'rw-finish') throw new Error('Core reverse-video/wide-cell suite must restore before OSC 7/8 observations.');
@@ -1984,25 +2003,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     prefix: osc78Prefix, includeResolvedColors: true, planOf: osc78ObserverPlan, matchesBaseline: matchesOsc78Baseline }) };
             const state = osc78State;
             if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC 7/8 fixture ownership or availability changed.');
-            if (request.kind === `${osc78Prefix}-start`) {
-                const { rows, cols } = cellObserver.baseline;
-                const reason = metadataState?.unavailable?.reason ?? savedState?.unavailable?.reason
-                    ?? (rows < osc78Minimum.rows || cols < osc78Minimum.cols ? 'metadataGeometryUnavailable' : null);
-                if (reason !== null && !['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC 7/8 unavailability reason.');
-                if (reason !== null) {
-                    recordOsc78Unavailable(reason);
-                    throw Object.assign(new Error('OSC 7/8 fixture is unavailable.'), { code: reason });
-                }
-            }
+            if (request.kind === `${osc78Prefix}-start`) osc78StartRefusal();
             try {
-                const result = await state.observer.handle(request, budget);
-                if (request.kind === `${osc78Prefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
-                    throw new Error('Original geometry changed before OSC 7/8 observations.');
-                }
-                const frame = state.observer.frames.at(-1);
-                appendFileSync(join(output, 'lnk-snapshots.jsonl'), JSON.stringify(frame) + '\n');
-                // The worker's pinned OSC 8 termless replay reads the stored link runs the parent just journaled; the parent's own re-derivation checks them.
-                return request.kind === `${osc78Prefix}-read` ? { ...result, links: structuredClone(frame.before.metadata.buffer.links) } : result;
+                return answerOsc78(request, await state.observer.handle(request, budget), state.observer);
             } catch (error) {
                 retainFailedMetadataAttempt(output, request, error, state.observer, 'lnk-failed-observation.json');
                 if (initialMetadataRefusal(request, error, state.observer)) recordOsc78Unavailable(error.code);

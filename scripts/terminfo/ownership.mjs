@@ -124,6 +124,13 @@ export async function terminateRecordedWorker(recorded, runId) {
  * The five-second socket timeout and per-kind response cap reject missing/oversized replies;
  * only the explicit initial-unavailability codes survive a rejected owner response.
  */
+/** The observation kinds (`<prefix>-<operation>`) whose answers may carry complete screens and metadata: they get the 512 KiB response cap, every other kind 16 KiB. */
+const largeResponsePrefixes = new Set(['cell', 'sgr', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing', 'history', 'resize', 'saved', 'metadata', 'input', 'images',
+    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'lnk', 'cw']);
+function largeResponsePrefix(kind) {
+    return typeof kind === 'string' && kind.includes('-') && largeResponsePrefixes.has(kind.slice(0, kind.indexOf('-')));
+}
+
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
@@ -142,7 +149,7 @@ export function requestOwner(config, kind, extra = {}) {
         /** Parse the first capped response line; malformed or refused replies never become ownership evidence. */
         socket.on('data', chunk => {
             buffer += chunk;
-            const limit = /^(?:cell|sgr|rgb|rendition|cursor|pixel|color|erase|editing|history|resize|saved|metadata|input|images|sels|cole|csum|lrmm|crst|shi|lnk)-/.test(kind) || (typeof kind === 'string' && kind.startsWith('cw-')) ? 512 * 1024 : 16384;
+            const limit = largeResponsePrefix(kind) ? 512 * 1024 : 16384;
             if (Buffer.byteLength(buffer) > limit) return finish(new Error('Oversized owner response.'));
             if (!buffer.includes('\n')) return;
             try {

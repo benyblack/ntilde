@@ -99,67 +99,56 @@ export function osc8Forms(runId) {
 
 const pad = (text, column) => text.padEnd(column, ' ');
 const refusal = () => new Error('OSC 7/8 oracle does not understand a contracted feed.');
-const isDigitOrSemicolon = char => (char >= '0' && char <= '9') || char === ';';
 
 /** A fresh measured baseline after the stage bytes. */
 function baselineState(fixture) {
     return { rows: { [osc78NonceRow]: fixture.nonce }, cells: new Map(), cursor: [osc78NonceRow, fixture.nonce.length], link: null, title: fixture.title, cwd: fixture.cwd };
 }
 
-/** One CSI token starting at `index` (cursor position or erase-line 2); returns the token and where the sequence ends. */
-function csiToken(feed, index) {
-    let end = index + 2;
-    while (end < feed.length && isDigitOrSemicolon(feed[end])) end++;
-    const params = feed.slice(index + 2, end), final = feed[end];
-    if (final === 'H') {
-        const [row, column] = params.split(';').map(Number);
-        return { token: { type: 'cup', row: row - 1, column: column - 1 }, next: end + 1 };
-    }
-    if (final === 'K' && params === '2') return { token: { type: 'el2' }, next: end + 1 };
+const ESC = '\x1b';
+const controlStarts = [ESC, '\r', '\n'];
+
+/** The cursor-position or erase-line-2 sequence starting at an ESC [ pair, and where it ends. */
+function parseCsi(feed, start) {
+    let end = start + 2;
+    while ('0123456789;'.includes(feed[end] ?? '#')) end++;
+    const params = feed.slice(start + 2, end), numbers = params.split(';').map(Number), final = feed[end];
+    if (final === 'H' && numbers.length === 2 && numbers.every(Number.isInteger)) return [{ type: 'cup', row: numbers[0] - 1, column: numbers[1] - 1 }, end + 1];
+    if (final === 'K' && params === '2') return [{ type: 'el2' }, end + 1];
     throw refusal();
 }
 
-/** The earliest OSC terminator (BEL, or the two-byte string terminator) at or after an index: where it starts and how long it is, or null. */
-function oscTerminator(feed, from) {
-    const bell = feed.indexOf('\x07', from), st = feed.indexOf('\x1b\\', from);
-    if (bell < 0 && st < 0) return null;
-    if (bell < 0 || (st >= 0 && st < bell)) return { at: st, length: 2 };
-    return { at: bell, length: 1 };
+/** The OSC 2, 7 or 8 sequence starting at an ESC ] pair (BEL or the two-byte string terminator ends it), and where it ends. */
+function parseOsc(feed, start) {
+    const terminators = [[feed.indexOf('\x07', start + 2), 1], [feed.indexOf(`${ESC}\\`, start + 2), 2]].filter(([at]) => at >= 0).sort((a, b) => a[0] - b[0]);
+    if (terminators.length === 0) throw refusal();
+    const [at, length] = terminators[0], body = feed.slice(start + 2, at), separator = body.indexOf(';');
+    const code = body.slice(0, separator);
+    if (separator < 0 || !['2', '7', '8'].includes(code)) throw refusal();
+    return [{ type: 'osc', code, data: body.slice(separator + 1) }, at + length];
 }
 
-/** One OSC token starting at `index`; only OSC 2, 7 and 8 reach the oracle from an experiment (the stage bytes are matched whole). */
-function oscToken(feed, index) {
-    const terminator = oscTerminator(feed, index + 2);
-    if (terminator === null) throw refusal();
-    const body = feed.slice(index + 2, terminator.at), separator = body.indexOf(';');
-    if (separator < 0) throw refusal();
-    const code = body.slice(0, separator), data = body.slice(separator + 1);
-    if (!['2', '7', '8'].includes(code)) throw refusal();
-    return { token: { type: 'osc', code, data }, next: terminator.at + terminator.length };
+/** The next token of a feed and where it ends; any other control byte is refused. */
+function nextToken(feed, index) {
+    const pair = feed.slice(index, index + 2);
+    if (pair === `${ESC}[`) return parseCsi(feed, index);
+    if (pair === `${ESC}]`) return parseOsc(feed, index);
+    if (pair === '\r\n') return [{ type: 'newline' }, index + 2];
+    if (controlStarts.includes(feed[index])) throw refusal();
+    let end = index;
+    while (end < feed.length && !controlStarts.includes(feed[end])) end++;
+    return [{ type: 'text', text: feed.slice(index, end) }, end];
 }
 
-const isControlStart = char => char === '\x1b' || char === '\r' || char === '\n';
-
-/** Split one feed into the few kinds of token the contracts emit; any other byte is refused. */
+/** Split one feed into the few kinds of token the contracts emit. */
 function tokensOf(feed) {
-    const result = [];
-    let index = 0;
-    while (index < feed.length) {
-        const char = feed[index], following = feed[index + 1];
-        let step;
-        if (char === '\x1b' && following === '[') step = csiToken(feed, index);
-        else if (char === '\x1b' && following === ']') step = oscToken(feed, index);
-        else if (char === '\r' && following === '\n') step = { token: { type: 'newline' }, next: index + 2 };
-        else if (isControlStart(char)) throw refusal();
-        else {
-            let end = index;
-            while (end < feed.length && !isControlStart(feed[end])) end++;
-            step = { token: { type: 'text', text: feed.slice(index, end) }, next: end };
-        }
-        result.push(step.token);
-        index = step.next;
+    const tokens = [];
+    for (let index = 0; index < feed.length;) {
+        const [token, next] = nextToken(feed, index);
+        tokens.push(token);
+        index = next;
     }
-    return result;
+    return tokens;
 }
 
 /** The link an OSC 8 payload opens, or null when it closes (an empty URI). Only the `id` parameter is understood. */
@@ -209,7 +198,9 @@ function runsOf(state) {
 /** Erase the whole current row: its text and every link its cells carried. */
 function eraseRow(state) {
     state.rows[state.cursor[0]] = '';
-    for (const key of [...state.cells.keys()]) if (key.startsWith(`${state.cursor[0]}:`)) state.cells.delete(key);
+    for (const key of state.cells.keys()) {
+        if (key.startsWith(`${state.cursor[0]}:`)) state.cells.delete(key);
+    }
 }
 
 /** The effect of one OSC token: a title, a working directory or the open link. */
@@ -269,10 +260,11 @@ function experiment(fixture, caseId, name, role, steps) {
  * never graded). */
 export function makeOsc78Experiments(runId) {
     const fixture = osc78Fixture(runId), forms = osc7Forms(runId), links = osc8Forms(runId);
-    const idLink = `${at(1, 0)}B${osc(`8;id=${links.idValue};${links.idUri}`)}IDLN${osc('8;;')}Y`;
-    const twoLinks = `${at(2, 0)}A${osc(`8;;${links.oneUri}`)}one${osc(`8;;${links.twoUri}`)}two${osc('8;;')}Z`;
-    const sameAnchor = `${at(3, 0)}${osc(`8;id=${links.idValue};${links.idUri}`)}ab${osc('8;;')}-${osc(`8;id=${links.idValue};${links.idUri}`)}cd${osc('8;;')}`;
-    const secondFixture = [writes[0], `A${osc(`8;;${links.secondFixtureUri}`)}LINK${osc('8;;')}Z`];
+    const close = osc('8;;'), open = (uri, id = null) => osc('8;' + (id === null ? '' : 'id=' + id) + ';' + uri);
+    const idLink = at(1, 0) + 'B' + open(links.idUri, links.idValue) + 'IDLN' + close + 'Y';
+    const twoLinks = at(2, 0) + 'A' + open(links.oneUri) + 'one' + open(links.twoUri) + 'two' + close + 'Z';
+    const sameAnchor = at(3, 0) + open(links.idUri, links.idValue) + 'ab' + close + '-' + open(links.idUri, links.idValue) + 'cd' + close;
+    const secondFixture = [writes[0], 'A' + open(links.secondFixtureUri) + 'LINK' + close + 'Z'];
     return [
         experiment(fixture, osc7CaseId, 'stock', 'stock', [read('baseline')]),
         experiment(fixture, osc7CaseId, 'effect', 'effect', [read('prior'), at(1, 0) + 'osc7-ordinary', read('ordinary'), osc7Bytes(forms.first), read('first'),
@@ -356,16 +348,28 @@ export function osc78TermlessContext(caseId, screen, links) {
     const pinned = osc78Pinned[caseId], declared = new Set(osc78DeclaredCapabilities);
     let fed = 0;
     const refuse = what => { throw new Error(`Pinned ${caseId} ${what} differs from the contract.`); };
-    const stored = (row, col) => { if (pinned.termlessFeeds.length === 0 || fed !== pinned.termlessFeeds.length || row !== 0 || col < 0 || col > 5) refuse('read'); };
-    return { capabilities: { extensions: declared }, get fedCount() { return fed; },
-        feed: text => { if (fed >= pinned.termlessFeeds.length || text !== pinned.termlessFeeds[fed]) refuse('feed'); fed++; },
+    const stored = (row, col) => {
+        const readable = pinned.termlessFeeds.length > 0 && fed === pinned.termlessFeeds.length && row === 0 && col >= 0 && col <= 5;
+        if (!readable) refuse('read');
+    };
+    const feed = text => {
+        if (fed >= pinned.termlessFeeds.length || text !== pinned.termlessFeeds[fed]) refuse('feed');
+        fed++;
+    };
+    return { capabilities: { extensions: declared }, get fedCount() { return fed; }, feed,
         getCell: (row, col) => { stored(row, col); return { char: screen.lines[0]?.[col] ?? '' }; },
         getHyperlinkAt: (row, col) => { stored(row, col); return osc8StoredCells(screen, links)[col].uri; } };
 }
 export function osc78TerminalContext(caseId, screen) {
     const pinned = osc78Pinned[caseId];
     let written = 0;
-    return { rows: screen.rows, cols: screen.cols, get writtenCount() { return written; },
-        write: text => { if (written >= pinned.terminalWrites.length || text !== pinned.terminalWrites[written]) throw new Error(`Pinned ${caseId} write differs from the contract.`); written++; },
-        queryCursorPosition: () => { if (written !== pinned.terminalWrites.length) throw new Error(`Pinned ${caseId} queried the cursor early.`); return Promise.resolve({ row: screen.cursorRow + 1, col: screen.cursorCol + 1 }); } };
+    const write = text => {
+        if (written >= pinned.terminalWrites.length || text !== pinned.terminalWrites[written]) throw new Error(`Pinned ${caseId} write differs from the contract.`);
+        written++;
+    };
+    const queryCursorPosition = () => {
+        if (written !== pinned.terminalWrites.length) throw new Error(`Pinned ${caseId} queried the cursor early.`);
+        return Promise.resolve({ row: screen.cursorRow + 1, col: screen.cursorCol + 1 });
+    };
+    return { rows: screen.rows, cols: screen.cols, get writtenCount() { return written; }, write, queryCursorPosition };
 }

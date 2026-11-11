@@ -67,7 +67,7 @@ function requireRegularFiles(output, names) {
 
 /** The predecessor layers, oldest first (the left/right-margin layer last). Each entry names the layer (its `<name>AdapterId`, `<name>Evidence`
  * and `<name>BundleSha256` in the receipt) and the adapter that derives its bundle from the layer before it. */
-const layerChain = [
+export const layerChain = [
     ['sgrColors', adaptSgrColorsCollector], ['sgrRgb', adaptSgrRgbCollector], ['sgrAttrs', adaptSgrAttrsCollector], ['sgrPalette', adaptSgrPaletteCollector],
     ['sgrTruecolor', adaptSgrTruecolorCollector], ['sgrUnderline', adaptSgrUnderlineCollector], ['sgrUnderlineColor', adaptSgrUnderlineColorCollector],
     ['sgrReset', adaptSgrResetCollector], ['sgrClosure', adaptSgrClosureCollector], ['eraseLine', adaptEraseLineCollector], ['charEdit', adaptCharEditCollector],

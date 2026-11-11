@@ -10,8 +10,7 @@ const unavailableCodes = new Set(['screenDetailsUnavailable', 'paneMetadataUnava
 /** Run every pinned probe path over the stock-context read of its case; refuse any probe that wrote or fed anything outside its contract. `linksOf(caseId)` is
  * the hyperlink runs the parent observer reported with that read (the stored-cell link metadata the pinned OSC 8 termless probe reads). */
 async function runPinned(gradingModule, collected, linksOf) {
-    const pinned = [];
-    for (const caseId of osc78CaseIds) {
+    return Promise.all(osc78CaseIds.map(async caseId => {
         const stock = collected.find(item => item.caseId === `${caseId}/stock`);
         if (!stock?.screens[0]) throw new Error(`Missing ${caseId} stock-context read.`);
         const termlessContext = osc78TermlessContext(caseId, stock.screens[0], linksOf(caseId)), terminalContext = osc78TerminalContext(caseId, stock.screens[0]);
@@ -19,10 +18,9 @@ async function runPinned(gradingModule, collected, linksOf) {
         const { probeId: terminalId, ...terminal } = await gradingModule.ntildeRunOsc78Terminal(caseId, terminalContext);
         if (termlessId !== caseId || terminalId !== caseId || termlessContext.fedCount !== osc78Pinned[caseId].termlessFeeds.length
             || terminalContext.writtenCount !== osc78Pinned[caseId].terminalWrites.length) throw new Error(`Pinned ${caseId} did not replay its complete fixture.`);
-        pinned.push({ caseId, termless: { feeds: [...osc78Pinned[caseId].termlessFeeds], result: termless },
-            terminal: { writes: [...osc78Pinned[caseId].terminalWrites], result: terminal } });
-    }
-    return pinned;
+        return { caseId, termless: { feeds: [...osc78Pinned[caseId].termlessFeeds], result: termless },
+            terminal: { writes: [...osc78Pinned[caseId].terminalWrites], result: terminal } };
+    }));
 }
 
 /** The hyperlink runs of each case's stock read: reads are journaled in contract order, so the stock read's position is the count of reads before it. */
