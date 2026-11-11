@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "ff0979c4942d75017002b1f4229fb69a",
+    "appRevision": "94e2dc121ef43b4ad50c7694c4d7f5606c776c98",
+    "scriptsRevision": "fa2eed3fef11fdc3a2696e41c2c95cdc3a9e970d",
+    "receiptSchema": 43,
+    "sourcePolicy": "readonly-owned-source-graph-v37"
+  },
+  "ownedArchiveSha256": "ffb001e3f205ed955de231570fd7c1a9327e6a05e4a611eac106251d7be8a476",
+  "supersededArchiveSha256": "16a4947b0263dafdc04647d3d685ad26a47450fbac1e624946bf082d22281856",
+  "appSourceManifestSha256": "92fcc74c3940d97ad25b35c15829024f461efedd5874c24fddd485dc3184cd13",
+  "attempts": [
+    {
+      "runId": "36c664a07ce17e23e995f6013c88e1df",
+      "status": "superseded",
+      "reason": "The fixture changed the main saved-cursor register; the repeat isolates the fixture on the alternate screen."
+    },
+    {
+      "runId": "ff0979c4942d75017002b1f4229fb69a",
+      "status": "complete",
+      "reason": "All exact fixtures and the full predecessor chain completed; receipt and cleanup verified."
+    }
+  ]
+}

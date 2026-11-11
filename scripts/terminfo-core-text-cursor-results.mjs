@@ -73,15 +73,17 @@ export function readableTextCursorReport(report, mapping) {
             : row.explanation;
         lines.push(`| [\`${row.id}\`](${mappingRow.url}) — ${tableCell(row.requirement)} | **${row.conclusion}** | ${tableCell(layers)}; ${tableCell(refs)}; stock ${tableCell(row.pinnedProbe.stockVerdict)}, effect ${tableCell(effects)} | ${tableCell(observation)} |`);
     }
-    lines.push('', '## Reproduction', '', '```sh', 'node scripts/terminfo-core-text-cursor-results.mjs --check', '```', '',
-        'The check validates the immutable source and archive digests, reissues the cleanup receipt using the trusted local graders, and derives all rows from the retained run. A missing setup, stale frame, failed restoration or incomplete observation cannot establish a result.', '');
+    lines.push('', '## Attempts', '', ...report.attempts.map(a => `- \`${a.runId}\` — ${a.status}: ${a.reason}`), '',
+        'The superseded [first run](attempt-1-superseded.zip) is retained for audit. It is not used for current conclusions.',
+        '', '## Reproduction', '', '```sh', 'node scripts/terminfo-core-text-cursor-results.mjs --check', '```', '',
+        'The check requires Node 24+ and Python 3. It validates the immutable source and archive digests, reissues the cleanup receipt using the trusted local graders, and derives all rows from the retained run. A missing setup, stale frame, failed restoration or incomplete observation cannot establish a result.', '', mapping.sourceAttribution, '');
     return lines.join('\n');
 }
 
 // Digests pin this versioned publication; a replacement run requires a new
 // version and an explicit code review of its manifest, not an editable label.
 export const textCursorPublication = 'docs/qa/terminfo/2026-11-11-core-text-cursor-results';
-export const measurementSha256 = '1ace19850ed07089b92b10b64c9b3384b0ba18a4f258eec2a42ca64a0ae6c515';
+export const measurementSha256 = 'c35216405a7ae0beb479a392e39fa5db0b930c346997a0be2ac225f11a472a1d';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export function loadTextCursorMeasurement(base = root) {
@@ -92,6 +94,7 @@ export function loadTextCursorMeasurement(base = root) {
         && /^[a-f\d]{64}$/.test(manifest.appSourceManifestSha256), 'invalid manifest');
     check(digest(readFileSync(join(dir, 'owned-run.zip'))) === manifest.ownedArchiveSha256, 'archive changed');
     check(digest(readFileSync(join(dir, 'app-source-manifest.json'))) === manifest.appSourceManifestSha256, 'production source manifest changed');
+    check(digest(readFileSync(join(dir, 'attempt-1-superseded.zip'))) === manifest.supersededArchiveSha256, 'superseded archive changed');
     return manifest;
 }
 

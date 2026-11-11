@@ -7,13 +7,13 @@ import { createHash } from 'node:crypto';
 import { includesTextCursorEvidence, checkTextCursorEvidence } from './core-text-cursor-receipt.mjs';
 import { extractOwnedArchive, loadMapping, root } from '../terminfo-core-results.mjs';
 import { deriveTextCursorCoreReport, describeLayers } from '../terminfo-core-text-cursor-results.mjs';
-import { execFileSync } from 'node:child_process';
 import { snapshotHash } from './agent-observer.mjs';
-import { fileURLToPath } from 'node:url';
 import { textCursorIds, textCursorPlan, gradeTextCursor, buildTextCursorReport, collectTextCursor, textCursorSuiteId, textCursorNonce } from './core-text-cursor.mjs';
 
-const archive = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-11-core-results/owned-run.zip', import.meta.url));
-const baseline = JSON.parse(execFileSync('unzip', ['-p', archive, 'cg-snapshots.jsonl'], { maxBuffer: 100_000_000 }).toString().split('\n')[0]).screen;
+const historical = mkdtempSync(join(tmpdir(), 'nt-tc-historical-'));
+extractOwnedArchive(root, loadMapping(), historical);
+const baseline = JSON.parse(readFileSync(join(historical, 'cg-snapshots.jsonl'), 'utf8').split('\n')[0]).screen;
+rmSync(historical, { recursive: true, force: true });
 const frame = (lines, cursor) => {
     const screen = structuredClone(baseline);
     screen.bufferState.alternateScreen = true;
