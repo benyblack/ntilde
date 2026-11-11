@@ -71,10 +71,12 @@ test('the exact target bytes are one write each and the default is never install
     const ris = feeds.findIndex(feed => feed.startsWith(fullReset)), targets = feeds.lastIndexOf('\t');
     assert.ok(ris >= 0 && targets > ris, 'targets follow the reset');
     // No HTS at column 8 (one-based 9) and no CHT/CBT anywhere; the only HTS columns are the two custom ones, before the reset.
-    const hts = feeds.map((feed, index) => [index, [...feed.matchAll(/\x1b\[1;(\d+)H\x1bH/g)].map(match => Number(match[1]))]).filter(([, list]) => list.length);
+    const htsColumns = feed => [...feed.matchAll(/\x1b\[1;(\d+)H/g)]
+        .filter(match => feed.slice(match.index + match[0].length, match.index + match[0].length + 2) === '\x1bH').map(match => Number(match[1]));
+    const hts = feeds.map((feed, index) => [index, htsColumns(feed)]).filter(([, list]) => list.length);
     assert.deepEqual(hts.map(([, list]) => list), [[5, 21]]);
     assert.ok(hts.every(([index]) => index < ris));
-    assert.ok(!feeds.slice(ris).some(feed => /\x1bH|\x1b\[[0-9;]*[gIZ]/.test(feed)));
+    assert.ok(!feeds.slice(ris).some(feed => feed.includes('\x1bH') || /\x1b\[[0-9;]*[gIZ]/.test(feed)));
 });
 
 function frame(lines, cursor) {
