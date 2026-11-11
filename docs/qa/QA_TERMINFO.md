@@ -1033,5 +1033,5 @@ and override metadata, stored default/palette/literal cells, the cursor and cont
 and hidden-cursor experiments. The suite reuses the owned runtime-color foundation ([controls and limits](terminfo/owned-colors.md)) rather than duplicating it; its
 controls differ from the ten stored-state colors experiments in spelling (BEL, as pinned), in what restoration is measured against, and in grading. Runtime colors
 survive alternate-screen exit and DECSTR, so the finish write clears them explicitly and requires the original screen, theme and render back. Cadence, desktop
-appearance, selection and pointer colors, Kitty named colors and other themes are not claimed. Receipt schema 41 and source policy v35 (260 files) bind it; earlier
+appearance, selection and pointer colors, Kitty named colors and other themes are not claimed. Receipt schema 43 and source policy v37 (274 files) bind it; earlier
 policies stay frozen.
