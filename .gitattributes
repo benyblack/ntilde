@@ -56,3 +56,6 @@ packaging/terminfo/*.terminfo text eol=lf
 # New Core criteria and pinned callback bytes are digest-checked on all platforms.
 scripts/terminfo/core-gaps-pinned.json text eol=lf
 docs/qa/terminfo/2026-11-11-core-results/*.json text eol=lf
+
+# Core text/cursor publication metadata and source manifest are pinned by raw SHA-256.
+docs/qa/terminfo/2026-11-11-core-text-cursor-results/*.json text eol=lf

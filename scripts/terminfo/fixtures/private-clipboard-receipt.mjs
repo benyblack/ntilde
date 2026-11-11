@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV41SourceFiles, capturedV44SourceFiles, ownedSourcePath, sourceSnapshotPolicy as currentPolicy } from '../owned-sources.mjs';
+import { capturedV41SourceFiles, capturedV44SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
 import { inputPlanForPolicy } from '../input-plan.mjs';
 import { inputCounts } from '../input-receipt.mjs';
 import { boundInputScreen, buildInputReport } from '../input-state.mjs';
@@ -30,13 +30,19 @@ const writerFor = output => (file, value) => writeFileSync(join(output, file), J
  * dropping only the newer suffixes' imports (Core gaps, runtime-color reset); the historical production maps stay fixed. */
 export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, ''));
+}
+
+/** Remove the new suffix from the synthetic v37 scope on LF and CRLF checkouts. */
+export function routedPrefixSource(bytes) {
+    return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?core-text-cursor(?:-receipt)?\.mjs';\n/gm, ''));
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
 async function buildFixture(output, routed) {
     const write = writerFor(output);
-    const sourceSnapshotPolicy = routed ? currentPolicy : legacyPolicy, scope = routed ? capturedV44SourceFiles : capturedV41SourceFiles;
+    const sourceSnapshotPolicy = routed ? 'readonly-owned-source-graph-v37' : legacyPolicy, scope = routed ? capturedV44SourceFiles : capturedV41SourceFiles;
     {
         const archive = historicalArchive('2026-11-05-query-observations');
         for (const [file, bytes] of archive) { const path = join(output, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
@@ -89,7 +95,8 @@ async function buildFixture(output, routed) {
         for (const [key, file] of Object.entries(scope)) {
             let data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             if (!routed && file.endsWith('.mjs')) data = legacyPrefixSource(data);
-            if (!routed && file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(capturedV41SourceFiles, null, 2) + '\n');
+            if (routed && file.endsWith('.mjs')) data = routedPrefixSource(data);
+            if (file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(scope, null, 2) + '\n');
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
