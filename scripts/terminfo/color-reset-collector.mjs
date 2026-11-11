@@ -61,6 +61,7 @@ async function collectCase(contract, io) {
     if (record.feeds.length !== colorResetFeeds(contract).length || record.screens.length !== colorResetReads(contract) || record.pending.length) {
         throw new Error(`Incomplete ${contract.caseId} runtime-color fixture.`);
     }
+    for (const screen of record.screens) validateColorResetScreen(screen);
     const { feeds, barriers, reads, screens } = record;
     return { caseId: contract.caseId, feeds, barriers, reads, screens };
 }
@@ -88,15 +89,16 @@ async function collectAndRestore({ fence, owner, nonce }) {
 /** Run the contracted cases serially with parent-journaled reads and replies. */
 export async function collectColorResetGrading({ config, fence, owner, gradingModule }) {
     const adapter = gradingModule.ntildeColorResetAdapter;
-    const started = await owner('crst-start');
-    validateColorResetScreen(started.screen);
+    await owner('crst-start');
     const cases = await collectAndRestore({ fence, owner, nonce: colorResetNoncePrefix + config.runId });
     const run = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds], cases: [] };
     for (const item of cases) {
         const contract = colorResetContracts.find(entry => entry.caseId === item.caseId);
         const context = colorResetRecordingContext(contract, pinnedReplies(contract, item.reads));
         const pinned = gradingModule.ntildeRunColorResetTermless(contract.caseId, context);
-        if (context.fedCount !== contract.pinnedFeeds.length) throw new Error(`Pinned ${contract.caseId} did not replay its complete fixture.`);
+        // The pinned probe stops after its first capture when the original reply is missing or malformed; any other early stop is an incomplete fixture.
+        const stopped = context.fedCount === 1 && pinned.observation?.outcome === 'inconclusive' && ['no-response', 'invalid-reply'].includes(pinned.observation.reason);
+        if (context.fedCount !== contract.pinnedFeeds.length && !stopped) throw new Error(`Pinned ${contract.caseId} did not replay its complete fixture.`);
         const { caseId, feeds, barriers, reads } = item;
         run.cases.push({ caseId, feeds, barriers, reads, pinned });
     }
