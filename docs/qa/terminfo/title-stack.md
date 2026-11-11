@@ -90,7 +90,8 @@ observation of the mutation) failed. A stable wrong state is evidence: nothing w
 
 Cells, cursor, cwd, hyperlinks, input-window state, runtime colors and the history generation must be exactly the bound baseline's in every strict read, so a correct
 restored string cannot hide an unrelated change. After DECSTR only the written cells are compared (DECSTR's cursor effect is not part of this contract); after RIS the
-cells must be blank and the cursor at home, and the history generation may rise (RIS clears history) but never fall. That is the one reason the shared metadata
+cells must be blank, their stored cell details (attributes and colors) must equal the pristine initial screen's, and the cursor must be at home; the history generation may rise (RIS clears
+history) but never fall between consecutive observations (the observer and the grader both refuse a fall). That is the one reason the shared metadata
 validator gained an opt-in `monotonicHistory` mode for this suite: every other suite keeps the exact-generation rule.
 
 ## Cleanup and what is restored

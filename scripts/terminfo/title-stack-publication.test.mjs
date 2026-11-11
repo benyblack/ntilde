@@ -198,7 +198,7 @@ test('revisions, attempts (every superseded one keeps its actual reason) and fil
     const { summary } = load();
     assert.match(summary.appRevision, /^[0-9a-f]{40}$/);
     assert.match(summary.scriptsRevision, /^[0-9a-f]{40}$/);
-    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [false, true, true, true, true, true]);
+    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [false, true, true, true, true, true, true]);
     assert.equal(summary.attempts.at(-1).runId, summary.context.runId);
     assert.equal(summary.attempts.at(-1).scriptsRevision, summary.scriptsRevision);
     assert.match(summary.attempts[0].outcome, /history generation/);
@@ -206,7 +206,8 @@ test('revisions, attempts (every superseded one keeps its actual reason) and fil
     assert.match(summary.attempts[2].outcome, /Codex review \(P2\)/);
     assert.match(summary.attempts[3].outcome, /SonarCloud/);
     assert.match(summary.attempts[4].outcome, /OSC 7\/8 layer \(PR 953\)/);
-    for (const number of [1, 2, 3, 4, 5]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)));
+    assert.match(summary.attempts[5].outcome, /CodeRabbit/);
+    for (const number of [1, 2, 3, 4, 5, 6]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)));
     for (const name of readdirSync(dir)) {
         if (name === 'superseded') continue;
         assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2000 : 1500), name);
