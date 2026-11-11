@@ -298,5 +298,10 @@
     "osc78CollectorSourceSha256": "osc78-collector.mjs",
     "osc78GradingSourceSha256": "osc78-grading.mjs",
     "osc78GradingCollectorSourceSha256": "osc78-grading-collector.mjs",
-    "osc78ReceiptSourceSha256": "osc78-receipt.mjs"
+    "osc78ReceiptSourceSha256": "osc78-receipt.mjs",
+    "titleStackContractsSourceSha256": "title-stack-contracts.mjs",
+    "titleStackCollectorSourceSha256": "title-stack-collector.mjs",
+    "titleStackGradingSourceSha256": "title-stack-grading.mjs",
+    "titleStackGradingCollectorSourceSha256": "title-stack-grading-collector.mjs",
+    "titleStackReceiptSourceSha256": "title-stack-receipt.mjs"
 }

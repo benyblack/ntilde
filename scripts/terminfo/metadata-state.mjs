@@ -45,7 +45,9 @@ function buffer(value) {
         alternateScreen: flag(value.alternateScreen), scrollbackLines: value.scrollbackLines,
         historyGeneration: value.historyGeneration, rowsEvicted: value.rowsEvicted,
         acceptingCommandInput: flag(value.acceptingCommandInput), commandStart: mark(value.commandStart),
-        outputStart: mark(value.outputStart), links: links(value.links, value.rows, value.cols) };
+        outputStart: mark(value.outputStart), links: links(value.links, value.rows, value.cols),
+        // The raw OSC 0/1 icon name, retained only when the App reported it (older retained frames never carried it).
+        ...(value.requestedIconName == null ? {} : { requestedIconName: text(value.requestedIconName) }) };
 }
 function progressBar(value) {
     if (value == null) return null;

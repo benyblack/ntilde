@@ -7,7 +7,8 @@ const same = (a, b) => snapshotHash(a) === snapshotHash(b);
 const check = value => { if (!value) throw new Error('Invalid or incomplete owned metadata evidence.'); };
 export function metadataProjection(value) { return { screen: value.screen, metadata: value.metadata, status: value.status }; }
 /** Validate the full cell and host payload, preserving both raw timestamp-bearing status reads. */
-export function validateMetadataSnapshot(value, first, resolvedColors = false) {
+/** `monotonicHistory` (opt-in, for a suite whose experiments include a reset that legitimately bumps the history generation) accepts a generation at or above the first one. */
+export function validateMetadataSnapshot(value, first, resolvedColors = false, monotonicHistory = false) {
     check(value && Object.keys(value).length === 4 && ['screen', 'metadata', 'status', 'rawStatus'].every(key => Object.hasOwn(value, key)));
     const screen = screenSnapshot(value.screen, false, true, true, true, true, resolvedColors);
     const metadata = copyPaneMetadata(value.metadata), status = copyMetadataStatus(value.rawStatus, metadata.paneId);
@@ -16,7 +17,7 @@ export function validateMetadataSnapshot(value, first, resolvedColors = false) {
     check(b.rows === screen.rows && b.cols === screen.cols && b.cursorRow === screen.cursorRow && b.cursorCol === screen.cursorCol
         && b.alternateScreen === screen.bufferState.alternateScreen && b.scrollbackLines === screen.bufferState.scrollbackLines
         && (!first || metadata.paneId === first.metadata.paneId && b.rows === first.screen.rows && b.cols === first.screen.cols
-            && b.historyGeneration === first.metadata.buffer.historyGeneration));
+            && (monotonicHistory ? b.historyGeneration >= first.metadata.buffer.historyGeneration : b.historyGeneration === first.metadata.buffer.historyGeneration)));
     return { screen, metadata, status, rawStatus: structuredClone(value.rawStatus) };
 }
 export function frameOperation(index, last) {
@@ -25,8 +26,7 @@ export function frameOperation(index, last) {
     if (index === last) return 'finish';
     return 'read';
 }
-/** Validate one paired frame. `prefix` and `resolvedColors` default to the frozen metadata suite; another suite on the same observer names its own. */
-export function validateFrame(frame, index, last, first, stage, prefix = 'metadata', resolvedColors = false) {
+function checkFrame(frame, index, last, first, stage, { prefix, resolvedColors, monotonicHistory }) {
     const keys = ['index', 'kind', 'paneId', 'barrier', 'before', 'sha256', 'after', 'afterSha256', 'caseId', 'stageId'];
     if (Object.hasOwn(frame ?? {}, 'settling')) keys.push('settling');
     check(frame && Object.keys(frame).length === keys.length && keys.every(key => Object.hasOwn(frame, key)));
@@ -34,11 +34,11 @@ export function validateFrame(frame, index, last, first, stage, prefix = 'metada
         check(Array.isArray(frame.settling) && frame.settling.length > 0 && frame.settling.length <= 2);
         for (const pair of frame.settling) {
             check(pair && Object.keys(pair).length === 2 && Object.hasOwn(pair, 'before') && Object.hasOwn(pair, 'after'));
-            const left = validateMetadataSnapshot(pair.before, first, resolvedColors), right = validateMetadataSnapshot(pair.after, first, resolvedColors);
+            const left = validateMetadataSnapshot(pair.before, first, resolvedColors, monotonicHistory), right = validateMetadataSnapshot(pair.after, first, resolvedColors, monotonicHistory);
             check(!same(metadataProjection(left), metadataProjection(right)));
         }
     }
-    const before = validateMetadataSnapshot(frame.before, first, resolvedColors), after = validateMetadataSnapshot(frame.after, first, resolvedColors);
+    const before = validateMetadataSnapshot(frame.before, first, resolvedColors, monotonicHistory), after = validateMetadataSnapshot(frame.after, first, resolvedColors, monotonicHistory);
     const sha = snapshotHash(metadataProjection(before));
     const operation = frameOperation(index, last);
     check(frame.index === index && frame.kind === prefix + '-' + operation && frame.paneId === first.metadata.paneId
@@ -47,6 +47,14 @@ export function validateFrame(frame, index, last, first, stage, prefix = 'metada
         && frame.caseId === (stage?.caseId ?? null) && frame.stageId === (stage?.stageId ?? null)
         && (index === 0 ? frame.barrier === null : typeof frame.barrier === 'string'
             && frame.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(frame.barrier)));
+}
+/** Validate one paired frame. `prefix` and `resolvedColors` default to the frozen metadata suite; another suite on the same observer names its own. */
+export function validateFrame(frame, index, last, first, stage, prefix = 'metadata', resolvedColors = false) {
+    checkFrame(frame, index, last, first, stage, { prefix, resolvedColors, monotonicHistory: false });
+}
+/** The same validation for a suite that runs RIS, which legitimately raises the history generation: any generation at or above the first is accepted. */
+export function validateMonotonicFrame(frame, index, last, first, stage, prefix, resolvedColors) {
+    checkFrame(frame, index, last, first, stage, { prefix, resolvedColors, monotonicHistory: true });
 }
 function notificationPreconditions(item, comparisons, frames) {
     if (item.id !== 'metadata.notification.osc9') return true;

@@ -126,7 +126,7 @@ export async function terminateRecordedWorker(recorded, runId) {
  */
 /** The observation kinds (`<prefix>-<operation>`) whose answers may carry complete screens and metadata: they get the 512 KiB response cap, every other kind 16 KiB. */
 const largeResponsePrefixes = new Set(['cell', 'sgr', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing', 'history', 'resize', 'saved', 'metadata', 'input', 'images',
-    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'lnk', 'cw']);
+    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'lnk', 'tst', 'cw']);
 function largeResponsePrefix(kind) {
     return typeof kind === 'string' && kind.includes('-') && largeResponsePrefixes.has(kind.slice(0, kind.indexOf('-')));
 }
@@ -163,7 +163,8 @@ export function requestOwner(config, kind, extra = {}) {
                         || (kind === 'saved-start' && response.code === 'savedGeometryUnavailable')
                         || (kind === 'metadata-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
                         || (kind === 'shi-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
-                        || (kind === 'lnk-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))) error.code = response.code;
+                        || (kind === 'lnk-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
+                        || (kind === 'tst-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))) error.code = response.code;
                     return finish(error);
                 }
                 finish(null, response);

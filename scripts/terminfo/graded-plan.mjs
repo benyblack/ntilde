@@ -128,7 +128,7 @@ export async function collectGradedPlans({ contracts, contractsFor, prefix, rese
         const bindBarrier = await fence.write(bind ?? ('\x1b[?1049h' + reset + nonce));
         await owner(`${prefix}-bind`, bindBarrier);
         for (const contract of plans) {
-            const feeds = [], barriers = [], reads = [], screens = [];
+            const feeds = [], barriers = [], reads = [], screens = [], facts = [];
             for (const step of contract.plan) {
                 if (step.feed) {
                     feeds.push(step.feed);
@@ -137,12 +137,14 @@ export async function collectGradedPlans({ contracts, contractsFor, prefix, rese
                     const observed = await owner(`${prefix}-read`, barriers.at(-1)); // serial by design: reads journal between writes (NOSONAR)
                     reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol] });
                     screens.push(observed.screen);
+                    facts.push(observed.facts);
                 }
             }
             if (feeds.length !== feedsOf(contract).length || screens.length !== readsOf(contract)) {
                 throw new Error(`Incomplete ${contract.caseId} graded fixture.`);
             }
-            cases.push({ caseId: contract.caseId, feeds, barriers, reads, screens });
+            // Facts (small bounded values a suite's observer exposed beside the screen) are carried only when present.
+            cases.push({ caseId: contract.caseId, feeds, barriers, reads, screens, ...(facts.some(item => item !== undefined) ? { facts } : {}) });
         }
     } catch (error) { primary = error; failed = true; }
     let restoreFailed = false, restoreError;

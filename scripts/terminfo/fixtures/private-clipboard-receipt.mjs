@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -41,7 +41,29 @@ export function routedPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+)\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+)\.mjs';\n/gm, ''));
+}
+
+/** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
+async function addTitleStackEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticTitleStackEvidence } = await import('./title-stack-evidence.mjs');
+    const { buildTitleStackGradingReport, titleStackCounts } = await import('../title-stack-grading.mjs');
+    const { adaptTitleStackCollector, titleStackAdapterId } = await import('../title-stack-grading-collector.mjs');
+    const { titleStackSuiteId, titleStackContractsVersion } = await import('../title-stack-contracts.mjs');
+    const titleStackBytes = Buffer.from(adaptTitleStackCollector(lrMarginsBytes.toString()));
+    const titleStack = syntheticTitleStackEvidence({ runId: context.runId, bundleSha256: hash(titleStackBytes) });
+    titleStack.adapter = { ...titleStack.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const titleStackReport = buildTitleStackGradingReport(titleStack.frames, titleStack.run, context.runId, titleStack.adapter);
+    write('tst-observations.json', titleStackReport);
+    write('tst-run.json', titleStack.run);
+    writeFileSync(join(output, 'tst-snapshots.jsonl'), titleStack.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-tst.mjs'), titleStackBytes);
+    Object.assign(context, { titleStackAdapterId, titleStackSuiteId, titleStackBundleSha256: hash(titleStackBytes), titleStackContractsVersion });
+    evidence.titleStackEvidence = { runId: context.runId, suiteId: titleStackSuiteId,
+        file: 'tst-observations.json', sha256: hash(readFileSync(join(output, 'tst-observations.json'))),
+        runFile: 'tst-run.json', runSha256: hash(readFileSync(join(output, 'tst-run.json'))),
+        adapterBundleSha256: hash(titleStackBytes), contractsVersion: titleStackContractsVersion,
+        counts: titleStackCounts(titleStackReport), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
@@ -836,12 +858,17 @@ function fixtureTemplate(routed) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false } = {}) {
     const { output: source, state } = await fixtureTemplate(routed);
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
         cpSync(source, output, { recursive: true, verbatimSymlinks: true });
         const { context, proof, report, evidence, raw, manifest, old } = structuredClone(state);
+        // The title-stack suffix is opt-in, so every other layer's receipt tests keep their own newest schema; it is added to this test's private copy.
+        if (titleStack) {
+            await addTitleStackEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+            writerFor(output)('context.json', context);
+        }
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }

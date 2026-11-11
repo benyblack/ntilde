@@ -1,3 +1,4 @@
+import { collectTitleStack } from './title-stack-collector.mjs';
 import { collectReverseWide } from './core-reverse-wide.mjs';
 import { collectSgrRaster } from './core-sgr-raster.mjs';
 import { collectWrap } from './core-wrap-collector.mjs';
@@ -358,6 +359,12 @@ try {
         if (createHash('sha256').update(osc78Source).digest('hex') !== config.osc78BundleSha256) throw new Error('Local OSC 7/8 adapter bundle changed.');
         const osc78Result = await collectOsc78({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc78Bundle).href) });
         if (osc78Result.status === 'complete') writeFileSync(join(config.output, 'lnk-run.json'), JSON.stringify(osc78Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered title/icon stack qualification follows the OSC 7 / OSC 8 suite on the same exclusively owned fence. A typed refusal of its first
+        // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+        const titleStackSource = readFileSync(config.titleStackBundle);
+        if (createHash('sha256').update(titleStackSource).digest('hex') !== config.titleStackBundleSha256) throw new Error('Local title-stack adapter bundle changed.');
+        const titleStackResult = await collectTitleStack({ config, fence, owner, gradingModule: await import(pathToFileURL(config.titleStackBundle).href) });
+        if (titleStackResult.status === 'complete') writeFileSync(join(config.output, 'tst-run.json'), JSON.stringify(titleStackResult.run) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

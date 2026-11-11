@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core reverse-video and wide-cell receipt: ' + message); };
 
 export function includesReverseWideEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45'].includes(context.sourceSnapshotPolicy) || context.reverseWideSuiteId !== undefined || evidence.reverseWideEvidence !== undefined
+    return ['readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46'].includes(context.sourceSnapshotPolicy) || context.reverseWideSuiteId !== undefined || evidence.reverseWideEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
