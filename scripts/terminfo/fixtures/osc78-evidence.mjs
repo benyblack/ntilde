@@ -7,11 +7,10 @@ import { copyMetadataStatus, copyPaneMetadata } from '../metadata-state.mjs';
 import { metadataProjection } from '../metadata.mjs';
 import { expectedOsc78Screen, makeOsc78Experiments, osc78CaseIds, osc78Fixture, osc78NonceRow, osc78Pinned, osc78Prefix, replayOsc78Pinned, simulateOsc78 } from '../osc78-contracts.mjs';
 import { osc78AdapterId } from '../osc78-grading-collector.mjs';
-import { colEditCols, colEditRows, paletteBinding, syntheticColEditScreen } from './col-edit-evidence.mjs';
+import { paletteBinding, syntheticColEditScreen } from './col-edit-evidence.mjs';
 
 export const osc78PaneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
 const barrier = '\x1b[?1;2c';
-const rows = colEditRows, cols = colEditCols;
 
 /** A valid pristine initial main screen with the given theme binding, in the shape the metadata observer retains (cell details, cursor mode, buffer state, colors). */
 function blankScreen(binding) {

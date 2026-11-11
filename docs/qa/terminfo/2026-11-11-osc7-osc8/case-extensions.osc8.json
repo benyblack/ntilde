@@ -1,0 +1,1181 @@
+{
+  "caseId": "extensions.osc8",
+  "pinnedFixture": {
+    "fixtureBytes": true,
+    "termlessFeeds": ["\u001b[1;1H\u001b[2KA\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z"],
+    "terminalWrites": ["\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z"]
+  },
+  "observed": {
+    "pinnedFixture": {
+      "rowText": "ALINKZ",
+      "runs": [
+        {
+          "row": 0,
+          "col": 1,
+          "length": 4,
+          "uri": "https://example.com/osc8-proof",
+          "id": null
+        }
+      ],
+      "cursor": [0,6],
+      "closedLinkWitness": {
+        "char": "Z",
+        "linked": false
+      },
+      "textBeforeLink": {
+        "char": "A",
+        "linked": false
+      }
+    },
+    "idParameter": {
+      "sent": "osc8-f1ff205e",
+      "observed": ["osc8-f1ff205e"],
+      "uriSent": "https://example.invalid/osc8-id-f1ff205e",
+      "uriObserved": ["https://example.invalid/osc8-id-f1ff205e"]
+    },
+    "twoLinks": {
+      "runs": [
+        {
+          "row": 2,
+          "col": 1,
+          "length": 3,
+          "uri": "https://example.invalid/osc8-one-f1ff205e",
+          "id": null
+        },
+        {
+          "row": 2,
+          "col": 4,
+          "length": 3,
+          "uri": "https://example.invalid/osc8-two-f1ff205e",
+          "id": null
+        }
+      ],
+      "distinctIdentities": 2
+    },
+    "laterText": {
+      "row": 4,
+      "text": "later",
+      "runsUnchanged": true
+    },
+    "stale": {
+      "afterPlainOverwrite": [],
+      "afterSecondFixture": [
+        {
+          "row": 0,
+          "col": 1,
+          "length": 4,
+          "uri": "https://example.invalid/osc8-second-f1ff205e",
+          "id": null
+        }
+      ],
+      "secondUriSent": "https://example.invalid/osc8-second-f1ff205e"
+    },
+    "sameAnchor": {
+      "runs": [
+        {
+          "row": 3,
+          "col": 0,
+          "length": 2,
+          "uri": "https://example.invalid/osc8-id-f1ff205e",
+          "id": "osc8-f1ff205e"
+        },
+        {
+          "row": 3,
+          "col": 3,
+          "length": 2,
+          "uri": "https://example.invalid/osc8-id-f1ff205e",
+          "id": "osc8-f1ff205e"
+        }
+      ],
+      "identities": [0,0]
+    },
+    "stTerminator": {
+      "runs": [
+        {
+          "row": 0,
+          "col": 1,
+          "length": 4,
+          "uri": "https://example.com/osc8-proof",
+          "id": null
+        }
+      ]
+    },
+    "snapshotLocalIdentity": {
+      "perRead": [
+        {
+          "experiment": "stock",
+          "read": "pinned",
+          "identities": [0]
+        },
+        {
+          "experiment": "effect",
+          "read": "pinned",
+          "identities": [0]
+        },
+        {
+          "experiment": "stale",
+          "read": "first",
+          "identities": [0]
+        },
+        {
+          "experiment": "stale",
+          "read": "second",
+          "identities": [0]
+        }
+      ],
+      "lifetime": "snapshot-local, numbered in order of first appearance; never compared across reads and never equal to the OSC id parameter",
+      "equalsOscId": false
+    },
+    "notObserved": ["click handling","browser launch","URI safety policy","rendered underline appearance"]
+  },
+  "experiments": [
+    {
+      "id": "extensions.osc8/stock",
+      "name": "stock",
+      "role": "stock",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "pinned",
+          "snapshot": 12,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 0,
+                  "col": 1,
+                  "length": 4,
+                  "identity": 0,
+                  "uri": "https://example.com/osc8-proof",
+                  "id": null
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc8/effect",
+      "name": "effect",
+      "role": "effect",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[5;1Hlater"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "prior",
+          "snapshot": 13,
+          "cursor": [9,42],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [9,42],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "ordinary",
+          "snapshot": 14,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "pinned",
+          "snapshot": 15,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 0,
+                  "col": 1,
+                  "length": 4,
+                  "identity": 0,
+                  "uri": "https://example.com/osc8-proof",
+                  "id": null
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "later",
+          "snapshot": 16,
+          "cursor": [4,5],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [4,5],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 0,
+                  "col": 1,
+                  "length": 4,
+                  "identity": 0,
+                  "uri": "https://example.com/osc8-proof",
+                  "id": null
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc8/gate-close",
+      "name": "gate-close",
+      "role": "gate",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[1;1H\u001b[2K","A\u001b]8;;\u0007LINK\u001b]8;;\u0007Z"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 17,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "cwd": "/ntilde-qa/osc78-base",
+        "title": "LK-base-f1ff205e",
+        "links": []
+      }
+    },
+    {
+      "id": "extensions.osc8/id",
+      "name": "id",
+      "role": "required",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[2;1HB\u001b]8;id=osc8-f1ff205e;https://example.invalid/osc8-id-f1ff205e\u0007IDLN\u001b]8;;\u0007Y"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "linked",
+          "snapshot": 18,
+          "cursor": [1,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 1,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-id-f1ff205e",
+                    "id": "osc8-f1ff205e"
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 1,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-id-f1ff205e",
+                    "id": "osc8-f1ff205e"
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [1,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 1,
+                  "col": 1,
+                  "length": 4,
+                  "identity": 0,
+                  "uri": "https://example.invalid/osc8-id-f1ff205e",
+                  "id": "osc8-f1ff205e"
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc8/two-links",
+      "name": "two-links",
+      "role": "required",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[3;1HA\u001b]8;;https://example.invalid/osc8-one-f1ff205e\u0007one\u001b]8;;https://example.invalid/osc8-two-f1ff205e\u0007two\u001b]8;;\u0007Z"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "linked",
+          "snapshot": 19,
+          "cursor": [2,8],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 2,
+                    "col": 1,
+                    "length": 3,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-one-f1ff205e",
+                    "id": null
+                  },
+                  {
+                    "row": 2,
+                    "col": 4,
+                    "length": 3,
+                    "identity": 1,
+                    "uri": "https://example.invalid/osc8-two-f1ff205e",
+                    "id": null
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 2,
+                    "col": 1,
+                    "length": 3,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-one-f1ff205e",
+                    "id": null
+                  },
+                  {
+                    "row": 2,
+                    "col": 4,
+                    "length": 3,
+                    "identity": 1,
+                    "uri": "https://example.invalid/osc8-two-f1ff205e",
+                    "id": null
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [2,8],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 2,
+                  "col": 1,
+                  "length": 3,
+                  "identity": 0,
+                  "uri": "https://example.invalid/osc8-one-f1ff205e",
+                  "id": null
+                },
+                {
+                  "row": 2,
+                  "col": 4,
+                  "length": 3,
+                  "identity": 1,
+                  "uri": "https://example.invalid/osc8-two-f1ff205e",
+                  "id": null
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc8/stale",
+      "name": "stale",
+      "role": "required",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u0007LINK\u001b]8;;\u0007Z","\u001b[1;1H\u001b[2K","ALINKZ","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.invalid/osc8-second-f1ff205e\u0007LINK\u001b]8;;\u0007Z"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "first",
+          "snapshot": 20,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 0,
+                  "col": 1,
+                  "length": 4,
+                  "identity": 0,
+                  "uri": "https://example.com/osc8-proof",
+                  "id": null
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "cleared",
+          "snapshot": 21,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [],
+                "observed": [],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "second",
+          "snapshot": 22,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-second-f1ff205e",
+                    "id": null
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-second-f1ff205e",
+                    "id": null
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 0,
+                  "col": 1,
+                  "length": 4,
+                  "identity": 0,
+                  "uri": "https://example.invalid/osc8-second-f1ff205e",
+                  "id": null
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc8/same-anchor",
+      "name": "same-anchor",
+      "role": "observed",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[4;1H\u001b]8;id=osc8-f1ff205e;https://example.invalid/osc8-id-f1ff205e\u0007ab\u001b]8;;\u0007-\u001b]8;id=osc8-f1ff205e;https://example.invalid/osc8-id-f1ff205e\u0007cd\u001b]8;;\u0007"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 23,
+          "cursor": [3,5],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 3,
+                    "col": 0,
+                    "length": 2,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-id-f1ff205e",
+                    "id": "osc8-f1ff205e"
+                  },
+                  {
+                    "row": 3,
+                    "col": 3,
+                    "length": 2,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-id-f1ff205e",
+                    "id": "osc8-f1ff205e"
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 3,
+                    "col": 0,
+                    "length": 2,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-id-f1ff205e",
+                    "id": "osc8-f1ff205e"
+                  },
+                  {
+                    "row": 3,
+                    "col": 3,
+                    "length": 2,
+                    "identity": 0,
+                    "uri": "https://example.invalid/osc8-id-f1ff205e",
+                    "id": "osc8-f1ff205e"
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [3,5],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 3,
+                  "col": 0,
+                  "length": 2,
+                  "identity": 0,
+                  "uri": "https://example.invalid/osc8-id-f1ff205e",
+                  "id": "osc8-f1ff205e"
+                },
+                {
+                  "row": 3,
+                  "col": 3,
+                  "length": 2,
+                  "identity": 0,
+                  "uri": "https://example.invalid/osc8-id-f1ff205e",
+                  "id": "osc8-f1ff205e"
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "cwd": "/ntilde-qa/osc78-base",
+        "title": "LK-base-f1ff205e",
+        "links": []
+      }
+    },
+    {
+      "id": "extensions.osc8/st-terminator",
+      "name": "st-terminator",
+      "role": "observed",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[1;1H\u001b[2K","A\u001b]8;;https://example.com/osc8-proof\u001b\\LINK\u001b]8;;\u001b\\Z"],
+      "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 24,
+          "cursor": [0,6],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "title": {
+                "expected": "LK-base-f1ff205e",
+                "observed": "LK-base-f1ff205e",
+                "match": true
+              },
+              "cwd": {
+                "expected": "/ntilde-qa/osc78-base",
+                "observed": "/ntilde-qa/osc78-base",
+                "match": true
+              },
+              "links": {
+                "expected": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "observed": [
+                  {
+                    "row": 0,
+                    "col": 1,
+                    "length": 4,
+                    "identity": 0,
+                    "uri": "https://example.com/osc8-proof",
+                    "id": null
+                  }
+                ],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "confidence": "precise",
+              "command": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0,6],
+              "title": "LK-base-f1ff205e",
+              "displayTitle": "LK-base-f1ff205e",
+              "cwd": "/ntilde-qa/osc78-base",
+              "links": [
+                {
+                  "row": 0,
+                  "col": 1,
+                  "length": 4,
+                  "identity": 0,
+                  "uri": "https://example.com/osc8-proof",
+                  "id": null
+                }
+              ],
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 241,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "cwd": "/ntilde-qa/osc78-base",
+        "title": "LK-base-f1ff205e",
+        "links": []
+      }
+    }
+  ],
+  "pinned": {
+    "pass": true,
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "parser-state"
+    },
+    "termless": {
+      "pass": true,
+      "response": "{\"chars\":[\"A\",\"L\",\"I\",\"N\",\"K\",\"Z\"],\"links\":[{\"reported\":true,\"uri\":null},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":null}]}",
+      "observation": {
+        "outcome": "supported",
+        "evidence": "parser-state"
+      },
+      "assertions": [
+        {
+          "kind": "positive",
+          "expected": "{\"chars\":[\"A\",\"L\",\"I\",\"N\",\"K\",\"Z\"],\"links\":[{\"reported\":true,\"uri\":null},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":null}]}",
+          "observed": "{\"chars\":[\"A\",\"L\",\"I\",\"N\",\"K\",\"Z\"],\"links\":[{\"reported\":true,\"uri\":null},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":\"https://example.com/osc8-proof\"},{\"reported\":true,\"uri\":null}]}"
+        }
+      ]
+    },
+    "terminal": {
+      "pass": false,
+      "response": "1;7",
+      "observation": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor movement cannot verify OSC 8 link metadata or click behavior"
+      }
+    }
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "effectContract": {
+    "id": "ntilde-osc8-hyperlink-cells-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "validity": [
+      {
+        "id": "prior-state",
+        "held": true
+      },
+      {
+        "id": "unmarked-control",
+        "held": true
+      },
+      {
+        "id": "gate-close",
+        "held": true
+      }
+    ],
+    "required": [
+      {
+        "id": "pinned-fixture-effect",
+        "held": true
+      },
+      {
+        "id": "closed-link-later-text",
+        "held": true
+      },
+      {
+        "id": "id-parameter",
+        "held": true
+      },
+      {
+        "id": "two-links-not-merged",
+        "held": true
+      },
+      {
+        "id": "no-stale-links",
+        "held": true
+      }
+    ],
+    "notes": ["Prepared baseline read: every fact as predicted."],
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "divergences": [
+    {
+      "termlessOutcome": "supported",
+      "terminalOutcome": "inconclusive",
+      "kind": "terminal-path-inconclusive-by-design"
+    }
+  ],
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-and-pane-metadata",
+    "grading": "pinned-termless-replay-over-stored-cells",
+    "note": "Terminal path (cursor position): Cursor movement cannot verify OSC 8 link metadata or click behavior",
+    "scope": "Pinned terminfo.dev@4.0.0 extensions.osc7-cwd (no fixture bytes: a declared-capability report and a no-readback result, both inconclusive by design) and extensions.osc8 (termless: stored cells and hyperlink metadata of the pinned fixture; terminal: cursor position, inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, host working directory, hyperlink runs with snapshot-local identities) and session status by an independent oracle: OSC 7 reported working-directory metadata only, never the child process working directory or the existence of the named path; OSC 8 stored hyperlink-bearing cells only, never click handling, URL opening, URI safety policy or underline rendering. Protocol handling in a disposable direct-local App only: no shell, remote delivery, OSC title, OSC 133 P, OSC 633, semantic-prompts aggregate or stock grade claim."
+  }
+}
