@@ -36,6 +36,13 @@ export class WrapObserver {
             && o.terminalOutput.outputProcessing === false, 'partial or mismatched resize');
         validateOutputGeometry(o.terminalOutput.description, target.rows, target.cols);
     }
+    async captureRead(request, budget) {
+        const cpr = validateCursorReport(request.cpr);
+        check(cpr.barrier === request.barrier, 'CPR barrier mismatch');
+        const result = await this.reader.handle(request.kind, budget, request.barrier);
+        this.reader.frames.at(-1).cpr = cpr;
+        return result;
+    }
     async handle(request, budget) {
         check(!this.busy && !this.restored, 'busy or already sealed'); this.busy = true;
         try {
@@ -70,10 +77,7 @@ export class WrapObserver {
             check(['cw-start', 'cw-bind', 'cw-read', 'cw-finish'].includes(kind), 'unknown operation');
             if (kind === 'cw-start') check(this.phase === 'narrowed', 'wrong phase');
             else check(this.phase === 'active', 'wrong phase');
-            if (kind === 'cw-read') {
-                const cpr = validateCursorReport(request.cpr); check(cpr.barrier === request.barrier, 'CPR barrier mismatch');
-                const result = await this.reader.handle(kind, budget, request.barrier); this.reader.frames.at(-1).cpr = cpr; return result;
-            }
+            if (kind === 'cw-read') return await this.captureRead(request, budget);
             check(request.cpr === undefined, 'unexpected CPR');
             const result = await this.reader.handle(kind, budget, request.barrier);
             check(result.screen.rows === this.original.rows && result.screen.cols === 80, 'observation geometry mismatch');

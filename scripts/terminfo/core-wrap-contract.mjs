@@ -41,10 +41,10 @@ export function gradeWrap(roles) {
             && v.leftRightMarginMode === false && v.historyCount === 0 && Array.isArray(v.history) && v.history.length === 0
             && v.cursorVisible === true && v.storedDefault === true;
         if (!valid(before) || !valid(after) || before.rows !== after.rows) fail('invalid geometry or unrelated state: ' + c.role);
-        const initial = Array(before.rows).fill(''); initial[2] = 'GUARD';
+        const initial = new Array(before.rows).fill(''); initial[2] = 'GUARD';
         if (!same(before.lines, initial) || !same(before.cursor, [0, 0]) || before.autoWrap !== c.enabled)
             fail('invalid setup: ' + c.role);
-        const expected = Array(before.rows).fill(''); c.lines.forEach((line, i) => { expected[i] = line; });
+        const expected = new Array(before.rows).fill(''); c.lines.forEach((line, i) => { expected[i] = line; });
         results[c.role] = { outcome: same(after.lines, expected) && same(after.cursor, c.cursor)
             && after.autoWrap === c.enabled ? 'supported' : 'unsupported',
         expected: { lines: expected, cursor: c.cursor }, observed: { lines: after.lines, cursor: after.cursor, autoWrap: after.autoWrap, pendingWrap: after.pendingWrap } };

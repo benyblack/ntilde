@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { deriveTabStopsCoreReport, readableTabStopsReport } from './terminfo-core-tab-stops-results.mjs';
 import { assertRequirementRows, root } from './terminfo-core-results.mjs';
 import { wrapCases } from './terminfo/core-wrap-contract.mjs';
-const ids = ['text.wrap', 'modes.auto-wrap'];
+const ids = new Set(['text.wrap', 'modes.auto-wrap']);
 const previous = 'docs/qa/terminfo/2026-11-11-core-tab-stops-results/report.json';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Core wrap results: ' + message); };
@@ -23,7 +23,7 @@ export function deriveWrapCoreReport(directory, frozenMapping, identity, measure
     const raw = JSON.parse(readFileSync(join(directory, 'raw.json')));
     const modeTrace = JSON.parse(raw.rawReplies['modes.auto-wrap']);
     const modeQuery = modeTrace.queries.find(q => q.sequence.startsWith('\x1b[?7$p'));
-    check(modeQuery && modeQuery.reason === 'reply' && modeQuery.match?.[0] === '\x1b[?7;1$y', 'mode recognition reply missing');
+    check(modeQuery?.reason === 'reply' && modeQuery.match?.[0] === '\x1b[?7;1$y', 'mode recognition reply missing');
     const { mapping, report } = deriveTabStopsCoreReport(directory, frozenMapping, identity, measurement);
     assertRequirementRows(report.rows, frozenMapping.rows.map(r => r.id));
     const effects = wrapCases.map((c, i) => {
@@ -50,7 +50,7 @@ export function deriveWrapCoreReport(directory, frozenMapping, identity, measure
             : 'Mode-7 recognition remains separate; enabled and disabled writes use the same 85 bytes and compare observed cells and cursor.';
         row.blocker = null;
     }
-    for (const row of report.rows) if (!ids.includes(row.id)) check(row.conclusion === historical.rows.find(r => r.id === row.id).conclusion, 'unattributed conclusion change: ' + row.id);
+    for (const row of report.rows) if (!ids.has(row.id)) check(row.conclusion === historical.rows.find(r => r.id === row.id).conclusion, 'unattributed conclusion change: ' + row.id);
     report.totals = Object.fromEntries(['pass', 'fail', 'inconclusive'].map(v => [v, report.rows.filter(r => r.conclusion === v).length]));
     check(Object.values(report.totals).reduce((a, b) => a + b, 0) === 80, 'incorrect totals');
     report.corePassPercentage = report.totals.pass * 100 / 80;
