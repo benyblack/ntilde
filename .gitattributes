@@ -34,6 +34,15 @@ scripts/terminfo/collector-package-lock.json text eol=lf
 docs/qa/terminfo/2026-11-04-reset-observations.json text eol=lf
 docs/qa/terminfo/2026-11-04-input-observations.json text eol=lf
 
+# All terminfo qualification evidence JSON, now and to come: publications pin metadata, manifests
+# and observations by raw SHA-256, so Windows autocrlf must not change their bytes. One rule rather
+# than a line per batch - each batch used to add its own here, and a .gitattributes edit counts as
+# a .NET change to CI's path gate (scripts/ci/dotnet-gate-paths.sh), so a PR adding only evidence
+# ran every .NET job for it. All of these were already LF in the index when this was added
+# (1,075 files), so nothing is renormalized. The per-file and per-batch lines below are now covered
+# by this one and kept only as the record of which files carry digests.
+docs/qa/terminfo/**/*.json text eol=lf
+
 # The remote shell-integration snippets (V2 Phase 2b) are pasted onto a remote POSIX host, so a CRLF
 # working tree would put `$'\r': command not found` on every line of the file the user just wrote.
 # `*.sh` above already covers most of them. `RemoteShellIntegrationSnippets.Read` normalizes as
