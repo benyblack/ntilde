@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "requirements": {
+    "path": "requirements.json",
+    "sha256": "a0c95ead8a653c1555379f89d3ae420172926966ebfd86eb6e92de77d683479c"
+  },
+  "artifacts": [
+    {
+      "path": "upstream-source.zip",
+      "sha256": "eec9b2650a34d1b5a82f41f5d86039b4da4ffa1178c9b546cce218ea59faba22"
+    },
+    {
+      "path": "upstream-source.json",
+      "sha256": "760dc93426282ecc2eb062681c1310856928fe01c663a702377f2ab2ac304e1e"
+    },
+    {
+      "path": "native-adapter.patch",
+      "sha256": "a88c1c12341f848cf15136ddbc9d3b8394b6c3405572b654e33cbe19147ea968"
+    },
+    {
+      "path": "native-adapter.bundle",
+      "sha256": "3dc36d7571776339e1cf29b48a34b6878202550c7473a46f8571444b4280e8b7"
+    },
+    {
+      "path": "attempts.json",
+      "sha256": "57bc112e41ca281b4dd6ba9edb5069b71f06281fbc4f4748e24c3a08b044f3b7"
+    },
+    {
+      "path": "environment.json",
+      "sha256": "ac8821f5b82c4e1a05b09f8c1de69578073dc1501b3260a611ff0d530171d775"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "ntilde",
+      "label": "Ntilde",
+      "files": {
+        "identity": {
+          "path": "ntilde/identity-check.json",
+          "sha256": "adb7d009644a9f726611623cef6802172b1b6a22e686d3d27c50d7f7e65965f5"
+        },
+        "source": {
+          "path": "ntilde/source.json",
+          "sha256": "3d304fcc4544d549cf0817a10ac6d903a8837f8da7cc51381beacd3723ff4324"
+        },
+        "config": {
+          "path": "ntilde/config.json",
+          "sha256": "18fd235ed8375f34423fd806b728d6173df2f8dd27fe8d6163d891a2d0fdf014"
+        },
+        "ready": {
+          "path": "ntilde/worker-ready.json",
+          "sha256": "99a799f075b641c1e376e28f535f2d8a764933670d98c531bd99f5e5f7acbb5d"
+        },
+        "completion": {
+          "path": "ntilde/worker-complete.json",
+          "sha256": "84842bf0903920d45de4c16b15a34694cf0565d30f2286111f036398f1155aae"
+        },
+        "cleanup": {
+          "path": "ntilde/cleanup.json",
+          "sha256": "f2af9f52a05d1579c60f90efcc61614fb9f0bbfcf5fd432587584b8b6f642836"
+        },
+        "geometry": {
+          "path": "ntilde/measurement-geometry.json",
+          "sha256": "d6e408eed9b59ac2276f1630b793227c55108ac85d1437137a86c4c56387fae0"
+        },
+        "raw": {
+          "path": "ntilde/owned-run.zip",
+          "sha256": "0ab33fe8d54c81374e94b4021ca0b429491211f028b282167c113f70f7a580ca",
+          "member": "raw.json",
+          "contentSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b"
+        }
+      },
+      "archive": {
+        "path": "ntilde/owned-run.zip",
+        "sha256": "0ab33fe8d54c81374e94b4021ca0b429491211f028b282167c113f70f7a580ca"
+      }
+    },
+    {
+      "id": "iterm2",
+      "label": "iTerm2",
+      "files": {
+        "identity": {
+          "path": "iterm2/identity-check.json",
+          "sha256": "7c63e86c4e472874233319c2ec1ba89faf69a8f7204846444e20405c88aa5e85"
+        },
+        "source": {
+          "path": "iterm2/source.json",
+          "sha256": "5743ea33c8ff9ba6b6473518a7e9a294e01bfb7f39dcb7d7856898e43aa0fad8"
+        },
+        "config": {
+          "path": "iterm2/config.json",
+          "sha256": "bd3e098f2f50750636726a1d2d875131f6677516260d1b2131c4d229a8dd69cf"
+        },
+        "ready": {
+          "path": "iterm2/worker-ready.json",
+          "sha256": "63b31cf8369a518b60163db3374dd2fe97e9ee0eee08d7287f0f30817615a8d6"
+        },
+        "completion": {
+          "path": "iterm2/worker-complete.json",
+          "sha256": "0ef90926fcfe2c40d1d0d7d3a830e879e8ce44ed7f4bb69510e7de3333f2fbd4"
+        },
+        "cleanup": {
+          "path": "iterm2/cleanup.json",
+          "sha256": "9dae022d37fd12181a9d17c71602833eb4a076c394185a838b6cd641329b9403"
+        },
+        "geometry": {
+          "path": "iterm2/measurement-geometry.json",
+          "sha256": "4eda728ca8cffbfbaa7926206c59ff53de29e10c6857d2f9f03a4a097d49f3c1"
+        },
+        "raw": {
+          "path": "iterm2/owned-run.zip",
+          "sha256": "1192c03536ab8fc80b8e81666be9e50832299fea8e4b14431fe6b678f114f8ad",
+          "member": "raw.json",
+          "contentSha256": "40c0329b411bbad37446d11186b4daac86951114867e74253566f9d770821afb"
+        }
+      },
+      "archive": {
+        "path": "iterm2/owned-run.zip",
+        "sha256": "1192c03536ab8fc80b8e81666be9e50832299fea8e4b14431fe6b678f114f8ad"
+      }
+    },
+    {
+      "id": "ghostty",
+      "label": "Ghostty",
+      "files": {
+        "identity": {
+          "path": "ghostty/identity-check.json",
+          "sha256": "2e5c622f1b40c1950d69981fb086c386a5f9afec356d803435e837cc7f72f901"
+        },
+        "source": {
+          "path": "ghostty/source.json",
+          "sha256": "89a8be72ad77b7640bcdbfc960e1d7d1eb9b2ecabeb9e6558155fe711b41315d"
+        },
+        "config": {
+          "path": "ghostty/config.json",
+          "sha256": "39d387b3d27bbd1d056ea5024434b5488f65bb034a592d81a1c50d8bc3f330ca"
+        },
+        "ready": {
+          "path": "ghostty/worker-ready.json",
+          "sha256": "7710769dc76189959b3a37d4c40d7c2e6afd473a396c21d3c7bcd9b896b8ee3d"
+        },
+        "completion": {
+          "path": "ghostty/worker-complete.json",
+          "sha256": "d1c026f5a7eaa9820e6201d255b3e639b1704ae7ee80bb2b375988f6cb80289a"
+        },
+        "cleanup": {
+          "path": "ghostty/cleanup.json",
+          "sha256": "b8f4b0624927b594bf30172542c5623e3be1b6ff0d06f75b96cd2794cc120fc3"
+        },
+        "geometry": {
+          "path": "ghostty/measurement-geometry.json",
+          "sha256": "426c0d8f23611490f292f484d18270929b73c5479a2a564780e0cf8ccf87a5b7"
+        },
+        "raw": {
+          "path": "ghostty/owned-run.zip",
+          "sha256": "da522d29a127b0d58a71fac6a68215cae70351573238f54329ab6903bbc2a5d9",
+          "member": "raw.json",
+          "contentSha256": "c98ec59fe48cedd236f6459fde4d66fa71076e2736b91b9d17cf437c597f31aa"
+        }
+      },
+      "archive": {
+        "path": "ghostty/owned-run.zip",
+        "sha256": "da522d29a127b0d58a71fac6a68215cae70351573238f54329ab6903bbc2a5d9"
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { verifiedEvidenceFile, verifyCommonCoreArchive } from './terminfo/common-core-evidence.mjs';
+import { verifiedEvidenceFile, verifyCommonCoreArchive, readCommonCoreRaw } from './terminfo/common-core-evidence.mjs';
 import { buildCommonCoreComparison, comparisonStatusLabels } from './terminfo/common-core-comparison.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -16,7 +16,14 @@ if (!['--check', '--write'].includes(mode) || process.argv.length !== 3) {
 const manifestBytes = readFileSync(join(publication, 'manifest.json'));
 const manifest = JSON.parse(manifestBytes);
 if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.subjects)) throw new Error('Invalid common-harness publication manifest.');
-const verifiedFile = entry => verifiedEvidenceFile(publication, entry).bytes;
+const verifiedFile = entry => {
+    const file = verifiedEvidenceFile(publication, entry);
+    if (entry.member === undefined) return file.bytes;
+    if (entry.member !== 'raw.json') throw new Error('Unsupported archived evidence member.');
+    const bytes = readCommonCoreRaw(file.path);
+    if (digest(bytes) !== entry.contentSha256) throw new Error('Archived raw record digest differs.');
+    return bytes;
+};
 for (const file of manifest.artifacts ?? []) verifiedFile(file);
 const attempts = JSON.parse(verifiedFile((manifest.artifacts ?? []).find(entry => entry.path === 'attempts.json')));
 for (const attempt of attempts.attempts ?? []) verifiedFile(attempt.archive);
@@ -28,8 +35,8 @@ const subjects = manifest.subjects.map(subject => {
     const source = JSON.parse(files.sourceBytes);
     if (members['launch-driver.ts'] !== source.driverSha256 || members['collection-worker.ts'] !== source.workerSha256) throw new Error(`${subject.id} measured script snapshots differ from source identity.`);
     for (const [name, entry] of Object.entries(subject.files)) {
-        const member = entry.path.split('/').at(-1);
-        if (members[member] !== entry.sha256) throw new Error(`Archived ${name} differs from published ${entry.path}`);
+        const member = entry.member ?? entry.path.split('/').at(-1);
+        if (members[member] !== (entry.contentSha256 ?? entry.sha256)) throw new Error(`Archived ${name} differs from published ${entry.path}`);
     }
     return { id: subject.id, label: subject.label, ...files };
 });
@@ -43,11 +50,27 @@ report.method.upstreamBaseRevision = sourceProof.baseRevision;
 const sourcePath = 'upstream-source.json';
 if (!(manifest.artifacts ?? []).some(entry => entry.path === sourcePath)) throw new Error('Source proof is not digest-bound to the manifest.');
 report.manifestSha256 = digest(manifestBytes);
+const caseOutputs = subjects.map(subject => {
+    const raw = JSON.parse(subject.rawBytes);
+    const cases = { runId: raw.runId, rawSha256: digest(subject.rawBytes), fullRunArchive: 'owned-run.zip',
+        records: report.rows.map(row => {
+            const result = raw.results.find(result => result.featureId === row.id);
+            return { featureId: row.id, status: result?.status ?? 'not-scheduled', attempt: result?.attempt ?? null,
+                assertionType: result?.assertionType ?? null, reason: result?.reason ?? null, tests: result?.tests ?? [],
+                assertions: raw.assertions.filter(assertion => assertion.featureId === row.id),
+                rawReplyRef: result?.rawReplyRef ?? null,
+                rawReplySha256: result?.rawReplyRef && raw.rawReplies[result.rawReplyRef] !== undefined ? digest(Buffer.from(raw.rawReplies[result.rawReplyRef])) : null,
+                screenshotRefs: [...new Set((result?.frames ?? []).flatMap(frame => frame.ref ? [frame.ref] : []))] };
+        }) };
+    const content = JSON.stringify(cases, null, 2) + '\n', lines = content.split('\n');
+    for (const row of report.rows) row.results[subject.id].evidenceLine = lines.findIndex(line => line.trim() === `"featureId": ${JSON.stringify(row.id)},`) + 1;
+    return [join(publication, subject.id, 'cases.json'), content];
+});
 const json = JSON.stringify(report, null, 2) + '\n';
 const table = report.subjects.map(s => `| ${s.label} ${s.version} | ${s.counts.supported} | ${s.counts.unsupported} | ${s.counts['probe-todo']} | ${s.counts['probe-invalid']} | ${s.counts.untestable + s.counts['not-scheduled']} |`).join('\n');
 const cell = value => String(value ?? '').replaceAll('|', '\\|').replaceAll('\n', ' ');
-const limits = report.subjects.map(s => `- **${s.label}:** capture ${s.measurementLimits.captureOutcome ?? 'not recorded'}${s.measurementLimits.captureRefusal ? ' — ' + s.measurementLimits.captureRefusal : ''}. Disposable ownership receipt: ${s.measurementLimits.disposableOwnership ?? 'not recorded'} (a separate run-scoped process proof may authorize writes).`).join('\n');
-const markdown = `# Common-harness Core comparison\n\nThese are fresh application runs through the same upstream terminal probes. Ntilde's separate 80/80 detailed qualification is not substituted into this comparison.\n\n` +
+const limits = report.subjects.map(s => `- **${s.label}:** capture ${s.measurementLimits.captureOutcome ?? 'not recorded'}${s.measurementLimits.captureRefusal ? ' — ' + s.measurementLimits.captureRefusal : ''}. Disposable ownership receipt: ${s.measurementLimits.disposableOwnership ?? 'not recorded'} (a separate run-scoped process proof may authorize writes). Withheld probes: ${s.measurementLimits.withheldProbeCount}; invalidated by native bounds changes: ${s.measurementLimits.invalidWindowBoundsCount}.`).join('\n');
+const markdown = `# Common-harness Core comparison\n\nThese are fresh application runs through the same upstream terminal probes. Ntilde's [separate 80/80 detailed qualification](../2026-11-11-core-reverse-wide-results/report.md) is not substituted into this comparison.\n\n` +
     `Upstream/adapter source: \`${report.method.sourceRevision}\`; suite \`${report.method.probeHash}\`. Measured macOS version: ${report.method.os}; PTY geometry: ${report.method.geometry.rows} × ${report.method.geometry.cols}.\n\n` +
     `| Application | Supported | Unsupported | Not concluded | Invalid measurement | Untestable / not tested |\n|---|---:|---:|---:|---:|---:|\n${table}\n\n` +
     `All counts use the same 80 feature IDs. The exact upstream application probe decides each result. A missing observer, invalid measurement or untestable framework API is not a terminal failure. Defaults and capture conditions are retained with the evidence. Observer availability differs across applications, so these counts are not a capability ranking.\n\n` +
@@ -60,7 +83,7 @@ const site = { schemaVersion: report.schemaVersion, requirementCount: report.req
     evidencePath: 'docs/qa/terminfo/2026-11-11-common-core-comparison',
     rows: report.rows.map(row => ({ ...row, results: Object.fromEntries(Object.entries(row.results).map(([id, result]) => [id,
         { evidenceLine: result.evidenceLine, status: result.status, method: result.method, reason: result.reason, scheduled: result.scheduled }])) })) };
-const outputs = [[join(publication, 'report.json'), json], [join(publication, 'report.md'), markdown],
+const outputs = [...caseOutputs, [join(publication, 'report.json'), json], [join(publication, 'report.md'), markdown],
     [join(root, 'site/src/data/common-core-comparison.json'), JSON.stringify(site, null, 2) + '\n']];
 for (const [path, expected] of outputs) {
     if (mode === '--write') { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, expected); }

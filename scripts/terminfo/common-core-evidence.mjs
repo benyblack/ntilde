@@ -34,3 +34,12 @@ with zipfile.ZipFile(sys.argv[1]) as z:
     }
     return index;
 }
+
+/** Read the immutable raw record from its verified archive without extracting files. */
+export function readCommonCoreRaw(path) {
+    return execFileSync(pythonCommand, ['-c', `import zipfile,sys
+with zipfile.ZipFile(sys.argv[1]) as z:
+    if sum(i.filename=='raw.json' for i in z.infolist())!=1: raise ValueError('raw record is missing or duplicated')
+    if z.getinfo('raw.json').file_size>64*1024*1024: raise ValueError('raw record exceeds 64 MiB')
+    sys.stdout.buffer.write(z.read('raw.json'))`, path], { timeout: 30000, maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+}

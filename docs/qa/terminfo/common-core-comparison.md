@@ -49,7 +49,7 @@ derived from those retained bytes. It cannot replace inconclusive, invalid or
 untestable outcomes with Ntilde's deeper qualification conclusions.
 
 Every screenshot reference must resolve to its exact PNG digest inside the subject's
-archive. The raw JSON in the archive must match the separate raw JSON. Successful
+archive. The raw JSON remains immutable inside the run archive and must match its separately recorded digest. Readable per-case records and their upstream assertions derive from it. Successful
 cleanup requires both application/window absence and recorded worker exit.
 
 ## Reproduction

@@ -95,7 +95,7 @@ function readSubject(subject, ids, requirementsSha256) {
     const ownership = diagnostic('collector.disposableOwnership');
     return { id: subject.id, label: subject.label, version: source.version, versionBasis: source.versionBasis, measuredAt: raw.measuredAt,
         runId: raw.runId, rawSha256: hash(subject.rawBytes), executableSha256: source.executableSha256, launchDriverSha256: source.driverSha256, buildPayloadSha256: source.buildPayloadSha256 ?? null,
-        measurementLimits: { captureOutcome: calibration?.outcome ?? null, captureRefusal: calibration?.refusal ?? null, disposableOwnership: ownership?.kind ?? null },
+        measurementLimits: { captureOutcome: calibration?.outcome ?? null, captureRefusal: calibration?.refusal ?? null, disposableOwnership: ownership?.kind ?? null, withheldProbeCount: ids.filter(id => results[id].reason?.startsWith('Required grant missing:')).length, invalidWindowBoundsCount: ids.filter(id => results[id].status === 'probe-invalid' && results[id].reason?.includes('bounds changed during capture')).length },
         counts, supportedShare: counts.supported / ids.length * 100,
         geometry, method: { probeHash: raw.probeHash, sourceRevision: raw.sourceRevision,
             workerSha256: source.workerSha256, os: source.os }, results };

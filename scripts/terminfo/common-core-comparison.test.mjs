@@ -74,7 +74,7 @@ for (const [name, key, mutate] of [
     ['different suite', 'rawBytes', r => { r.probeHash = 'other'; }],
     ['different source', 'rawBytes', r => { r.sourceRevision = 'other'; }],
     ['different mapping', 'sourceBytes', r => { r.requirementsSha256 = 'other'; }],
-    ['different worker script', 'sourceBytes', r => { r.workerSha256 = 'other'; }],
+    ['different worker script', 'sourceBytes', r => { r.workerSha256 = 'e'.repeat(64); }],
     ['different OS', 'sourceBytes', r => { r.os = 'other'; }],
     ['different geometry', 'geometryBytes', r => { r.geometry.cols = 80; }],
     ['foreign geometry read', 'geometryBytes', r => { r.pid++; }],

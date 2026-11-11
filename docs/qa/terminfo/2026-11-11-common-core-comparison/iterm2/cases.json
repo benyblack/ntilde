@@ -1,0 +1,2696 @@
+{
+  "runId": "a1729873b939d8afc6c4d32eccc7b05d",
+  "rawSha256": "40c0329b411bbad37446d11186b4daac86951114867e74253566f9d770821afb",
+  "fullRunArchive": "owned-run.zip",
+  "records": [
+    {
+      "featureId": "sgr.bold",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:17.349Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:17.349Z"
+          },
+          "assertionRefs": [
+            17
+          ],
+          "rawReplyRef": "sgr.bold"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bold",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.bold: DECRQSS reports 1 after \u001b[1m",
+          "observed": "0;1",
+          "rawReplyRef": "sgr.bold"
+        }
+      ],
+      "rawReplyRef": "sgr.bold",
+      "rawReplySha256": "04c51d0ed1ba09112b9a9476bae1cfebafed5565d8a957c08f723593c33292df",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.faint",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:17.752Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:17.752Z"
+          },
+          "assertionRefs": [
+            18
+          ],
+          "rawReplyRef": "sgr.faint"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.faint",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.faint: DECRQSS reports 2 after \u001b[2m",
+          "observed": "0;2",
+          "rawReplyRef": "sgr.faint"
+        }
+      ],
+      "rawReplyRef": "sgr.faint",
+      "rawReplySha256": "e75da2735009c91de15d2b85e0f6fc2f4bac3c826a0d82e870812518068770f6",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.italic",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:19.903Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:19.903Z"
+          },
+          "assertionRefs": [
+            23
+          ],
+          "rawReplyRef": "sgr.italic"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.italic",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.italic: DECRQSS reports 3 after \u001b[3m",
+          "observed": "0;3",
+          "rawReplyRef": "sgr.italic"
+        }
+      ],
+      "rawReplyRef": "sgr.italic",
+      "rawReplySha256": "eb8b764f3ba207b228010f165dd32846f934c15e3b06f267d5b2127e57d9ca96",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.underline.single",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:23.114Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:23.114Z"
+          },
+          "assertionRefs": [
+            30
+          ],
+          "rawReplyRef": "sgr.underline.single"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.underline.single",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.underline.single: DECRQSS reports 4 after \u001b[4m",
+          "observed": "0;4",
+          "rawReplyRef": "sgr.underline.single"
+        }
+      ],
+      "rawReplyRef": "sgr.underline.single",
+      "rawReplySha256": "652e6a48978569f7006e4ba22539beea757de24e115b1bb57f53d895a061fa3e",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.inverse",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:19.474Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:19.474Z"
+          },
+          "assertionRefs": [
+            22
+          ],
+          "rawReplyRef": "sgr.inverse"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.inverse",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.inverse: DECRQSS reports 7 after \u001b[7m",
+          "observed": "0;7",
+          "rawReplyRef": "sgr.inverse"
+        }
+      ],
+      "rawReplyRef": "sgr.inverse",
+      "rawReplySha256": "cab958ce196cf6d45f4ec993d0353a3cacc8419989888ffc19c6561e21c17a6c",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.hidden",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:19.018Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:19.018Z"
+          },
+          "assertionRefs": [
+            21
+          ],
+          "rawReplyRef": "sgr.hidden"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.hidden",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.hidden: DECRQSS reports 8 after \u001b[8m",
+          "observed": "0;8",
+          "rawReplyRef": "sgr.hidden"
+        }
+      ],
+      "rawReplyRef": "sgr.hidden",
+      "rawReplySha256": "208a0470687f0067eff3ec015855ad10bb4d98befe72768e68c8b5b23092b4e7",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.strikethrough",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:22.701Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:22.701Z"
+          },
+          "assertionRefs": [
+            29
+          ],
+          "rawReplyRef": "sgr.strikethrough"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.strikethrough",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.strikethrough: DECRQSS reports 9 after \u001b[9m",
+          "observed": "0;9",
+          "rawReplyRef": "sgr.strikethrough"
+        }
+      ],
+      "rawReplyRef": "sgr.strikethrough",
+      "rawReplySha256": "b2e1888a696fe72f6aa79c340381fcaaeeeb58e005457e735d8688add25c67e1",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.fg.standard",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:18.618Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:18.618Z"
+          },
+          "assertionRefs": [
+            20
+          ],
+          "rawReplyRef": "sgr.fg.standard"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.fg.standard",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.fg.standard: DECRQSS reports 31 after \u001b[31m",
+          "observed": "0;31",
+          "rawReplyRef": "sgr.fg.standard"
+        }
+      ],
+      "rawReplyRef": "sgr.fg.standard",
+      "rawReplySha256": "7af9a06950c31c3734ec0c37e96ed3e38f61993180577160be0f06b78899fbc0",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.bg.standard",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:16.934Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:16.934Z"
+          },
+          "assertionRefs": [
+            16
+          ],
+          "rawReplyRef": "sgr.bg.standard"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bg.standard",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.bg.standard: DECRQSS reports 41 after \u001b[41m",
+          "observed": "0;41",
+          "rawReplyRef": "sgr.bg.standard"
+        }
+      ],
+      "rawReplyRef": "sgr.bg.standard",
+      "rawReplySha256": "c189210fdca51ad2595975fbcbaf072612ed6349d14453b951fdc8f9efb00117",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.fg.default",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:18.168Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:18.168Z"
+          },
+          "assertionRefs": [
+            19
+          ],
+          "rawReplyRef": "sgr.fg.default"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.fg.default",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.fg.default: DECRQSS reports none of 30;31;32;33;34;35;36;37;90;91;92;93;94;95;96;97;38 after \u001b[39m",
+          "observed": "0",
+          "rawReplyRef": "sgr.fg.default"
+        }
+      ],
+      "rawReplyRef": "sgr.fg.default",
+      "rawReplySha256": "445182e583ef402af8b7ac7f99271390342d4a908097d729a70b0fb30eee31f2",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.bg.default",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:16.485Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:16.485Z"
+          },
+          "assertionRefs": [
+            15
+          ],
+          "rawReplyRef": "sgr.bg.default"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bg.default",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.bg.default: DECRQSS reports none of 40;41;42;43;44;45;46;47;100;101;102;103;104;105;106;107;48 after \u001b[49m",
+          "observed": "0",
+          "rawReplyRef": "sgr.bg.default"
+        }
+      ],
+      "rawReplyRef": "sgr.bg.default",
+      "rawReplySha256": "12d8afd7e4e3a20f92e7847c79dacd882cdaae848fc0ae7ca25203650cf19c0c",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.selective-reset.bold",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:20.818Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:20.818Z"
+          },
+          "assertionRefs": [
+            25
+          ],
+          "rawReplyRef": "sgr.selective-reset.bold"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.bold",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.bold: DECRQSS reports 3 after \u001b[22m",
+          "observed": "0;3",
+          "rawReplyRef": "sgr.selective-reset.bold"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.bold",
+      "rawReplySha256": "0c433434b3ad0fe9a7e3077fae684b7c6b0c41567c3abef8938ab4bf58e67f40",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.selective-reset.underline",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:22.235Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:22.235Z"
+          },
+          "assertionRefs": [
+            28
+          ],
+          "rawReplyRef": "sgr.selective-reset.underline"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.underline",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.underline: DECRQSS reports 1 after \u001b[24m",
+          "observed": "0;1",
+          "rawReplyRef": "sgr.selective-reset.underline"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.underline",
+      "rawReplySha256": "4529e6fc3a2c23b98c3ff6ca6a2b2fcfe31aa2c4219de3e3ac493433a77cead9",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.selective-reset.inverse",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:21.287Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:21.287Z"
+          },
+          "assertionRefs": [
+            26
+          ],
+          "rawReplyRef": "sgr.selective-reset.inverse"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.inverse",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.inverse: DECRQSS reports 1 after \u001b[27m",
+          "observed": "0;1",
+          "rawReplyRef": "sgr.selective-reset.inverse"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.inverse",
+      "rawReplySha256": "0e23b4bd7cc0137aa59372fa8c3eecd737895d2050da0d8dfa0291c261999ce5",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.selective-reset.italic",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:21.753Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:21.753Z"
+          },
+          "assertionRefs": [
+            27
+          ],
+          "rawReplyRef": "sgr.selective-reset.italic"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.italic",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.italic: DECRQSS reports 1 after \u001b[23m",
+          "observed": "0;1",
+          "rawReplyRef": "sgr.selective-reset.italic"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.italic",
+      "rawReplySha256": "743deae0f3ca0f9dc3ba99573613deb49d2ae94320da7c0c0cb778c9ccd43aa1",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.reset",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:20.335Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "graded from a status reply only; this row is decided by what is painted",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:20.335Z"
+          },
+          "assertionRefs": [
+            24
+          ],
+          "rawReplyRef": "sgr.reset"
+        },
+        {
+          "id": "visual",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "reason": "graded from a status reply only; this row is decided by what is painted"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.reset",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "sgr.reset: DECRQSS reports none of 1;3;4 after \u001b[0m",
+          "observed": "0",
+          "rawReplyRef": "sgr.reset"
+        }
+      ],
+      "rawReplyRef": "sgr.reset",
+      "rawReplySha256": "521cf43364171fb8e834c4f53f33b55f691f5d03eb2742813e70e37d4a0d196a",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.hide",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:02.837Z"
+      },
+      "assertionType": null,
+      "reason": "Cursor pixel fixture needs capture and measured 3x6 geometry; measured 41x140",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "cursor.hide",
+          "reason": "Cursor pixel fixture needs capture and measured 3x6 geometry; measured 41x140"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "cursor.hide",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.absolute",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:03.732Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:03.732Z"
+          },
+          "assertionRefs": [
+            5
+          ],
+          "rawReplyRef": "cursor.move.absolute"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.absolute",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=5, col=10 after \"\\u001b[5;10H\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":1},\"final\":{\"row\":5,\"col\":10}}",
+          "rawReplyRef": "cursor.move.absolute"
+        }
+      ],
+      "rawReplyRef": "cursor.move.absolute",
+      "rawReplySha256": "62d2a9a0a09e31c8e9535619fbf700f696575e9b9b4ad5919050c590297fa159",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.up",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:05.919Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:05.919Z"
+          },
+          "assertionRefs": [
+            10
+          ],
+          "rawReplyRef": "cursor.move.up"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.up",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=4, col=1 after \"\\u001b[2A\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":6,\"col\":1},\"final\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "cursor.move.up"
+        }
+      ],
+      "rawReplyRef": "cursor.move.up",
+      "rawReplySha256": "dc9d0961251b002ae035e6eb4e4a8d160cfebcbeb02da1d5a99f010f99861a09",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.down",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:04.652Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:04.652Z"
+          },
+          "assertionRefs": [
+            7
+          ],
+          "rawReplyRef": "cursor.move.down"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.down",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=4, col=1 after \"\\u001b[3B\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":1},\"final\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "cursor.move.down"
+        }
+      ],
+      "rawReplyRef": "cursor.move.down",
+      "rawReplySha256": "880c8a981451fb14b19f613a8d8431ef4c59d820585333e20a3664e959e30d12",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.forward",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:05.069Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:05.069Z"
+          },
+          "assertionRefs": [
+            8
+          ],
+          "rawReplyRef": "cursor.move.forward"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.forward",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=6 after \"\\u001b[5C\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":1},\"final\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "cursor.move.forward"
+        }
+      ],
+      "rawReplyRef": "cursor.move.forward",
+      "rawReplySha256": "e6a49027f50f063715decf5b59c2043e3ddda2728b8bc18f95950285f27b131f",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.back",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:04.208Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:04.208Z"
+          },
+          "assertionRefs": [
+            6
+          ],
+          "rawReplyRef": "cursor.move.back"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.back",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=2 after \"\\u001b[2D\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":4},\"final\":{\"row\":1,\"col\":2}}",
+          "rawReplyRef": "cursor.move.back"
+        }
+      ],
+      "rawReplyRef": "cursor.move.back",
+      "rawReplySha256": "b77a6884703abb7a7810ffb4c4e3c5503d82b2cd8d1c84c46e8a1e5b3fe36e1d",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.move.home",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:05.473Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:05.473Z"
+          },
+          "assertionRefs": [
+            9
+          ],
+          "rawReplyRef": "cursor.move.home"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.move.home",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=1 after \"\\u001b[H\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":1,\"col\":4},\"final\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "cursor.move.home"
+        }
+      ],
+      "rawReplyRef": "cursor.move.home",
+      "rawReplySha256": "f8081eb4da154a465ce1d8e3bd823d7660c969c1aef1591f0843ee240266218f",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.save-restore",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:06.352Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:06.352Z"
+          },
+          "assertionRefs": [
+            11
+          ],
+          "rawReplyRef": "cursor.save-restore"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.save-restore",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "saved cursor returns to 3;5 after measured displacement",
+          "observed": "{\"setup\":{\"row\":3,\"col\":5},\"displaced\":{\"row\":10,\"col\":10},\"final\":{\"row\":3,\"col\":5}}",
+          "rawReplyRef": "cursor.save-restore"
+        }
+      ],
+      "rawReplyRef": "cursor.save-restore",
+      "rawReplySha256": "ccd0676c0801575164cbd01e3efb363f736272b1ca37760e0987f04396124f56",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cup-boundaries",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:01.536Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:01.536Z"
+          },
+          "assertionRefs": [
+            2
+          ],
+          "rawReplyRef": "cursor.cup-boundaries"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cup-boundaries",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CUP 999;999 clamps to measured 41;140 after qualified edge",
+          "observed": "{\"rows\":41,\"cols\":140,\"origin\":{\"row\":1,\"col\":1},\"edge\":{\"row\":41,\"col\":140},\"beforeTarget\":{\"row\":1,\"col\":1},\"final\":{\"row\":41,\"col\":140}}",
+          "rawReplyRef": "cursor.cup-boundaries"
+        }
+      ],
+      "rawReplyRef": "cursor.cup-boundaries",
+      "rawReplySha256": "fa0675b06ea6a124f99826fa3679cce3b4472ecaf7cf7ceb5b05a061a717b697",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cuu-past-top",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:02.401Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:02.401Z"
+          },
+          "assertionRefs": [
+            3
+          ],
+          "rawReplyRef": "cursor.cuu-past-top"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cuu-past-top",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=1, col=1 after \"\\u001b[999A\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":4,\"col\":1},\"final\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "cursor.cuu-past-top"
+        }
+      ],
+      "rawReplyRef": "cursor.cuu-past-top",
+      "rawReplySha256": "a8089f415194ea989b8aa2b309d4917b3ac9abd79223b86722f4f42faa971e2d",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cud-past-bottom",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:01.057Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:01.057Z"
+          },
+          "assertionRefs": [
+            1
+          ],
+          "rawReplyRef": "cursor.cud-past-bottom"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cud-past-bottom",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CUD past the newline-measured bottom clamps at the last row",
+          "observed": "{\"rows\":41,\"measured\":[{\"step\":\"origin\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"bottom\",\"report\":{\"row\":41,\"col\":1}},{\"step\":\"before-target\",\"report\":{\"row\":1,\"col\":1}},{\"step\":\"clamped\",\"report\":{\"row\":41,\"col\":1}}]}",
+          "rawReplyRef": "cursor.cud-past-bottom"
+        }
+      ],
+      "rawReplyRef": "cursor.cud-past-bottom",
+      "rawReplySha256": "1b15c8538c2673118c9793d89bf3ebf5835dba85026f30b98a0040cf3a6d0b2f",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cup-scroll-region",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:01.976Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "DECOM makes CPR region-relative (VT100: region top is 1, bottom is 11); measured 1;1, 2;1, 11;1 — the physical row 5 and the margins still need an independent observable",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "cursor.cup-scroll-region",
+          "reason": "DECOM CPR is region-relative; the physical row 5 and the margins still need an independent observable"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "cursor.cup-scroll-region",
+      "rawReplySha256": "a37a37d5295e04588cd3ad4a3837eb532c48552866f5b406b6e44344015b1e42",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.vpa",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:06.768Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:06.768Z"
+          },
+          "assertionRefs": [
+            12
+          ],
+          "rawReplyRef": "cursor.vpa"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.vpa",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=10, col=5 after \"\\u001b[10d\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":3,\"col\":5},\"final\":{\"row\":10,\"col\":5}}",
+          "rawReplyRef": "cursor.vpa"
+        }
+      ],
+      "rawReplyRef": "cursor.vpa",
+      "rawReplySha256": "f4cba6df112504c479746cbc67b010f294fc76696c346deb8d290a1a9bb419ee",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.cpl",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:00.555Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:00.555Z"
+          },
+          "assertionRefs": [
+            0
+          ],
+          "rawReplyRef": "cursor.cpl"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cpl",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=4, col=1 after \"\\u001b[2F\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":6,\"col\":10},\"final\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "cursor.cpl"
+        }
+      ],
+      "rawReplyRef": "cursor.cpl",
+      "rawReplySha256": "d3507c55b3050ba250ed63d8168a3d61017aa2ff5bd884b837f90ced754cf605",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.hpa",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:03.253Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:03.253Z"
+          },
+          "assertionRefs": [
+            4
+          ],
+          "rawReplyRef": "cursor.hpa"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.hpa",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor row=3, col=15 after \"\\u001b[15`\"",
+          "observed": "{\"origin\":{\"row\":1,\"col\":1},\"setup\":{\"row\":3,\"col\":1},\"final\":{\"row\":3,\"col\":15}}",
+          "rawReplyRef": "cursor.hpa"
+        }
+      ],
+      "rawReplyRef": "cursor.hpa",
+      "rawReplySha256": "a7e358f0fdc7e7c7714848998d72160af4496c11571d3c2dad952ac1901c839d",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.line.right",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:09.235Z"
+      },
+      "assertionType": null,
+      "reason": "erase.line.right: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.line.right",
+          "reason": "erase.line.right: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.line.right",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.line.left",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:08.834Z"
+      },
+      "assertionType": null,
+      "reason": "erase.line.left: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.line.left",
+          "reason": "erase.line.left: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.line.left",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.line.all",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:08.435Z"
+      },
+      "assertionType": null,
+      "reason": "erase.line.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.line.all",
+          "reason": "erase.line.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.line.all",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.screen.above",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:09.635Z"
+      },
+      "assertionType": null,
+      "reason": "erase.screen.above: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.screen.above",
+          "reason": "erase.screen.above: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.screen.above",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.screen.all",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:10.053Z"
+      },
+      "assertionType": null,
+      "reason": "erase.screen.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.screen.all",
+          "reason": "erase.screen.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.screen.all",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.screen.below",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:10.452Z"
+      },
+      "assertionType": null,
+      "reason": "erase.screen.below: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.screen.below",
+          "reason": "erase.screen.below: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.screen.below",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.screen.scrollback",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:10.851Z"
+      },
+      "assertionType": null,
+      "reason": "OS-level scrollback dump or XTEST wheel+capture",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.screen.scrollback",
+          "reason": "OS-level scrollback dump or XTEST wheel+capture"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.screen.scrollback",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.character",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:07.206Z"
+      },
+      "assertionType": null,
+      "reason": "erase.character: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.character",
+          "reason": "erase.character: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.character",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.el-with-attrs",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:08.021Z"
+      },
+      "assertionType": null,
+      "reason": "erase.el-with-attrs: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.el-with-attrs",
+          "reason": "erase.el-with-attrs: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.el-with-attrs",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "erase.ed-scroll-region",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:07.612Z"
+      },
+      "assertionType": null,
+      "reason": "erase.ed-scroll-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "erase.ed-scroll-region",
+          "reason": "erase.ed-scroll-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "erase.ed-scroll-region",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "modes.alt-screen.enter",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "none"
+      },
+      "assertionType": null,
+      "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+      "tests": [
+        {
+          "id": "prerequisite",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "rawReplyRef": "modes.alt-screen.enter"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "modes.alt-screen.enter",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "modes.alt-screen.exit",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:11.274Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Cursor responsiveness after exit does not measure the restored buffer",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "modes.alt-screen.exit",
+          "reason": "Cursor responsiveness after exit does not measure the restored buffer"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "modes.alt-screen.exit",
+      "rawReplySha256": "b370e33363c9858c6f81030f57f503c189da7f0f11cefec055e176c5333bf289",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "modes.reverse-video",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "none"
+      },
+      "assertionType": null,
+      "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+      "tests": [
+        {
+          "id": "prerequisite",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "rawReplyRef": "modes.reverse-video"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "modes.reverse-video",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "modes.auto-wrap",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "none"
+      },
+      "assertionType": null,
+      "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+      "tests": [
+        {
+          "id": "prerequisite",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "rawReplyRef": "modes.auto-wrap"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "modes.auto-wrap",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.accumulate",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:12.702Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Cursor position does not measure scrollback history",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.accumulate",
+          "reason": "Cursor position does not measure scrollback history"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.accumulate",
+      "rawReplySha256": "02c25922f7e1e8f9b40d3fd686b097d69c7d801f40e844be1462b2a5a3287078",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.total-lines",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:16.040Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Cursor position does not measure total scrollback lines",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.total-lines",
+          "reason": "Cursor position does not measure total scrollback lines"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.total-lines",
+      "rawReplySha256": "63aa2fa4cd314ceb6c87bc57b712aba94e69ae2590d3de9f91dea291024c9d03",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.scroll-up",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:15.192Z"
+      },
+      "assertionType": null,
+      "reason": "scrollback.scroll-up: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.scroll-up",
+          "reason": "scrollback.scroll-up: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.scroll-up",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.scroll-down",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:14.769Z"
+      },
+      "assertionType": null,
+      "reason": "scrollback.scroll-down: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.scroll-down",
+          "reason": "scrollback.scroll-down: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.scroll-down",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.reverse-index",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:14.369Z"
+      },
+      "assertionType": null,
+      "reason": "scrollback.reverse-index: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.reverse-index",
+          "reason": "scrollback.reverse-index: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.reverse-index",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.set-region",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:15.624Z"
+      },
+      "assertionType": null,
+      "reason": "scrollback.set-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.set-region",
+          "reason": "scrollback.set-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.set-region",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.alt-screen",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:13.119Z"
+      },
+      "assertionType": null,
+      "reason": "scrollback.alt-screen: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.alt-screen",
+          "reason": "scrollback.alt-screen: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.alt-screen",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.decstbm",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:13.548Z"
+      },
+      "assertionType": null,
+      "reason": "scrollback.decstbm: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.decstbm",
+          "reason": "scrollback.decstbm: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.decstbm",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "scrollback.decstbm-reset",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:13.971Z"
+      },
+      "assertionType": null,
+      "reason": "scrollback.decstbm-reset: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.decstbm-reset",
+          "reason": "scrollback.decstbm-reset: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.decstbm-reset",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.basic",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:23.967Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:23.967Z"
+          },
+          "assertionRefs": [
+            32
+          ],
+          "rawReplyRef": "text.basic"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.basic",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "writing Hello advances the cursor five columns to row 1, column 6",
+          "observed": "{\"before\":{\"row\":1,\"col\":1},\"pos\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "text.basic"
+        }
+      ],
+      "rawReplyRef": "text.basic",
+      "rawReplySha256": "905e0e54f13c861f9905972c5f4723c59cc80e30e360fd79e64e512e79617dce",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.wrap",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "none"
+      },
+      "assertionType": null,
+      "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+      "tests": [
+        {
+          "id": "prerequisite",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "rawReplyRef": "text.wrap"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "text.wrap",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.wide.cjk",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:29.171Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:29.171Z"
+          },
+          "assertionRefs": [
+            42
+          ],
+          "rawReplyRef": "text.wide.cjk"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.wide.cjk",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "中 occupies two columns after ASCII calibration",
+          "observed": "{\"ascii\":2,\"width\":2}",
+          "rawReplyRef": "text.wide.cjk"
+        }
+      ],
+      "rawReplyRef": "text.wide.cjk",
+      "rawReplySha256": "c2e495e4b6da2c96a2b6042ee34d4f7513746e2044e653e5ae69999afbd0e17c",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.tab",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:28.253Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:28.253Z"
+          },
+          "assertionRefs": [
+            40
+          ],
+          "rawReplyRef": "text.tab"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.tab",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "combined HT/HTS fixture advances to the nearest owned stop at row 1, column 6",
+          "observed": "{\"home\":{\"row\":1,\"col\":1},\"comparison\":{\"row\":1,\"col\":9},\"owned\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "text.tab"
+        }
+      ],
+      "rawReplyRef": "text.tab",
+      "rawReplySha256": "c9b00dba4ddf925ed5040e6d20217f204a500cf9e2ce3089c4f3b8d8179629d3",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "unicode.tab-stops",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:29.785Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:29.785Z"
+          },
+          "assertionRefs": [
+            43
+          ],
+          "rawReplyRef": "unicode.tab-stops"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "unicode.tab-stops",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "cursor column 10 after tab",
+          "observed": "{\"row\":1,\"col\":10}",
+          "rawReplyRef": "unicode.tab-stops"
+        }
+      ],
+      "rawReplyRef": "unicode.tab-stops",
+      "rawReplySha256": "83a9699c463f60a3204b34e0d19f93533d4d8762673df830d8621444e39ad24e",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.cr",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:25.253Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:25.253Z"
+          },
+          "assertionRefs": [
+            35
+          ],
+          "rawReplyRef": "text.cr"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.cr",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CR moves cursor from 1;3 to 1;1",
+          "observed": "{\"before\":{\"row\":1,\"col\":3},\"pos\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "text.cr"
+        }
+      ],
+      "rawReplyRef": "text.cr",
+      "rawReplySha256": "134575f6c38880f5ae77f8e05c352704e51c00a88c5755b5f7186bd4924df569",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.newline",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:26.519Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:26.519Z"
+          },
+          "assertionRefs": [
+            38
+          ],
+          "rawReplyRef": "text.newline",
+          "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.newline",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "LF advances from row 3 to row 4",
+          "observed": "{\"before\":{\"row\":3,\"col\":5},\"pos\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "text.newline"
+        }
+      ],
+      "rawReplyRef": "text.newline",
+      "rawReplySha256": "398810a297cbae50f4ec5fa36bd53dfe8b0dc0522074d6eb233de94761e2123c",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.backspace",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:23.539Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:23.539Z"
+          },
+          "assertionRefs": [
+            31
+          ],
+          "rawReplyRef": "text.backspace"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.backspace",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "BS moves from 1;5 to 1;4",
+          "observed": "{\"before\":{\"row\":1,\"col\":5},\"pos\":{\"row\":1,\"col\":4}}",
+          "rawReplyRef": "text.backspace"
+        }
+      ],
+      "rawReplyRef": "text.backspace",
+      "rawReplySha256": "5d7ec77710e4566f215866f03585de6e731e9f434b77040845a6a0b41f708586",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.index",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:26.102Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:26.102Z"
+          },
+          "assertionRefs": [
+            37
+          ],
+          "rawReplyRef": "text.index"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.index",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "IND advances cursor from 3;5 to 4;5",
+          "observed": "{\"before\":{\"row\":3,\"col\":5},\"pos\":{\"row\":4,\"col\":5}}",
+          "rawReplyRef": "text.index"
+        }
+      ],
+      "rawReplyRef": "text.index",
+      "rawReplySha256": "fd0c3208add23daf2a84f98d1364b58526bc1e736155a5eaee078d3647644e53",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.next-line",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:26.969Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:26.969Z"
+          },
+          "assertionRefs": [
+            39
+          ],
+          "rawReplyRef": "text.next-line"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.next-line",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "NEL advances cursor from 3;5 to 4;1",
+          "observed": "{\"before\":{\"row\":3,\"col\":5},\"pos\":{\"row\":4,\"col\":1}}",
+          "rawReplyRef": "text.next-line"
+        }
+      ],
+      "rawReplyRef": "text.next-line",
+      "rawReplySha256": "4449d8cfe850c678426a5e34470954bbc614f848638cb786a5736c4c26a5ce09",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.reverse-index-scroll",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:27.851Z"
+      },
+      "assertionType": null,
+      "reason": "text.reverse-index-scroll: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "text.reverse-index-scroll",
+          "reason": "text.reverse-index-scroll: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "text.reverse-index-scroll",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.overwrite",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:27.421Z"
+      },
+      "assertionType": null,
+      "reason": "text.overwrite: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "text.overwrite",
+          "reason": "text.overwrite: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "text.overwrite",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.hts",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:25.686Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:25.686Z"
+          },
+          "assertionRefs": [
+            36
+          ],
+          "rawReplyRef": "text.hts"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.hts",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "combined HT/HTS fixture advances to the nearest owned stop at row 1, column 6",
+          "observed": "{\"home\":{\"row\":1,\"col\":1},\"comparison\":{\"row\":1,\"col\":9},\"owned\":{\"row\":1,\"col\":6}}",
+          "rawReplyRef": "text.hts"
+        }
+      ],
+      "rawReplyRef": "text.hts",
+      "rawReplySha256": "c9b00dba4ddf925ed5040e6d20217f204a500cf9e2ce3089c4f3b8d8179629d3",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.tbc",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:28.668Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:28.668Z"
+          },
+          "assertionRefs": [
+            41
+          ],
+          "rawReplyRef": "text.tbc"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.tbc",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "After clearing old stops at columns 9, 17 and 25, tab reaches the right margin",
+          "observed": "{\"cols\":140,\"oldFirst\":{\"row\":1,\"col\":9},\"oldSecond\":{\"row\":1,\"col\":17},\"oldThird\":{\"row\":1,\"col\":25},\"after\":{\"row\":1,\"col\":140}}",
+          "rawReplyRef": "text.tbc"
+        }
+      ],
+      "rawReplyRef": "text.tbc",
+      "rawReplySha256": "b85e9a8117eacda5f8120ee74b0f1282a67c10f09b5568042f8591d21a00a7c6",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.cht",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:24.818Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:24.818Z"
+          },
+          "assertionRefs": [
+            34
+          ],
+          "rawReplyRef": "text.cht"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.cht",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "row 1, col 17",
+          "observed": "{\"row\":1,\"col\":17}",
+          "rawReplyRef": "text.cht"
+        }
+      ],
+      "rawReplyRef": "text.cht",
+      "rawReplySha256": "2e7118d9002ebc57a91e69f952e77aabd93c01b0c9cb08ede1a91152d29095e5",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "text.cbt",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:24.400Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:24.400Z"
+          },
+          "assertionRefs": [
+            33
+          ],
+          "rawReplyRef": "text.cbt"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.cbt",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "row 1, col 17",
+          "observed": "{\"row\":1,\"col\":17}",
+          "rawReplyRef": "text.cbt"
+        }
+      ],
+      "rawReplyRef": "text.cbt",
+      "rawReplySha256": "8d39cd7d37bd9a5f5ccacbd2f79883695cfec3baf973364e25108243506e46b5",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.sgr",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:12.221Z"
+      },
+      "assertionType": "query_reply",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:12.221Z"
+          },
+          "assertionRefs": [
+            14
+          ],
+          "rawReplyRef": "reset.sgr"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "reset.sgr",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "reset.sgr: DECRQSS reports none of 1;3;7 after \u001b[0m",
+          "observed": "0",
+          "rawReplyRef": "reset.sgr"
+        }
+      ],
+      "rawReplyRef": "reset.sgr",
+      "rawReplySha256": "48a05893091796ff706a9b07a127e11fc421e5609dd4037ab065729488a3714f",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.ris",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:11.726Z"
+      },
+      "assertionType": "query_reply",
+      "reason": "Measured RIS cursor reset; other reset effects were not inspected",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:11.726Z"
+          },
+          "assertionRefs": [
+            13
+          ],
+          "rawReplyRef": "reset.ris",
+          "reason": "Measured RIS cursor reset; other reset effects were not inspected"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "reset.ris",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "RIS homes cursor from 5;5",
+          "observed": "{\"before\":{\"row\":5,\"col\":5},\"after\":{\"row\":1,\"col\":1}}",
+          "rawReplyRef": "reset.ris"
+        }
+      ],
+      "rawReplyRef": "reset.ris",
+      "rawReplySha256": "4099713d3d5406c99bda13cc7ff8a4e483603c820848e55e60acaaac62173818",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.soft",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "none"
+      },
+      "assertionType": null,
+      "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+      "tests": [
+        {
+          "id": "prerequisite",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
+          "rawReplyRef": "reset.soft"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "reset.soft",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "reset.method",
+      "status": "untestable",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:11.506Z"
+      },
+      "assertionType": null,
+      "reason": "The app context has no reset() method or equivalent state readback",
+      "tests": [
+        {
+          "id": "declared-untestable",
+          "status": "untestable",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-11T16:49:11.506Z"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "reset.method",
+          "reason": "The app context has no reset() method or equivalent state readback"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "reset.method",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "charsets.dec-special",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:59.293Z"
+      },
+      "assertionType": null,
+      "reason": "charsets.dec-special: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "charsets.dec-special",
+          "reason": "charsets.dec-special: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "charsets.dec-special",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "charsets.utf8",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:00.137Z"
+      },
+      "assertionType": null,
+      "reason": "charsets.utf8: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "charsets.utf8",
+          "reason": "charsets.utf8: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "charsets.utf8",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "charsets.g0-g1-switching",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:59.708Z"
+      },
+      "assertionType": null,
+      "reason": "charsets.g0-g1-switching: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "charsets.g0-g1-switching",
+          "reason": "charsets.g0-g1-switching: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "charsets.g0-g1-switching",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "charsets.dec-line-drawing",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:48:58.868Z"
+      },
+      "assertionType": null,
+      "reason": "charsets.dec-line-drawing: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "charsets.dec-line-drawing",
+          "reason": "charsets.dec-line-drawing: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "charsets.dec-line-drawing",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "device.env-term",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "none"
+      },
+      "assertionType": null,
+      "reason": "Not selected for this collection; no test was attempted.",
+      "tests": [],
+      "assertions": [],
+      "rawReplyRef": null,
+      "rawReplySha256": null,
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "extensions.osc1-icon",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-11T16:49:11.059Z"
+      },
+      "assertionType": null,
+      "reason": "No icon-name readback for OSC 1",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "extensions.osc1-icon",
+          "reason": "No icon-name readback for OSC 1"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "extensions.osc1-icon",
+      "rawReplySha256": "1471083f74106072f917f4bc22e0bdaea1d06577b5d23ae84b991969d1792ca8",
+      "screenshotRefs": []
+    }
+  ]
+}
