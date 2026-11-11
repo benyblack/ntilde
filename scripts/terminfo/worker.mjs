@@ -35,12 +35,14 @@ import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
+import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
 import { collectCursor } from './cursor.mjs';
 import { collectErase, collectEditing } from './editing-cases.mjs';
 import { collectInput } from './input-collector.mjs';
+import { currentInputPlan } from './input-plan.mjs';
 import { collectQueries } from './query-collector.mjs';
 import { collectStaticImages } from './static-images-collector.mjs';
 import { collectMetadata } from './metadata-cases.mjs';
@@ -310,7 +312,14 @@ try {
         const lrMarginsModule = await import(pathToFileURL(config.lrMarginsBundle).href);
         const lrMarginsRun = await collectLrMarginsGrading({ config, fence, owner, gradingModule: lrMarginsModule });
         writeFileSync(join(config.output, 'lrmm-run.json'), JSON.stringify(lrMarginsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const inputResult = await collectInput({ config, fence, owner });
+        const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
+        // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
+        if (inputResult?.status !== 'complete') throw new Error('Routed-input qualification requires the completed owned input suite.');
+        const routedInputSource = readFileSync(config.routedInputBundle);
+        if (createHash('sha256').update(routedInputSource).digest('hex') !== config.routedInputBundleSha256) throw new Error('Local routed-input adapter bundle changed.');
+        const routedInputRun = collectRoutedInputPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
+            gradingModule: await import(pathToFileURL(config.routedInputBundle).href) });
+        writeFileSync(join(config.output, 'rin-run.json'), JSON.stringify(routedInputRun) + '\n', { flag: 'wx', mode: 0o600 });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
         if (config.privateClipboard === true) fence.retireInput();

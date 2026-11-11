@@ -14,7 +14,7 @@ const outputSource = readFileSync(new URL('terminal-output.mjs', root), 'utf8');
 const restorer = outputSource.slice(outputSource.indexOf('export function ownedTerminalRestorer('), outputSource.indexOf('// Darwin canonical-mode'));
 code.set(new URL('terminal-output.mjs', root).href, log + restorer + `export function prepareOwnedOutput() { record('output-setup'); return () => record('output-restore'); } export function restoreOwnedTerminalState() { record('exact-original-mode'); }`);
 code.set(new URL('terminal-fence.mjs', root).href, log + `export function terminalFence() { record('fence'); return { dispose() { record('dispose'); }, retireInput() { record('retire'); } }; }`);
-for (const [file, name] of [['cells', 'Cells'], ['sgr', 'Sgr'], ['rgb', 'Rgb'], ['rendition', 'Rendition'], ['cursor', 'Cursor'], ['pixels-cases', 'Pixels'], ['color-cases', 'Colors'], ['history-cases', 'History'], ['resize-cases', 'Resize'], ['saved-cases', 'Saved'], ['metadata-cases', 'Metadata'], ['input-collector', 'Input'], ['static-images-collector', 'StaticImages'], ['query-collector', 'Queries']]) {
+for (const [file, name] of [['cells', 'Cells'], ['sgr', 'Sgr'], ['rgb', 'Rgb'], ['rendition', 'Rendition'], ['cursor', 'Cursor'], ['pixels-cases', 'Pixels'], ['color-cases', 'Colors'], ['history-cases', 'History'], ['resize-cases', 'Resize'], ['saved-cases', 'Saved'], ['metadata-cases', 'Metadata'], ['static-images-collector', 'StaticImages'], ['query-collector', 'Queries']]) {
     code.set(new URL(file + '.mjs', root).href, log + `export async function collect${name}() { record('${name}'); }`);
 }
 code.set(new URL('editing-cases.mjs', root).href, log + `export async function collectErase() { record('Erase'); } export async function collectEditing() { record('Editing'); }`);
@@ -48,6 +48,8 @@ code.set(new URL('selective-erase-collector.mjs', root).href, log + `export asyn
 code.set(new URL('rect-edit-collector.mjs', root).href, log + `export async function collectRectEditGrading() { record('RectEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('col-edit-collector.mjs', root).href, log + `export async function collectColEditGrading() { record('ColEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('rect-checksum-collector.mjs', root).href, log + `export async function collectRectChecksumGrading() { record('RectChecksum'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('input-collector.mjs', root).href, log + `export async function collectInput() { record('Input'); return { status: 'complete', controls: {}, restored: '', geometry: { rows: 12, cols: 120 } }; }`);
+code.set(new URL('routed-input-collector.mjs', root).href, log + `export function collectRoutedInputPinned() { record('RoutedInput'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('lr-margins-collector.mjs', root).href, log + `export async function collectLrMarginsGrading() { record('LrMargins'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };

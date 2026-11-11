@@ -251,5 +251,12 @@
     "lrMarginsCollectorSourceSha256": "lr-margins-collector.mjs",
     "lrMarginsGradingSourceSha256": "lr-margins-grading.mjs",
     "lrMarginsGradingCollectorSourceSha256": "lr-margins-grading-collector.mjs",
-    "lrMarginsReceiptSourceSha256": "lr-margins-receipt.mjs"
+    "lrMarginsReceiptSourceSha256": "lr-margins-receipt.mjs",
+    "inputPlanSourceSha256": "input-plan.mjs",
+    "routedInputCasesSourceSha256": "routed-input-cases.mjs",
+    "routedInputContractsSourceSha256": "routed-input-contracts.mjs",
+    "routedInputCollectorSourceSha256": "routed-input-collector.mjs",
+    "routedInputGradingSourceSha256": "routed-input-grading.mjs",
+    "routedInputGradingCollectorSourceSha256": "routed-input-grading-collector.mjs",
+    "routedInputReceiptSourceSha256": "routed-input-receipt.mjs"
 }
