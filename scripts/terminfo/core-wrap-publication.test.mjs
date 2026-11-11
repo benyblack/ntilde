@@ -28,7 +28,7 @@ test('changed manifest, archive and source manifest are refused', () => {
     const dir = mkdtempSync(join(tmpdir(), 'nt-wrap-pub-'));
     try {
         const path = join(dir, publication); cpSync(join(root, publication), path, { recursive: true });
-        for (const name of ['owned-run.zip', 'app-source-manifest.json', 'measurement.json']) {
+        for (const name of ['owned-run.zip', 'app-source-manifest.json', 'measurement.json', ...loadMeasurement().attempts.filter(a => a.archive).map(a => a.archive)]) {
             const file = join(path, name), bytes = readFileSync(file); writeFileSync(file, Buffer.concat([bytes, Buffer.from('x')]));
             assert.throws(() => loadMeasurement(dir), /changed/); writeFileSync(file, bytes);
         }

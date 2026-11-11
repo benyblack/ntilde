@@ -42,3 +42,12 @@ test('a partial resize is retained and may only abort to original dimensions', a
         assert.equal(observer.actions[0].observed.app.exact, false);
     } finally { OwnedCellObserver.prototype.capture = originalCapture; }
 });
+
+test('fixture dispatch binds CPR and refuses an unordered reply', async () => {
+    const observer = create(async () => { throw new Error('unexpected resize'); });
+    observer.phase = 'active'; observer.reader.handle = async () => { observer.reader.frames.push({}); return { screen: screen(80) }; };
+    const cpr = { barrier, reply: { raw: '\x1b[1;1R', row: 1, col: 1 } };
+    await observer.handle({ kind: 'cw-read', barrier, cpr }, () => 100);
+    assert.deepEqual(observer.reader.frames[0].cpr, cpr);
+    await assert.rejects(observer.handle({ kind: 'cw-read', barrier: '\x1b[?2c', cpr }, () => 100), /barrier mismatch/);
+});

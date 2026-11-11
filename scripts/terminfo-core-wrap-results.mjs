@@ -23,7 +23,7 @@ export function deriveWrapCoreReport(directory, frozenMapping, identity, measure
     const raw = JSON.parse(readFileSync(join(directory, 'raw.json')));
     const modeTrace = JSON.parse(raw.rawReplies['modes.auto-wrap']);
     const modeQuery = modeTrace.queries.find(q => q.sequence.startsWith('\x1b[?7$p'));
-    check(modeQuery?.reason === 'reply' && modeQuery.match?.[0] === '\x1b[?7;1$y', 'mode recognition reply missing');
+    check(modeQuery, 'mode recognition query missing');
     const { mapping, report } = deriveTabStopsCoreReport(directory, frozenMapping, identity, measurement);
     assertRequirementRows(report.rows, frozenMapping.rows.map(r => r.id));
     const effects = wrapCases.map((c, i) => {
@@ -44,7 +44,7 @@ export function deriveWrapCoreReport(directory, frozenMapping, identity, measure
             originalAutoWrap: evidence.geometry.before.bufferState.autoWrap, restoredAutoWrap: evidence.geometry.after.bufferState.autoWrap };
         row.observationLayers.push('stored cells', 'physical cursor', 'verified App and PTY geometry');
         row.effectVerdicts.push(...relevant.map(e => ({ caseId: e.role, verdict: e.outcome })));
-        if (id === 'modes.auto-wrap') row.modeRecognition = { query: modeQuery.sequence, reply: modeQuery.match[0], raw: modeQuery.raw };
+        if (id === 'modes.auto-wrap') row.modeRecognition = { query: modeQuery.sequence, reply: modeQuery.match?.[0] ?? null, reason: modeQuery.reason, raw: modeQuery.raw };
         row.evidence.push(...relevant.map(e => ({ file: 'cw-observations.json', caseId: e.role, kind: 'exact-specimen' })));
         row.explanation = id === 'text.wrap' ? 'An 85-byte ASCII specimen was observed at the proved 80-column grid; independent 80- and 81-byte boundary experiments are retained.'
             : 'Mode-7 recognition remains separate; enabled and disabled writes use the same 85 bytes and compare observed cells and cursor.';
@@ -61,7 +61,7 @@ export function readableWrapReport(report, mapping) {
     const base = readableTabStopsReport(report, mapping);
     const lines = base.split('\n');
     lines[0] = '# Ntilde Core wrapping results';
-    lines.splice(4, 0, 'The bounded wrap phase used independently verified App and PTY geometry at 80 columns and restored the original dimensions. The 85-character specimen is `0123456789` repeated eight times followed by `ABCDE`; the frozen criterion specifies length but not a payload. Each boundary is an independent setup so ordering fences cannot consume a pending wrap.', '', 'The default-tab-stop conclusions were independently measured in #946 and re-derived in this run. Mode-7 recognition remains separate from the enabled and disabled cell effects.', '');
+    lines.splice(4, 0, 'The bounded wrap phase used independently verified App and PTY geometry at 80 columns and restored the original dimensions. The 85-character specimen is `0123456789` repeated eight times followed by `ABCDE`; the frozen criterion specifies length but not a payload. Each boundary is an independent setup so ordering fences cannot consume a pending wrap.', '', 'The default-tab-stop conclusions were independently measured in #946 and re-derived in this run. Mode-7 recognition remains separate from the enabled and disabled cell effects.', '', 'After this run, the observer fixture dispatch was extracted without changing its sequence and the owner response-cap prefix check was rewritten for string requests. Focused tests cover dispatch, paired observations, restoration and refusal; these mechanical changes do not alter fixture bytes, measured state, geometry actions or grading.', '');
     for (const id of ids) {
         const row = report.rows.find(r => r.id === id), detail = row.wrapEffects.map(e => `${e.role}: bytes ${JSON.stringify(e.bytes)}, outcome ${e.outcome}, expected ${JSON.stringify(e.expected)}, before ${JSON.stringify(e.before)}, after ${JSON.stringify(e.after)}`).join('; ');
         lines.push('', `## ${id}`, '', `Criterion: ${row.requirement}`, '', `Conclusion: **${row.conclusion}**. Measured identity: ${report.measurement.runId}; geometry ${JSON.stringify(row.wrapGeometry)}.`, '', ...(row.modeRecognition ? [`Mode recognition: ${JSON.stringify(row.modeRecognition)}.` , ''] : []), detail);

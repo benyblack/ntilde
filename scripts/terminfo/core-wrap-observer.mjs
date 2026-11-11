@@ -43,6 +43,19 @@ export class WrapObserver {
         this.reader.frames.at(-1).cpr = cpr;
         return result;
     }
+    async captureFixture(request, budget) {
+        const kind = request.kind;
+        check(['cw-start', 'cw-bind', 'cw-read', 'cw-finish'].includes(kind), 'unknown operation');
+        if (kind === 'cw-start') check(this.phase === 'narrowed', 'wrong phase');
+        else check(this.phase === 'active', 'wrong phase');
+        if (kind === 'cw-read') return await this.captureRead(request, budget);
+        check(request.cpr === undefined, 'unexpected CPR');
+        const result = await this.reader.handle(kind, budget, request.barrier);
+        check(result.screen.rows === this.original.rows && result.screen.cols === 80, 'observation geometry mismatch');
+        if (kind === 'cw-start') this.phase = 'active';
+        if (kind === 'cw-finish') this.phase = 'finished';
+        return result;
+    }
     async handle(request, budget) {
         check(!this.busy && !this.restored, 'busy or already sealed'); this.busy = true;
         try {
@@ -74,16 +87,7 @@ export class WrapObserver {
                 check(snapshotHash(this.before) === snapshotHash(this.after), 'original state not restored');
                 this.phase = 'sealed'; return { screen: this.after, paneId: this.paneId };
             }
-            check(['cw-start', 'cw-bind', 'cw-read', 'cw-finish'].includes(kind), 'unknown operation');
-            if (kind === 'cw-start') check(this.phase === 'narrowed', 'wrong phase');
-            else check(this.phase === 'active', 'wrong phase');
-            if (kind === 'cw-read') return await this.captureRead(request, budget);
-            check(request.cpr === undefined, 'unexpected CPR');
-            const result = await this.reader.handle(kind, budget, request.barrier);
-            check(result.screen.rows === this.original.rows && result.screen.cols === 80, 'observation geometry mismatch');
-            if (kind === 'cw-start') this.phase = 'active';
-            if (kind === 'cw-finish') this.phase = 'finished';
-            return result;
+            return await this.captureFixture(request, budget);
         } finally { this.busy = false; }
     }
 }
