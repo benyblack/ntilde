@@ -23,6 +23,10 @@ public sealed record PaneMetadataResult
 /// <summary>One complete active viewport's stored links and raw shell anchors, captured under the buffer read lock.</summary>
 public sealed record PaneBufferMetadata
 {
+    /// <summary>Parser-retained icon name, not a host icon or displayed label. Omitted when unavailable.</summary>
+    [JsonPropertyName("requestedIconName")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RequestedIconName { get; init; }
     [JsonPropertyName("rows")] public required int Rows { get; init; }
     [JsonPropertyName("cols")] public required int Cols { get; init; }
     [JsonPropertyName("cursorRow")] public required int CursorRow { get; init; }

@@ -24,7 +24,7 @@ internal static class AgentPaneMetadataCapture
         return true;
     }
 
-    internal static bool TryRead(TerminalBuffer buffer, out PaneBufferMetadata? result)
+    internal static bool TryRead(TerminalBuffer buffer, out PaneBufferMetadata? result, AnsiParser? parser = null)
     {
         result = null;
         if (!buffer.Lock.TryEnterReadLock(TimeSpan.Zero)) return false;
@@ -36,6 +36,7 @@ internal static class AgentPaneMetadataCapture
             if (links == null) return false;
             result = new PaneBufferMetadata
             {
+                RequestedIconName = parser?.RequestedIconName,
                 Rows = rows,
                 Cols = cols,
                 CursorRow = buffer.CursorRow,

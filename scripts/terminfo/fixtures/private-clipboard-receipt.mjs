@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV41SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV41SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
 import { buildQueryReport, queryPlan } from '../queries.mjs';
 import { adaptCollector } from '../collector.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
@@ -15,6 +15,8 @@ import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
 import { privateClipboardOutputPolicy } from '../terminal-output.mjs';
 import { emptyPrivateClipboardReply, privateClipboardEvidenceJson } from '../private-clipboard.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
+// This fixture remains the v34 / receipt-40 prefix. Core gaps have separate retained-evidence tests.
+const sourceSnapshotPolicy = 'readonly-owned-source-graph-v34';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** The JSON writer of one fixture directory. */
 const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
@@ -46,7 +48,9 @@ async function buildFixture(output) {
         write('query-observations.json', queryReport);
         evidence.queryEvidence = { ...evidence.queryEvidence, sha256: hash(readFileSync(join(output, 'query-observations.json'))) };
         for (const [key, file] of Object.entries(capturedV41SourceFiles)) {
-            const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+            let data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+            if (file.endsWith('.mjs')) data = Buffer.from(data.toString().replace(/^import .*from '\.\/(?:terminfo\/)?core-gaps(?:-receipt)?\.mjs';\n/gm, ''));
+            if (file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(capturedV41SourceFiles, null, 2) + '\n');
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
