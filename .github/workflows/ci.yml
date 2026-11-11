@@ -2251,17 +2251,7 @@ jobs:
           Write-Output "ntilde.com started the Ntilde.exe beside it and forwarded its exit code 7."
           exit 0
 
-      # ntilde-mcp, the MCP server every release bundle carries (release.yml "Publish the MCP
-      # server"), published and smoked the same way here so a trim break - a tool missing from
-      # tools/list, a parameter the AOT binder cannot read - fails the PR rather than the tag.
-      # The E2E tests run the JIT DLL and cannot see either. -p:TrimmerSingleWarn=false, as above.
-      - name: Publish and smoke the MCP server (win-x64)
-        shell: bash
-        run: |
-          set -euo pipefail
-          dotnet publish src/Ntilde.McpServer/Ntilde.McpServer.csproj -c "$CONFIGURATION" -r win-x64 -p:TrimmerSingleWarn=false -o artifacts/mcp
-          cp artifacts/mcp/Ntilde.McpServer.exe artifacts/mcp/ntilde-mcp.exe
-          bash scripts/ci/mcp-server-smoke.sh artifacts/mcp/ntilde-mcp.exe src/Ntilde.McpServer/Tools
+      # The MCP server's win-x64 publish and smoke are aot_gate_mcp's, below.
 
       # The logs are the whole diagnostic value when this job fails, and a failed GUI
       # launch on a runner is exactly the case nobody can reproduce locally.
@@ -2273,6 +2263,48 @@ jobs:
           retention-days: 7
           path: ${{ runner.temp }}/ntilde-smoke-profile/logs
           if-no-files-found: ignore
+
+  # ntilde-mcp, the MCP server every release bundle carries (release.yml "Publish the MCP
+  # server"), published and smoked the same way here so a trim break - a tool missing from
+  # tools/list, a parameter the AOT binder cannot read - fails the PR rather than the tag. The
+  # E2E tests run the JIT DLL and cannot see either. -p:TrimmerSingleWarn=false, as aot_gate's
+  # App publish passes it.
+  #
+  # Its own job rather than a step at the end of aot_gate: the server references only
+  # AgentHost.Contracts, Backup and VtContract - no App, no Rust natives - so nothing it needs
+  # comes from aot_gate's publish, and as aot_gate's last step it added 55 s to the job that,
+  # with the Windows script self-tests, ends the CI run (run 43008842301: both at 7.5 min).
+  # Here it runs beside aot_gate and finishes long before it.
+  aot_gate_mcp:
+    name: AOT Gate (MCP server, windows-latest)
+    needs: aot_gate_detect
+    if: needs.aot_gate_detect.outputs.run == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: .NET SDK
+        uses: ./.github/actions/dotnet-sdk
+
+      # aot_gate's NuGet cache, which holds the win-x64 ILCompiler and runtime packs this publish
+      # needs too. Restore-only: aot_gate owns saving it. A save from here, on a miss, could land
+      # first under the shared key with only this project's packages, and every aot_gate run would
+      # then restore that and download the App's on top.
+      - name: Restore NuGet packages cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}
+          key: nuget-aot-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: nuget-aot-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Publish and smoke the MCP server (win-x64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.McpServer/Ntilde.McpServer.csproj -c "$CONFIGURATION" -r win-x64 -p:TrimmerSingleWarn=false -o artifacts/mcp
+          cp artifacts/mcp/Ntilde.McpServer.exe artifacts/mcp/ntilde-mcp.exe
+          bash scripts/ci/mcp-server-smoke.sh artifacts/mcp/ntilde-mcp.exe src/Ntilde.McpServer/Tools
 
   # ===========================================================================
   # ntilde-mux, the remote multiplexer (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md
