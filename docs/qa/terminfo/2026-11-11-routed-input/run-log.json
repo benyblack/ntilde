@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-routed-input-grading-v1",
+  "probeIds": [
+    "input.x10-mouse",
+    "input.button-event-mouse",
+    "modes.application-keypad"
+  ],
+  "cases": [
+    {
+      "caseId": "input.x10-mouse",
+      "feeds": [],
+      "served": {
+        "currentMode": false,
+        "sources": [
+          "restored"
+        ]
+      },
+      "pinned": {
+        "probeId": "input.x10-mouse",
+        "pass": false,
+        "response": "{\"currentMode\":false}",
+        "note": "No generated input event and encoded report were validated",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "No generated input event and encoded report were validated"
+        }
+      }
+    },
+    {
+      "caseId": "input.button-event-mouse",
+      "feeds": [],
+      "served": {
+        "currentMode": false,
+        "sources": [
+          "restored"
+        ]
+      },
+      "pinned": {
+        "probeId": "input.button-event-mouse",
+        "pass": false,
+        "response": "{\"currentMode\":false}",
+        "note": "No generated input event and encoded report were validated",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "No generated input event and encoded report were validated"
+        }
+      }
+    },
+    {
+      "caseId": "modes.application-keypad",
+      "feeds": [
+        "\u001b=",
+        "\u001b>"
+      ],
+      "served": {
+        "on": true,
+        "off": false,
+        "sources": [
+          "input.keypad.application.0",
+          "input.keypad.restore.deckpnm.enter"
+        ]
+      },
+      "pinned": {
+        "probeId": "modes.application-keypad",
+        "pass": false,
+        "response": "{\"on\":true,\"off\":true}",
+        "note": "keypad input",
+        "notTested": {
+          "reason": "no-semantic-observable",
+          "noObservable": "keypad input"
+        }
+      }
+    }
+  ]
+}

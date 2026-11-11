@@ -46,7 +46,7 @@ function present(path) {
 /** Any retained cursor artifact or declaration requires the v34 suffix, and a policy-v28 run always carries them, because the current worker
  * collects this suite unconditionally after the attribute-rectangle suite. */
 export function includesCursorQualEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37'].includes(context.sourceSnapshotPolicy)
         || context.cursorQualAdapterId !== undefined || context.cursorQualSuiteId !== undefined
         || context.cursorQualBundleSha256 !== undefined || context.cursorQualContractsVersion !== undefined
         || evidence.cursorQualEvidence !== undefined

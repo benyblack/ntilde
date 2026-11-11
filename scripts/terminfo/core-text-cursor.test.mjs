@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
+import { includesTextCursorEvidence, checkTextCursorEvidence } from './core-text-cursor-receipt.mjs';
 import { execFileSync } from 'node:child_process';
 import { snapshotHash } from './agent-observer.mjs';
 import { fileURLToPath } from 'node:url';
@@ -115,4 +120,26 @@ test('collector serializes whole fixture writes before CPR and restores after re
     assert.ok(fixture > 0); assert.deepEqual(events[fixture + 1], ['cpr']);
     assert.equal(events.at(-1)[0], 'tc-finish');
     assert.equal(events.filter(event => event[0] === 'write' && event[1] === 'A\r\nB').length, 0);
+});
+
+test('receipt refuses stripped artifacts and a coherently rehashed fixture alteration', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nt-tc-receipt-'));
+    try {
+        const { id, frames, run } = journal(), hash = data => createHash('sha256').update(data).digest('hex');
+        const runBytes = Buffer.from(JSON.stringify(run));
+        const result = Buffer.from(JSON.stringify(buildTextCursorReport(frames, run, id)));
+        writeFileSync(join(dir, 'tc-run.json'), runBytes); writeFileSync(join(dir, 'tc-observations.json'), result);
+        writeFileSync(join(dir, 'tc-snapshots.jsonl'), frames.map(f => JSON.stringify(f)).join('\n') + '\n');
+        const context = { textCursorSuiteId }, evidence = { coreGapsEvidence: {}, textCursorEvidence: { runId: id, suiteId: textCursorSuiteId,
+            file: 'tc-observations.json', runFile: 'tc-run.json', sha256: hash(result), runSha256: hash(runBytes), provisionalUntil: 'cell-receipt.json' } };
+        assert.ok(includesTextCursorEvidence(dir, evidence, context));
+        assert.doesNotThrow(() => checkTextCursorEvidence(dir, evidence, id, context));
+        const changed = structuredClone(run); changed.feeds[1] = 'AB';
+        const forged = Buffer.from(JSON.stringify(changed)); writeFileSync(join(dir, 'tc-run.json'), forged); evidence.textCursorEvidence.runSha256 = hash(forged);
+        assert.throws(() => checkTextCursorEvidence(dir, evidence, id, context), /fixture bytes/);
+        writeFileSync(join(dir, 'tc-run.json'), runBytes); evidence.textCursorEvidence.runSha256 = hash(runBytes);
+        const bytes = readFileSync(join(dir, 'tc-snapshots.jsonl')); writeFileSync(join(dir, 'tc-snapshots.jsonl'), bytes.subarray(0, 10));
+        assert.throws(() => checkTextCursorEvidence(dir, evidence, id, context));
+        assert.equal(includesTextCursorEvidence(dir, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v37' }), true);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
 });

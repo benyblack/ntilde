@@ -1,5 +1,5 @@
 import { snapshotHash, screenSnapshot } from './agent-observer.mjs';
-import { inputSuiteId, makeInputCases } from './input-cases.mjs';
+import { inputAttemptCount, inputFrameCount, inputPlanV1 } from './input-plan.mjs';
 import { pristineEditing } from './editing-capture.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
 export const inputModeNumbers = Object.freeze([66, 9, 1000, 1002, 1003, 1006]);
@@ -23,10 +23,10 @@ export function inputModeReplyHex(modes) {
         + `\x1b[?${modes.kittyKeyboardFlags}u`).toString('hex');
 }
 /** Raw hex is a copied child observation; challenge bytes are never event bytes. */
-export function validateInputBytes(value, expectedHex, used) {
+export function validateInputBytes(value, expectedHex, used, exact = true) {
     checkInput(value && Object.keys(value).length === 4 && ['barrier', 'byteLength', 'hex', 'nonces'].every(key => Object.hasOwn(value, key))
         && typeof value.hex === 'string' && /^[a-f\d]*$/.test(value.hex) && value.hex.length % 2 === 0
-        && value.byteLength === value.hex.length / 2 && value.byteLength <= 512 && value.hex === expectedHex
+        && value.byteLength === value.hex.length / 2 && value.byteLength <= 512 && (!exact || value.hex === expectedHex)
         && Array.isArray(value.nonces) && value.nonces.length === 2
         && value.nonces.every(n => Number.isSafeInteger(n) && n >= 32768 && n <= 65535) && value.nonces[0] !== value.nonces[1]
         && value.barrier === value.nonces.map(n => `\x1b[?${n};0$y`).join(''));
@@ -65,6 +65,9 @@ export function validateInputAction(action, item, paneId, runId, geometry, profi
         && app.modifiers === item.event.modifiers && app.rows === geometry.rows && app.cols === geometry.cols
         && app.viewRows === geometry.rows && app.viewCols === geometry.cols
         && Object.entries(item.modes).every(([key, value]) => app[key] === value));
+    // A key-down that carries text raised that TextInput right after it: its handled fact is retained evidence, absent for every other event.
+    if (item.event.kind === 'keyDown' && item.event.text !== undefined) checkInput(typeof app.textHandled === 'boolean');
+    else checkInput(app.textHandled == null);
     if (item.event.kind.startsWith('mouse')) checkInput(app.column === item.event.column && app.row === item.event.row
         && Number.isFinite(app.x) && app.x >= 0 && Number.isFinite(app.y) && app.y >= 0);
     else checkInput(['column', 'row', 'x', 'y'].every(key => app[key] == null));
@@ -76,11 +79,13 @@ export function validateInputFrame(frame, index, kind, paneId) {
     checkInput(frame.sha256 === snapshotHash(frame.screen) && frame.afterSha256 === snapshotHash(frame.afterScreen)
         && sameInputFact(frame.screen, frame.afterScreen));
 }
-export function buildInputReport(frames, actions, seal, runId) {
-    checkInput(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 81 && actions?.length === 39);
+export function buildInputReport(frames, actions, seal, runId, plan = inputPlanV1) {
+    const count = Array.isArray(actions) ? actions.length : -1;
+    checkInput(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length > 3 && count > 0 && frames.length === inputFrameCount(count));
     const paneId = frames[0].paneId, initial = frames[0].screen, geometry = { rows: initial.rows, cols: initial.cols };
     checkInput(pristineEditing(initial));
-    const cases = makeInputCases(initial.rows, initial.cols), used = new Set(), profileName = actions[0]?.observed?.before?.pane?.profileName;
+    const cases = plan.make(initial.rows, initial.cols), used = new Set(), profileName = actions[0]?.observed?.before?.pane?.profileName;
+    checkInput(cases.length === count);
     validateInputFrame(frames[0], 0, 'input-start', paneId);
     validateInputFrame(frames[1], 1, 'input-bind', paneId);
     const bound = boundInputScreen(initial, runId);
@@ -93,18 +98,17 @@ export function buildInputReport(frames, actions, seal, runId) {
             && sameInputFact(control.screen, bound) && sameInputFact(observed.screen, bound)
             && actions[index].index === index && actions[index].caseId === item.id);
         validateInputBytes(control.capture, inputModeReplyHex(item.modes), used);
-        validateInputBytes(observed.capture, item.expectedHex, used);
+        validateInputBytes(observed.capture, item.expectedHex, used, plan.exactEvents);
         validateInputAction(actions[index].observed, item, paneId, runId, geometry, profileName);
-        return { featureId: item.id, result: 'passed', expectedHex: item.expectedHex, actualHex: observed.capture.hex,
+        return { featureId: item.id, result: observed.capture.hex === item.expectedHex ? 'passed' : 'failed', expectedHex: item.expectedHex, actualHex: observed.capture.hex,
             controlSnapshot: control.index, snapshot: observed.index, actionIndex: index };
     });
-    const final = frames.at(-1); validateInputFrame(final, 80, 'input-finish', paneId);
+    const final = frames.at(-1); validateInputFrame(final, frames.length - 1, 'input-finish', paneId);
     checkInput(sameInputFact(final.screen, initial)); validateInputBytes(final.capture, inputModeReplyHex(defaultInputModes), used);
-    checkInput(seal?.failed === false && seal.disposed === true && seal.attempts === 80 && seal.lastAttempt?.completed === true
+    checkInput(seal?.failed === false && seal.disposed === true && seal.attempts === inputAttemptCount(count) && seal.lastAttempt?.completed === true
         && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
         && seal.lastAttempt.hex === final.capture.hex + Buffer.from(final.capture.barrier).toString('hex')
         && sameInputFact(seal.lastAttempt.nonces, final.capture.nonces));
-    return { schemaVersion: 1, suiteId: inputSuiteId, runId,
-        scope: '39 standalone declared Avalonia events; paired complete state, independent raw local-child bytes and source-selected mode queries. No native keyboard, remote/mux transport, Windows runtime or stock-grade claim.',
-        inputs: cases, initialSnapshot: 0, restoredSnapshot: 80, snapshots: frames, actions, seal, observations };
+    return { schemaVersion: plan.id === 'v1' ? 1 : 2, suiteId: plan.suiteId, runId, scope: plan.scope(count),
+        inputs: cases, initialSnapshot: 0, restoredSnapshot: frames.length - 1, snapshots: frames, actions, seal, observations };
 }

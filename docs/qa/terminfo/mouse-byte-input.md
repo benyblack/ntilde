@@ -46,3 +46,5 @@ or Windows runtime behavior. The existing `MouseModeX10` name denotes normal
 `?1000` tracking and must not be treated as evidence for mode 9. #769 remains
 open; #775 tracks cross-platform qualification. Published stock and owned
 measurements are unchanged.
+
+The generated-event child bytes for modes 9 and 1002 are measured in the [routed-input qualification](2026-11-11-routed-input-qualification.md).

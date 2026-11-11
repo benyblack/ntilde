@@ -214,8 +214,14 @@ The BCL contract validates the following bounds before any UI work:
 
 - `key`: keypad `0`–`9`, `decimal`, `separator`, `add`, `subtract`, `multiply`,
   `divide` or physical keypad `enter`, only for key events.
-- `text`: exactly one character from `0123456789.+-*/,=` or carriage return,
-  only for a separate standalone text event. Calls do not form a backend key/text callback pair.
+- `text`: exactly one character from `0123456789.+-*/,=` or carriage return.
+  Alone it is a standalone text event. On a `keyDown` (modifiers zero) it is the one
+  follow-up TextInput raised right after that key-down in the same synchronous
+  dispatch, the text some backends emit for a key the terminal already handled, so a
+  single declared action can exercise the handled-key duplicate guard; the result's
+  `textHandled` says whether that follow-up was marked handled. Separate calls
+  still never form a backend key/text callback pair, and a pending human correlation
+  still refuses the action.
 - `modifiers`: bits shift=1, control=2, alt=4, meta=8; text requires zero.
 - Pointer `column`/`row`: one-based viewport cells within 256×128 and the actual
   agreeing view/buffer grid. `button` is `left`, `middle`, `right`; move also

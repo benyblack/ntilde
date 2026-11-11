@@ -37,12 +37,15 @@ import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
+import { collectRoutedInputPinned } from './routed-input-collector.mjs';
+import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
 import { collectCursor } from './cursor.mjs';
 import { collectErase, collectEditing } from './editing-cases.mjs';
 import { collectInput } from './input-collector.mjs';
+import { currentInputPlan } from './input-plan.mjs';
 import { collectQueries } from './query-collector.mjs';
 import { collectStaticImages } from './static-images-collector.mjs';
 import { collectMetadata } from './metadata-cases.mjs';
@@ -317,7 +320,20 @@ try {
         writeFileSync(join(config.output, 'cg-run.json'), JSON.stringify(coreRun) + '\n', { flag: 'wx', mode: 0o600 });
         const textCursorRun = await collectTextCursor({ config, fence, owner });
         writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const inputResult = await collectInput({ config, fence, owner });
+        const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
+        // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
+        // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
+        const routedInputSource = readFileSync(config.routedInputBundle);
+        if (createHash('sha256').update(routedInputSource).digest('hex') !== config.routedInputBundleSha256) throw new Error('Local routed-input adapter bundle changed.');
+        if (inputResult?.status === 'unavailable') {
+            writeFileSync(join(config.output, 'rin-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: routedInputGradedSuiteId,
+                status: 'unavailable', reason: inputResult.reason, plannedCases: routedInputCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
+        } else {
+            if (inputResult?.status !== 'complete') throw new Error('Routed-input qualification requires the owned input suite to complete or be unavailable.');
+            const routedInputRun = collectRoutedInputPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
+                gradingModule: await import(pathToFileURL(config.routedInputBundle).href) });
+            writeFileSync(join(config.output, 'rin-run.json'), JSON.stringify(routedInputRun) + '\n', { flag: 'wx', mode: 0o600 });
+        }
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
         if (config.privateClipboard === true) fence.retireInput();

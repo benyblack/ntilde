@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { queryWorld } from './fixtures/query-world.mjs';
-import { queryAction, queryPlan, queryPrior, buildQueryReport } from './queries.mjs';
+import { queryAction, queryPlan, queryPrior, queryPriorCounts, buildQueryReport } from './queries.mjs';
 import { rejectQueryOwnerRequest } from './query-capture.mjs';
 import { snapshotHash } from './agent-observer.mjs';
 
@@ -54,7 +54,13 @@ test('full 110 earlier pairs are retained without expanding either read budget',
     const priorChallenges = Array.from({ length: 110 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(','));
     const world = queryWorld({ priorChallenges }); await world.collect();
     assert.deepEqual(world.observer.report.priorChallenges, priorChallenges);
-    assert.throws(() => queryPrior([...priorChallenges, '43000,43001']));
+    // 111 earlier challenges are a valid count for a larger input plan; the bound is the largest plan's 152, never an open list.
+    const pair = index => [32768 + index * 2, 32769 + index * 2].join(',');
+    assert.doesNotThrow(() => queryPrior([...priorChallenges, '43000,43001']));
+    assert.deepEqual(queryPriorCounts, [110, 152]);
+    assert.doesNotThrow(() => queryPrior(Array.from({ length: 152 }, (_, index) => pair(index))));
+    assert.throws(() => queryPrior(Array.from({ length: 153 }, (_, index) => pair(index))));
+    assert.throws(() => queryWorld({ priorChallenges: [...priorChallenges, '43000,43001'] }), 'only whole plans are admitted as the earlier-challenge list');
     assert.throws(() => queryPrior(['42000,42001', '42000,42001']));
 });
 test('prior list copies length and indexed getter values once without calling supplied array methods', () => {

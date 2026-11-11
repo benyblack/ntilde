@@ -112,6 +112,50 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     }
 
     [AvaloniaTheory]
+    [InlineData("7", "7", "\u001bOw")]
+    [InlineData("add", "+", "\u001bOk")]
+    public async Task A_handled_application_keypad_key_suppresses_the_one_backend_text_it_is_followed_by(string key, string text, string expected)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b=");
+        int history = 0; pane.TermView.TextInputObserved += _ => history++;
+        var plain = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key });
+        Assert.NotNull(plain); Assert.True(plain.Handled); Assert.Null(plain.TextHandled);
+        await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyUp", Key = key });
+        session.SentInput.Clear();
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key, Text = text });
+        Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.True(result.Handled); Assert.True(result.TextHandled); Assert.True(result.InputSubmitted);
+        Assert.Equal("avalonia-routed", result.Boundary);
+        Assert.Equal(expected, Assert.Single(session.SentInput)); Assert.Equal(0, history);
+        // The one-shot decision was consumed by that text: a later standalone commit of the same character is ordinary text.
+        await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "text", Text = text });
+        Assert.Equal(new[] { expected, text }, session.SentInput);
+    }
+
+    [AvaloniaFact]
+    public async Task In_numeric_keypad_mode_the_key_down_is_unhandled_and_its_text_is_delivered_exactly_once()
+    {
+        var (window, pane, session) = Create();
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7", Text = "7" });
+        Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.False(result.Handled); Assert.True(result.TextHandled); Assert.False(result.ApplicationKeypad);
+        Assert.Equal("7", Assert.Single(session.SentInput));
+    }
+
+    [AvaloniaFact]
+    public async Task A_key_down_with_text_is_refused_like_any_keyboard_event_while_another_correlation_is_pending()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b=");
+        var args = new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.NumPad7, PhysicalKey = Avalonia.Input.PhysicalKey.NumPad7, Source = pane.TermView };
+        pane.TermView.RaiseEvent(args);
+        Assert.True(args.Handled); session.SentInput.Clear();
+        // A human key left its one-shot text decision pending, so the bounded API must not consume or invent correlation for it.
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7", Text = "7" });
+        Assert.Null(result);
+        Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaTheory]
     [InlineData("mousePress", "left", 0, "\u001b[<0;3;2M")]
     [InlineData("mouseRelease", "left", 0, "\u001b[<0;3;2m")]
     [InlineData("mouseMove", "none", 0, "\u001b[<35;3;2M")]

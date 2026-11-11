@@ -20,7 +20,7 @@ export const defaultQaRoot = fileURLToPath(new URL('../../docs/qa/terminfo/', im
 
 export const verdicts = Object.freeze(['supported', 'unsupported', 'inconclusive']);
 /** Every layer an owned suite can measure; a claim naming anything else is refused. */
-export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels']);
+export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels', 'generated-input-child-bytes']);
 /** Suites whose ids are terminfo.dev benchmark ids; the two findings are Ntilde-specific and never counted as benchmark ids. */
 const sgrAttrsFile = '2026-11-08-sgr-attributes-qualification.json';
 
@@ -54,6 +54,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('col-edit', '2026-11-10-column-editing', '2026-11-10-column-editing-qualification.md'), module: 'col-edit-contracts.mjs', exports: ['colEditSuiteId', 'colEditContractsVersion', 'colEditCaseIds'], test: 'col-edit-publication.test.mjs' },
     { ...directory('rect-checksum', '2026-11-10-rectangle-checksum', '2026-11-10-rectangle-checksum-qualification.md'), module: 'rect-checksum-contracts.mjs', exports: ['rectChecksumSuiteId', 'rectChecksumContractsVersion', 'rectChecksumCaseIds'], test: 'rect-checksum-publication.test.mjs' },
     { ...directory('lr-margins', '2026-11-10-left-right-margins', '2026-11-10-left-right-margins-qualification.md'), module: 'lr-margins-contracts.mjs', exports: ['lrMarginsSuiteId', 'lrMarginsContractsVersion', 'lrMarginsCaseIds'], test: 'lr-margins-publication.test.mjs' },
+    { ...directory('routed-input', '2026-11-11-routed-input', '2026-11-11-routed-input-qualification.md'), module: 'routed-input-contracts.mjs', exports: ['routedInputGradedSuiteId', 'routedInputContractsVersion', 'routedInputCaseIds'], test: 'routed-input-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */
@@ -120,6 +121,8 @@ export function pinnedVerdictOf(item) {
         return observed;
     }
     if (item.pinned?.pass === true) return 'supported';
+    // A probe that reports no semantic observable is not tested: inconclusive, never a verdict.
+    if (item.pinned?.notTested?.reason === 'no-semantic-observable') return 'inconclusive';
     throw new Error(`${item.caseId}: the retained pinned result has neither an observation nor a pass.`);
 }
 
@@ -144,6 +147,8 @@ export function measuredLayersOf(evidence, scope) {
     // Retained CPR exchanges and controlled synthetic-phase captures are their own layers, never folded into stored state.
     if (/cpr/.test(text)) layers.push('cursor-position-report');
     if (/controlled-pixels/.test(text)) layers.push('controlled-pixels');
+    // Declared App events routed through the production input path, measured as the exact bytes an independent child reader received.
+    if (/generated-input/.test(text)) layers.push('generated-input-child-bytes');
     if (layers.length === 0) throw new Error(`Cannot classify the measured layer of evidence "${text}".`);
     return layers;
 }

@@ -14,7 +14,11 @@ public sealed record GeneratePaneInputParams
     /// <summary>Keypad 0–9, decimal, separator, add, subtract, multiply, divide or enter.</summary>
     [JsonPropertyName("key")]
     public string? Key { get; init; }
-    /// <summary>Exactly one keypad character for a separate routed TextInput event.</summary>
+    /// <summary>
+    /// Exactly one keypad character for a routed TextInput event. On <c>text</c> it is the whole event. On <c>keyDown</c> it is a second
+    /// routed TextInput raised right after that key-down within the same synchronous dispatch, the text some backends emit for a key
+    /// the terminal already handled (modifiers must be zero). It lets a single declared action exercise the handled-key duplicate guard.
+    /// </summary>
     [JsonPropertyName("text")]
     public string? Text { get; init; }
     /// <summary>Bit mask: shift=1, control=2, alt=4, meta=8. Text events require zero.</summary>
@@ -43,6 +47,9 @@ public sealed record GeneratePaneInputResult
     public bool InputSubmitted { get; init; }
     [JsonPropertyName("handled")]
     public required bool Handled { get; init; }
+    /// <summary>Whether the follow-up TextInput of a <c>keyDown</c> with text was marked handled; null when the action carried no such text.</summary>
+    [JsonPropertyName("textHandled")]
+    public bool? TextHandled { get; init; }
     [JsonPropertyName("boundary")]
     public string Boundary { get; init; } = "avalonia-routed";
     /// <summary>Post-dispatch geometry/modes were safely observed for the same target; false leaves them null.</summary>
@@ -87,7 +94,8 @@ public static class GeneratePaneInputValidation
         if (p.PaneId == Guid.Empty || p.Modifiers < 0 || p.Modifiers > 15) return false;
         return p.Kind switch
         {
-            "keyDown" or "keyUp" => HasNoPointerFields(p) && p.Text == null && IsKey(p.Key),
+            "keyDown" => HasNoPointerFields(p) && IsKey(p.Key) && (p.Text == null || (p.Modifiers == 0 && IsKeypadText(p.Text))),
+            "keyUp" => HasNoPointerFields(p) && p.Text == null && IsKey(p.Key),
             "text" => IsTextInput(p),
             _ => IsMouseInput(p),
         };
@@ -97,8 +105,10 @@ public static class GeneratePaneInputValidation
         => p.Column == null && p.Row == null && p.Button == null && p.WheelDelta == null;
 
     private static bool IsTextInput(GeneratePaneInputParams p)
-        => HasNoPointerFields(p) && p.Key == null && p.Modifiers == 0 && p.Text is { Length: 1 }
-            && "0123456789.+-*/,=\r".Contains(p.Text, StringComparison.Ordinal);
+        => HasNoPointerFields(p) && p.Key == null && p.Modifiers == 0 && IsKeypadText(p.Text);
+
+    private static bool IsKeypadText(string? text)
+        => text is { Length: 1 } && "0123456789.+-*/,=\r".Contains(text, StringComparison.Ordinal);
 
     private static bool IsMouseInput(GeneratePaneInputParams p)
     {

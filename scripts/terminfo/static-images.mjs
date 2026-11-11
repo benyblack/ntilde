@@ -130,7 +130,7 @@ export function validateImageOwnership(actual, original, geometry) {
 }
 export function buildStaticImageReport(frames, actions, seal, runId, output, priorChallenges = []) {
     checkImages(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 31 && actions?.length === 30
-        && Array.isArray(priorChallenges) && priorChallenges.length <= 80 && new Set(priorChallenges).size === priorChallenges.length);
+        && Array.isArray(priorChallenges) && priorChallenges.length <= 122 && new Set(priorChallenges).size === priorChallenges.length);
     const builder = new StaticImageReport(frames, actions, runId, output, priorChallenges);
     frames.forEach((frame, index) => builder.processFrame(frame, index));
     builder.checkSeal(seal);

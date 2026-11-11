@@ -8,7 +8,7 @@ const files = ['cg-run.json', 'cg-observations.json', 'cg-snapshots.jsonl', 'col
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = condition => { if (!condition) throw new Error('Invalid Core-gap receipt binding.'); };
 export function includesCoreGapsEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36'].includes(context.sourceSnapshotPolicy) || context.coreGapsSuiteId !== undefined
+    return ['readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v37'].includes(context.sourceSnapshotPolicy) || context.coreGapsSuiteId !== undefined
         || evidence.coreGapsEvidence !== undefined || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 export function checkCoreGapsEvidence(output, evidence, runId, context, proof) {

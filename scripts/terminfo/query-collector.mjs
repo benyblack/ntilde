@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { rawInputCapture } from './input-bytes.mjs';
-import { queryAction, queryPlan, queryPrior, checkQueries as check } from './queries.mjs';
+import { queryAction, queryPlan, queryPrior, queryPriorCounts, checkQueries as check } from './queries.mjs';
 
 function write(output, bytes, signal) {
     return new Promise((resolve, reject) => {
@@ -33,7 +33,7 @@ export async function collectQueries({ runId, owner, expectedOwnerPid, outputDir
     if (initial.status === 'unavailable') { check(initial.reason === 'queryPrerequisiteUnavailable'); return initial; }
     check(typeof initial.cursorVisible === 'boolean');
     const prior = new Set(queryPrior(initial.priorChallenges));
-    check(prior.size === 110);
+    check(queryPriorCounts.includes(prior.size));
     const choose = used => {
         for (let attempt = 0; attempt < 8; attempt++) {
             const pair = nextNonces ? structuredClone(nextNonces(new Set(used))) : [randomInt(32768, 65536), randomInt(32768, 65536)];

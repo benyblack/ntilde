@@ -45,7 +45,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
 /** Any retained left/right-margin artifact or declaration requires the v40 suffix, and a policy-v34 run always carries them,
  * because the current worker collects this suite unconditionally after the rectangle-checksum suite. */
 export function includesLrMarginsEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37'].includes(context.sourceSnapshotPolicy)
         || context.lrMarginsAdapterId !== undefined || context.lrMarginsSuiteId !== undefined
         || context.lrMarginsBundleSha256 !== undefined || context.lrMarginsContractsVersion !== undefined
         || evidence.lrMarginsEvidence !== undefined

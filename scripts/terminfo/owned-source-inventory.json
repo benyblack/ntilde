@@ -259,6 +259,13 @@
     "coreIconCaptureSourceSha256": "core-icon-capture.cs",
     "coreIconContractSourceSha256": "core-icon-contract.cs",
     "coreIconWindowSourceSha256": "core-icon-window.cs",
+    "inputPlanSourceSha256": "input-plan.mjs",
+    "routedInputCasesSourceSha256": "routed-input-cases.mjs",
+    "routedInputContractsSourceSha256": "routed-input-contracts.mjs",
+    "routedInputCollectorSourceSha256": "routed-input-collector.mjs",
+    "routedInputGradingSourceSha256": "routed-input-grading.mjs",
+    "routedInputGradingCollectorSourceSha256": "routed-input-grading-collector.mjs",
+    "routedInputReceiptSourceSha256": "routed-input-receipt.mjs",
     "textCursorSourceSha256": "core-text-cursor.mjs",
     "textCursorReceiptSourceSha256": "core-text-cursor-receipt.mjs"
 }
