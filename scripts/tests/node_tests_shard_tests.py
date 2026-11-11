@@ -2,8 +2,9 @@
 """Checks that scripts/ci/node-tests-shard.py partitions the workflow's script self-test files.
 
 Reads the real workflow: the matrix must name exactly the shards the script lists, the sharded
-step must pass every file through the script (and record each file's seconds), and the shards
-must cover every file exactly once. Checks the durations table against that list, that the cut
+step must let the script find the files (and record each file's seconds), every
+scripts/terminfo test file must run somewhere - the shards, the job its exclusion names, or
+nowhere by an explicit local-only entry - and the shards must cover every found file exactly once. Checks the durations table against that list, that the cut
 is balanced and deterministic, that each shard lists its longest files first, and that a file the table does not know still runs. Then proves
 the refusals - an unknown shard, a repeated file, too few files, an empty shard - and the
 `--update` path that refreshes the table from a CI run's timings.
@@ -35,12 +36,44 @@ def job(text, name):
 
 
 def workflow_files(block):
-    """The test files the sharded step passes to the script."""
-    step = re.search(r'node-tests-shard\.py "\$\{\{ matrix\.shard \}\}" ([^\n)]+)\)', block)
-    assert step, 'the sharded step must pass the file list through node-tests-shard.py'
-    files = step[1].split()
+    """The test files the sharded step runs: the script finds them, so the step names none."""
+    assert re.search(r'files=\$\("\$py" scripts/ci/node-tests-shard\.py "\$\{\{ matrix\.shard \}\}"\)$', block, re.M), \
+        'the sharded step must let node-tests-shard.py find the files, not list them (see its notes)'
+    files = shard.discover()
     assert files and all(path.startswith('scripts/terminfo/') and path.endswith('.test.mjs') for path in files), files
     return files
+
+
+def check_discovery(files):
+    """Every scripts/terminfo test file runs somewhere: in the shards, in the job or workflow the
+    script says, or nowhere by an explicit LOCAL_ONLY entry. And no shard file runs twice."""
+    workflows = {path.name: path.read_text(encoding='utf-8') for path in (ROOT / '.github/workflows').glob('*.yml')}
+    for path in sorted((ROOT / 'scripts/terminfo').glob('*.test.mjs')):
+        name, where = path.name, shard.excluded(path.name)
+        if where is None:
+            assert f'scripts/terminfo/{name}' in files, f'{name} is neither found nor excluded'
+            named = [wf for wf, text in workflows.items() if f'scripts/terminfo/{name}' in text]
+            assert not named, f'{name} runs in the shards and is also named by {named}'
+        elif name not in shard.LOCAL_ONLY:
+            assert any(f'scripts/terminfo/{name}' in text for text in workflows.values()), \
+                f'{name} is excluded from the shards ({where}) but no workflow runs it'
+    for name in shard.LOCAL_ONLY:
+        assert (ROOT / 'scripts/terminfo' / name).is_file(), f'LOCAL_ONLY names a missing file {name}'
+    for key in shard.ELSEWHERE:
+        matches = [p for p in (ROOT / 'scripts/terminfo').glob('*.test.mjs')
+                   if p.name == key or (key.endswith('-') and p.name.startswith(key))]
+        assert matches, f'ELSEWHERE entry {key!r} matches no test file'
+
+    # In a scratch tree: a new test is found with no edit anywhere; the excluded ones, helpers and
+    # files in subdirectories are not.
+    with tempfile.TemporaryDirectory() as tmp:
+        terminfo = Path(tmp) / 'scripts/terminfo'
+        (terminfo / 'fixtures').mkdir(parents=True)
+        for name in ('brand-new.test.mjs', 'linux-new.test.mjs', 'private-clipboard-new.test.mjs',
+                     'ownership.test.mjs', 'collector.test.mjs', 'helper.mjs', 'fixtures/nested.test.mjs'):
+            (terminfo / name).write_text('', encoding='utf-8')
+        found = shard.discover(tmp)
+        assert found == ['scripts/terminfo/brand-new.test.mjs'], found
 
 
 def refused(call):
@@ -113,8 +146,9 @@ def main():
     assert block.index('uses: actions/setup-node@') < own, 'setup-node runs before the shard self-test'
     assert "NODE_TESTS_RUN_CHECK_REQUIRED: '1'" in block[own:block.index('- name:', own + 1)], 'the shard self-test step requires the launcher check'
     files = workflow_files(block)
-    assert len(set(files)) == len(files), 'the workflow lists each test file once'
-    assert all((ROOT / path).is_file() for path in files), 'every listed test file exists'
+    assert len(set(files)) == len(files), 'each test file is found once'
+    assert all((ROOT / path).is_file() for path in files), 'every found test file exists'
+    check_discovery(files)
 
     # The table: plain positive numbers, and only files the workflow runs (a stale entry would keep
     # a renamed or deleted file's weight in the cut).
@@ -180,8 +214,9 @@ def main():
                            'seconds': {'scripts/terminfo/a.test.mjs': 3.0, 'scripts/terminfo/b.test.mjs': 12.3,
                                        'scripts/terminfo/c.test.mjs': 0.1}}, updated
 
-    # The workflow reads the output through bash command substitution: it must be LF-only on every OS.
-    output = subprocess.run([sys.executable, str(ROOT / 'scripts/ci/node-tests-shard.py'), shard.REST, *files], capture_output=True, check=True).stdout
+    # The workflow reads the output through bash command substitution: it must be LF-only on every
+    # OS. Run as the workflow runs it - the shard name alone, from another directory.
+    output = subprocess.run([sys.executable, str(ROOT / 'scripts/ci/node-tests-shard.py'), shard.REST], cwd=tempfile.gettempdir(), capture_output=True, check=True).stdout
     assert b'\r' not in output and output.decode().split() == shard.select(shard.REST, files), 'LF-only, one file per line'
     launcher = check_launcher()
     print(f'{len(files)} files cut across {len(shard.names())} shards '

@@ -25,9 +25,14 @@ runner (scripts/ci/node-tests-run.mjs) and uploads them; `--update` folds such f
 table. Refreshing it is downloading a windows run's timing artifacts and running `--update` on
 them (the table's own notes give both commands).
 
-Usage: node-tests-shard.py <shard> <file> [<file> ...]   prints the shard's files, one per line.
-       node-tests-shard.py --list                         prints the shard names, one per line.
-       node-tests-shard.py --plan <file> [<file> ...]     prints each shard's file count and seconds.
+The files are found, not listed: every scripts/terminfo/*.test.mjs except those ELSEWHERE and
+LOCAL_ONLY name. The workflow used to pass the list, so every PR that added a test edited ci.yml,
+and a ci.yml edit is a workflow change to every path gate - each terminfo PR then ran the AOT and
+packaging lanes for a change to a node script.
+
+Usage: node-tests-shard.py <shard> [<file> ...]   prints the shard's files (default: found), one per line.
+       node-tests-shard.py --list                 prints the shard names, one per line.
+       node-tests-shard.py --plan [<file> ...]    prints each shard's file count and seconds.
        node-tests-shard.py --update <timing.json> [...]   folds measured seconds into the table.
 """
 
@@ -41,12 +46,45 @@ REST = "rest"
 # (scripts/tests/node_tests_shard_tests.py checks the two agree).
 SHARDS = ["a", "b", REST]
 PREFIX = "scripts/terminfo/"
+ROOT = Path(__file__).resolve().parents[2]
 DURATIONS = Path(__file__).with_name("node-tests-durations.json")
+
+# Test files that run in a job or workflow of their own, not in the shards: a name, or a name
+# prefix ending in "-". The self-test checks that a workflow names each such file, so a file
+# matched here that nothing runs fails CI rather than going quiet.
+ELSEWHERE = {
+    "query-publication.test.mjs": "ci.yml query_publication_guards",
+    "ownership.test.mjs": "ci.yml private_clipboard_owned",
+    "private-clipboard-": "ci.yml private_clipboard_owned",
+    "linux-": "the terminfo-linux-*.yml workflows",
+}
+# Test files no CI job runs: they need the terminfo tool prepared under artifacts/terminfo (and
+# owned-smoke a macOS host), and skip their real checks without it.
+LOCAL_ONLY = {
+    "collector.test.mjs": "validates the pinned collector receipt against the prepared bundle",
+    "owned-smoke.test.mjs": "launches the owned and inline runners on macOS against the prepared tool",
+}
 
 
 def names():
     """The shard names, in workflow order."""
     return list(SHARDS)
+
+
+def excluded(name):
+    """Why the shards do not run scripts/terminfo/<name>, or None when they do."""
+    if name in LOCAL_ONLY:
+        return "local only: " + LOCAL_ONLY[name]
+    for key, where in ELSEWHERE.items():
+        if name == key or (key.endswith("-") and name.startswith(key)):
+            return "runs in " + where
+    return None
+
+
+def discover(root=ROOT):
+    """The shards' files: every scripts/terminfo/*.test.mjs that excluded() lets through, by name."""
+    found = sorted(path.name for path in (Path(root) / PREFIX).glob("*.test.mjs") if path.is_file())
+    return [PREFIX + name for name in found if excluded(name) is None]
 
 
 def load_table(path=DURATIONS):
@@ -123,9 +161,10 @@ def main(argv):
     if args == ["--list"]:
         sys.stdout.buffer.write(("\n".join(SHARDS) + "\n").encode())
         return 0
-    if args[:1] == ["--plan"] and len(args) > 1:
-        owner, totals = plan(args[1:])
-        unknown = [p for p in args[1:] if p not in load_table()["seconds"]]
+    if args[:1] == ["--plan"]:
+        files = args[1:] or discover()
+        owner, totals = plan(files)
+        unknown = [p for p in files if p not in load_table()["seconds"]]
         for name in SHARDS:
             count = sum(1 for o in owner.values() if o == name)
             print(f"{name}: {count} files, {totals[name]:.0f} s")
@@ -134,12 +173,12 @@ def main(argv):
     if args[:1] == ["--update"] and len(args) > 1:
         print(f"updated {update(args[1:])} files in {DURATIONS.name}")
         return 0
-    if len(args) < 2:
+    if not args or args[0].startswith("--"):
         print(__doc__.strip().splitlines()[-4].strip(), file=sys.stderr)
         return 2
     try:
         # Raw bytes: text-mode stdout on windows would end each line with \r\n, and Git Bash would keep the \r on every file name.
-        sys.stdout.buffer.write(("\n".join(select(args[0], args[1:])) + "\n").encode())
+        sys.stdout.buffer.write(("\n".join(select(args[0], args[1:] or discover())) + "\n").encode())
     except ValueError as error:
         print(f"node-tests-shard: {error}", file=sys.stderr)
         return 1
