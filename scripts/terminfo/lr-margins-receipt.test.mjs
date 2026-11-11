@@ -20,7 +20,7 @@ const own = f => () => checkLrMarginsEvidence(f.output, f.evidence, f.context.ru
 const refusal = error => !(error instanceof TypeError);
 test('a complete run carries the left/right-margin suffix: counts, adapter identity and the layered derivation are rederived without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 43);
+    assert.equal(f.finish().schemaVersion, 45);
     assert.deepEqual(f.evidence.lrMarginsEvidence.counts, { 'inconclusive/supported': 1 });
     assert.equal(f.context.lrMarginsAdapterId, lrMarginsAdapterId);
     assert.equal(f.context.lrMarginsSuiteId, lrMarginsSuiteId);

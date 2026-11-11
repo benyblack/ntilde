@@ -1,0 +1,1103 @@
+{
+  "caseId": "extensions.osc133-c",
+  "role": "command execution start",
+  "marker": "C",
+  "pinnedFixture": {
+    "termlessFeeds": ["\u001b]133;C\u0007X"],
+    "terminalWrites": ["\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"]
+  },
+  "observed": {
+    "commandIdentity": {
+      "typedText": "echo c-typed",
+      "payload": "echo c-payload",
+      "exposed": "echo c-payload"
+    },
+    "outputAnchor": {
+      "atAccept": [3, 0],
+      "afterOutput": [3, 0],
+      "firstOutputRow": "c-output"
+    },
+    "bareCPinnedFixture": {
+      "command": null,
+      "outputStartPolicy": [1, 0]
+    },
+    "payloadShapes": {
+      "attribute": null,
+      "plainText": "echo c-plain"
+    },
+    "secondCycle": {
+      "command": "echo c-two",
+      "outputStart": [7, 0]
+    },
+    "variants": {
+      "stTerminator": {
+        "targetShown": true,
+        "certainFieldsMatch": true
+      }
+    }
+  },
+  "experiments": [
+    {
+      "id": "extensions.osc133-c/stock",
+      "name": "stock",
+      "role": "stock",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "pinned",
+          "snapshot": 21,
+          "cursor": [0, 1],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {
+              "outputStart": {
+                "expected": [1, 0],
+                "observed": [1, 0],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": [1, 0],
+              "cursor": [0, 1],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc133-c/effect",
+      "name": "effect",
+      "role": "effect",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "X", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "prior",
+          "snapshot": 22,
+          "cursor": [2, 20],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "prompt",
+                "observed": "prompt",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": true,
+                "observed": true,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "prompt",
+              "statusRaw": "awaitingInput",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": true,
+              "commandStart": [2, 8],
+              "outputStart": null,
+              "cursor": [2, 20],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "ordinary",
+          "snapshot": 23,
+          "cursor": [0, 1],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "prompt",
+                "observed": "prompt",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": true,
+                "observed": true,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "prompt",
+              "statusRaw": "awaitingInput",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": true,
+              "commandStart": [2, 8],
+              "outputStart": null,
+              "cursor": [0, 1],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "pinned",
+          "snapshot": 24,
+          "cursor": [0, 1],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              }
+            },
+            "policy": {
+              "outputStart": {
+                "expected": [1, 0],
+                "observed": [1, 0],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": [2, 8],
+              "outputStart": [1, 0],
+              "cursor": [0, 1],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc133-c/payload",
+      "name": "payload",
+      "role": "required",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;ZWNobyBjLXBheWxvYWQ=\u0007", "\r\nc-output"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "input",
+          "snapshot": 25,
+          "cursor": [2, 20],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "prompt",
+                "observed": "prompt",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": true,
+                "observed": true,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "prompt",
+              "statusRaw": "awaitingInput",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": true,
+              "commandStart": [2, 8],
+              "outputStart": null,
+              "cursor": [2, 20],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "accepted",
+          "snapshot": 26,
+          "cursor": [2, 20],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "command": {
+                "expected": "echo c-payload",
+                "observed": "echo c-payload",
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": [3, 0],
+                "observed": [3, 0],
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": "echo c-payload",
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": [2, 8],
+              "outputStart": [3, 0],
+              "cursor": [2, 20],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "output",
+          "snapshot": 27,
+          "cursor": [3, 8],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "command": {
+                "expected": "echo c-payload",
+                "observed": "echo c-payload",
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": [3, 0],
+                "observed": [3, 0],
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": "echo c-payload",
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": [2, 8],
+              "outputStart": [3, 0],
+              "cursor": [3, 8],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    },
+    {
+      "id": "extensions.osc133-c/gate-a",
+      "name": "gate-a",
+      "role": "gate",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;A\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 28,
+          "cursor": [0, 1],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "prompt",
+                "observed": "prompt",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {
+              "accepting": {
+                "expected": true,
+                "observed": true,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "prompt",
+              "statusRaw": "awaitingInput",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": true,
+              "commandStart": [2, 8],
+              "outputStart": null,
+              "cursor": [0, 1],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "status": "prompt",
+        "command": null,
+        "accepting": true,
+        "commandStart": [2, 8],
+        "outputStart": null
+      }
+    },
+    {
+      "id": "extensions.osc133-c/gate-b",
+      "name": "gate-b",
+      "role": "gate",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;B\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 29,
+          "cursor": [0, 1],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "prompt",
+                "observed": "prompt",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": true,
+                "observed": true,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [0, 0],
+                "observed": [0, 0],
+                "match": true
+              },
+              "outputStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "prompt",
+              "statusRaw": "awaitingInput",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": true,
+              "commandStart": [0, 0],
+              "outputStart": null,
+              "cursor": [0, 1],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "status": "prompt",
+        "command": null,
+        "accepting": true,
+        "commandStart": [2, 8],
+        "outputStart": null
+      }
+    },
+    {
+      "id": "extensions.osc133-c/gate-d",
+      "name": "gate-d",
+      "role": "gate",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;D;0\u0007X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 30,
+          "cursor": [0, 1],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "prompt",
+                "observed": "prompt",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "outputStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "prompt",
+              "statusRaw": "awaitingInput",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [0, 1],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "status": "prompt",
+        "command": null,
+        "accepting": true,
+        "commandStart": [2, 8],
+        "outputStart": null
+      }
+    },
+    {
+      "id": "extensions.osc133-c/st-terminator",
+      "name": "st-terminator",
+      "role": "observed",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b[1;1H\u001b[2K", "\u001b]133;C\u001b\\X"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "post",
+          "snapshot": 31,
+          "cursor": [0, 1],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              }
+            },
+            "policy": {
+              "outputStart": {
+                "expected": [1, 0],
+                "observed": [1, 0],
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": [2, 8],
+              "outputStart": [1, 0],
+              "cursor": [0, 1],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "status": "prompt",
+        "command": null,
+        "accepting": true,
+        "commandStart": [2, 8],
+        "outputStart": null
+      }
+    },
+    {
+      "id": "extensions.osc133-c/payload-attribute",
+      "name": "payload-attribute",
+      "role": "observed",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;aid=7\u0007"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "accepted",
+          "snapshot": 32,
+          "cursor": [2, 20],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": [3, 0],
+                "observed": [3, 0],
+                "match": true
+              }
+            },
+            "policy": {
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": [2, 8],
+              "outputStart": [3, 0],
+              "cursor": [2, 20],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "status": "prompt",
+        "command": null,
+        "accepting": true,
+        "commandStart": [2, 8],
+        "outputStart": null
+      }
+    },
+    {
+      "id": "extensions.osc133-c/payload-plain",
+      "name": "payload-plain",
+      "role": "observed",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[3;1Hntilde$ ", "\u001b]133;B\u0007echo c-typed", "\u001b]133;C;echo c-plain\u0007"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "accepted",
+          "snapshot": 33,
+          "cursor": [2, 20],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [2, 8],
+                "observed": [2, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": [3, 0],
+                "observed": [3, 0],
+                "match": true
+              }
+            },
+            "policy": {
+              "command": {
+                "expected": "echo c-plain",
+                "observed": "echo c-plain",
+                "match": true
+              }
+            },
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": "echo c-plain",
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": [2, 8],
+              "outputStart": [3, 0],
+              "cursor": [2, 20],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": {
+        "status": "prompt",
+        "command": null,
+        "accepting": true,
+        "commandStart": [2, 8],
+        "outputStart": null
+      }
+    },
+    {
+      "id": "extensions.osc133-c/cycles",
+      "name": "cycles",
+      "role": "required",
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;SH-base-650b9b82\u0007\u001b]7;file://localhost/ntilde-qa/osc133-base\u0007\u001b[10;1HNTILDE_SH_650b9b8230a59a84b0e506f087594395", "\u001b]133;A\u0007", "\u001b[4;1Hntilde$ ", "\u001b]133;B\u0007echo c-one", "\u001b]133;C;ZWNobyBjLW9uZQ==\u0007", "\r\nc-one-out", "\u001b]133;D;0\u0007", "\u001b]133;A\u0007", "\u001b[7;1Hntilde$ ", "\u001b]133;B\u0007echo c-two", "\u001b]133;C;ZWNobyBjLXR3bw==\u0007", "\r\nc-two-out"],
+      "barriers": ["\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c", "\u001b[?62;4;22c"],
+      "reads": [
+        {
+          "label": "after-d",
+          "snapshot": 34,
+          "cursor": [4, 9],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "prompt",
+                "observed": "prompt",
+                "match": true
+              },
+              "command": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              },
+              "outputStart": {
+                "expected": null,
+                "observed": null,
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "prompt",
+              "statusRaw": "awaitingInput",
+              "confidence": "precise",
+              "command": null,
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": null,
+              "outputStart": null,
+              "cursor": [4, 9],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        },
+        {
+          "label": "second",
+          "snapshot": 35,
+          "cursor": [7, 9],
+          "evaluation": {
+            "passed": true,
+            "screenMatches": true,
+            "preserved": true,
+            "required": {
+              "status": {
+                "expected": "running",
+                "observed": "running",
+                "match": true
+              },
+              "command": {
+                "expected": "echo c-two",
+                "observed": "echo c-two",
+                "match": true
+              },
+              "accepting": {
+                "expected": false,
+                "observed": false,
+                "match": true
+              },
+              "commandStart": {
+                "expected": [6, 8],
+                "observed": [6, 8],
+                "match": true
+              },
+              "outputStart": {
+                "expected": [7, 0],
+                "observed": [7, 0],
+                "match": true
+              }
+            },
+            "policy": {},
+            "observed": {
+              "status": "running",
+              "statusRaw": "running",
+              "confidence": "precise",
+              "command": "echo c-two",
+              "exitCode": null,
+              "accepting": false,
+              "commandStart": [6, 8],
+              "outputStart": [7, 0],
+              "cursor": [7, 9],
+              "title": "SH-base-650b9b82",
+              "displayTitle": "SH-base-650b9b82",
+              "cwd": "/ntilde-qa/osc133-base",
+              "links": 0,
+              "alternateScreen": false,
+              "scrollbackLines": 0,
+              "historyGeneration": 205,
+              "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+            }
+          }
+        }
+      ],
+      "priorObserved": null
+    }
+  ],
+  "pinned": {
+    "pass": false,
+    "note": "Marker was consumed; shell prompt integration was not observed",
+    "observation": {
+      "outcome": "inconclusive",
+      "evidence": "consumed",
+      "reason": "insufficient-evidence",
+      "note": "Marker was consumed; shell prompt integration was not observed"
+    },
+    "termless": {
+      "pass": false,
+      "note": "Marker was consumed; shell prompt integration was not observed",
+      "observation": {
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed"
+      }
+    },
+    "terminal": {
+      "pass": false,
+      "note": "Marker was consumed; shell prompt integration was not observed",
+      "observation": {
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "reason": "insufficient-evidence",
+        "note": "Marker was consumed; shell prompt integration was not observed"
+      }
+    }
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "effectContract": {
+    "id": "ntilde-osc133-shell-lifecycle-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "validity": [
+      {"id":"prior-state","held":true},
+      {"id":"unmarked-control","held":true},
+      {"id":"gate-a","held":true},
+      {"id":"gate-b","held":true},
+      {"id":"gate-d","held":true}
+    ],
+    "required": [
+      {"id":"pinned-fixture-effect","held":true},
+      {"id":"payload","held":true},
+      {"id":"cycles","held":true}
+    ],
+    "targetShown": true,
+    "notes": ["Pinned fixture on the prepared baseline: consumed with every certain field as predicted."],
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-pane-metadata-and-session-status",
+    "grading": "pinned-consumption-preserved-by-design",
+    "note": "Marker was consumed; shell prompt integration was not observed",
+    "scope": "Pinned terminfo.dev@4.0.0 extensions.osc133-a, -b, -c and -d termless and terminal code (marker + X consumption only; always inconclusive by design) replayed over parent-journaled observations and preserved, beside a separately identified effect contract graded from paired complete stored cells, pane metadata (title, cwd, input window, raw command and output anchors with their coordinate conventions) and session status (state, precision, current command) by an independent lifecycle oracle: each pinned fixture is executed from a measured prior state with an unmarked control and gating markers, beside canonical consecutive-cycle, payload, boundary and exit-payload observations. Protocol handling in a disposable direct-local App only: no Bash, Zsh, Fish, PowerShell, SSH or remote delivery claim, no OSC 133 P, OSC 633, semantic-prompts aggregate or command-assist claim, no event-stream (commandFinished) readback, no stock grade."
+  }
+}

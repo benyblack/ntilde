@@ -46,7 +46,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
  * because the current worker collects this suite unconditionally after the column-editing suite. (initial-settings.json is
  * retained by every run, so it alone never requires the suffix.) */
 export function includesRectChecksumEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40'].includes(context.sourceSnapshotPolicy)
         || context.rectChecksumAdapterId !== undefined || context.rectChecksumSuiteId !== undefined
         || context.rectChecksumBundleSha256 !== undefined || context.rectChecksumContractsVersion !== undefined
         || evidence.rectChecksumEvidence !== undefined

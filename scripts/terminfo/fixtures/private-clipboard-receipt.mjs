@@ -27,16 +27,16 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
 
 /** Synthetic old-scope source projection. Normalize checkout line endings before
- * dropping only the newer suffixes' imports (Core gaps, runtime-color reset); the historical production maps stay fixed. */
+ * dropping only the newer suffixes' imports (Core gaps, runtime-color reset, OSC 133); the historical production maps stay fixed. */
 export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|core-erase(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+|osc133-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
-/** Remove the new suffix from the synthetic v37 scope on LF and CRLF checkouts. */
+/** Remove the newer suffixes (text/cursor, OSC 133) from the synthetic v37 scope on LF and CRLF checkouts. */
 export function routedPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?core-text-cursor(?:-receipt)?\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|core-erase(?:-receipt)?|osc133-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
@@ -747,6 +747,25 @@ async function buildFixture(output, routed) {
                 runFile: 'crst-run.json', runSha256: hash(readFileSync(join(output, 'crst-run.json'))),
                 adapterBundleSha256: hash(colorResetBytes), contractsVersion: colorResetContractsVersion,
                 counts: colorResetCounts(colorResetReport), provisionalUntil: 'cell-receipt.json' };
+            // The OSC 133 suffix is admitted by its retained artifacts (synthetic frames from the suite's own oracle, never collected ones), whatever the frozen policy.
+            const { syntheticOsc133Evidence } = await import('./osc133-evidence.mjs');
+            const { buildOsc133GradingReport, osc133Counts } = await import('../osc133-grading.mjs');
+            const { adaptOsc133Collector, osc133AdapterId } = await import('../osc133-grading-collector.mjs');
+            const { osc133SuiteId, osc133ContractsVersion } = await import('../osc133-contracts.mjs');
+            const osc133Bytes = Buffer.from(adaptOsc133Collector(lrMarginsBytes.toString()));
+            const osc133 = syntheticOsc133Evidence({ runId: context.runId, bundleSha256: hash(osc133Bytes) });
+            osc133.adapter = { ...osc133.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+            const osc133Report = buildOsc133GradingReport(osc133.frames, osc133.run, context.runId, osc133.adapter);
+            write('shi-observations.json', osc133Report);
+            write('shi-run.json', osc133.run);
+            writeFileSync(join(output, 'shi-snapshots.jsonl'), osc133.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+            writeFileSync(join(output, 'collector-shi.mjs'), osc133Bytes);
+            Object.assign(context, { osc133AdapterId, osc133SuiteId, osc133BundleSha256: hash(osc133Bytes), osc133ContractsVersion });
+            evidence.osc133Evidence = { runId: context.runId, suiteId: osc133SuiteId,
+                file: 'shi-observations.json', sha256: hash(readFileSync(join(output, 'shi-observations.json'))),
+                runFile: 'shi-run.json', runSha256: hash(readFileSync(join(output, 'shi-run.json'))),
+                adapterBundleSha256: hash(osc133Bytes), contractsVersion: osc133ContractsVersion,
+                counts: osc133Counts(osc133Report), provisionalUntil: 'cell-receipt.json' };
         }
         raw.collectorAdapter.bundleSha256 = context.adapterBundleSha256;
         raw.rawReplies['collector.ntildePrivateClipboard'] = api.worker.summary;

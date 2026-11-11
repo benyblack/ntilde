@@ -8,13 +8,13 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core erase receipt: ' + message); };
 
 export function includesCoreEraseEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v39' || context.coreEraseSuiteId !== undefined || evidence.coreEraseEvidence !== undefined
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v40' || context.coreEraseSuiteId !== undefined || evidence.coreEraseEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
 export function checkCoreEraseEvidence(output, evidence, runId, context) {
     const binding = evidence.coreEraseEvidence;
-    check(context.coreEraseSuiteId === eraseSuiteId && evidence.textCursorEvidence !== undefined, 'suite or predecessor missing');
+    check(context.coreEraseSuiteId === eraseSuiteId && evidence.textCursorEvidence !== undefined && evidence.osc133Evidence !== undefined, 'suite or predecessor missing');
     check(binding?.runId === runId && binding.suiteId === eraseSuiteId
         && binding.file === 'ce-observations.json' && binding.runFile === 'ce-run.json'
         && binding.provisionalUntil === 'cell-receipt.json', 'binding mismatch');

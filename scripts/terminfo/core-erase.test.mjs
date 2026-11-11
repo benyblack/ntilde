@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { routedPrefixSource } from './fixtures/private-clipboard-receipt.mjs';
 import { includesCoreEraseEvidence, checkCoreEraseEvidence } from './core-erase-receipt.mjs';
 import { extractOwnedArchive, loadMapping, root } from '../terminfo-core-results.mjs';
 import { snapshotHash } from './agent-observer.mjs';
@@ -90,7 +91,7 @@ test('receipt rejects stripped or coherently rehashed altered fixture evidence',
         const runBytes = Buffer.from(JSON.stringify(run)), result = Buffer.from(JSON.stringify(buildEraseReport(frames, run, id)));
         writeFileSync(join(dir, 'ce-run.json'), runBytes); writeFileSync(join(dir, 'ce-observations.json'), result);
         writeFileSync(join(dir, 'ce-snapshots.jsonl'), frames.map(f => JSON.stringify(f)).join('\n') + '\n');
-        const context = { coreEraseSuiteId: eraseSuiteId }, evidence = { textCursorEvidence: {}, coreEraseEvidence: {
+        const context = { coreEraseSuiteId: eraseSuiteId }, evidence = { textCursorEvidence: {}, osc133Evidence: {}, coreEraseEvidence: {
             runId: id, suiteId: eraseSuiteId, file: 'ce-observations.json', runFile: 'ce-run.json', sha256: hash(result),
             runSha256: hash(runBytes), provisionalUntil: 'cell-receipt.json' } };
         assert.ok(includesCoreEraseEvidence(dir, evidence, context));
@@ -128,5 +129,12 @@ test('owned worker and runner parse with the new suite imports', () => {
     for (const file of ['scripts/terminfo/worker.mjs', 'scripts/terminfo-owned-runner.mjs']) {
         const result = spawnSync(process.execPath, ['--check', join(root, file)], { encoding: 'utf8' });
         assert.equal(result.status, 0, result.stderr);
+    }
+});
+
+test('historical synthetic source projection excludes newer erase imports on both line endings', () => {
+    for (const newline of ['\n', '\r\n']) {
+        const text = ["import { collectErase } from './terminfo/core-erase.mjs';", "import { checkCoreEraseEvidence } from './core-erase-receipt.mjs';", "import { x } from './older.mjs';", ''].join(newline);
+        assert.equal(routedPrefixSource(Buffer.from(text)).toString(), "import { x } from './older.mjs';\n");
     }
 });
