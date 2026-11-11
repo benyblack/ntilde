@@ -50,3 +50,6 @@ in #775. No published stock or owned measurement is regraded.
 Sources: [xterm mouse protocols](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Mouse-Tracking),
 [xterm mode selection](https://github.com/ThomasDickey/xterm-snapshots/blob/master/charproc.c),
 [xterm mouse encoding](https://github.com/ThomasDickey/xterm-snapshots/blob/master/button.c).
+
+Qualified for the generated-event direct-local path by the [routed-input qualification](2026-11-11-routed-input-qualification.md) (`input.x10-mouse`:
+DECRQM-proved mode 9, exact child bytes, controls under 1000/1002).

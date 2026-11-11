@@ -55,8 +55,11 @@ public partial class MainWindow
         _agentGeneratedInputInProgress = true;
         bool inputSubmitted;
         bool accepted;
-        try { accepted = view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches(), out inputSubmitted,
-                followUp, () => !cancellationToken.IsCancellationRequested && MatchesTarget()); }
+        try
+        {
+            accepted = view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches(), out inputSubmitted,
+                followUp, () => !cancellationToken.IsCancellationRequested && MatchesTarget());
+        }
         finally { _agentGeneratedInputInProgress = false; }
         if (!accepted && !inputSubmitted) return null;
         var facts = GeneratedDispatchFacts(input, args, position, inputSubmitted) with { TextHandled = followUp?.Handled };

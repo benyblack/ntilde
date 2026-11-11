@@ -1140,7 +1140,9 @@ requires public test classes.
   resize. App rechecks permission, registration, buffer and session identities at
   dispatch and observation, cancels queued work at its deadline, excludes window
   commands and user-history observers, and reports dispatch/geometry/mode facts
-  only. Fixture ownership and child-byte capture remain independent caller proof.
+  only. A key-down may carry one keypad character that the App raises as the
+  backend TextInput right after it in the same dispatch (`textHandled`). Fixture
+  ownership and child-byte capture remain independent caller proof.
   Neither VT nor the wire contracts gain UI or I/O dependencies.
 - **Permissioned visible-pane resize belongs to App.** Raw AgentHost `resizePane`
   requires the separate default-off act permission and journals attempts reaching
@@ -1184,7 +1186,9 @@ requires public test classes.
   pane. Raw child bytes, pre-action mode replies, unpredictable post-action FIFO
   challenges, paired complete state and final restoration/seal are independent
   evidence. Original partial action facts survive failures; no retries or started
-  unavailable downgrade. The read-only observer allowlist remains unchanged.
+  unavailable downgrade. The read-only observer allowlist remains unchanged. From
+  policy v35 the suite runs a 60-event benchmark plan whose read mismatches are graded,
+  not aborted; the frozen 39-event plan keeps the earlier publication re-deriving.
   Historical 51/52-file v8 scopes stay fixed, with retained-import closure checks.
   No native/global input, clipboard, remote transport or binary attestation claim.
 - The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)

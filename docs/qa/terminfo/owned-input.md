@@ -61,3 +61,12 @@ an application mode. These tests are not fresh owned-App runtime evidence. The s
 records 39 passing cases and the complete schema9 receipt, together with the earlier
 failed attempt. It qualifies this generated-event local-child path only; stock
 grades and historical files remain separate.
+
+## Benchmark plan v2 (source policy v35 and later)
+
+Runs on policy v35 and later execute a 60-event benchmark plan (`ntilde-owned-routed-input-v2`, [routed-input.md](routed-input.md)) in place of the
+39-event plan above, which stays frozen so its publication keeps re-deriving: `buildInputReport`, `OwnedInputObserver`, `collectInput` and the receipt
+select the plan explicitly, the receipt by source policy. Mode controls are still exact (a mismatch aborts before any dispatch), but a read
+observation now records the child's bytes and a mismatch is a graded `failed` observation instead of an abort, so a defect can yield a complete,
+honest receipt. A `keyDown` event may carry `text`, and its `textHandled` fact is then required. The plan needs at least 97 columns; the query suite
+owes 152 earlier challenges (110 for v1) and the image suite 122 (80). Receipt schema 41 adds the layered grading suffix.

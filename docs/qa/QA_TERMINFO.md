@@ -1007,3 +1007,13 @@ the query policy the run archives: new runs record `owned-exact-query-paired-raw
 `ESC P 1 $ r 1 ; <cols> s ESC \` (the suite runs on a reset full-width screen, so the margins are `1;cols`); every run before it archived `...-v1` and keeps the
 negative `ESC P 0 $ r ESC \`, so all published runs re-derive unchanged. The receipt reads the policy from the archived context, never from a setting, and
 re-derivation rejects a rewritten policy (the derived report would differ from the archived one). The other DECRQSS witnesses are unchanged.
+
+### Routed-input qualification (X10, button-event, application keypad)
+
+The [routed-input batch](terminfo/2026-11-11-routed-input-qualification.md) grades `input.x10-mouse`, `input.button-event-mouse` and
+`modes.application-keypad` through a twenty-eighth layered extension. All three pinned probes are inconclusive by design (mode metadata only) and
+are preserved; separately identified effect contracts grade the exact bytes an independent reader of the disposable child's stdin received for 60
+declared Avalonia events routed through the production App input path, against literal protocol expectations cross-checked by an independent oracle,
+with controls under the other tracking protocols and the numeric keypad. All three effect contracts are supported; the stock grades are unchanged
+(167 inconclusive / 87 supported / 1 unsupported), so there is no compatibility-score claim. The batch added one declared-event capability (a key-down
+may carry its backend TextInput) and documents the contract in [routed-input.md](terminfo/routed-input.md). Inventory: 88 qualified ids.
