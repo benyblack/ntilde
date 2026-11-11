@@ -9,8 +9,8 @@
   {
    "caseId": "device.xtwinops-22/stock",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-s2-t0\u0007\u001b]1;931cd1b3-s2-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-s2-t0\u0007\u001b]1;eb945443-s2-i0\u0007\u001b[23;0t",
     "\u001b]2;pushed-title\u0007",
     "\u001b[22;0t",
     "\u001b]2;new-title\u0007",
@@ -25,17 +25,17 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-s2-t0","icon":"931cd1b3-s2-i0"}},
-    {"kind":"pinned-original","cursor":[9,42],"facts":{"title":"pushed-title","icon":"931cd1b3-s2-i0"}},
-    {"kind":"pinned-changed","cursor":[9,42],"facts":{"title":"new-title","icon":"931cd1b3-s2-i0"}},
-    {"kind":"pinned-restored","cursor":[9,42],"facts":{"title":"pushed-title","icon":"931cd1b3-s2-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-s2-t0","icon":"eb945443-s2-i0"}},
+    {"kind":"pinned-original","cursor":[9,42],"facts":{"title":"pushed-title","icon":"eb945443-s2-i0"}},
+    {"kind":"pinned-changed","cursor":[9,42],"facts":{"title":"new-title","icon":"eb945443-s2-i0"}},
+    {"kind":"pinned-restored","cursor":[9,42],"facts":{"title":"pushed-title","icon":"eb945443-s2-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/stock",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-s3-t0\u0007\u001b]1;931cd1b3-s3-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-s3-t0\u0007\u001b]1;eb945443-s3-i0\u0007\u001b[23;0t",
     "\u001b]2;pushed-title\u0007",
     "\u001b[22;0t",
     "\u001b]2;new-title\u0007",
@@ -50,17 +50,17 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-s3-t0","icon":"931cd1b3-s3-i0"}},
-    {"kind":"pinned-original","cursor":[9,42],"facts":{"title":"pushed-title","icon":"931cd1b3-s3-i0"}},
-    {"kind":"pinned-changed","cursor":[9,42],"facts":{"title":"new-title","icon":"931cd1b3-s3-i0"}},
-    {"kind":"pinned-restored","cursor":[9,42],"facts":{"title":"pushed-title","icon":"931cd1b3-s3-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-s3-t0","icon":"eb945443-s3-i0"}},
+    {"kind":"pinned-original","cursor":[9,42],"facts":{"title":"pushed-title","icon":"eb945443-s3-i0"}},
+    {"kind":"pinned-changed","cursor":[9,42],"facts":{"title":"new-title","icon":"eb945443-s3-i0"}},
+    {"kind":"pinned-restored","cursor":[9,42],"facts":{"title":"pushed-title","icon":"eb945443-s3-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/terminal-path",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-tp-t0\u0007\u001b]1;931cd1b3-tp-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-tp-t0\u0007\u001b]1;eb945443-tp-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
     "\u001b[23;0t"
    ],
@@ -71,16 +71,16 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"pinned-terminal","cursor":[9,42],"facts":{"title":"931cd1b3-tp-t0","icon":"931cd1b3-tp-i0"}}
+    {"kind":"pinned-terminal","cursor":[9,42],"facts":{"title":"eb945443-tp-t0","icon":"eb945443-tp-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-22/effect",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-e2-t0\u0007\u001b]1;931cd1b3-e2-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-e2-t0\u0007\u001b]1;eb945443-e2-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-e2-t1\u0007\u001b]1;931cd1b3-e2-i1\u0007",
+    "\u001b]2;eb945443-e2-t1\u0007\u001b]1;eb945443-e2-i1\u0007",
     "\u001b[23;0t"
    ],
    "barriers": [
@@ -91,22 +91,22 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-e2-t0","icon":"931cd1b3-e2-i0"}},
-    {"kind":"pushed","cursor":[9,42],"facts":{"title":"931cd1b3-e2-t0","icon":"931cd1b3-e2-i0"}},
-    {"kind":"changed","cursor":[9,42],"facts":{"title":"931cd1b3-e2-t1","icon":"931cd1b3-e2-i1"}},
-    {"kind":"popped","cursor":[9,42],"facts":{"title":"931cd1b3-e2-t0","icon":"931cd1b3-e2-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-e2-t0","icon":"eb945443-e2-i0"}},
+    {"kind":"pushed","cursor":[9,42],"facts":{"title":"eb945443-e2-t0","icon":"eb945443-e2-i0"}},
+    {"kind":"changed","cursor":[9,42],"facts":{"title":"eb945443-e2-t1","icon":"eb945443-e2-i1"}},
+    {"kind":"popped","cursor":[9,42],"facts":{"title":"eb945443-e2-t0","icon":"eb945443-e2-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-22/selectors",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-q2-t0\u0007\u001b]1;931cd1b3-q2-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-q2-t0\u0007\u001b]1;eb945443-q2-i0\u0007\u001b[23;0t",
     "\u001b[22;2t",
-    "\u001b]2;931cd1b3-q2-t1\u0007\u001b]1;931cd1b3-q2-i1\u0007",
+    "\u001b]2;eb945443-q2-t1\u0007\u001b]1;eb945443-q2-i1\u0007",
     "\u001b[23;0t",
     "\u001b[22;1t",
-    "\u001b]2;931cd1b3-q2-t3\u0007\u001b]1;931cd1b3-q2-i3\u0007",
+    "\u001b]2;eb945443-q2-t3\u0007\u001b]1;eb945443-q2-i3\u0007",
     "\u001b[23;0t"
    ],
    "barriers": [
@@ -120,21 +120,21 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-q2-t0","icon":"931cd1b3-q2-i0"}},
-    {"kind":"changed-1","cursor":[9,42],"facts":{"title":"931cd1b3-q2-t1","icon":"931cd1b3-q2-i1"}},
-    {"kind":"title-restored","cursor":[9,42],"facts":{"title":"931cd1b3-q2-t0","icon":"931cd1b3-q2-i1"}},
-    {"kind":"icon-restored","cursor":[9,42],"facts":{"title":"931cd1b3-q2-t3","icon":"931cd1b3-q2-i1"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-q2-t0","icon":"eb945443-q2-i0"}},
+    {"kind":"changed-1","cursor":[9,42],"facts":{"title":"eb945443-q2-t1","icon":"eb945443-q2-i1"}},
+    {"kind":"title-restored","cursor":[9,42],"facts":{"title":"eb945443-q2-t0","icon":"eb945443-q2-i1"}},
+    {"kind":"icon-restored","cursor":[9,42],"facts":{"title":"eb945443-q2-t3","icon":"eb945443-q2-i1"}}
    ]
   },
   {
    "caseId": "device.xtwinops-22/nested",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-n2-t0\u0007\u001b]1;931cd1b3-n2-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-n2-t0\u0007\u001b]1;eb945443-n2-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-n2-t1\u0007\u001b]1;931cd1b3-n2-i1\u0007",
+    "\u001b]2;eb945443-n2-t1\u0007\u001b]1;eb945443-n2-i1\u0007",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-n2-t2\u0007\u001b]1;931cd1b3-n2-i2\u0007",
+    "\u001b]2;eb945443-n2-t2\u0007\u001b]1;eb945443-n2-i2\u0007",
     "\u001b[23;0t",
     "\u001b[23;0t"
    ],
@@ -149,30 +149,30 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-n2-t0","icon":"931cd1b3-n2-i0"}},
-    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"931cd1b3-n2-t2","icon":"931cd1b3-n2-i2"}},
-    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"931cd1b3-n2-t1","icon":"931cd1b3-n2-i1"}},
-    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"931cd1b3-n2-t0","icon":"931cd1b3-n2-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-n2-t0","icon":"eb945443-n2-i0"}},
+    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"eb945443-n2-t2","icon":"eb945443-n2-i2"}},
+    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"eb945443-n2-t1","icon":"eb945443-n2-i1"}},
+    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"eb945443-n2-t0","icon":"eb945443-n2-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-22/overflow",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-o2-t0\u0007\u001b]1;931cd1b3-o2-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-o2-t0\u0007\u001b]1;eb945443-o2-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t1\u0007\u001b]1;931cd1b3-o2-i1\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t2\u0007\u001b]1;931cd1b3-o2-i2\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t3\u0007\u001b]1;931cd1b3-o2-i3\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t4\u0007\u001b]1;931cd1b3-o2-i4\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t5\u0007\u001b]1;931cd1b3-o2-i5\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t6\u0007\u001b]1;931cd1b3-o2-i6\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t7\u0007\u001b]1;931cd1b3-o2-i7\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t8\u0007\u001b]1;931cd1b3-o2-i8\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t9\u0007\u001b]1;931cd1b3-o2-i9\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t10\u0007\u001b]1;931cd1b3-o2-i10\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t11\u0007\u001b]1;931cd1b3-o2-i11\u0007\u001b[22;0t",
-    "\u001b]2;931cd1b3-o2-t12\u0007\u001b]1;931cd1b3-o2-i12\u0007",
+    "\u001b]2;eb945443-o2-t1\u0007\u001b]1;eb945443-o2-i1\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t2\u0007\u001b]1;eb945443-o2-i2\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t3\u0007\u001b]1;eb945443-o2-i3\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t4\u0007\u001b]1;eb945443-o2-i4\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t5\u0007\u001b]1;eb945443-o2-i5\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t6\u0007\u001b]1;eb945443-o2-i6\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t7\u0007\u001b]1;eb945443-o2-i7\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t8\u0007\u001b]1;eb945443-o2-i8\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t9\u0007\u001b]1;eb945443-o2-i9\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t10\u0007\u001b]1;eb945443-o2-i10\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t11\u0007\u001b]1;eb945443-o2-i11\u0007\u001b[22;0t",
+    "\u001b]2;eb945443-o2-t12\u0007\u001b]1;eb945443-o2-i12\u0007",
     "\u001b[23;0t",
     "\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t",
     "\u001b[23;0t",
@@ -200,20 +200,20 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-o2-t0","icon":"931cd1b3-o2-i0"}},
-    {"kind":"changed","cursor":[9,42],"facts":{"title":"931cd1b3-o2-t12","icon":"931cd1b3-o2-i12"}},
-    {"kind":"pop-1","cursor":[9,42],"facts":{"title":"931cd1b3-o2-t11","icon":"931cd1b3-o2-i11"}},
-    {"kind":"pop-10","cursor":[9,42],"facts":{"title":"931cd1b3-o2-t2","icon":"931cd1b3-o2-i2"}},
-    {"kind":"pop-11","cursor":[9,42],"facts":{"title":"931cd1b3-o2-t2","icon":"931cd1b3-o2-i2"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-o2-t0","icon":"eb945443-o2-i0"}},
+    {"kind":"changed","cursor":[9,42],"facts":{"title":"eb945443-o2-t12","icon":"eb945443-o2-i12"}},
+    {"kind":"pop-1","cursor":[9,42],"facts":{"title":"eb945443-o2-t11","icon":"eb945443-o2-i11"}},
+    {"kind":"pop-10","cursor":[9,42],"facts":{"title":"eb945443-o2-t2","icon":"eb945443-o2-i2"}},
+    {"kind":"pop-11","cursor":[9,42],"facts":{"title":"eb945443-o2-t2","icon":"eb945443-o2-i2"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/effect",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-e3-t0\u0007\u001b]1;931cd1b3-e3-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-e3-t0\u0007\u001b]1;eb945443-e3-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-e3-t1\u0007\u001b]1;931cd1b3-e3-i1\u0007",
+    "\u001b]2;eb945443-e3-t1\u0007\u001b]1;eb945443-e3-i1\u0007",
     "\u001b[23;0t"
    ],
    "barriers": [
@@ -224,17 +224,17 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-e3-t0","icon":"931cd1b3-e3-i0"}},
-    {"kind":"changed","cursor":[9,42],"facts":{"title":"931cd1b3-e3-t1","icon":"931cd1b3-e3-i1"}},
-    {"kind":"restored","cursor":[9,42],"facts":{"title":"931cd1b3-e3-t0","icon":"931cd1b3-e3-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-e3-t0","icon":"eb945443-e3-i0"}},
+    {"kind":"changed","cursor":[9,42],"facts":{"title":"eb945443-e3-t1","icon":"eb945443-e3-i1"}},
+    {"kind":"restored","cursor":[9,42],"facts":{"title":"eb945443-e3-t0","icon":"eb945443-e3-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/empty",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-z3-t0\u0007\u001b]1;931cd1b3-z3-i0\u0007\u001b[23;0t",
-    "\u001b]2;931cd1b3-z3-t1\u0007\u001b]1;931cd1b3-z3-i1\u0007",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-z3-t0\u0007\u001b]1;eb945443-z3-i0\u0007\u001b[23;0t",
+    "\u001b]2;eb945443-z3-t1\u0007\u001b]1;eb945443-z3-i1\u0007",
     "\u001b[23;0t\u001b[23;1t\u001b[23;2t"
    ],
    "barriers": [
@@ -244,22 +244,22 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-z3-t0","icon":"931cd1b3-z3-i0"}},
-    {"kind":"changed","cursor":[9,42],"facts":{"title":"931cd1b3-z3-t1","icon":"931cd1b3-z3-i1"}},
-    {"kind":"empty-pop","cursor":[9,42],"facts":{"title":"931cd1b3-z3-t1","icon":"931cd1b3-z3-i1"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-z3-t0","icon":"eb945443-z3-i0"}},
+    {"kind":"changed","cursor":[9,42],"facts":{"title":"eb945443-z3-t1","icon":"eb945443-z3-i1"}},
+    {"kind":"empty-pop","cursor":[9,42],"facts":{"title":"eb945443-z3-t1","icon":"eb945443-z3-i1"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/selectors",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-q3-t0\u0007\u001b]1;931cd1b3-q3-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-q3-t0\u0007\u001b]1;eb945443-q3-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-q3-t1\u0007\u001b]1;931cd1b3-q3-i1\u0007",
+    "\u001b]2;eb945443-q3-t1\u0007\u001b]1;eb945443-q3-i1\u0007",
     "\u001b[23;1t",
     "\u001b[23;2t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-q3-t3\u0007\u001b]1;931cd1b3-q3-i3\u0007",
+    "\u001b]2;eb945443-q3-t3\u0007\u001b]1;eb945443-q3-i3\u0007",
     "\u001b[23;2t",
     "\u001b[23;1t"
    ],
@@ -276,23 +276,23 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-q3-t0","icon":"931cd1b3-q3-i0"}},
-    {"kind":"changed-1","cursor":[9,42],"facts":{"title":"931cd1b3-q3-t1","icon":"931cd1b3-q3-i1"}},
-    {"kind":"icon-popped","cursor":[9,42],"facts":{"title":"931cd1b3-q3-t1","icon":"931cd1b3-q3-i0"}},
-    {"kind":"title-after-consumed","cursor":[9,42],"facts":{"title":"931cd1b3-q3-t1","icon":"931cd1b3-q3-i0"}},
-    {"kind":"title-popped","cursor":[9,42],"facts":{"title":"931cd1b3-q3-t1","icon":"931cd1b3-q3-i3"}},
-    {"kind":"icon-after-consumed","cursor":[9,42],"facts":{"title":"931cd1b3-q3-t1","icon":"931cd1b3-q3-i3"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-q3-t0","icon":"eb945443-q3-i0"}},
+    {"kind":"changed-1","cursor":[9,42],"facts":{"title":"eb945443-q3-t1","icon":"eb945443-q3-i1"}},
+    {"kind":"icon-popped","cursor":[9,42],"facts":{"title":"eb945443-q3-t1","icon":"eb945443-q3-i0"}},
+    {"kind":"title-after-consumed","cursor":[9,42],"facts":{"title":"eb945443-q3-t1","icon":"eb945443-q3-i0"}},
+    {"kind":"title-popped","cursor":[9,42],"facts":{"title":"eb945443-q3-t1","icon":"eb945443-q3-i3"}},
+    {"kind":"icon-after-consumed","cursor":[9,42],"facts":{"title":"eb945443-q3-t1","icon":"eb945443-q3-i3"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/lifo",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-l3-t0\u0007\u001b]1;931cd1b3-l3-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-l3-t0\u0007\u001b]1;eb945443-l3-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-l3-t1\u0007\u001b]1;931cd1b3-l3-i1\u0007",
+    "\u001b]2;eb945443-l3-t1\u0007\u001b]1;eb945443-l3-i1\u0007",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-l3-t2\u0007\u001b]1;931cd1b3-l3-i2\u0007",
+    "\u001b]2;eb945443-l3-t2\u0007\u001b]1;eb945443-l3-i2\u0007",
     "\u001b[23;0t",
     "\u001b[23;0t",
     "\u001b[23;0t"
@@ -309,22 +309,22 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-l3-t0","icon":"931cd1b3-l3-i0"}},
-    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"931cd1b3-l3-t2","icon":"931cd1b3-l3-i2"}},
-    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"931cd1b3-l3-t1","icon":"931cd1b3-l3-i1"}},
-    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"931cd1b3-l3-t0","icon":"931cd1b3-l3-i0"}},
-    {"kind":"popped-3","cursor":[9,42],"facts":{"title":"931cd1b3-l3-t0","icon":"931cd1b3-l3-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-l3-t0","icon":"eb945443-l3-i0"}},
+    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"eb945443-l3-t2","icon":"eb945443-l3-i2"}},
+    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"eb945443-l3-t1","icon":"eb945443-l3-i1"}},
+    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"eb945443-l3-t0","icon":"eb945443-l3-i0"}},
+    {"kind":"popped-3","cursor":[9,42],"facts":{"title":"eb945443-l3-t0","icon":"eb945443-l3-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/mixed",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-m3-t0\u0007\u001b]1;931cd1b3-m3-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-m3-t0\u0007\u001b]1;eb945443-m3-i0\u0007\u001b[23;0t",
     "\u001b[22;2t",
-    "\u001b]2;931cd1b3-m3-t1\u0007\u001b]1;931cd1b3-m3-i1\u0007",
+    "\u001b]2;eb945443-m3-t1\u0007\u001b]1;eb945443-m3-i1\u0007",
     "\u001b[22;1t",
-    "\u001b]2;931cd1b3-m3-t2\u0007\u001b]1;931cd1b3-m3-i2\u0007",
+    "\u001b]2;eb945443-m3-t2\u0007\u001b]1;eb945443-m3-i2\u0007",
     "\u001b[23;0t",
     "\u001b[23;0t"
    ],
@@ -339,26 +339,26 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-m3-t0","icon":"931cd1b3-m3-i0"}},
-    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"931cd1b3-m3-t2","icon":"931cd1b3-m3-i2"}},
-    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"931cd1b3-m3-t0","icon":"931cd1b3-m3-i1"}},
-    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"931cd1b3-m3-t0","icon":"931cd1b3-m3-i1"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-m3-t0","icon":"eb945443-m3-i0"}},
+    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"eb945443-m3-t2","icon":"eb945443-m3-i2"}},
+    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"eb945443-m3-t0","icon":"eb945443-m3-i1"}},
+    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"eb945443-m3-t0","icon":"eb945443-m3-i1"}}
    ]
   },
   {
    "caseId": "device.xtwinops-22/alternate-screen",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-a2-t0\u0007\u001b]1;931cd1b3-a2-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-a2-t0\u0007\u001b]1;eb945443-a2-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
     "\u001b[?1049h",
-    "\u001b]2;931cd1b3-a2-t1\u0007\u001b]1;931cd1b3-a2-i1\u0007",
+    "\u001b]2;eb945443-a2-t1\u0007\u001b]1;eb945443-a2-i1\u0007",
     "\u001b[?1049l",
     "\u001b[23;0t",
     "\u001b[?1049h",
     "\u001b[22;0t",
     "\u001b[?1049l",
-    "\u001b]2;931cd1b3-a2-t2\u0007\u001b]1;931cd1b3-a2-i2\u0007",
+    "\u001b]2;eb945443-a2-t2\u0007\u001b]1;eb945443-a2-i2\u0007",
     "\u001b[?1049h",
     "\u001b[23;0t",
     "\u001b[?1049l"
@@ -380,20 +380,20 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-a2-t0","icon":"931cd1b3-a2-i0"}},
-    {"kind":"changed-1","cursor":[9,42],"facts":{"title":"931cd1b3-a2-t1","icon":"931cd1b3-a2-i1"}},
-    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"931cd1b3-a2-t0","icon":"931cd1b3-a2-i0"}},
-    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"931cd1b3-a2-t2","icon":"931cd1b3-a2-i2"}},
-    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"931cd1b3-a2-t0","icon":"931cd1b3-a2-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-a2-t0","icon":"eb945443-a2-i0"}},
+    {"kind":"changed-1","cursor":[9,42],"facts":{"title":"eb945443-a2-t1","icon":"eb945443-a2-i1"}},
+    {"kind":"popped-1","cursor":[9,42],"facts":{"title":"eb945443-a2-t0","icon":"eb945443-a2-i0"}},
+    {"kind":"changed-2","cursor":[9,42],"facts":{"title":"eb945443-a2-t2","icon":"eb945443-a2-i2"}},
+    {"kind":"popped-2","cursor":[9,42],"facts":{"title":"eb945443-a2-t0","icon":"eb945443-a2-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-22/decstr",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-d2-t0\u0007\u001b]1;931cd1b3-d2-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-d2-t0\u0007\u001b]1;eb945443-d2-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-d2-t1\u0007\u001b]1;931cd1b3-d2-i1\u0007",
+    "\u001b]2;eb945443-d2-t1\u0007\u001b]1;eb945443-d2-i1\u0007",
     "\u001b[!p",
     "\u001b[23;0t"
    ],
@@ -406,18 +406,18 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-d2-t0","icon":"931cd1b3-d2-i0"}},
-    {"kind":"changed","cursor":[9,42],"facts":{"title":"931cd1b3-d2-t1","icon":"931cd1b3-d2-i1"}},
-    {"kind":"popped","cursor":[9,42],"facts":{"title":"931cd1b3-d2-t0","icon":"931cd1b3-d2-i0"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-d2-t0","icon":"eb945443-d2-i0"}},
+    {"kind":"changed","cursor":[9,42],"facts":{"title":"eb945443-d2-t1","icon":"eb945443-d2-i1"}},
+    {"kind":"popped","cursor":[9,42],"facts":{"title":"eb945443-d2-t0","icon":"eb945443-d2-i0"}}
    ]
   },
   {
    "caseId": "device.xtwinops-23/ris",
    "feeds": [
-    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-931cd1b3\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_931cd1b366c985b5e7627f840ab90fe3",
-    "\u001b]2;931cd1b3-r3-t0\u0007\u001b]1;931cd1b3-r3-i0\u0007\u001b[23;0t",
+    "\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b[23;0t\u001b]0;TS-base-eb945443\u0007\u001b]7;file://localhost/ntilde-qa/title-stack-base\u0007\u001b[10;1HNTILDE_TS_eb945443a24f400b19563fb9bd363724",
+    "\u001b]2;eb945443-r3-t0\u0007\u001b]1;eb945443-r3-i0\u0007\u001b[23;0t",
     "\u001b[22;0t",
-    "\u001b]2;931cd1b3-r3-t1\u0007\u001b]1;931cd1b3-r3-i1\u0007",
+    "\u001b]2;eb945443-r3-t1\u0007\u001b]1;eb945443-r3-i1\u0007",
     "\u001bc",
     "\u001b[23;0t"
    ],
@@ -430,9 +430,9 @@
     "\u001b[?62;4;22c"
    ],
    "reads": [
-    {"kind":"base","cursor":[9,42],"facts":{"title":"931cd1b3-r3-t0","icon":"931cd1b3-r3-i0"}},
-    {"kind":"after-ris","cursor":[0,0],"facts":{"title":"931cd1b3-r3-t1","icon":"931cd1b3-r3-i1"}},
-    {"kind":"after-pop","cursor":[0,0],"facts":{"title":"931cd1b3-r3-t1","icon":"931cd1b3-r3-i1"}}
+    {"kind":"base","cursor":[9,42],"facts":{"title":"eb945443-r3-t0","icon":"eb945443-r3-i0"}},
+    {"kind":"after-ris","cursor":[0,0],"facts":{"title":"eb945443-r3-t1","icon":"eb945443-r3-i1"}},
+    {"kind":"after-pop","cursor":[0,0],"facts":{"title":"eb945443-r3-t1","icon":"eb945443-r3-i1"}}
    ]
   }
  ],

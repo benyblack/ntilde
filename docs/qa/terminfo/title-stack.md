@@ -114,7 +114,7 @@ Windows or Linux behavior, or any comparison with another terminal.
 
 ## Grading, receipt and tests
 
-`title-stack-grading.mjs` re-derives every report from the retained paired journal and the worker's run log; `title-stack-receipt.mjs` binds it (receipt schema 51, source
-policy v45) and refuses any retained byte that no longer rederives, including a typed unavailable record. Portable tests cover the oracle, ignored push and pop, wrong
+`title-stack-grading.mjs` re-derives every report from the retained paired journal and the worker's run log; `title-stack-receipt.mjs` binds it (receipt schema 52, source
+policy v46) and refuses any retained byte that no longer rederives, including a typed unavailable record. Portable tests cover the oracle, ignored push and pop, wrong
 selectors, wrong order, stale values, restoration of unselected fields, empty pops, depth over- and underflow, cross-case substitution, malformed or missing
 observations, identity mismatch, tampering and incomplete cleanup; synthetic fixtures are test-only. The frozen real-App publication is the evidence.

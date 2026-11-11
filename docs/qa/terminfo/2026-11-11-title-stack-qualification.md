@@ -60,17 +60,20 @@ presentation, and title sanitization.
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `926199a6` (arm64 Release, executable SHA-256 `f5814e51…9bf8`, assembly `e7467b18…ba0c`); scripts at commit
-`2e5879bc`; source policy v45 (300 files, manifest `f72cceec…cfea`); receipt schema 51; Node v24.22.2; owned run `931cd1b3…0fe3`; see
-[summary](2026-11-11-title-stack/summary.json) for the full context, worker, pane, settings (`6a7cb2c0…0eaf`) and geometry (40×140) bindings; stock run
-`a3d66791…52a1`, measured 2026-11-11T18:33Z on macOS 27.0.1. Predecessor suites were reconfirmed in the same run through the established runner: the receipt re-derived every
-earlier layer, every earlier benchmark suite's cases are supported (or their effect contracts supported), the five Core layers are receipt-bound by digest, the query suite
-reproduces its frozen 33 matched / 7 mismatched and the two findings reconfirm. Stock counts are re-collected in that run (not carried forward) and unchanged.
+App 0.13.0 (operator supplied) built from `926199a6` (arm64 Release, executable SHA-256 `f5814e51…9bf8`, assembly `e7467b18…ba0c`; production sources are identical on the
+merged main this run was restacked on); scripts at commit `af96ac61`; source policy v46 (305 files, manifest `d186227d…2570`); receipt schema 52; Node v24.22.2; owned run
+`eb945443…3724`; see [summary](2026-11-11-title-stack/summary.json) for the full context, worker, pane, settings (`71e7e5a3…8f00`) and geometry (40×140) bindings; stock run
+`f42bd6d4…d7fa`, measured 2026-11-11T19:07Z on macOS 27.0.1. Predecessor suites were reconfirmed in the same run through the established runner: the receipt re-derived every
+earlier layer (including the OSC 7/8 layer merged ahead of this one), every earlier benchmark suite's cases are supported (or their effect contracts supported), the five Core
+layers are receipt-bound by digest, the query suite reproduces its frozen 33 matched / 7 mismatched and the two findings reconfirm. Stock counts are re-collected in that run
+(not carried forward) and unchanged.
 
-Attempts, all retained with their actual reasons: the first run (`555fe8b3…`, no receipt) aborted at the first read after RIS because the shared validator forbids any history
-generation change; the second (`e21d4938…`) completed on uncommitted scripts; the third (`67ea8f7f…`, commit `3660e050`) completed but used all 64 captures of each observer,
-so a Codex review (P2) asked for settling headroom and the plan was trimmed to 58 reads; the fourth (`f88778d5…`, commit `2a35a3e3`) was clean in a local Codex review but is superseded because the pull request's SonarCloud analysis reported eleven findings, several in measured files, whose fixes changed the measured scripts; the published run is the fifth. Archives are in `2026-11-11-title-stack/superseded/`.
-A fresh run needs the shared desktop lock; this layer took policy v45 / receipt 51 concurrently with the OSC 7/8 layer, and whichever merges second restacks.
+Attempts, all retained with their actual reasons (archives in `2026-11-11-title-stack/superseded/`): the first run (`555fe8b3…`, no receipt) aborted at the first read after RIS
+because the shared validator forbids any history generation change; the second (`e21d4938…`) completed on uncommitted scripts; the third (`67ea8f7f…`, commit `3660e050`)
+completed but used all 64 captures of each observer, so a Codex review (P2) asked for settling headroom and the plan was trimmed to 58 reads; the fourth (`f88778d5…`, commit
+`2a35a3e3`) was clean in a local Codex review but is superseded because the pull request's SonarCloud analysis reported eleven findings, several in measured files; the fifth
+(`931cd1b3…`, commit `2e5879bc`, policy v45 / receipt 51) was clean everywhere but is superseded because the OSC 7/8 layer (PR 953), developed concurrently, merged first and took
+that policy and receipt slot, so this layer was restacked to policy v46 / receipt 52. The published run is the sixth; the same two cases passed with the same controls each time.
 
 ## Newly fixed versus newly qualified
 
