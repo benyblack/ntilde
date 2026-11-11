@@ -124,6 +124,10 @@ export function buildTextCursorPublication(base = root) {
     } finally { rmSync(temp, { recursive: true, force: true }); }
 }
 
+export function verifyTextCursorOutput(actual, expected, file) {
+    check(actual.replaceAll('\r\n', '\n') === expected, 'stale report: ' + file);
+}
+
 async function main() {
     const mode = process.argv[2];
     check(process.argv.length === 3 && ['--check', '--write', '--assert-current-source'].includes(mode), 'use --check, --write or --assert-current-source');
@@ -132,7 +136,7 @@ async function main() {
     for (const [file, content] of Object.entries({ 'report.json': reportText(report), 'report.md': readableTextCursorReport(report, mapping) })) {
         const path = join(root, textCursorPublication, file);
         if (mode === '--write') writeFileSync(path, content);
-        else check(existsSync(path) && readFileSync(path, 'utf8').replaceAll('\r\n', '\n') === content, 'stale report: ' + file);
+        else { check(existsSync(path), 'missing report: ' + file); verifyTextCursorOutput(readFileSync(path, 'utf8'), content, file); }
     }
     console.log(`Core results: ${report.totals.pass} pass / ${report.totals.fail} fail / ${report.totals.inconclusive} inconclusive; 80 exact rows.`);
 }
