@@ -106,6 +106,9 @@ const dynamicSets = targets => targets.map(([code, name]) => osc(`${code};${isol
 const osc104 = 'extensions.osc104-reset-palette', osc110 = 'extensions.osc110-reset-fg', osc111 = 'extensions.osc111-reset-bg', osc112 = 'extensions.osc112-reset-cursor';
 const dynamics = [[10, 'foreground'], [11, 'background'], [12, 'cursor']];
 const allThree = [{ code: 10 }, { code: 11 }, { code: 12 }];
+/** An unrelated palette slot (not drawn by the scene) overridden beside the dynamic colors, so a dynamic reset reaching the palette is caught. */
+const isolatedSlot = { code: 4, index: 5 };
+const isolatedSlotSet = osc('4;5;#d0c010');
 
 /** The experiments of a dynamic-color case: pinned, isolation (the other two overrides survive), and SGR default (39 or 49) versus the reset. */
 function dynamicExperiments(caseId, code, resetCode, name, sgrDefault, sgrSet, extras) {
@@ -118,9 +121,9 @@ function dynamicExperiments(caseId, code, resetCode, name, sgrDefault, sgrSet, e
         : { fg: { source: 'default' }, bg: { source: 'palette', index: 34 } }) };
     return [
         pinnedExperiment(caseId, code, resetCode, undefined, extras?.scene),
-        experiment({ id: 'isolation', caseId, queries: allThree, scene: extras?.scene,
-            label: `the ${name} override reset (ST spelling) while the other two dynamic colors stay overridden`,
-            stages: [stage('baseline', 'baseline'), stage('override', 'override', [...dynamicSets(others), ...dynamicSets(mine)]),
+        experiment({ id: 'isolation', caseId, queries: [...allThree, isolatedSlot], scene: extras?.scene,
+            label: `the ${name} override reset (ST spelling) while the other two dynamic colors and an unrelated palette slot stay overridden`,
+            stages: [stage('baseline', 'baseline'), stage('override', 'override', [...dynamicSets(others), ...dynamicSets(mine), isolatedSlotSet]),
                 stage('reset', 'reset', [osc(String(resetCode))], [], true)] }),
         ...(sgrDefault === null ? [] : [experiment({ id: 'sgr-default', caseId, queries: [{ code }], pixels: false,
             label: `SGR ${sgrDefault} changes the active pen, not the runtime ${sgrKind} default, and OSC ${resetCode} does not change the pen`,
@@ -134,9 +137,9 @@ function dynamicExperiments(caseId, code, resetCode, name, sgrDefault, sgrSet, e
 function cursorExperiments() {
     return [
         pinnedExperiment(osc112, 12, 112, undefined, { cursor: steadyBlock }),
-        experiment({ id: 'isolation', caseId: osc112, queries: allThree, scene: { cursor: steadyBlock },
-            label: 'the cursor override reset (ST spelling) while foreground and background stay overridden; the cursor keeps its steady block shape and visibility',
-            stages: [stage('baseline', 'baseline'), stage('override', 'override', [...dynamicSets(dynamics.filter(([code]) => code !== 12)), ...dynamicSets([[12, 'cursor']])]),
+        experiment({ id: 'isolation', caseId: osc112, queries: [...allThree, isolatedSlot], scene: { cursor: steadyBlock },
+            label: 'the cursor override reset (ST spelling) while foreground, background and an unrelated palette slot stay overridden; the cursor keeps its steady block shape and visibility',
+            stages: [stage('baseline', 'baseline'), stage('override', 'override', [...dynamicSets(dynamics.filter(([code]) => code !== 12)), ...dynamicSets([[12, 'cursor']]), isolatedSlotSet]),
                 stage('reset', 'reset', [osc('112')], [], true)] }),
         experiment({ id: 'hidden-beam', caseId: osc112, queries: [{ code: 12 }], scene: { cursor: steadyBeamHidden }, pixels: false,
             label: 'a hidden steady-beam cursor: the cursor color is set and reset, the shape stays beam, the cursor stays hidden',
@@ -153,6 +156,10 @@ function paletteExperiments() {
             label: 'five slots overridden (1, 9, 16, 200, 255); reset slot 1 alone, then 9 and 200 together, then the remaining 16 and 255, each time with the unrelated slots still overridden',
             stages: [stage('baseline', 'baseline'), stage('override', 'override', [slotsSet(slots)]),
                 stage('reset-one', 'reset', [osc('104;1')], [], true), stage('reset-two', 'reset', [osc('104;9;200')], [], true), stage('reset-rest', 'reset', [osc('104;16;255')])] }),
+        experiment({ id: 'isolation', caseId: osc104, queries: [{ code: 4, index: 5 }, { code: 4, index: 6 }, ...allThree], pixels: false,
+            label: 'slots 5 and 6 overridden beside the foreground, background and cursor; reset slot 5 alone, then the whole palette (ST spelling): the three dynamic colors must stay overridden',
+            stages: [stage('baseline', 'baseline'), stage('override', 'override', [osc('4;5;#d0c010;6;#10c0d0'), ...dynamicSets(dynamics)]),
+                stage('reset-one', 'reset', [osc('104;5')]), stage('reset-all', 'reset', [osc('104')])] }),
         experiment({ id: 'whole-palette', caseId: osc104, queries: wide.map(index => ({ code: 4, index })), scene: { fgIndex: 100, bgIndex: 231 }, term: bel,
             label: 'all 256 slots overridden, then reset with the parameterless whole-palette spelling ESC]104 BEL (a control: the pinned fixture resets slot 0 only)',
             stages: [stage('baseline', 'baseline'), stage('override', 'override', [slotsSet(allSlots)]), stage('reset', 'reset', [osc('104', bel)], [], true)] }),

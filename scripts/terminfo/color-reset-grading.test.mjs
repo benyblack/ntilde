@@ -54,7 +54,7 @@ test('the report re-derives every case from the journal: pinned replay, independ
     const evidence = syntheticColorResetEvidence();
     const value = report(evidence);
     assert.equal(value.suiteId, 'ntilde-owned-runtime-color-reset-graded-v1');
-    assert.equal(value.snapshots.length, 43);
+    assert.equal(value.snapshots.length, 47);
     assert.deepEqual(value.cases.map(item => item.conclusion.outcome), ['supported', 'supported', 'supported', 'supported']);
     for (const item of value.cases) {
         assert.equal(item.conclusion.pinnedTermless, 'supported');

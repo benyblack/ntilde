@@ -41,7 +41,7 @@ test('the observer reproduces a complete synthetic run frame for frame, and the 
     try {
         for (const frame of w.evidence.frames) await w.call(frame);
         assert.equal(w.observer.restored, true);
-        assert.equal(w.observer.frames.length, 43);
+        assert.equal(w.observer.frames.length, 47);
         for (const [index, frame] of w.observer.frames.entries()) assert.deepEqual(frame, w.evidence.frames[index], `frame ${index}`);
         for (const frame of w.observer.frames) assert.ok(existsSync(join(w.output, frame.pixel.file)));
         const run = cloneColorResetEvidence(w.evidence);
@@ -68,7 +68,7 @@ test('reads must follow the plan: case, experiment and stage, and exactly the pl
         const first = w.evidence.frames[2];
         await assert.rejects(w.call(first, { stageId: 'override' }), /Unexpected color-reset read/);
         await assert.rejects(w.call(first, { experimentId: 'isolation' }), /Unexpected color-reset read/);
-        await assert.rejects(w.call(first, { caseId: colorResetReadPlan[11].caseId }), /Unexpected color-reset read/);
+        await assert.rejects(w.call(first, { caseId: colorResetReadPlan[15].caseId }), /Unexpected color-reset read/);
         await assert.rejects(w.call(first, { queries: [] }), /Invalid owned color capture or query binding/);
         await assert.rejects(w.call(first, { queries: [{ ...first.queries[0], spec: { code: 10 } }] }), /Invalid owned color capture or query binding/);
         await assert.rejects(w.call(first, { queries: [{ ...first.queries[0], barrier: 'x' }] }), /Invalid owned color capture or query binding/);

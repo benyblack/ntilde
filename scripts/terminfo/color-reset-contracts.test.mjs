@@ -8,10 +8,10 @@ import { canonicalPalette } from './fixtures/sgr-palette-evidence.mjs';
 
 const outcomes = behavior => syntheticColorResetGrades(syntheticColorResetEvidence('a'.repeat(32), 'f'.repeat(64), behavior)).map(item => item.outcome);
 
-test('the contracts cover exactly the four pinned cases, in order, with 40 reads of 43 frames', () => {
+test('the contracts cover exactly the four pinned cases, in order, with 44 reads of 47 frames', () => {
     assert.deepEqual(colorResetCaseIds, ['extensions.osc104-reset-palette', 'extensions.osc110-reset-fg', 'extensions.osc111-reset-bg', 'extensions.osc112-reset-cursor']);
-    assert.deepEqual(colorResetContracts.map(item => colorResetReads(item)), [11, 10, 10, 9]);
-    assert.equal(colorResetReadPlan.length, 40);
+    assert.deepEqual(colorResetContracts.map(item => colorResetReads(item)), [15, 10, 10, 9]);
+    assert.equal(colorResetReadPlan.length, 44);
     for (const contract of colorResetContracts) {
         assert.equal(contract.roles.length, colorResetReads(contract));
         assert.equal(contract.experiments[0].id, 'pinned');
@@ -84,7 +84,12 @@ test('each experiment writes only what its stages say: the model reproduces the 
     const individual = states('individual-slots').map(overrideIndices);
     assert.deepEqual(individual, [[], [1, 9, 16, 200, 255], [9, 16, 200, 255], [16, 255], []]);
     assert.deepEqual(states('whole-palette').map(overrideIndices).map(list => list.length), [0, 256, 0]);
+    const isolated = states('isolation');
+    assert.deepEqual(isolated.map(overrideIndices), [[], [5, 6], [6], []]);
+    assert.deepEqual(isolated.map(state => [state.foreground !== null, state.background !== null, state.cursor !== null]), [[false, false, false], [true, true, true], [true, true, true], [true, true, true]],
+        'a palette reset of any kind leaves the three dynamic colors overridden');
     const fg = colorResetContracts[1].experiments.find(item => item.id === 'isolation');
+    assert.deepEqual(colorResetModel.overridesByStageOf(fg).map(overrideIndices), [[], [5], [5]], 'a dynamic-color reset leaves the unrelated palette slot overridden');
     assert.deepEqual(colorResetModel.overridesByStageOf(fg).map(state => [state.foreground !== null, state.background !== null, state.cursor !== null]),
         [[false, false, false], [true, true, true], [false, true, true]]);
     const cursor = colorResetContracts[3].experiments.find(item => item.id === 'isolation');
@@ -131,7 +136,7 @@ test('grading: a correct App is supported in every case; each injected defect is
     assert.deepEqual(outcomes({ ignoreReset: 'osc112' }), ['supported', 'supported', 'supported', 'unsupported']);
     assert.deepEqual(outcomes({ individualResetClearsAll: true }), ['unsupported', 'supported', 'supported', 'supported']);
     assert.deepEqual(outcomes({ wholeResetPartial: true }), ['unsupported', 'supported', 'supported', 'supported']);
-    assert.deepEqual(outcomes({ wrongTarget: true }), ['supported', 'unsupported', 'unsupported', 'unsupported']);
+    assert.deepEqual(outcomes({ wrongTarget: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     assert.deepEqual(outcomes({ sgr39ClearsOverride: true }), ['supported', 'unsupported', 'unsupported', 'supported']);
     assert.deepEqual(outcomes({ wrongTheme: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     assert.deepEqual(outcomes({ staleReplies: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);

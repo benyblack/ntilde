@@ -40,7 +40,7 @@ function appOverrides(spec, index, behavior) {
     if (resets && behavior.ignoreReset && spec.caseId.includes(behavior.ignoreReset) && index > 0) return states[Math.max(1, spec.stages.findIndex(item => item.kind === 'override'))];
     if (step.kind === 'reset' && behavior.individualResetClearsAll && spec.id === 'individual-slots') clone.palette.clear();
     if (step.kind === 'reset' && behavior.wholeResetPartial && spec.id === 'whole-palette') for (let slot = 16; slot < 256; slot++) clone.palette.set(slot, colorResetFixture.slotRgb(slot));
-    if (step.kind === 'reset' && behavior.wrongTarget && spec.id === 'isolation') { clone.background = null; clone.cursor = null; clone.foreground = null; }
+    if (step.kind === 'reset' && behavior.wrongTarget && spec.id === 'isolation') { clone.background = null; clone.cursor = null; clone.foreground = null; clone.palette.clear(); }
     if (step.id === 'sgr' && behavior.sgr39ClearsOverride) { clone.foreground = null; clone.background = null; }
     return clone;
 }
