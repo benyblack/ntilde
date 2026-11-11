@@ -124,20 +124,24 @@ export async function collectErase({ config, fence, owner }) {
 }
 export class EraseObserver extends OwnedCellObserver {
     async capture(budget) {
-        const first = await super.capture(budget), second = await super.capture(budget);
+        const first = await super.capture(budget);
+        const second = await super.capture(budget);
         this.lastAttempt = { first, second };
         check(same(first, second), 'paired reads disagree');
         return first;
     }
     async handleRequest(request, budget) {
-        if (request.kind === 'ce-read') {
-            const cpr = validateCursorReport(request.cpr);
-            check(cpr.barrier === request.barrier, 'CPR barrier mismatch');
-            const result = await super.handle(request.kind, budget, request.barrier);
-            this.frames.at(-1).cpr = cpr;
-            return result;
+        if (request.kind !== 'ce-read') {
+            check(request.cpr === undefined, 'unexpected CPR');
+            return super.handle(request.kind, budget, request.barrier);
         }
-        check(request.cpr === undefined, 'unexpected CPR');
-        return super.handle(request.kind, budget, request.barrier);
+        return this.captureWithCursorReport(request, budget);
+    }
+    async captureWithCursorReport(request, budget) {
+        const cpr = validateCursorReport(request.cpr);
+        check(cpr.barrier === request.barrier, 'CPR barrier mismatch');
+        const result = await super.handle(request.kind, budget, request.barrier);
+        this.frames.at(-1).cpr = cpr;
+        return result;
     }
 }

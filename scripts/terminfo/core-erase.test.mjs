@@ -8,10 +8,10 @@ import { spawnSync } from 'node:child_process';
 import { routedPrefixSource } from './fixtures/private-clipboard-receipt.mjs';
 import { includesCoreEraseEvidence, checkCoreEraseEvidence } from './core-erase-receipt.mjs';
 import { extractOwnedArchive, loadMapping, root } from '../terminfo-core-results.mjs';
-import { snapshotHash } from './agent-observer.mjs';
+import { snapshotHash, OwnedCellObserver } from './agent-observer.mjs';
 import { deriveEraseCoreReport } from '../terminfo-core-erase-results.mjs';
 import { loadTextCursorMeasurement, textCursorPublication } from '../terminfo-core-text-cursor-results.mjs';
-import { specimens, erasePlan, gradeErase, buildEraseReport, eraseSuiteId, eraseNonce } from './core-erase.mjs';
+import { specimens, erasePlan, gradeErase, buildEraseReport, eraseSuiteId, eraseNonce, EraseObserver } from './core-erase.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'nt-ce-'));
 extractOwnedArchive(root, loadMapping(), dir);
@@ -142,4 +142,17 @@ test('historical synthetic source projection excludes newer erase imports on bot
         const text = ["import { collectErase } from './terminfo/core-erase.mjs';", "import { checkCoreEraseEvidence } from './core-erase-receipt.mjs';", "import { x } from './older.mjs';", ''].join(newline);
         assert.equal(routedPrefixSource(Buffer.from(text)).toString(), "import { x } from './older.mjs';\n");
     }
+});
+
+test('observer binds each cursor reply to the completed read and rejects a wrong barrier', async () => {
+    const original = OwnedCellObserver.prototype.handle, events = [], observer = Object.create(EraseObserver.prototype);
+    observer.frames = [];
+    OwnedCellObserver.prototype.handle = async function (kind, budget, barrier) { events.push([kind, budget, barrier]); this.frames.push({}); return 'ok'; };
+    try {
+        const barrier = '\x1b[?1;2c', cpr = { barrier, reply: { raw: '\x1b[1;1R', row: 1, col: 1 } };
+        assert.equal(await observer.handleRequest({ kind: 'ce-read', barrier, cpr }, 5), 'ok');
+        assert.deepEqual(events, [['ce-read', 5, barrier]]); assert.deepEqual(observer.frames[0].cpr, cpr);
+        await assert.rejects(observer.handleRequest({ kind: 'ce-read', barrier: 'wrong', cpr }, 5), /barrier mismatch/);
+        await assert.rejects(observer.handleRequest({ kind: 'ce-start', barrier, cpr }, 5), /unexpected CPR/);
+    } finally { OwnedCellObserver.prototype.handle = original; }
 });

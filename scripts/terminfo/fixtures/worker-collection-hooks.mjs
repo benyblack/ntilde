@@ -55,6 +55,7 @@ code.set(new URL('core-gaps.mjs', root).href, log + `export async function colle
 code.set(new URL('osc133-collector.mjs', root).href, log + `export async function collectOsc133() { record('Osc133'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
 code.set(new URL('color-reset-collector.mjs', root).href, log + `export async function collectColorResetGrading() { record('ColorReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('core-text-cursor.mjs', root).href, log + `export async function collectTextCursor() { record('TextCursor'); return { schemaVersion: 1, cases: [] }; }`);
+code.set(new URL('core-erase.mjs', root).href, log + `export async function collectErase() { record('CoreErase'); return { schemaVersion: 1, cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);
