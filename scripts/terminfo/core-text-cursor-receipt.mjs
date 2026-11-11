@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core text/cursor receipt: ' + message); };
 
 export function includesTextCursorEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41'].includes(context.sourceSnapshotPolicy) || context.textCursorSuiteId !== undefined || evidence.textCursorEvidence !== undefined
+    return ['readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42'].includes(context.sourceSnapshotPolicy) || context.textCursorSuiteId !== undefined || evidence.textCursorEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 

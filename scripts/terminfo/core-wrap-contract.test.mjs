@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { checkCoreWrapEvidence, includesCoreWrapEvidence } from './core-wrap-receipt.mjs';
 import { snapshotHash } from './agent-observer.mjs';
 import { specimen, wrapCases, wrapPlan, validateWrapFeeds, gradeWrap, buildWrapReport, deriveWrapEvidence } from './core-wrap-contract.mjs';
 
@@ -120,4 +125,36 @@ test('geometry and mode restoration are required in addition to the cell journal
     assert.throws(() => deriveWrapEvidence(frames, run, id, changed), /restored/);
     const wrong = structuredClone(geometry); wrong.actions[0].observed.terminalOutput.description = `${before.rows} rows; 140 columns; -opost`;
     assert.throws(() => deriveWrapEvidence(frames, run, id, wrong), /geometry/);
+});
+
+test('receipt rejects a missing declaration, altered or coherently rehashed fixture, and missing restoration', () => {
+    const { id, frames, run } = journal(), paneId = frames[0].paneId, dir = mkdtempSync(join(tmpdir(), 'nt-wrap-receipt-'));
+    const before = structuredClone(frames[0].screen); before.cols = 140; before.horizontalMargins.rightMargin = 139;
+    for (const field of ['attributeRuns', 'cellDetails', 'resolvedColors']) before[field][0].count = before.rows * 140;
+    const action = (index, cols) => ({ index, target: { rows: before.rows, cols }, observed: { runId: id, paneId,
+        observedAt: '2026-11-11T12:00:00.000Z', app: { rows: before.rows, cols, exact: true, layoutSettled: true },
+        terminalOutput: { tool: '/bin/stty', outputProcessing: false, description: `${before.rows} rows; ${cols} columns; -opost` } } });
+    const geometry = { paneId, original: { rows: before.rows, cols: 140 }, before, after: structuredClone(before), actions: [action(0, 80), action(1, 140)] };
+    const hash = b => createHash('sha256').update(b).digest('hex');
+    const write = (name, value) => { const b = Buffer.from(JSON.stringify(value)); writeFileSync(join(dir, name), b); return hash(b); };
+    try {
+        const proof = { proofs: [{ coreWrap: geometry, terminalOutput: { description: `${before.rows} rows; 140 columns; -opost` } }] };
+        const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v42', coreWrapSuiteId: run.suiteId };
+        write('cell-observations.json', { snapshots: [{ paneId, screen: before }] });
+        writeFileSync(join(dir, 'cw-snapshots.jsonl'), frames.map(f => JSON.stringify(f)).join('\n') + '\n');
+        const binding = { runId: id, suiteId: run.suiteId, file: 'cw-observations.json', runFile: 'cw-run.json',
+            geometryFile: 'cw-geometry.json', provisionalUntil: 'cell-receipt.json' };
+        binding.geometrySha256 = write(binding.geometryFile, geometry); binding.runSha256 = write(binding.runFile, run);
+        binding.sha256 = write(binding.file, deriveWrapEvidence(frames, run, id, geometry));
+        const evidence = { coreEraseEvidence: {}, tabStopsEvidence: {}, coreWrapEvidence: binding };
+        assert.ok(includesCoreWrapEvidence(dir, evidence, context, proof));
+        assert.doesNotThrow(() => checkCoreWrapEvidence(dir, evidence, id, context, proof));
+        const changed = structuredClone(run); changed.feeds[5] += '\n'; binding.runSha256 = write(binding.runFile, changed);
+        assert.throws(() => checkCoreWrapEvidence(dir, evidence, id, context, proof), /bytes changed/);
+        binding.runSha256 = write(binding.runFile, run);
+        delete evidence.tabStopsEvidence; assert.throws(() => checkCoreWrapEvidence(dir, evidence, id, context, proof), /predecessor/);
+        evidence.tabStopsEvidence = {}; const incomplete = structuredClone(geometry); incomplete.actions.pop();
+        binding.geometrySha256 = write(binding.geometryFile, incomplete); proof.proofs[0].coreWrap = incomplete;
+        assert.throws(() => checkCoreWrapEvidence(dir, evidence, id, context, proof), /missing actions/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
 });

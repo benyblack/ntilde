@@ -282,6 +282,8 @@
     "osc133ReceiptSourceSha256": "osc133-receipt.mjs",
     "coreEraseSourceSha256": "core-erase.mjs",
     "coreEraseReceiptSourceSha256": "core-erase-receipt.mjs",
+    "tabStopsSourceSha256": "core-tab-stops.mjs",
+    "tabStopsReceiptSourceSha256": "core-tab-stops-receipt.mjs",
     "coreWrapContractSourceSha256": "core-wrap-contract.mjs",
     "coreWrapCollectorSourceSha256": "core-wrap-collector.mjs",
     "coreWrapObserverSourceSha256": "core-wrap-observer.mjs",

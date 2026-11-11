@@ -2,6 +2,7 @@
 import { WrapObserver } from './terminfo/core-wrap-observer.mjs';
 import { deriveWrapEvidence } from './terminfo/core-wrap-contract.mjs';
 import { wrapSuiteId } from './terminfo/core-wrap-collector.mjs';
+import { tabStopsSuiteId, TabStopsObserver, buildTabStopsReport } from './terminfo/core-tab-stops.mjs';
 import { eraseSuiteId as coreEraseSuiteId, EraseObserver, buildEraseReport as buildCoreEraseReport } from './terminfo/core-erase.mjs';
 import { textCursorSuiteId, TextCursorObserver, buildTextCursorReport } from './terminfo/core-text-cursor.mjs';
 import { coreGapsSuiteId, coreGapsAdapterId, adaptCoreGapsCollector, CoreGapsObserver, buildCoreGapsReport } from './terminfo/core-gaps.mjs';
@@ -168,7 +169,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'crst', 'shi', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'crst', 'shi', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -1358,6 +1359,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let coreGapsEvidence;
     let textCursorEvidence;
     let coreEraseEvidence;
+    let tabStopsEvidence;
     let coreWrapEvidence;
     let routedInputEvidence;
     let osc133Evidence;
@@ -1492,6 +1494,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let coreGapsObserver;
         let textCursorObserver;
         let coreEraseObserver;
+        let tabStopsObserver;
         let coreWrapState;
         let colorResetObserver;
         let pixelObserver;
@@ -1522,7 +1525,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const image = statSync(executable);
         const context = {
             adapter: adapterId, adapterBundleSha256, upstreamBundleSha256, appVersion: args[3],
-            coreGapsSuiteId, coreGapsAdapterId, coreGapsBundleSha256, textCursorSuiteId, coreEraseSuiteId, coreWrapSuiteId: wrapSuiteId,
+            coreGapsSuiteId, coreGapsAdapterId, coreGapsBundleSha256, textCursorSuiteId, coreEraseSuiteId, tabStopsSuiteId, coreWrapSuiteId: wrapSuiteId,
             sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshot.sha256, sourceSnapshotRoot: sourceRepo,
             appVersionSource: 'operator supplied; not independently verified',
             initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))),
@@ -2399,7 +2402,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 return result;
             }
             if (prefix === 'cw') {
-                if (!coreEraseObserver?.restored) throw new Error('Core erase must restore before Core wrap.');
+                if (!tabStopsObserver?.restored) throw new Error('Core tab stops must restore before Core wrap.');
                 if (!coreWrapState) {
                     if (request.kind !== 'cw-geometry-start') throw new Error('Core wrap must start at original geometry.');
                     coreWrapState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0 };
@@ -2425,6 +2428,21 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     }
                     writeFileSync(join(output, 'cw-progress.json'), JSON.stringify({ phase: state.observer.phase, actions: state.observer.actions,
                         before: state.observer.before, after: state.observer.after, lastAttempt: state.observer.reader.lastAttempt }) + '\n', { mode: 0o600 });
+                }
+            }
+            if (prefix === 'ts') {
+                if (!coreEraseObserver?.restored) throw new Error('Core erase must restore before Core tab-stop observations.');
+                tabStopsObserver ??= new TabStopsObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_TS_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeBufferState: true, includeResolvedColors: true, includeHorizontalMargins: true,
+                    prefix: 'ts', expectedPaneId: cellObserver.paneId });
+                try {
+                    const result = await tabStopsObserver.handleRequest(request, budget);
+                    appendFileSync(join(output, 'ts-snapshots.jsonl'), JSON.stringify(tabStopsObserver.frames.at(-1)) + '\n');
+                    return result;
+                } catch (error) {
+                    writeFileSync(join(output, 'ts-failed-observation.json'), JSON.stringify({ attempt: tabStopsObserver.lastAttempt, error: String(error) }) + '\n');
+                    throw error;
                 }
             }
             if (prefix === 'ce') {
@@ -2695,6 +2713,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             coreEraseEvidence = { runId, suiteId: coreEraseSuiteId, file: 'ce-observations.json',
                 sha256: hash(readFileSync(join(output, 'ce-observations.json'))), runFile: 'ce-run.json', runSha256: hash(ceRunBytes),
                 provisionalUntil: 'cell-receipt.json' };
+            const tsRunBytes = readFileSync(join(output, 'ts-run.json'));
+            const tsFrames = readFileSync(join(output, 'ts-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            writeJson(join(output, 'ts-observations.json'), buildTabStopsReport(tsFrames, JSON.parse(tsRunBytes), runId));
+            tabStopsEvidence = { runId, suiteId: tabStopsSuiteId, file: 'ts-observations.json',
+                sha256: hash(readFileSync(join(output, 'ts-observations.json'))), runFile: 'ts-run.json', runSha256: hash(tsRunBytes),
+                provisionalUntil: 'cell-receipt.json' };
             if (!coreWrapState?.observer.restored) throw new Error('Core wrap did not restore.');
             const cwRunBytes = readFileSync(join(output, 'cw-run.json'));
             const cwFrames = readFileSync(join(output, 'cw-snapshots.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
@@ -2727,6 +2751,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.coreGapsEvidence = coreGapsEvidence;
             summary.textCursorEvidence = textCursorEvidence;
             summary.coreEraseEvidence = coreEraseEvidence;
+            summary.tabStopsEvidence = tabStopsEvidence;
             summary.coreWrapEvidence = coreWrapEvidence;
             summary.privateClipboardEvidence = privateClipboardEvidence;
             summary.queryEvidence = queryEvidence;
@@ -2815,7 +2840,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, coreEraseEvidence, coreWrapEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

@@ -8,13 +8,13 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core wrap receipt: ' + message); };
 export function includesCoreWrapEvidence(output, evidence, context, proof) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v41' || context.coreWrapSuiteId !== undefined
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v42' || context.coreWrapSuiteId !== undefined
         || evidence.coreWrapEvidence !== undefined || proof.proofs?.some(p => p.coreWrap !== undefined)
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 export function checkCoreWrapEvidence(output, evidence, runId, context, proof) {
     const binding = evidence.coreWrapEvidence;
-    check(context.coreWrapSuiteId === 'ntilde-core-wrap-v1' && evidence.coreEraseEvidence !== undefined, 'missing predecessor');
+    check(context.coreWrapSuiteId === 'ntilde-core-wrap-v1' && evidence.coreEraseEvidence !== undefined && evidence.tabStopsEvidence !== undefined, 'missing predecessor');
     check(binding?.runId === runId && binding.suiteId === context.coreWrapSuiteId
         && binding.file === 'cw-observations.json' && binding.runFile === 'cw-run.json'
         && binding.geometryFile === 'cw-geometry.json' && binding.provisionalUntil === 'cell-receipt.json', 'binding mismatch');

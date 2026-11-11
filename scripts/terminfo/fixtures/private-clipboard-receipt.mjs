@@ -31,7 +31,7 @@ const writerFor = output => (file, value) => writeFileSync(join(output, file), J
 export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?core-wrap-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?core-erase(?:-receipt)?\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+|osc133-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
@@ -39,7 +39,7 @@ export function legacyPrefixSource(bytes) {
 export function routedPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?core-wrap-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?core-erase(?:-receipt)?\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+)\.mjs';\n/gm, ''));
 }
 

@@ -1,4 +1,5 @@
 import { collectWrap } from './core-wrap-collector.mjs';
+import { collectTabStops } from './core-tab-stops.mjs';
 import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
@@ -340,6 +341,8 @@ try {
         if (osc133Result.status === 'complete') writeFileSync(join(config.output, 'shi-run.json'), JSON.stringify(osc133Result.run) + '\n', { flag: 'wx', mode: 0o600 });
         const coreEraseRun = await collectCoreErase({ config, fence, owner });
         writeFileSync(join(config.output, 'ce-run.json'), JSON.stringify(coreEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const tabStopsRun = await collectTabStops({ config, fence, owner });
+        writeFileSync(join(config.output, 'ts-run.json'), JSON.stringify(tabStopsRun) + '\n', { flag: 'wx', mode: 0o600 });
         const coreWrapRun = await collectWrap({ config, fence, owner });
         writeFileSync(join(config.output, 'cw-run.json'), JSON.stringify(coreWrapRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });

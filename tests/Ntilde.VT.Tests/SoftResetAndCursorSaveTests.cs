@@ -69,6 +69,29 @@ public sealed class SoftResetAndCursorSaveTests
         Assert.Equal(0, parser.ExportState().Gl);
     }
 
+    /// <summary>RIS restores the power-up tab stops (every eighth column); DECSTR above leaves custom ones. The Core default-tab-stop
+    /// qualification relies on this reset path, so it is pinned here independently of the terminfo scripts. ESC c is spelled with
+    /// \u001b: a C# \x escape would swallow the following hex digit.</summary>
+    [Theory]
+    [InlineData("\u001b[3g\u001b[1;6H\u001bH\u001b[1;1H")]           // one custom stop at column 5, defaults cleared
+    [InlineData("\u001b[3g\u001b[1;1H")]                              // every stop cleared
+    [InlineData("\u001b[3g\u001b[1;5H\u001bH\u001b[1;21H\u001bH\u001b[1;1H")] // the qualification's custom set: columns 4 and 20
+    public void Full_reset_restores_default_tab_stops_after_custom_ones(string custom)
+    {
+        var buffer = new TerminalBuffer(40, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process(custom + "\t");
+        Assert.NotEqual(8, buffer.CursorCol);
+        parser.Process("\u001bc\t");
+        Assert.Equal(8, buffer.CursorCol);
+        Assert.Equal(0, buffer.CursorRow);
+        parser.Process("\t");
+        Assert.Equal(16, buffer.CursorCol);
+        parser.Process("\u001b[1;1H\t\tX");
+        Assert.Equal('X', Cell(buffer, 16, 0));
+        Assert.Equal(17, buffer.CursorCol);
+    }
+
     [Theory]
     [InlineData("\u001b[?6h", 6, 2)]
     [InlineData("\u001b[?7l", 7, 1)]
