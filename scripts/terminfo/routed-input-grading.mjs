@@ -17,7 +17,7 @@ const label = 'Routed-input';
 const derivedFrom = 'ntilde-owned-left-right-margins-grading-v1';
 const scope = 'Pinned terminfo.dev@4.0.0 input.x10-mouse, input.button-event-mouse and modes.application-keypad termless code (always inconclusive by design: '
     + 'mouseInputProbe validates no generated event or report; the keypad probe returns notTestedResult) replayed over mode values the child itself received as DECRQM replies, '
-    + 'preserved beside separately identified effect contracts graded from 58 declared Avalonia events routed through the production App input path in a disposable direct-local '
+    + 'preserved beside separately identified effect contracts graded from 60 declared Avalonia events routed through the production App input path in a disposable direct-local '
     + 'pane: exact child-received bytes from an independent raw stdin reader, literal protocol expectations cross-checked by an independent oracle, controls under the other '
     + 'tracking protocols and the numeric keypad, ordered FIFO capture barriers, and restoration. Generated App events are not physical keyboard or pointer input, App admission is '
     + 'not child receipt, and direct-local delivery does not qualify SSH, mux or Windows; no stock grades.';
@@ -48,7 +48,7 @@ function experimentsOf(caseId, plan, input, actions) {
         const { observation, index } = byId.get(item.id), app = actions[index].observed.app;
         return { id: item.id, role: item.roles[caseId], matched: observation.result === 'passed',
             event: item.event, modes: item.modes, setup: item.setup, expectedHex: item.expectedHex, actualHex: observation.actualHex,
-            oracleHex: oracleHex(item, plan[index - 1]), controlSnapshot: observation.controlSnapshot, snapshot: observation.snapshot, actionIndex: index,
+            oracleHex: oracleHex(item), controlSnapshot: observation.controlSnapshot, snapshot: observation.snapshot, actionIndex: index,
             appFacts: { eventDispatched: app.eventDispatched, handled: app.handled, inputSubmitted: app.inputSubmitted,
                 observationAvailable: app.observationAvailable, boundary: app.boundary } };
     });

@@ -26,7 +26,7 @@ test('a complete run carries the routed-input suffix: counts, adapter identity, 
     assert.equal(f.context.routedInputAdapterId, routedInputAdapterId);
     assert.equal(f.context.routedInputSuiteId, routedInputGradedSuiteId);
     assert.equal(f.evidence.inputEvidence.suiteId, inputPlanV2.suiteId);
-    assert.deepEqual(f.evidence.inputEvidence.counts, { passed: 58 });
+    assert.deepEqual(f.evidence.inputEvidence.counts, { passed: 60 });
     for (const name of predecessors) assert.ok(f.evidence[`${name}Evidence`] !== undefined, name);
 }));
 

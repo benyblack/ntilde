@@ -60,22 +60,24 @@ export function keypadReport({ applicationKeypad, kind, key, text, reserved }) {
     return key === 'enter' ? keypadText.enter : '';
 }
 
-/** The oracle's expectation for one plan case, or null when the case is not an oracle-covered mouse or keypad event. */
-export function oracleHex(item, previous) {
+/** The oracle's expectation for one plan case: the bytes its declared event must deliver to the child. */
+export function oracleHex(item) {
     const { event, modes } = item;
     if (event.kind.startsWith('mouse')) {
         return hex(xtermMouseReport({ tracking: modes.mouseTracking, sgr: modes.mouseSgr, kind: event.kind, button: event.button,
             modifiers: event.modifiers, wheelDelta: event.wheelDelta, column: event.column, row: event.row }));
     }
-    // Only a text commit right after a handled keypad key-down in application mode is a duplicate.
-    const reserved = event.kind === 'text' && modes.applicationKeypad && previous?.event.kind === 'keyDown'
-        && previous.modes.applicationKeypad && previous.event.key && keypadText[previous.event.key] === event.text;
-    return hex(keypadReport({ applicationKeypad: modes.applicationKeypad, kind: event.kind, key: event.key, text: event.text, reserved }));
+    const { applicationKeypad } = modes;
+    const down = keypadReport({ applicationKeypad, kind: event.kind, key: event.key, text: event.text });
+    if (event.kind !== 'keyDown' || event.text === undefined) return hex(down);
+    // A key-down that carries text also delivers the backend's TextInput for it: a handled keypad key (not Enter) reserved that text, an unhandled one did not.
+    const reserved = down !== '' && event.key !== 'enter';
+    return hex(down + keypadReport({ applicationKeypad, kind: 'text', text: event.text, reserved }));
 }
 
 /** Every plan literal must equal the independent oracle; returns the mismatching ids (empty when the plan is coherent). */
 export function oracleDisagreements(cases = makeRoutedInputCases(40, 140)) {
-    return cases.flatMap((item, index) => oracleHex(item, cases[index - 1]) === item.expectedHex ? [] : [item.id]);
+    return cases.flatMap(item => oracleHex(item) === item.expectedHex ? [] : [item.id]);
 }
 
 const absentEventNote = 'No generated input event and encoded report were validated';

@@ -10,7 +10,7 @@ import { checkImages, imagePlan, imageAction, imageReply, imageBoundScreen, imag
 /** No new action surface: worker emits bytes only after each parent ownership admission. */
 export class OwnedStaticImageObserver {
     constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, ...options }) {
-        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= 118);
+        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= 122);
         this.output = output; this.runId = options.nonce.slice(11); this.priorChallenges = [...priorChallenges];
         this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.frames = []; this.actions = []; this.states = new Map();
         this.next = 0; this.phase = 'start'; this.totalPixels = 0;

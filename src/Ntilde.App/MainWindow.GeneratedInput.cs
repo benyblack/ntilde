@@ -28,12 +28,14 @@ public partial class MainWindow
         cancellationToken.ThrowIfCancellationRequested();
         var pane = _paneOwnerTab.Keys.FirstOrDefault(candidate => candidate.PaneId == input.PaneId);
         var session = registration.ObservationSession;
-        bool Matches() => isCurrent() && pane != null && CanAgentResizePane(pane)
+        // The follow-up text of a key-down pair runs while that key's own one-shot text decision is pending, so only the entry check and
+        // the first event's lease include the pending-correlation test; the follow-up keeps every identity and currentness condition.
+        bool MatchesTarget() => isCurrent() && pane != null && CanAgentResizePane(pane)
             && pane.IsCurrentAgentRegistration(registration) && ReferenceEquals(pane.Buffer, registration.Buffer) && ReferenceEquals(pane.Session, session)
             && ReferenceEquals(registration.ObservationSession, session)
             && pane.TermView.MatchesGeneratedInputContext(registration.Buffer, session)
-            && pane.TermView.CanGenerateInputSynchronously(input.Column == null)
             && (input.Column == null || registration.Buffer.IsMouseReportingActive());
+        bool Matches() => MatchesTarget() && pane!.TermView.CanGenerateInputSynchronously(input.Column == null);
         if (_agentGeneratedInputInProgress || _agentPaneResizeInProgress || pane == null || !Matches()) return null;
         var view = pane.TermView;
         if (!TryObserveGeneratedInput(view, registration, input, false, null, out _)) return null;
@@ -44,6 +46,8 @@ public partial class MainWindow
         var modifiers = GeneratedModifiers(input.Modifiers);
         var args = CreateGeneratedInputEvent(view, input, modifiers, position);
         if (args == null) return null;
+        // A key-down that carries text also raises the backend's TextInput in the same dispatch, exercising the handled-key duplicate guard.
+        var followUp = input is { Kind: "keyDown", Text: not null } ? new TextInputEventArgs { RoutedEvent = InputElement.TextInputEvent, Text = input.Text, Source = view } : null;
         using var pointerLease = (args as PointerEventArgs)?.Pointer as Pointer;
         // No awaits between this final lease check and RaiseEvent. A cancelled queued callback cannot run later.
         cancellationToken.ThrowIfCancellationRequested();
@@ -51,10 +55,11 @@ public partial class MainWindow
         _agentGeneratedInputInProgress = true;
         bool inputSubmitted;
         bool accepted;
-        try { accepted = view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches(), out inputSubmitted); }
+        try { accepted = view.RaiseGeneratedInput(args, () => !cancellationToken.IsCancellationRequested && Matches(), out inputSubmitted,
+                followUp, () => !cancellationToken.IsCancellationRequested && MatchesTarget()); }
         finally { _agentGeneratedInputInProgress = false; }
         if (!accepted && !inputSubmitted) return null;
-        var facts = GeneratedDispatchFacts(input, args, position, inputSubmitted);
+        var facts = GeneratedDispatchFacts(input, args, position, inputSubmitted) with { TextHandled = followUp?.Handled };
         if (!TryNotifyGeneratedSubmission(inputSubmitted, onInputSubmitted)) return facts;
         return ObserveGeneratedInputAfterDispatch(view, registration, input, args, position, facts, Matches);
     }
@@ -97,7 +102,7 @@ public partial class MainWindow
         {
             if (!isCurrent() || !TryObserveGeneratedInput(view, registration, input, args.Handled, position, out var observed)
                 || observed == null || !isCurrent()) return facts;
-            return observed with { Modifiers = facts.Modifiers, InputSubmitted = facts.InputSubmitted };
+            return observed with { Modifiers = facts.Modifiers, InputSubmitted = facts.InputSubmitted, TextHandled = facts.TextHandled };
         }
         catch (Exception)
         {

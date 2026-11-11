@@ -26,7 +26,7 @@ test('measured child bytes that match every literal grade supported beside incon
     assert.equal(keypad.pinned.response, '{"on":true,"off":true}');
     assert.equal(keypad.pinned.notTested.reason, 'no-semantic-observable');
     assert.deepEqual(keypad.served.sources, ['input.keypad.application.0', 'input.keypad.restore.deckpnm.enter']);
-    assert.equal(report.restoredSnapshot, 118);
+    assert.equal(report.restoredSnapshot, 122);
 });
 
 for (const [label, id, hex, caseId] of [
@@ -44,9 +44,10 @@ for (const [label, id, hex, caseId] of [
     ['a wrong modifier mapping in 1002 motion', 'mouse.button.move.middle.shiftalt.raw', '1b5b4d2d8023', 'input.button-event-mouse'],
     ['1002 release missing', 'mouse.button.release.left.raw', '', 'input.button-event-mouse'],
     ['keypad Enter sent as a CR in application mode', 'keypad.application.enter', '0d', 'modes.application-keypad'],
-    ['keypad digit sent twice (key and duplicate text)', 'keypad.application.7.text.duplicate', '37', 'modes.application-keypad'],
+    ['keypad digit sent twice (key and duplicate text)', 'keypad.application.7.withText', '1b4f7737', 'modes.application-keypad'],
+    ['keypad operator text delivered beside its sequence', 'keypad.application.add.withText', '1b4f6b2b', 'modes.application-keypad'],
     ['key-up sending text', 'keypad.application.7.keyUp', '37', 'modes.application-keypad'],
-    ['text after release suppressed', 'keypad.application.7.text.afterUp', '', 'modes.application-keypad'],
+    ['standalone text suppressed in application mode', 'keypad.application.7.text.standalone', '', 'modes.application-keypad'],
     ['application sequence surviving DECKPNM', 'keypad.restore.deckpnm.enter', '1b4f4d', 'modes.application-keypad'],
     ['DECRST 66 ignored', 'keypad.decnkm.reset.enter', '1b4f4d', 'modes.application-keypad'],
     ['a physical keypad key lost', 'keypad.application.divide', '', 'modes.application-keypad'],
@@ -66,6 +67,7 @@ for (const [label, id, hex, cases] of [
     ['a 1003 hover control that reports nothing', 'mouse.any.hover.raw.control', '', ['input.button-event-mouse']],
     ['a normal-motion control that reports', 'mouse.normal.move.suppressed', '1b5b4d408023', ['input.x10-mouse', 'input.button-event-mouse']],
     ['a numeric Enter control that sends SS3', 'keypad.normal.enter', '1b4f4d', ['modes.application-keypad']],
+    ['a numeric digit control that is dropped', 'keypad.normal.7.withText', '', ['modes.application-keypad']],
 ]) test('an invalid control (' + label + ') leaves the dependent benchmarks inconclusive, never unsupported', () => {
     const report = build(withActual(id, hex));
     for (const caseId of cases) {
@@ -77,7 +79,7 @@ for (const [label, id, hex, cases] of [
 
 for (const [label, mutate, pattern] of [
     ['a stale pane in one control frame', e => { e.frames[4].paneId = '22222222-2222-2222-2222-222222222222'; }, undefined],
-    ['a mode control that did not prove 9', e => { e.frames[2 + 2 * 24].capture.hex = inputModeReplyHex({ applicationKeypad: false, mouseTracking: 1000, mouseSgr: false, kittyKeyboardFlags: 0 }); }, undefined],
+    ['a mode control that did not prove 9', e => { e.frames[2 + 2 * 26].capture.hex = inputModeReplyHex({ applicationKeypad: false, mouseTracking: 1000, mouseSgr: false, kittyKeyboardFlags: 0 }); }, undefined],
     ['a missing raw barrier', e => { e.frames[5].capture.barrier = ''; }, undefined],
     ['a reused ordering challenge', e => Object.assign(e.frames[7].capture, { nonces: e.frames[5].capture.nonces, barrier: e.frames[5].capture.barrier }), undefined],
     ['another App identity in an action', e => { e.actions[10].observed.after.app.pid++; }, undefined],

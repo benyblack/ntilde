@@ -4,15 +4,18 @@ import { inputPlanV1, inputPlanV2, inputPlanForPolicy, inputAttemptCount, inputF
 import { inputReset, makeInputCases } from './input-cases.mjs';
 import { benchmarkIds, makeRoutedInputCases } from './routed-input-cases.mjs';
 import { oracleDisagreements } from './routed-input-contracts.mjs';
+import { queryPriorCounts } from './queries.mjs';
 
 const cases = makeRoutedInputCases(40, 140), byId = id => cases.find(item => item.id === 'input.' + id);
 
-test('the benchmark plan is 58 unique source-selected events within the per-reader capture limits', () => {
-    assert.equal(cases.length, 58);
+test('the benchmark plan is 60 unique source-selected events within the per-reader capture limits', () => {
+    assert.equal(cases.length, 60);
     assert.equal(new Set(cases.map(item => item.id)).size, cases.length);
     // 64 captures per phase reader include start/bind/finish; 128 raw attempts include the bind and the final restoration.
     assert.ok(cases.length + 3 <= 64 && inputAttemptCount(cases.length) <= 128);
-    assert.equal(inputFrameCount(cases.length), 119);
+    assert.equal(inputFrameCount(cases.length), 123);
+    // The query suite owes every input and image challenge, the image suite every input one: both limits track this plan.
+    assert.equal(inputAttemptCount(cases.length) + 30, queryPriorCounts.at(-1));
     for (const id of benchmarkIds) assert.ok(cases.some(item => item.roles[id] === 'required'), id);
     assert.ok(cases.every(item => Object.values(item.roles).every(role => ['required', 'control', 'label'].includes(role))));
     assert.ok(cases.every(item => item.event.modifiers >= 0 && item.event.modifiers <= 15));
@@ -57,11 +60,14 @@ test('keypad plan separates numeric controls, the pinned ESC = / ESC > pair, phy
     assert.equal(byId('keypad.decnkm.set.enter').setup, '\x1b[?66h');
     assert.equal(byId('keypad.decnkm.reset.enter').expectedHex, '0d');
     const index = id => cases.findIndex(item => item.id === 'input.' + id);
-    assert.deepEqual([1, 2, 3].map(offset => cases[index('keypad.application.7') + offset].id), ['input.keypad.application.7.text.duplicate',
-        'input.keypad.application.7.keyUp', 'input.keypad.application.7.text.afterUp']);
-    assert.equal(byId('keypad.application.7.text.duplicate').expectedHex, '');
-    assert.equal(byId('keypad.application.7.text.afterUp').expectedHex, '37');
-    assert.deepEqual(cases.filter(item => item.event.kind === 'keyDown' && item.modes.applicationKeypad && item.id.startsWith('input.keypad.application.')).length, 17);
+    assert.deepEqual([1, 2, 3].map(offset => cases[index('keypad.application.7') + offset].id), ['input.keypad.application.7.withText',
+        'input.keypad.application.7.keyUp', 'input.keypad.application.7.text.standalone']);
+    assert.deepEqual(byId('keypad.application.7.withText').event, { modifiers: 0, kind: 'keyDown', key: '7', text: '7' });
+    assert.equal(byId('keypad.application.7.withText').expectedHex, '1b4f77', 'the backend text for a handled key is not delivered again');
+    assert.equal(byId('keypad.application.add.withText').expectedHex, '1b4f6b');
+    assert.equal(byId('keypad.normal.7.withText').expectedHex, '37', 'numeric mode delivers the digit once, through its text');
+    assert.equal(byId('keypad.application.7.text.standalone').expectedHex, '37');
+    assert.equal(cases.filter(item => item.event.kind === 'keyDown' && item.event.text === undefined && item.modes.applicationKeypad && item.id.startsWith('input.keypad.application.')).length, 17);
     assert.ok(cases.filter(item => item.event.kind.startsWith('key') || item.event.kind === 'text').every(item => item.modes.mouseTracking === 0));
 });
 

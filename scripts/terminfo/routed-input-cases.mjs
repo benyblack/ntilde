@@ -15,7 +15,7 @@ const X10 = benchmarkIds[0], BUTTON = benchmarkIds[1], KEYPAD = benchmarkIds[2];
 
 const noKeypad = { applicationKeypad: false, kittyKeyboardFlags: 0 };
 
-/** The 29 mouse and 28 keypad experiments, in dispatch order. Roles: required (graded), control (must hold before a
+/** The 30 keypad and 30 mouse experiments, in dispatch order. Roles: required (graded), control (must hold before a
  * mismatch can be attributed) and label (reported, never graded). */
 export function makeRoutedInputCases(rows, cols) {
     if (!Number.isSafeInteger(rows) || rows < 6 || rows > 128
@@ -32,19 +32,25 @@ export function makeRoutedInputCases(rows, cols) {
     add('keypad.normal.text', '', { kind: 'text', text: '7' }, '7', keypad(false), { [KEYPAD]: 'control' });
     add('keypad.normal.keyUp', '', { kind: 'keyUp', key: '7' }, '', keypad(false), { [KEYPAD]: 'control' });
     add('keypad.normal.enter', '', { kind: 'keyDown', key: 'enter' }, '\r', keypad(false), { [KEYPAD]: 'control' });
+    // Numeric mode: the key-down is unhandled, so the backend's text for it is the one delivery (a key-down carrying text raises that
+    // TextInput right after it in the same dispatch).
+    add('keypad.normal.7.withText', '', { kind: 'keyDown', key: '7', text: '7' }, '7', keypad(false), { [KEYPAD]: 'control' });
     // The next case's setup is exactly the pinned probe's first feed (ESC =) and the one after the 17-key table is its second (ESC >).
     const table = [['0', 'p'], ['1', 'q'], ['2', 'r'], ['3', 's'], ['4', 't'], ['5', 'u'], ['6', 'v'], ['7', 'w'], ['8', 'x'], ['9', 'y'],
         ['decimal', 'n'], ['separator', 'l'], ['add', 'k'], ['subtract', 'm'], ['multiply', 'j'], ['divide', 'o'], ['enter', 'M']];
+    const keypadText = { 7: '7', add: '+' };
     let selected = false;
     for (const [key, final] of table) {
         add('keypad.application.' + key, selected ? '' : '\x1b=', { kind: 'keyDown', key }, '\x1bO' + final, keypad(true), { [KEYPAD]: 'required' }, false);
         selected = true;
+        if (key === '7' || key === 'add') {
+            // A handled keypad key reserves one TextInput callback: the backend's text for the same key-down must not duplicate it.
+            add(`keypad.application.${key}.withText`, '', { kind: 'keyDown', key, text: keypadText[key] }, '\x1bO' + final, keypad(true), { [KEYPAD]: 'required' }, false);
+        }
         if (key === '7') {
-            // A handled keypad key reserves one TextInput callback: the backend's following text must not duplicate it.
-            add('keypad.application.7.text.duplicate', '', { kind: 'text', text: '7' }, '', keypad(true), { [KEYPAD]: 'required' }, false);
             add('keypad.application.7.keyUp', '', { kind: 'keyUp', key: '7' }, '', keypad(true), { [KEYPAD]: 'required' }, false);
-            // The release expired the reservation: a later text-only commit is ordinary text, not a keypad sequence.
-            add('keypad.application.7.text.afterUp', '', { kind: 'text', text: '7' }, '7', keypad(true), { [KEYPAD]: 'required' }, false);
+            // Separate calls never share a decision: a standalone text commit after the release is ordinary text, not a keypad sequence.
+            add('keypad.application.7.text.standalone', '', { kind: 'text', text: '7' }, '7', keypad(true), { [KEYPAD]: 'required' }, false);
         }
     }
     add('keypad.application.enter.keyUp', '', { kind: 'keyUp', key: 'enter' }, '', keypad(true), { [KEYPAD]: 'required' }, false);
@@ -89,7 +95,8 @@ export function makeRoutedInputCases(rows, cols) {
     // input.button-event-mouse (DECSET 1002): press, held-button motion and release; motion with no button is suppressed.
     press('button.press.left.raw', 'left', 0, '\x1b[M \x80#', button, 1002);
     press('button.press.right.raw', 'right', 0, '\x1b[M"\x80#', button, 1002);
-    mouse('button.move.middle.shiftalt.raw', 1002, false, { kind: 'mouseMove', button: 'middle', modifiers: 5 }, '\x1b[MM\x80#', button);
+    // A different cell than the preceding held motion: the App reports held-button motion once per cell change.
+    mouse('button.move.middle.shiftalt.raw', 1002, false, { kind: 'mouseMove', button: 'middle', modifiers: 5, column: 97 }, '\x1b[MM\x81#', button);
     mouse('button.release.left.raw', 1002, false, { kind: 'mouseRelease', button: 'left' }, '\x1b[M#\x80#', button);
     mouse('button.hover.suppressed', 1002, false, { kind: 'mouseMove', button: 'none', column: 94 }, '', button);
     mouse('any.hover.raw.control', 1003, false, { kind: 'mouseMove', button: 'none', column: 94 }, '\x1b[MC~#', buttonControl);

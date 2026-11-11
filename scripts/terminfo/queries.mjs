@@ -14,8 +14,8 @@ export const legacyQueryPolicy = 'owned-exact-query-paired-raw-state-v1';
 export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v2';
 export const queryPolicies = Object.freeze([legacyQueryPolicy, ownedQueryPolicy]);
 /** Earlier challenges a query suite owes: every raw input capture plus the 30 image captures. 110 is the frozen 39-event input plan (80 captures);
- * 148 is the 58-event benchmark plan (118 captures). Any other count is not a plan this suite follows. */
-export const queryPriorCounts = Object.freeze([110, 148]);
+ * 152 is the 60-event benchmark plan (122 captures). Any other count is not a plan this suite follows. */
+export const queryPriorCounts = Object.freeze([110, 152]);
 export const pristineQuery = screen => typeof screen.cursorVisible === 'boolean' && pristineEditing({ ...screen, cursorVisible: true });
 export const checkQueries = value => { if (!value) throw new Error('Invalid or incomplete owned query evidence.'); };
 const check = checkQueries;

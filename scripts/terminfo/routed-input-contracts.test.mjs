@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { makeRoutedInputCases } from './routed-input-cases.mjs';
-import { contractExperiments, gradeRoutedInputCase, keypadReport, modeFromReplies, pinnedFeedCases, pinnedOutcome, replayRoutedInputPinned,
+import { contractExperiments, gradeRoutedInputCase, keypadReport, oracleHex, modeFromReplies, pinnedFeedCases, pinnedOutcome, replayRoutedInputPinned,
     routedInputCaseIds, routedInputRecordingContext, servedModes, trackingFromReplies, xtermMouseReport } from './routed-input-contracts.mjs';
 import { inputModeReplyHex } from './input-state.mjs';
 
@@ -37,6 +37,10 @@ test('oracle: keypad table, numeric Enter, releases and reserved duplicates', ()
     assert.equal(keypadReport({ applicationKeypad: true, kind: 'keyUp', key: '5' }), '');
     assert.equal(keypadReport({ applicationKeypad: true, kind: 'text', text: '5', reserved: true }), '');
     assert.equal(keypadReport({ applicationKeypad: true, kind: 'text', text: '5', reserved: false }), '5');
+    const pair = (applicationKeypad, key, text) => oracleHex({ event: { kind: 'keyDown', key, text }, modes: { applicationKeypad } });
+    assert.equal(pair(true, '7', '7'), Buffer.from('\x1bOw').toString('hex'), 'the handled key reserved its text');
+    assert.equal(pair(false, '7', '7'), '37', 'an unhandled key leaves its text as the one delivery');
+    assert.equal(pair(true, 'add', '+'), Buffer.from('\x1bOk').toString('hex'));
 });
 
 const plan = makeRoutedInputCases(40, 140);

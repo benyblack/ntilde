@@ -22,7 +22,7 @@ export async function collectStaticImages({ config, owner, fence, detachFence = 
         if (['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)) return { status: 'unavailable', reason: error.code };
         throw error;
     }
-    checkImages(Array.isArray(initial.priorChallenges) && initial.priorChallenges.length <= 118 && typeof initial.screen?.cursorVisible === 'boolean');
+    checkImages(Array.isArray(initial.priorChallenges) && initial.priorChallenges.length <= 122 && typeof initial.screen?.cursorVisible === 'boolean');
     if (detachFence) fence.detachInput();
     const prior = new Set(initial.priorChallenges);
     const capture = rawInputCapture(input, output, 4500, used => {
