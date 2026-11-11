@@ -1069,7 +1069,14 @@ function prepareRoutedInputCollector(tool, lrMarginsBundle, output) {
 
 /** Re-derive the routed-input report parent-side from the owned input journal and the layered pinned replay. */
 async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstream, inputBinding, seal) {
-    if (inputBinding?.file !== 'input-observations.json') throw new Error('Routed-input evidence requires the completed owned input suite.');
+    if (inputBinding?.status === 'unavailable') {
+        // The owned input suite could not run on this grid; the layer records the same typed unavailability and nothing else.
+        const markerBytes = readFileSync(join(output, 'rin-unavailable.json')), marker = JSON.parse(markerBytes);
+        if (marker.reason !== inputBinding.reason) throw new Error('Routed-input unavailable marker differs from the input suite.');
+        return { runId, suiteId: routedInputGradedSuiteId, file: 'rin-unavailable.json', sha256: hash(markerBytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(readFileSync(join(output, 'collector-rin.mjs'))), contractsVersion: routedInputContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    if (inputBinding?.file !== 'input-observations.json') throw new Error('Routed-input evidence requires the owned input suite.');
     const runBytes = readFileSync(join(output, 'rin-run.json'));
     const run = JSON.parse(runBytes);
     const lines = file => readFileSync(join(output, file), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
@@ -2495,7 +2502,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             metadataEvidence = metadataState?.unavailable ?? retainCellReport(output, metadataState?.observer, runId, buildMetadataReport, 'metadata-observations.json');
             inputEvidence = inputState?.unavailable ?? retainCellReport(output, inputState?.observer, runId,
                 () => inputState.observer.report, 'input-observations.json');
-            routedInputEvidence = await retainRoutedInputEvidence(output, runId, routedInputBundle, upstreamBundleSha256, inputEvidence, inputState.observer.seal);
+            routedInputEvidence = await retainRoutedInputEvidence(output, runId, routedInputBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
             queryEvidence = retainQueryReport(output, queryState, runId);

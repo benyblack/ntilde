@@ -98,3 +98,30 @@ test('the routed-input receipt refuses child bytes edited in the owned input jou
     rmSync(join(f.output, 'rin-run.json'));
     assert.throws(own(f), refusal);
 }));
+
+/** A run whose owned input suite was typed unavailable (a grid below the plan's 97 columns) keeps the earlier fallback: the layer carries the marker only. */
+const unavailable = f => {
+    const marker = { schemaVersion: 1, runId: f.context.runId, suiteId: routedInputGradedSuiteId, status: 'unavailable', reason: 'inputGeometryUnavailable', plannedCases: 3 };
+    writeFileSync(join(f.output, 'rin-unavailable.json'), JSON.stringify(marker) + '\n');
+    for (const file of ['rin-observations.json', 'rin-run.json']) rmSync(join(f.output, file));
+    f.evidence.inputEvidence = { runId: f.context.runId, suiteId: inputPlanV2.suiteId, file: 'input-unavailable.json', sha256: '0'.repeat(64), status: 'unavailable',
+        reason: 'inputGeometryUnavailable', counts: {}, provisionalUntil: 'cell-receipt.json' };
+    f.evidence.routedInputEvidence = { runId: f.context.runId, suiteId: routedInputGradedSuiteId, file: 'rin-unavailable.json', sha256: hash(readFileSync(join(f.output, 'rin-unavailable.json'))),
+        status: 'unavailable', reason: 'inputGeometryUnavailable', counts: {}, adapterBundleSha256: f.context.routedInputBundleSha256, contractsVersion: 1, provisionalUntil: 'cell-receipt.json' };
+    return marker;
+};
+test('an unavailable owned input suite leaves a typed unavailable layer instead of failing the run', () => privateClipboardReceiptFixture(f => {
+    unavailable(f);
+    assert.doesNotThrow(own(f));
+}));
+for (const [label, mutate] of [
+    ['a graded artifact kept beside the marker', f => writeFileSync(join(f.output, 'rin-run.json'), '{}\n')],
+    ['a changed reason', f => { f.evidence.routedInputEvidence.reason = 'other'; }],
+    ['counts claimed by an unavailable layer', f => { f.evidence.routedInputEvidence.counts = { 'inconclusive/supported': 3 }; }],
+    ['a changed marker', f => { writeFileSync(join(f.output, 'rin-unavailable.json'), JSON.stringify({ schemaVersion: 1, status: 'unavailable' }) + '\n'); }],
+    ['a stale adapter digest', f => { f.evidence.routedInputEvidence.adapterBundleSha256 = '0'.repeat(64); }],
+    ['a missing marker', f => rmSync(join(f.output, 'rin-unavailable.json'))],
+]) test('the unavailable routed-input receipt refuses ' + label, () => privateClipboardReceiptFixture(f => {
+    unavailable(f); mutate(f);
+    assert.throws(own(f), refusal);
+}));

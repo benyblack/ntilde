@@ -32,14 +32,14 @@ import { adaptColEditCollector } from './col-edit-grading-collector.mjs';
 import { adaptRectChecksumCollector } from './rect-checksum-grading-collector.mjs';
 import { adaptLrMarginsCollector } from './lr-margins-grading-collector.mjs';
 import { inputPlanV2, routedInputFirstPolicy } from './input-plan.mjs';
-import { routedInputContractsVersion, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
+import { routedInputCaseIds, routedInputContractsVersion, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
 import { adaptRoutedInputCollector, routedInputAdapterId } from './routed-input-grading-collector.mjs';
 import { buildRoutedInputGradingReport, routedInputCounts } from './routed-input-grading.mjs';
 export { routedInputCounts };
 /** SHA-256 of exact bytes. */
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns (the input journals belong to the owned input suite). */
-const files = ['rin-observations.json', 'rin-run.json', 'collector-rin.mjs'];
+const files = ['rin-observations.json', 'rin-run.json', 'rin-unavailable.json', 'collector-rin.mjs'];
 
 /** Whether a retained artifact path exists; any failure other than a missing entry is fatal. */
 const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
@@ -58,7 +58,7 @@ export function includesRoutedInputEvidence(output, evidence, context) {
 /** Every retained artifact must be a regular file inside the output directory: a symlink could point at valid evidence
  * that later disappears, leaving a run that can no longer be rederived. */
 function requireRegularFiles(output) {
-    for (const file of [...files, 'input-snapshots.jsonl', 'input-actions.jsonl', 'input-observations.json']) {
+    for (const file of ['rin-observations.json', 'rin-run.json', 'collector-rin.mjs', 'input-snapshots.jsonl', 'input-actions.jsonl', 'input-observations.json']) {
         if (!lstatSync(join(output, file)).isFile()) throw new Error(`routed-input artifact is not a regular file: ${file}`);
     }
 }
@@ -124,6 +124,24 @@ function requireLayeredDerivation(output, adapterBytes, context) {
 
 const jsonLines = (output, file) => readFileSync(join(output, file), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
 
+/** The owned input suite was typed unavailable (a grid below the plan's minimum): the layer carries the same marker, no run log and no report. */
+function checkUnavailable(output, evidence, runId, context) {
+    const binding = evidence.routedInputEvidence, input = evidence.inputEvidence;
+    const identity = binding && binding.runId === runId && binding.suiteId === routedInputGradedSuiteId && binding.file === 'rin-unavailable.json'
+        && binding.status === 'unavailable' && binding.reason === input.reason && binding.provisionalUntil === 'cell-receipt.json'
+        && binding.contractsVersion === routedInputContractsVersion && context.routedInputContractsVersion === binding.contractsVersion
+        && sameJson(binding.counts, {}) && isDigest(binding.sha256) && isDigest(binding.adapterBundleSha256);
+    if (!identity) throw new Error('Invalid routed-input unavailable receipt binding.');
+    if (present(join(output, 'rin-observations.json')) || present(join(output, 'rin-run.json'))) throw new Error('routed-input unavailable run retains graded artifacts.');
+    for (const file of ['rin-unavailable.json', 'collector-rin.mjs']) if (!lstatSync(join(output, file)).isFile()) throw new Error(`routed-input artifact is not a regular file: ${file}`);
+    const markerBytes = readFileSync(join(output, 'rin-unavailable.json')), marker = JSON.parse(markerBytes);
+    if (hash(markerBytes) !== binding.sha256 || marker.schemaVersion !== 1 || marker.runId !== runId || marker.suiteId !== routedInputGradedSuiteId
+        || marker.status !== 'unavailable' || marker.reason !== input.reason || marker.plannedCases !== routedInputCaseIds.length) throw new Error('routed-input unavailable marker changed.');
+    const adapterBytes = readFileSync(join(output, 'collector-rin.mjs'));
+    if (hash(adapterBytes) !== binding.adapterBundleSha256 || context.routedInputBundleSha256 !== binding.adapterBundleSha256) throw new Error('routed-input adapter bytes changed.');
+    requireLayeredDerivation(output, adapterBytes, context);
+}
+
 /** Full rederivation: owned input journal, run log, layered adapter bytes and conclusions. */
 export function checkRoutedInputEvidence(output, evidence, runId, context, proof) {
     if (context.routedInputAdapterId !== routedInputAdapterId || context.routedInputSuiteId !== routedInputGradedSuiteId) {
@@ -132,8 +150,11 @@ export function checkRoutedInputEvidence(output, evidence, runId, context, proof
     if (layerChain.some(([name]) => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
         throw new Error(`routed-input evidence requires ${predecessorList}.`);
     }
-    if (evidence.inputEvidence?.file !== 'input-observations.json' || evidence.inputEvidence.suiteId !== inputPlanV2.suiteId
-        || context.inputSuiteId !== inputPlanV2.suiteId) throw new Error('routed-input evidence requires the completed owned routed-input suite.');
+    if (evidence.inputEvidence?.suiteId !== inputPlanV2.suiteId || context.inputSuiteId !== inputPlanV2.suiteId) {
+        throw new Error('routed-input evidence requires the owned routed-input suite.');
+    }
+    if (evidence.inputEvidence.status === 'unavailable') return checkUnavailable(output, evidence, runId, context);
+    if (evidence.inputEvidence.file !== 'input-observations.json') throw new Error('routed-input evidence requires the completed owned routed-input suite.');
     const binding = requireBinding(evidence, runId, context);
     const { bytes, runBytes, adapterBytes } = readRetained(output, binding, context);
     requireLayeredDerivation(output, adapterBytes, context);
