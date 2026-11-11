@@ -283,5 +283,10 @@
     "coreEraseSourceSha256": "core-erase.mjs",
     "coreEraseReceiptSourceSha256": "core-erase-receipt.mjs",
     "tabStopsSourceSha256": "core-tab-stops.mjs",
-    "tabStopsReceiptSourceSha256": "core-tab-stops-receipt.mjs"
+    "tabStopsReceiptSourceSha256": "core-tab-stops-receipt.mjs",
+    "coreWrapContractSourceSha256": "core-wrap-contract.mjs",
+    "coreWrapCollectorSourceSha256": "core-wrap-collector.mjs",
+    "coreWrapObserverSourceSha256": "core-wrap-observer.mjs",
+    "coreWrapGeometrySourceSha256": "core-wrap-geometry.mjs",
+    "coreWrapReceiptSourceSha256": "core-wrap-receipt.mjs"
 }

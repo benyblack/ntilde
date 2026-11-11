@@ -1,3 +1,4 @@
+import { collectWrap } from './core-wrap-collector.mjs';
 import { collectTabStops } from './core-tab-stops.mjs';
 import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
@@ -342,6 +343,8 @@ try {
         writeFileSync(join(config.output, 'ce-run.json'), JSON.stringify(coreEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
         const tabStopsRun = await collectTabStops({ config, fence, owner });
         writeFileSync(join(config.output, 'ts-run.json'), JSON.stringify(tabStopsRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const coreWrapRun = await collectWrap({ config, fence, owner });
+        writeFileSync(join(config.output, 'cw-run.json'), JSON.stringify(coreWrapRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

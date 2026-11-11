@@ -61,3 +61,5 @@ registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);
 } });
+
+code.set(new URL('core-wrap-collector.mjs', root).href, log + `export async function collectWrap() { record('CoreWrap'); return { schemaVersion: 1, cases: [] }; }`);

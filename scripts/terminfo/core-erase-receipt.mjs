@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core erase receipt: ' + message); };
 
 export function includesCoreEraseEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v40' || context.coreEraseSuiteId !== undefined || evidence.coreEraseEvidence !== undefined
+    return ['readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42'].includes(context.sourceSnapshotPolicy) || context.coreEraseSuiteId !== undefined || evidence.coreEraseEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
