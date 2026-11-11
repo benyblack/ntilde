@@ -44,6 +44,51 @@ env:
   MSBUILDDISABLENODEREUSE: '1'
 
 jobs:
+  # Whether this PR can change a .NET or Rust result at all. Most PRs can; the terminfo
+  # qualification PRs change only node scripts and the evidence they publish (scripts/terminfo,
+  # docs/qa), and for those Build, every Unit Tests shard, Coverage, Analyzers, Format and the
+  # Rust FFI tests were some 30 jobs and 60 runner-minutes of every run - on an account whose 40
+  # concurrent jobs were full for 20 minutes at a time (2026-11-11 11:17-11:40 UTC, up to 71
+  # jobs queued), so every other PR's jobs waited for them too.
+  #
+  # The rule is scripts/ci/dotnet-gate-paths.sh: skip only when every changed path is on its
+  # list of paths that cannot matter to those jobs, so an unlisted path runs them. The jobs it
+  # gates carry `needs: dotnet_detect`; the ones after `build` skip with it. The Unit Tests
+  # roll-up takes a skip as a pass only when this job said run=false.
+  #
+  # Small on purpose, because Build waits for it: no full history. A pull_request checkout is
+  # GitHub's merge commit, so depth 2 brings its first parent, the base it was merged onto, and
+  # diffing the two gives exactly what merging this PR would change.
+  dotnet_detect:
+    name: .NET (detect)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes that can affect a .NET or Rust result
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "$EVENT_NAME: always runs the .NET jobs."
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          echo "Changed files against the base:"
+          echo "$changed"
+          result="$(bash scripts/ci/dotnet-gate-paths.sh <<<"$changed")"
+          echo "$result" >> "$GITHUB_OUTPUT"
+          echo ".NET gate decision: $result"
+
   # Native FFI unit/integration tests (handle registry, abuse suite, alloc balance).
   # The per-OS build job only `cargo build`s the crates; the cargo test suites
   # (rusty_ssh fail-closed handle tests + rusty_pty cancel tests) run here.
@@ -53,6 +98,8 @@ jobs:
   # entirely on Linux and were never actually exercised by CI.
   rust-ffi-tests:
     name: Rust FFI Tests (${{ matrix.os }})
+    needs: dotnet_detect
+    if: needs.dotnet_detect.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -267,6 +314,18 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/nuget_cache_path_tests.py
 
+      # dotnet_detect decides whether the .NET and Rust jobs run at all, and the Unit Tests
+      # roll-up passes their skip on its word: scripts/tests/dotnet_gate_paths_tests.py proves
+      # the path rule, the wiring and the roll-up's verdicts. Here rather than in dotnet_detect,
+      # which Build waits for. A PR the gate skips still runs this.
+      - name: Self-test the .NET gate
+        if: matrix.shard == 'rest'
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/dotnet_gate_paths_tests.py
+
   # Preserve the existing portable lane's bounded budget. Frozen v11 publication
   # rederivation runs independently on every CI event and gates the same required roll-up.
   query_publication_guards:
@@ -305,6 +364,8 @@ jobs:
 
   build:
     name: Build (${{ matrix.os }})
+    needs: dotnet_detect
+    if: needs.dotnet_detect.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -528,6 +589,8 @@ jobs:
   # only on a miss.
   analyzers:
     name: Analyzers
+    needs: dotnet_detect
+    if: needs.dotnet_detect.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -935,10 +998,12 @@ jobs:
   # it was sharded - "Unit Tests (<os>)" - so a branch-protection rule or anything else that
   # looks for that check keeps finding it. It fails unless every shard of every OS succeeded:
   # `needs` sees the matrix only as a whole. A shard skipped because `build` failed counts as a
-  # failure here, not as the pass a skipped required check would otherwise report.
+  # failure here, not as the pass a skipped required check would otherwise report. The one skip
+  # that passes is dotnet_detect's: when it said run=false (the PR cannot change a .NET result),
+  # the shards and Analyzers never ran, and only then does "skipped" count.
   unit_tests:
     name: Unit Tests (${{ matrix.os }})
-    needs: [build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, analyzers]
+    needs: [dotnet_detect, build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, analyzers]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -950,13 +1015,18 @@ jobs:
       - name: Every shard passed
         shell: bash
         env:
+          dotnet: ${{ needs.dotnet_detect.outputs.run }}
           result: ${{ needs.build_and_unit_tests.result }}
           scripts: ${{ needs.script_self_tests.result }}
           clipboard: ${{ needs.private_clipboard_owned.result }}
           publication: ${{ needs.query_publication_guards.result }}
           analyzers: ${{ needs.analyzers.result }}
         run: |
-          echo "Unit Tests shards: $result; script self-tests: $scripts; query publication: $publication; analyzers: $analyzers"
+          echo ".NET gate: ${dotnet:-<no decision>}; Unit Tests shards: $result; script self-tests: $scripts; query publication: $publication; analyzers: $analyzers"
+          if [ "$dotnet" = false ] && [ "$result" = skipped ] && [ "$analyzers" = skipped ]; then
+            echo "dotnet_detect: this PR cannot change a .NET result, so the shards and Analyzers did not run."
+            result=success; analyzers=success
+          fi
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$scripts" = success ] || { echo "::error::The CI script self-tests did not succeed ($scripts); see the 'Script self-tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$publication" = success ] || { echo "::error::The frozen query publication guards did not succeed ($publication); see the 'Query publication guards (<os>)' jobs."; exit 1; }
@@ -1170,6 +1240,8 @@ jobs:
   # unrelated to formatting.
   format:
     name: Format (whitespace)
+    needs: dotnet_detect
+    if: needs.dotnet_detect.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -1201,6 +1273,8 @@ jobs:
 
   coverage:
     name: Coverage (Ntilde.VT floor)
+    needs: dotnet_detect
+    if: needs.dotnet_detect.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # No `needs: [build]`. This job compiles from source and consumes nothing `build` produces
