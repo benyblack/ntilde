@@ -1,0 +1,481 @@
+{
+  "index": 42,
+  "caseId": "input.mouse.x10.move.suppressed",
+  "action": {
+    "index": 42,
+    "caseId": "input.mouse.x10.move.suppressed",
+    "observed": {
+      "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+      "runId": "aee54a96a4efae23d4e9189b11259e35",
+      "request": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mouseMove",
+        "button": "left",
+        "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf"
+      },
+      "rpcStarted": true,
+      "app": {
+        "eventDispatched": true,
+        "inputSubmitted": false,
+        "handled": true,
+        "boundary": "avalonia-routed",
+        "observationAvailable": true,
+        "rows": 40,
+        "cols": 140,
+        "viewRows": 40,
+        "viewCols": 140,
+        "column": 96,
+        "row": 3,
+        "x": 811.75,
+        "y": 46.25,
+        "modifiers": 0,
+        "applicationKeypad": false,
+        "mouseTracking": 9,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "before": {
+        "app": {
+          "pid": 13378,
+          "ppid": 13351,
+          "uid": 501,
+          "tty": "??",
+          "executable": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde"
+        },
+        "worker": {
+          "pid": 13383,
+          "ppid": 13378,
+          "uid": 501,
+          "tty": "ttys012",
+          "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+        },
+        "appCommand": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde --ntilde-terminfo-owner=aee54a96a4efae23d4e9189b11259e35 --ntilde-terminfo-private-clipboard=aee54a96a4efae23d4e9189b11259e35\n",
+        "workerCommand": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node /private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-QtYgRt/scripts/terminfo/worker.mjs /Users/behnam/.ntilde-qa/nt-ygedG2/worker.json --ntilde-terminfo-worker=aee54a96a4efae23d4e9189b11259e35\n",
+        "pane": {
+          "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+          "tabId": "724b1c2c-c4da-4cef-8710-f186de26c556",
+          "title": "MD-base-aee54a96",
+          "profileName": "terminfo disposable worker aee54a96a4efae23d4e9189b11259e35",
+          "kind": "local",
+          "rows": 40,
+          "cols": 140,
+          "isActive": true,
+          "status": "running",
+          "confidence": "precise"
+        },
+        "terminalOutput": {
+          "tool": "/bin/stty",
+          "outputProcessing": false,
+          "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+        }
+      },
+      "after": {
+        "app": {
+          "pid": 13378,
+          "ppid": 13351,
+          "uid": 501,
+          "tty": "??",
+          "executable": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde"
+        },
+        "worker": {
+          "pid": 13383,
+          "ppid": 13378,
+          "uid": 501,
+          "tty": "ttys012",
+          "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+        },
+        "appCommand": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde --ntilde-terminfo-owner=aee54a96a4efae23d4e9189b11259e35 --ntilde-terminfo-private-clipboard=aee54a96a4efae23d4e9189b11259e35\n",
+        "workerCommand": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node /private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-QtYgRt/scripts/terminfo/worker.mjs /Users/behnam/.ntilde-qa/nt-ygedG2/worker.json --ntilde-terminfo-worker=aee54a96a4efae23d4e9189b11259e35\n",
+        "pane": {
+          "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+          "tabId": "724b1c2c-c4da-4cef-8710-f186de26c556",
+          "title": "MD-base-aee54a96",
+          "profileName": "terminfo disposable worker aee54a96a4efae23d4e9189b11259e35",
+          "kind": "local",
+          "rows": 40,
+          "cols": 140,
+          "isActive": true,
+          "status": "running",
+          "confidence": "precise"
+        },
+        "terminalOutput": {
+          "tool": "/bin/stty",
+          "outputProcessing": false,
+          "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+        }
+      },
+      "postVerified": true,
+      "observedAt": "2026-11-11T10:04:36.220Z"
+    }
+  },
+  "control": {
+    "index": 86,
+    "kind": "input-control",
+    "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+    "screen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": [
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "cursorRow": 0,
+      "cursorCol": 42,
+      "cursorVisible": true,
+      "cellDetails": [
+        {
+          "overline": false,
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
+      "bufferState": {
+        "scrollTop": 0,
+        "scrollBottom": 39,
+        "originMode": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "alternateScreen": true,
+        "scrollbackLines": 0
+      },
+      "history": {
+        "startLine": 0,
+        "totalLines": 0,
+        "lines": []
+      }
+    },
+    "afterScreen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": [
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "cursorRow": 0,
+      "cursorCol": 42,
+      "cursorVisible": true,
+      "cellDetails": [
+        {
+          "overline": false,
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
+      "bufferState": {
+        "scrollTop": 0,
+        "scrollBottom": 39,
+        "originMode": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "alternateScreen": true,
+        "scrollbackLines": 0
+      },
+      "history": {
+        "startLine": 0,
+        "totalLines": 0,
+        "lines": []
+      }
+    },
+    "sha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
+    "afterSha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
+    "caseId": "input.mouse.x10.move.suppressed",
+    "actionIndex": null,
+    "capture": {
+      "hex": "1b5b3f36363b3224791b5b3f393b3124791b5b3f313030303b3224791b5b3f313030323b3224791b5b3f313030333b3224791b5b3f313030363b3224791b5b3f3075",
+      "byteLength": 66,
+      "barrier": "\u001b[?63044;0$y\u001b[?54030;0$y",
+      "nonces": [
+        63044,
+        54030
+      ]
+    }
+  },
+  "read": {
+    "index": 87,
+    "kind": "input-read",
+    "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+    "screen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": [
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "cursorRow": 0,
+      "cursorCol": 42,
+      "cursorVisible": true,
+      "cellDetails": [
+        {
+          "overline": false,
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
+      "bufferState": {
+        "scrollTop": 0,
+        "scrollBottom": 39,
+        "originMode": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "alternateScreen": true,
+        "scrollbackLines": 0
+      },
+      "history": {
+        "startLine": 0,
+        "totalLines": 0,
+        "lines": []
+      }
+    },
+    "afterScreen": {
+      "rows": 40,
+      "cols": 140,
+      "lines": [
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "cursorRow": 0,
+      "cursorCol": 42,
+      "cursorVisible": true,
+      "cellDetails": [
+        {
+          "overline": false,
+          "count": 5600,
+          "flags": 768,
+          "fg": -1,
+          "bg": -1,
+          "foregroundArgb": null,
+          "backgroundArgb": null,
+          "underlineStyle": 0,
+          "underlineColorIndex": -1,
+          "underlineArgb": null
+        }
+      ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
+      "bufferState": {
+        "scrollTop": 0,
+        "scrollBottom": 39,
+        "originMode": false,
+        "autoWrap": true,
+        "insertMode": false,
+        "pendingWrap": false,
+        "alternateScreen": true,
+        "scrollbackLines": 0
+      },
+      "history": {
+        "startLine": 0,
+        "totalLines": 0,
+        "lines": []
+      }
+    },
+    "sha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
+    "afterSha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
+    "caseId": "input.mouse.x10.move.suppressed",
+    "actionIndex": 42,
+    "capture": {
+      "hex": "",
+      "byteLength": 0,
+      "barrier": "\u001b[?46968;0$y\u001b[?39921;0$y",
+      "nonces": [
+        46968,
+        39921
+      ]
+    }
+  }
+}

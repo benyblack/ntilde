@@ -2,7 +2,7 @@
 import { OwnedCellObserver, snapshotHash } from './agent-observer.mjs';
 import { inspectQueryWitness } from './query-witness-frame.mjs';
 import { queryAction, queryBinding, queryBound, checkQueries as check,
-    queryPlan, queryPrior, queryScreen, validateQueryOwnership, pristineQuery, buildQueryReport, queryContext } from './queries.mjs';
+    queryPlan, queryPrior, queryPriorCounts, queryScreen, validateQueryOwnership, pristineQuery, buildQueryReport, queryContext } from './queries.mjs';
 
 export class OwnedQueryObserver {
     #binding; #attest; #readers; #prior; #used; #initial; #baseline; #expected; #checksumReport; #marginsReport;
@@ -11,7 +11,7 @@ export class OwnedQueryObserver {
         const { binding, attest, rpc, endpoint, appData, priorChallenges = [], checksumReport = false, marginsReport = false } = options;
         check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean'); this.#checksumReport = checksumReport; this.#marginsReport = marginsReport;
         this.#binding = queryBinding(binding); this.#prior = queryPrior(priorChallenges);
-        check(this.#prior.length === 110 && typeof attest === 'function'); this.#attest = attest; this.#used = new Set(this.#prior);
+        check(queryPriorCounts.includes(this.#prior.length) && typeof attest === 'function'); this.#attest = attest; this.#used = new Set(this.#prior);
         const facts = { appData, ownerPid: this.#binding.ownerPid, profileName: this.#binding.profileName,
             expectedPaneId: this.#binding.paneId, includeAttributes: true, includeCellDetails: true,
             includeCursorMode: true, includeOverline: true, includeBufferState: true };

@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v36';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v37';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -494,9 +494,21 @@ export const capturedV42SourceFiles = Object.freeze({
     coreIconWindowSourceSha256: "core-icon-window.cs",
 });
 
-// Frozen v43 runtime-color reset (OSC 104/110/111/112) grading scope; future experiments must create a distinct policy and map.
+// Frozen v43 routed-input (input.x10-mouse, input.button-event-mouse, modes.application-keypad) grading scope; future experiments must create a distinct policy and map.
 export const capturedV43SourceFiles = Object.freeze({
     ...capturedV42SourceFiles,
+    inputPlanSourceSha256: "input-plan.mjs",
+    routedInputCasesSourceSha256: "routed-input-cases.mjs",
+    routedInputContractsSourceSha256: "routed-input-contracts.mjs",
+    routedInputCollectorSourceSha256: "routed-input-collector.mjs",
+    routedInputGradingSourceSha256: "routed-input-grading.mjs",
+    routedInputGradingCollectorSourceSha256: "routed-input-grading-collector.mjs",
+    routedInputReceiptSourceSha256: "routed-input-receipt.mjs",
+});
+
+// Frozen v44 runtime-color reset (OSC 104/110/111/112) grading scope; future experiments must create a distinct policy and map.
+export const capturedV44SourceFiles = Object.freeze({
+    ...capturedV43SourceFiles,
     colorResetContractsSourceSha256: "color-reset-contracts.mjs",
     colorResetModelSourceSha256: "color-reset-model.mjs",
     colorResetCollectorSourceSha256: "color-reset-collector.mjs",
@@ -506,11 +518,11 @@ export const capturedV43SourceFiles = Object.freeze({
     colorResetReceiptSourceSha256: "color-reset-receipt.mjs",
 });
 
-/** Bind the private temporary root, exact v43 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v44 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV43SourceFiles)) throw new Error('Invalid current v43 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV44SourceFiles)) throw new Error('Invalid current v44 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

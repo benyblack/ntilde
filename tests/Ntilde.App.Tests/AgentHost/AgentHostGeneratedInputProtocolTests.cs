@@ -58,7 +58,11 @@ public sealed class AgentHostGeneratedInputProtocolTests
     [InlineData("\"kind\":\"mouseMove\",\"button\":\"none\",\"column\":257,\"row\":1")]
     [InlineData("\"kind\":\"mouseWheel\",\"wheelDelta\":2,\"column\":1,\"row\":1")]
     [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"selector\":\"any\"")]
-    [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"7\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"7\",\"modifiers\":1")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"A\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"77\"")]
+    [InlineData("\"kind\":\"keyUp\",\"key\":\"7\",\"text\":\"7\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"7\",\"column\":1,\"row\":1")]
     public async Task Invalid_or_combined_events_never_reach_the_executor(string fields)
     {
         var s = Setup(); using var service = s.Service;
@@ -66,6 +70,21 @@ public sealed class AgentHostGeneratedInputProtocolTests
         Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, response.Error?.Code);
         Assert.Equal(0, s.Executor.GenerateInputCalls);
         Assert.Single(s.Journal.Snapshot());
+    }
+
+    [Fact]
+    public async Task One_keypad_key_down_may_carry_its_backend_text_as_a_single_bounded_action()
+    {
+        var s = Setup(); using var service = s.Service;
+        GeneratePaneInputParams? seen = null;
+        s.Executor.OnGenerateInput = (input, _, _, _) => { seen = input; return Task.FromResult<GeneratePaneInputResult?>(Observed() with { TextHandled = true }); };
+        var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId, "\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"7\""), TestContext.Current.CancellationToken);
+        Assert.Null(response.Error);
+        Assert.Equal(("keyDown", "7", "7", 0), (seen!.Kind, seen.Key, seen.Text, seen.Modifiers));
+        Assert.Equal(1, s.Executor.GenerateInputCalls);
+        var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.GeneratePaneInputResult)!;
+        Assert.True(result.TextHandled);
+        Assert.Contains("\"textHandled\":true", response.Result!.Value.GetRawText(), StringComparison.Ordinal);
     }
 
     [Theory]

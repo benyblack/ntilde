@@ -33,3 +33,7 @@ tests traverse Avalonia routed events and the production encoder/session call,
 but their mocked transport does not acknowledge real child receipt. That owned
 end-to-end measurement and mouse qualification remain required by #769. Frozen
 stock grades and historical measurements remain unchanged.
+
+Qualified for the generated-event direct-local path by the [routed-input qualification](2026-11-11-routed-input-qualification.md)
+(`modes.application-keypad`: selection and restoration through DECKPAM/DECKPNM and DECNKM, the physical keypad table and handled-key duplicate
+suppression, as exact child bytes).

@@ -1,0 +1,955 @@
+{
+  "caseId": "modes.application-keypad",
+  "pinnedCriterion": "feeds ESC =, reads ctx.getMode(\"applicationKeypad\"), feeds ESC >, reads it again and returns notTestedResult(\"keypad input\"): no semantic observable; the terminal path returns inconclusive without touching the terminal",
+  "pinnedFeeds": [
+    "\u001b=",
+    "\u001b>"
+  ],
+  "served": {
+    "on": true,
+    "off": false,
+    "sources": [
+      "input.keypad.application.0",
+      "input.keypad.restore.deckpnm.enter"
+    ]
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"on\":true,\"off\":true}",
+    "note": "keypad input",
+    "observation": null,
+    "notTested": {
+      "reason": "no-semantic-observable",
+      "noObservable": "keypad input"
+    }
+  },
+  "experiments": [
+    {
+      "id": "input.keypad.normal.keyDown",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "7"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 2,
+      "snapshot": 3,
+      "actionIndex": 0,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.normal.text",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "text",
+        "text": "7"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "37",
+      "actualHex": "37",
+      "oracleHex": "37",
+      "controlSnapshot": 4,
+      "snapshot": 5,
+      "actionIndex": 1,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.normal.keyUp",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyUp",
+        "key": "7"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 6,
+      "snapshot": 7,
+      "actionIndex": 2,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.normal.enter",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "enter"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "0d",
+      "actualHex": "0d",
+      "oracleHex": "0d",
+      "controlSnapshot": 8,
+      "snapshot": 9,
+      "actionIndex": 3,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.normal.7.withText",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "7",
+        "text": "7"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "37",
+      "actualHex": "37",
+      "oracleHex": "37",
+      "controlSnapshot": 10,
+      "snapshot": 11,
+      "actionIndex": 4,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "textHandled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.0",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "0"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b=",
+      "expectedHex": "1b4f70",
+      "actualHex": "1b4f70",
+      "oracleHex": "1b4f70",
+      "controlSnapshot": 12,
+      "snapshot": 13,
+      "actionIndex": 5,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.1",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "1"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f71",
+      "actualHex": "1b4f71",
+      "oracleHex": "1b4f71",
+      "controlSnapshot": 14,
+      "snapshot": 15,
+      "actionIndex": 6,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.2",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "2"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f72",
+      "actualHex": "1b4f72",
+      "oracleHex": "1b4f72",
+      "controlSnapshot": 16,
+      "snapshot": 17,
+      "actionIndex": 7,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.3",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "3"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f73",
+      "actualHex": "1b4f73",
+      "oracleHex": "1b4f73",
+      "controlSnapshot": 18,
+      "snapshot": 19,
+      "actionIndex": 8,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.4",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "4"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f74",
+      "actualHex": "1b4f74",
+      "oracleHex": "1b4f74",
+      "controlSnapshot": 20,
+      "snapshot": 21,
+      "actionIndex": 9,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.5",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "5"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f75",
+      "actualHex": "1b4f75",
+      "oracleHex": "1b4f75",
+      "controlSnapshot": 22,
+      "snapshot": 23,
+      "actionIndex": 10,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.6",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "6"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f76",
+      "actualHex": "1b4f76",
+      "oracleHex": "1b4f76",
+      "controlSnapshot": 24,
+      "snapshot": 25,
+      "actionIndex": 11,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.7",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "7"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f77",
+      "actualHex": "1b4f77",
+      "oracleHex": "1b4f77",
+      "controlSnapshot": 26,
+      "snapshot": 27,
+      "actionIndex": 12,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.7.withText",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "7",
+        "text": "7"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f77",
+      "actualHex": "1b4f77",
+      "oracleHex": "1b4f77",
+      "controlSnapshot": 28,
+      "snapshot": 29,
+      "actionIndex": 13,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "textHandled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.7.keyUp",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyUp",
+        "key": "7"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 30,
+      "snapshot": 31,
+      "actionIndex": 14,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.7.text.standalone",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "text",
+        "text": "7"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "37",
+      "actualHex": "37",
+      "oracleHex": "37",
+      "controlSnapshot": 32,
+      "snapshot": 33,
+      "actionIndex": 15,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.8",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "8"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f78",
+      "actualHex": "1b4f78",
+      "oracleHex": "1b4f78",
+      "controlSnapshot": 34,
+      "snapshot": 35,
+      "actionIndex": 16,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.9",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "9"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f79",
+      "actualHex": "1b4f79",
+      "oracleHex": "1b4f79",
+      "controlSnapshot": 36,
+      "snapshot": 37,
+      "actionIndex": 17,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.decimal",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "decimal"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f6e",
+      "actualHex": "1b4f6e",
+      "oracleHex": "1b4f6e",
+      "controlSnapshot": 38,
+      "snapshot": 39,
+      "actionIndex": 18,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.separator",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "separator"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f6c",
+      "actualHex": "1b4f6c",
+      "oracleHex": "1b4f6c",
+      "controlSnapshot": 40,
+      "snapshot": 41,
+      "actionIndex": 19,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.add",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "add"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f6b",
+      "actualHex": "1b4f6b",
+      "oracleHex": "1b4f6b",
+      "controlSnapshot": 42,
+      "snapshot": 43,
+      "actionIndex": 20,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.add.withText",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "add",
+        "text": "+"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f6b",
+      "actualHex": "1b4f6b",
+      "oracleHex": "1b4f6b",
+      "controlSnapshot": 44,
+      "snapshot": 45,
+      "actionIndex": 21,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "textHandled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.subtract",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "subtract"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f6d",
+      "actualHex": "1b4f6d",
+      "oracleHex": "1b4f6d",
+      "controlSnapshot": 46,
+      "snapshot": 47,
+      "actionIndex": 22,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.multiply",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "multiply"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f6a",
+      "actualHex": "1b4f6a",
+      "oracleHex": "1b4f6a",
+      "controlSnapshot": 48,
+      "snapshot": 49,
+      "actionIndex": 23,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.divide",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "divide"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f6f",
+      "actualHex": "1b4f6f",
+      "oracleHex": "1b4f6f",
+      "controlSnapshot": 50,
+      "snapshot": 51,
+      "actionIndex": 24,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.enter",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "enter"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "1b4f4d",
+      "actualHex": "1b4f4d",
+      "oracleHex": "1b4f4d",
+      "controlSnapshot": 52,
+      "snapshot": 53,
+      "actionIndex": 25,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.application.enter.keyUp",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyUp",
+        "key": "enter"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 54,
+      "snapshot": 55,
+      "actionIndex": 26,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.restore.deckpnm.enter",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "enter"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b>",
+      "expectedHex": "0d",
+      "actualHex": "0d",
+      "oracleHex": "0d",
+      "controlSnapshot": 56,
+      "snapshot": 57,
+      "actionIndex": 27,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.decnkm.set.enter",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "enter"
+      },
+      "modes": {
+        "applicationKeypad": true,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b[?66h",
+      "expectedHex": "1b4f4d",
+      "actualHex": "1b4f4d",
+      "oracleHex": "1b4f4d",
+      "controlSnapshot": 58,
+      "snapshot": 59,
+      "actionIndex": 28,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.keypad.decnkm.reset.enter",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "enter"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "kittyKeyboardFlags": 0,
+        "mouseTracking": 0,
+        "mouseSgr": false
+      },
+      "setup": "\u001b[?66l",
+      "expectedHex": "0d",
+      "actualHex": "0d",
+      "oracleHex": "0d",
+      "controlSnapshot": 60,
+      "snapshot": 61,
+      "actionIndex": 29,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    }
+  ],
+  "effectContract": {
+    "id": "ntilde-application-keypad-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-generated-input-child-bytes",
+    "grading": "pinned-termless-preserved-by-design",
+    "note": "keypad input",
+    "scope": "declared Avalonia events in a disposable direct-local pane; child bytes captured independently of the App"
+  }
+}

@@ -102,6 +102,10 @@ import { adaptLrMarginsCollector, lrMarginsAdapterId } from './terminfo/lr-margi
 import { lrMarginsContractsVersion, lrMarginsSuiteId } from './terminfo/lr-margins-contracts.mjs';
 import { buildLrMarginsGradingReport } from './terminfo/lr-margins-grading.mjs';
 import { lrMarginsCounts } from './terminfo/lr-margins-receipt.mjs';
+import { adaptRoutedInputCollector, routedInputAdapterId } from './terminfo/routed-input-grading-collector.mjs';
+import { routedInputContractsVersion, routedInputGradedSuiteId } from './terminfo/routed-input-contracts.mjs';
+import { buildRoutedInputGradingReport } from './terminfo/routed-input-grading.mjs';
+import { routedInputCounts } from './terminfo/routed-input-receipt.mjs';
 import { adaptColorResetCollector, colorResetAdapterId } from './terminfo/color-reset-grading-collector.mjs';
 import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-reset-contracts.mjs';
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
@@ -120,10 +124,11 @@ import { resizeSuiteId, ownedResizePolicy } from './terminfo/resize-cases.mjs';
 import { buildResizeReport } from './terminfo/resize.mjs';
 import { resizeOwnedPane } from './terminfo/resize-action.mjs';
 import { OwnedInputObserver } from './terminfo/input-capture.mjs';
-import { inputSuiteId, ownedInputPolicy } from './terminfo/input-cases.mjs';
+import { currentInputPlan } from './terminfo/input-plan.mjs';
+const inputSuiteId = currentInputPlan.suiteId, ownedInputPolicy = currentInputPlan.policy;
 import { generateOwnedInput } from './terminfo/input-action.mjs';
 import { OwnedQueryObserver, rejectQueryOwnerRequest } from './terminfo/query-capture.mjs';
-import { querySuiteId, ownedQueryPolicy } from './terminfo/queries.mjs';
+import { querySuiteId, ownedQueryPolicy, queryPriorCounts } from './terminfo/queries.mjs';
 import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
 import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
 import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
@@ -1056,6 +1061,62 @@ async function retainLrMarginsEvidence(output, runId, lrMarginsBundle, upstream)
         contractsVersion: lrMarginsContractsVersion, counts: lrMarginsCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered routed-input grading extension over the left/right-margin one. */
+function prepareRoutedInputCollector(tool, lrMarginsBundle, output) {
+    const adapted = adaptRoutedInputCollector(readFileSync(lrMarginsBundle));
+    const routedInputBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-rin-${routedInputBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== routedInputBundleSha256) throw new Error('Derived routed-input bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-rin.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, routedInputBundleSha256 };
+}
+
+/** Re-derive the routed-input report parent-side from the owned input journal and the layered pinned replay. */
+async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstream, inputBinding, seal) {
+    if (inputBinding?.status === 'unavailable') {
+        // The owned input suite could not run on this grid; the layer records the same typed unavailability and nothing else.
+        const markerBytes = readFileSync(join(output, 'rin-unavailable.json')), marker = JSON.parse(markerBytes);
+        if (marker.reason !== inputBinding.reason) throw new Error('Routed-input unavailable marker differs from the input suite.');
+        return { runId, suiteId: routedInputGradedSuiteId, file: 'rin-unavailable.json', sha256: hash(markerBytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(readFileSync(join(output, 'collector-rin.mjs'))), contractsVersion: routedInputContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    if (inputBinding?.file !== 'input-observations.json') throw new Error('Routed-input evidence requires the owned input suite.');
+    const runBytes = readFileSync(join(output, 'rin-run.json'));
+    const run = JSON.parse(runBytes);
+    const lines = file => readFileSync(join(output, file), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-rin.mjs'));
+    const adapter = { id: routedInputAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(routedInputBundle).href);
+    const report = buildRoutedInputGradingReport({ frames: lines('input-snapshots.jsonl'), actions: lines('input-actions.jsonl'), seal }, run, runId, adapter,
+        { replayModule, inputReportSha256: inputBinding.sha256 });
+    writeJson(join(output, 'rin-observations.json'), report);
+    return { runId, suiteId: routedInputGradedSuiteId, file: 'rin-observations.json',
+        sha256: hash(readFileSync(join(output, 'rin-observations.json'))),
+        runFile: 'rin-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: routedInputContractsVersion, counts: routedInputCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** Re-derive the SGR-underline-color report parent-side with the layered pinned replay. */
+async function retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'sguc-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'sguc-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-sguc.mjs'));
+    const adapter = { id: sgrUnderlineColorAdapterId, derivedFromAdapterId: sgrUnderlineAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(sgrUnderlineColorBundle).href);
+    const report = buildSgrUnderlineColorGradingReport(frames, run, runId, adapter, { replayModule });
+    writeJson(join(output, 'sguc-observations.json'), report);
+    const counts = {};
+    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
+    return { runId, suiteId: sgrUnderlineColorSuiteId, file: 'sguc-observations.json',
+        sha256: hash(readFileSync(join(output, 'sguc-observations.json'))),
+        runFile: 'sguc-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: sgrUnderlineColorContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Derive and lock the layered runtime-color reset grading extension over the left/right-margin one. */
 function prepareColorResetCollector(tool, lrMarginsBundle, output) {
     const adapted = adaptColorResetCollector(readFileSync(lrMarginsBundle));
@@ -1082,25 +1143,6 @@ async function retainColorResetEvidence(output, runId, colorResetBundle, upstrea
         sha256: hash(readFileSync(join(output, 'crst-observations.json'))),
         runFile: 'crst-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
         contractsVersion: colorResetContractsVersion, counts: colorResetCounts(report), provisionalUntil: 'cell-receipt.json' };
-}
-
-/** Re-derive the SGR-underline-color report parent-side with the layered pinned replay. */
-async function retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstream) {
-    const runBytes = readFileSync(join(output, 'sguc-run.json'));
-    const run = JSON.parse(runBytes);
-    const frames = readFileSync(join(output, 'sguc-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
-    const adapterBytes = readFileSync(join(output, 'collector-sguc.mjs'));
-    const adapter = { id: sgrUnderlineColorAdapterId, derivedFromAdapterId: sgrUnderlineAdapterId,
-        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
-    const replayModule = await import(pathToFileURL(sgrUnderlineColorBundle).href);
-    const report = buildSgrUnderlineColorGradingReport(frames, run, runId, adapter, { replayModule });
-    writeJson(join(output, 'sguc-observations.json'), report);
-    const counts = {};
-    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
-    return { runId, suiteId: sgrUnderlineColorSuiteId, file: 'sguc-observations.json',
-        sha256: hash(readFileSync(join(output, 'sguc-observations.json'))),
-        runFile: 'sguc-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
-        contractsVersion: sgrUnderlineColorContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Re-derive the SGR-underline report parent-side with the layered pinned replay. */
@@ -1275,6 +1317,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let rectChecksumEvidence;
     let lrMarginsEvidence;
     let coreGapsEvidence;
+    let routedInputEvidence;
     let colorResetEvidence;
     let rgbEvidence;
     let renditionEvidence;
@@ -1335,6 +1378,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const coreGapsBundle = join(privateTool, 'node_modules', 'terminfo.dev', 'dist', 'ntilde-cg-' + coreGapsBundleSha256 + '.mjs');
         writeFileSync(coreGapsBundle, coreGapsSource, { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'collector-cg.mjs'), coreGapsSource, { flag: 'wx', mode: 0o600 });
+        const { bundle: routedInputBundle, routedInputBundleSha256 } = prepareRoutedInputCollector(privateTool, lrMarginsBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
@@ -1346,7 +1390,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -1480,6 +1524,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             colorResetAdapterId, colorResetSuiteId, colorResetBundleSha256, colorResetContractsVersion,
             colorReset: 'layered versioned collector extension; pinned termless criteria extensions.osc104-reset-palette, osc110-reset-fg, osc111-reset-bg and osc112-reset-cursor (the BEL-spelled query, set of rgb:aa/bb/cc, query, reset and query) replayed byte-exactly on a disposable App and graded from exact fenced OSC replies, the App-resolved colors and override metadata, stored default/palette/literal cells, the cursor and controlled offscreen renders by an independent runtime-color model over the measured baseline; the pinned terminal paths (unmeasuredStateEffect) stay inconclusive by design; not stock CLI data',
             lrMargins: 'layered versioned collector extension; pinned termless modes.left-right-margin code (ESC[?69h, the mode metadata, ESC[?69l; inconclusive by design) replayed byte-exactly and preserved, beside a separately identified effect contract graded from parent-observed stored cells, the cursor and the App-stored region, left/right margins, DECLRMM, origin and insert mode by an independent margins model over sixteen controls; stored ASCII cells only, no stock grades',
+            routedInputAdapterId, routedInputSuiteId: routedInputGradedSuiteId, routedInputBundleSha256, routedInputContractsVersion,
+            routedInput: 'layered versioned collector extension; pinned termless input.x10-mouse, input.button-event-mouse and modes.application-keypad code (always inconclusive by design) replayed over mode values the child itself received as DECRQM replies and preserved, beside separately identified effect contracts graded from the owned routed-input suite: declared Avalonia events routed through the production App input path and the exact bytes the child received, literal protocol expectations cross-checked by an independent oracle; generated events, not physical input; direct-local only; no stock grades',
             rectChecksum: 'layered versioned collector extension; pinned termless criterion editing.decrqcra (ESC[1;1;1;1;1;5*y after ABCDE ESC[1;1H, a framed DCS 1 ! ~ hhhh ST) replayed byte-exactly on a disposable App whose initial settings turn on AllowRectangleChecksumReport (off by default), graded from raw replies bound to their DA barriers and parent-observed stored cells by an independent checksum model (character sum, bold/blink/reverse/underline weights, defaults, origin offset, page clipping, request id, non-admitted spellings, unchanged state); stored ASCII cells only, no stock grades',
             colEdit: 'layered versioned collector extension; pinned termless criteria editing.sl (ESC[2 @), editing.sr (ESC[2 A), editing.decic (ESC[2\'}) and editing.decdc (ESC[2\'~) replayed byte-exactly on a disposable App and graded from parent-observed stored cells of the whole screen, the cursor, App-stored margins, origin and insert mode, stored attribute tuples and per-cell DECSCA protection, with count, default, zero, clamp, region-inside/outside, origin, insert-mode, non-admitted-identity, first/last-column, moved-attribute, attribute-free-blank and moved-protection controls over a seed at both page edges; the pending-wrap state is observed, never graded; stored ASCII state with full-width horizontal margins only (DECLRMM is not implemented or claimed), the pinned pixel path never carries a verdict and is not qualified; no Unicode, wide-cell, scaled-text, image-plane, DECRQCRA, rectangle or rendered-appearance claim; not stock output',
             rectEdit: 'layered versioned collector extension; pinned termless criteria editing.decfra (ESC[88;1;1;3;5$x), editing.decera (ESC[1;1;3;5$z) and editing.deccra (ESC[1;1;2;5;1;5;10$v) replayed byte-exactly on a disposable App and graded from parent-observed stored cells of the whole screen, the cursor, App-stored margins, origin and insert mode and stored attribute tuples, with single-cell, inclusive-border, omitted, zero, clipped, no-op, origin, margin, insert-mode, live-pen, literal-pen and attributed-seed controls, unconditional erasure over DECSCA-marked text, and for DECCRA non-overlapping, overlapping (every direction), self, clipped, attribute-preserving and unsupported-page controls (pages are an observed Ntilde policy, never graded); stored ASCII state only, the pinned pixel path never carries a verdict and is not qualified; no Unicode, wide-cell, scaled-text, image-plane, protected-cell, DECSERA, DECCARA/DECRARA, DECSACE, checksum or rendered-appearance claim; not stock output',
@@ -1796,7 +1842,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const recordInputUnavailable = reason => {
             const file = 'input-unavailable.json';
             writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: inputSuiteId, status: 'unavailable',
-                reason, fixtureStarted: false, plannedExperiments: 39 });
+                reason, fixtureStarted: false, plannedExperiments: currentInputPlan.make(24, 100).length });
             inputState.unavailable = { runId, suiteId: inputSuiteId, file, sha256: hash(readFileSync(join(output, file))),
                 status: 'unavailable', reason, counts: {} };
         };
@@ -1804,7 +1850,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (!metadataState?.observer?.restored && !metadataState?.unavailable) throw new Error('Metadata must restore before input observations.');
             if (!inputState) {
                 inputState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
-                inputState.observer = new OwnedInputObserver({ appData, ownerPid: app.pid, profileName,
+                inputState.observer = new OwnedInputObserver({ appData, ownerPid: app.pid, profileName, plan: currentInputPlan,
                     nonce: 'NTILDE_IN_' + runId, expectedPaneId: cellObserver.paneId,
                     performInput: (event, actionBudget) => generateOwnedInput({ app, appData, executable, image, profileName, runId,
                         paneId: inputState.observer.paneId, uid: process.getuid(),
@@ -1921,7 +1967,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     if (request.kind !== 'queries-start') throw new Error('Query fixture must start before admission.');
                     const priorChallenges = [...inputState.observer.frames, ...staticImageState.observer.frames]
                         .filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
-                    if (priorChallenges.length !== 110) throw new Error('Incomplete earlier query challenges.');
+                    if (!queryPriorCounts.includes(priorChallenges.length)) throw new Error('Incomplete earlier query challenges.');
                     queryState = { workerPid: worker.pid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
                     const binding = { runId, ownerPid: owner.pid, workerPid: worker.pid, uid: worker.uid,
                         appExecutable: owner.executable, workerExecutable: worker.executable, tty: request.tty, profileName, paneId: cellObserver.paneId };
@@ -2505,6 +2551,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             metadataEvidence = metadataState?.unavailable ?? retainCellReport(output, metadataState?.observer, runId, buildMetadataReport, 'metadata-observations.json');
             inputEvidence = inputState?.unavailable ?? retainCellReport(output, inputState?.observer, runId,
                 () => inputState.observer.report, 'input-observations.json');
+            routedInputEvidence = await retainRoutedInputEvidence(output, runId, routedInputBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
             queryEvidence = retainQueryReport(output, queryState, runId);
@@ -2554,6 +2601,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.colEditEvidence = colEditEvidence;
             summary.rectChecksumEvidence = rectChecksumEvidence;
             summary.lrMarginsEvidence = lrMarginsEvidence;
+            summary.routedInputEvidence = routedInputEvidence;
             summary.colorResetEvidence = colorResetEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
@@ -2594,7 +2642,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

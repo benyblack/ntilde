@@ -150,14 +150,14 @@ test('the reset renders are byte-identical to their baseline renders where no ov
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', async () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 42);
+    assert.equal(receipt.schemaVersion, 43);
     assert.equal(receipt.colorResetEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.colorResetEvidence.counts, colorResetCounts(report));
     assert.equal(receipt.colorResetEvidence.adapterBundleSha256, summary.context.colorResetBundleSha256);
     assert.equal(receipt.colorResetEvidence.sha256, hash(JSON.stringify(report, null, 2) + '\n'));
     assert.equal(receipt.colorResetEvidence.runSha256, hash(JSON.stringify(run) + '\n'));
     assert.equal(summary.retained.colorResetJournalSha256, hash(report.snapshots.map(frame => JSON.stringify(frame) + '\n').join('')));
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v36');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v37');
     assert.equal(receipt.fixtureRemoved, true);
     const predecessors = benchmarkSuites.slice(0, benchmarkSuites.findIndex(item => item.suite === 'color-reset'));
     const expected = [];

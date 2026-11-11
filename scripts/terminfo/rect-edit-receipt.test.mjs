@@ -20,7 +20,7 @@ const own = f => () => checkRectEditEvidence(f.output, f.evidence, f.context.run
 const refusal = error => !(error instanceof TypeError);
 test('a complete run carries the rectangle-editing suffix: counts, adapter identity and the layered derivation are rederived without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 42);
+    assert.equal(f.finish().schemaVersion, 43);
     assert.deepEqual(f.evidence.rectEditEvidence.counts, { supported: 3 });
     assert.equal(f.context.rectEditAdapterId, rectEditAdapterId);
     assert.equal(f.context.rectEditSuiteId, rectEditSuiteId);

@@ -40,31 +40,34 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 89,
-    "suiteClaims": 91,
+    "uniqueBenchmarkIds": 88,
+    "suiteClaims": 90,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 89,
-    "pinnedAndEffectSupportedIds": 80,
+    "effectSupportedIds": 88,
+    "pinnedAndEffectSupportedIds": 76,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
+      "input.button-event-mouse",
+      "input.x10-mouse",
       "modes.altscreen-1047",
       "modes.altscreen-47",
+      "modes.application-keypad",
       "modes.left-right-margin",
       "scrollback.alt-screen",
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 88,
-    "pinnedSupportedOfStockInconclusive": 79,
+    "effectSupportedOfStockInconclusive": 87,
+    "pinnedSupportedOfStockInconclusive": 75,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 80,
+    "pinnedSupportedIds": 76,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -73,8 +76,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 80,
-      "notPinnedSupported": 89
+      "effectUnqualified": 81,
+      "notPinnedSupported": 93
     }
   },
   "suites": [
@@ -1939,61 +1942,60 @@
       }
     },
     {
-      "suite": "color-reset",
-      "suiteId": "ntilde-owned-runtime-color-reset-graded-v1",
+      "suite": "routed-input",
+      "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-11-runtime-color-reset/",
-      "doc": "2026-11-11-runtime-color-reset-qualification.md",
-      "caseCount": 4,
+      "publication": "2026-11-11-routed-input/",
+      "doc": "2026-11-11-routed-input-qualification.md",
+      "caseCount": 3,
       "caseIds": [
-        "extensions.osc104-reset-palette",
-        "extensions.osc110-reset-fg",
-        "extensions.osc111-reset-bg",
-        "extensions.osc112-reset-cursor"
+        "input.x10-mouse",
+        "input.button-event-mouse",
+        "modes.application-keypad"
       ],
       "evidence": {
-        "files": 98,
-        "bytes": 1749068,
-        "sha256": "beafc3172de0dd3ad4bd5a6cb24c7eb9a6935bc37d3dbec9132cf5e074f2e248"
+        "files": 68,
+        "bytes": 998600,
+        "sha256": "131fbc08adfa215039c61744611a6b9b4e48d39bc5ac9a58a3e161fbed1d0dd8"
       },
       "receipt": {
         "schemaVersion": 42,
-        "runId": "fdf95c74cb718890b3ebfb446ea129e2",
+        "runId": "aee54a96a4efae23d4e9189b11259e35",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "e8d11b1fc2cdadcc3d79d4039386793ef4a4c97f7a3220eb631c0a5edb45667d"
+          "sha256": "aac0edb80a8fad61917fc6dd51da8e3e3f730a1a938c98c1657d495045ba1ed6"
         },
         "suiteEvidence": {
-          "suiteId": "ntilde-owned-runtime-color-reset-graded-v1",
-          "file": "crst-observations.json",
-          "sha256": "a5bfdef6d28bb006188d5be8bb30977b29bc11963e8d2b72f9b8823ee3bbd533",
-          "runFile": "crst-run.json",
-          "runSha256": "5395d3f639e2affbe0763b7fb9bc702af351fd28cb1c7c6e2753dee98798cb5b",
+          "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
+          "file": "rin-observations.json",
+          "sha256": "e5ace29b6e8b52031389478a8d534114490b9c49ee9011252629dcdbe2400f55",
+          "runFile": "rin-run.json",
+          "runSha256": "40a438123e9a9a90dc3602dbed5d4ac6b3df081cbea872a24905e96a84f129d8",
           "counts": {
-            "supported": 4
+            "inconclusive/supported": 3
           },
           "contractsVersion": 1
         }
       },
       "run": {
-        "ownedRunId": "fdf95c74cb718890b3ebfb446ea129e2",
-        "measuredAt": "2026-11-11T10:13:37.065Z",
-        "appRevision": "1c3400f492c41fce836575999b2166dcbdbe3a29",
+        "ownedRunId": "aee54a96a4efae23d4e9189b11259e35",
+        "measuredAt": "2026-11-11T10:04:52.944Z",
+        "appRevision": "de5d921e0565babe5d572713267f5e3b53bb43ac",
         "appVersion": "0.13.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "3d7ecdcb2bf017ece110b247d9989aad861450f8",
+        "scriptsRevision": "91f0f63abdf676fa0cf3ac02a362561c3a83d16b",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "2e2cd721033e051ae198c86b5bf910f472be2c814fd102a008edb96f5b263b0b",
-        "gradingAdapterId": "ntilde-owned-runtime-color-reset-grading-v1",
-        "gradingAdapterBundleSha256": "dbe3acb9f474c88d31e0ee5a5f19c29483565be960e51811fbe67d5b5191ac2f",
+        "collectorAdapterBundleSha256": "475ff1fed3921469df704989511847908451a90ddb500330601df65e6f9076b2",
+        "gradingAdapterId": "ntilde-owned-routed-input-grading-v1",
+        "gradingAdapterBundleSha256": "3c6225df205d82cc2b9e9fb1727121428deb2d1db7d14f963170cd248391976b",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v36",
-        "sourceSnapshotManifestSha256": "36531eecaa003442b1a70406617bdca75faa84045dd064fb1640a53b2d613c1d"
+        "sourceSnapshotManifestSha256": "d1798e1ab1ac3920c18084bb110878599035ac5d295a7493fc35c42ecedc6ed0"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "39ace6a0d53f33e906a289d8d48874fa",
+        "runId": "5f9325e8e35e29392bc23e20a204ee3e",
         "counts": {
           "inconclusive": 167,
           "supported": 87,
@@ -2001,14 +2003,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "865468177db004e37efb86b12ed0c5b8caf58d9bb7869670cfa95efcbdda7a34",
+        "rawSha256": "2b8debe10b6b7c7e08f900cdc28b70004a5f1d2a2d020e89480eade1cac0c056",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
       "rederivation": {
         "status": "passed",
-        "command": "node --test scripts/terminfo/color-reset-publication.test.mjs",
-        "testSha256": "6a30429e7c43c4f3aa4d7d02fdf3db452078d8054f7e31e430dab88ca8e9d726"
+        "command": "node --test scripts/terminfo/routed-input-publication.test.mjs",
+        "testSha256": "c455cf7e8ecb6cc3059830624d4d1e133e82ab8eb9b0e4ea1fdd1b4533044c11"
       }
     }
   ],
@@ -3716,15 +3718,15 @@
       ]
     },
     {
-      "id": "extensions.osc104-reset-palette",
+      "id": "input.button-event-mouse",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
       "pinned": {
-        "best": "supported",
+        "best": "inconclusive",
         "byClaim": [
           {
-            "suite": "color-reset",
-            "verdict": "supported"
+            "suite": "routed-input",
+            "verdict": "inconclusive"
           }
         ]
       },
@@ -3732,47 +3734,51 @@
         "verdict": "supported",
         "byClaim": [
           {
-            "suite": "color-reset",
+            "suite": "routed-input",
             "verdict": "supported"
           }
         ]
       },
       "claims": [
         {
-          "id": "extensions.osc104-reset-palette",
-          "suite": "color-reset",
+          "id": "input.button-event-mouse",
+          "suite": "routed-input",
           "status": "qualified",
           "pinned": {
-            "verdict": "supported",
-            "note": null
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
           },
           "effect": {
             "verdict": "supported"
           },
           "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
           },
-          "divergence": null,
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
           "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
+            "generated-input-child-bytes"
           ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
+          "evidenceTag": "owned-generated-input-child-bytes"
         }
       ]
     },
     {
-      "id": "extensions.osc110-reset-fg",
+      "id": "input.x10-mouse",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
       "pinned": {
-        "best": "supported",
+        "best": "inconclusive",
         "byClaim": [
           {
-            "suite": "color-reset",
-            "verdict": "supported"
+            "suite": "routed-input",
+            "verdict": "inconclusive"
           }
         ]
       },
@@ -3780,130 +3786,38 @@
         "verdict": "supported",
         "byClaim": [
           {
-            "suite": "color-reset",
+            "suite": "routed-input",
             "verdict": "supported"
           }
         ]
       },
       "claims": [
         {
-          "id": "extensions.osc110-reset-fg",
-          "suite": "color-reset",
+          "id": "input.x10-mouse",
+          "suite": "routed-input",
           "status": "qualified",
           "pinned": {
-            "verdict": "supported",
-            "note": null
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
           },
           "effect": {
             "verdict": "supported"
           },
           "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
           },
-          "divergence": null,
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
           "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
+            "generated-input-child-bytes"
           ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc111-reset-bg",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "supported",
-        "byClaim": [
-          {
-            "suite": "color-reset",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "color-reset",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc111-reset-bg",
-          "suite": "color-reset",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "supported",
-            "note": null
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
-          },
-          "divergence": null,
-          "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
-          ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc112-reset-cursor",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "supported",
-        "byClaim": [
-          {
-            "suite": "color-reset",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "color-reset",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc112-reset-cursor",
-          "suite": "color-reset",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "supported",
-            "note": null
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
-          },
-          "divergence": null,
-          "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
-          ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
+          "evidenceTag": "owned-generated-input-child-bytes"
         }
       ]
     },
@@ -4057,6 +3971,58 @@
             "app-resolved-color"
           ],
           "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "modes.application-keypad",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.application-keypad",
+          "suite": "routed-input",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "keypad input"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "keypad input"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
         }
       ]
     },

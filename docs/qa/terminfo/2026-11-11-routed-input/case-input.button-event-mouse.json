@@ -1,0 +1,398 @@
+{
+  "caseId": "input.button-event-mouse",
+  "pinnedCriterion": "mouseInputProbe(\"input.button-event-mouse\", \"mouseTracking\"): reads ctx.getMode(\"mouseTracking\") and returns inconclusive for any value; the terminal path returns inconclusive without touching the terminal",
+  "pinnedFeeds": [],
+  "served": {
+    "currentMode": false,
+    "sources": [
+      "restored"
+    ]
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"currentMode\":false}",
+    "note": "No generated input event and encoded report were validated",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "legacy",
+      "note": "No generated input event and encoded report were validated"
+    },
+    "notTested": null
+  },
+  "experiments": [
+    {
+      "id": "input.mouse.normal.move.suppressed",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mouseMove",
+        "button": "left"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1000,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1000h",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 100,
+      "snapshot": 101,
+      "actionIndex": 49,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.move.left.raw",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mouseMove",
+        "button": "left"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h",
+      "expectedHex": "1b5b4d408023",
+      "actualHex": "1b5b4d408023",
+      "oracleHex": "1b5b4d408023",
+      "controlSnapshot": 102,
+      "snapshot": 103,
+      "actionIndex": 50,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.press.left.raw",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mousePress",
+        "button": "left"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h",
+      "expectedHex": "1b5b4d208023",
+      "actualHex": "1b5b4d208023",
+      "oracleHex": "1b5b4d208023",
+      "controlSnapshot": 104,
+      "snapshot": 105,
+      "actionIndex": 51,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.press.right.raw",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mousePress",
+        "button": "right"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h",
+      "expectedHex": "1b5b4d228023",
+      "actualHex": "1b5b4d228023",
+      "oracleHex": "1b5b4d228023",
+      "controlSnapshot": 106,
+      "snapshot": 107,
+      "actionIndex": 52,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.move.middle.shiftalt.raw",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 5,
+        "column": 97,
+        "row": 3,
+        "kind": "mouseMove",
+        "button": "middle"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h",
+      "expectedHex": "1b5b4d4d8123",
+      "actualHex": "1b5b4d4d8123",
+      "oracleHex": "1b5b4d4d8123",
+      "controlSnapshot": 108,
+      "snapshot": 109,
+      "actionIndex": 53,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.release.left.raw",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mouseRelease",
+        "button": "left"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h",
+      "expectedHex": "1b5b4d238023",
+      "actualHex": "1b5b4d238023",
+      "oracleHex": "1b5b4d238023",
+      "controlSnapshot": 110,
+      "snapshot": 111,
+      "actionIndex": 54,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.hover.suppressed",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 94,
+        "row": 3,
+        "kind": "mouseMove",
+        "button": "none"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 112,
+      "snapshot": 113,
+      "actionIndex": 55,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.any.hover.raw.control",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 94,
+        "row": 3,
+        "kind": "mouseMove",
+        "button": "none"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1003,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1003h",
+      "expectedHex": "1b5b4d437e23",
+      "actualHex": "1b5b4d437e23",
+      "oracleHex": "1b5b4d437e23",
+      "controlSnapshot": 114,
+      "snapshot": 115,
+      "actionIndex": 56,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.press.sgr",
+      "role": "label",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mousePress",
+        "button": "left"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": true,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h\u001b[?1006h",
+      "expectedHex": "1b5b3c303b39363b334d",
+      "actualHex": "1b5b3c303b39363b334d",
+      "oracleHex": "1b5b3c303b39363b334d",
+      "controlSnapshot": 116,
+      "snapshot": 117,
+      "actionIndex": 57,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.move.sgr",
+      "role": "label",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mouseMove",
+        "button": "left"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": true,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h\u001b[?1006h",
+      "expectedHex": "1b5b3c33323b39363b334d",
+      "actualHex": "1b5b3c33323b39363b334d",
+      "oracleHex": "1b5b3c33323b39363b334d",
+      "controlSnapshot": 118,
+      "snapshot": 119,
+      "actionIndex": 58,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mouse.button.release.sgr",
+      "role": "label",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "column": 96,
+        "row": 3,
+        "kind": "mouseRelease",
+        "button": "left"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 1002,
+        "mouseSgr": true,
+        "kittyKeyboardFlags": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1002h\u001b[?1006h",
+      "expectedHex": "1b5b3c303b39363b336d",
+      "actualHex": "1b5b3c303b39363b336d",
+      "oracleHex": "1b5b3c303b39363b336d",
+      "controlSnapshot": 120,
+      "snapshot": 121,
+      "actionIndex": 59,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    }
+  ],
+  "effectContract": {
+    "id": "ntilde-button-event-mouse-tracking-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-generated-input-child-bytes",
+    "grading": "pinned-termless-preserved-by-design",
+    "note": "No generated input event and encoded report were validated",
+    "scope": "declared Avalonia events in a disposable direct-local pane; child bytes captured independently of the App"
+  }
+}
