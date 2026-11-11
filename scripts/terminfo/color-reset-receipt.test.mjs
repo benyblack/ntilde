@@ -20,7 +20,7 @@ const own = f => () => checkColorResetEvidence(f.output, f.evidence, f.context.r
 const refusal = error => !(error instanceof TypeError);
 test('a complete run carries the runtime-color reset suffix: counts, adapter identity and the layered derivation are rederived without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 43);
+    assert.equal(f.finish().schemaVersion, 45);
     assert.deepEqual(f.evidence.colorResetEvidence.counts, { supported: 4 });
     assert.equal(f.context.colorResetAdapterId, colorResetAdapterId);
     assert.equal(f.context.colorResetSuiteId, colorResetSuiteId);

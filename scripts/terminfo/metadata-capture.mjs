@@ -9,7 +9,7 @@ const unavailableCodes = new Set(['screenDetailsUnavailable', 'paneMetadataUnava
 /** Only a preflight/zero-response refusal is eligible for the initial optional marker. */
 export function initialMetadataRefusal(request, error, observer) {
     const attempt = observer?.lastAttempt;
-    return request.kind === 'metadata-start' && unavailableCodes.has(error.code)
+    return request.kind === (observer?.prefix ?? 'metadata') + '-start' && unavailableCodes.has(error.code)
         && !observer?.baseline && !observer?.frames?.length && !attempt?.before
         && !attempt?.responses?.some(record => Object.hasOwn(record, 'response'));
 }
@@ -19,13 +19,25 @@ export function metadataFailure(request, error, observer) {
         return new Error('Metadata observation failed after partial responses.', { cause: error });
     return error;
 }
-/** Read actual host controls separately from the complete VT viewport; preserve both independent reads. */
+/** The frozen metadata suite's fixed plan: every staged observation of its thirteen experiments. */
+function metadataPlan(snapshot, runId) {
+    const cases = makeMetadataCases(snapshot.screen.rows, snapshot.screen.cols, runId);
+    return cases.flatMap(item => item.stages.map(stage => ({ caseId: item.id, stageId: stage.id })));
+}
+const metadataBaselineMatches = (snapshot, first, runId, finish) => matchesMetadataExpected(snapshot, { type: 'baseline' }, first.screen, runId, finish);
+/** Read actual host controls separately from the complete VT viewport; preserve both independent reads. Another suite on the same
+ * paired observation path passes its own `prefix`, `planOf(snapshot, runId)` (one {} entry per read) and `matchesBaseline(snapshot, first, runId, finish)`;
+ * the defaults are the frozen metadata suite's. */
 export class OwnedMetadataObserver {
     constructor(options) {
         check(/^[a-f\d]{32}$/.test(options.runId ?? ''));
         this.runId = options.runId;
+        this.prefix = options.prefix ?? 'metadata';
+        this.planOf = options.planOf ?? metadataPlan;
+        this.matchesBaseline = options.matchesBaseline ?? metadataBaselineMatches;
         const rpc = options.rpc ?? agentRequest;
-        const facts = { ...options, rpc: (...args) => this.recordRequest(rpc, ...args), prefix: 'metadata', includeCellDetails: true,
+        const { planOf, matchesBaseline, ...cellOptions } = options;
+        const facts = { ...cellOptions, rpc: (...args) => this.recordRequest(rpc, ...args), prefix: this.prefix, includeCellDetails: true,
             includeCursorMode: true, includeOverline: true, includeBufferState: true };
         this.before = new OwnedCellObserver(facts); this.after = new OwnedCellObserver(facts);
         this.frames = []; this.next = 0;
@@ -34,7 +46,7 @@ export class OwnedMetadataObserver {
     get restored() { return this.finished === true; }
     validateRequest(request) {
         check(!this.busy && !this.finished);
-        const operation = request.kind?.startsWith('metadata-') ? request.kind.slice(9) : '';
+        const operation = request.kind?.startsWith(this.prefix + '-') ? request.kind.slice(this.prefix.length + 1) : '';
         check(['start', 'bind', 'read', 'finish'].includes(operation));
         check(operation === 'start' ? request.barrier === null : typeof request.barrier === 'string'
             && request.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(request.barrier));
@@ -69,19 +81,18 @@ export class OwnedMetadataObserver {
         const metadata = copyPaneMetadata(await observer.request('readPaneMetadata', { paneId: this.paneId }, budget));
         const rawStatus = await observer.request('getSessionStatus', { paneId: this.paneId }, budget);
         return validateMetadataSnapshot({ screen, metadata, rawStatus,
-            status: copyMetadataStatus(rawStatus, this.paneId) }, this.baseline);
+            status: copyMetadataStatus(rawStatus, this.paneId) }, this.baseline, this.before.includeResolvedColors);
     }
     acceptPair(operation, snapshot) {
         if (operation === 'start') {
             check(pristineEditing(snapshot.screen));
-            const cases = makeMetadataCases(snapshot.screen.rows, snapshot.screen.cols, this.runId);
-            const plan = cases.flatMap(item => item.stages.map(stage => ({ caseId: item.id, stageId: stage.id })));
+            const plan = this.planOf(snapshot, this.runId);
             check(plan.length + 3 <= 64);
             this.baseline = snapshot; this.plan = plan;
             this.before.baseline = snapshot.screen; this.after.baseline = snapshot.screen;
         }
         if (operation === 'bind' || operation === 'finish') {
-            check(matchesMetadataExpected(snapshot, { type: 'baseline' }, this.baseline.screen, this.runId, operation === 'finish'));
+            check(this.matchesBaseline(snapshot, this.baseline, this.runId, operation === 'finish'));
             if (operation === 'bind') this.bound = true;
             else this.finished = true;
         }

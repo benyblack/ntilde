@@ -30,7 +30,7 @@ test('every suite was rederived and every counted claim sits on a passed rederiv
     const stored = committed();
     for (const entry of [...stored.suites, ...stored.findings]) {
         assert.equal(entry.rederivation.status, 'passed', entry.suite);
-        assert.match(entry.rederivation.command, /^node --test scripts\/terminfo\/[a-z-]+-publication\.test\.mjs$/);
+        assert.match(entry.rederivation.command, /^node --test scripts\/terminfo\/[a-z0-9-]+-publication\.test\.mjs$/);
         assert.match(entry.rederivation.testSha256, /^[0-9a-f]{64}$/);
     }
     assert.ok(stored.benchmark.every(item => item.claims.every(claim => claim.status === 'qualified')));
