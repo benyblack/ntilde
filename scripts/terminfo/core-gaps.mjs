@@ -2,7 +2,7 @@
 // the parent observes cells and parser icon state independently. No host-icon claim.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { OwnedCellObserver, snapshotHash, screenSnapshot } from './agent-observer.mjs';
+import { OwnedCellObserver, screenSnapshot } from './agent-observer.mjs';
 import { validateGradedJournal } from './graded-plan.mjs';
 import { scrollbackReset, scrollbackView } from './scrollback-contracts.mjs';
 import { sgrAttrsCellAt } from './sgr-attrs-contracts.mjs';
@@ -18,25 +18,51 @@ const pinnedBytes = readFileSync(new URL('./core-gaps-pinned.json', import.meta.
 check(hash(pinnedBytes) === '917d1920da1d08eba5c81b88eb093105161f249a1ce55d544383e6f98b62f30c', 'pinned definitions changed');
 export const coreGapsPinned = Object.freeze(JSON.parse(pinnedBytes));
 
-/** Execute only the digest-pinned callback text, never code from retained evidence.
- * The tiny upstream helpers retain their exact result shapes, including notTested. */
+/** Independent mirror of the tiny pinned parser-state result helper. */
+function parserStateResult(pass, expected, state, note) {
+    const response = JSON.stringify(state);
+    let outcome = 'inconclusive';
+    if (pass !== null) outcome = pass ? 'supported' : 'unsupported';
+    return { pass: pass === true, response, ...(note && { note }),
+        observation: { outcome, ...(pass === null && { reason: 'insufficient-evidence' }), evidence: 'parser-state', ...(note && { note }) },
+        ...(pass !== null && { assertions: [{ kind: pass ? 'positive' : 'negative', expected, observed: response }] }) };
+}
+
+function replayReverseIndex(ctx) {
+    const rows = ctx.getScrollback().screenLines;
+    if (!Number.isSafeInteger(rows) || rows < 5) return { pass: false,
+        observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'none' } };
+    try {
+        ctx.feed('\x1b[1;5r'); ctx.feed('\x1b[H'); ctx.feed('MARKER');
+        const before = ctx.getCell(0, 0);
+        ctx.feed('\x1b[H'); ctx.feed('\x1bM');
+        const cell = ctx.getCell(1, 0);
+        let pass = null, note = 'MARKER control was not measured';
+        if (before.char === 'M') { pass = cell.char === 'M'; note = undefined; }
+        return parserStateResult(pass, 'RI moves the measured MARKER to row 2', { before, cell }, note);
+    } finally { ctx.feed('\x1b[r'); }
+}
+
+function replayReset(ctx) {
+    ctx.feed('Hello World');
+    const before = { ...ctx.getCursor(), text: ctx.getText() };
+    ctx.reset();
+    const after = { ...ctx.getCursor(), text: ctx.getText() };
+    const expected = 'Reset method returns the cursor home and clears measured text';
+    if (!before.text.includes('Hello World') || before.x === 0)
+        return parserStateResult(null, expected, { before, after }, 'Reset-method control state was not measured');
+    return parserStateResult(after.x === 0 && after.y === 0 && !after.text.includes('Hello World'), expected, { before, after });
+}
+
+/** No captured code executes parent-side. The worker still runs the untouched pinned
+ * callback; this separate implementation must reproduce every result field. */
 export function replayCoreGap(id, ctx) {
-    const text = coreGapsPinned[id];
-    check(typeof text === 'string', 'unknown pinned id');
-    const body = text.slice(text.indexOf('(ctx) =>'), text.indexOf(id === 'text.reverse-index-scroll' ? ', async (ctx)' : ', () =>'));
-    const parserStateResult = (pass, expected, state, note) => {
-        const response = JSON.stringify(state);
-        return { pass: pass === true, response, ...(note && { note }),
-            observation: { outcome: pass === null ? 'inconclusive' : pass ? 'supported' : 'unsupported',
-                ...(pass === null && { reason: 'insufficient-evidence' }), evidence: 'parser-state', ...(note && { note }) },
-            ...(pass !== null && { assertions: [{ kind: pass ? 'positive' : 'negative', expected, observed: response }] }) };
-    };
-    // The digest above is a trust boundary: Function never receives worker or journal bytes.
-    const callback = new Function('parserStateResult', 'validSize', 'notTestedResult', 'return (' + body + ')')(
-        parserStateResult, (value, minimum) => Number.isSafeInteger(value) && value >= minimum,
-        (noObservable, state) => ({ pass: false, response: JSON.stringify(state), note: noObservable,
-            notTested: { reason: 'no-semantic-observable', noObservable } }));
-    return { probeId: id, ...callback(ctx) };
+    check(Object.hasOwn(coreGapsPinned, id), 'unknown pinned id');
+    if (id === 'text.reverse-index-scroll') return { probeId: id, ...replayReverseIndex(ctx) };
+    if (id === 'reset.method') return { probeId: id, ...replayReset(ctx) };
+    const before = ctx.getTitle(); ctx.feed('\x1b]1;test-icon\x07'); const after = ctx.getTitle();
+    return { probeId: id, pass: false, response: JSON.stringify({ before, after }), note: 'icon-name state',
+        notTested: { reason: 'no-semantic-observable', noObservable: 'icon-name state' } };
 }
 
 /** Adds exports only; all original probe bodies and fixture bytes remain unchanged. */
@@ -115,10 +141,16 @@ export class CoreGapsObserver extends OwnedCellObserver {
  * states of their exact writes; reset() consumes its separately recorded API call. */
 export function coreGapContext(id, roles) {
     let feeds = 0, resetCalls = 0;
-    const writes = id === coreGapsIds[0] ? ['\x1b[1;5r', '\x1b[H', 'MARKER', '\x1b[H', '\x1bM', '\x1b[r']
-        : id === 'reset.method' ? ['Hello World'] : ['\x1b]1;test-icon\x07'];
-    const current = () => id === coreGapsIds[0] ? roles[feeds >= 5 ? 'riAfter' : 'riBefore']
-        : id === 'reset.method' ? roles[resetCalls ? 'resetAfter' : 'resetBefore'] : roles[feeds ? 'iconPinned' : 'iconBefore'];
+    const writes = {
+        'text.reverse-index-scroll': ['\x1b[1;5r', '\x1b[H', 'MARKER', '\x1b[H', '\x1bM', '\x1b[r'],
+        'reset.method': ['Hello World'], 'extensions.osc1-icon': ['\x1b]1;test-icon\x07'],
+    }[id];
+    check(writes, 'unknown recording context');
+    const current = () => {
+        if (id === 'text.reverse-index-scroll') return roles[feeds >= 5 ? 'riAfter' : 'riBefore'];
+        if (id === 'reset.method') return roles[resetCalls ? 'resetAfter' : 'resetBefore'];
+        return roles[feeds ? 'iconPinned' : 'iconBefore'];
+    };
     return {
         feed(value) { check(value === writes[feeds++], 'pinned feed mismatch'); },
         reset() { check(id === 'reset.method' && resetCalls++ === 0, 'unexpected reset API replay'); },
@@ -143,13 +175,16 @@ export async function collectCoreGaps({ config, fence, owner, gradingModule }) {
     try {
         await owner('cg-bind', await fence.write('\x1b[?1049h' + scrollbackReset + 'NTILDE_CG_' + config.runId));
         for (const step of coreGapsPlan(initial.screen.rows, termOutput)) {
-            const barrier = step.api ? await backend.reset() : await fence.write(step.feed);
+            const barrier = step.api ? await backend.reset() : await fence.write(step.feed); // Serial fence/API contract. NOSONAR
             records.push({ ...step, barrier });
-            if (step.role) roles[step.role] = await owner('cg-read', barrier);
+            if (step.role) roles[step.role] = await owner('cg-read', barrier); // Read must precede the next write. NOSONAR
         }
     } catch (error) { primary = error; }
     try { await owner('cg-finish', await fence.write(scrollbackReset)); }
-    catch (error) { if (primary) throw new AggregateError([primary, error]); throw error; }
+    catch (error) {
+        if (primary) throw new AggregateError([primary, error], 'Core-gap collection and restoration failed.');
+        throw error;
+    }
     if (primary) throw primary;
     // Worker receives screen reads; parent alone retains icon facts. A small title
     // projection returned by cg-read serves only the pinned diagnostic callback.
@@ -198,12 +233,15 @@ export function gradeCoreGapEffects(roles, run) {
     check(view('termChild').lines[0] === run.child.output && run.child.output === 'TERM-' + run.runId + '=' + run.child.term,
         'child environment output was not observed');
     const term = run.child.term === 'xterm-256color';
+    const notes = {
+        'device.env-term': 'Observed ' + run.child.term + ' in the retained disposable direct-local profile; expected compatible xterm-256color.',
+        'extensions.osc1-icon': 'Icon-name state and independent title/stack controls only; no host icon presentation.',
+        'reset.method': 'Actual asynchronous desktop backend reset() call; sequence implementation is retained separately from runner preparation.',
+        'text.reverse-index-scroll': 'Exact pinned top-boundary fixture and a separately seeded interior region; below-boundary cursor-only control.',
+    };
     return Object.fromEntries(coreGapsIds.map((id, i) => [id, { outcome: [ri, reset, term, osc][i] ? 'supported' : 'unsupported',
         layer: ['stored-state/cursor/margins/history', 'desktop-backend-reset-api/stored-state', 'actual-session-child-output', 'parser-icon-state/title-independence'][i],
-        note: id === 'device.env-term' ? 'Observed ' + run.child.term + ' in the retained disposable direct-local profile; expected compatible xterm-256color.'
-            : id === 'extensions.osc1-icon' ? 'Icon-name state and independent title/stack controls only; no host icon presentation.'
-                : id === 'reset.method' ? 'Actual asynchronous desktop backend reset() call; sequence implementation is retained separately from runner preparation.'
-                    : 'Exact pinned top-boundary fixture and a separately seeded interior region; below-boundary cursor-only control.' }]));
+        note: notes[id] }]));
 }
 
 export function buildCoreGapsReport(frames, run, runId, adapter, replayModule = null) {
