@@ -174,7 +174,7 @@ test('modes were restored, the capture reader sealed healthy, and the pinned cod
 
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', async () => {
     const { summary, run, report } = load(), { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 41);
+    assert.equal(receipt.schemaVersion, 42);
     assert.equal(receipt.routedInputEvidence.runId, summary.context.runId);
     assert.deepEqual(routedInputCounts(report), { 'inconclusive/supported': 3 });
     assert.deepEqual(receipt.routedInputEvidence.counts, routedInputCounts(report));
@@ -186,7 +186,7 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(summary.retained.routedInputObservationsSha256, receipt.routedInputEvidence.sha256);
     assert.equal(summary.retained.routedInputRunSha256, receipt.routedInputEvidence.runSha256);
     assert.equal(summary.retained.routedInputAdapterSha256, receipt.routedInputEvidence.adapterBundleSha256);
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v35');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v36');
     assert.equal(summary.context.inputSuiteId, inputPlanV2.suiteId);
     assert.equal(receipt.fixtureRemoved, true);
     const predecessors = benchmarkSuites.slice(0, benchmarkSuites.findIndex(item => item.suite === 'routed-input'));
@@ -217,12 +217,13 @@ test('revisions, attempts (the superseded ones keep their actual reasons) and fi
     const { summary } = load();
     assert.match(summary.appRevision, /^[0-9a-f]{40}$/);
     assert.match(summary.scriptsRevision, /^[0-9a-f]{40}$/);
-    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [true, false, true, true]);
+    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [true, false, true, true, true]);
     assert.equal(summary.attempts.at(-1).runId, summary.context.runId);
     assert.equal(summary.attempts.at(-1).scriptsRevision, summary.scriptsRevision);
     assert.match(summary.attempts[0].outcome, /once per cell change/);
     assert.match(summary.attempts[0].outcome, /clears the one-shot text correlation/);
     assert.match(summary.attempts[1].outcome, /Unexpected input during cell collection/);
+    assert.match(summary.attempts[3].outcome, /Core-gap batch \(PR 932\) merged first/);
     const first = read('superseded/attempt-1-routed-input-observations.json');
     assert.equal(first.runId, summary.attempts[0].runId);
     assert.deepEqual(first.cases.map(item => item.effectContract.outcome), ['supported', 'unsupported', 'unsupported']);

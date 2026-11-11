@@ -1194,7 +1194,7 @@ requires public test classes.
   challenges, paired complete state and final restoration/seal are independent
   evidence. Original partial action facts survive failures; no retries or started
   unavailable downgrade. The read-only observer allowlist remains unchanged. From
-  policy v35 the suite runs a 60-event benchmark plan whose read mismatches are graded,
+  policy v36 the suite runs a 60-event benchmark plan whose read mismatches are graded,
   not aborted; the frozen 39-event plan keeps the earlier publication re-deriving.
   Historical 51/52-file v8 scopes stay fixed, with retained-import closure checks.
   No native/global input, clipboard, remote transport or binary attestation claim.

@@ -1956,20 +1956,20 @@
       ],
       "evidence": {
         "files": 68,
-        "bytes": 995903,
-        "sha256": "5bbb02c18ab0a7aa4de90cde9d96ef357a3c8ec5c9ef3b37041066b1e8563de0"
+        "bytes": 997960,
+        "sha256": "aada60d8c16267a79800cbf0497c45e9ab6d2ad2b7343bcaf19dad9cb54d428f"
       },
       "receipt": {
-        "schemaVersion": 41,
-        "runId": "c1fc366b1914d6db5e38ce7f64f66044",
+        "schemaVersion": 42,
+        "runId": "b92a7063b3007c5573d59a7621659db0",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "2b5f32005443b3a1d554ddfec8f7b787e9a1826a7f2a571dab1a20c7bbccc310"
+          "sha256": "9194162e2ea81fcb960286b89f957ca0cf7f2899eeacfc62c3bc8505f76da5ee"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
           "file": "rin-observations.json",
-          "sha256": "bd85190c34e5485a77da0af9dbf1e960cae77ab9f28a3f11cc9bc1de35da77cc",
+          "sha256": "b9d82ad58d6c503c0deb1ab1d429742e6bfcffb960f10b048978b36d6af7ff0e",
           "runFile": "rin-run.json",
           "runSha256": "40a438123e9a9a90dc3602dbed5d4ac6b3df081cbea872a24905e96a84f129d8",
           "counts": {
@@ -1979,23 +1979,23 @@
         }
       },
       "run": {
-        "ownedRunId": "c1fc366b1914d6db5e38ce7f64f66044",
-        "measuredAt": "2026-11-11T09:22:31.364Z",
-        "appRevision": "906684d67d4a555bc18a76b59e1585f567563157",
+        "ownedRunId": "b92a7063b3007c5573d59a7621659db0",
+        "measuredAt": "2026-11-11T09:59:43.065Z",
+        "appRevision": "de5d921e0565babe5d572713267f5e3b53bb43ac",
         "appVersion": "0.13.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "a09622effb2e5757fbff8d90902805fd9e08e8a4",
+        "scriptsRevision": "f50245da7931eb006b1946ef501c774e72970733",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "c8a0093f64b2c17d262fb6071b5d1bf445f214dacab4f1984fcc3c49668ae5b6",
+        "collectorAdapterBundleSha256": "c88975494ae5fdccf262d63c7db4dcb14f3cf041b244d01742e0514ce380767f",
         "gradingAdapterId": "ntilde-owned-routed-input-grading-v1",
-        "gradingAdapterBundleSha256": "febbc12c6b42fedae8043e572115ad4ee46ef76df549d0ccf75ffaa93f4bc3e1",
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v35",
-        "sourceSnapshotManifestSha256": "ff1aac1571004901e59512663be5e2cc5b066914345ac54298165f99a2054bf8"
+        "gradingAdapterBundleSha256": "b1c9d9c40ba6c74f11ee949cc7f97c8175ce772077403e062f1f312344f1e237",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v36",
+        "sourceSnapshotManifestSha256": "e78a249090d8397bdc385cfa37e9b41fb331d40967f612b4020435efa3558baf"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "858edb5890f051e8e052b2a1ff15ad4b",
+        "runId": "4d473b5aee48b878d240a2827498aa87",
         "counts": {
           "inconclusive": 167,
           "supported": 87,
@@ -2003,14 +2003,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "808660a1a359415e8e64d7e8530f602394f3f87e433afac1d4f2c0b60d9dbb61",
+        "rawSha256": "88e1b5fe3d465ab9501eae404a477f6efcb8b8b59e6a8a4b88725134175642e5",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/routed-input-publication.test.mjs",
-        "testSha256": "313bcf03626661957f1a2462167866e38d07c0f15e010de8e07a792f65b8a7c3"
+        "testSha256": "19cc916dd540180d79c6586ed422a4ea4a65cfcb9aa5b0fc4914c5c5c53c97e1"
       }
     }
   ],

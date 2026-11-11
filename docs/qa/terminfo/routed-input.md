@@ -4,7 +4,7 @@ This is the contract behind the [2026-11-11 routed-input qualification](2026-11-
 terminfo.dev@4.0.0 cases through declared Avalonia events that the production App input path routes into a disposable direct-local child, and
 through the exact bytes an independent reader of the child's stdin received. It reuses the [owned routed-input fixture](owned-input.md) (raw child
 capture, FIFO ordering fence, ownership re-proof, mode controls, restoration seal); the benchmark plan (v2) replaces the frozen 39-event plan (v1)
-for source policy v35 and later, and v1's publication keeps re-deriving unchanged.
+for source policy v36 and later, and v1's publication keeps re-deriving unchanged.
 
 ## What the pinned probes actually are
 

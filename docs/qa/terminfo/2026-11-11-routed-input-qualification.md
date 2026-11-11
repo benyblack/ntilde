@@ -61,20 +61,19 @@ selected and restored the same way. The App's `handled`/`inputSubmitted`/`textHa
 - **Newly qualified existing behavior:** DECSET 9 press-only reporting, byte-preserved legacy coordinates, mode 1002 button-event reporting, DECKPAM
   and DECNKM selection and restoration, and the physical keypad table. These shipped earlier (#769 foundation); this is their first measurement
   against an independent contract.
-- Scripts: input plan v2 beside the frozen v1, the layered derivation, collector, grading, receipt, source policy v35 (inventory v42, 260 files),
-  receipt schema 41, and the query/image suites' earlier-challenge limits generalized from 110/80 to the plan's 152/122.
+- Scripts: input plan v2 beside the frozen v1, the layered derivation, collector, grading, receipt, source policy v36 (inventory v43, 267 files),
+  receipt schema 42, and the query/image suites' earlier-challenge limits generalized from 110/80 to the plan's 152/122.
 
 ## Measurement
 
-Scripts revision `a09622ef` (full SHA in `summary.json`); App source revision `906684d6` (the last commit that touched `src/`), Release sidecar built
-from that tree with the repository wrappers (`artifacts/sidecar-routed-input`); one later commit only reformatted whitespace in `MainWindow.GeneratedInput.cs`
-(`dotnet format whitespace`) and does not change the compiled behavior. Owned run `c1fc366b1914d6db5e38ce7f64f66044`, receipt schema 41,
-source policy v35, App version 0.13.0 (operator supplied; not independently verified), executable SHA-256 `f5814e51…`, Node `v24.22.2`, macOS
-arm64, stock collector run `858edb5890f051e8e052b2a1ff15ad4b`, measured 2026-11-11T09:22Z under the shared desktop-collection lock. Every one of the
+Scripts revision `f50245da` (full SHA in `summary.json`); App source revision `de5d921e` (the last commit that touched `src/`, the merged Core-gap change), Release sidecar built
+from that tree with the repository wrappers (`artifacts/sidecar-routed-input`). Owned run `b92a7063b3007c5573d59a7621659db0`, receipt schema 42,
+source policy v36, App version 0.13.0 (operator supplied; not independently verified), executable SHA-256 `f5814e51…`, Node `v24.22.2`, macOS
+arm64, stock collector run `4d473b5aee48b878d240a2827498aa87`, measured 2026-11-11T09:59Z under the shared desktop-collection lock. Every one of the
 26 earlier suites in the same-run table, both finding suites and the exact-query suite (33 matched, 7 mismatched, unchanged) reconfirmed in the same run
 with the outcomes of their own publications; the receipt re-derives all of them.
 
-**Attempts** (the first three are superseded; their reasons are actual):
+**Attempts** (all but the last are superseded; their reasons are actual):
 1. Run `7d982ad3`, scripts `eaaae0a6`: complete, 56 of 58 experiments matched. `button-event` was unsupported because the held middle motion
    targeted the cell the previous held motion had reported, which the App coalesces by design (one 1002 report per cell change); the keypad was
    unsupported because the duplicate-text experiment sent a standalone text after an earlier key-down, which a generated event cannot correlate. Both
@@ -82,7 +81,9 @@ with the outcomes of their own publications; the receipt re-derives all of them.
 2. Run `51947880`: aborted two seconds in with "Unexpected input during cell collection." (no grade, cause unknown, retained in `superseded/`); rerun unchanged.
 3. Run `6eb8e771`, scripts `906684d6`: complete, all 60 matched. Re-measured because review then changed measured scripts (a 97-column minimum and
    a required `textHandled` fact for paired events); its evidence stays in the ignored local run directory.
-4. The published run.
+4. Run `c1fc366b`, scripts `a09622ef`, source policy v35 / receipt 41: complete, all 60 matched, all three supported. Superseded because the Core-gap batch (PR 932)
+   merged first and claimed v35 / receipt 41; this work was restacked onto it and re-measured as v36 / receipt 42 (evidence in the ignored local run directory).
+5. The published run.
 
 ## Layout and re-derivation
 
