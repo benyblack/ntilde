@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { includesCoreEraseEvidence, checkCoreEraseEvidence } from './core-erase-receipt.mjs';
 import { extractOwnedArchive, loadMapping, root } from '../terminfo-core-results.mjs';
 import { snapshotHash } from './agent-observer.mjs';
@@ -121,4 +122,11 @@ test('80-row derivation requires both exact specimens for each targeted verdict'
         delete supplement.effects['ed1-site']; writeFileSync(path, JSON.stringify(supplement));
         assert.throws(() => deriveEraseCoreReport(temp, mapping, identity, m.measurement), /missing, duplicate/);
     } finally { rmSync(temp, { recursive: true, force: true }); }
+});
+
+test('owned worker and runner parse with the new suite imports', () => {
+    for (const file of ['scripts/terminfo/worker.mjs', 'scripts/terminfo-owned-runner.mjs']) {
+        const result = spawnSync(process.execPath, ['--check', join(root, file)], { encoding: 'utf8' });
+        assert.equal(result.status, 0, result.stderr);
+    }
 });

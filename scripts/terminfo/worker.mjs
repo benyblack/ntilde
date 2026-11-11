@@ -1,4 +1,4 @@
-import { collectErase } from './core-erase.mjs';
+import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -330,7 +330,7 @@ try {
         writeFileSync(join(config.output, 'crst-run.json'), JSON.stringify(colorResetRun) + '\n', { flag: 'wx', mode: 0o600 });
         const textCursorRun = await collectTextCursor({ config, fence, owner });
         writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const coreEraseRun = await collectErase({ config, fence, owner });
+        const coreEraseRun = await collectCoreErase({ config, fence, owner });
         writeFileSync(join(config.output, 'ce-run.json'), JSON.stringify(coreEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
