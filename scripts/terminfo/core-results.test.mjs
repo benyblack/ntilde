@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, cpSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix, win32 } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { root, publication, loadMapping, extractOwnedArchive, verifyOwnedRun, deriveReport, readable, reportText,
     assertRequirementRows, verifyStockTrace } from '../terminfo-core-results.mjs';
 import { buildCoreGapsReport, gradeCoreGapEffects } from './core-gaps.mjs';
+import { rederivePrivateAdapter } from './private-clipboard-receipt.mjs';
 import { checkCoreGapsEvidence } from './core-gaps-receipt.mjs';
 
 const mapping = loadMapping(), directory = mkdtempSync(join(tmpdir(), 'ntilde-core-test-'));
@@ -123,4 +124,19 @@ test('tampered mapping and archive inputs are refused before grades are used', (
         const map = join(target, 'requirements-v1.json'); writeFileSync(map, readFileSync(map, 'utf8') + ' ');
         assert.throws(() => loadMapping(base), /mapping bytes changed/);
     } finally { rmSync(base, { recursive: true, force: true }); }
+});
+
+test('macOS adapter bytes rederive with POSIX or Windows path joining', () => {
+    const source = readFileSync(join(directory, 'collector-original.mjs'), 'utf8');
+    const actual = readFileSync(join(directory, 'collector-adapter.mjs'), 'utf8');
+    assert.equal(rederivePrivateAdapter(source, context.sourceSnapshotRoot, posix.join), actual);
+    assert.equal(rederivePrivateAdapter(source, context.sourceSnapshotRoot, win32.join), actual);
+});
+
+test('main-screen DECOM cannot be masked by alternate-screen exit or a clean main bank', () => {
+    const roles = rolesOf(structuredClone(frames));
+    roles.dirtyMainForAlt.screen.bufferState.originMode = false;
+    assert.throws(() => gradeCoreGapEffects(roles, run), /main reset setup/);
+    const bad = rolesOf(structuredClone(frames)); bad.cleanMainReset.screen.bufferState.originMode = true;
+    assert.equal(gradeCoreGapEffects(bad, run)['reset.method'].outcome, 'unsupported');
 });

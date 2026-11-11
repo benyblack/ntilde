@@ -10,7 +10,7 @@ import { sgrAttrsCellAt } from './sgr-attrs-contracts.mjs';
 export const coreGapsSuiteId = 'ntilde-owned-core-gaps-v1';
 export const coreGapsAdapterId = 'ntilde-owned-core-gaps-grading-v1';
 export const coreGapsIds = Object.freeze(['text.reverse-index-scroll', 'reset.method', 'device.env-term', 'extensions.osc1-icon']);
-export const backendResetBytes = '\x1b[?1049l\x1bc\x1b[4l\x1b[3J\x1b[H';
+export const backendResetBytes = '\x1b[?1049l\x1bc\x1b[?6l\x1b[?7h\x1b[4l\x1b[?25h\x1b[r\x1b[0m\x1b[2J\x1b[3J\x1b[H';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (condition, note) => { if (!condition) throw new Error('Core gaps: ' + note); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -74,7 +74,7 @@ export function adaptCoreGapsCollector(input) {
 }
 
 /** Explicit asynchronous desktop backend API. reset() promises a clean main screen,
- * empty history, default rendition/modes/margins, visible home cursor. Host metadata
+ * empty history, default rendition/full margins, origin/insert off, wrap on, visible home cursor. Host metadata
  * is outside that promise. This method, rather than runner preparation, is measured. */
 export function createCoreBackend(fence, calls) {
     return { async reset() { calls.push({ method: 'reset', bytes: backendResetBytes }); return fence.write(backendResetBytes); } };
@@ -94,7 +94,13 @@ export function coreGapsPlan(rows, termOutput) {
     add('\x1b[r', 'regionRestored');
     add(scrollbackReset); add('Hello World', 'resetBefore');
     add(backendResetBytes, 'resetAfter', 'reset');
-    add(Array.from({ length: rows + 3 }, (_, i) => 'DIRTY-' + i + '\r\n').join(''), 'dirtyHistory');
+    const dirtyHistory = Array.from({ length: rows + 3 }, (_, i) => 'DIRTY-' + i + '\r\n').join('');
+    const dirtyMain = '\x1b[3;9r\x1b[?6h\x1b[?7l\x1b[4h\x1b[?25l\x1b[1;3;7;42mMAIN-DIRTY';
+    add(dirtyHistory, 'dirtyHistory');
+    add(dirtyMain, 'dirtyMain');
+    add(backendResetBytes, 'cleanMainReset', 'reset');
+    add(dirtyHistory, 'dirtyHistoryForAlt');
+    add(dirtyMain, 'dirtyMainForAlt');
     add('\x1b[?1049h\x1b[3;9r\x1b[?6h\x1b[?7l\x1b[4h\x1b[?25l\x1b[1;3;7;42mDIRTY', 'dirtyModes');
     add(backendResetBytes, 'cleanReset', 'reset');
     add('X', 'resetPen'); add(scrollbackReset);
@@ -216,10 +222,17 @@ export function gradeCoreGapEffects(roles, run) {
     check(before.lines[0] === 'Hello World' && same(before.cursor, [0, 11]), 'reset pinned seed invalid');
     check(history.count > 0 && dirty.alternate && dirty.origin && dirty.insert && !dirty.autoWrap && !dirty.cursorVisible
         && dirty.lines.some(line => line.includes('DIRTY')), 'non-default reset setup invalid');
+    for (const role of ['dirtyMain', 'dirtyMainForAlt']) {
+        const main = view(role);
+        check(!main.alternate && main.origin && main.insert && !main.autoWrap && !main.cursorVisible
+            && main.top === 2 && main.bottom === 8 && main.count > 0 && !main.storedDefault
+            && main.lines.some(line => line.includes('MAIN-DIRTY')), 'non-default main reset setup invalid');
+    }
     const clean = view('cleanReset'), pen = view('resetPen');
     const pristine = s => s.lines.every(line => line === '') && same(s.cursor, [0, 0]) && s.count === 0 && !s.alternate
-        && !s.origin && !s.insert && s.autoWrap && s.cursorVisible && s.top === 0 && s.bottom === s.rows - 1 && s.storedDefault;
-    const reset = pristine(after) && pristine(clean) && pen.lines[0] === 'X' && pen.storedDefault && same(pen.cursor, [0, 1]);
+        && !s.origin && !s.insert && !s.pending && s.autoWrap && s.cursorVisible && s.top === 0 && s.bottom === s.rows - 1 && s.storedDefault;
+    const reset = pristine(after) && pristine(view('cleanMainReset')) && pristine(clean)
+        && pen.lines[0] === 'X' && pen.storedDefault && same(pen.cursor, [0, 1]);
     const icon = name => roles[name].facts.before;
     const base = icon('iconBefore');
     check(base.requestedIconName === 'core-baseline' && base.oscTitle === 'core-baseline', 'OSC setup invalid');
@@ -250,7 +263,7 @@ export function buildCoreGapsReport(frames, run, runId, adapter, replayModule = 
     const plan = coreGapsPlan(frames[0].screen.rows, run.child.output);
     check(run.records.length === plan.length && run.records.every((r, i) => same({ feed: r.feed, role: r.role, api: r.api }, plan[i])
         && /^\x1b\[\?[\d;]+c$/.test(r.barrier)), 'plan changed');
-    check(same(run.calls, [{ method: 'reset', bytes: backendResetBytes }, { method: 'reset', bytes: backendResetBytes }]), 'reset API was not called');
+    check(same(run.calls, Array.from({ length: 3 }, () => ({ method: 'reset', bytes: backendResetBytes }))), 'reset API was not called');
     validateGradedJournal(frames, { frameCount: plan.filter(s => s.role).length + 3, prefix: 'cg', noncePrefix: 'NTILDE_CG_', runId,
         label: 'Core gaps', screenOf: s => screenSnapshot(s, true, true, false, true, true, true) });
     const roles = {}; let index = 2;

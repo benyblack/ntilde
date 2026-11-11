@@ -21,6 +21,13 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** The JSON writer of one fixture directory. */
 const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
 
+/** Synthetic old-scope source projection. Normalize checkout line endings before
+ * dropping only the new suffix's imports; the historical production maps stay fixed. */
+export function legacyPrefixSource(bytes) {
+    return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?core-gaps(?:-receipt)?\.mjs';\n/gm, ''));
+}
+
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
 async function buildFixture(output) {
     const write = writerFor(output);
@@ -49,7 +56,7 @@ async function buildFixture(output) {
         evidence.queryEvidence = { ...evidence.queryEvidence, sha256: hash(readFileSync(join(output, 'query-observations.json'))) };
         for (const [key, file] of Object.entries(capturedV41SourceFiles)) {
             let data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
-            if (file.endsWith('.mjs')) data = Buffer.from(data.toString().replace(/^import .*from '\.\/(?:terminfo\/)?core-gaps(?:-receipt)?\.mjs';\n/gm, ''));
+            if (file.endsWith('.mjs')) data = legacyPrefixSource(data);
             if (file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(capturedV41SourceFiles, null, 2) + '\n');
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
