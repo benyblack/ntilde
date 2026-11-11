@@ -30,7 +30,7 @@ public partial class MainWindow
         var toastTitle = this.FindControl<TextBlock>("RecordingToastTitle");
         var toastMessage = this.FindControl<TextBlock>("RecordingToastMessage");
         if (text == null || toast == null || toastTitle == null || toastMessage == null) return null;
-        if (!AgentPaneMetadataCapture.TryRead(registration.Buffer, out var buffer) || buffer == null) return null;
+        if (!AgentPaneMetadataCapture.TryRead(registration.Buffer, out var buffer, pane.Parser) || buffer == null) return null;
         var bar = FindTabHeaderDescendant<ProgressBar>(tab.Header, "TabProgressBar");
         var result = new PaneMetadataResult
         {
@@ -58,7 +58,7 @@ public partial class MainWindow
                 ToastMessage = toastMessage.Text ?? string.Empty,
             },
         };
-        var fields = new[] { result.OscTitle, result.WorkingDirectory, result.DisplayTitle, result.Presentation.TabText,
+        var fields = new[] { result.OscTitle, result.WorkingDirectory, buffer.RequestedIconName, result.DisplayTitle, result.Presentation.TabText,
             result.Presentation.ToastTitle, result.Presentation.ToastMessage }
             .Concat(buffer.Links.SelectMany(link => new[] { link.Uri, link.Id }));
         return AgentPaneMetadataCapture.TextFits(fields) ? result : null;

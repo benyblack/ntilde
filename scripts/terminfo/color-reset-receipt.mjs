@@ -46,10 +46,10 @@ const files = ['crst-observations.json', 'crst-run.json', 'crst-snapshots.jsonl'
 /** Whether a retained artifact path exists; any failure other than a missing entry is fatal. */
 const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
 
-/** Any retained runtime-color reset artifact or declaration requires this suffix, and a policy-v35 run always carries it, because the current
+/** Any retained runtime-color reset artifact or declaration requires this suffix, and a policy-v36 run always carries it, because the current
  * worker collects this suite unconditionally after the left/right-margin suite. */
 export function includesColorResetEvidence(output, evidence, context) {
-    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v35'
+    return context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v36'
         || context.colorResetAdapterId !== undefined || context.colorResetSuiteId !== undefined
         || context.colorResetBundleSha256 !== undefined || context.colorResetContractsVersion !== undefined
         || evidence.colorResetEvidence !== undefined

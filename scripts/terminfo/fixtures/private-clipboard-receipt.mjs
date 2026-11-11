@@ -7,17 +7,26 @@ import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
-import { capturedV42SourceFiles, ownedSourcePath, sourceSnapshotPolicy } from '../owned-sources.mjs';
+import { capturedV41SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
 import { buildQueryReport, queryPlan } from '../queries.mjs';
-import { adaptCollector } from '../collector.mjs';
+import { rederivePrivateAdapter } from '../private-clipboard-receipt.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
 import { privateClipboardOutputPolicy } from '../terminal-output.mjs';
 import { emptyPrivateClipboardReply, privateClipboardEvidenceJson } from '../private-clipboard.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
+// This fixture remains the v34 / receipt-40 prefix. Core gaps have separate retained-evidence tests.
+const sourceSnapshotPolicy = 'readonly-owned-source-graph-v34';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** The JSON writer of one fixture directory. */
 const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
+
+/** Synthetic old-scope source projection. Normalize checkout line endings before
+ * dropping only the new suffix's imports; the historical production maps stay fixed. */
+export function legacyPrefixSource(bytes) {
+    return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?core-gaps(?:-receipt)?\.mjs';\n/gm, ''));
+}
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
 async function buildFixture(output) {
@@ -45,12 +54,14 @@ async function buildFixture(output) {
             initial: JSON.parse(archive.get('query-initial.json')), actions: journalOf('query-actions.jsonl'), frames: queryFrames, seal: process.queries.seal, checksumReport: true });
         write('query-observations.json', queryReport);
         evidence.queryEvidence = { ...evidence.queryEvidence, sha256: hash(readFileSync(join(output, 'query-observations.json'))) };
-        for (const [key, file] of Object.entries(capturedV42SourceFiles)) {
-            const data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+        for (const [key, file] of Object.entries(capturedV41SourceFiles)) {
+            let data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
+            if (file.endsWith('.mjs')) data = legacyPrefixSource(data);
+            if (file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(capturedV41SourceFiles, null, 2) + '\n');
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
         const manifest = { schemaVersion: 1, policy: sourceSnapshotPolicy,
-            hashes: Object.fromEntries(Object.keys(capturedV42SourceFiles).map(key => [key, context[key]])) };
+            hashes: Object.fromEntries(Object.keys(capturedV41SourceFiles).map(key => [key, context[key]])) };
         write('source-snapshot.json', manifest);
         Object.assign(context, { sourceSnapshotPolicy, sourceSnapshotManifestSha256: hash(readFileSync(join(output, 'source-snapshot.json'))),
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
@@ -76,8 +87,7 @@ async function buildFixture(output) {
         settings.AllowOsc52ClipboardWrite = true; write('initial-settings.json', settings);
         context.initialSettingsSha256 = hash(readFileSync(join(output, 'initial-settings.json')));
         writeFileSync(join(output, 'collector-original.mjs'), originalCollector);
-        const adapted = adaptCollector(originalCollector, join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'ownership.mjs'),
-            { privateClipboardModulePath: join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'private-clipboard-worker.mjs') });
+        const adapted = rederivePrivateAdapter(originalCollector, context.sourceSnapshotRoot);
         writeFileSync(join(output, 'collector-adapter.mjs'), adapted); context.adapterBundleSha256 = hash(adapted);
         // Policy v6 always carries the grading suffix; add the synthetic
         // grading evidence beside the private-clipboard one.

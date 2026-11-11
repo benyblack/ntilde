@@ -150,7 +150,7 @@ test('the reset renders are byte-identical to their baseline renders where no ov
 test('the receipt binds the run, adapters and counts, and every predecessor and finding reconfirm in the same run', async () => {
     const { summary, run, report } = load();
     const { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 41);
+    assert.equal(receipt.schemaVersion, 42);
     assert.equal(receipt.colorResetEvidence.runId, summary.context.runId);
     assert.deepEqual(receipt.colorResetEvidence.counts, colorResetCounts(report));
     assert.equal(receipt.colorResetEvidence.adapterBundleSha256, summary.context.colorResetBundleSha256);

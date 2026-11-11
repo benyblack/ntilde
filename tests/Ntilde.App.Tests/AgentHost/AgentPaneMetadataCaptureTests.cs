@@ -13,6 +13,24 @@ public sealed class AgentPaneMetadataCaptureTests
     }
 
     [Fact]
+    public void Icon_name_observation_is_parser_state_independent_of_title_and_screen()
+    {
+        var buffer = new TerminalBuffer(80, 4); var parser = new AnsiParser(buffer);
+        parser.Process("\u001b]0;baseline\aMARK\u001b[22;1t\u001b]1;distinct-icon\a");
+        Assert.True(AgentPaneMetadataCapture.TryRead(buffer, out var changed, parser));
+        Assert.Equal("distinct-icon", changed!.RequestedIconName);
+        parser.Process("\u001b]2;other-title\a");
+        Assert.True(AgentPaneMetadataCapture.TryRead(buffer, out var titleOnly, parser));
+        Assert.Equal("distinct-icon", titleOnly!.RequestedIconName);
+        parser.Process("\u001b[23;1t");
+        Assert.True(AgentPaneMetadataCapture.TryRead(buffer, out var restored, parser));
+        Assert.Equal("baseline", restored!.RequestedIconName);
+        Assert.Equal((0, 4), (restored.CursorRow, restored.CursorCol));
+        Assert.Equal("distinct-icon", changed.RequestedIconName);
+        Assert.Null(Read(buffer).RequestedIconName);
+    }
+
+    [Fact]
     public void Complete_link_runs_preserve_reference_identity_without_opening_any_target()
     {
         var buffer = new TerminalBuffer(80, 4); var parser = new AnsiParser(buffer);

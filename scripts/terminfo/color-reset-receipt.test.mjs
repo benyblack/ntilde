@@ -20,7 +20,7 @@ const own = f => () => checkColorResetEvidence(f.output, f.evidence, f.context.r
 const refusal = error => !(error instanceof TypeError);
 test('a complete run carries the runtime-color reset suffix: counts, adapter identity and the layered derivation are rederived without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 41);
+    assert.equal(f.finish().schemaVersion, 42);
     assert.deepEqual(f.evidence.colorResetEvidence.counts, { supported: 4 });
     assert.equal(f.context.colorResetAdapterId, colorResetAdapterId);
     assert.equal(f.context.colorResetSuiteId, colorResetSuiteId);
@@ -29,9 +29,9 @@ test('a complete run carries the runtime-color reset suffix: counts, adapter ide
 }));
 
 test('the suffix is required whenever the policy, a declaration or an artifact names it', () => privateClipboardReceiptFixture(f => {
-    const empty = join(f.output, 'no-such-directory'), earlier = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v34' };
+    const empty = join(f.output, 'no-such-directory'), earlier = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v35' };
     assert.equal(includesColorResetEvidence(f.output, f.evidence, f.context), true);
-    assert.equal(includesColorResetEvidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v35' }), true, 'the current policy always carries the suffix');
+    assert.equal(includesColorResetEvidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v36' }), true, 'the current policy always carries the suffix');
     assert.equal(includesColorResetEvidence(empty, {}, earlier), false, 'an earlier policy without any artifact or declaration does not');
     assert.equal(includesColorResetEvidence(empty, {}, { ...earlier, colorResetSuiteId: 'x' }), true);
     assert.equal(includesColorResetEvidence(empty, { colorResetEvidence: {} }, earlier), true);
