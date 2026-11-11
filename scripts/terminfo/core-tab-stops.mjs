@@ -153,6 +153,15 @@ export const tabStopsSpecimens = Object.freeze(specimenFor);
 const observedFrame = frame => ({ lines: frame.screen.lines.slice(0, 2), guard: frame.screen.lines[guardRow],
     cursor: [frame.screen.cursorRow, frame.screen.cursorCol], cpr: frame.cpr.reply });
 
+/** One read: its role, retained CPR exchange and ordering barrier must match the plan, and the raw reply the physical cursor. */
+function checkedRead(frame, record, role) {
+    check(record.role === role && same(record.cpr, frame.cpr), 'read order or CPR changed');
+    const { barrier, reply } = validateCursorReport(frame.cpr);
+    check(barrier === frame.barrier && reply !== null, 'missing ordered CPR');
+    check(reply.row === frame.screen.cursorRow + 1 && reply.col === frame.screen.cursorCol + 1, 'CPR disagrees with physical cursor');
+    return frame;
+}
+
 /** Re-derive from the trusted plan and parent-journaled observations, never the worker's reported grade. */
 export function buildTabStopsReport(frames, run, runId) {
     check(run?.suiteId === tabStopsSuiteId && run.runId === runId, 'identity mismatch');
@@ -166,16 +175,7 @@ export function buildTabStopsReport(frames, run, runId) {
     check(Array.isArray(run.barriers) && run.barriers.length === run.feeds.length
         && run.barriers.every(b => /^\x1b\[\?[\d;]+c$/.test(b)), 'missing write barriers');
     check(Array.isArray(run.reads) && run.reads.length === reads.length, 'incomplete reads');
-    const roles = {};
-    for (let i = 0; i < reads.length; i++) {
-        const frame = frames[i + 2], record = run.reads[i];
-        check(record.role === reads[i].role && same(record.cpr, frame.cpr), 'read order or CPR changed');
-        const cpr = validateCursorReport(frame.cpr);
-        check(cpr.barrier === frame.barrier && cpr.reply !== null, 'missing ordered CPR');
-        check(cpr.reply.row === frame.screen.cursorRow + 1 && cpr.reply.col === frame.screen.cursorCol + 1,
-            'CPR disagrees with physical cursor');
-        roles[record.role] = frame;
-    }
+    const roles = Object.fromEntries(reads.map((step, i) => [step.role, checkedRead(frames[i + 2], run.reads[i], step.role)]));
     const { provenance, effects } = gradeTabStops(roles, cols);
     for (const id of tabStopsIds) {
         const specimen = specimenFor[id];
@@ -217,24 +217,21 @@ export async function collectTabStops({ config, fence, owner }) {
     return { schemaVersion: 1, suiteId: tabStopsSuiteId, runId: config.runId, feeds, barriers, reads };
 }
 
-/** Two complete reads must agree before a frame can enter the journal. */
+/** Two complete reads must agree before a frame can enter the journal; a read also journals the CPR bound to its barrier. */
 export class TabStopsObserver extends OwnedCellObserver {
     async capture(budget) {
         const first = await super.capture(budget);
-        const second = await super.capture(budget);
-        this.lastAttempt = { first, second };
-        check(same(first, second), 'paired reads disagree');
+        this.lastAttempt = { first, second: await super.capture(budget) };
+        check(same(first, this.lastAttempt.second), 'paired reads disagree');
         return first;
     }
     async handleRequest(request, budget) {
-        if (request.kind === 'ts-read') {
-            const cpr = validateCursorReport(request.cpr);
-            check(cpr.barrier === request.barrier, 'CPR barrier mismatch');
-            const result = await super.handle(request.kind, budget, request.barrier);
-            this.frames.at(-1).cpr = cpr;
-            return result;
-        }
-        check(request.cpr === undefined, 'unexpected CPR');
-        return super.handle(request.kind, budget, request.barrier);
+        const isRead = request.kind === 'ts-read';
+        check(isRead || request.cpr === undefined, 'unexpected CPR');
+        const cpr = isRead ? validateCursorReport(request.cpr) : null;
+        check(!isRead || cpr.barrier === request.barrier, 'CPR barrier mismatch');
+        const result = await super.handle(request.kind, budget, request.barrier);
+        if (isRead) this.frames.at(-1).cpr = cpr;
+        return result;
     }
 }
