@@ -152,6 +152,13 @@ function stageTheme(spec, step, colors, overrides, baseline, behavior) {
     return renderTheme(appColors(baseline, stale, {}, false), stale);
 }
 
+/** The frame whose render a defective renderer repeats at a reset: the previous stage's (never applied) or the experiment's baseline (dropped every override). */
+function repeatedRender(behavior, step, frames, firstFrame) {
+    if (step.kind !== 'reset') return null;
+    if (behavior.stalePng) return frames.at(-1);
+    return behavior.baselinePng ? frames[firstFrame] : null;
+}
+
 /** The frames and worker reads of one case. */
 function caseFrames(contract, frames, store, baseline, behavior) {
     const reads = [];
@@ -165,7 +172,7 @@ function caseFrames(contract, frames, store, baseline, behavior) {
             const queries = stageQueries(spec, step, colors, baseline, behavior);
             const view = { theme: stageTheme(spec, step, colors, overrides, baseline, behavior), extra: { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries },
                 drawn: behavior.wrongRender && step.kind === 'reset' ? { ...stageTheme(spec, step, colors, overrides, baseline, behavior), backgroundArgb: 0xff123456 } : undefined,
-                repeat: behavior.stalePng && step.kind === 'reset' ? frames.at(-1) : (behavior.baselinePng && step.kind === 'reset' ? frames[firstFrame] : null) };
+                repeat: repeatedRender(behavior, step, frames, firstFrame) };
             frames.push(frame(frames.length, 'crst-read', screen, deviceAttribute, view, store));
             reads.push({ kind: 'state', cursor: [screen.cursorRow, screen.cursorCol], queries: structuredClone(queries) });
         }
