@@ -50,3 +50,7 @@ report sources. Receipt v3 retains all preceding bindings and adds color
 evidence, rehashes PNGs, re-derives the report and compares its journal only
 after verified worker exit, app shutdown and fixture deletion. Historical
 receipt v1/v2 and fixed-render reports remain reproducible.
+
+The four pinned reset cases (`extensions.osc104-reset-palette`, `osc110-reset-fg`, `osc111-reset-bg`, `osc112-reset-cursor`) are qualified by a separate layered
+suite that reuses this capture and query machinery with the pinned BEL spellings, the measured baseline as the restoration oracle and an independent model; see the
+[runtime-color reset contract](runtime-color-reset.md). The ten experiments above are controls of the foundation, not qualifications of those four cases.
