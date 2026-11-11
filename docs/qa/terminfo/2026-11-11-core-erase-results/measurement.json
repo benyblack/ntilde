@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "measurement": {
-    "runId": "d1e265d1dafd73f4c83a9b9d8e72bfcf",
+    "runId": "b8fdb8067be677205429b1aa41d79e48",
     "appRevision": "6a3019cd75e488a0f9caedcd0b6a66adc245e0e9",
-    "scriptsRevision": "6a3019cd75e488a0f9caedcd0b6a66adc245e0e9",
+    "scriptsRevision": "49c86f050491201edd7d92b131d0a8cc0ae35247",
     "receiptSchema": 46,
     "sourcePolicy": "readonly-owned-source-graph-v40"
   },
-  "ownedArchiveSha256": "7d6dda88965b2cd47e9c0fc73a020db3710b885462825d7144c2991483c3312b",
+  "ownedArchiveSha256": "d7d3eb1cb432a2d908ea103f76b985d601a9c7beee9b850edc2254c73ff7ef78",
   "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
   "attempts": [
     {
@@ -26,8 +26,29 @@
     },
     {
       "runId": "d1e265d1dafd73f4c83a9b9d8e72bfcf",
+      "status": "superseded",
+      "reason": "The observer integration was revised in response to the Sonar duplication finding.",
+      "archive": "attempt-3-superseded.zip",
+      "sha256": "7d6dda88965b2cd47e9c0fc73a020db3710b885462825d7144c2991483c3312b"
+    },
+    {
+      "runId": "1d018a26653e474962d5c2400d97dbb6",
+      "status": "superseded",
+      "reason": "The independent grader and serial collector were clarified in response to Sonar findings.",
+      "archive": "attempt-4-superseded.zip",
+      "sha256": "e96f41050e36b78b9e52e5adb60bed1e9ebe7b1bb7dd1d7044a24906e8eb734a"
+    },
+    {
+      "runId": "b94b89d1ea16e64fbf70886d7118227a",
+      "status": "superseded",
+      "reason": "The serial collector plan loop was extracted into a per-step helper in response to the Sonar duplication finding.",
+      "archive": "attempt-5-superseded.zip",
+      "sha256": "1e67bafdcd888e755d161bb1dcf29c51446c9b10a5a2960b87da06168d08f9c0"
+    },
+    {
+      "runId": "b8fdb8067be677205429b1aa41d79e48",
       "status": "complete",
-      "reason": "The exact erase specimens, OSC 133 and predecessor suites completed; receipt and cleanup verified."
+      "reason": "The exact specimens and predecessor suites completed after the serial-plan change; receipt and cleanup verified."
     }
   ]
 }

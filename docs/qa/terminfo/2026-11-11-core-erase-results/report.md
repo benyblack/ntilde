@@ -4,7 +4,7 @@
 
 This version uses the frozen #937 denominator. The earlier [#932](../2026-11-11-core-results/report.md) and [#937](../2026-11-11-core-text-cursor-results/report.md) publications remain unchanged. The historical pinned verdict, this run’s pinned-code result and the exact-fixture effects are distinct.
 
-Owned run `d1e265d1dafd73f4c83a9b9d8e72bfcf`; App source `6a3019cd75e488a0f9caedcd0b6a66adc245e0e9`; scripts `6a3019cd75e488a0f9caedcd0b6a66adc245e0e9`; source policy `readonly-owned-source-graph-v40`; receipt schema 46; geometry 40 × 140. CUP/CHA parameters are one-based and physical positions are zero-based.
+Owned run `b8fdb8067be677205429b1aa41d79e48`; App source `6a3019cd75e488a0f9caedcd0b6a66adc245e0e9`; scripts `49c86f050491201edd7d92b131d0a8cc0ae35247`; source policy `readonly-owned-source-graph-v40`; receipt schema 46; geometry 40 × 140. CUP/CHA parameters are one-based and physical positions are zero-based.
 
 Changes from #937: erase.line.right: inconclusive to pass; erase.screen.above: inconclusive to pass; erase.screen.below: inconclusive to pass. Other Core conclusions were rederived unchanged; the concurrent OSC 133 qualification added no Core conclusion changes.
 
@@ -99,7 +99,10 @@ Evidence: [owned run](owned-run.zip), [requirements](../2026-11-11-core-results/
 
 - `cd73ce0faa6c5f262ec3a0df55879a41` — failed: Worker import name collision caused a syntax error and the owned app exited before collection. No measurements were taken. ([evidence](attempt-1-failed.zip))
 - `ffb4b221e6a4e07a31275e03728039f0` — superseded: OSC 133 qualification merged afterwards and changed the shared collector and source-policy chain. ([evidence](attempt-2-superseded.zip))
-- `d1e265d1dafd73f4c83a9b9d8e72bfcf` — complete: The exact erase specimens, OSC 133 and predecessor suites completed; receipt and cleanup verified.
+- `d1e265d1dafd73f4c83a9b9d8e72bfcf` — superseded: The observer integration was revised in response to the Sonar duplication finding. ([evidence](attempt-3-superseded.zip))
+- `1d018a26653e474962d5c2400d97dbb6` — superseded: The independent grader and serial collector were clarified in response to Sonar findings. ([evidence](attempt-4-superseded.zip))
+- `b94b89d1ea16e64fbf70886d7118227a` — superseded: The serial collector plan loop was extracted into a per-step helper in response to the Sonar duplication finding. ([evidence](attempt-5-superseded.zip))
+- `b8fdb8067be677205429b1aa41d79e48` — complete: The exact specimens and predecessor suites completed after the serial-plan change; receipt and cleanup verified.
 
 ## Reproduction
 
