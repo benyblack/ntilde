@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -72,7 +73,8 @@ test('the 80th character does not require immediate movement or a retained pendi
 
 function journal() {
     const archive = new URL('../../docs/qa/terminfo/2026-11-11-core-erase-results/owned-run.zip', import.meta.url);
-    const raw = execFileSync('/usr/bin/unzip', ['-p', archive.pathname, 'ce-snapshots.jsonl'], { maxBuffer: 1024 * 1024 }).toString();
+    const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
+    const raw = execFileSync(python, ['-c', "import sys,zipfile; sys.stdout.buffer.write(zipfile.ZipFile(sys.argv[1]).read('ce-snapshots.jsonl'))", fileURLToPath(archive)], { maxBuffer: 1024 * 1024 }).toString();
     const base = JSON.parse(raw.split('\n')[0]).screen;
     base.cols = 80; base.horizontalMargins.rightMargin = 79;
     for (const field of ['attributeRuns', 'cellDetails', 'resolvedColors']) base[field][0].count = base.rows * 80;
