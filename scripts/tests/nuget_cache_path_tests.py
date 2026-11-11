@@ -38,6 +38,10 @@ def nuget_caches(block):
 def problems(workflow, action):
     """What is wrong with this workflow and action text, as a list of messages."""
     found = []
+    # The runner evaluates `${{ }}` in an action's name and description too, where `env` is not
+    # available - quoting the cache path there made the action fail to load on every OS.
+    if '${{' in action.split('\nruns:', 1)[0]:
+        found.append('the .NET SDK action has an expression in its name or description, which fails the action on load')
     step = re.search(r'- name: Keep NuGet packages on the workspace disk \(windows\)\n(.*?)(?=\n    - |\Z)', action, re.S)
     if not step:
         found.append('the .NET SDK action no longer sets NUGET_PACKAGES')
@@ -80,6 +84,7 @@ def main():
         'a cache step before the .NET SDK action': (moved, action),
         'the action no longer sets NUGET_PACKAGES': (workflow, action.replace('NUGET_PACKAGES=', 'NUGET_PACKAGE_DIR=')),
         'the action sets it on every OS': (workflow, action.replace("      if: runner.os == 'Windows'\n      shell: pwsh", '      shell: pwsh', 1)),
+        'an expression in the action description': (workflow, action.replace('whose path must follow', "whose path must be ${{ env.NUGET_PACKAGES }}, following", 1)),
     }
     accepted = [label for label, (w, a) in mutants.items() if not problems(w, a)[0]]
     assert not accepted, f'accepted: {accepted}'

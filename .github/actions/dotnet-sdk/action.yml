@@ -3,8 +3,8 @@ description: >-
   Uses the hosted image's preinstalled .NET SDK when global.json accepts it, and otherwise
   restores the cached ~/.dotnet and installs the pinned SDK with setup-dotnet. On windows it also
   puts the NuGet package folder on the workspace disk (NUGET_PACKAGES). No NuGet cache: a job
-  that restores packages adds its own "Cache NuGet packages" step, whose path must be
-  `${{ env.NUGET_PACKAGES || '~/.nuget/packages' }}` (scripts/tests/nuget_cache_path_tests.py).
+  that restores packages adds its own "Cache NuGet packages" step, whose path must follow
+  NUGET_PACKAGES (scripts/tests/nuget_cache_path_tests.py).
 
 # The hosted images already ship a 10.0.4xx SDK (10.0.403 on windows-latest and ubuntu-latest,
 # 2026-11-01), and global.json's rollForward: latestPatch accepts any 10.0.4xx patch from 10.0.400
