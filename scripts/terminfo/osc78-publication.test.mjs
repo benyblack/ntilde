@@ -85,7 +85,7 @@ test('extensions.osc8: the pinned termless code decided over the stored cells an
     assert.deepEqual(osc8.divergences, [{ termlessOutcome: 'supported', terminalOutcome: 'inconclusive', kind: 'terminal-path-inconclusive-by-design' }]);
     assert.equal(osc8.divergence, undefined, 'the pinned termless verdict and the effect contract agree');
     assert.ok(osc8.effectContract.validity.every(entry => entry.held) && osc8.effectContract.required.every(entry => entry.held));
-    assert.deepEqual(osc8.effectContract.required.map(entry => entry.id), ['pinned-fixture-effect', 'closed-link-later-text', 'id-parameter', 'two-links-not-merged', 'no-stale-links']);
+    assert.deepEqual(osc8.effectContract.required.map(entry => entry.id), ['stock-pinned-fixture', 'pinned-fixture-effect', 'closed-link-later-text', 'id-parameter', 'two-links-not-merged', 'no-stale-links']);
     assert.deepEqual(osc78Counts(load().report), { 'inconclusive/supported': 1, 'supported/supported': 1 });
 });
 

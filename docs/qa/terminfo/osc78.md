@@ -66,7 +66,7 @@ are compared only as a same-link relation inside one snapshot (the partition of 
 | `st-terminator` | observed | the pinned fixture with ST terminators |
 
 A case is **supported** when every validity control held and every required read matches the oracle; **unsupported** when a required read mismatches while every control held;
-**inconclusive** when a control failed (the prior state, the unmarked bytes, a gate or the prepared baseline). Labels never grade. A stable wrong state is evidence: nothing
+**inconclusive** when a control failed (the prior state, the unmarked bytes, a gate and, for OSC 7, the prepared baseline). The OSC 8 stock read already carries the pinned fixture under test, so a mismatch there is a failing required read (`stock-pinned-fixture`), never an invalid control. Labels never grade. A stable wrong state is evidence: nothing
 waits for an expected value to appear, and a typed refusal of the first observation is the only optional outcome.
 
 ## Boundaries

@@ -58,7 +58,7 @@ as-found nor the original metadata is claimed restored. The App and worker were 
 ## Controls and refusals
 
 Controls that must hold before a mismatch can establish unsupported: the measured prior state, the unmarked bytes (ordinary text for OSC 7; the same text without OSC 8 for OSC 8) and
-the gates (an OSC 2 title change must not move the cwd; a close-only sequence must not create a link), plus the prepared-baseline read. Portable tests drive each named defect through the
+the gates (an OSC 2 title change must not move the cwd; a close-only sequence must not create a link), plus, for OSC 7, the prepared-baseline read (for OSC 8 the stock read carries the pinned fixture itself, so a mismatch there is a failing required read, not an invalid control). Portable tests drive each named defect through the
 grader with the controls intact and require `unsupported`: link-open ignored, correct text without link metadata, wrong URI, wrong or dropped id, a range reaching the closed-link witness,
 stopping short or shifted, stale metadata after an overwrite or a second fixture, a second link merged into (or replaced by a copy of) the first, a closed link affecting later text,
 an undecoded or dropped encoded space, a stale or repeated second cwd, a host left in the path and an unrestored baseline. Invalid controls give `inconclusive`. Further refusals: wrong

@@ -178,16 +178,19 @@ function osc8Required(evaluated, prior) {
         { id: 'no-stale-links', held: byName(evaluated, 'stale').reads.every(entry => entry.evaluation.passed) && noLinks(readOf(byName(evaluated, 'stale'), 'cleared')) }];
 }
 
-/** The outcome of one case's effect contract from its evaluated experiments. */
+/** The outcome of one case's effect contract from its evaluated experiments. The OSC 7 stock read is a true baseline (no OSC 7 sent), so it is a validity control.
+ * The OSC 8 stock read already carries the pinned fixture under test, so a mismatch there is the effect failing (a required read), never an invalid control. */
 function gradeCase(caseId, evaluated) {
-    const [prior, ordinary] = byName(evaluated, 'effect').reads, stock = firstRead(evaluated, 'stock');
+    const [prior, ordinary] = byName(evaluated, 'effect').reads, stock = firstRead(evaluated, 'stock'), isOsc7 = caseId === osc7CaseId;
     const validity = validityOf(caseId, evaluated, prior, ordinary);
-    const required = caseId === osc7CaseId ? osc7Required(evaluated, prior) : osc8Required(evaluated, prior);
+    const required = isOsc7 ? osc7Required(evaluated, prior) : osc8Required(evaluated, prior);
+    if (isOsc7) validity.push({ id: 'prepared-baseline', held: stock.evaluation.passed });
+    else required.unshift({ id: 'stock-pinned-fixture', held: stock.evaluation.passed && targets[caseId](prior.evaluation.observed, stock.evaluation.observed) });
     const invalid = validity.filter(item => !item.held), failed = required.filter(item => !item.held);
     let outcome = 'supported';
-    if (invalid.length || !stock.evaluation.passed) outcome = 'inconclusive';
+    if (invalid.length) outcome = 'inconclusive';
     else if (failed.length) outcome = 'unsupported';
-    const notes = [`Prepared baseline read: ${stock.evaluation.passed ? 'every fact as predicted' : 'did not match the oracle'}.`];
+    const notes = [`Stock read (${isOsc7 ? 'the prepared baseline' : 'the exact pinned fixture'}): ${stock.evaluation.passed ? 'every fact as predicted' : 'did not match the oracle'}.`];
     return { outcome, validity, required, ...(invalid.length ? { invalid: invalid.map(item => item.id) } : {}), ...(failed.length ? { failed: failed.map(item => item.id) } : {}), notes };
 }
 

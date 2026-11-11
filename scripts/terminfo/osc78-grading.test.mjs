@@ -87,16 +87,17 @@ for (const [label, options, failed] of osc8Refusals) {
     });
 }
 
-test('OSC 8: a link-open ignored at the prepared stock read leaves the pinned termless verdict and the effect contract inconclusive, never supported', () => {
+test('OSC 8: a link-open ignored at the stock read (the pinned fixture itself) is a failing effect with every control valid: the pinned verdict is inconclusive, the effect unsupported', () => {
     const report = build(adjusting('extensions.osc8/stock', 'pinned', state => { state.runs = []; }));
-    assert.deepEqual(outcomes(report)[1], ['inconclusive', 'inconclusive']);
-    assert.equal(report.cases[1].conclusion.outcome, 'inconclusive');
-    assert.equal(report.cases[1].effectContract.outcome, 'inconclusive', 'the prepared stock read did not match the oracle, so no conclusive grade');
+    assert.deepEqual(outcomes(report)[1], ['inconclusive', 'unsupported']);
+    assert.deepEqual(report.cases[1].effectContract.failed, ['stock-pinned-fixture']);
+    assert.ok(report.cases[1].effectContract.validity.every(entry => entry.held));
 });
 
-test('OSC 8: a leaked pinned link is unsupported for both the pinned termless probe and the effect contract', () => {
+test('OSC 8: a leaked pinned link is unsupported for both the pinned termless probe and the effect contract, and a defect only in the effect read leaves the pinned replay supported', () => {
     const report = build({ adjust: (id, name, state) => { if ((id === 'extensions.osc8/stock' || id === 'extensions.osc8/effect') && name === 'pinned') state.runs[0].length = 5; } });
-    assert.deepEqual(outcomes(report)[1], ['unsupported', 'inconclusive'], 'the stock read no longer matches the oracle, so the effect contract cannot decide');
+    assert.deepEqual(outcomes(report)[1], ['unsupported', 'unsupported']);
+    assert.deepEqual(report.cases[1].effectContract.failed, ['stock-pinned-fixture', 'pinned-fixture-effect']);
     const effectOnly = build(adjusting('extensions.osc8/effect', 'pinned', state => { state.runs[0].length = 5; }));
     assert.deepEqual(outcomes(effectOnly)[1], ['supported', 'unsupported'], 'the pinned stock replay and the effect contract are separately identified and can differ');
     assert.deepEqual(effectOnly.cases[1].divergences.map(item => item.kind), ['pinned-and-effect-differ', 'terminal-path-inconclusive-by-design']);
