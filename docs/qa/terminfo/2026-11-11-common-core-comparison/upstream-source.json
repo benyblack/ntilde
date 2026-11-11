@@ -1,0 +1,17 @@
+{
+  "upstream": "https://github.com/beorn/terminfo.dev",
+  "baseRevision": "b0c8c62500199b381478a02b1f144a4de60693e5",
+  "adapterRevision": "ff37d198914b870281a2c0461cc682b37fce07ef",
+  "modifiedPaths": [
+    "packages/admin/versions.ts",
+    "packages/terminfo.dev/src/darwin-capture.ts",
+    "packages/terminfo.dev/src/identity-guard.ts",
+    "packages/terminfo.dev/src/iterm-window-owner.test.ts",
+    "packages/terminfo.dev/src/iterm-window-owner.ts",
+    "packages/terminfo.dev/src/owned-terminal.ts",
+    "packages/terminfo.dev/src/serve.ts"
+  ],
+  "probeDefinitionsUnchanged": true,
+  "sourceArchiveSha256": "53d5f67f914807ff5425c0038ca1c0d9abb13c020149a666382816fa97ce1ca3",
+  "adapterPatchSha256": "a88c1c12341f848cf15136ddbc9d3b8394b6c3405572b654e33cbe19147ea968"
+}

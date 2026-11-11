@@ -79,8 +79,12 @@ function readSubject(subject, ids, requirementsSha256) {
             method: result?.assertionType ?? null, reason: result?.reason ?? null,
             note: result?.note ?? null, tests: result?.tests ?? [] };
     }
+    const diagnostic = key => { const text = raw.rawReplies?.[key]; if (!text) return null; try { return JSON.parse(text); } catch { return { raw: text }; } };
+    const calibration = diagnostic('collector.captureCalibration');
+    const ownership = diagnostic('collector.disposableOwnership');
     return { id: subject.id, label: subject.label, version: source.version, measuredAt: raw.measuredAt,
         runId: raw.runId, rawSha256: hash(subject.rawBytes), executableSha256: source.executableSha256,
+        measurementLimits: { captureOutcome: calibration?.outcome ?? null, captureRefusal: calibration?.refusal ?? null, disposableOwnership: ownership?.kind ?? null },
         counts, supportedShare: counts.supported / ids.length * 100,
         geometry, method: { probeHash: raw.probeHash, sourceRevision: raw.sourceRevision,
             workerSha256: source.workerSha256, driverSha256: source.driverSha256, os: source.os }, results };
