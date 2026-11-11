@@ -19,6 +19,7 @@ export function terminalFence(input, output, timeoutMs = 1000) {
                 let result;
                 if (pending.expected === cursorReportQuery) result = parseCursorReportFrame(pending.bytes);
                 else if (pending.expected === checksumReportExpectation) result = parseChecksumReportFrame(pending.bytes);
+                else if (typeof pending.expected?.parse === 'function') result = pending.expected.parse(pending.bytes);
                 else result = parseQueryFrame(pending.bytes, pending.expected);
                 if (result) pending.finish(null, result);
             } catch (error) { fail(error); }
@@ -67,6 +68,12 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         /** One cursor position report: the raw CPR (or its explicit absence) and the DA ordering barrier. */
         cursorReport(prefix = '') {
             return request(prefix + cursorReportQuery, cursorReportQuery);
+        },
+        /** One bounded exchange with a caller-supplied frame parser: the exact request bytes, then whatever the parser accepts (a raw reply or its explicit
+         * absence, and the DA ordering barrier). The parser returns null while incomplete, throws on any unexpected byte and never sees more than 512 bytes. */
+        exchange(sequence, parse) {
+            if (typeof sequence !== 'string' || !sequence.length || sequence.length > 64 || typeof parse !== 'function') return Promise.reject(new Error('Invalid owned exchange request.'));
+            return request(sequence, Object.freeze({ parse }));
         },
         /** One DECRQCRA exchange: the exact request bytes, then the raw DCS reply (or its explicit absence) and the DA ordering barrier. */
         checksumReport(sequence) {

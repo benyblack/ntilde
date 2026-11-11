@@ -158,7 +158,7 @@ function fallbackSentence(r) {
     return `The fallback was not used because the raster controls qualified; its report is a supporting fact only (it would have been ${r.decrqssFallback.outcome}).`;
 }
 
-function rasterSection(report) {
+export function rasterSection(report) {
     const out = ['## SGR reset raster experiments', '',
         'Each experiment draws a neutral two-cell specimen (YY) before any attribute is set and saves the pen and position with DECSC. For each of the seven nonempty attribute subsets it draws YY with the subset, restores with DECRC and redraws; it then sets every attribute, sends the made-up SGR 99, and sends the reset under test, redrawing YY each time. Crops are exact decoded RGBA rectangles (the two cells plus one blank cell on every side, three rows) at coordinates derived from the draw’s own grid metadata; an unchanged control text row is compared across every capture. The cursor is hidden for the whole experiment. DECRQSS (`ESC P $ q m ESC \\`) is asked in the neutral, all-set, SGR 99 and final states and retained raw; it decides only when a subset, restoration or separation control does not qualify.', ''];
     for (const id of sgrRasterIds) {

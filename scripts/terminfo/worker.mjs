@@ -1,3 +1,4 @@
+import { collectReverseWide } from './core-reverse-wide.mjs';
 import { collectSgrRaster } from './core-sgr-raster.mjs';
 import { collectWrap } from './core-wrap-collector.mjs';
 import { collectTabStops } from './core-tab-stops.mjs';
@@ -348,6 +349,8 @@ try {
         writeFileSync(join(config.output, 'cw-run.json'), JSON.stringify(coreWrapRun) + '\n', { flag: 'wx', mode: 0o600 });
         const sgrRasterRun = await collectSgrRaster({ config, fence, owner });
         writeFileSync(join(config.output, 'sr-run.json'), JSON.stringify(sgrRasterRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const reverseWideRun = await collectReverseWide({ config, fence, owner });
+        writeFileSync(join(config.output, 'rw-run.json'), JSON.stringify(reverseWideRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

@@ -64,3 +64,4 @@ registerHooks({ load(url, context, next) {
 
 code.set(new URL('core-sgr-raster.mjs', root).href, log + `export async function collectSgrRaster() { record('SgrRaster'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('core-wrap-collector.mjs', root).href, log + `export async function collectWrap() { record('CoreWrap'); return { schemaVersion: 1, cases: [] }; }`);
+code.set(new URL('core-reverse-wide.mjs', root).href, log + `export async function collectReverseWide() { record('ReverseWide'); return { schemaVersion: 1, cases: [] }; }`);
