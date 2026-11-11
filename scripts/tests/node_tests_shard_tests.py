@@ -10,7 +10,9 @@ the refusals - an unknown shard, a repeated file, too few files, an empty shard 
 """
 import importlib.util
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -50,6 +52,47 @@ def refused(call):
     return False
 
 
+def node_major():
+    """The major version of the `node` on PATH, or 0 when there is none."""
+    node = shutil.which('node')
+    if not node:
+        return 0
+    version = subprocess.run([node, '--version'], capture_output=True, text=True).stdout.strip()
+    match = re.match(r'v(\d+)\.', version)
+    return int(match[1]) if match else 0
+
+
+def check_launcher():
+    """scripts/ci/node-tests-run.mjs starts files in the order given (the CLI would sort them),
+    writes each file's seconds and fails when a test fails. Needs node 22 or later (the workflow
+    uses 24); this step can run before setup-node, so an older or missing node skips the check."""
+    if node_major() < 22:
+        return 'not checked (needs node 22+ on PATH)'
+    launcher = ROOT / 'scripts/ci/node-tests-run.mjs'
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        log = tmp / 'starts.log'
+        for name in ('a', 'b', 'c'):
+            (tmp / f'{name}.test.mjs').write_text(
+                "import { appendFileSync } from 'node:fs'; import { test } from 'node:test';\n"
+                f"appendFileSync({json.dumps(str(log))}, '{name}');\n"
+                f"test('{name}', () => {{}});\n", encoding='utf-8')
+        (tmp / 'fails.test.mjs').write_text("import { test } from 'node:test'; test('fails', () => { throw new Error('x'); });\n", encoding='utf-8')
+        env = {**os.environ, 'NODE_TESTS_RUN_CONCURRENCY': '1'}
+        timing = tmp / 'timing.json'
+        order = ['c', 'a', 'b']
+        ran = subprocess.run(['node', str(launcher), str(timing), *(f'{n}.test.mjs' for n in order)], cwd=tmp, env=env, capture_output=True)
+        assert ran.returncode == 0, ran.stdout.decode(errors='replace')[-2000:]
+        assert log.read_text(encoding='utf-8') == ''.join(order), f'started {log.read_text(encoding="utf-8")}, not in the order given'
+        recorded = sorted(Path(path).name for path in json.loads(timing.read_text(encoding='utf-8')))
+        assert recorded == ['a.test.mjs', 'b.test.mjs', 'c.test.mjs'], recorded
+        failed = subprocess.run(['node', str(launcher), str(tmp / 'timing2.json'), 'a.test.mjs', 'fails.test.mjs'], cwd=tmp, env=env, capture_output=True)
+        assert failed.returncode == 1, 'a failing test fails the launcher'
+        recorded = sorted(Path(path).name for path in json.loads((tmp / 'timing2.json').read_text(encoding='utf-8')))
+        assert recorded == ['a.test.mjs', 'fails.test.mjs'], f'a failing file\'s seconds are recorded too: {recorded}'
+    return 'checked'
+
+
 def main():
     text = WORKFLOW.read_text(encoding='utf-8')
     block = job(text, 'script_self_tests')
@@ -57,9 +100,12 @@ def main():
     assert matrix, 'the job must have a shard matrix'
     assert [value.strip() for value in matrix[1].split(',')] == shard.names(), 'the matrix must list exactly the script\'s shards, in order'
     assert shard.names()[-1] == shard.REST, 'REST, which also runs the quick checks, is last'
-    assert re.search(r'node --test .*\$files', block, re.S) and '--test-shard' not in block, 'the step runs the selected files, not a positional shard'
-    assert '--test-reporter=./scripts/ci/node-tests-timing.mjs' in block and (ROOT / 'scripts/ci/node-tests-timing.mjs').is_file(), \
-        'the step records each file\'s seconds with the timing reporter'
+    # The launcher, not `node --test $files`, which sorts the files by name and so would undo the
+    # longest-first order; it also records each file's seconds.
+    assert re.search(r'^\s*node scripts/ci/node-tests-run\.mjs "\$RUNNER_TEMP/node-test-seconds\.json" \$files$', block, re.M), \
+        'the step runs the selected files through scripts/ci/node-tests-run.mjs'
+    commands = '\n'.join(line for line in block.splitlines() if not line.lstrip().startswith('#'))
+    assert not re.search(r'node --test[^\n]*\$files', commands) and '--test-shard' not in commands, 'the step runs the selected files in order, not through the CLI'
     files = workflow_files(block)
     assert len(set(files)) == len(files), 'the workflow lists each test file once'
     assert all((ROOT / path).is_file() for path in files), 'every listed test file exists'
@@ -80,7 +126,7 @@ def main():
             assert path not in owners, f'{path} runs in {owners[path]} and {name}'
             owners[path] = name
     assert sorted(owners) == sorted(files), 'every file runs in exactly one shard'
-    # Longest first: node starts files in the order given, so a long file listed late ends the shard late.
+    # Longest first: the launcher starts files in the order given, so a long file listed late would end the shard late.
     weight = shard.weights(files, table)  # a file the table does not know yet counts at the median
     for name in shard.names():
         chosen = [weight[path] for path in shard.select(name, files)]
@@ -131,8 +177,9 @@ def main():
     # The workflow reads the output through bash command substitution: it must be LF-only on every OS.
     output = subprocess.run([sys.executable, str(ROOT / 'scripts/ci/node-tests-shard.py'), shard.REST, *files], capture_output=True, check=True).stdout
     assert b'\r' not in output and output.decode().split() == shard.select(shard.REST, files), 'LF-only, one file per line'
+    launcher = check_launcher()
     print(f'{len(files)} files cut across {len(shard.names())} shards '
-          f'({", ".join(f"{n} {totals[n]:.0f} s" for n in shard.names())}); {len(refusals)} refusals passed')
+          f'({", ".join(f"{n} {totals[n]:.0f} s" for n in shard.names())}); {len(refusals)} refusals passed; launcher {launcher}')
 
 
 if __name__ == '__main__':

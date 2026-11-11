@@ -14,13 +14,14 @@ the hand-made claims this replaced (#920), always in REST, which made REST the j
 again within a day (351 s of node beside 122 and 283 on windows, run 42907696288). The cut is
 deterministic: the same file list and table give the same shards on every OS and every run.
 
-A shard prints its files longest first. `node --test` runs a few files at a time, starting them in
-the order given, so a long file listed late starts late and ends the shard after everything else:
-on the first run of this cut, windows shard b's 257 s file started some three minutes in, and the
+A shard prints its files longest first, and the workflow runs them in that order through
+scripts/ci/node-tests-run.mjs. Files run a few at a time, so a long file that starts late ends the
+shard after everything else: on the first run of this cut, which went through `node --test` (it
+sorts the files by name), windows shard b's 257 s file started some three minutes in, and the
 shard took 456 s beside 248 and 183.
 
 The table is measured, not hand-tuned. Each shard's step records every file's seconds on that
-runner (scripts/ci/node-tests-timing.mjs) and uploads them; `--update` folds such files into the
+runner (scripts/ci/node-tests-run.mjs) and uploads them; `--update` folds such files into the
 table. Refreshing it is downloading a windows run's timing artifacts and running `--update` on
 them (the table's own notes give both commands).
 
@@ -102,7 +103,7 @@ def normalize(path):
 
 
 def update(paths, table_path=DURATIONS):
-    """Fold timing files written by scripts/ci/node-tests-timing.mjs into the table, rounded to
+    """Fold timing files written by scripts/ci/node-tests-run.mjs into the table, rounded to
     tenths of a second and at least 0.1 (a file of quick tests still costs its start). A file
     measured in several inputs keeps the largest value."""
     table = load_table(table_path)

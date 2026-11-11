@@ -1,7 +1,7 @@
 {
   "notes": [
     "Each test file's seconds for scripts/ci/node-tests-shard.py, which deals the files out to the Script self-tests shards by them.",
-    "The values are what scripts/ci/node-tests-timing.mjs records: the sum of a file's top-level test durations while `node --test` runs files concurrently (three at a time on a 4-core runner). Contention makes them larger than a lone run of the file; a windows shard's wall time has been about its total divided by 2.7.",
+    "The values are what scripts/ci/node-tests-run.mjs records: the sum of a file's top-level test durations while it runs files concurrently (three at a time on a 4-core runner). Contention makes them larger than a lone run of the file; a windows shard's wall time has been about its total divided by 2.7.",
     "rest_head_start_seconds is in the same units: the rest shard also runs the job's quick checks, about 32 s of wall time on windows (run 42912477328), so about 90.",
     "Measured on windows, CI's slowest OS, from run 42912477328. To refresh: download the node-test-seconds-windows-latest-* artifacts of a run (gh run download <run> -p 'node-test-seconds-windows-latest-*') and run `python3 scripts/ci/node-tests-shard.py --update <each node-test-seconds.json>`. A deleted or renamed file must leave the table too; the self-test lists any it still holds."
   ],
