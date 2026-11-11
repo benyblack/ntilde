@@ -73,6 +73,11 @@ export function terminalFence(input, output, timeoutMs = 1000) {
             if (typeof sequence !== 'string' || !sequence.length || sequence.length > 256) return Promise.reject(new Error('Invalid rectangle checksum request.'));
             return request(sequence, checksumReportExpectation);
         },
+        /** One bounded DCS exchange (a DECRQSS request, for example): the exact request bytes, then the raw DCS reply (or its explicit absence) and the DA ordering barrier. Same framing and limits as `checksumReport`. */
+        dcsReport(sequence) {
+            if (typeof sequence !== 'string' || !sequence.length || sequence.length > 64) return Promise.reject(new Error('Invalid DCS report request.'));
+            return request(sequence, checksumReportExpectation);
+        },
         /** One OSC color query exchange with the exact request bytes the caller chose (BEL or ST spelling): the raw reply (or its explicit absence) and the DA ordering barrier. */
         colorExchange(sequence, expected) {
             if (typeof sequence !== 'string' || !sequence.length || sequence.length > 64) return Promise.reject(new Error('Invalid owned color query request.'));

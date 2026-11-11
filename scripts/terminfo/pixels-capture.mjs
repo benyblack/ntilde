@@ -98,6 +98,11 @@ export function retainedCursorCapture(output, frame) {
     return validatePixelCapture(retainedCaptureResult(output, frame, false, 'cursor-pixels'), frame.screen, frame.pixel.presentationTimeMs);
 }
 
+/** A retained capture of any suite whose frames live in `directory` (`<directory>/frame-NNN.png`), revalidated against its journaled bytes. */
+export function retainedCapture(output, frame, directory) {
+    return retainedCaptureResult(output, frame, false, directory);
+}
+
 export function retainedColorCaptureResult(output, frame) {
     return retainedCaptureResult(output, frame, true);
 }

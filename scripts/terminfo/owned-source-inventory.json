@@ -288,5 +288,7 @@
     "coreWrapCollectorSourceSha256": "core-wrap-collector.mjs",
     "coreWrapObserverSourceSha256": "core-wrap-observer.mjs",
     "coreWrapGeometrySourceSha256": "core-wrap-geometry.mjs",
-    "coreWrapReceiptSourceSha256": "core-wrap-receipt.mjs"
+    "coreWrapReceiptSourceSha256": "core-wrap-receipt.mjs",
+    "sgrRasterSourceSha256": "core-sgr-raster.mjs",
+    "sgrRasterReceiptSourceSha256": "core-sgr-raster-receipt.mjs"
 }
