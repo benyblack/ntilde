@@ -221,11 +221,16 @@
       "catalogueChanged": false,
       "pinnedCriterion": "the two named colors select distinct exposed bg RGB values",
       "criterionMatch": "matched",
-      "rationale": "The independently rederived contract directly observes the two named colors select distinct exposed bg RGB values.",
+      "rationale": "The standard RGB suite measures red/blue only. The same-run erase.el-with-attrs experiment separately sends the required SGR 42 over XXXXX at home, observes palette background index 2 with resolved RGB (0,205,0), and checks restoration. The Core derivation explicitly requires the green channel to exceed 100; no red/blue pass is substituted for green.",
       "evidence": [
         {
           "file": "sgrgb-observations.json",
           "caseId": "sgr.bg.standard",
+          "kind": "case"
+        },
+        {
+          "file": "erar-observations.json",
+          "caseId": "erase.el-with-attrs",
           "kind": "case"
         }
       ]
@@ -420,8 +425,8 @@
       "frozenRequirement": "Move cursor down 5 then up 2 via <code>\\x1b[5B\\x1b[2A</code>, verify cursor row is 3 (0-based).",
       "catalogueChanged": false,
       "pinnedCriterion": "cursor row=4, col=1 after \"\\u001b[2A\"",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture seeds row 6 using CUP before CUU 2. The current joined fixture reaches that seed via CUD 5 then CUU 2; CUD 5 was not part of the retained experiment.",
       "evidence": [
         {
           "file": "raw.json",
@@ -520,8 +525,8 @@
       "frozenRequirement": "Write \"AB\", save with <code>\\x1b7</code> (DECSC), move to (5,5), restore with <code>\\x1b8</code> (DECRC), verify cursor returned to col 2, row 0.",
       "catalogueChanged": false,
       "pinnedCriterion": "saved cursor returns to 3;5 after measured displacement",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture saves at 3;5, displaces to 10;10 and restores 3;5. The current criterion saves after AB at row 0/column 2 and displaces to 5;5; that exact joined fixture was not observed.",
       "evidence": [
         {
           "file": "raw.json",
@@ -660,8 +665,8 @@
       "frozenRequirement": "Write \"ABCDEFGH\" then send <code>\\x1b[5`</code> (HPA col 5), verify cursor column is 4 (0-based).",
       "catalogueChanged": false,
       "pinnedCriterion": "cursor row=3, col=15 after \"\\u001b[15`\"",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture sends CSI 15` from row 3 and observes column 15. The current criterion requires CSI 5` after ABCDEFGH and column 4 (zero-based); that specimen is unmeasured.",
       "evidence": [
         {
           "file": "raw.json",
@@ -680,8 +685,8 @@
       "frozenRequirement": "Write \"XXXXX\", move to col 1 via <code>\\x1b[1G</code>, send <code>\\x1b[K</code> (EL 0), verify cell at (0,0) is blank.",
       "catalogueChanged": false,
       "pinnedCriterion": "row 0 EL 0 (omitted parameter) erases the contracted cells after a setup cursor of 2,0",
-      "criterionMatch": "matched",
-      "rationale": "The independently rederived contract directly observes row 0 EL 0 (omitted parameter) erases the contracted cells after a setup cursor of 2,0.",
+      "criterionMatch": "partial",
+      "rationale": "The qualified EL 0 fixture uses CSI 3G over ABCDE and preserves AB. The current criterion requires CSI 1G and an erased home cell. The different boundary fixture remains supported independently but cannot pass this exact row.",
       "evidence": [
         {
           "file": "erln-observations.json",
@@ -780,8 +785,8 @@
       "frozenRequirement": "Write three lines, move home, send <code>\\x1b[J</code> (ED 0), verify line 2 content is gone.",
       "catalogueChanged": false,
       "pinnedCriterion": "rows 0, 20 and 39 read \"AAAAA\", \"BB   \", \"     \" after ED 0 (explicit parameter spelling) with the cursor unmoved from column 2 of row 20",
-      "criterionMatch": "matched",
-      "rationale": "The independently rederived contract directly observes rows 0, 20 and 39 read \"AAAAA\", \"BB   \", \"     \" after ED 0 (explicit parameter spelling) with the cursor unmoved from column 2 of row 20.",
+      "criterionMatch": "partial",
+      "rationale": "The qualified ED 0 cases operate at the measured middle row, including the omitted spelling. The current live-page fixture moves home and checks line 2 after omitted-parameter ED 0; that joined home-boundary specimen is not retained.",
       "evidence": [
         {
           "file": "erdi-observations.json",
@@ -945,8 +950,8 @@
       "frozenRequirement": "App probe: query DECRPM for private mode 7. A set/reset reply establishes mode recognition only; unknown or no reply from the attempted query is TEST FAILURE. This does not measure line wrapping (the headless probe measures wrapping separately).",
       "catalogueChanged": true,
       "pinnedCriterion": "DECRPM mode 7 recognized (set or reset)",
-      "criterionMatch": "matched",
-      "rationale": "The same-run text.wrap trace observes home, the measured right edge and the next-row cursor after width+1 characters, while the mode-7 reply establishes recognition. This is a width-parameterized wrap observation, not a recognition-only inference.",
+      "criterionMatch": "partial",
+      "rationale": "The stock mode-7 reply proves recognition. The width-dependent text.wrap trace reads cursor replies rather than the current live-page wrapped-text effect; the report does not substitute recognition or movement for the missing joined content observation.",
       "evidence": [
         {
           "file": "raw.json",
@@ -1175,8 +1180,8 @@
       "frozenRequirement": "Write 85 characters, verify text wrapped and a character appears on row 1.",
       "catalogueChanged": false,
       "pinnedCriterion": "wrap after 140 columns lands the cursor at row 2, column 2",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture uses the measured 140-column width and reads CPR after width+1 characters. The current criterion writes 85 characters and reads a character on row 1; no joined cell observation or matching 80-column specimen is retained.",
       "evidence": [
         {
           "file": "raw.json",
@@ -1215,8 +1220,8 @@
       "frozenRequirement": "Write tab then \"X\", verify X appears at column 8 (after the default 8-column tab stop).",
       "catalogueChanged": false,
       "pinnedCriterion": "combined HT/HTS fixture advances to the nearest owned stop at row 1, column 6",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture qualifies a custom stop at column 6 (one-based). It neither writes X nor observes X at the required default column 8 (zero-based). The explicit HTS row is separate.",
       "evidence": [
         {
           "file": "raw.json",
@@ -1255,8 +1260,8 @@
       "frozenRequirement": "Write \"AB\\rC\", verify C overwrote A at col 0 while B remains at col 1.",
       "catalogueChanged": false,
       "pinnedCriterion": "CR moves cursor from 1;3 to 1;1",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace writes AB and sends CR, then reads only the cursor. It never writes C or reads the resulting C/B cells, so the joined AB\\rC overwrite criterion is unmeasured.",
       "evidence": [
         {
           "file": "raw.json",
@@ -1275,8 +1280,8 @@
       "frozenRequirement": "Headless: write \"A\\r\\nB\" and verify A and B on consecutive rows. App: establish row 3, column 5, write LF, and measure advancement to row 4; retain the final column without requiring it to stay unchanged.",
       "catalogueChanged": false,
       "pinnedCriterion": "LF advances from row 3 to row 4",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh App trace validly observes LF advancing row 3 to row 4, which matches the current catalogue App alternative. The live-page criterion additionally asks for A\\r\\nB with A/B cell readback; that joined content observation is missing.",
       "evidence": [
         {
           "file": "raw.json",
@@ -1295,8 +1300,8 @@
       "frozenRequirement": "Write \"AB\\x08C\", verify backspace moved cursor back so C overwrote B at col 1, while A remains at col 0.",
       "catalogueChanged": false,
       "pinnedCriterion": "BS moves from 1;5 to 1;4",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace observes cursor column 5 becoming 4 after BS. It does not measure AB\\x08C or read the surviving A and overwritten C cells; cursor movement is not evidence of that content criterion.",
       "evidence": [
         {
           "file": "raw.json",
@@ -1315,8 +1320,8 @@
       "frozenRequirement": "Write \"A\" then send <code>\\x1bD</code> (IND), verify cursor moved down to row 1.",
       "catalogueChanged": false,
       "pinnedCriterion": "IND advances cursor from 3;5 to 4;5",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace observes IND from 3;5 to 4;5. The current fixture writes A at the initial row and requires cursor row 1; that exact seeded fixture was not replayed.",
       "evidence": [
         {
           "file": "raw.json",
@@ -1335,8 +1340,8 @@
       "frozenRequirement": "Write \"ABC\" then send <code>\\x1bE</code> (NEL), verify cursor is at row 1, col 0.",
       "catalogueChanged": false,
       "pinnedCriterion": "NEL advances cursor from 3;5 to 4;1",
-      "criterionMatch": "matched",
-      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace observes NEL from 3;5 to 4;1. The current fixture writes ABC from home and requires row 1/column 0 (zero-based); that exact seed/address fixture is unmeasured.",
       "evidence": [
         {
           "file": "raw.json",

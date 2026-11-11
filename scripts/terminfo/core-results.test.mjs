@@ -5,7 +5,7 @@ import { join, posix, win32 } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { root, publication, loadMapping, extractOwnedArchive, verifyOwnedRun, deriveReport, readable, reportText,
-    assertRequirementRows, verifyStockTrace } from '../terminfo-core-results.mjs';
+    assertRequirementRows, verifyStockTrace, verifyGreenBackgroundCriterion, verifyMatchedCriterion } from '../terminfo-core-results.mjs';
 import { buildCoreGapsReport, gradeCoreGapEffects } from './core-gaps.mjs';
 import { rederivePrivateAdapter } from './private-clipboard-receipt.mjs';
 import { checkCoreGapsEvidence } from './core-gaps-receipt.mjs';
@@ -21,8 +21,8 @@ const rolesOf = value => { let i = 2; return Object.fromEntries(run.records.filt
 
 test('the complete current receipt and all 80 result rows reproduce byte for byte', () => {
     const identity = verifyOwnedRun(directory, mapping), report = deriveReport(directory, mapping, identity);
-    assert.deepEqual(report.totals, { pass: 73, fail: 0, inconclusive: 7 });
-    assert.equal(report.corePassPercentage, 91.25);
+    assert.deepEqual(report.totals, { pass: 60, fail: 0, inconclusive: 20 });
+    assert.equal(report.corePassPercentage, 75);
     assert.equal(report.rows.length, 80);
     assert.equal(new Set(report.rows.map(r => r.id)).size, 80);
     assert.equal(reportText(report), readFileSync(join(root, publication, 'report.json'), 'utf8').replaceAll('\r\n', '\n'));
@@ -139,4 +139,20 @@ test('main-screen DECOM cannot be masked by alternate-screen exit or a clean mai
     assert.throws(() => gradeCoreGapEffects(roles, run), /main reset setup/);
     const bad = rolesOf(structuredClone(frames)); bad.cleanMainReset.screen.bufferState.originMode = true;
     assert.equal(gradeCoreGapEffects(bad, run)['reset.method'].outcome, 'unsupported');
+});
+
+test('green must come from the explicit SGR 42 specimen and exceed the current threshold', () => {
+    const result = parse('erar-observations.json').cases.find(c => c.caseId === 'erase.el-with-attrs');
+    const sources = [{ file: 'erar-observations.json', caseId: result.caseId, result }];
+    assert.doesNotThrow(() => verifyGreenBackgroundCriterion(sources));
+    assert.throws(() => verifyGreenBackgroundCriterion([]), /SGR 42/);
+    const changed = structuredClone(sources); changed[0].result.observed.background.before.resolved.g = 100;
+    assert.throws(() => verifyGreenBackgroundCriterion(changed), /threshold/);
+});
+
+test('cursor-only overwrite and wrong-boundary EL observations cannot be promoted', () => {
+    for (const id of ['text.cr', 'text.backspace'])
+        assert.throws(() => verifyMatchedCriterion({ id, criterionMatch: 'matched' }, [{ kind: 'stock' }]), /joined overwrite/);
+    const result = parse('erln-observations.json').cases.find(c => c.caseId === 'erase.line.right');
+    assert.throws(() => verifyMatchedCriterion({ id: 'erase.line.right', criterionMatch: 'matched' }, [{ kind: 'case', result }]), /home-boundary/);
 });

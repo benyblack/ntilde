@@ -9,7 +9,7 @@ import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
 import { capturedV41SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
 import { buildQueryReport, queryPlan } from '../queries.mjs';
-import { adaptCollector } from '../collector.mjs';
+import { rederivePrivateAdapter } from '../private-clipboard-receipt.mjs';
 import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from '../private-clipboard-worker.mjs';
 import { PRIVATE_CLIPBOARD_PROBES } from '../private-clipboard-controller.mjs';
 import { privateClipboardOutputPolicy } from '../terminal-output.mjs';
@@ -87,8 +87,7 @@ async function buildFixture(output) {
         settings.AllowOsc52ClipboardWrite = true; write('initial-settings.json', settings);
         context.initialSettingsSha256 = hash(readFileSync(join(output, 'initial-settings.json')));
         writeFileSync(join(output, 'collector-original.mjs'), originalCollector);
-        const adapted = adaptCollector(originalCollector, join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'ownership.mjs'),
-            { privateClipboardModulePath: join(context.sourceSnapshotRoot, 'scripts', 'terminfo', 'private-clipboard-worker.mjs') });
+        const adapted = rederivePrivateAdapter(originalCollector, context.sourceSnapshotRoot);
         writeFileSync(join(output, 'collector-adapter.mjs'), adapted); context.adapterBundleSha256 = hash(adapted);
         // Policy v6 always carries the grading suffix; add the synthetic
         // grading evidence beside the private-clipboard one.

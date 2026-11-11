@@ -2,7 +2,40 @@ import test from 'node:test';
 import { legacyPrefixSource } from './fixtures/private-clipboard-receipt.mjs';
 import assert from 'node:assert/strict';
 import { createCoreBackend, backendResetBytes, coreGapsIds, coreGapsPlan, coreGapsPinned, adaptCoreGapsCollector,
-    coreGapContext, replayCoreGap } from './core-gaps.mjs';
+    coreGapContext, replayCoreGap, executeCorePlan } from './core-gaps.mjs';
+
+test('plan execution waits for both the fenced write and read before starting the next API call', async () => {
+    const events = [], records = [], roles = {};
+    let finishWrite, finishRead;
+    const plan = [{ feed: 'seed', role: 'before', api: null }, { feed: backendResetBytes, role: 'after', api: 'reset' }];
+    const done = executeCorePlan(plan, {
+        fence: { write: bytes => { events.push(bytes); return new Promise(resolve => { finishWrite = resolve; }); } },
+        backend: { reset: async () => { events.push('reset'); return 'reset-barrier'; } },
+        owner: (kind, barrier) => {
+            events.push([kind, barrier]);
+            return barrier === 'write-barrier' ? new Promise(resolve => { finishRead = resolve; }) : Promise.resolve('after-state');
+        }, records, roles,
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(events, ['seed']);
+    finishWrite('write-barrier');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(events, ['seed', ['cg-read', 'write-barrier']]);
+    finishRead('before-state');
+    await done;
+    assert.deepEqual(events, ['seed', ['cg-read', 'write-barrier'], 'reset', ['cg-read', 'reset-barrier']]);
+    assert.deepEqual(roles, { before: 'before-state', after: 'after-state' });
+    assert.deepEqual(records, plan.map((step, i) => ({ ...step, barrier: i ? 'reset-barrier' : 'write-barrier' })));
+});
+
+test('a refused observation prevents all subsequent writes and API calls', async () => {
+    let resets = 0;
+    await assert.rejects(executeCorePlan([{ feed: 'seed', role: 'before' }, { api: 'reset' }], {
+        fence: { write: async () => 'barrier' }, backend: { reset: async () => { resets++; } },
+        owner: async () => { throw new Error('read refused'); }, records: [], roles: {},
+    }), /read refused/);
+    assert.equal(resets, 0);
+});
 
 test('reset() awaits the real fenced API write and explicitly clears IRM after RIS', async () => {
     const writes = [], calls = [];

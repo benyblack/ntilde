@@ -169,6 +169,16 @@ export function coreGapContext(id, roles) {
     };
 }
 
+/** Each write/API call and its observation finish before the next step starts. */
+export function executeCorePlan(plan, { backend, fence, owner, records, roles }) {
+    return plan.reduce(async (previous, step) => {
+        await previous;
+        const barrier = step.api ? await backend.reset() : await fence.write(step.feed);
+        records.push({ ...step, barrier });
+        if (step.role) roles[step.role] = await owner('cg-read', barrier);
+    }, Promise.resolve());
+}
+
 /** The actual child emits its environment onto the qualified terminal. This is not
  * an operator label or the collector parent's environment. The marker binds to runId. */
 export async function collectCoreGaps({ config, fence, owner, gradingModule }) {
@@ -180,11 +190,7 @@ export async function collectCoreGaps({ config, fence, owner, gradingModule }) {
     let primary;
     try {
         await owner('cg-bind', await fence.write('\x1b[?1049h' + scrollbackReset + 'NTILDE_CG_' + config.runId));
-        for (const step of coreGapsPlan(initial.screen.rows, termOutput)) {
-            const barrier = step.api ? await backend.reset() : await fence.write(step.feed); // Serial fence/API contract. NOSONAR
-            records.push({ ...step, barrier });
-            if (step.role) roles[step.role] = await owner('cg-read', barrier); // Read must precede the next write. NOSONAR
-        }
+        await executeCorePlan(coreGapsPlan(initial.screen.rows, termOutput), { backend, fence, owner, records, roles });
     } catch (error) { primary = error; }
     try { await owner('cg-finish', await fence.write(scrollbackReset)); }
     catch (error) {

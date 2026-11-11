@@ -10,7 +10,7 @@ import { completeOwnedReceipt } from './terminfo/receipt.mjs';
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const publication = 'docs/qa/terminfo/2026-11-11-core-results';
-export const mappingSha256 = '400e1911272c8f311347f6b99d70a8ab28c088dc09e4fa86460470ac174c63b2';
+export const mappingSha256 = 'a0c95ead8a653c1555379f89d3ae420172926966ebfd86eb6e92de77d683479c';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (condition, reason) => { if (!condition) throw new Error('Core results: ' + reason); };
 const read = path => JSON.parse(readFileSync(path));
@@ -147,6 +147,28 @@ function qualifiedPinnedVerdict(source) {
     return 'unavailable';
 }
 
+/** Supplemental exact specimens may be reused across IDs only with an explicit
+ * source mapping and the actual current requirement checked here. */
+export function verifyGreenBackgroundCriterion(sources) {
+    const source = sources.find(s => s.file === 'erar-observations.json' && s.caseId === 'erase.el-with-attrs');
+    const setup = source?.result.observed?.background?.before;
+    check(setup?.bgIndex === 2 && Number.isFinite(setup.resolved?.g) && setup.resolved.g > 100,
+        'SGR 42 green-background specimen is missing or does not meet the current threshold');
+}
+
+export function verifyMatchedCriterion(entry, sources) {
+    if (entry.criterionMatch !== 'matched') return;
+    if (entry.id === 'sgr.bg.standard') verifyGreenBackgroundCriterion(sources);
+    if (entry.id === 'sgr.fg.standard') {
+        const red = sources.find(s => s.file === 'sgrgb-observations.json')?.result.observed?.first;
+        check(red?.char === 'X' && red.fgIndex === 1 && red.fg?.r > 100, 'SGR 31 red-channel criterion is not observed');
+    }
+    if (['text.cr', 'text.backspace'].includes(entry.id))
+        check(sources.some(s => s.kind !== 'stock'), 'joined overwrite cells are required; CPR alone cannot match ' + entry.id);
+    if (entry.id === 'erase.line.right')
+        check(sources.some(s => s.result.feeds?.some(feed => feed.includes('\x1b[1G'))), 'EL 0 home-boundary CSI 1G specimen is required');
+}
+
 export function deriveReport(directory, mapping, identity) {
     const raw = read(join(directory, 'raw.json'));
     const core = read(join(directory, 'cg-observations.json'));
@@ -154,6 +176,7 @@ export function deriveReport(directory, mapping, identity) {
     const geometry = { rows: core.snapshots[0].screen.rows, cols: core.snapshots[0].screen.cols };
     const rows = mapping.rows.map(entry => {
         const sources = entry.evidence.map(ref => qualifiedSource(directory, ref, raw, geometry));
+        verifyMatchedCriterion(entry, sources);
         const grades = sources.map(s => s.kind === 'stock' ? outcome(s.result.verdict)
             : outcome(s.result.effectContract?.outcome ?? s.result.contractResult?.outcome ?? s.result.conclusion?.outcome ?? s.result.result));
         check(grades.every(g => verdicts.includes(g)), 'unknown evidence grade ' + entry.id);
@@ -208,7 +231,7 @@ export function readable(report, mapping) {
         'node --test scripts/terminfo/core-gaps.test.mjs scripts/terminfo/core-results.test.mjs', '```', '',
         'Requires Node 24+ and Python 3; no desktop, network, git history or archived-code execution is needed for --check. The command validates archive/mapping digests, extracts bounded data, reissues the complete receipt with trusted graders, rebuilds all 80 rows and compares JSON and Markdown. --assert-current-source additionally verifies the integrated checkout against the measured production-source manifest. The frozen historical publications remain unchanged.', '',
         'Sources: [current Core list](https://terminfo.dev/baseline/core), [current catalogue](https://github.com/beorn/terminfo.dev/blob/' + mapping.upstreamRevision + '/content/features.json). The versioned [mapping](requirements-v1.json) contains all exact site criteria, current catalogue criteria, frozen-catalogue differences, evidence references and per-row match rationales. [Catalogue source bytes](catalogue-sources.zip), [complete owned evidence](owned-run.zip), [refused first attempt](attempt-1-refused.zip), [superseded run 2](attempt-2-superseded.zip), [superseded run 3](attempt-3-superseded.zip), [invalid-input attempt](attempt-4-invalid-input.zip), [machine-readable report](report.json), [production-source manifest](app-source-manifest.json).', '',
-        'The seven remaining criteria are listed in the rows below. They are missing or mismatched experiments, so no terminal failure is inferred. The three stock-inconclusive-by-design scrolling cases (set-region, alt-screen, decstbm-reset) use their separately identified same-run effect contracts; their original pinned inconclusive verdicts are preserved.', '',
+        'The remaining twenty criteria are listed in the rows below. They are missing or mismatched experiments, so no terminal failure is inferred. The three stock-inconclusive-by-design scrolling cases (set-region, alt-screen, decstbm-reset) use their separately identified same-run effect contracts; their original pinned inconclusive verdicts are preserved.', '',
         '## All 80 Core requirements', '', '| Exact ID / current site requirement | Core | Layer / evidence | Pinned stock / qualified; effect | Match / limitation |', '|---|---|---|---|---|'];
     for (const row of report.rows) {
         const refs = row.evidence.map(e => `${e.file}#${e.caseId}`).join('; ');
@@ -217,7 +240,7 @@ export function readable(report, mapping) {
         lines.push(`| [\`${row.id}\`](${mapping.rows.find(r => r.id === row.id).url}) — ${cell(row.requirement)} | **${row.conclusion}** | ${cell(row.observationLayers.flat().join(', '))}; ${cell(refs)} | ${row.pinnedProbe.stockVerdict} / ${cell(qualified)}; ${cell(effects)} | ${cell(row.explanation)} |`);
     }
     lines.push('', '## Attempts and applicability', '', ...mapping.attempts.map(a => `- \`${a.runId}\` — ${a.status}: ${a.reason}`), '',
-        'Only the complete current run supplies positive results. Every predecessor and finding suite reconfirmed in that run; unrelated non-Core failures remain retained and do not change Core totals. Fresh stock-supported rows are checked from their raw query/write traces and setup controls, not copied from a historical outcome map. The source manifest and measured-script hashes distinguish measured code from later report/test-only changes; those later mechanical changes do not require another desktop run.', '', mapping.sourceAttribution);
+        'Only the complete current run supplies positive results. Every predecessor and finding suite reconfirmed in that run; unrelated non-Core failures remain retained and do not change Core totals. Fresh stock-supported rows are checked from their raw query/write traces and setup controls, not copied from a historical outcome map. The source manifest and measured-script hashes distinguish measured code from later report/test changes and a mechanical serial-plan refactor for Sonar. Regression tests prove that each unchanged write/API call and observation completes before the next step, and that a refused read stops the plan. These changes do not alter measured inputs, observations or effect grading and do not require another desktop run.', '', mapping.sourceAttribution);
     return lines.join('\n') + '\n';
 }
 
