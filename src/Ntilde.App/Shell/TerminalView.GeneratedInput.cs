@@ -29,10 +29,15 @@ public partial class TerminalView
     private bool CanApplyGeneratedInput => !_generatedInputInProgress || _generatedInputLease?.Invoke() == true;
 
     /// <summary>Keep routing and encoding intact while excluding synthetic input from user-command history observers.</summary>
-    internal bool RaiseGeneratedInput(RoutedEventArgs args, Func<bool> isCurrent, out bool inputSubmitted)
+    /// <param name="followUp">Optional second event raised right after <paramref name="args"/> inside the same dispatch, before the one-shot text
+    /// correlation is cleared: the backend TextInput that can follow a handled key-down.</param>
+    /// <param name="followUpIsCurrent">The lease for <paramref name="followUp"/>; it replaces <paramref name="isCurrent"/> once the first event returned,
+    /// because that event's own pending text decision is the correlation the follow-up exists to exercise.</param>
+    internal bool RaiseGeneratedInput(RoutedEventArgs args, Func<bool> isCurrent, out bool inputSubmitted, RoutedEventArgs? followUp = null, Func<bool>? followUpIsCurrent = null)
     {
         inputSubmitted = false;
         bool keyboard = args is Avalonia.Input.KeyEventArgs or Avalonia.Input.TextInputEventArgs;
+        if (followUp != null && (args is not Avalonia.Input.KeyEventArgs || followUp is not Avalonia.Input.TextInputEventArgs)) throw new ArgumentException("A follow-up event is only a TextInput after a key event.", nameof(followUp));
         // These fields are UI-owned: a clean entry means every correlation created by
         // this synchronous event belongs to it, never to a preexisting human key.
         if (keyboard && !CanGenerateInputSynchronously(true)) return false;
@@ -41,7 +46,16 @@ public partial class TerminalView
         _generatedInputSubmitted = false;
         _generatedInputRefused = false;
         _generatedInputLease = isCurrent;
-        try { RaiseEvent(args); return !_generatedInputRefused; }
+        try
+        {
+            RaiseEvent(args);
+            if (followUp != null && !_generatedInputRefused)
+            {
+                _generatedInputLease = followUpIsCurrent ?? isCurrent;
+                RaiseEvent(followUp);
+            }
+            return !_generatedInputRefused;
+        }
         finally
         {
             inputSubmitted = _generatedInputSubmitted;

@@ -40,26 +40,29 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 85,
-    "suiteClaims": 87,
+    "uniqueBenchmarkIds": 88,
+    "suiteClaims": 90,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 85,
+    "effectSupportedIds": 88,
     "pinnedAndEffectSupportedIds": 76,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
+      "input.button-event-mouse",
+      "input.x10-mouse",
       "modes.altscreen-1047",
       "modes.altscreen-47",
+      "modes.application-keypad",
       "modes.left-right-margin",
       "scrollback.alt-screen",
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 84,
+    "effectSupportedOfStockInconclusive": 87,
     "pinnedSupportedOfStockInconclusive": 75,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -73,7 +76,7 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 84,
+      "effectUnqualified": 81,
       "notPinnedSupported": 93
     }
   },
@@ -1937,6 +1940,78 @@
         "command": "node --test scripts/terminfo/lr-margins-publication.test.mjs",
         "testSha256": "be2a8b2992a33c987b9488e6d4ed0585627e2f54ec2f264703713f104baac43d"
       }
+    },
+    {
+      "suite": "routed-input",
+      "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-11-routed-input/",
+      "doc": "2026-11-11-routed-input-qualification.md",
+      "caseCount": 3,
+      "caseIds": [
+        "input.x10-mouse",
+        "input.button-event-mouse",
+        "modes.application-keypad"
+      ],
+      "evidence": {
+        "files": 68,
+        "bytes": 998600,
+        "sha256": "131fbc08adfa215039c61744611a6b9b4e48d39bc5ac9a58a3e161fbed1d0dd8"
+      },
+      "receipt": {
+        "schemaVersion": 42,
+        "runId": "aee54a96a4efae23d4e9189b11259e35",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "aac0edb80a8fad61917fc6dd51da8e3e3f730a1a938c98c1657d495045ba1ed6"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
+          "file": "rin-observations.json",
+          "sha256": "e5ace29b6e8b52031389478a8d534114490b9c49ee9011252629dcdbe2400f55",
+          "runFile": "rin-run.json",
+          "runSha256": "40a438123e9a9a90dc3602dbed5d4ac6b3df081cbea872a24905e96a84f129d8",
+          "counts": {
+            "inconclusive/supported": 3
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "aee54a96a4efae23d4e9189b11259e35",
+        "measuredAt": "2026-11-11T10:04:52.944Z",
+        "appRevision": "de5d921e0565babe5d572713267f5e3b53bb43ac",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "91f0f63abdf676fa0cf3ac02a362561c3a83d16b",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "475ff1fed3921469df704989511847908451a90ddb500330601df65e6f9076b2",
+        "gradingAdapterId": "ntilde-owned-routed-input-grading-v1",
+        "gradingAdapterBundleSha256": "3c6225df205d82cc2b9e9fb1727121428deb2d1db7d14f963170cd248391976b",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v36",
+        "sourceSnapshotManifestSha256": "d1798e1ab1ac3920c18084bb110878599035ac5d295a7493fc35c42ecedc6ed0"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "5f9325e8e35e29392bc23e20a204ee3e",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "2b8debe10b6b7c7e08f900cdc28b70004a5f1d2a2d020e89480eade1cac0c056",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/routed-input-publication.test.mjs",
+        "testSha256": "c455cf7e8ecb6cc3059830624d4d1e133e82ab8eb9b0e4ea1fdd1b4533044c11"
+      }
     }
   ],
   "benchmark": [
@@ -3643,6 +3718,110 @@
       ]
     },
     {
+      "id": "input.button-event-mouse",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.button-event-mouse",
+          "suite": "routed-input",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "input.x10-mouse",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.x10-mouse",
+          "suite": "routed-input",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
       "id": "modes.alt-screen.exit",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -3792,6 +3971,58 @@
             "app-resolved-color"
           ],
           "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "modes.application-keypad",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "routed-input",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.application-keypad",
+          "suite": "routed-input",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "keypad input"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "keypad input"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
         }
       ]
     },

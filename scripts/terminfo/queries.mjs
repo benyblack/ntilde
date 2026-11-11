@@ -13,6 +13,9 @@ export const querySuiteId = 'ntilde-owned-exact-queries-v1';
 export const legacyQueryPolicy = 'owned-exact-query-paired-raw-state-v1';
 export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v2';
 export const queryPolicies = Object.freeze([legacyQueryPolicy, ownedQueryPolicy]);
+/** Earlier challenges a query suite owes: every raw input capture plus the 30 image captures. 110 is the frozen 39-event input plan (80 captures);
+ * 152 is the 60-event benchmark plan (122 captures). Any other count is not a plan this suite follows. */
+export const queryPriorCounts = Object.freeze([110, 152]);
 export const pristineQuery = screen => typeof screen.cursorVisible === 'boolean' && pristineEditing({ ...screen, cursorVisible: true });
 export const checkQueries = value => { if (!value) throw new Error('Invalid or incomplete owned query evidence.'); };
 const check = checkQueries;
@@ -42,7 +45,7 @@ export function queryBinding(input) {
 export function queryPrior(input) {
     check(Array.isArray(input));
     const length = input.length, pairs = [];
-    check(Number.isSafeInteger(length) && length >= 0 && length <= 110);
+    check(Number.isSafeInteger(length) && length >= 0 && length <= Math.max(...queryPriorCounts));
     for (let index = 0; index < length; index++) {
         check(Object.hasOwn(input, index)); const value = input[index];
         check(typeof value === 'string');
@@ -114,7 +117,7 @@ export function buildQueryReport(input) {
     const { binding: supplied, priorChallenges, initial, actions, frames, seal, checksumReport = false, marginsReport = false } = structuredClone(input);
     check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean');
     const binding = queryBinding(supplied), prior = queryPrior(priorChallenges), clock = { time: -Infinity };
-    check(prior.length === 110 && actions?.length === 44 && frames?.length === 44);
+    check(queryPriorCounts.includes(prior.length) && actions?.length === 44 && frames?.length === 44);
     const baseline = validateSample(initial.before, binding, null, clock), original = initial.before.beforeOwnership;
     check(snapshotHash(validateSample(initial.after, binding, original, clock)) === snapshotHash(baseline));
     check(pristineQuery(baseline) && baseline.rows >= 8);

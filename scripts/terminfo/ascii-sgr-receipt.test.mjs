@@ -121,8 +121,8 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     // The grown v13 inventory carries its own policy; a v12-era run (policy v5,
     // 103 sources) still resolves to its own frozen file set.
     const { retainedInventory } = await import('./metadata-receipt.mjs');
-    const { capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, capturedV26SourceFiles, capturedV27SourceFiles, capturedV28SourceFiles, capturedV29SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV33SourceFiles, capturedV36SourceFiles, capturedV37SourceFiles, capturedV38SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV32SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
-    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v35');
+    const { capturedV43SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, capturedV26SourceFiles, capturedV27SourceFiles, capturedV28SourceFiles, capturedV29SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV33SourceFiles, capturedV36SourceFiles, capturedV37SourceFiles, capturedV38SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV32SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
+    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v36');
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v5' }), capturedV12SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v6' }), capturedV13SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v7' }), capturedV14SourceFiles);
@@ -136,6 +136,7 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v32' }), capturedV39SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v33' }), capturedV40SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v34' }), capturedV41SourceFiles);
+    assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v36' }), capturedV43SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v31' }), capturedV38SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v30' }), capturedV37SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v29' }), capturedV36SourceFiles);
@@ -203,5 +204,7 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     assert.equal(Object.keys(capturedV40SourceFiles).length, 248);
     // The left/right-margin scope (five scripts) lives in v34.
     assert.equal(Object.keys(capturedV41SourceFiles).length, 253);
+    // The routed-input scope (seven scripts) lives in v36, after the Core-gap scope (seven) in v35.
+    assert.equal(Object.keys(capturedV43SourceFiles).length, 267);
     assert.equal(Object.keys(capturedV33SourceFiles).length, 209);
 });

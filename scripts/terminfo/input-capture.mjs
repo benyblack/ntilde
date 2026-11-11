@@ -1,14 +1,14 @@
 import { OwnedCellObserver, snapshotHash } from './agent-observer.mjs';
 import { pristineEditing } from './editing-capture.mjs';
-import { makeInputCases } from './input-cases.mjs';
+import { inputPlanV1 } from './input-plan.mjs';
 import { boundInputScreen, buildInputReport, checkInput, defaultInputModes, inputModeReplyHex, sameInputFact,
     validateInputAction, validateInputBytes } from './input-state.mjs';
 
 /** Four phase readers keep paired before/after controls below each reader's64-read cap. */
 export class OwnedInputObserver {
-    constructor({ performInput, ...options }) {
+    constructor({ performInput, plan = inputPlanV1, ...options }) {
         checkInput(typeof performInput === 'function' && /^NTILDE_IN_[a-f\d]{32}$/.test(options.nonce ?? ''));
-        this.performInput = performInput; this.runId = options.nonce.slice(10); this.frames = []; this.actions = [];
+        this.performInput = performInput; this.plan = plan; this.runId = options.nonce.slice(10); this.frames = []; this.actions = [];
         this.next = 0; this.phase = 'start'; this.challenges = new Set();
         const facts = { ...options, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true };
         this.readers = Array.from({ length: 4 }, () => new OwnedCellObserver(facts));
@@ -48,7 +48,7 @@ export class OwnedInputObserver {
             return;
         }
         checkInput(pristineEditing(pair.screen));
-        this.cases = makeInputCases(pair.screen.rows, pair.screen.cols);
+        this.cases = this.plan.make(pair.screen.rows, pair.screen.cols);
         this.baseline = pair.screen; this.geometry = { rows: pair.screen.rows, cols: pair.screen.cols };
         this.bound = boundInputScreen(this.baseline, this.runId);
     }
@@ -67,10 +67,10 @@ export class OwnedInputObserver {
             if (this.phase === 'apply') return await this.apply(request, budget);
             if (this.phase === 'seal') {
                 this.seal = structuredClone(request.captureStatus);
-                this.report = buildInputReport(this.frames, this.actions, this.seal, this.runId);
+                this.report = buildInputReport(this.frames, this.actions, this.seal, this.runId, this.plan);
                 this.phase = 'complete'; return { sealed: true };
             }
-            if (this.phase !== 'start') validateInputBytes(request.capture, this.expectedHex(item), this.challenges);
+            if (this.phase !== 'start') validateInputBytes(request.capture, this.expectedHex(item), this.challenges, this.phase !== 'read' || this.plan.exactEvents);
             const pair = await this.capture(this.phase === 'read', budget);
             this.lastAttempt.pair = structuredClone(pair);
             this.acceptScreen(pair);
