@@ -2,12 +2,12 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-runtime-color-reset-graded-v1",
-    "runId": "746456cc05243c56088e09fc218583a7",
+    "runId": "f785b3d5ffb986e57c88f5ea1346039b",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-runtime-color-reset-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-      "bundleSha256": "dabc1a47bb206184460d52b5d35bf1561154ab93f4ff474e307c61dc41ca7fb1",
+      "bundleSha256": "d41aca70d41ca0971327104be121694b535af88e3191f4a0f4987dadd199c46a",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 runtime-color reset termless criteria (OSC 4;0 and 104;0, OSC 10 and 110, OSC 11 and 111, OSC 12 and 112, each set to rgb:aa/bb/cc and reset with the exact BEL spelling) replayed byte-exactly on a disposable App, graded from exact fenced replies, the App-resolved colors and override metadata, the stored default markers, palette-indexed and literal cells, the cursor and the controlled offscreen render: an independent runtime-color model demands, at every stage, the replies, the readScreen binding, the render theme and every explicit cell the bytes written so far leave behind over the measured baseline. Controls cover individual and whole-palette resets, the other overrides surviving a dynamic-color reset, SGR 39/49 versus the runtime defaults and a hidden steady-beam cursor. The synthetic render phase is fixed (clock 0, scale 1); no real-time cadence, desktop appearance, selection or pointer color, Kitty named color, alternate-screen or DECSTR clearing claim; no stock grades.",
@@ -18,7 +18,7 @@
     "start": {
       "index": 0,
       "kind": "crst-start",
-      "paneId": "75036fa2-8ef0-44d7-bf32-db8b79011d92",
+      "paneId": "499470a1-a6fb-4a79-a340-0b84a623511a",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -83,12 +83,12 @@
     "bind": {
       "index": 1,
       "kind": "crst-bind",
-      "paneId": "75036fa2-8ef0-44d7-bf32-db8b79011d92",
+      "paneId": "499470a1-a6fb-4a79-a340-0b84a623511a",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
-        "lines": ["NTILDE_CR_746456cc05243c56088e09fc218583a7","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+        "lines": ["NTILDE_CR_f785b3d5ffb986e57c88f5ea1346039b","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
         "cursorRow": 0,
         "cursorCol": 42,
         "cursorVisible": false,
@@ -104,11 +104,11 @@
         ],
         "cursorMode": {"style":2,"blink":true,"isDefault":true}
       },
-      "sha256": "dedfc5e33d54254a8f5d7c459f879d461df1a1ba83719651f2f817a30a46fee5",
+      "sha256": "aa1fd8d473910e8354a8cf35ff992f0bc2295ce1006e4668691637051e2a9c93",
       "afterScreen": {
         "rows": 40,
         "cols": 140,
-        "lines": ["NTILDE_CR_746456cc05243c56088e09fc218583a7","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+        "lines": ["NTILDE_CR_f785b3d5ffb986e57c88f5ea1346039b","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
         "cursorRow": 0,
         "cursorCol": 42,
         "cursorVisible": false,
@@ -124,15 +124,15 @@
         ],
         "cursorMode": {"style":2,"blink":true,"isDefault":true}
       },
-      "afterSha256": "dedfc5e33d54254a8f5d7c459f879d461df1a1ba83719651f2f817a30a46fee5",
+      "afterSha256": "aa1fd8d473910e8354a8cf35ff992f0bc2295ce1006e4668691637051e2a9c93",
       "caseId": null,
       "experimentId": null,
       "stageId": null,
       "queries": [],
       "pixel": {
         "file": "crst-pixels/frame-001.png",
-        "sha256": "57e3bc9ac1c281ad0a3cd0d8ac196f93dfd9e0fde0c9a9c19fff362526a15819",
-        "byteCount": 10651,
+        "sha256": "7a0c7c4b9217d9220ea01a3fdd8830dc5bada55fac33847ac8253232e5d6b43e",
+        "byteCount": 10831,
         "width": 1264,
         "height": 760,
         "rows": 40,
@@ -148,7 +148,7 @@
     "finish": {
       "index": 46,
       "kind": "crst-finish",
-      "paneId": "75036fa2-8ef0-44d7-bf32-db8b79011d92",
+      "paneId": "499470a1-a6fb-4a79-a340-0b84a623511a",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,

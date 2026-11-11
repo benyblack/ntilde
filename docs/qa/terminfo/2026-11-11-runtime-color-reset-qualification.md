@@ -21,10 +21,10 @@ termless code runs live in the worker over the journaled replies and again in th
 every stage read as four separately retained layers (exact fenced replies; the App-resolved colors and override metadata; stored cells and cursor; the controlled offscreen render
 with its original PNG). 44 reads and 47 captures in all:
 
-- **OSC 104:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `individual-slots` (control): supported, 18/18 controls and 19/19 assertions; `isolation` (control): supported, 17/17 controls and 10/10 assertions; `whole-palette` (control): supported, 18/18 controls and 8/8 assertions. Slot 0 is the pinned fixture; five slots (base 1, bright 9, cube 16, extended 200, gray 255) are overridden and reset one, two and then the rest with the others still overridden; all 256 slots are overridden and reset with `ESC]104 BEL`, and the complete palette and override list must return.
-- **OSC 110:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `isolation` (control): supported, 18/18 controls and 6/6 assertions; `sgr-default` (control): supported, 17/17 controls and 11/11 assertions. Background and cursor overrides must survive; SGR 39 changes the pen, not the runtime default, and OSC 110 does not change the pen.
-- **OSC 111:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `isolation` (control): supported, 18/18 controls and 6/6 assertions; `sgr-default` (control): supported, 17/17 controls and 11/11 assertions. The same for the background and SGR 49.
-- **OSC 112:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `isolation` (control): supported, 18/18 controls and 6/6 assertions; `hidden-beam` (control): supported, 17/17 controls and 6/6 assertions. Foreground and background overrides survive; shape and visibility never move; a hidden steady-beam cursor stays hidden.
+- **OSC 104:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `individual-slots` (control): supported, 18/18 controls and 20/20 assertions; `isolation` (control): supported, 17/17 controls and 10/10 assertions; `whole-palette` (control): supported, 18/18 controls and 8/8 assertions. Slot 0 is the pinned fixture; five slots (base 1, bright 9, cube 16, extended 200, gray 255) are overridden and reset one, two and then the rest with the others still overridden; all 256 slots are overridden and reset with `ESC]104 BEL`, and the complete palette and override list must return.
+- **OSC 110:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `isolation` (control): supported, 18/18 controls and 7/7 assertions; `sgr-default` (control): supported, 17/17 controls and 11/11 assertions. Background and cursor overrides must survive; SGR 39 changes the pen, not the runtime default, and OSC 110 does not change the pen.
+- **OSC 111:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `isolation` (control): supported, 18/18 controls and 7/7 assertions; `sgr-default` (control): supported, 17/17 controls and 11/11 assertions. The same for the background and SGR 49.
+- **OSC 112:** `pinned` (pinned): supported, 18/18 controls and 8/8 assertions; `isolation` (control): supported, 18/18 controls and 7/7 assertions; `hidden-beam` (control): supported, 17/17 controls and 6/6 assertions. Foreground and background overrides survive; shape and visibility never move; a hidden steady-beam cursor stays hidden.
 
 Expected restoration is the baseline measured before any mutation with the model's overrides laid over it; an independent model parses the exact bytes written (it shares no code with the VT).
 Invalid controls, missing replies or identity drift make an experiment inconclusive; only valid controls let a mismatch establish unsupported. Runtime colors survive alternate-screen exit and
@@ -32,9 +32,9 @@ DECSTR, so neither is evidence of a reset: the finish write clears them explicit
 
 ## Measurement
 
-Scripts (adapter) revision `6332de8b` (full SHA in `summary.json`); App source revision `1c3400f4` (the last commit that touched `src/`); the Release sidecar was built from that tree with the repository wrappers.
-Owned run `746456cc05243c56088e09fc218583a7`, receipt schema 42, source policy v36 (inventory v43, 267 files), theme `Default`, 40x140, App version 0.13.0 (operator supplied;
-not independently verified), disposable sidecar `artifacts/sidecar-colorreset`, stock collector run `071705f2e1cba6d79456315c52a506f7`, measured 2026-11-11T09:52Z on macOS with Node 24.22.2, under the shared desktop-collection lock.
+Scripts (adapter) revision `e67fbf8c` (full SHA in `summary.json`); App source revision `1c3400f4` (the last commit that touched `src/`); the Release sidecar was built from that tree with the repository wrappers.
+Owned run `f785b3d5ffb986e57c88f5ea1346039b`, receipt schema 42, source policy v36 (inventory v43, 267 files), theme `Default`, 40x140, App version 0.13.0 (operator supplied;
+not independently verified), disposable sidecar `artifacts/sidecar-colorreset`, stock collector run `b13564d3bee5c3ab8cc631ab976ca755`, measured 2026-11-11T10:02Z on macOS with Node 24.22.2, under the shared desktop-collection lock.
 
 | Case | Pinned termless (parent replay + live pinned code) | Pinned terminal path | Effect contract | Stock grade |
 |---|---|---|---|---|
@@ -70,7 +70,8 @@ Stock collection was rerun in this run: 87 supported / 1 unsupported / 167 incon
 
 **Attempts.**
 - Attempt 1 (superseded): run `dcaec14c5c8751cebd4654992b42d086`, scripts `1eadace1`, receipt completed; complete, receipt schema 41, source policy v35: all four cases supported on the pre-review scripts (not published) Reason it was superseded: the Codex review then found two grader gaps (an absent reset reply graded unsupported instead of inconclusive; a reset the renderer never applied could pass where other overrides remain), a cross-target isolation experiment was added, and main moved to source policy v35 (Core gaps), so the scripts, the source inventory and the receipt scope all changed and the measurement was repeated.
-- Attempt 2 (published): run `746456cc05243c56088e09fc218583a7`, scripts `6332de8b`, receipt completed; complete, receipt schema 42, source policy v36 (inventory v43, 267 files): all four cases pinned termless supported, effect contract supported, terminal paths inconclusive by design, on App source 1c3400f4 (the published run)
+- Attempt 2 (superseded): run `746456cc05243c56088e09fc218583a7`, scripts `6332de8b`, receipt completed; complete, receipt schema 42, source policy v36 (inventory v43, 267 files): all four cases pinned termless supported, effect contract supported, terminal paths inconclusive by design, on App source 1c3400f4 Reason it was superseded: the local Codex review of that head found that an isolation-reset render equal to the baseline render could still pass (fixed with a distinct-from-baseline assertion), Sonar flagged complexity in four measured scripts (refactored without behavior change) and a derivation test used a non-portable path; measured scripts changed, so the measurement was repeated.
+- Attempt 3 (published): run `f785b3d5ffb986e57c88f5ea1346039b`, scripts `e67fbf8c`, receipt completed; complete, receipt schema 42, source policy v36 (inventory v43, 267 files): all four cases pinned termless supported, effect contract supported, terminal paths inconclusive by design, on App source 1c3400f4 (the published run)
 
 ## Layout
 
