@@ -5,11 +5,10 @@ import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'no
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
 import { deriveReport, assertRequirementRows, extractOwnedArchive, loadMapping, verifyOwnedRun, reportText, root } from './terminfo-core-results.mjs';
-import { textCursorIds, textCursorSuiteId } from './terminfo/core-text-cursor.mjs';
+import { textCursorIds, textCursorSuiteId, textCursorPlan } from './terminfo/core-text-cursor.mjs';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const check = (value, message) => { if (!value) throw new Error('Core text/cursor report: ' + message); };
@@ -33,10 +32,21 @@ export function deriveTextCursorCoreReport(directory, frozenMapping, identity, m
     }
     const result = deriveReport(directory, mapping, identity);
     assertRequirementRows(result.rows, frozenMapping.rows.map(row => row.id));
+    const readRoles = textCursorPlan().filter(step => step.read).map(step => step.role);
+    const controlRoles = { 'text.index': ['control:ind-interior:setup', 'control:ind-interior'],
+        'text.next-line': ['control:ind', 'control:nel', 'control:cr'],
+        'cursor.save-restore': ['save:displaced', 'save:restored'] };
     for (const row of result.rows) if (textCursorIds.includes(row.id)) {
         const effect = report.cases.find(c => c.caseId === row.id).effectContract;
         row.fixture = effect.fixture;
-        row.observed = effect.observed;
+        row.observed = structuredClone(effect.observed);
+        row.observed.controls = Object.fromEntries((controlRoles[row.id] ?? []).map(role => {
+            const index = readRoles.indexOf(role);
+            check(index >= 0, 'unknown control role: ' + role);
+            const frame = report.snapshots[index + 2];
+            check(frame, 'missing control frame: ' + role);
+            return [role, { cursor: [frame.screen.cursorRow, frame.screen.cursorCol], lines: frame.screen.lines.slice(0, 2), cpr: frame.cpr.reply }];
+        }));
         row.blocker = null;
     }
     result.scope = 'Private direct-local Release sidecar; exact joined fixtures, physical stored cells, cursor and raw CPR at measured geometry. Other platforms and profiles are outside this measurement.';
@@ -50,8 +60,8 @@ export function describeLayers(value) {
     return value == null ? [] : [String(value)];
 }
 
-const tableCell = value => String(value ?? '').replaceAll('|', '\\|').replaceAll('\n', ' ').replaceAll('\r', '');
-const literal = value => JSON.stringify(value).replaceAll('`', '\\u0060');
+const tableCell = value => String(value ?? '').replaceAll('|', String.raw`\|`).replaceAll('\n', ' ').replaceAll('\r', '');
+const literal = value => JSON.stringify(value).replaceAll('`', String.raw`\u0060`);
 /** Render the rederived 80 rows; raw CPR is one-based, physical cells/cursors zero-based. */
 export function readableTextCursorReport(report, mapping) {
     const { totals, measurement } = report;
@@ -69,12 +79,12 @@ export function readableTextCursorReport(report, mapping) {
         const refs = row.evidence.map(e => `${e.file}#${e.caseId}`).join('; ');
         const effects = row.effectVerdicts.map(e => `${e.caseId}:${e.verdict}`).join(', ') || 'query trace';
         const observation = row.observed
-            ? `Bytes ${literal(row.fixture)}; observed rows ${literal(row.observed.lines)}, cursor ${literal(row.observed.cursor)}, guard ${literal(row.observed.guard)}, CPR ${literal(row.observed.cpr)}.`
+            ? `Bytes ${literal(row.fixture)}; observed rows ${literal(row.observed.lines)}, cursor ${literal(row.observed.cursor)}, guard ${literal(row.observed.guard)}, CPR ${literal(row.observed.cpr)}${Object.keys(row.observed.controls ?? {}).length ? `; controls ${literal(row.observed.controls)}` : ''}.`
             : row.explanation;
         lines.push(`| [\`${row.id}\`](${mappingRow.url}) — ${tableCell(row.requirement)} | **${row.conclusion}** | ${tableCell(layers)}; ${tableCell(refs)}; stock ${tableCell(row.pinnedProbe.stockVerdict)}, effect ${tableCell(effects)} | ${tableCell(observation)} |`);
     }
     lines.push('', '## Attempts', '', ...report.attempts.map(a => `- \`${a.runId}\` — ${a.status}: ${a.reason}`), '',
-        'The superseded [first run](attempt-1-superseded.zip) is retained for audit. It is not used for current conclusions.',
+        'The superseded [first](attempt-1-superseded.zip) and [second](attempt-2-superseded.zip) runs are retained for audit. Neither supplies current conclusions.',
         '', '## Reproduction', '', '```sh', 'node scripts/terminfo-core-text-cursor-results.mjs --check', '```', '',
         'The check requires Node 24+ and Python 3. It validates the immutable source and archive digests, reissues the cleanup receipt using the trusted local graders, and derives all rows from the retained run. A missing setup, stale frame, failed restoration or incomplete observation cannot establish a result.', '', mapping.sourceAttribution, '');
     return lines.join('\n');
@@ -83,7 +93,7 @@ export function readableTextCursorReport(report, mapping) {
 // Digests pin this versioned publication; a replacement run requires a new
 // version and an explicit code review of its manifest, not an editable label.
 export const textCursorPublication = 'docs/qa/terminfo/2026-11-11-core-text-cursor-results';
-export const measurementSha256 = 'c35216405a7ae0beb479a392e39fa5db0b930c346997a0be2ac225f11a472a1d';
+export const measurementSha256 = '693330f04ac5ef2cab4200c902bd412dd744c38aac5c879e21fd6bbe5d082774';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export function loadTextCursorMeasurement(base = root) {
@@ -95,17 +105,28 @@ export function loadTextCursorMeasurement(base = root) {
     check(digest(readFileSync(join(dir, 'owned-run.zip'))) === manifest.ownedArchiveSha256, 'archive changed');
     check(digest(readFileSync(join(dir, 'app-source-manifest.json'))) === manifest.appSourceManifestSha256, 'production source manifest changed');
     check(digest(readFileSync(join(dir, 'attempt-1-superseded.zip'))) === manifest.supersededArchiveSha256, 'superseded archive changed');
+    check(digest(readFileSync(join(dir, 'attempt-2-superseded.zip'))) === manifest.secondSupersededArchiveSha256, 'second superseded archive changed');
     return manifest;
+}
+
+// Only recognized text sources get checkout line-ending normalization; binary
+// assets and unknown types are always attested byte for byte.
+export function sourceBytes(file, bytes) {
+    if (!/\.(?:axaml|cs|csproj|fish|json|lock|manifest|md|props|ps1|rs|sh|targets|toml|txt)$/i.test(file)) return bytes;
+    return Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1');
 }
 
 export function assertTextCursorCurrentSource(base = root) {
     const manifest = loadTextCursorMeasurement(base);
     const sources = JSON.parse(readFileSync(join(base, textCursorPublication, 'app-source-manifest.json')));
-    const git = spawnSync('/usr/bin/git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'src', 'assets',
+    const gitExecutable = process.platform === 'win32' ? process.env.NTILDE_TERMINFO_GIT_EXECUTABLE : '/usr/bin/git';
+    check(typeof gitExecutable === 'string' && /^(?:[A-Za-z]:[\\/]|\/)/.test(gitExecutable), 'an absolute Git executable is required');
+    const git = spawnSync(gitExecutable, ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'src', 'assets',
         'Directory.Build.props', 'Directory.Build.targets', 'global.json'], { cwd: base, encoding: 'utf8' });
-    check(git.status === 0 && same(git.stdout.trim().split('\n').sort(), Object.keys(sources).sort()), 'production source set changed');
+    const byText = (a, b) => a.localeCompare(b, 'en');
+    check(git.status === 0 && same(git.stdout.trim().split('\n').sort(byText), Object.keys(sources).sort(byText)), 'production source set changed');
     for (const [file, hash] of Object.entries(sources))
-        check(digest(Buffer.from(readFileSync(join(base, file)).toString('latin1').replaceAll('\r\n', '\n'), 'latin1')) === hash, 'production source changed: ' + file);
+        check(digest(sourceBytes(file, readFileSync(join(base, file)))) === hash, 'production source changed: ' + file);
     return manifest.measurement.appRevision;
 }
 

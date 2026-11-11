@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { root, reportText } from '../terminfo-core-results.mjs';
 import { buildTextCursorPublication, loadTextCursorMeasurement, readableTextCursorReport, textCursorPublication,
-    verifyTextCursorOutput } from '../terminfo-core-text-cursor-results.mjs';
+    verifyTextCursorOutput, sourceBytes } from '../terminfo-core-text-cursor-results.mjs';
 
 test('published 80 rows and totals rederive from the owned receipt and both archives are pinned', () => {
     const { report, mapping } = buildTextCursorPublication();
@@ -30,4 +30,11 @@ test('tampered archive and metadata are refused before any result is used', () =
         const meta = join(path, 'measurement.json'); writeFileSync(meta, readFileSync(meta, 'utf8') + ' ');
         assert.throws(() => loadTextCursorMeasurement(dir), /manifest changed/);
     } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('binary source bytes are not normalized while checkout line endings for text are', () => {
+    const raw = Buffer.from([0x89, 0x0d, 0x0a, 0x00, 0xff]);
+    assert.deepEqual(sourceBytes('assets/icon.png', raw), raw);
+    assert.notDeepEqual(sourceBytes('assets/icon.png', raw), Buffer.from([0x89, 0x0a, 0x00, 0xff]));
+    assert.equal(sourceBytes('src/Test.cs', Buffer.from('a\r\nb\n')).toString(), 'a\nb\n');
 });

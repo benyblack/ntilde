@@ -51,7 +51,7 @@ export function textCursorPlan() {
 }
 
 function expectedLines(rows, firstRows) {
-    const lines = Array(rows).fill('');
+    const lines = new Array(rows).fill('');
     firstRows.forEach((line, i) => { lines[i] = line; });
     lines[9] = 'GUARD';
     return lines;
@@ -127,10 +127,10 @@ export async function collectTextCursor({ config, fence, owner }) {
         for (const step of textCursorPlan()) {
             if (step.feed) {
                 feeds.push(step.feed);
-                barriers.push(await fence.write(step.feed));
+                barriers.push(await fence.write(step.feed)); // NOSONAR: fixture writes and reads must remain serial.
             } else {
-                const cpr = await fence.cursorReport();
-                await owner('tc-read', cpr.barrier, { cpr });
+                const cpr = await fence.cursorReport(); // NOSONAR: each CPR orders after its fixture write.
+                await owner('tc-read', cpr.barrier, { cpr }); // NOSONAR: observation must finish before the next write.
                 reads.push({ role: step.role, cpr });
             }
         }
