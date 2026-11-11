@@ -60,6 +60,7 @@ check(text.includes(data.measurement.runId), 'the page does not name the measure
 check(text.includes(data.source.publication), 'the page does not name its source publication');
 check(text.includes(data.measurement.appRevision) && text.includes(data.measurement.scriptsRevision), 'the page does not show the App and scripts revisions');
 check(text.includes('operator-supplied, not independently'), 'the page does not say the version label is unverified');
+check(text.includes(data.scope), 'the page does not show the report scope');
 check(text.includes(data.reproduction.command), 'the page does not show the reproduction command');
 
 // Privacy: nothing machine-specific or secret-shaped.
@@ -91,7 +92,7 @@ const internal = (target) => {
 for (const href of new Set(hrefs)) {
   if (href.startsWith('#')) {
     check(ids.has(decodeURIComponent(href.slice(1))), `in-page link ${href} has no target`);
-  } else if (/^https:\/\//.test(href)) {
+  } else if (href.startsWith('https://')) {
     const host = new URL(href).hostname;
     check(ALLOWED_HOSTS.has(host), `external link to unexpected host: ${href}`);
     if (host === 'github.com' && href.includes('/blob/') && mainHrefs.has(href)) {

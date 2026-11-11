@@ -135,6 +135,7 @@ test('a result that no longer matches the pinned expectation is refused, never d
     refuses(r => { delete r.measurement.startedAt; }, /no measurement time/);
     refuses(r => { r.mappingSha256 = '0'.repeat(64); }, /different requirements/);
     refuses(r => { r.schemaVersion = 2; }, /unknown schemaVersion/);
+    refuses(r => { delete r.scope; }, /records no scope/);
 });
 
 test('with the pin moved to match, the claim is derived from the rows rather than fixed text', () => {
@@ -227,7 +228,7 @@ test('the source pin itself is validated', () => {
 test('the page template carries no result of its own', () => {
     const page = readFileSync(join(here, '../../site/src/pages/qualification.astro'), 'utf8');
     assert.doesNotMatch(page, /\b80\b/, 'qualification.astro hard-codes the requirement count');
-    for (const literal of [pin.expected.runId.slice(0, 8), pin.expected.appRevision.slice(0, 8), pin.expected.scriptsRevision.slice(0, 8), pin.publication, 'macOS 27'])
+    for (const literal of [pin.expected.runId.slice(0, 8), pin.expected.appRevision.slice(0, 8), pin.expected.scriptsRevision.slice(0, 8), pin.publication, 'macOS 27', 'sidecar', 'disposable'])
         assert.ok(!page.includes(literal), `qualification.astro hard-codes ${literal}`);
     assert.ok(page.includes("from '../data/ntilde-qualification.json'"));
     const ignored = readFileSync(join(here, '../../site/.gitignore'), 'utf8');

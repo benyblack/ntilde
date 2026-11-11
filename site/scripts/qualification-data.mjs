@@ -35,7 +35,7 @@ const check = (ok, message) => {
   if (!ok) throw new QualificationDataError(message);
 };
 
-const OUTCOMES = ['pass', 'fail', 'inconclusive'];
+const OUTCOMES = new Set(['pass', 'fail', 'inconclusive']);
 const HEX64 = /^[a-f\d]{64}$/;
 const HEX40 = /^[a-f\d]{40}$/;
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -257,6 +257,89 @@ export function loadPin(pinFile = pinPath) {
 
 const permalink = (pin, relative) => `${pin.repository}/blob/${pin.evidenceRef}/${relative}`;
 
+function verifyTotals(report, pin) {
+  // Report shape and totals: recomputed from the rows, never trusted from a label.
+  check(report.schemaVersion === 1, 'the report has an unknown schemaVersion');
+  check(Array.isArray(report.rows), 'the report has no rows');
+  check(report.rows.length === pin.expected.rows, `the report has ${report.rows.length} rows; ${pin.expected.rows} frozen requirements are pinned`);
+  const ids = new Set(report.rows.map((row) => row.id));
+  check(ids.size === report.rows.length, 'the report repeats a requirement id');
+  const counts = { pass: 0, fail: 0, inconclusive: 0 };
+  for (const row of report.rows) {
+    check(OUTCOMES.has(row.conclusion), `${row.id}: unknown outcome "${row.conclusion}"`);
+    counts[row.conclusion] += 1;
+  }
+  for (const outcome of OUTCOMES) {
+    check(report.totals?.[outcome] === counts[outcome], `the report's ${outcome} total (${report.totals?.[outcome]}) disagrees with its rows (${counts[outcome]})`);
+    check(counts[outcome] === pin.expected[outcome], `${counts[outcome]} ${outcome} rows; the source pin expects ${pin.expected[outcome]}`);
+  }
+  return { counts, total: report.rows.length, ids };
+}
+
+function verifyIdentity(report, measurementFile, pin) {
+  // Identity.
+  const m = report.measurement ?? {};
+  check(m.runId === pin.expected.runId, 'the report is for a different run than the pinned one');
+  check(m.appRevision === pin.expected.appRevision && HEX40.test(m.appRevision), 'the report names a different App revision than the pinned one');
+  check(m.scriptsRevision === pin.expected.scriptsRevision && HEX40.test(m.scriptsRevision), 'the report names a different scripts revision than the pinned one');
+  check(typeof m.startedAt === 'string' && !Number.isNaN(Date.parse(m.startedAt)), 'the report has no measurement time');
+  check(m.geometry?.rows > 0 && m.geometry?.cols > 0, 'the report has no measured geometry');
+  for (const key of ['executableSha256', 'assemblySha256', 'sourceSnapshotManifestSha256', 'ownedArchiveSha256', 'appSourceManifestSha256']) {
+    check(HEX64.test(m[key] ?? ''), `the report has no valid ${key}`);
+  }
+  const mm = measurementFile.measurement ?? {};
+  for (const key of ['runId', 'appRevision', 'scriptsRevision', 'receiptSchema', 'sourcePolicy']) {
+    check(mm[key] === m[key], `the measurement manifest and report disagree on ${key}`);
+  }
+  check(measurementFile.ownedArchiveSha256 === m.ownedArchiveSha256, 'the measurement manifest and report disagree on the evidence archive');
+  return m;
+}
+
+/** Platform and collector identity are recorded in the retained raw collector output: read them from the digest-checked archive instead of restating them. */
+function readCollectorOutput(base, dir, m) {
+  const archive = readBytes(base, `${dir}/owned-run.zip`, 'the retained owned-run archive');
+  check(sha256(archive) === m.ownedArchiveSha256, 'the retained owned-run archive differs from the report digest');
+  let raw;
+  try {
+    raw = JSON.parse(readZipEntry(archive, 'raw.json').toString('utf8'));
+  } catch (error) {
+    if (error instanceof QualificationDataError) throw error;
+    throw new QualificationDataError('raw.json in the evidence archive is not valid JSON');
+  }
+  check(raw.runId === m.stockRunId, 'the raw collector output is for a different stock run than the report');
+  check(raw.target?.id === 'ntilde' && raw.target?.os === 'macos' && typeof raw.target?.osVersion === 'string', 'the raw collector output does not record a macOS Ntilde target');
+  check(/^[\w.+-]{1,40}$/.test(raw.target.osVersion), 'the recorded OS version is not a plain version string');
+  return raw;
+}
+
+/** One page row from a report row and its frozen requirement. */
+function buildRow({ row, entry, readableLines, pin }) {
+  check(entry.siteRequirement === row.requirement, `${row.id}: the report criterion differs from the frozen requirement`);
+  check(typeof entry.name === 'string' && entry.name, `${row.id}: the frozen requirements give it no name`);
+  check((entry.url ?? '').startsWith('https://terminfo.dev/'), `${row.id}: the frozen requirements give it no terminfo.dev link`);
+  check(typeof row.explanation === 'string' && row.explanation, `${row.id}: no observed behavior recorded`);
+  check(Array.isArray(row.evidence) && row.evidence.length > 0, `${row.id}: no evidence recorded`);
+  const { names: layers, groups } = methodGroupsFor(row.observationLayers, row.id);
+  // The row's own line in the readable report, for a link that lands on it.
+  const lines = readableLines.flatMap((line, index) => (line.startsWith(`| [\`${row.id}\`](`) ? [index + 1] : []));
+  check(lines.length === 1, `${row.id}: expected exactly one row in report.md, found ${lines.length}`);
+  const reportLink = permalink(pin, `${pin.publication}/report.md`);
+  return {
+    id: row.id,
+    name: entry.name,
+    category: entry.category,
+    termInfoUrl: entry.url,
+    outcome: row.conclusion,
+    criterion: row.requirement,
+    observed: row.explanation,
+    methods: groups,
+    layers,
+    evidence: [...new Set(row.evidence.map((item) => `${item.file}#${item.caseId}`))],
+    reportRowUrl: `${reportLink}?plain=1#L${lines[0]}`,
+    limitation: limitationFor(row, layers, groups),
+  };
+}
+
 /** Build the page data. `base` is the repository root; `pin` the parsed source pin. */
 export function buildQualificationData({ base = repoRoot, pin = loadPin() } = {}) {
   const dir = pin.publication;
@@ -274,53 +357,11 @@ export function buildQualificationData({ base = repoRoot, pin = loadPin() } = {}
   check(lfDigest(requirementsBytes) === pin.sha256.requirements, 'the frozen requirements differ from the pinned digest');
   check(report.mappingSha256 === pin.sha256.requirements, 'the report was derived from different requirements than the pinned ones');
 
-  // Report shape and totals: recomputed from the rows, never trusted from a label.
-  check(report.schemaVersion === 1, 'the report has an unknown schemaVersion');
-  check(Array.isArray(report.rows), 'the report has no rows');
-  check(report.rows.length === pin.expected.rows, `the report has ${report.rows.length} rows; ${pin.expected.rows} frozen requirements are pinned`);
-  const ids = new Set(report.rows.map((row) => row.id));
-  check(ids.size === report.rows.length, 'the report repeats a requirement id');
-  const counts = { pass: 0, fail: 0, inconclusive: 0 };
-  for (const row of report.rows) {
-    check(OUTCOMES.includes(row.conclusion), `${row.id}: unknown outcome "${row.conclusion}"`);
-    counts[row.conclusion] += 1;
-  }
-  for (const outcome of OUTCOMES) {
-    check(report.totals?.[outcome] === counts[outcome], `the report's ${outcome} total (${report.totals?.[outcome]}) disagrees with its rows (${counts[outcome]})`);
-    check(counts[outcome] === pin.expected[outcome], `${counts[outcome]} ${outcome} rows; the source pin expects ${pin.expected[outcome]}`);
-  }
-  const total = report.rows.length;
+  const { counts, total, ids } = verifyTotals(report, pin);
 
-  // Identity.
-  const m = report.measurement ?? {};
-  check(m.runId === pin.expected.runId, 'the report is for a different run than the pinned one');
-  check(m.appRevision === pin.expected.appRevision && HEX40.test(m.appRevision), 'the report names a different App revision than the pinned one');
-  check(m.scriptsRevision === pin.expected.scriptsRevision && HEX40.test(m.scriptsRevision), 'the report names a different scripts revision than the pinned one');
-  check(typeof m.startedAt === 'string' && !Number.isNaN(Date.parse(m.startedAt)), 'the report has no measurement time');
-  check(m.geometry?.rows > 0 && m.geometry?.cols > 0, 'the report has no measured geometry');
-  for (const key of ['executableSha256', 'assemblySha256', 'sourceSnapshotManifestSha256', 'ownedArchiveSha256', 'appSourceManifestSha256']) {
-    check(HEX64.test(m[key] ?? ''), `the report has no valid ${key}`);
-  }
-  const mm = measurementFile.measurement ?? {};
-  for (const key of ['runId', 'appRevision', 'scriptsRevision', 'receiptSchema', 'sourcePolicy']) {
-    check(mm[key] === m[key], `the measurement manifest and report disagree on ${key}`);
-  }
-  check(measurementFile.ownedArchiveSha256 === m.ownedArchiveSha256, 'the measurement manifest and report disagree on the evidence archive');
+  const m = verifyIdentity(report, measurementFile, pin);
 
-  // Platform and collector identity are recorded in the retained raw collector output, so read them
-  // from the digest-checked archive instead of restating them here.
-  const archive = readBytes(base, `${dir}/owned-run.zip`, 'the retained owned-run archive');
-  check(sha256(archive) === m.ownedArchiveSha256, 'the retained owned-run archive differs from the report digest');
-  let raw;
-  try {
-    raw = JSON.parse(readZipEntry(archive, 'raw.json').toString('utf8'));
-  } catch (error) {
-    if (error instanceof QualificationDataError) throw error;
-    throw new QualificationDataError('raw.json in the evidence archive is not valid JSON');
-  }
-  check(raw.runId === m.stockRunId, 'the raw collector output is for a different stock run than the report');
-  check(raw.target?.id === 'ntilde' && raw.target?.os === 'macos' && typeof raw.target?.osVersion === 'string', 'the raw collector output does not record a macOS Ntilde target');
-  check(/^[\w.+-]{1,40}$/.test(raw.target.osVersion), 'the recorded OS version is not a plain version string');
+  const raw = readCollectorOutput(base, dir, m);
 
   // Requirement names and URLs come from the frozen requirements, matched to the report row by row.
   check(Array.isArray(requirements.rows), 'the frozen requirements have no rows');
@@ -331,35 +372,13 @@ export function buildQualificationData({ base = repoRoot, pin = loadPin() } = {}
   const methodCounts = Object.fromEntries(Object.keys(METHOD_GROUPS).map((group) => [group, 0]));
   const categoryCounts = new Map();
   const rows = report.rows.map((row) => {
-    const entry = names.get(row.id);
-    check(entry.siteRequirement === row.requirement, `${row.id}: the report criterion differs from the frozen requirement`);
-    check(typeof entry.name === 'string' && entry.name, `${row.id}: the frozen requirements give it no name`);
-    check(/^https:\/\/terminfo\.dev\//.test(entry.url ?? ''), `${row.id}: the frozen requirements give it no terminfo.dev link`);
-    check(typeof row.explanation === 'string' && row.explanation, `${row.id}: no observed behavior recorded`);
-    check(Array.isArray(row.evidence) && row.evidence.length > 0, `${row.id}: no evidence recorded`);
-    const { names: layers, groups } = methodGroupsFor(row.observationLayers, row.id);
-    groups.forEach((group) => (methodCounts[group] += 1));
-    categoryCounts.set(entry.category, (categoryCounts.get(entry.category) ?? 0) + 1);
-    // The row's own line in the readable report, for a link that lands on it.
-    const lines = readableLines.flatMap((line, index) => (line.startsWith(`| [\`${row.id}\`](`) ? [index + 1] : []));
-    check(lines.length === 1, `${row.id}: expected exactly one row in report.md, found ${lines.length}`);
-    const evidence = [...new Set(row.evidence.map((item) => `${item.file}#${item.caseId}`))];
-    return {
-      id: row.id,
-      name: entry.name,
-      category: entry.category,
-      termInfoUrl: entry.url,
-      outcome: row.conclusion,
-      criterion: row.requirement,
-      observed: row.explanation,
-      methods: groups,
-      layers,
-      evidence,
-      reportRowUrl: `${permalink(pin, `${dir}/report.md`)}?plain=1#L${lines[0]}`,
-      limitation: limitationFor(row, layers, groups),
-    };
+    const built = buildRow({ row, entry: names.get(row.id), readableLines, pin });
+    built.methods.forEach((group) => (methodCounts[group] += 1));
+    categoryCounts.set(built.category, (categoryCounts.get(built.category) ?? 0) + 1);
+    return built;
   });
 
+  check(typeof report.scope === 'string' && report.scope.trim(), 'the report records no scope');
   const outcomeText =
     counts.pass === total
       ? `${counts.pass} of ${total} frozen Core requirements passed`
@@ -412,7 +431,7 @@ export function buildQualificationData({ base = repoRoot, pin = loadPin() } = {}
       collectorAdapter: raw.collectorAdapter?.id ?? null,
       collectorAdapterSha256: raw.collectorAdapter?.bundleSha256 ?? null,
     },
-    scope: typeof report.scope === 'string' ? report.scope : '',
+    scope: report.scope,
     attribution: typeof requirements.sourceAttribution === 'string' ? requirements.sourceAttribution : '',
     upstream: {
       revision: requirements.upstreamRevision ?? null,
