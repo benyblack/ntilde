@@ -30,7 +30,7 @@ const writerFor = output => (file, value) => writeFileSync(join(output, file), J
  * dropping only the newer suffixes' imports (Core gaps, runtime-color reset, OSC 133); the historical production maps stay fixed. */
 export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?core-wrap-[a-z-]+\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+|osc133-[a-z-]+)\.mjs';\n/gm, ''));
 }
@@ -38,7 +38,7 @@ export function legacyPrefixSource(bytes) {
 /** Remove the newer suffixes (text/cursor, OSC 133) from the synthetic v37 scope on LF and CRLF checkouts. */
 export function routedPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?core-wrap-[a-z-]+\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+)\.mjs';\n/gm, ''));
 }

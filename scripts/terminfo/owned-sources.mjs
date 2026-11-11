@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v42';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v43';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -556,11 +556,17 @@ export const capturedV49SourceFiles = Object.freeze({
     coreWrapReceiptSourceSha256: 'core-wrap-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v49 inventory and manifest environment pin before trusting any captured source. */
+export const capturedV50SourceFiles = Object.freeze({
+    ...capturedV49SourceFiles,
+    sgrRasterSourceSha256: 'core-sgr-raster.mjs',
+    sgrRasterReceiptSourceSha256: 'core-sgr-raster-receipt.mjs',
+});
+
+/** Bind the private temporary root, exact v50 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV49SourceFiles)) throw new Error('Invalid current v49 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV50SourceFiles)) throw new Error('Invalid current v50 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

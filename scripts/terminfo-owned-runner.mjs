@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { sgrRasterSuiteId, SgrRasterObserver, buildSgrRasterReport } from './terminfo/core-sgr-raster.mjs';
 import { WrapObserver } from './terminfo/core-wrap-observer.mjs';
 import { deriveWrapEvidence } from './terminfo/core-wrap-contract.mjs';
 import { wrapSuiteId } from './terminfo/core-wrap-collector.mjs';
@@ -169,7 +170,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'crst', 'shi', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'crst', 'shi', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -1361,6 +1362,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let coreEraseEvidence;
     let tabStopsEvidence;
     let coreWrapEvidence;
+    let sgrRasterEvidence;
     let routedInputEvidence;
     let osc133Evidence;
     let colorResetEvidence;
@@ -1496,6 +1498,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let coreEraseObserver;
         let tabStopsObserver;
         let coreWrapState;
+        let sgrRasterObserver;
         let colorResetObserver;
         let pixelObserver;
         let pixelUnavailable;
@@ -1525,7 +1528,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const image = statSync(executable);
         const context = {
             adapter: adapterId, adapterBundleSha256, upstreamBundleSha256, appVersion: args[3],
-            coreGapsSuiteId, coreGapsAdapterId, coreGapsBundleSha256, textCursorSuiteId, coreEraseSuiteId, tabStopsSuiteId, coreWrapSuiteId: wrapSuiteId,
+            coreGapsSuiteId, coreGapsAdapterId, coreGapsBundleSha256, textCursorSuiteId, coreEraseSuiteId, tabStopsSuiteId, coreWrapSuiteId: wrapSuiteId, sgrRasterSuiteId,
             sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshot.sha256, sourceSnapshotRoot: sourceRepo,
             appVersionSource: 'operator supplied; not independently verified',
             initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))),
@@ -2401,6 +2404,20 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'csum-snapshots.jsonl'), JSON.stringify(rectChecksumObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'sr') {
+                // The SGR raster suite follows the Core wrap suite, which has restored the original geometry; its reads bracket a controlled render and carry the exact DECRQSS replies.
+                if (!coreWrapState?.observer.restored) throw new Error('Core wrap must restore before Core SGR raster observations.');
+                sgrRasterObserver ??= new SgrRasterObserver({ output, appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_SR_${runId}`, expectedPaneId: cellObserver.paneId });
+                try {
+                    const result = await sgrRasterObserver.handleRequest(request, budget);
+                    appendFileSync(join(output, 'sr-snapshots.jsonl'), JSON.stringify(sgrRasterObserver.frames.at(-1)) + '\n');
+                    return result;
+                } catch (error) {
+                    writeFileSync(join(output, 'sr-failed-observation.json'), JSON.stringify({ error: String(error) }) + '\n');
+                    throw error;
+                }
+            }
             if (prefix === 'cw') {
                 if (!tabStopsObserver?.restored) throw new Error('Core tab stops must restore before Core wrap.');
                 if (!coreWrapState) {
@@ -2752,7 +2769,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.textCursorEvidence = textCursorEvidence;
             summary.coreEraseEvidence = coreEraseEvidence;
             summary.tabStopsEvidence = tabStopsEvidence;
+            const srRunBytes = readFileSync(join(output, 'sr-run.json'));
+            const srFrames = readFileSync(join(output, 'sr-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            writeJson(join(output, 'sr-observations.json'), buildSgrRasterReport(srFrames, JSON.parse(srRunBytes), runId, output));
+            sgrRasterEvidence = { runId, suiteId: sgrRasterSuiteId, file: 'sr-observations.json',
+                sha256: hash(readFileSync(join(output, 'sr-observations.json'))), runFile: 'sr-run.json', runSha256: hash(srRunBytes),
+                provisionalUntil: 'cell-receipt.json' };
             summary.coreWrapEvidence = coreWrapEvidence;
+            summary.sgrRasterEvidence = sgrRasterEvidence;
             summary.privateClipboardEvidence = privateClipboardEvidence;
             summary.queryEvidence = queryEvidence;
             summary.staticImageEvidence = staticImageEvidence;
@@ -2840,7 +2864,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
