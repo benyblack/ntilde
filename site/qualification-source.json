@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "note": "The one place that says which qualification publication the /qualification/ page shows. Showing a newer result is an explicit edit to this file: scripts/terminfo/site-qualification-data.test.mjs fails once a newer Core publication exists under docs/qa/terminfo/ than the one pinned here.",
+  "repository": "https://github.com/benyblack/ntilde",
+  "publication": "docs/qa/terminfo/2026-11-11-core-reverse-wide-results",
+  "publicationScript": "scripts/terminfo-core-reverse-wide-publication.mjs",
+  "requirements": "docs/qa/terminfo/2026-11-11-core-results/requirements-v1.json",
+  "evidenceRef": "410524185882b3e5b358471e6b4654aa01fb468a",
+  "sha256": {
+    "report.json": "0a3c80ab9e7b4e8781418f94062e3ba0b18e8e823734c92a98cbee87a1e0ca1c",
+    "report.md": "32c350e73c1e977a860ef0e6cbde8fa486ba276732e1365f00921148a10e05b3",
+    "measurement.json": "62b4ee7920acf7fe555fa2e42c7bbf8bcd3e455b4b50244502a36ac2d34b7407",
+    "requirements": "a0c95ead8a653c1555379f89d3ae420172926966ebfd86eb6e92de77d683479c"
+  },
+  "expected": {
+    "runId": "cc189a526ec881e26116c5337c595d2a",
+    "appRevision": "7858ae3be095284b7228acc2f495e5f5cc71b11a",
+    "scriptsRevision": "b6590c554ea6b01acad042d84a63a4dd3f761dc3",
+    "rows": 80,
+    "pass": 80,
+    "fail": 0,
+    "inconclusive": 0
+  }
+}

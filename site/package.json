@@ -7,11 +7,14 @@
   "scripts": {
     "sync:assets": "node scripts/sync-screenshots.mjs",
     "sync:docs": "node scripts/sync-docs.mjs",
-    "check": "node scripts/sync-docs.mjs && astro check",
-    "predev": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs",
-    "prebuild": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs",
+    "sync:qualification": "node scripts/sync-qualification.mjs",
+    "check": "node scripts/sync-docs.mjs && node scripts/sync-qualification.mjs && astro check",
+    "predev": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs && node scripts/sync-qualification.mjs",
+    "prebuild": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs && node scripts/sync-qualification.mjs",
     "dev": "astro dev",
     "build": "astro build",
+    "postbuild": "node scripts/check-qualification-build.mjs",
+    "check:build": "node scripts/check-qualification-build.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },

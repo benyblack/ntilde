@@ -10,6 +10,7 @@ const navLinks = [
   { href: `${homeHref}#agent-host`, label: 'Agent access' },
   { href: `${homeHref}docs/`, label: 'Docs' },
   { href: `${homeHref}blog/`, label: 'Blog' },
+  { href: `${homeHref}qualification/`, label: 'Qualification', wideOnly: true },
   { href: `${homeHref}#install`, label: 'Install' },
   { href: `${homeHref}#developers`, label: 'Developers' },
 ];
@@ -56,7 +57,11 @@ const repoUrl = 'https://github.com/benyblack/ntilde';
         navLinks.map((link) => (
           <a
             href={link.href}
-            class="text-sm text-ink-300 hover:text-white"
+            class:list={[
+              'text-sm text-ink-300 hover:text-white',
+              // The bar already runs out of room at tablet width; the footer links this page there.
+              link.wideOnly && 'hidden lg:inline',
+            ]}
           >
             {link.label}
           </a>

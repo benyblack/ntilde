@@ -1,0 +1,527 @@
+---
+// Ntilde's own Core qualification, from one pinned publication. Nothing on this page is typed in:
+// every number, identity and row comes from src/data/ntilde-qualification.json, which
+// scripts/sync-qualification.mjs generates from the publication named in qualification-source.json.
+import Base from '../layouts/Base.astro';
+import data from '../data/ntilde-qualification.json';
+
+const { totals, measurement: m, source, reproduction, rows, categories, methods } = data;
+const homeHref = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
+
+const utc = (iso: string) =>
+  new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }) + ' UTC';
+const measuredAt = utc(m.startedAt);
+const expectedLast = `Core results: ${totals.pass} pass / ${totals.fail} fail / ${totals.inconclusive} inconclusive; ${totals.total} exact rows.`;
+const shortRun = m.runId.slice(0, 8);
+
+const outcomeLabel: Record<string, string> = { pass: 'Pass', fail: 'Fail', inconclusive: 'Inconclusive' };
+const outcomeStyle: Record<string, string> = {
+  pass: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+  fail: 'border-red-500/40 bg-red-500/10 text-red-300',
+  inconclusive: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+};
+const outcomeMark: Record<string, string> = { pass: '✓', fail: '✕', inconclusive: '?' };
+const methodLabel = Object.fromEntries(methods.map((method) => [method.id, method.label]));
+const categoryLabel = Object.fromEntries(categories.map((category) => [category.id, category.label]));
+
+const searchText = (row: (typeof rows)[number]) =>
+  [row.id, row.name, categoryLabel[row.category], row.criterion, row.observed, row.limitation, ...row.evidence]
+    .join(' ')
+    .toLowerCase();
+
+const description = `${data.claim} A reproducible Ntilde qualification, not a ranking: every requirement, outcome and evidence link is listed.`;
+---
+
+<Base title="Qualification" description={description}>
+  <section class="border-b border-ink-900/60" aria-labelledby="q-title">
+    <div class="container-prose py-12 sm:py-16">
+      <p class="eyebrow">
+        <span class="pill-dot"></span>
+        Ntilde’s own qualification · frozen publication
+      </p>
+      <h1 id="q-title" class="mt-5 max-w-4xl text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+        {data.claim}
+      </h1>
+      <p class="lede mt-5 max-w-3xl">
+        These are reproducible results from Ntilde’s own qualification run. They cover the named requirements and the
+        recorded configuration below, and nothing wider.
+      </p>
+
+      <dl class="mt-8 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Result totals">
+        <div class="card !p-4">
+          <dt class="text-xs font-medium uppercase tracking-wider text-ink-300">Pass</dt>
+          <dd class="mt-1 text-3xl font-semibold text-emerald-300">{totals.pass}</dd>
+        </div>
+        <div class="card !p-4">
+          <dt class="text-xs font-medium uppercase tracking-wider text-ink-300">Fail</dt>
+          <dd class="mt-1 text-3xl font-semibold text-white">{totals.fail}</dd>
+        </div>
+        <div class="card !p-4">
+          <dt class="text-xs font-medium uppercase tracking-wider text-ink-300">Inconclusive</dt>
+          <dd class="mt-1 text-3xl font-semibold text-white">{totals.inconclusive}</dd>
+        </div>
+        <div class="card !p-4">
+          <dt class="text-xs font-medium uppercase tracking-wider text-ink-300">Frozen requirements</dt>
+          <dd class="mt-1 text-3xl font-semibold text-white">{totals.total}</dd>
+        </div>
+      </dl>
+
+      <div class="mt-8 flex flex-wrap items-center gap-3">
+        <a href={source.links.report} class="btn-primary">Read the full report</a>
+        <a href="#results" class="btn-secondary">Per-requirement results</a>
+        <a href="#reproduce" class="btn-secondary">Reproduce the check</a>
+      </div>
+
+      <p class="docs-version-note mt-8 max-w-3xl" role="note">
+        <strong class="text-white">This is a frozen run, not a live feed.</strong> It shows run
+        <code class="font-mono text-ink-100">{shortRun}</code> measured {measuredAt} from the publication at
+        <code class="font-mono text-ink-100 break-all">{source.publication}</code>. A newer qualification appears here only
+        when the pinned source is deliberately updated.
+      </p>
+    </div>
+  </section>
+
+  <section class="section-tight" aria-labelledby="meaning-title">
+    <div class="container-prose">
+      <h2 id="meaning-title" class="text-2xl sm:text-3xl">What this result does and does not show</h2>
+      <div class="mt-6 grid gap-6 md:grid-cols-2">
+        <div class="card">
+          <h3 class="text-base font-semibold text-white">It shows</h3>
+          <ul class="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ink-200">
+            <li>
+              Each of the {totals.total} named Core requirements was run in the recorded configuration, and the evidence matched its
+              criterion well enough to be graded <em>{totals.pass === totals.total ? 'pass' : 'as listed below'}</em> by the repository’s
+              own graders.
+            </li>
+            <li>
+              The evidence is committed, digest-pinned and re-derivable: the check below rebuilds every row from the retained run and
+              fails if the published report differs.
+            </li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 class="text-base font-semibold text-white">It does not show</h3>
+          <ul class="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ink-200">
+            <li>An official terminfo.dev listing or score. The criteria come from terminfo.dev; the matching and grading are Ntilde’s.</li>
+            <li>Behavior on other platforms, versions or configurations, so no cross-platform parity.</li>
+            <li>How text looks in any font. Rows that use pixels say so, and only for controlled test fixtures.</li>
+            <li>A ranking against other terminal applications. That needs a common method; see <a href="#comparison">comparisons</a>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight border-t border-ink-900/60" aria-labelledby="measurement-title" id="measurement">
+    <div class="container-prose">
+      <h2 id="measurement-title" class="text-2xl sm:text-3xl">Measurement record</h2>
+      <p class="mt-3 max-w-3xl text-ink-300">
+        As recorded in the report, its receipt and the retained collector output. Identity fields are listed as recorded, with
+        what each does and does not establish.
+      </p>
+      <dl class="mt-6 divide-y divide-ink-800 rounded-xl border border-ink-800 bg-ink-900/40 text-sm">
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Result</dt>
+          <dd class="text-ink-200">
+            {totals.pass} pass, {totals.fail} fail, {totals.inconclusive} inconclusive, out of {totals.total} frozen Core requirements.
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Measured</dt>
+          <dd class="text-ink-200"><time datetime={m.startedAt}>{measuredAt}</time>; run <code class="font-mono break-all">{m.runId}</code></dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Platform</dt>
+          <dd class="text-ink-200">
+            {m.platform.os} {m.platform.version}, as recorded by the collector (adapter
+            <code class="font-mono">{m.collectorAdapter}</code>). No other operating system was measured.
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Configuration</dt>
+          <dd class="text-ink-200">
+            Terminal geometry {m.geometry.rows} rows × {m.geometry.cols} columns; child process <code class="font-mono">TERM={m.term}</code>.
+            <span class="mt-1 block text-ink-300">Scope as recorded in the report: {data.scope}</span>
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">App revision</dt>
+          <dd class="text-ink-200">
+            <a href={source.links.appCommit} class="font-mono break-all">{m.appRevision}</a>
+            <span class="block text-ink-300">The Git commit of the App sources recorded for the run. The receipt also records the executable and assembly digests below.</span>
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Scripts revision</dt>
+          <dd class="text-ink-200">
+            <a href={source.links.scriptsCommit} class="font-mono break-all">{m.scriptsRevision}</a>
+            <span class="block text-ink-300">
+              The collector and contract scripts that produced the run; receipt schema {m.receiptSchema}, source policy
+              <code class="font-mono">{m.sourcePolicy}</code>.
+            </span>
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Executable and assembly</dt>
+          <dd class="text-ink-200">
+            <span class="block">Executable SHA-256 <code class="font-mono break-all">{m.executableSha256}</code></span>
+            <span class="block mt-1">Assembly SHA-256 <code class="font-mono break-all">{m.assemblySha256}</code></span>
+            <span class="block mt-1 text-ink-300">Digests recorded in the independent receipt for the measured process.</span>
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Version label</dt>
+          <dd class="text-ink-200">
+            <code class="font-mono">{m.appVersionLabel}</code>: <strong class="font-medium text-white">operator-supplied, not independently
+            verified</strong>. The collector’s own identity field reads <code class="font-mono">{m.rawIdentity}</code>, and its stock suite is
+            marked <code class="font-mono">suiteComplete: {String(m.suiteComplete)}</code>. The label is not evidence of which build ran; the
+            revision and digests above, bound by the receipt, are.
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Retained attempts</dt>
+          <dd class="text-ink-200">
+            {data.attempts.superseded} earlier attempts were superseded and are kept unchanged; the reasons are in the
+            <a href={source.links.report}>report</a>.
+          </dd>
+        </div>
+        <div class="grid gap-1 p-4 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+          <dt class="font-medium text-white">Evidence files</dt>
+          <dd class="text-ink-200">
+            <ul class="flex flex-wrap gap-x-4 gap-y-1">
+              <li><a href={source.links.report}>report.md</a></li>
+              <li><a href={source.links.reportJson}>report.json</a></li>
+              <li><a href={source.links.measurement}>measurement.json</a></li>
+              <li><a href={source.links.sourceManifest}>app-source-manifest.json</a></li>
+              <li><a href={source.links.requirements}>frozen requirements</a></li>
+              <li><a href={source.links.script}>publication script</a></li>
+            </ul>
+            <span class="mt-2 block text-ink-300">
+              Links point at commit <code class="font-mono">{source.evidenceRef.slice(0, 12)}</code>. The raw collector archive is retained in
+              the repository beside them and pinned by SHA-256 <code class="font-mono break-all">{m.ownedArchiveSha256}</code>; it is not linked
+              here because it is a raw capture, not reviewed text.
+            </span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section-tight border-t border-ink-900/60" aria-labelledby="reproduce-title" id="reproduce">
+    <div class="container-prose">
+      <h2 id="reproduce-title" class="text-2xl sm:text-3xl">Reproduce the check</h2>
+      <p class="mt-3 max-w-3xl text-ink-300">
+        This re-derives the published rows from the retained run. It does not repeat the measurement on a Mac.
+      </p>
+      <ul class="mt-4 max-w-3xl list-disc space-y-1 pl-5 text-sm text-ink-200">
+        <li>A checkout of <a href={source.repository}>the repository</a> at the commit the links above point to, or any later commit that keeps this publication.</li>
+        <li>Node.js 24 or newer, and Python 3.</li>
+        <li>No desktop session, network access or Git history is needed.</li>
+      </ul>
+      <pre class="code-block mt-5" tabindex="0" aria-label="Commands to reproduce the check"><code>git clone {source.repository}.git
+cd ntilde
+git checkout {source.evidenceRef}
+{reproduction.command}</code></pre>
+      <p class="mt-4 max-w-3xl text-sm leading-relaxed text-ink-300">
+        It prints <code class="font-mono text-ink-100">{expectedLast}</code> and exits with an error if any retained archive or manifest
+        differs from its pinned digest, or if re-derivation does not reproduce <code class="font-mono">report.json</code> and
+        <code class="font-mono">report.md</code> exactly. To also confirm that a checkout’s production sources are the measured ones, run
+        <code class="font-mono break-all text-ink-100">{reproduction.sourceCommand}</code>; it passes only while those sources are unchanged.
+      </p>
+    </div>
+  </section>
+
+  <section class="section-tight border-t border-ink-900/60" aria-labelledby="results-title" id="results">
+    <div class="container-prose">
+      <h2 id="results-title" class="text-2xl sm:text-3xl">Results by requirement</h2>
+      <p class="mt-3 max-w-3xl text-ink-300">
+        All {totals.total} frozen requirements, each with its exact ID. Open a row for its criterion, what was observed and its evidence.
+        “Method” says what kind of observation backs the outcome; “Limits” says what that evidence does not cover.
+      </p>
+
+      <form id="q-filters" class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]" role="search" aria-label="Filter requirements" hidden>
+        <div>
+          <label for="q-search" class="block text-xs font-medium uppercase tracking-wider text-ink-300">Search</label>
+          <input id="q-search" type="search" autocomplete="off" placeholder="ID, name or wording" class="filter-control mt-1" />
+        </div>
+        <div>
+          <label for="q-outcome" class="block text-xs font-medium uppercase tracking-wider text-ink-300">Outcome</label>
+          <select id="q-outcome" class="filter-control mt-1">
+            <option value="">All outcomes</option>
+            {(['pass', 'fail', 'inconclusive'] as const).map((outcome) => <option value={outcome}>{outcomeLabel[outcome]} ({totals[outcome]})</option>)}
+          </select>
+        </div>
+        <div>
+          <label for="q-category" class="block text-xs font-medium uppercase tracking-wider text-ink-300">Category</label>
+          <select id="q-category" class="filter-control mt-1">
+            <option value="">All categories</option>
+            {categories.map((category) => <option value={category.id}>{category.label} ({category.count})</option>)}
+          </select>
+        </div>
+        <div>
+          <label for="q-method" class="block text-xs font-medium uppercase tracking-wider text-ink-300">Method</label>
+          <select id="q-method" class="filter-control mt-1">
+            <option value="">All methods</option>
+            {methods.filter((method) => method.count > 0).map((method) => <option value={method.id}>{method.label} ({method.count})</option>)}
+          </select>
+        </div>
+        <div class="flex items-end gap-2">
+          <button type="reset" class="btn-secondary">Reset</button>
+          <button type="button" id="q-toggle" class="btn-secondary" aria-pressed="false">Expand all</button>
+        </div>
+      </form>
+      <p id="q-count" class="mt-3 text-sm text-ink-300" role="status" aria-live="polite">Showing all {totals.total} requirements.</p>
+
+      <div class="q-table-wrap mt-4">
+        <table class="q-table" id="q-table" role="table">
+          <caption class="sr-only">Qualification outcome, method, evidence and limits for each of the {totals.total} frozen Core requirements</caption>
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Requirement</th>
+              <th scope="col" role="columnheader">Outcome</th>
+              <th scope="col" role="columnheader">Method</th>
+              <th scope="col" role="columnheader">Details</th>
+              <th scope="col" role="columnheader">Limits</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            {
+              rows.map((row) => (
+                <tr
+                  role="row"
+                  id={`case-${row.id}`}
+                  data-outcome={row.outcome}
+                  data-category={row.category}
+                  data-methods={row.methods.join(' ')}
+                  data-search={searchText(row)}
+                >
+                  <th scope="row" role="rowheader" data-label="Requirement">
+                    <span class="block font-medium text-white">{row.name}</span>
+                    <code class="mt-0.5 block break-all font-mono text-xs text-ntilde-200">{row.id}</code>
+                    <span class="mt-1 block text-xs font-normal text-ink-300">{categoryLabel[row.category]}</span>
+                  </th>
+                  <td role="cell" data-label="Outcome">
+                    <span class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${outcomeStyle[row.outcome]}`}>
+                      <span aria-hidden="true">{outcomeMark[row.outcome]}</span>
+                      {outcomeLabel[row.outcome]}
+                    </span>
+                  </td>
+                  <td role="cell" data-label="Method">
+                    <ul class="flex flex-wrap gap-1.5">
+                      {row.methods.map((method) => <li class="pill">{methodLabel[method]}</li>)}
+                    </ul>
+                  </td>
+                  <td role="cell" data-label="Details">
+                    <details>
+                      <summary>Criterion and evidence<span class="sr-only"> for {row.id}</span></summary>
+                      <dl class="mt-3 space-y-3 text-sm leading-relaxed text-ink-200">
+                        <div>
+                          <dt class="font-medium text-white">Criterion</dt>
+                          <dd>{row.criterion} <a href={row.termInfoUrl}>terminfo.dev page for {row.id}</a></dd>
+                        </div>
+                        <div>
+                          <dt class="font-medium text-white">Observed</dt>
+                          <dd>{row.observed}</dd>
+                        </div>
+                        <div>
+                          <dt class="font-medium text-white">Evidence</dt>
+                          <dd>
+                            <a href={row.reportRowUrl}>Report row for {row.id}</a>
+                            <span class="mt-1 block text-ink-300">
+                              Retained observation:{' '}
+                              {row.evidence.map((item, index) => (
+                                <>
+                                  {index > 0 && ', '}
+                                  <code class="break-all font-mono text-xs">{item}</code>
+                                </>
+                              ))}
+                            </span>
+                          </dd>
+                        </div>
+                      </dl>
+                    </details>
+                  </td>
+                  <td role="cell" data-label="Limits" class="text-sm leading-relaxed text-ink-300">{row.limitation}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p id="q-empty" class="mt-6 rounded-lg border border-ink-800 bg-ink-900/50 p-4 text-sm text-ink-200" hidden>
+        No requirement matches these filters. Reset them to see all {totals.total}.
+      </p>
+    </div>
+  </section>
+
+  <section class="section-tight border-t border-ink-900/60" aria-labelledby="comparison-title" id="comparison">
+    <div class="container-prose">
+      <h2 id="comparison-title" class="text-2xl sm:text-3xl">Comparisons with other terminals</h2>
+      <p class="mt-3 max-w-3xl leading-relaxed text-ink-200">
+        This page is Ntilde’s own qualification: Ntilde-specific observers matched to each criterion. It is not a comparison, and its
+        count is not a score to set beside another terminal’s. A fair comparison runs one common method against every terminal; that
+        work is tracked separately in
+        <a href={`${source.repository}/pull/951`}>pull request #951</a> and no results from it are shown here. When such results are
+        published they will be listed with their own method and source, apart from this table and without an ordering.
+      </p>
+    </div>
+  </section>
+
+  <section class="section-tight border-t border-ink-900/60" aria-labelledby="attribution-title">
+    <div class="container-prose">
+      <h2 id="attribution-title" class="text-2xl sm:text-3xl">Attribution</h2>
+      <p class="mt-3 max-w-3xl text-sm leading-relaxed text-ink-300">
+        {data.attribution}
+        The frozen criteria and IDs come from the <a href="https://terminfo.dev/baseline/core">terminfo.dev Core list</a> and its
+        <a href={`https://github.com/beorn/terminfo.dev/blob/${data.upstream.revision}/content/features.json`}>catalogue at revision <code class="font-mono">{data.upstream.revision?.slice(0, 12)}</code></a>
+        (frozen catalogue <code class="font-mono">{data.upstream.frozenCatalogueRevision?.slice(0, 12)}</code>). See the
+        <a href={`${homeHref}docs/`}>user guide</a> for what Ntilde is.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style is:global>
+  /* The filters need script, so they start hidden; the grid utility would otherwise override [hidden]. */
+  #q-filters[hidden] {
+    display: none;
+  }
+  .filter-control {
+    @apply w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-400
+      focus:border-ntilde-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-ntilde-400;
+  }
+  .q-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .q-table thead th {
+    @apply border-b border-ink-700 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-ink-300;
+  }
+  .q-table tbody tr {
+    @apply border-b border-ink-800 align-top;
+  }
+  .q-table tbody tr:target {
+    @apply bg-ntilde-900/20;
+  }
+  .q-table tbody th,
+  .q-table tbody td {
+    @apply px-3 py-3 align-top;
+  }
+  .q-table tbody tr[hidden] {
+    display: none;
+  }
+  .q-table details > summary {
+    @apply cursor-pointer text-sm text-ntilde-300 hover:text-ntilde-200;
+  }
+  .q-table details > summary:focus-visible {
+    @apply rounded outline-none ring-2 ring-ntilde-400;
+  }
+  .q-table tbody tr {
+    scroll-margin-top: 5rem;
+  }
+  @media (min-width: 64rem) {
+    .q-table th:nth-child(1) {
+      width: 20%;
+    }
+    .q-table th:nth-child(2) {
+      width: 9%;
+    }
+    .q-table th:nth-child(3) {
+      width: 15%;
+    }
+    .q-table th:nth-child(5) {
+      width: 22%;
+    }
+  }
+
+  /* Narrow screens: each requirement becomes a card. The roles on the table elements keep the table
+     semantics for assistive technology when the display values change. */
+  @media (max-width: 63.99rem) {
+    .q-table thead {
+      @apply sr-only;
+    }
+    .q-table,
+    .q-table tbody,
+    .q-table tbody tr,
+    .q-table tbody th,
+    .q-table tbody td {
+      display: block;
+      width: auto;
+    }
+    .q-table tbody tr {
+      @apply mb-3 rounded-lg border border-ink-800 bg-ink-900/40 p-1;
+    }
+    .q-table tbody th,
+    .q-table tbody td {
+      @apply px-3 py-2;
+    }
+    .q-table tbody td::before {
+      content: attr(data-label);
+      @apply mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-400;
+    }
+  }
+</style>
+
+<script>
+  const form = document.getElementById('q-filters') as HTMLFormElement | null;
+  const table = document.getElementById('q-table');
+  if (form && table) {
+    const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>('tbody tr'));
+    const count = document.getElementById('q-count')!;
+    const empty = document.getElementById('q-empty')!;
+    const toggle = document.getElementById('q-toggle') as HTMLButtonElement;
+    const field = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+    const [search, outcome, category, method] = ['q-search', 'q-outcome', 'q-category', 'q-method'].map(field);
+    form.hidden = false;
+
+    const apply = () => {
+      const terms = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+      let shown = 0;
+      for (const row of rows) {
+        const haystack = row.dataset.search ?? '';
+        const match =
+          (!outcome.value || row.dataset.outcome === outcome.value) &&
+          (!category.value || row.dataset.category === category.value) &&
+          (!method.value || (row.dataset.methods ?? '').split(' ').includes(method.value)) &&
+          terms.every((term) => haystack.includes(term));
+        row.hidden = !match;
+        if (match) shown += 1;
+      }
+      count.textContent =
+        shown === rows.length ? `Showing all ${rows.length} requirements.` : `Showing ${shown} of ${rows.length} requirements.`;
+      empty.hidden = shown !== 0;
+    };
+
+    form.addEventListener('input', apply);
+    form.addEventListener('change', apply);
+    form.addEventListener('submit', (event) => event.preventDefault());
+    // A reset restores the fields after the event, so filter on the next turn.
+    form.addEventListener('reset', () => setTimeout(apply, 0));
+
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-pressed') !== 'true';
+      toggle.setAttribute('aria-pressed', String(open));
+      toggle.textContent = open ? 'Collapse all' : 'Expand all';
+      for (const details of table.querySelectorAll('details')) details.open = open;
+    });
+
+    // Following a link to one requirement must not land on a hidden row, or on a collapsed one.
+    const reveal = () => {
+      const row = location.hash.startsWith('#case-') ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+      if (!(row instanceof HTMLTableRowElement)) return;
+      if (row.hidden) {
+        form.reset();
+      }
+      row.querySelector('details')?.setAttribute('open', '');
+      setTimeout(() => row.scrollIntoView(), 0);
+    };
+    window.addEventListener('hashchange', reveal);
+    reveal();
+  }
+</script>
