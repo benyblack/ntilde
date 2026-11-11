@@ -76,6 +76,11 @@ test('journal rejects altered bytes, stale identity, missing frames and incomple
     assert.equal(Object.keys(buildEraseReport(frames, run, id).effects).length, 6);
     const forged = structuredClone(run); forged.feeds[1] = '\x1b[0K';
     assert.throws(() => buildEraseReport(frames, forged, id), /fixture bytes/);
+    for (const [from, to] of [['\x1b[3;2H', '\x1b[2;3H'], ['\x1b[2;3H', '\x1b[3;2H'], ['\x1b[J', '\x1b[0J']]) {
+        const changed = structuredClone(run), index = changed.feeds.findIndex(feed => feed.includes(from));
+        assert.ok(index >= 0); changed.feeds[index] = changed.feeds[index].replace(from, to);
+        assert.throws(() => buildEraseReport(frames, changed, id), /fixture bytes/);
+    }
     assert.throws(() => buildEraseReport(frames, run, 'b'.repeat(32)), /identity/);
     assert.throws(() => buildEraseReport(frames.slice(0, -1), run, id), /Incomplete/);
     const stale = structuredClone(frames); stale[3].screen.cursorCol++;

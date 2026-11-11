@@ -9,7 +9,7 @@ import { deriveEraseCoreReport, readableEraseReport } from './terminfo-core-eras
 
 export const publication = 'docs/qa/terminfo/2026-11-11-core-erase-results';
 // Pinned after the owned run is retained; replacement evidence needs review.
-export const manifestSha256 = 'b67605e2f024e65b6d5f1e662752963d2ebcba938d647656c0fe55460ac2d828';
+export const manifestSha256 = '3dfc2a79bd4d90dc55a7fc5e8203c42236ff9c0bcf701ddc626ce1fa40802218';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Core erase publication: ' + message); };
 export function loadMeasurement(base = root) {

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "measurement": {
-    "runId": "ffb4b221e6a4e07a31275e03728039f0",
-    "appRevision": "fef4be838fd8e2a7482c81a7b428068d8fc5614c",
-    "scriptsRevision": "fef4be838fd8e2a7482c81a7b428068d8fc5614c",
-    "receiptSchema": 45,
-    "sourcePolicy": "readonly-owned-source-graph-v39"
+    "runId": "d1e265d1dafd73f4c83a9b9d8e72bfcf",
+    "appRevision": "6a3019cd75e488a0f9caedcd0b6a66adc245e0e9",
+    "scriptsRevision": "6a3019cd75e488a0f9caedcd0b6a66adc245e0e9",
+    "receiptSchema": 46,
+    "sourcePolicy": "readonly-owned-source-graph-v40"
   },
-  "ownedArchiveSha256": "e650212b0873e27762cfa8ef77b20557150d2188f2f979d4a16ba7944ac4647e",
+  "ownedArchiveSha256": "7d6dda88965b2cd47e9c0fc73a020db3710b885462825d7144c2991483c3312b",
   "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
   "attempts": [
     {
@@ -19,8 +19,15 @@
     },
     {
       "runId": "ffb4b221e6a4e07a31275e03728039f0",
+      "status": "superseded",
+      "reason": "OSC 133 qualification merged afterwards and changed the shared collector and source-policy chain.",
+      "archive": "attempt-2-superseded.zip",
+      "sha256": "e650212b0873e27762cfa8ef77b20557150d2188f2f979d4a16ba7944ac4647e"
+    },
+    {
+      "runId": "d1e265d1dafd73f4c83a9b9d8e72bfcf",
       "status": "complete",
-      "reason": "The exact erase specimens and predecessor suites completed; receipt and cleanup verified."
+      "reason": "The exact erase specimens, OSC 133 and predecessor suites completed; receipt and cleanup verified."
     }
   ]
 }

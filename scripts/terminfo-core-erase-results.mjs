@@ -34,6 +34,7 @@ export function deriveEraseCoreReport(directory, frozenMapping, identity, measur
             return { role, ...e };
         });
         row.historicalPinnedProbe = historical.rows.find(r => r.id === id).pinnedProbe;
+        row.historicalConclusion = historical.rows.find(r => r.id === id).conclusion;
         row.criterionMatch = 'matched';
         row.conclusion = results.every(e => e.outcome === 'supported') ? 'pass' : 'fail';
         row.exactFixtureEffects = results;
@@ -43,6 +44,8 @@ export function deriveEraseCoreReport(directory, frozenMapping, identity, measur
             : 'The exact omitted-parameter home specimen and separate interior preservation control are independently measured.';
         row.blocker = null;
     }
+    for (const row of report.rows) if (!eraseIds.includes(row.id))
+        check(row.conclusion === historical.rows.find(r => r.id === row.id).conclusion, 'unattributed conclusion change: ' + row.id);
     report.totals = Object.fromEntries(['pass', 'fail', 'inconclusive'].map(v => [v, report.rows.filter(row => row.conclusion === v).length]));
     check(Object.values(report.totals).reduce((a, b) => a + b, 0) === 80, 'incorrect totals');
     report.corePassPercentage = report.totals.pass * 100 / 80;
@@ -53,10 +56,13 @@ const cell = value => String(value ?? '').replaceAll('|', String.raw`\|`).replac
 const literal = value => JSON.stringify(value).replaceAll('`', String.raw`\u0060`);
 export function readableEraseReport(report, mapping) {
     const m = report.measurement, t = report.totals;
+    const changes = report.rows.filter(r => r.historicalConclusion && r.historicalConclusion !== r.conclusion)
+        .map(r => `${r.id}: ${r.historicalConclusion} to ${r.conclusion}`).join('; ') || 'none';
     const lines = ['# Ntilde Core erase fixture results', '',
         `**${t.pass} pass / ${t.fail} fail / ${t.inconclusive} inconclusive — ${report.corePassPercentage}% of 80 requirements.**`, '',
         'This version uses the frozen #937 denominator. The earlier [#932](../2026-11-11-core-results/report.md) and [#937](../2026-11-11-core-text-cursor-results/report.md) publications remain unchanged. The historical pinned verdict, this run’s pinned-code result and the exact-fixture effects are distinct.', '',
         `Owned run \`${m.runId}\`; App source \`${m.appRevision}\`; scripts \`${m.scriptsRevision}\`; source policy \`${m.sourcePolicy}\`; receipt schema ${m.receiptSchema}; geometry ${m.geometry.rows} × ${m.geometry.cols}. CUP/CHA parameters are one-based and physical positions are zero-based.`, '',
+        `Changes from #937: ${changes}. Other Core conclusions were rederived unchanged; the concurrent OSC 133 qualification added no Core conclusion changes.`, '',
         'The frozen site and catalogue describe three lines without prescribing text; this batch uses AAAAA, BBBBB and CCCCC in consecutive rows. Both ED 1 addresses are measured independently. Erased-cell background storage is not part of this claim.', '',
         'Evidence: [owned run](owned-run.zip), [requirements](../2026-11-11-core-results/requirements-v1.json), [machine-readable report](report.json), [source manifest](app-source-manifest.json).', '',
         '| ID and frozen criterion | Conclusion | Evidence and pinned / effect verdicts | Observations or blocker |', '|---|---|---|---|'];

@@ -4,7 +4,9 @@
 
 This version uses the frozen #937 denominator. The earlier [#932](../2026-11-11-core-results/report.md) and [#937](../2026-11-11-core-text-cursor-results/report.md) publications remain unchanged. The historical pinned verdict, this run’s pinned-code result and the exact-fixture effects are distinct.
 
-Owned run `ffb4b221e6a4e07a31275e03728039f0`; App source `fef4be838fd8e2a7482c81a7b428068d8fc5614c`; scripts `fef4be838fd8e2a7482c81a7b428068d8fc5614c`; source policy `readonly-owned-source-graph-v39`; receipt schema 45; geometry 40 × 140. CUP/CHA parameters are one-based and physical positions are zero-based.
+Owned run `d1e265d1dafd73f4c83a9b9d8e72bfcf`; App source `6a3019cd75e488a0f9caedcd0b6a66adc245e0e9`; scripts `6a3019cd75e488a0f9caedcd0b6a66adc245e0e9`; source policy `readonly-owned-source-graph-v40`; receipt schema 46; geometry 40 × 140. CUP/CHA parameters are one-based and physical positions are zero-based.
+
+Changes from #937: erase.line.right: inconclusive to pass; erase.screen.above: inconclusive to pass; erase.screen.below: inconclusive to pass. Other Core conclusions were rederived unchanged; the concurrent OSC 133 qualification added no Core conclusion changes.
 
 The frozen site and catalogue describe three lines without prescribing text; this batch uses AAAAA, BBBBB and CCCCC in consecutive rows. Both ED 1 addresses are measured independently. Erased-cell background storage is not part of this claim.
 
@@ -96,7 +98,8 @@ Evidence: [owned run](owned-run.zip), [requirements](../2026-11-11-core-results/
 ## Attempts
 
 - `cd73ce0faa6c5f262ec3a0df55879a41` — failed: Worker import name collision caused a syntax error and the owned app exited before collection. No measurements were taken. ([evidence](attempt-1-failed.zip))
-- `ffb4b221e6a4e07a31275e03728039f0` — complete: The exact erase specimens and predecessor suites completed; receipt and cleanup verified.
+- `ffb4b221e6a4e07a31275e03728039f0` — superseded: OSC 133 qualification merged afterwards and changed the shared collector and source-policy chain. ([evidence](attempt-2-superseded.zip))
+- `d1e265d1dafd73f4c83a9b9d8e72bfcf` — complete: The exact erase specimens, OSC 133 and predecessor suites completed; receipt and cleanup verified.
 
 ## Reproduction
 
