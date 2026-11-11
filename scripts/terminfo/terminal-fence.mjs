@@ -73,6 +73,11 @@ export function terminalFence(input, output, timeoutMs = 1000) {
             if (typeof sequence !== 'string' || !sequence.length || sequence.length > 256) return Promise.reject(new Error('Invalid rectangle checksum request.'));
             return request(sequence, checksumReportExpectation);
         },
+        /** One OSC color query exchange with the exact request bytes the caller chose (BEL or ST spelling): the raw reply (or its explicit absence) and the DA ordering barrier. */
+        colorExchange(sequence, expected) {
+            if (typeof sequence !== 'string' || !sequence.length || sequence.length > 64) return Promise.reject(new Error('Invalid owned color query request.'));
+            return request(sequence, querySpec(expected));
+        },
         query(expected, prefix = '') {
             const spec = querySpec(expected);
             return request(prefix + querySequence(spec), spec);

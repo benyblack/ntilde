@@ -251,5 +251,12 @@
     "lrMarginsCollectorSourceSha256": "lr-margins-collector.mjs",
     "lrMarginsGradingSourceSha256": "lr-margins-grading.mjs",
     "lrMarginsGradingCollectorSourceSha256": "lr-margins-grading-collector.mjs",
-    "lrMarginsReceiptSourceSha256": "lr-margins-receipt.mjs"
+    "lrMarginsReceiptSourceSha256": "lr-margins-receipt.mjs",
+    "colorResetContractsSourceSha256": "color-reset-contracts.mjs",
+    "colorResetModelSourceSha256": "color-reset-model.mjs",
+    "colorResetCollectorSourceSha256": "color-reset-collector.mjs",
+    "colorResetCaptureSourceSha256": "color-reset-capture.mjs",
+    "colorResetGradingSourceSha256": "color-reset-grading.mjs",
+    "colorResetGradingCollectorSourceSha256": "color-reset-grading-collector.mjs",
+    "colorResetReceiptSourceSha256": "color-reset-receipt.mjs"
 }

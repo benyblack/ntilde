@@ -30,6 +30,7 @@ import { includesRectEditEvidence, checkRectEditEvidence } from './rect-edit-rec
 import { includesColEditEvidence, checkColEditEvidence } from './col-edit-receipt.mjs';
 import { includesRectChecksumEvidence, checkRectChecksumEvidence } from './rect-checksum-receipt.mjs';
 import { includesLrMarginsEvidence, checkLrMarginsEvidence } from './lr-margins-receipt.mjs';
+import { includesColorResetEvidence, checkColorResetEvidence } from './color-reset-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -180,6 +181,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesColEdit',
     'includesRectChecksum',
     'includesLrMargins',
+    'includesColorReset',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
@@ -227,6 +229,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesColEdit = includesColEditEvidence(output, evidence, context);
     const includesRectChecksum = includesRectChecksumEvidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
+    const includesColorReset = includesColorResetEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
@@ -234,7 +237,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesColorReset };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -276,6 +279,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesColEdit) checkColEditEvidence(output, evidence, runId, context);
     if (suffixes.includesRectChecksum) checkRectChecksumEvidence(output, evidence, runId, context);
     if (suffixes.includesLrMargins) checkLrMarginsEvidence(output, evidence, runId, context);
+    if (suffixes.includesColorReset) checkColorResetEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

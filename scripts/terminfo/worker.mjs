@@ -35,6 +35,7 @@ import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
+import { collectColorResetGrading } from './color-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -310,6 +311,14 @@ try {
         const lrMarginsModule = await import(pathToFileURL(config.lrMarginsBundle).href);
         const lrMarginsRun = await collectLrMarginsGrading({ config, fence, owner, gradingModule: lrMarginsModule });
         writeFileSync(join(config.output, 'lrmm-run.json'), JSON.stringify(lrMarginsRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered runtime-color reset qualification follows the left/right-margin suite on the same fence.
+        const colorResetSource = readFileSync(config.colorResetBundle);
+        if (createHash('sha256').update(colorResetSource).digest('hex') !== config.colorResetBundleSha256) {
+            throw new Error('Local runtime-color reset adapter bundle changed.');
+        }
+        const colorResetModule = await import(pathToFileURL(config.colorResetBundle).href);
+        const colorResetRun = await collectColorResetGrading({ config, fence, owner, gradingModule: colorResetModule });
+        writeFileSync(join(config.output, 'crst-run.json'), JSON.stringify(colorResetRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner });
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
