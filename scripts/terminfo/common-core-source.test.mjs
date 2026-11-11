@@ -5,20 +5,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { verifyCommonCoreSource, verifyRetainedSuite } from './common-core-source.mjs';
+import { verifyCommonCoreSource, verifyRetainedSuite, verifyIdentityChecker } from './common-core-source.mjs';
 import { pythonCommand } from './common-core-evidence.mjs';
 const directory = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-11-common-core-comparison/', import.meta.url));
 const source = JSON.parse(readFileSync(join(directory, 'upstream-source.json')));
 const metadataPath = join(directory, 'ntilde/source.json'),
     sourceBytes = readFileSync(metadataPath),
     suite = JSON.parse(sourceBytes).suite;
+const subject = { sourceBytes, identityBytes: readFileSync(join(directory, 'ntilde/identity-check.json')) };
 let proof;
 before(() => {
-    proof = verifyCommonCoreSource(directory, source, metadataPath, [{ sourceBytes }]);
+    proof = verifyCommonCoreSource(directory, source, metadataPath, [subject]);
 });
 test('retained source reproduces the commit/tree, bundle, patch and executed suite identity', () => {
     assert.equal(proof.head, source.adapterRevision);
     verifyRetainedSuite(proof, suite);
+});
+test('matching substituted identity claims cannot replace the Git-bound checker bytes', () => {
+    const changedSource = { ...source, identityGuardSha256: '0'.repeat(64) };
+    const identity = { ...JSON.parse(subject.identityBytes), checkerSha256: changedSource.identityGuardSha256 };
+    const changedSubjects = [{ identityBytes: Buffer.from(JSON.stringify(identity)) }];
+    assert.throws(() => verifyIdentityChecker(proof, changedSource, changedSubjects), /retained bytes/);
+    assert.throws(() => verifyIdentityChecker(proof, source, changedSubjects), /different retained checker/);
 });
 test('suite inventory, catalogue content and fingerprint cannot be substituted', () => {
     const inventory = structuredClone(suite);
@@ -82,7 +90,7 @@ else:
             );
         assert.throws(() =>
             verifyCommonCoreSource(temporary, { ...source, probeDefinitionsUnchanged: true }, metadataPath, [
-                { sourceBytes },
+                subject,
             ]),
         );
     });

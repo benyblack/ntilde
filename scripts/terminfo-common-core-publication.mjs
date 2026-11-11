@@ -76,10 +76,6 @@ const report = buildCommonCoreComparison({ requirementsBytes, subjects });
 const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.json'), 'utf8'));
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true)
     throw new Error('Retained upstream source differs from the measured comparison.');
-for (const subject of [...subjects, ...retests]) {
-    if (JSON.parse(subject.identityBytes).checkerSha256 !== sourceProof.identityGuardSha256)
-        throw new Error(`${subject.id} used a different identity guard.`);
-}
 verifyCommonCoreSource(
     publication,
     sourceProof,

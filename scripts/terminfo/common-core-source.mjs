@@ -80,6 +80,7 @@ export function verifyCommonCoreSource(directory, source, metadataPath, subjects
         ),
     );
     for (const subject of subjects) verifyRetainedSuite(proof, JSON.parse(subject.sourceBytes).suite);
+    verifyIdentityChecker(proof, source, subjects);
     const patch = gunzipSync(readFileSync(join(directory, 'native-adapter.patch.gz')));
     if (sha(patch) !== source.adapterPatchSha256) throw new Error('Retained patch content identity differs.');
     if (readFileSync(join(directory, 'native-adapter.patch'), 'utf8').replaceAll('\r\n', '\n') !== patch.toString())
@@ -103,4 +104,17 @@ function pinnedSuiteHash(paths, files, packagePath, version, ids, hashes) {
     hash.update('adapterVersion');
     hash.update(version);
     return hash.digest('hex').slice(0, 12);
+}
+
+/** Bind every identity receipt to the checker bytes verified against the retained Git tree. */
+export function verifyIdentityChecker(proof, source, subjects) {
+    const path = 'packages/terminfo.dev/src/identity-guard.ts';
+    if (typeof proof.files[path] !== 'string') throw new Error('Retained identity checker is missing.');
+    const expected = sha(Buffer.from(proof.files[path], 'base64'));
+    if (source.identityGuardSha256 !== expected) throw new Error('Identity-checker source claim differs from retained bytes.');
+    for (const subject of subjects) {
+        if (JSON.parse(subject.identityBytes).checkerSha256 !== expected) {
+            throw new Error('Identity receipt used a different retained checker.');
+        }
+    }
 }
