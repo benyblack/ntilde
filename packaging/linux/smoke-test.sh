@@ -5,8 +5,14 @@
 # Usage: smoke-test.sh <artifact-dir>
 #   <artifact-dir> must contain ntilde_*.deb and may contain *.AppImage.
 #
-# Requires Docker on the host. Runs two containers, and THE ORDER MATTERS - see the
-# warnings below before editing.
+# Requires Docker on the host. Runs two containers, and within each THE ORDER MATTERS -
+# see the warnings below before editing.
+#
+# The two run at the same time. Each starts from a fresh $image and nothing passes
+# between them, so neither can mask or satisfy the other; run one after the other they
+# took about 44 s and 22 s of CI's packaging gate, often the last job of a run. Container 1
+# prints as it goes; Container 2's output is held and printed once it ends, so the two
+# never interleave. Both always finish and print, and the script fails if either does.
 set -euo pipefail
 
 artifact_dir="${1:?usage: smoke-test.sh <artifact-dir>}"
@@ -46,7 +52,7 @@ done <<<"$dlopen_sonames"
 echo "dlopen gate will assert $dlopen_count soname(s) from build-deb.sh's table:"
 sed 's/^/  - /' <<<"$dlopen_sonames"
 
-echo "=== Container 1: dependency completeness (pristine $image, no X11) ==="
+container_1() {
 docker run --rm -v "$artifact_dir:/art:ro" \
   -e DLOPEN_SONAMES="$dlopen_sonames" \
   -e DLOPEN_RELATIONS="$dlopen_relations" \
@@ -196,9 +202,8 @@ docker run --rm -v "$artifact_dir:/art:ro" \
   man ntilde > /dev/null
   echo "  ok: man page renders"
 '
+}
 
-echo
-echo "=== Container 2: GUI launch (xvfb permitted) ==="
 # --device /dev/fuse --cap-add SYS_ADMIN: a type-2 AppImage self-mounts via FUSE and
 # has no fallback, so without the device node AND the capability the FUSE-mounted
 # launch below fails on a perfectly good AppImage - the same false-gate class the
@@ -227,6 +232,7 @@ echo "=== Container 2: GUI launch (xvfb permitted) ==="
 # further local testing. If this does not fix it, that is a decision for a human
 # to make about the mounted-launch gate, not something to silently work around
 # here (e.g. by skipping or downgrading this assertion).
+container_2() {
 docker run --rm --device /dev/fuse --cap-add SYS_ADMIN --security-opt apparmor:unconfined -v "$artifact_dir:/art:ro" "$image" bash -euo pipefail -c '
   export DEBIAN_FRONTEND=noninteractive
 
@@ -298,6 +304,28 @@ docker run --rm --device /dev/fuse --cap-add SYS_ADMIN --security-opt apparmor:u
     launches "AppImage (FUSE-mounted)" /tmp/ntilde.AppImage
   done
 '
+}
+
+# Both at once (see the header). Container 2 goes to a file and starts first; a failing
+# Container 1 still waits for it, so the log always holds both containers' verdicts.
+container_2_log="$(mktemp)"
+trap 'rm -f "$container_2_log"' EXIT
+container_2 >"$container_2_log" 2>&1 &
+container_2_pid=$!
+
+echo "=== Container 1: dependency completeness (pristine $image, no X11) ==="
+container_1_rc=0
+container_1 || container_1_rc=$?
+
+container_2_rc=0
+wait "$container_2_pid" || container_2_rc=$?
+echo
+echo "=== Container 2: GUI launch (xvfb permitted) ==="
+cat "$container_2_log"
 
 echo
+if (( container_1_rc != 0 || container_2_rc != 0 )); then
+  echo "smoke test FAILED: Container 1 exited $container_1_rc, Container 2 exited $container_2_rc" >&2
+  exit 1
+fi
 echo "smoke test passed"
