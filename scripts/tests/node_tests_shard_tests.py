@@ -81,14 +81,14 @@ def main():
             owners[path] = name
     assert sorted(owners) == sorted(files), 'every file runs in exactly one shard'
     # Longest first: node starts files in the order given, so a long file listed late ends the shard late.
+    weight = shard.weights(files, table)  # a file the table does not know yet counts at the median
     for name in shard.names():
-        chosen = [seconds[path] for path in shard.select(name, files)]
+        chosen = [weight[path] for path in shard.select(name, files)]
         assert chosen == sorted(chosen, reverse=True), f'shard {name} does not print its files longest first'
 
     # Balanced: dealing longest-first to the least-loaded shard ends with no shard more than one
     # file's weight above the lightest.
     owner, totals = shard.plan(files)
-    weight = shard.weights(files, table)
     assert max(totals.values()) - min(totals.values()) <= max(weight.values()) + 1e-6, f'unbalanced cut: {totals}'
     # Deterministic: the order the workflow lists the files in does not change the cut.
     assert shard.plan(list(reversed(files)))[0] == owner, 'the cut depends on file order'

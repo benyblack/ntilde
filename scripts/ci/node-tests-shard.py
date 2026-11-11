@@ -21,7 +21,8 @@ shard took 456 s beside 248 and 183.
 
 The table is measured, not hand-tuned. Each shard's step records every file's seconds on that
 runner (scripts/ci/node-tests-timing.mjs) and uploads them; `--update` folds such files into the
-table, so refreshing it from a windows run is one command (see the table's own notes).
+table. Refreshing it is downloading a windows run's timing artifacts and running `--update` on
+them (the table's own notes give both commands).
 
 Usage: node-tests-shard.py <shard> <file> [<file> ...]   prints the shard's files, one per line.
        node-tests-shard.py --list                         prints the shard names, one per line.
