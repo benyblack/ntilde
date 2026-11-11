@@ -5,13 +5,13 @@
     {
       "index": 18,
       "kind": "lnk-read",
-      "paneId": "a1efb1c0-1f92-45e2-94b8-94eb704fa512",
+      "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
       "barrier": "\u001b[?62;4;22c",
       "before": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["","BIDLNY","","","","","","","","NTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+          "lines": ["","BIDLNY","","","","","","","","NTILDE_LK_48abc463664047ac8142374d7a64a27c","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
           "cursorRow": 1,
           "cursorCol": 6,
           "cursorVisible": true,
@@ -79,10 +79,10 @@
           }
         },
         "metadata": {
-          "paneId": "a1efb1c0-1f92-45e2-94b8-94eb704fa512",
-          "oscTitle": "LK-base-f1ff205e",
+          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
+          "oscTitle": "LK-base-48abc463",
           "workingDirectory": "/ntilde-qa/osc78-base",
-          "displayTitle": "LK-base-f1ff205e",
+          "displayTitle": "LK-base-48abc463",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -101,8 +101,8 @@
                 "col": 1,
                 "length": 4,
                 "identity": 0,
-                "uri": "https://example.invalid/osc8-id-f1ff205e",
-                "id": "osc8-f1ff205e"
+                "uri": "https://example.invalid/osc8-id-48abc463",
+                "id": "osc8-48abc463"
               }
             ]
           },
@@ -113,19 +113,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "LK-base-f1ff205e ⌨",
+            "tabText": "LK-base-48abc463 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "MD-base-f1ff205e",
-            "toastMessage": "Owned notification f1ff205e8e0cff04c643ad436ec53726"
+            "toastTitle": "Recording started",
+            "toastMessage": ""
           }
         },
         "status": {
-          "paneId": "a1efb1c0-1f92-45e2-94b8-94eb704fa512",
+          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -136,22 +136,22 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "a1efb1c0-1f92-45e2-94b8-94eb704fa512",
+          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794419629751,
-          "lastOutputAtMs": 1794419629901,
+          "statusSinceMs": 1794421247329,
+          "lastOutputAtMs": 1794421247456,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "sha256": "24da80e63ccfccf2c422d4adb0d9d476ba6a03681139347b6b568f3d4548dc39",
+      "sha256": "4d81abcc0b0f9d4c0f80d9ec1a9e7b66a17f5329a2d4ec8f6f6a2d2b2517e9ae",
       "after": {
         "screen": {
           "rows": 40,
           "cols": 140,
-          "lines": ["","BIDLNY","","","","","","","","NTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
+          "lines": ["","BIDLNY","","","","","","","","NTILDE_LK_48abc463664047ac8142374d7a64a27c","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""],
           "cursorRow": 1,
           "cursorCol": 6,
           "cursorVisible": true,
@@ -219,10 +219,10 @@
           }
         },
         "metadata": {
-          "paneId": "a1efb1c0-1f92-45e2-94b8-94eb704fa512",
-          "oscTitle": "LK-base-f1ff205e",
+          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
+          "oscTitle": "LK-base-48abc463",
           "workingDirectory": "/ntilde-qa/osc78-base",
-          "displayTitle": "LK-base-f1ff205e",
+          "displayTitle": "LK-base-48abc463",
           "buffer": {
             "rows": 40,
             "cols": 140,
@@ -241,8 +241,8 @@
                 "col": 1,
                 "length": 4,
                 "identity": 0,
-                "uri": "https://example.invalid/osc8-id-f1ff205e",
-                "id": "osc8-f1ff205e"
+                "uri": "https://example.invalid/osc8-id-48abc463",
+                "id": "osc8-48abc463"
               }
             ]
           },
@@ -253,19 +253,19 @@
             "focusMode": false,
             "notificationsEnabled": true,
             "progressEnabled": true,
-            "tabText": "LK-base-f1ff205e ⌨",
+            "tabText": "LK-base-48abc463 ⌨",
             "tabTextVisible": true,
             "progressOwner": null,
             "progressKind": null,
             "progressPercent": null,
             "progressBar": null,
             "toastVisible": false,
-            "toastTitle": "MD-base-f1ff205e",
-            "toastMessage": "Owned notification f1ff205e8e0cff04c643ad436ec53726"
+            "toastTitle": "Recording started",
+            "toastMessage": ""
           }
         },
         "status": {
-          "paneId": "a1efb1c0-1f92-45e2-94b8-94eb704fa512",
+          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
           "status": "awaitingInput",
           "confidence": "precise",
           "exitCode": null,
@@ -276,17 +276,17 @@
           "idleThresholdSeconds": 60
         },
         "rawStatus": {
-          "paneId": "a1efb1c0-1f92-45e2-94b8-94eb704fa512",
+          "paneId": "bc8f95b4-4583-4736-b8d0-3360ea4787b5",
           "status": "awaitingInput",
           "confidence": "precise",
-          "statusSinceMs": 1794419629751,
-          "lastOutputAtMs": 1794419629901,
+          "statusSinceMs": 1794421247329,
+          "lastOutputAtMs": 1794421247456,
           "isStalled": false,
           "stallThresholdSeconds": 30,
           "idleThresholdSeconds": 60
         }
       },
-      "afterSha256": "24da80e63ccfccf2c422d4adb0d9d476ba6a03681139347b6b568f3d4548dc39",
+      "afterSha256": "4d81abcc0b0f9d4c0f80d9ec1a9e7b66a17f5329a2d4ec8f6f6a2d2b2517e9ae",
       "caseId": null,
       "stageId": null
     }

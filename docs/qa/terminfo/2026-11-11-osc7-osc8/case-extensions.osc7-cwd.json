@@ -12,31 +12,31 @@
         "expectedPath": "/ntilde-qa/osc78-base"
       },
       "first": {
-        "uri": "file://localhost/ntilde-qa/osc7-f1ff205e/first",
-        "expectedPath": "/ntilde-qa/osc7-f1ff205e/first"
+        "uri": "file://localhost/ntilde-qa/osc7-48abc463/first",
+        "expectedPath": "/ntilde-qa/osc7-48abc463/first"
       },
       "second": {
-        "uri": "file://localhost/ntilde-qa/osc7-f1ff205e/second",
-        "expectedPath": "/ntilde-qa/osc7-f1ff205e/second"
+        "uri": "file://localhost/ntilde-qa/osc7-48abc463/second",
+        "expectedPath": "/ntilde-qa/osc7-48abc463/second"
       },
       "space": {
-        "uri": "file://localhost/ntilde-qa/osc7%20space/f1ff205e",
-        "expectedPath": "/ntilde-qa/osc7 space/f1ff205e"
+        "uri": "file://localhost/ntilde-qa/osc7%20space/48abc463",
+        "expectedPath": "/ntilde-qa/osc7 space/48abc463"
       },
       "authority": {
-        "uri": "file://remote-host.example/ntilde-qa/osc7-authority/f1ff205e",
-        "expectedPath": "/ntilde-qa/osc7-authority/f1ff205e"
+        "uri": "file://remote-host.example/ntilde-qa/osc7-authority/48abc463",
+        "expectedPath": "/ntilde-qa/osc7-authority/48abc463"
       }
     },
     "observedCwd": {
       "baseline": "/ntilde-qa/osc78-base",
       "afterOrdinaryText": "/ntilde-qa/osc78-base",
-      "first": "/ntilde-qa/osc7-f1ff205e/first",
-      "second": "/ntilde-qa/osc7-f1ff205e/second",
+      "first": "/ntilde-qa/osc7-48abc463/first",
+      "second": "/ntilde-qa/osc7-48abc463/second",
       "restored": "/ntilde-qa/osc78-base",
-      "encodedSpace": "/ntilde-qa/osc7 space/f1ff205e",
-      "foreignAuthority": "/ntilde-qa/osc7-authority/f1ff205e",
-      "stTerminatedFirst": "/ntilde-qa/osc7-f1ff205e/first",
+      "encodedSpace": "/ntilde-qa/osc7 space/48abc463",
+      "foreignAuthority": "/ntilde-qa/osc7-authority/48abc463",
+      "stTerminatedFirst": "/ntilde-qa/osc7-48abc463/first",
       "afterTitleChange": "/ntilde-qa/osc78-base"
     },
     "freshness": {
@@ -47,8 +47,8 @@
       "note": "The pane metadata carries the decoded path only; the file URI authority is dropped by documented design, so the host component of the transmitted URI is not reported."
     },
     "titleAfterUpdates": {
-      "first": "LK-base-f1ff205e",
-      "second": "LK-base-f1ff205e"
+      "first": "LK-base-48abc463",
+      "second": "LK-base-48abc463"
     },
     "notObserved": ["child process working directory","existence of the named path","remote-host validity"]
   },
@@ -57,7 +57,7 @@
       "id": "extensions.osc7-cwd/stock",
       "name": "stock",
       "role": "stock",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c"],
       "barriers": ["\u001b[?62;4;22c"],
       "reads": [
         {
@@ -70,8 +70,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
@@ -93,8 +93,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [9,42],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -111,7 +111,7 @@
       "id": "extensions.osc7-cwd/effect",
       "name": "effect",
       "role": "effect",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b[2;1Hosc7-ordinary","\u001b]7;file://localhost/ntilde-qa/osc7-f1ff205e/first\u0007","\u001b]7;file://localhost/ntilde-qa/osc7-f1ff205e/second\u0007","\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b[2;1Hosc7-ordinary","\u001b]7;file://localhost/ntilde-qa/osc7-48abc463/first\u0007","\u001b]7;file://localhost/ntilde-qa/osc7-48abc463/second\u0007","\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -124,8 +124,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
@@ -147,8 +147,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [9,42],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -168,8 +168,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
@@ -191,8 +191,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [1,13],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -212,13 +212,13 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
-                "expected": "/ntilde-qa/osc7-f1ff205e/first",
-                "observed": "/ntilde-qa/osc7-f1ff205e/first",
+                "expected": "/ntilde-qa/osc7-48abc463/first",
+                "observed": "/ntilde-qa/osc7-48abc463/first",
                 "match": true
               },
               "links": {
@@ -235,9 +235,9 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [1,13],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
-              "cwd": "/ntilde-qa/osc7-f1ff205e/first",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
+              "cwd": "/ntilde-qa/osc7-48abc463/first",
               "links": [],
               "alternateScreen": false,
               "scrollbackLines": 0,
@@ -256,13 +256,13 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
-                "expected": "/ntilde-qa/osc7-f1ff205e/second",
-                "observed": "/ntilde-qa/osc7-f1ff205e/second",
+                "expected": "/ntilde-qa/osc7-48abc463/second",
+                "observed": "/ntilde-qa/osc7-48abc463/second",
                 "match": true
               },
               "links": {
@@ -279,9 +279,9 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [1,13],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
-              "cwd": "/ntilde-qa/osc7-f1ff205e/second",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
+              "cwd": "/ntilde-qa/osc7-48abc463/second",
               "links": [],
               "alternateScreen": false,
               "scrollbackLines": 0,
@@ -300,8 +300,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
@@ -323,8 +323,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [1,13],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -341,7 +341,7 @@
       "id": "extensions.osc7-cwd/space",
       "name": "space",
       "role": "required",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b]7;file://localhost/ntilde-qa/osc7%20space/f1ff205e\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]7;file://localhost/ntilde-qa/osc7%20space/48abc463\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -354,13 +354,13 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
-                "expected": "/ntilde-qa/osc7 space/f1ff205e",
-                "observed": "/ntilde-qa/osc7 space/f1ff205e",
+                "expected": "/ntilde-qa/osc7 space/48abc463",
+                "observed": "/ntilde-qa/osc7 space/48abc463",
                 "match": true
               },
               "links": {
@@ -377,9 +377,9 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [9,42],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
-              "cwd": "/ntilde-qa/osc7 space/f1ff205e",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
+              "cwd": "/ntilde-qa/osc7 space/48abc463",
               "links": [],
               "alternateScreen": false,
               "scrollbackLines": 0,
@@ -395,7 +395,7 @@
       "id": "extensions.osc7-cwd/gate-title",
       "name": "gate-title",
       "role": "gate",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b]2;LK-title-f1ff205e\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]2;LK-title-48abc463\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -408,8 +408,8 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-title-f1ff205e",
-                "observed": "LK-title-f1ff205e",
+                "expected": "LK-title-48abc463",
+                "observed": "LK-title-48abc463",
                 "match": true
               },
               "cwd": {
@@ -431,8 +431,8 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [9,42],
-              "title": "LK-title-f1ff205e",
-              "displayTitle": "LK-title-f1ff205e",
+              "title": "LK-title-48abc463",
+              "displayTitle": "LK-title-48abc463",
               "cwd": "/ntilde-qa/osc78-base",
               "links": [],
               "alternateScreen": false,
@@ -445,7 +445,7 @@
       ],
       "priorObserved": {
         "cwd": "/ntilde-qa/osc78-base",
-        "title": "LK-base-f1ff205e",
+        "title": "LK-base-48abc463",
         "links": []
       }
     },
@@ -453,7 +453,7 @@
       "id": "extensions.osc7-cwd/authority",
       "name": "authority",
       "role": "observed",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b]7;file://remote-host.example/ntilde-qa/osc7-authority/f1ff205e\u0007"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]7;file://remote-host.example/ntilde-qa/osc7-authority/48abc463\u0007"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -466,13 +466,13 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
-                "expected": "/ntilde-qa/osc7-authority/f1ff205e",
-                "observed": "/ntilde-qa/osc7-authority/f1ff205e",
+                "expected": "/ntilde-qa/osc7-authority/48abc463",
+                "observed": "/ntilde-qa/osc7-authority/48abc463",
                 "match": true
               },
               "links": {
@@ -489,9 +489,9 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [9,42],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
-              "cwd": "/ntilde-qa/osc7-authority/f1ff205e",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
+              "cwd": "/ntilde-qa/osc7-authority/48abc463",
               "links": [],
               "alternateScreen": false,
               "scrollbackLines": 0,
@@ -503,7 +503,7 @@
       ],
       "priorObserved": {
         "cwd": "/ntilde-qa/osc78-base",
-        "title": "LK-base-f1ff205e",
+        "title": "LK-base-48abc463",
         "links": []
       }
     },
@@ -511,7 +511,7 @@
       "id": "extensions.osc7-cwd/st-terminator",
       "name": "st-terminator",
       "role": "observed",
-      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-f1ff205e\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_f1ff205e8e0cff04c643ad436ec53726","\u001b]7;file://localhost/ntilde-qa/osc7-f1ff205e/first\u001b\\"],
+      "feeds": ["\u001b]8;;\u0007\u001b]9;4;0\u0007\u001b]133;D;0\u0007\u001b]133;A\u0007\u001b[?1049l\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[H\u001b[128M\u001b[2J\u001b[H\u001b]2;LK-base-48abc463\u0007\u001b]7;file://localhost/ntilde-qa/osc78-base\u0007\u001b[10;1HNTILDE_LK_48abc463664047ac8142374d7a64a27c","\u001b]7;file://localhost/ntilde-qa/osc7-48abc463/first\u001b\\"],
       "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c"],
       "reads": [
         {
@@ -524,13 +524,13 @@
             "preserved": true,
             "required": {
               "title": {
-                "expected": "LK-base-f1ff205e",
-                "observed": "LK-base-f1ff205e",
+                "expected": "LK-base-48abc463",
+                "observed": "LK-base-48abc463",
                 "match": true
               },
               "cwd": {
-                "expected": "/ntilde-qa/osc7-f1ff205e/first",
-                "observed": "/ntilde-qa/osc7-f1ff205e/first",
+                "expected": "/ntilde-qa/osc7-48abc463/first",
+                "observed": "/ntilde-qa/osc7-48abc463/first",
                 "match": true
               },
               "links": {
@@ -547,9 +547,9 @@
               "commandStart": null,
               "outputStart": null,
               "cursor": [9,42],
-              "title": "LK-base-f1ff205e",
-              "displayTitle": "LK-base-f1ff205e",
-              "cwd": "/ntilde-qa/osc7-f1ff205e/first",
+              "title": "LK-base-48abc463",
+              "displayTitle": "LK-base-48abc463",
+              "cwd": "/ntilde-qa/osc7-48abc463/first",
               "links": [],
               "alternateScreen": false,
               "scrollbackLines": 0,
@@ -561,7 +561,7 @@
       ],
       "priorObserved": {
         "cwd": "/ntilde-qa/osc78-base",
-        "title": "LK-base-f1ff205e",
+        "title": "LK-base-48abc463",
         "links": []
       }
     }
