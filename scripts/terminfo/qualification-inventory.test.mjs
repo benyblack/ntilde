@@ -102,11 +102,12 @@ test('benchmark ids, Ntilde findings, controls and diagnostics are separated', (
     assert.deepEqual(stored.stockBaseline.stockUnsupported, ['extensions.osc5522-clipboard']);
 });
 
-test('only controlled pixels are measured, by the cursor suite alone; layers are classified from the retained evidence', () => {
+test('only controlled pixels are measured, by the cursor and runtime-color reset suites; layers are classified from the retained evidence', () => {
     const stored = committed();
     assert.ok(stored.benchmark.every(item => item.claims.every(claim => !claim.measuredLayers.includes('pixels'))));
     const pixelClaims = stored.benchmark.flatMap(item => item.claims.filter(claim => claim.measuredLayers.includes('controlled-pixels')).map(claim => [item.id, claim.suite]));
-    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor']]);
+    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
+        ['extensions.osc111-reset-bg', 'color-reset'], ['extensions.osc112-reset-cursor', 'color-reset']]);
     assert.deepEqual(measuredLayersOf('owned-stored-physical-cursor-and-cpr', ''), ['stored-state', 'cursor-position-report']);
     assert.deepEqual(measuredLayersOf('owned-stored-cursor-and-controlled-pixels', ''), ['stored-state', 'controlled-pixels']);
     assert.deepEqual(measuredLayersOf('owned-cells', 'graded from parent-journaled readScreen cells'), ['stored-state']);
@@ -259,5 +260,5 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     assert.match(text, /Ntilde-specific findings \(not benchmark ids\)/);
     // Measured in the LF form the inventory itself hashes: a Windows checkout adds one CR per line and must not change the verdict.
     const lfLength = bytes => Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1').length;
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 192 * 1024, 'the generated files stay reviewable');
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 224 * 1024, 'the generated files stay reviewable');
 });

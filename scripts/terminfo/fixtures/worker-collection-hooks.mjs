@@ -52,6 +52,7 @@ code.set(new URL('input-collector.mjs', root).href, log + `export async function
 code.set(new URL('routed-input-collector.mjs', root).href, log + `export function collectRoutedInputPinned() { record('RoutedInput'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('lr-margins-collector.mjs', root).href, log + `export async function collectLrMarginsGrading() { record('LrMargins'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('core-gaps.mjs', root).href, log + `export async function collectCoreGaps() { record('CoreGaps'); return { schemaVersion: 1, cases: [] }; }`);
+code.set(new URL('color-reset-collector.mjs', root).href, log + `export async function collectColorResetGrading() { record('ColorReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 registerHooks({ load(url, context, next) {
     if (code.has(url)) return { format: 'module', source: code.get(url), shortCircuit: true };
     return next(url, context);

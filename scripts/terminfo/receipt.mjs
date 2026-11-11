@@ -32,6 +32,7 @@ import { includesRectChecksumEvidence, checkRectChecksumEvidence } from './rect-
 import { includesCoreGapsEvidence, checkCoreGapsEvidence } from './core-gaps-receipt.mjs';
 import { includesLrMarginsEvidence, checkLrMarginsEvidence } from './lr-margins-receipt.mjs';
 import { includesRoutedInputEvidence, checkRoutedInputEvidence } from './routed-input-receipt.mjs';
+import { includesColorResetEvidence, checkColorResetEvidence } from './color-reset-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
@@ -184,6 +185,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesLrMargins',
     'includesCoreGaps',
     'includesRoutedInput',
+    'includesColorReset',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
@@ -233,6 +235,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesCoreGaps = includesCoreGapsEvidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
+    const includesColorReset = includesColorResetEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
@@ -240,7 +243,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -284,6 +287,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesLrMargins) checkLrMarginsEvidence(output, evidence, runId, context);
     if (suffixes.includesCoreGaps) checkCoreGapsEvidence(output, evidence, runId, context, proof);
     if (suffixes.includesRoutedInput) checkRoutedInputEvidence(output, evidence, runId, context, proof);
+    if (suffixes.includesColorReset) checkColorResetEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

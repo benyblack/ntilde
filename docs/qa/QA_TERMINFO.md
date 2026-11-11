@@ -1020,3 +1020,18 @@ declared Avalonia events routed through the production App input path, against l
 with controls under the other tracking protocols and the numeric keypad. All three effect contracts are supported; the stock grades are unchanged
 (167 inconclusive / 87 supported / 1 unsupported), so there is no compatibility-score claim. The batch added one declared-event capability (a key-down
 may carry its backend TextInput) and documents the contract in [routed-input.md](terminfo/routed-input.md). Inventory: 88 qualified ids.
+
+### Runtime-color reset qualification (OSC 104, 110, 111, 112)
+
+The [runtime-color reset batch](terminfo/2026-11-11-runtime-color-reset-qualification.md) qualifies `extensions.osc104-reset-palette`, `extensions.osc110-reset-fg`,
+`extensions.osc111-reset-bg` and `extensions.osc112-reset-cursor` through a twenty-eighth layered collector extension (`ntilde-owned-runtime-color-reset-grading-v1`)
+over the left/right-margin one. The pinned termless code (the BEL-spelled query, the set of `rgb:aa/bb/cc`, the query, the BEL-spelled reset, the query) is replayed
+byte-exactly over the journaled replies of a disposable App and graded by the collector's own criterion; the pinned terminal path (`unmeasuredStateEffect`) is
+inconclusive by design, is preserved beside it and leaves the stock grade untouched. A separately identified [effect contract](terminfo/runtime-color-reset.md)
+(`ntilde-runtime-color-reset-effect-v1`) is graded by an independent runtime-color model over the measured baseline: exact fenced replies, the App-resolved colors
+and override metadata, stored default/palette/literal cells, the cursor and controlled offscreen renders, across individual-slot, whole-palette, isolation, SGR 39/49
+and hidden-cursor experiments. The suite reuses the owned runtime-color foundation ([controls and limits](terminfo/owned-colors.md)) rather than duplicating it; its
+controls differ from the ten stored-state colors experiments in spelling (BEL, as pinned), in what restoration is measured against, and in grading. Runtime colors
+survive alternate-screen exit and DECSTR, so the finish write clears them explicitly and requires the original screen, theme and render back. Cadence, desktop
+appearance, selection and pointer colors, Kitty named colors and other themes are not claimed. Receipt schema 43 and source policy v37 (274 files) bind it; earlier
+policies stay frozen.

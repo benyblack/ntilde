@@ -22,7 +22,7 @@ const predecessors = ['sgrColors', 'sgrRgb', 'sgrAttrs', 'sgrPalette', 'sgrTruec
 
 test('a complete run carries the routed-input suffix: counts, adapter identity, owned input suite and the layered derivation rederive without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 42);
+    assert.equal(f.finish().schemaVersion, 43);
     assert.deepEqual(f.evidence.routedInputEvidence.counts, { 'inconclusive/supported': 3 });
     assert.equal(f.context.routedInputAdapterId, routedInputAdapterId);
     assert.equal(f.context.routedInputSuiteId, routedInputGradedSuiteId);

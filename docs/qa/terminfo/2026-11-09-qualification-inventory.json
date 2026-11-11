@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 88,
-    "suiteClaims": 90,
+    "uniqueBenchmarkIds": 92,
+    "suiteClaims": 94,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 88,
-    "pinnedAndEffectSupportedIds": 76,
+    "effectSupportedIds": 92,
+    "pinnedAndEffectSupportedIds": 80,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
@@ -62,12 +62,12 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 87,
-    "pinnedSupportedOfStockInconclusive": 75,
+    "effectSupportedOfStockInconclusive": 91,
+    "pinnedSupportedOfStockInconclusive": 79,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 76,
+    "pinnedSupportedIds": 80,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -76,8 +76,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 81,
-      "notPinnedSupported": 93
+      "effectUnqualified": 77,
+      "notPinnedSupported": 89
     }
   },
   "suites": [
@@ -2012,6 +2012,79 @@
         "command": "node --test scripts/terminfo/routed-input-publication.test.mjs",
         "testSha256": "c455cf7e8ecb6cc3059830624d4d1e133e82ab8eb9b0e4ea1fdd1b4533044c11"
       }
+    },
+    {
+      "suite": "color-reset",
+      "suiteId": "ntilde-owned-runtime-color-reset-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-11-runtime-color-reset/",
+      "doc": "2026-11-11-runtime-color-reset-qualification.md",
+      "caseCount": 4,
+      "caseIds": [
+        "extensions.osc104-reset-palette",
+        "extensions.osc110-reset-fg",
+        "extensions.osc111-reset-bg",
+        "extensions.osc112-reset-cursor"
+      ],
+      "evidence": {
+        "files": 98,
+        "bytes": 1752127,
+        "sha256": "d4efa9215d47a7d814d2403d95ffce42a44f10bc2ff5c0047fff82b29e8554f7"
+      },
+      "receipt": {
+        "schemaVersion": 43,
+        "runId": "0369d51efa4d1a80d1fd80117c891553",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "3971640d9a58c9ad0707551b44f02e90b32f47597635e147a2962e1624cd8baa"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-runtime-color-reset-graded-v1",
+          "file": "crst-observations.json",
+          "sha256": "43b6fa052f49b2605a8bedb6794bd86ef62e4d6fc641acb84e73bf752bdfa9fa",
+          "runFile": "crst-run.json",
+          "runSha256": "5395d3f639e2affbe0763b7fb9bc702af351fd28cb1c7c6e2753dee98798cb5b",
+          "counts": {
+            "supported": 4
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "0369d51efa4d1a80d1fd80117c891553",
+        "measuredAt": "2026-11-11T10:28:50.510Z",
+        "appRevision": "de5d921e0565babe5d572713267f5e3b53bb43ac",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "5e7a7db34d2cb8f22013565b6093b1b12f89f297",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "c40e919a443845be980338bd719501e1d65309778393179f8c293c459c6d1281",
+        "gradingAdapterId": "ntilde-owned-runtime-color-reset-grading-v1",
+        "gradingAdapterBundleSha256": "fc24c635c0669fcd73754a3b69d05d99b9a66caa28609923cfd8f538de228022",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v37",
+        "sourceSnapshotManifestSha256": "408fe6171c995c3471a4a040dd9604973d369df844ef91e718b6222a7b4ea0fb"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "91a4bb3043dfd017d5da21337178ae86",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "1074c7ab7e3467df7bb4a446e0c04092623ee0e657c662bb8d1e5ac3a6f5fca3",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/color-reset-publication.test.mjs",
+        "testSha256": "4f2c11aa1226bd9eb9ace6fc80fee316911176c85d1bceac97980db7556ba2ad"
+      }
     }
   ],
   "benchmark": [
@@ -3714,6 +3787,198 @@
             "app-resolved-color"
           ],
           "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc104-reset-palette",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc104-reset-palette",
+          "suite": "color-reset",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc110-reset-fg",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc110-reset-fg",
+          "suite": "color-reset",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc111-reset-bg",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc111-reset-bg",
+          "suite": "color-reset",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc112-reset-cursor",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "color-reset",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc112-reset-cursor",
+          "suite": "color-reset",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-plus-contract-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
         }
       ]
     },

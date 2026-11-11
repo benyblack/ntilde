@@ -20,7 +20,7 @@ const own = f => () => checkRectChecksumEvidence(f.output, f.evidence, f.context
 const refusal = error => !(error instanceof TypeError);
 test('a complete run carries the rectangle-checksum suffix: counts, adapter identity and the layered derivation are rederived without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 40);
+    assert.equal(f.finish().schemaVersion, 43);
     assert.deepEqual(f.evidence.rectChecksumEvidence.counts, { supported: 1 });
     assert.equal(f.context.rectChecksumAdapterId, rectChecksumAdapterId);
     assert.equal(f.context.rectChecksumSuiteId, rectChecksumSuiteId);

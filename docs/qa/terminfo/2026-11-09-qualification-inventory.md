@@ -9,11 +9,11 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 88 |
-| Suite claims (an id covered by two suites has two claims) | 90 |
+| Unique benchmark ids with qualified effect evidence | 92 |
+| Suite claims (an id covered by two suites has two claims) | 94 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 88 |
-| Supported by both the pinned probe and the effect contract | 76 |
+| Effect contract supported | 92 |
+| Supported by both the pinned probe and the effect contract | 80 |
 | Effect supported, pinned verdict inconclusive | 12 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
@@ -26,12 +26,12 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Effect-unqualified (168 − 87) | 81 |
-| Not pinned-supported (168 − 75) | 93 |
+| Effect-unqualified (168 − 91) | 77 |
+| Not pinned-supported (168 − 79) | 89 |
 
 Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 93 not-pinned-supported inconclusive cases are the 94 cases outside the 86 stock-supported plus 75 pinned-supported ones.
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 89 not-pinned-supported inconclusive cases are the 90 cases outside the 86 stock-supported plus 79 pinned-supported ones.
 
 ### Ungraded diagnostic
 
@@ -68,6 +68,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `rect-checksum` | 1 | v1 | passed | 39 | `7fbffce7` | v33 | 38 | `47b07511` |
 | `lr-margins` | 1 | v1 | passed | 40 | `c8fd98de` | v34 | 24 | `82b099d1` |
 | `routed-input` | 3 | v1 | passed | 42 | `de5d921e` | v36 | 68 | `131fbc08` |
+| `color-reset` | 4 | v1 | passed | 43 | `de5d921e` | v37 | 98 | `d4efa921` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -104,6 +105,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `rect-checksum` | collected-run-id-recorded | `ca33e124` | 167/87/1 | `cf7d8759` |
 | `lr-margins` | collected-run-id-recorded | `e48a6d34` | 167/87/1 | `cf7d8759` |
 | `routed-input` | collected-run-id-recorded | `5f9325e8` | 167/87/1 | `cf7d8759` |
+| `color-reset` | collected-run-id-recorded | `91a4bb30` | 167/87/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -148,6 +150,10 @@ The stock collector reports `suiteComplete=false` in every run.
 | `erase.screen.below` | inconclusive | supported | supported | stored-state + app-resolved-color | erase-display | - |
 | `erase.screen.scrollback` | inconclusive | supported | supported | stored-state + actual-scrollback | erase-chars-history | - |
 | `erase.selective` | inconclusive | supported | supported | stored-state + app-resolved-color | selective-erase | - |
+| `extensions.osc104-reset-palette` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |
+| `extensions.osc110-reset-fg` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |
+| `extensions.osc111-reset-bg` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |
+| `extensions.osc112-reset-cursor` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |
 | `input.button-event-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `input.x10-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `modes.alt-screen.exit` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |

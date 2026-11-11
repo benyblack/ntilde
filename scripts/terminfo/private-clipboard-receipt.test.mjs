@@ -15,8 +15,8 @@ import { historicalArchive } from './fixtures/captured-sources.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
 test('schema12 rederives the complete private suffix and preserves every original sixteen-suite binding and negative', () => privateClipboardReceiptFixture(f => {
-    const receipt = f.finish(); assert.equal(receipt.schemaVersion, 40);
-    for (const key of Object.keys(f.evidence).filter(key => !['privateClipboardEvidence', 'gradingEvidence', 'sgrColorsEvidence', 'sgrRgbEvidence', 'sgrAttrsEvidence', 'sgrPaletteEvidence', 'sgrTruecolorEvidence', 'truecolorFindingEvidence', 'sgrUnderlineEvidence', 'sgrUnderlineColorEvidence', 'underlineResolvedEvidence', 'sgrResetEvidence', 'sgrClosureEvidence', 'eraseLineEvidence', 'charEditEvidence', 'eraseDisplayEvidence', 'lineEditEvidence', 'charsetsEvidence', 'scrollbackEvidence', 'savedResetEvidence', 'eraseAttrsRegionEvidence', 'attrRectEvidence', 'cursorQualEvidence', 'eraseCharsHistoryEvidence', 'selectiveEraseEvidence', 'rectEditEvidence', 'colEditEvidence', 'rectChecksumEvidence', 'lrMarginsEvidence', 'queryEvidence'].includes(key))) assert.deepEqual(receipt[key], f.old[key]);
+    const receipt = f.finish(); assert.equal(receipt.schemaVersion, 43);
+    for (const key of Object.keys(f.evidence).filter(key => !['privateClipboardEvidence', 'gradingEvidence', 'sgrColorsEvidence', 'sgrRgbEvidence', 'sgrAttrsEvidence', 'sgrPaletteEvidence', 'sgrTruecolorEvidence', 'truecolorFindingEvidence', 'sgrUnderlineEvidence', 'sgrUnderlineColorEvidence', 'underlineResolvedEvidence', 'sgrResetEvidence', 'sgrClosureEvidence', 'eraseLineEvidence', 'charEditEvidence', 'eraseDisplayEvidence', 'lineEditEvidence', 'charsetsEvidence', 'scrollbackEvidence', 'savedResetEvidence', 'eraseAttrsRegionEvidence', 'attrRectEvidence', 'cursorQualEvidence', 'eraseCharsHistoryEvidence', 'selectiveEraseEvidence', 'rectEditEvidence', 'colEditEvidence', 'rectChecksumEvidence', 'lrMarginsEvidence', 'colorResetEvidence', 'queryEvidence'].includes(key))) assert.deepEqual(receipt[key], f.old[key]);
     // A v33 run turns the off-by-default DECRQCRA report on, so the archived query witness is re-derived with its reply: only the report digest moves.
     const { sha256: changed, ...queryBinding } = receipt.queryEvidence, { sha256: original, ...oldQueryBinding } = f.old.queryEvidence;
     assert.deepEqual(queryBinding, oldQueryBinding); assert.notEqual(changed, original);
@@ -37,7 +37,7 @@ test('raw JSON object-key order is not confused with a changed original packet o
         : Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reorder(item)])) : value;
     for (const id of ['extensions.osc52-clipboard', 'extensions.osc52-write', 'extensions.osc52-read', 'collector.ntildePrivateClipboard'])
         f.raw.rawReplies[id] = JSON.stringify(reorder(JSON.parse(f.raw.rawReplies[id])));
-    f.write('raw.json', reorder(f.raw)); assert.equal(f.finish().schemaVersion, 40);
+    f.write('raw.json', reorder(f.raw)); assert.equal(f.finish().schemaVersion, 43);
 }));
 
 test('coherent private suffix stripping cannot downgrade the importing graph to frozen schema11', () => privateClipboardReceiptFixture(f => {

@@ -106,6 +106,11 @@ import { adaptRoutedInputCollector, routedInputAdapterId } from './terminfo/rout
 import { routedInputContractsVersion, routedInputGradedSuiteId } from './terminfo/routed-input-contracts.mjs';
 import { buildRoutedInputGradingReport } from './terminfo/routed-input-grading.mjs';
 import { routedInputCounts } from './terminfo/routed-input-receipt.mjs';
+import { adaptColorResetCollector, colorResetAdapterId } from './terminfo/color-reset-grading-collector.mjs';
+import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-reset-contracts.mjs';
+import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
+import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
+import { ColorResetObserver } from './terminfo/color-reset-capture.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
@@ -155,7 +160,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'crst', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const untranslatedCellSteps = new Set(['start', 'bind', 'read', 'finish']);
@@ -1112,6 +1117,34 @@ async function retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorB
         contractsVersion: sgrUnderlineColorContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered runtime-color reset grading extension over the left/right-margin one. */
+function prepareColorResetCollector(tool, lrMarginsBundle, output) {
+    const adapted = adaptColorResetCollector(readFileSync(lrMarginsBundle));
+    const colorResetBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-crst-${colorResetBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== colorResetBundleSha256) throw new Error('Derived runtime-color reset bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-crst.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, colorResetBundleSha256 };
+}
+
+/** Re-derive the runtime-color reset report parent-side with the layered pinned replay over the retained captures. */
+async function retainColorResetEvidence(output, runId, colorResetBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'crst-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'crst-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-crst.mjs'));
+    const adapter = { id: colorResetAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(colorResetBundle).href);
+    const report = buildColorResetGradingReport(frames, run, runId, adapter, { replayModule, output });
+    writeJson(join(output, 'crst-observations.json'), report);
+    return { runId, suiteId: colorResetSuiteId, file: 'crst-observations.json',
+        sha256: hash(readFileSync(join(output, 'crst-observations.json'))),
+        runFile: 'crst-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: colorResetContractsVersion, counts: colorResetCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the SGR-underline report parent-side with the layered pinned replay. */
 async function retainSgrUnderlineEvidence(output, runId, sgrUnderlineBundle, upstream) {
     const runBytes = readFileSync(join(output, 'sgus-run.json'));
@@ -1285,6 +1318,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let lrMarginsEvidence;
     let coreGapsEvidence;
     let routedInputEvidence;
+    let colorResetEvidence;
     let rgbEvidence;
     let renditionEvidence;
     let cursorEvidence;
@@ -1345,6 +1379,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(coreGapsBundle, coreGapsSource, { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'collector-cg.mjs'), coreGapsSource, { flag: 'wx', mode: 0o600 });
         const { bundle: routedInputBundle, routedInputBundleSha256 } = prepareRoutedInputCollector(privateTool, lrMarginsBundle, output);
+        const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = randomBytes(16).toString('hex');
@@ -1354,7 +1389,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
-            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256,
+            sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
             coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
@@ -1411,6 +1446,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let rectChecksumObserver;
         let lrMarginsObserver;
         let coreGapsObserver;
+        let colorResetObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
@@ -1485,6 +1521,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             colEditAdapterId, colEditSuiteId, colEditBundleSha256, colEditContractsVersion,
             rectChecksumAdapterId, rectChecksumSuiteId, rectChecksumBundleSha256, rectChecksumContractsVersion,
             lrMarginsAdapterId, lrMarginsSuiteId, lrMarginsBundleSha256, lrMarginsContractsVersion,
+            colorResetAdapterId, colorResetSuiteId, colorResetBundleSha256, colorResetContractsVersion,
+            colorReset: 'layered versioned collector extension; pinned termless criteria extensions.osc104-reset-palette, osc110-reset-fg, osc111-reset-bg and osc112-reset-cursor (the BEL-spelled query, set of rgb:aa/bb/cc, query, reset and query) replayed byte-exactly on a disposable App and graded from exact fenced OSC replies, the App-resolved colors and override metadata, stored default/palette/literal cells, the cursor and controlled offscreen renders by an independent runtime-color model over the measured baseline; the pinned terminal paths (unmeasuredStateEffect) stay inconclusive by design; not stock CLI data',
             lrMargins: 'layered versioned collector extension; pinned termless modes.left-right-margin code (ESC[?69h, the mode metadata, ESC[?69l; inconclusive by design) replayed byte-exactly and preserved, beside a separately identified effect contract graded from parent-observed stored cells, the cursor and the App-stored region, left/right margins, DECLRMM, origin and insert mode by an independent margins model over sixteen controls; stored ASCII cells only, no stock grades',
             routedInputAdapterId, routedInputSuiteId: routedInputGradedSuiteId, routedInputBundleSha256, routedInputContractsVersion,
             routedInput: 'layered versioned collector extension; pinned termless input.x10-mouse, input.button-event-mouse and modes.application-keypad code (always inconclusive by design) replayed over mode values the child itself received as DECRQM replies and preserved, beside separately identified effect contracts graded from the owned routed-input suite: declared Avalonia events routed through the production App input path and the exact bytes the child received, literal protocol expectations cross-checked by an independent oracle; generated events, not physical input; direct-local only; no stock grades',
@@ -1547,6 +1585,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'cole-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'csum-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'lrmm-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'crst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -2296,6 +2335,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'lrmm-snapshots.jsonl'), JSON.stringify(lrMarginsObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'crst') {
+                // The runtime-color reset suite runs after the left/right-margin suite; its reads also bracket a controlled render and carry the exact query replies.
+                if (!lrMarginsObserver?.restored) throw new Error('Left/right-margin suite must restore before runtime-color reset observations.');
+                colorResetObserver ??= new ColorResetObserver({ output, appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_CR_${runId}`, expectedPaneId: cellObserver.paneId });
+                const result = await colorResetObserver.handle(request, budget);
+                appendFileSync(join(output, 'crst-snapshots.jsonl'), JSON.stringify(colorResetObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             const attributes = request.kind.startsWith('sgr-');
             if (attributes && !cellObserver?.restored) throw new Error('ASCII suite must restore before SGR observations.');
             if (attributes) sgrObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
@@ -2486,6 +2534,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             coreGapsEvidence = { runId, suiteId: coreGapsSuiteId, file: 'cg-observations.json',
                 sha256: hash(readFileSync(join(output, 'cg-observations.json'))), runFile: 'cg-run.json', runSha256: hash(coreRunBytes),
                 adapterBundleSha256: coreGapsBundleSha256, provisionalUntil: 'cell-receipt.json' };
+            colorResetEvidence = await retainColorResetEvidence(output, runId, colorResetBundle, upstreamBundleSha256);
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -2553,6 +2602,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.rectChecksumEvidence = rectChecksumEvidence;
             summary.lrMarginsEvidence = lrMarginsEvidence;
             summary.routedInputEvidence = routedInputEvidence;
+            summary.colorResetEvidence = colorResetEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
         } catch (error) {
@@ -2592,7 +2642,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, coreGapsEvidence, routedInputEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

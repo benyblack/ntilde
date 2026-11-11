@@ -1,0 +1,156 @@
+{
+  "caseId": "extensions.osc112-reset-cursor",
+  "pinnedCriterion": "the termless colorResetProbe(12, 112) feeds the BEL-spelled query, the set of rgb:aa/bb/cc, the query, the BEL-spelled reset and the query again, and is supported iff the changed reply equals the requested color and the restored reply equals the original",
+  "pinnedFeeds": ["\u001b]12;?\u0007","\u001b]12;rgb:aa/bb/cc\u0007","\u001b]12;?\u0007","\u001b]112\u0007","\u001b]12;?\u0007"],
+  "terminalFixture": {
+    "writes": [],
+    "demand": "none: the pinned terminal callback is unmeasuredStateEffect",
+    "minimum": {
+      "rows": 1,
+      "cols": 1
+    },
+    "note": "inconclusive by design (evidence none): it writes nothing and reads nothing; the stock grade is carried unchanged and is not replaced by this suite"
+  },
+  "feeds": ["\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5HHMWqg_|\u001b[0m\u001b[3;5H\u001b[38;5;33mHMWqg_|\u001b[0m\u001b[4;5H\u001b[38;2;240;240;240mHMWqg_|\u001b[0m\u001b[5;5H\u001b[48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[48;2;16;32;48mHMWqg_|\u001b[0m\u001b[2 q\u001b[?25h\u001b[9;9H","\u001b]12;?\u0007","\u001b]12;rgb:aa/bb/cc\u0007","\u001b]12;?\u0007","\u001b]112\u0007","\u001b]12;?\u0007","\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5HHMWqg_|\u001b[0m\u001b[3;5H\u001b[38;5;33mHMWqg_|\u001b[0m\u001b[4;5H\u001b[38;2;240;240;240mHMWqg_|\u001b[0m\u001b[5;5H\u001b[48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[48;2;16;32;48mHMWqg_|\u001b[0m\u001b[2 q\u001b[?25h\u001b[9;9H","\u001b]10;?\u001b\\","\u001b]11;?\u001b\\","\u001b]12;?\u001b\\","\u001b]4;5;?\u001b\\","\u001b]10;#175bad\u001b\\","\u001b]11;#20e060\u001b\\","\u001b]12;#e0a020\u001b\\","\u001b]4;5;#d0c010\u001b\\","\u001b]10;?\u001b\\","\u001b]11;?\u001b\\","\u001b]12;?\u001b\\","\u001b]4;5;?\u001b\\","\u001b]112\u001b\\","\u001b]10;?\u001b\\","\u001b]11;?\u001b\\","\u001b]12;?\u001b\\","\u001b]4;5;?\u001b\\","\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5HHMWqg_|\u001b[0m\u001b[3;5H\u001b[38;5;33mHMWqg_|\u001b[0m\u001b[4;5H\u001b[38;2;240;240;240mHMWqg_|\u001b[0m\u001b[5;5H\u001b[48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[48;2;16;32;48mHMWqg_|\u001b[0m\u001b[6 q\u001b[?25h\u001b[?25l\u001b[9;9H","\u001b]12;?\u001b\\","\u001b]12;#e0a020\u001b\\","\u001b]12;?\u001b\\","\u001b]112\u001b\\","\u001b]12;?\u001b\\"],
+  "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+  "reads": [
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:ffff/ffff/ffff\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:aaaa/bbbb/cccc\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:ffff/ffff/ffff\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":10},"barrier":"\u001b[?62;4;22c","reply":"\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"},
+        {"query":{"code":11},"barrier":"\u001b[?62;4;22c","reply":"\u001b]11;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:ffff/ffff/ffff\u001b\\"},
+        {"query":{"code":4,"index":5},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;5;rgb:cdcd/0000/cdcd\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":10},"barrier":"\u001b[?62;4;22c","reply":"\u001b]10;rgb:1717/5b5b/adad\u001b\\"},
+        {"query":{"code":11},"barrier":"\u001b[?62;4;22c","reply":"\u001b]11;rgb:2020/e0e0/6060\u001b\\"},
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:e0e0/a0a0/2020\u001b\\"},
+        {"query":{"code":4,"index":5},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":10},"barrier":"\u001b[?62;4;22c","reply":"\u001b]10;rgb:1717/5b5b/adad\u001b\\"},
+        {"query":{"code":11},"barrier":"\u001b[?62;4;22c","reply":"\u001b]11;rgb:2020/e0e0/6060\u001b\\"},
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:ffff/ffff/ffff\u001b\\"},
+        {"query":{"code":4,"index":5},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:ffff/ffff/ffff\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:e0e0/a0a0/2020\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:ffff/ffff/ffff\u001b\\"}
+      ]
+    }
+  ],
+  "observed": {
+    "pinned": {
+      "role": "pinned",
+      "label": "the pinned fixture: the color set to rgb:aa/bb/cc, then reset with the exact pinned spelling",
+      "term": "BEL",
+      "stages": [
+        {"stage":"baseline","replies":[{"query":{"code":12},"reply":"\\e]12;rgb:ffff/ffff/ffff\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":true,"style":0},"pixelSha256":"2092a3c04ed6a3df8173ba62cc47d24259ea2baaf3f07a5ebf6ddcae023a7ade"},
+        {"stage":"override","replies":[{"query":{"code":12},"reply":"\\e]12;rgb:aaaa/bbbb/cccc\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#aabbcc","cursorText":"#000000","cursorOverride":true},"cursor":{"row":8,"col":8,"visible":true,"style":0},"pixelSha256":"d4ace7acbcbae693efed5a7d94846a243f377fbffa553aac9ede046f5557e7a9"},
+        {"stage":"reset","replies":[{"query":{"code":12},"reply":"\\e]12;rgb:ffff/ffff/ffff\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":true,"style":0},"pixelSha256":"2092a3c04ed6a3df8173ba62cc47d24259ea2baaf3f07a5ebf6ddcae023a7ade"}
+      ]
+    },
+    "isolation": {
+      "role": "control",
+      "label": "the cursor override reset (ST spelling) while foreground, background and an unrelated palette slot stay overridden; the cursor keeps its steady block shape and visibility",
+      "term": "ST",
+      "stages": [
+        {"stage":"baseline","replies":[{"query":{"code":10},"reply":"\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"},{"query":{"code":11},"reply":"\\e]11;rgb:0000/0000/0000\\e\\"},{"query":{"code":12},"reply":"\\e]12;rgb:ffff/ffff/ffff\\e\\"},{"query":{"code":4,"index":5},"reply":"\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":true,"style":0},"pixelSha256":"2092a3c04ed6a3df8173ba62cc47d24259ea2baaf3f07a5ebf6ddcae023a7ade"},
+        {"stage":"override","replies":[{"query":{"code":10},"reply":"\\e]10;rgb:1717/5b5b/adad\\e\\"},{"query":{"code":11},"reply":"\\e]11;rgb:2020/e0e0/6060\\e\\"},{"query":{"code":12},"reply":"\\e]12;rgb:e0e0/a0a0/2020\\e\\"},{"query":{"code":4,"index":5},"reply":"\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"}],"binding":{"foreground":"#175bad","background":"#20e060","foregroundOverride":true,"backgroundOverride":true,"paletteOverrideIndices":[5]},"theme":{"cursor":"#e0a020","cursorText":"#20e060","cursorOverride":true},"cursor":{"row":8,"col":8,"visible":true,"style":0},"pixelSha256":"c313658c627c70bbbc3710da49c6bc99abb8b677aabaf35c9e55c0357d885069"},
+        {"stage":"reset","replies":[{"query":{"code":10},"reply":"\\e]10;rgb:1717/5b5b/adad\\e\\"},{"query":{"code":11},"reply":"\\e]11;rgb:2020/e0e0/6060\\e\\"},{"query":{"code":12},"reply":"\\e]12;rgb:ffff/ffff/ffff\\e\\"},{"query":{"code":4,"index":5},"reply":"\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"}],"binding":{"foreground":"#175bad","background":"#20e060","foregroundOverride":true,"backgroundOverride":true,"paletteOverrideIndices":[5]},"theme":{"cursor":"#ffffff","cursorText":"#20e060","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":true,"style":0},"pixelSha256":"92f03e6df1b0fe34199b020e5d6cccf90e20b8f643e0eb3b3d5b2b9aed101266"}
+      ]
+    },
+    "hidden-beam": {
+      "role": "control",
+      "label": "a hidden steady-beam cursor: the cursor color is set and reset, the shape stays beam, the cursor stays hidden",
+      "term": "ST",
+      "stages": [
+        {"stage":"baseline","replies":[{"query":{"code":12},"reply":"\\e]12;rgb:ffff/ffff/ffff\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":1},"pixelSha256":"ac9e4313c818693b3ff47136a391d75a271acb82f25dfb2dc20e3ccebade2b1e"},
+        {"stage":"override","replies":[{"query":{"code":12},"reply":"\\e]12;rgb:e0e0/a0a0/2020\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#e0a020","cursorText":"#000000","cursorOverride":true},"cursor":{"row":8,"col":8,"visible":false,"style":1},"pixelSha256":"ac9e4313c818693b3ff47136a391d75a271acb82f25dfb2dc20e3ccebade2b1e"},
+        {"stage":"reset","replies":[{"query":{"code":12},"reply":"\\e]12;rgb:ffff/ffff/ffff\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":1},"pixelSha256":"ac9e4313c818693b3ff47136a391d75a271acb82f25dfb2dc20e3ccebade2b1e"}
+      ]
+    }
+  },
+  "colorBinding": {
+    "themeName": "Default",
+    "minimumContrast": 1,
+    "reverseVideo": false,
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "cursorArgb": 4294967295,
+    "paletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"originalRaw\":\"\\u001b]12;rgb:ffff/ffff/ffff\\u001b\\\\\",\"changedRaw\":\"\\u001b]12;rgb:aaaa/bbbb/cccc\\u001b\\\\\",\"restoredRaw\":\"\\u001b]12;rgb:ffff/ffff/ffff\\u001b\\\\\"}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "behavior"
+    },
+    "assertions": [
+      {"kind":"positive","expected":"OSC 112 restores the prior OSC 12 color after a verified change","observed":"{\"originalRaw\":\"\\u001b]12;rgb:ffff/ffff/ffff\\u001b\\\\\",\"changedRaw\":\"\\u001b]12;rgb:aaaa/bbbb/cccc\\u001b\\\\\",\"restoredRaw\":\"\\u001b]12;rgb:ffff/ffff/ffff\\u001b\\\\\"}"}
+    ]
+  },
+  "pinnedTerminal": {
+    "outcome": "inconclusive",
+    "evidence": "none",
+    "byDesign": true,
+    "note": "inconclusive by design (evidence none): it writes nothing and reads nothing; the stock grade is carried unchanged and is not replaced by this suite"
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "experiments": [
+      {"id":"pinned","role":"pinned","label":"the pinned fixture: the color set to rgb:aa/bb/cc, then reset with the exact pinned spelling","controls":[{"description":"the baseline has no runtime override in any layer","passed":true},{"description":"the baseline readScreen binding equals the render theme (two App layers agree)","passed":true},{"description":"the scene is as written: text rows, steady scene colors and no reverse video","passed":true},{"description":"pinned: every query of every stage was answered","passed":true},{"description":"pinned/baseline: the exact query replies are the model's colors","passed":true},{"description":"pinned/baseline: the App's resolved colors and override metadata match","passed":true},{"description":"pinned/baseline: the render theme sources and override flags match","passed":true},{"description":"pinned/baseline: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"pinned/baseline: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"pinned/baseline: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"pinned/baseline: the complete theme, derived values included, equals the baseline","passed":true},{"description":"pinned/override: the exact query replies are the model's colors","passed":true},{"description":"pinned/override: the App's resolved colors and override metadata match","passed":true},{"description":"pinned/override: the render theme sources and override flags match","passed":true},{"description":"pinned/override: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"pinned/override: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"pinned/override: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"pinned/override: the override differs from the measured baseline","passed":true},{"description":"pinned/override: every overridden target differs from its baseline","passed":true},{"description":"pinned/override: the controlled render differs from the baseline render","passed":true}],"assertions":[{"description":"pinned/reset: the exact query replies are the model's colors","passed":true},{"description":"pinned/reset: the App's resolved colors and override metadata match","passed":true},{"description":"pinned/reset: the render theme sources and override flags match","passed":true},{"description":"pinned/reset: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"pinned/reset: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"pinned/reset: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"pinned/reset: the complete theme, derived values included, equals the baseline","passed":true},{"description":"pinned/reset: the reset changed the controlled render","passed":true},{"description":"pinned: the final controlled render is byte-identical to the baseline render","passed":true}],"outcome":"supported"},
+      {"id":"isolation","role":"control","label":"the cursor override reset (ST spelling) while foreground, background and an unrelated palette slot stay overridden; the cursor keeps its steady block shape and visibility","controls":[{"description":"the baseline has no runtime override in any layer","passed":true},{"description":"the baseline readScreen binding equals the render theme (two App layers agree)","passed":true},{"description":"the scene is as written: text rows, steady scene colors and no reverse video","passed":true},{"description":"isolation: every query of every stage was answered","passed":true},{"description":"isolation/baseline: the exact query replies are the model's colors","passed":true},{"description":"isolation/baseline: the App's resolved colors and override metadata match","passed":true},{"description":"isolation/baseline: the render theme sources and override flags match","passed":true},{"description":"isolation/baseline: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"isolation/baseline: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"isolation/baseline: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"isolation/baseline: the complete theme, derived values included, equals the baseline","passed":true},{"description":"isolation/override: the exact query replies are the model's colors","passed":true},{"description":"isolation/override: the App's resolved colors and override metadata match","passed":true},{"description":"isolation/override: the render theme sources and override flags match","passed":true},{"description":"isolation/override: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"isolation/override: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"isolation/override: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"isolation/override: the override differs from the measured baseline","passed":true},{"description":"isolation/override: every overridden target differs from its baseline","passed":true},{"description":"isolation/override: the controlled render differs from the baseline render","passed":true}],"assertions":[{"description":"isolation/reset: the exact query replies are the model's colors","passed":true},{"description":"isolation/reset: the App's resolved colors and override metadata match","passed":true},{"description":"isolation/reset: the render theme sources and override flags match","passed":true},{"description":"isolation/reset: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"isolation/reset: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"isolation/reset: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"isolation/reset: the reset changed the controlled render","passed":true},{"description":"isolation/reset: the overrides that remain are still drawn (the render is not the baseline render)","passed":true}],"outcome":"supported"},
+      {"id":"hidden-beam","role":"control","label":"a hidden steady-beam cursor: the cursor color is set and reset, the shape stays beam, the cursor stays hidden","controls":[{"description":"the baseline has no runtime override in any layer","passed":true},{"description":"the baseline readScreen binding equals the render theme (two App layers agree)","passed":true},{"description":"the scene is as written: text rows, steady scene colors and no reverse video","passed":true},{"description":"hidden-beam: every query of every stage was answered","passed":true},{"description":"hidden-beam/baseline: the exact query replies are the model's colors","passed":true},{"description":"hidden-beam/baseline: the App's resolved colors and override metadata match","passed":true},{"description":"hidden-beam/baseline: the render theme sources and override flags match","passed":true},{"description":"hidden-beam/baseline: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"hidden-beam/baseline: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"hidden-beam/baseline: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"hidden-beam/baseline: the complete theme, derived values included, equals the baseline","passed":true},{"description":"hidden-beam/override: the exact query replies are the model's colors","passed":true},{"description":"hidden-beam/override: the App's resolved colors and override metadata match","passed":true},{"description":"hidden-beam/override: the render theme sources and override flags match","passed":true},{"description":"hidden-beam/override: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"hidden-beam/override: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"hidden-beam/override: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"hidden-beam/override: the override differs from the measured baseline","passed":true},{"description":"hidden-beam/override: every overridden target differs from its baseline","passed":true}],"assertions":[{"description":"hidden-beam/reset: the exact query replies are the model's colors","passed":true},{"description":"hidden-beam/reset: the App's resolved colors and override metadata match","passed":true},{"description":"hidden-beam/reset: the render theme sources and override flags match","passed":true},{"description":"hidden-beam/reset: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"hidden-beam/reset: the controlled render draws the effective background, text ink and (a visible block) cursor colors","passed":true},{"description":"hidden-beam/reset: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"hidden-beam/reset: the complete theme, derived values included, equals the baseline","passed":true}],"outcome":"supported"}
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels",
+    "grading": "pinned-termless-plus-contract-v1",
+    "pinnedTermless": "supported",
+    "pinnedTerminal": "inconclusive-by-design",
+    "scope": "exact fenced query replies, the App-resolved colors and override metadata, stored default markers, palette-indexed and literal cells, the cursor and the controlled offscreen render at a fixed synthetic clock; real-time cadence, desktop appearance, selection and pointer colors, Kitty named colors and alternate-screen or DECSTR clearing of overrides are not claimed"
+  }
+}

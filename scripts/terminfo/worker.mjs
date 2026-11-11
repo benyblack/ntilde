@@ -38,6 +38,7 @@ import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
+import { collectColorResetGrading } from './color-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
 import { collectRendition } from './rendition.mjs';
@@ -317,6 +318,14 @@ try {
         if (createHash('sha256').update(readFileSync(config.coreGapsBundle)).digest('hex') !== config.coreGapsBundleSha256) throw new Error('Core-gap bundle changed.');
         const coreRun = await collectCoreGaps({ config, fence, owner, gradingModule: await import(pathToFileURL(config.coreGapsBundle).href) });
         writeFileSync(join(config.output, 'cg-run.json'), JSON.stringify(coreRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered runtime-color reset qualification follows the left/right-margin suite on the same fence.
+        const colorResetSource = readFileSync(config.colorResetBundle);
+        if (createHash('sha256').update(colorResetSource).digest('hex') !== config.colorResetBundleSha256) {
+            throw new Error('Local runtime-color reset adapter bundle changed.');
+        }
+        const colorResetModule = await import(pathToFileURL(config.colorResetBundle).href);
+        const colorResetRun = await collectColorResetGrading({ config, fence, owner, gradingModule: colorResetModule });
+        writeFileSync(join(config.output, 'crst-run.json'), JSON.stringify(colorResetRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
