@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "ffb4b221e6a4e07a31275e03728039f0",
+    "appRevision": "fef4be838fd8e2a7482c81a7b428068d8fc5614c",
+    "scriptsRevision": "fef4be838fd8e2a7482c81a7b428068d8fc5614c",
+    "receiptSchema": 45,
+    "sourcePolicy": "readonly-owned-source-graph-v39"
+  },
+  "ownedArchiveSha256": "e650212b0873e27762cfa8ef77b20557150d2188f2f979d4a16ba7944ac4647e",
+  "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
+  "attempts": [
+    {
+      "runId": "cd73ce0faa6c5f262ec3a0df55879a41",
+      "status": "failed",
+      "reason": "Worker import name collision caused a syntax error and the owned app exited before collection. No measurements were taken.",
+      "archive": "attempt-1-failed.zip",
+      "sha256": "917476cdf484d2d7c365fded042333b80916c41abd7de75c4404a057a8dfe1ff"
+    },
+    {
+      "runId": "ffb4b221e6a4e07a31275e03728039f0",
+      "status": "complete",
+      "reason": "The exact erase specimens and predecessor suites completed; receipt and cleanup verified."
+    }
+  ]
+}

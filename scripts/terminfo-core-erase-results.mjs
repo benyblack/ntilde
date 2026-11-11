@@ -1,9 +1,10 @@
 // A distinct publication over the same frozen 80 requirements as #937.
 // The caller must validate the complete owned receipt before deriving any row.
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { deriveTextCursorCoreReport, describeLayers } from './terminfo-core-text-cursor-results.mjs';
-import { assertRequirementRows } from './terminfo-core-results.mjs';
+import { assertRequirementRows, root } from './terminfo-core-results.mjs';
 import { eraseIds, eraseSuiteId, specimens } from './terminfo/core-erase.mjs';
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const check = (ok, message) => { if (!ok) throw new Error('Core erase results: ' + message); };
@@ -13,6 +14,10 @@ const groups = Object.freeze({ 'erase.line.right': ['el-home', 'el-interior'],
 export function deriveEraseCoreReport(directory, frozenMapping, identity, measurement) {
     check(identity?.context?.runId === measurement.runId && identity?.receipt?.coreEraseEvidence?.suiteId === eraseSuiteId,
         'receipt identity or erase suite missing');
+    const historicalBytes = readFileSync(join(root, 'docs/qa/terminfo/2026-11-11-core-text-cursor-results/report.json'));
+    check(createHash('sha256').update(historicalBytes).digest('hex') === '75791ae1ce7b1a5a0f156d8563c9171957ec9bd014c4ca97147071a970ba5a11', 'historical report changed');
+    const historical = JSON.parse(historicalBytes);
+    assertRequirementRows(historical.rows, frozenMapping.rows.map(row => row.id));
     const evidence = JSON.parse(readFileSync(join(directory, 'ce-observations.json')));
     check(evidence.suiteId === eraseSuiteId && evidence.runId === measurement.runId, 'stale erase evidence');
     check(same(Object.keys(evidence.effects), specimens.map(s => s.role)), 'missing, duplicate or reordered specimens');
@@ -28,6 +33,7 @@ export function deriveEraseCoreReport(directory, frozenMapping, identity, measur
                 && e.observed?.before?.lines?.length && e.observed?.after?.lines?.length, 'invalid specimen ' + role);
             return { role, ...e };
         });
+        row.historicalPinnedProbe = historical.rows.find(r => r.id === id).pinnedProbe;
         row.criterionMatch = 'matched';
         row.conclusion = results.every(e => e.outcome === 'supported') ? 'pass' : 'fail';
         row.exactFixtureEffects = results;
@@ -61,8 +67,8 @@ export function readableEraseReport(report, mapping) {
         let observation = row.explanation;
         if (row.exactFixtureEffects) observation += ' ' + row.exactFixtureEffects.map(e => `${e.role}: ${e.outcome}; bytes ${literal(e.fixture)}; before ${literal(e.observed.before.lines.slice(0, 3))}, cursor ${literal(e.observed.before.cursor)}; after ${literal(e.observed.after.lines.slice(0, 3))}, cursor ${literal(e.observed.after.cursor)}`).join('; ');
         else if (row.observed) observation = `Bytes ${literal(row.fixture)}; observed ${literal(row.observed)}.`;
-        lines.push(`| [\`${row.id}\`](${entry.url}) — ${cell(row.requirement)} | **${row.conclusion}** | ${cell(describeLayers(row.observationLayers).join(', '))}; ${cell(refs)}; stock ${cell(row.pinnedProbe.stockVerdict)}; effect ${cell(effects)} | ${cell(observation)} |`);
+        lines.push(`| [\`${row.id}\`](${entry.url}) — ${cell(row.requirement)} | **${row.conclusion}** | ${cell(describeLayers(row.observationLayers).join(', '))}; ${cell(refs)}; ${row.historicalPinnedProbe ? 'previous stock ' + cell(row.historicalPinnedProbe.stockVerdict) + '; ' : ''}current stock ${cell(row.pinnedProbe.stockVerdict)}; pinned code ${cell(row.pinnedProbe.qualified.map(q => q.caseId + ':' + q.verdict).join(', '))}; effect ${cell(effects)} | ${cell(observation)} |`);
     }
-    lines.push('', '## Reproduction', '', '```sh', 'node scripts/terminfo-core-erase-publication.mjs --check', '```', '', mapping.sourceAttribution, '');
+    lines.push('', '## Attempts', '', ...(report.attempts ?? []).map(a => `- \`${a.runId}\` — ${a.status}: ${a.reason}${a.archive ? ' ([evidence](' + a.archive + '))' : ''}`), '', '## Reproduction', '', '```sh', 'node scripts/terminfo-core-erase-publication.mjs --check', '```', '', mapping.sourceAttribution, '');
     return lines.join('\n');
 }
