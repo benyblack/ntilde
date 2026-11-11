@@ -1,0 +1,251 @@
+{
+  "caseId": "extensions.osc104-reset-palette",
+  "pinnedCriterion": "the termless colorResetProbe(4, 104, 0) feeds the BEL-spelled query, the set of rgb:aa/bb/cc, the query, the BEL-spelled reset and the query again, and is supported iff the changed reply equals the requested color and the restored reply equals the original",
+  "pinnedFeeds": ["\u001b]4;0;?\u0007","\u001b]4;0;rgb:aa/bb/cc\u0007","\u001b]4;0;?\u0007","\u001b]104;0\u0007","\u001b]4;0;?\u0007"],
+  "terminalFixture": {
+    "writes": [],
+    "demand": "none: the pinned terminal callback is unmeasuredStateEffect",
+    "minimum": {
+      "rows": 1,
+      "cols": 1
+    },
+    "note": "inconclusive by design (evidence none): it writes nothing and reads nothing; the stock grade is carried unchanged and is not replaced by this suite"
+  },
+  "feeds": ["\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5HHMWqg_|\u001b[0m\u001b[3;5H\u001b[38;5;0mHMWqg_|\u001b[0m\u001b[4;5H\u001b[38;2;240;240;240mHMWqg_|\u001b[0m\u001b[5;5H\u001b[48;5;0mHMWqg_|\u001b[0m\u001b[6;5H\u001b[48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H","\u001b]4;0;?\u0007","\u001b]4;0;rgb:aa/bb/cc\u0007","\u001b]4;0;?\u0007","\u001b]104;0\u0007","\u001b]4;0;?\u0007","\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5HHMWqg_|\u001b[0m\u001b[3;5H\u001b[38;5;1mHMWqg_|\u001b[0m\u001b[4;5H\u001b[38;2;240;240;240mHMWqg_|\u001b[0m\u001b[5;5H\u001b[48;5;200mHMWqg_|\u001b[0m\u001b[6;5H\u001b[48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H","\u001b]4;1;?\u001b\\","\u001b]4;9;?\u001b\\","\u001b]4;16;?\u001b\\","\u001b]4;200;?\u001b\\","\u001b]4;255;?\u001b\\","\u001b]4;1;#3090f2;9;#58688a;16;#5be52f;200;#f34dd7;255;#e6da0c\u001b\\","\u001b]4;1;?\u001b\\","\u001b]4;9;?\u001b\\","\u001b]4;16;?\u001b\\","\u001b]4;200;?\u001b\\","\u001b]4;255;?\u001b\\","\u001b]104;1\u001b\\","\u001b]4;1;?\u001b\\","\u001b]4;9;?\u001b\\","\u001b]4;16;?\u001b\\","\u001b]4;200;?\u001b\\","\u001b]4;255;?\u001b\\","\u001b]104;9;200\u001b\\","\u001b]4;1;?\u001b\\","\u001b]4;9;?\u001b\\","\u001b]4;16;?\u001b\\","\u001b]4;200;?\u001b\\","\u001b]4;255;?\u001b\\","\u001b]104;16;255\u001b\\","\u001b]4;1;?\u001b\\","\u001b]4;9;?\u001b\\","\u001b]4;16;?\u001b\\","\u001b]4;200;?\u001b\\","\u001b]4;255;?\u001b\\","\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5HHMWqg_|\u001b[0m\u001b[3;5H\u001b[38;5;33mHMWqg_|\u001b[0m\u001b[4;5H\u001b[38;2;240;240;240mHMWqg_|\u001b[0m\u001b[5;5H\u001b[48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H","\u001b]4;5;?\u001b\\","\u001b]4;6;?\u001b\\","\u001b]10;?\u001b\\","\u001b]11;?\u001b\\","\u001b]12;?\u001b\\","\u001b]4;5;#d0c010;6;#10c0d0\u001b\\","\u001b]10;#175bad\u001b\\","\u001b]11;#20e060\u001b\\","\u001b]12;#e0a020\u001b\\","\u001b]4;5;?\u001b\\","\u001b]4;6;?\u001b\\","\u001b]10;?\u001b\\","\u001b]11;?\u001b\\","\u001b]12;?\u001b\\","\u001b]104;5\u001b\\","\u001b]4;5;?\u001b\\","\u001b]4;6;?\u001b\\","\u001b]10;?\u001b\\","\u001b]11;?\u001b\\","\u001b]12;?\u001b\\","\u001b]104\u001b\\","\u001b]4;5;?\u001b\\","\u001b]4;6;?\u001b\\","\u001b]10;?\u001b\\","\u001b]11;?\u001b\\","\u001b]12;?\u001b\\","\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5HHMWqg_|\u001b[0m\u001b[3;5H\u001b[38;5;100mHMWqg_|\u001b[0m\u001b[4;5H\u001b[38;2;240;240;240mHMWqg_|\u001b[0m\u001b[5;5H\u001b[48;5;231mHMWqg_|\u001b[0m\u001b[6;5H\u001b[48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H","\u001b]4;0;?\u0007","\u001b]4;15;?\u0007","\u001b]4;16;?\u0007","\u001b]4;100;?\u0007","\u001b]4;231;?\u0007","\u001b]4;232;?\u0007","\u001b]4;255;?\u0007","\u001b]4;0;#0b35ff;1;#3090f2;2;#55ebe5;3;#7a46d8;4;#9fa1cb;5;#c4fcbe;6;#e957b1;7;#0eb2a4;8;#330d97;9;#58688a;10;#7dc37d;11;#a21e70;12;#c77963;13;#ecd456;14;#112f49;15;#368a3c;16;#5be52f;17;#804022;18;#a59b15;19;#caf608;20;#ef51fb;21;#14acee;22;#3907e1;23;#5e62d4;24;#83bdc7;25;#a818ba;26;#cd73ad;27;#f2cea0;28;#172993;29;#3c8486;30;#61df79;31;#863a6c;32;#ab955f;33;#d0f052;34;#f54b45;35;#1aa638;36;#3f012b;37;#645c1e;38;#89b711;39;#ae1204;40;#d36df7;41;#f8c8ea;42;#1d23dd;43;#427ed0;44;#67d9c3;45;#8c34b6;46;#b18fa9;47;#d6ea9c;48;#fb458f;49;#20a082;50;#45fb75;51;#6a5668;52;#8fb15b;53;#b40c4e;54;#d96741;55;#fec234;56;#231d27;57;#48781a;58;#6dd30d;59;#922e00;60;#b789f3;61;#dce4e6;62;#013fd9;63;#269acc;64;#4bf5bf;65;#7050b2;66;#95aba5;67;#ba0698;68;#df618b;69;#04bc7e;70;#291771;71;#4e7264;72;#73cd57;73;#98284a;74;#bd833d;75;#e2de30;76;#073923;77;#2c9416;78;#51ef09;79;#764afc;80;#9ba5ef;81;#c000e2;82;#e55bd5;83;#0ab6c8;84;#2f11bb;85;#546cae;86;#79c7a1;87;#9e2294;88;#c37d87;89;#e8d87a;90;#0d336d;91;#328e60;92;#57e953;93;#7c4446;94;#a19f39;95;#c6fa2c;96;#eb551f;97;#10b012;98;#350b05;99;#5a66f8;100;#7fc1eb;101;#a41cde;102;#c977d1;103;#eed2c4;104;#132db7;105;#3888aa;106;#5de39d;107;#823e90;108;#a79983;109;#ccf476;110;#f14f69;111;#16aa5c;112;#3b054f;113;#606042;114;#85bb35;115;#aa1628;116;#cf711b;117;#f4cc0e;118;#192701;119;#3e82f4;120;#63dde7;121;#8838da;122;#ad93cd;123;#d2eec0;124;#f749b3;125;#1ca4a6;126;#41ff99;127;#665a8c;128;#8bb57f;129;#b01072;130;#d56b65;131;#fac658;132;#1f214b;133;#447c3e;134;#69d731;135;#8e3224;136;#b38d17;137;#d8e80a;138;#fd43fd;139;#229ef0;140;#47f9e3;141;#6c54d6;142;#91afc9;143;#b60abc;144;#db65af;145;#00c0a2;146;#251b95;147;#4a7688;148;#6fd17b;149;#942c6e;150;#b98761;151;#dee254;152;#033d47;153;#28983a;154;#4df32d;155;#724e20;156;#97a913;157;#bc0406;158;#e15ff9;159;#06baec;160;#2b15df;161;#5070d2;162;#75cbc5;163;#9a26b8;164;#bf81ab;165;#e4dc9e;166;#093791;167;#2e9284;168;#53ed77;169;#78486a;170;#9da35d;171;#c2fe50;172;#e75943;173;#0cb436;174;#310f29;175;#566a1c;176;#7bc50f;177;#a02002;178;#c57bf5;179;#ead6e8;180;#0f31db;181;#348cce;182;#59e7c1;183;#7e42b4;184;#a39da7;185;#c8f89a;186;#ed538d;187;#12ae80;188;#370973;189;#5c6466;190;#81bf59;191;#a61a4c;192;#cb753f;193;#f0d032;194;#152b25;195;#3a8618;196;#5fe10b;197;#843cfe;198;#a997f1;199;#cef2e4;200;#f34dd7;201;#18a8ca;202;#3d03bd;203;#625eb0;204;#87b9a3;205;#ac1496;206;#d16f89;207;#f6ca7c;208;#1b256f;209;#408062;210;#65db55;211;#8a3648;212;#af913b;213;#d4ec2e;214;#f94721;215;#1ea214;216;#43fd07;217;#6858fa;218;#8db3ed;219;#b20ee0;220;#d769d3;221;#fcc4c6;222;#211fb9;223;#467aac;224;#6bd59f;225;#903092;226;#b58b85;227;#dae678;228;#ff416b;229;#249c5e;230;#49f751;231;#6e5244;232;#93ad37;233;#b8082a;234;#dd631d;235;#02be10;236;#271903;237;#4c74f6;238;#71cfe9;239;#962adc;240;#bb85cf;241;#e0e0c2;242;#053bb5;243;#2a96a8;244;#4ff19b;245;#744c8e;246;#99a781;247;#be0274;248;#e35d67;249;#08b85a;250;#2d134d;251;#526e40;252;#77c933;253;#9c2426;254;#c17f19;255;#e6da0c\u001b\\","\u001b]4;0;?\u0007","\u001b]4;15;?\u0007","\u001b]4;16;?\u0007","\u001b]4;100;?\u0007","\u001b]4;231;?\u0007","\u001b]4;232;?\u0007","\u001b]4;255;?\u0007","\u001b]104\u0007","\u001b]4;0;?\u0007","\u001b]4;15;?\u0007","\u001b]4;16;?\u0007","\u001b]4;100;?\u0007","\u001b]4;231;?\u0007","\u001b]4;232;?\u0007","\u001b]4;255;?\u0007"],
+  "barriers": ["\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c","\u001b[?62;4;22c"],
+  "reads": [
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":0},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;0;rgb:0000/0000/0000\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":0},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;0;rgb:aaaa/bbbb/cccc\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":0},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;0;rgb:0000/0000/0000\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":1},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;1;rgb:cdcd/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":9},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;9;rgb:ffff/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":200},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;200;rgb:ffff/0000/d7d7\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:eeee/eeee/eeee\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":1},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;1;rgb:3030/9090/f2f2\u001b\\"},
+        {"query":{"code":4,"index":9},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;9;rgb:5858/6868/8a8a\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:5b5b/e5e5/2f2f\u001b\\"},
+        {"query":{"code":4,"index":200},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;200;rgb:f3f3/4d4d/d7d7\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:e6e6/dada/0c0c\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":1},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;1;rgb:cdcd/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":9},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;9;rgb:5858/6868/8a8a\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:5b5b/e5e5/2f2f\u001b\\"},
+        {"query":{"code":4,"index":200},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;200;rgb:f3f3/4d4d/d7d7\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:e6e6/dada/0c0c\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":1},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;1;rgb:cdcd/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":9},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;9;rgb:ffff/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:5b5b/e5e5/2f2f\u001b\\"},
+        {"query":{"code":4,"index":200},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;200;rgb:ffff/0000/d7d7\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:e6e6/dada/0c0c\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":1},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;1;rgb:cdcd/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":9},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;9;rgb:ffff/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":200},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;200;rgb:ffff/0000/d7d7\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:eeee/eeee/eeee\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":5},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;5;rgb:cdcd/0000/cdcd\u001b\\"},
+        {"query":{"code":4,"index":6},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;6;rgb:0000/cdcd/cdcd\u001b\\"},
+        {"query":{"code":10},"barrier":"\u001b[?62;4;22c","reply":"\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"},
+        {"query":{"code":11},"barrier":"\u001b[?62;4;22c","reply":"\u001b]11;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:ffff/ffff/ffff\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":5},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"},
+        {"query":{"code":4,"index":6},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;6;rgb:1010/c0c0/d0d0\u001b\\"},
+        {"query":{"code":10},"barrier":"\u001b[?62;4;22c","reply":"\u001b]10;rgb:1717/5b5b/adad\u001b\\"},
+        {"query":{"code":11},"barrier":"\u001b[?62;4;22c","reply":"\u001b]11;rgb:2020/e0e0/6060\u001b\\"},
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:e0e0/a0a0/2020\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":5},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;5;rgb:cdcd/0000/cdcd\u001b\\"},
+        {"query":{"code":4,"index":6},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;6;rgb:1010/c0c0/d0d0\u001b\\"},
+        {"query":{"code":10},"barrier":"\u001b[?62;4;22c","reply":"\u001b]10;rgb:1717/5b5b/adad\u001b\\"},
+        {"query":{"code":11},"barrier":"\u001b[?62;4;22c","reply":"\u001b]11;rgb:2020/e0e0/6060\u001b\\"},
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:e0e0/a0a0/2020\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":5},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;5;rgb:cdcd/0000/cdcd\u001b\\"},
+        {"query":{"code":4,"index":6},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;6;rgb:0000/cdcd/cdcd\u001b\\"},
+        {"query":{"code":10},"barrier":"\u001b[?62;4;22c","reply":"\u001b]10;rgb:1717/5b5b/adad\u001b\\"},
+        {"query":{"code":11},"barrier":"\u001b[?62;4;22c","reply":"\u001b]11;rgb:2020/e0e0/6060\u001b\\"},
+        {"query":{"code":12},"barrier":"\u001b[?62;4;22c","reply":"\u001b]12;rgb:e0e0/a0a0/2020\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":0},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;0;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":15},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;15;rgb:ffff/ffff/ffff\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":100},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;100;rgb:8787/8787/0000\u001b\\"},
+        {"query":{"code":4,"index":231},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;231;rgb:ffff/ffff/ffff\u001b\\"},
+        {"query":{"code":4,"index":232},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;232;rgb:0808/0808/0808\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:eeee/eeee/eeee\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":0},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;0;rgb:0b0b/3535/ffff\u001b\\"},
+        {"query":{"code":4,"index":15},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;15;rgb:3636/8a8a/3c3c\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:5b5b/e5e5/2f2f\u001b\\"},
+        {"query":{"code":4,"index":100},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;100;rgb:7f7f/c1c1/ebeb\u001b\\"},
+        {"query":{"code":4,"index":231},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;231;rgb:6e6e/5252/4444\u001b\\"},
+        {"query":{"code":4,"index":232},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;232;rgb:9393/adad/3737\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:e6e6/dada/0c0c\u001b\\"}
+      ]
+    },
+    {
+      "cursor": [8,8],
+      "queries": [
+        {"query":{"code":4,"index":0},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;0;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":15},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;15;rgb:ffff/ffff/ffff\u001b\\"},
+        {"query":{"code":4,"index":16},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;16;rgb:0000/0000/0000\u001b\\"},
+        {"query":{"code":4,"index":100},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;100;rgb:8787/8787/0000\u001b\\"},
+        {"query":{"code":4,"index":231},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;231;rgb:ffff/ffff/ffff\u001b\\"},
+        {"query":{"code":4,"index":232},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;232;rgb:0808/0808/0808\u001b\\"},
+        {"query":{"code":4,"index":255},"barrier":"\u001b[?62;4;22c","reply":"\u001b]4;255;rgb:eeee/eeee/eeee\u001b\\"}
+      ]
+    }
+  ],
+  "observed": {
+    "pinned": {
+      "role": "pinned",
+      "label": "the pinned fixture: slot 0 set to rgb:aa/bb/cc, then reset with the exact pinned spelling",
+      "term": "BEL",
+      "stages": [
+        {"stage":"baseline","replies":[{"query":{"code":4,"index":0},"reply":"\\e]4;0;rgb:0000/0000/0000\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"3424462e0c4bba433ac9b6773946ef49a7b1e24e40d047f560f27d3d273ff55b"},
+        {"stage":"override","replies":[{"query":{"code":4,"index":0},"reply":"\\e]4;0;rgb:aaaa/bbbb/cccc\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[0]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"2207be8892d414328faf724e44eeaa39397ea083604a43a3cf99906c5a9cc985"},
+        {"stage":"reset","replies":[{"query":{"code":4,"index":0},"reply":"\\e]4;0;rgb:0000/0000/0000\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"3424462e0c4bba433ac9b6773946ef49a7b1e24e40d047f560f27d3d273ff55b"}
+      ]
+    },
+    "individual-slots": {
+      "role": "control",
+      "label": "five slots overridden (1, 9, 16, 200, 255); reset slot 1 alone, then 9 and 200 together, then the remaining 16 and 255, each time with the unrelated slots still overridden",
+      "term": "ST",
+      "stages": [
+        {"stage":"baseline","replies":[{"query":{"code":4,"index":1},"reply":"\\e]4;1;rgb:cdcd/0000/0000\\e\\"},{"query":{"code":4,"index":9},"reply":"\\e]4;9;rgb:ffff/0000/0000\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:0000/0000/0000\\e\\"},{"query":{"code":4,"index":200},"reply":"\\e]4;200;rgb:ffff/0000/d7d7\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:eeee/eeee/eeee\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"d462e5a62139f1f04ba854ae87b59ae941666731823ead7eb9ec4b2ec51736ff"},
+        {"stage":"override","replies":[{"query":{"code":4,"index":1},"reply":"\\e]4;1;rgb:3030/9090/f2f2\\e\\"},{"query":{"code":4,"index":9},"reply":"\\e]4;9;rgb:5858/6868/8a8a\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:5b5b/e5e5/2f2f\\e\\"},{"query":{"code":4,"index":200},"reply":"\\e]4;200;rgb:f3f3/4d4d/d7d7\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:e6e6/dada/0c0c\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[1,9,16,200,255]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"4a5c7bfe650149d4b249ac69d38d7a91a82ae4156668320b61961ed27495902d"},
+        {"stage":"reset-one","replies":[{"query":{"code":4,"index":1},"reply":"\\e]4;1;rgb:cdcd/0000/0000\\e\\"},{"query":{"code":4,"index":9},"reply":"\\e]4;9;rgb:5858/6868/8a8a\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:5b5b/e5e5/2f2f\\e\\"},{"query":{"code":4,"index":200},"reply":"\\e]4;200;rgb:f3f3/4d4d/d7d7\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:e6e6/dada/0c0c\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[9,16,200,255]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"2c282002b2c82f5d1fdf660b3d2bf364e6be033f512aacf321bbfd6d8cfcc96c"},
+        {"stage":"reset-two","replies":[{"query":{"code":4,"index":1},"reply":"\\e]4;1;rgb:cdcd/0000/0000\\e\\"},{"query":{"code":4,"index":9},"reply":"\\e]4;9;rgb:ffff/0000/0000\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:5b5b/e5e5/2f2f\\e\\"},{"query":{"code":4,"index":200},"reply":"\\e]4;200;rgb:ffff/0000/d7d7\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:e6e6/dada/0c0c\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[16,255]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"d462e5a62139f1f04ba854ae87b59ae941666731823ead7eb9ec4b2ec51736ff"},
+        {"stage":"reset-rest","replies":[{"query":{"code":4,"index":1},"reply":"\\e]4;1;rgb:cdcd/0000/0000\\e\\"},{"query":{"code":4,"index":9},"reply":"\\e]4;9;rgb:ffff/0000/0000\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:0000/0000/0000\\e\\"},{"query":{"code":4,"index":200},"reply":"\\e]4;200;rgb:ffff/0000/d7d7\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:eeee/eeee/eeee\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"d462e5a62139f1f04ba854ae87b59ae941666731823ead7eb9ec4b2ec51736ff"}
+      ]
+    },
+    "isolation": {
+      "role": "control",
+      "label": "slots 5 and 6 overridden beside the foreground, background and cursor; reset slot 5 alone, then the whole palette (ST spelling): the three dynamic colors must stay overridden",
+      "term": "ST",
+      "stages": [
+        {"stage":"baseline","replies":[{"query":{"code":4,"index":5},"reply":"\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"},{"query":{"code":4,"index":6},"reply":"\\e]4;6;rgb:0000/cdcd/cdcd\\e\\"},{"query":{"code":10},"reply":"\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"},{"query":{"code":11},"reply":"\\e]11;rgb:0000/0000/0000\\e\\"},{"query":{"code":12},"reply":"\\e]12;rgb:ffff/ffff/ffff\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"ac9e4313c818693b3ff47136a391d75a271acb82f25dfb2dc20e3ccebade2b1e"},
+        {"stage":"override","replies":[{"query":{"code":4,"index":5},"reply":"\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"},{"query":{"code":4,"index":6},"reply":"\\e]4;6;rgb:1010/c0c0/d0d0\\e\\"},{"query":{"code":10},"reply":"\\e]10;rgb:1717/5b5b/adad\\e\\"},{"query":{"code":11},"reply":"\\e]11;rgb:2020/e0e0/6060\\e\\"},{"query":{"code":12},"reply":"\\e]12;rgb:e0e0/a0a0/2020\\e\\"}],"binding":{"foreground":"#175bad","background":"#20e060","foregroundOverride":true,"backgroundOverride":true,"paletteOverrideIndices":[5,6]},"theme":{"cursor":"#e0a020","cursorText":"#20e060","cursorOverride":true},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"705b3b68914406e22bae34190482d5fd248854ce967a9b5b61b2bab0cdfb3beb"},
+        {"stage":"reset-one","replies":[{"query":{"code":4,"index":5},"reply":"\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"},{"query":{"code":4,"index":6},"reply":"\\e]4;6;rgb:1010/c0c0/d0d0\\e\\"},{"query":{"code":10},"reply":"\\e]10;rgb:1717/5b5b/adad\\e\\"},{"query":{"code":11},"reply":"\\e]11;rgb:2020/e0e0/6060\\e\\"},{"query":{"code":12},"reply":"\\e]12;rgb:e0e0/a0a0/2020\\e\\"}],"binding":{"foreground":"#175bad","background":"#20e060","foregroundOverride":true,"backgroundOverride":true,"paletteOverrideIndices":[6]},"theme":{"cursor":"#e0a020","cursorText":"#20e060","cursorOverride":true},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"705b3b68914406e22bae34190482d5fd248854ce967a9b5b61b2bab0cdfb3beb"},
+        {"stage":"reset-all","replies":[{"query":{"code":4,"index":5},"reply":"\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"},{"query":{"code":4,"index":6},"reply":"\\e]4;6;rgb:0000/cdcd/cdcd\\e\\"},{"query":{"code":10},"reply":"\\e]10;rgb:1717/5b5b/adad\\e\\"},{"query":{"code":11},"reply":"\\e]11;rgb:2020/e0e0/6060\\e\\"},{"query":{"code":12},"reply":"\\e]12;rgb:e0e0/a0a0/2020\\e\\"}],"binding":{"foreground":"#175bad","background":"#20e060","foregroundOverride":true,"backgroundOverride":true,"paletteOverrideIndices":[]},"theme":{"cursor":"#e0a020","cursorText":"#20e060","cursorOverride":true},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"705b3b68914406e22bae34190482d5fd248854ce967a9b5b61b2bab0cdfb3beb"}
+      ]
+    },
+    "whole-palette": {
+      "role": "control",
+      "label": "all 256 slots overridden, then reset with the parameterless whole-palette spelling ESC]104 BEL (a control: the pinned fixture resets slot 0 only)",
+      "term": "BEL",
+      "stages": [
+        {"stage":"baseline","replies":[{"query":{"code":4,"index":0},"reply":"\\e]4;0;rgb:0000/0000/0000\\e\\"},{"query":{"code":4,"index":15},"reply":"\\e]4;15;rgb:ffff/ffff/ffff\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:0000/0000/0000\\e\\"},{"query":{"code":4,"index":100},"reply":"\\e]4;100;rgb:8787/8787/0000\\e\\"},{"query":{"code":4,"index":231},"reply":"\\e]4;231;rgb:ffff/ffff/ffff\\e\\"},{"query":{"code":4,"index":232},"reply":"\\e]4;232;rgb:0808/0808/0808\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:eeee/eeee/eeee\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"df458f7d7c92f5f12646eb7fafece5ac55947a2709888c7edd84c338467ee3a3"},
+        {"stage":"override","replies":[{"query":{"code":4,"index":0},"reply":"\\e]4;0;rgb:0b0b/3535/ffff\\e\\"},{"query":{"code":4,"index":15},"reply":"\\e]4;15;rgb:3636/8a8a/3c3c\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:5b5b/e5e5/2f2f\\e\\"},{"query":{"code":4,"index":100},"reply":"\\e]4;100;rgb:7f7f/c1c1/ebeb\\e\\"},{"query":{"code":4,"index":231},"reply":"\\e]4;231;rgb:6e6e/5252/4444\\e\\"},{"query":{"code":4,"index":232},"reply":"\\e]4;232;rgb:9393/adad/3737\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:e6e6/dada/0c0c\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"65fd7af0d19519289758b374455d9af5fc7847a332d12ef47c7365de95f52e40"},
+        {"stage":"reset","replies":[{"query":{"code":4,"index":0},"reply":"\\e]4;0;rgb:0000/0000/0000\\e\\"},{"query":{"code":4,"index":15},"reply":"\\e]4;15;rgb:ffff/ffff/ffff\\e\\"},{"query":{"code":4,"index":16},"reply":"\\e]4;16;rgb:0000/0000/0000\\e\\"},{"query":{"code":4,"index":100},"reply":"\\e]4;100;rgb:8787/8787/0000\\e\\"},{"query":{"code":4,"index":231},"reply":"\\e]4;231;rgb:ffff/ffff/ffff\\e\\"},{"query":{"code":4,"index":232},"reply":"\\e]4;232;rgb:0808/0808/0808\\e\\"},{"query":{"code":4,"index":255},"reply":"\\e]4;255;rgb:eeee/eeee/eeee\\e\\"}],"binding":{"foreground":"#d3d3d3","background":"#000000","foregroundOverride":false,"backgroundOverride":false,"paletteOverrideIndices":[]},"theme":{"cursor":"#ffffff","cursorText":"#000000","cursorOverride":false},"cursor":{"row":8,"col":8,"visible":false,"style":2},"pixelSha256":"df458f7d7c92f5f12646eb7fafece5ac55947a2709888c7edd84c338467ee3a3"}
+      ]
+    }
+  },
+  "colorBinding": {
+    "themeName": "Default",
+    "minimumContrast": 1,
+    "reverseVideo": false,
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "cursorArgb": 4294967295,
+    "paletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+  },
+  "pinned": {
+    "pass": true,
+    "response": "{\"originalRaw\":\"\\u001b]4;0;rgb:0000/0000/0000\\u001b\\\\\",\"changedRaw\":\"\\u001b]4;0;rgb:aaaa/bbbb/cccc\\u001b\\\\\",\"restoredRaw\":\"\\u001b]4;0;rgb:0000/0000/0000\\u001b\\\\\"}",
+    "note": null,
+    "observation": {
+      "outcome": "supported",
+      "evidence": "behavior"
+    },
+    "assertions": [
+      {"kind":"positive","expected":"OSC 104 restores the prior OSC 4 color after a verified change","observed":"{\"originalRaw\":\"\\u001b]4;0;rgb:0000/0000/0000\\u001b\\\\\",\"changedRaw\":\"\\u001b]4;0;rgb:aaaa/bbbb/cccc\\u001b\\\\\",\"restoredRaw\":\"\\u001b]4;0;rgb:0000/0000/0000\\u001b\\\\\"}"}
+    ]
+  },
+  "pinnedTerminal": {
+    "outcome": "inconclusive",
+    "evidence": "none",
+    "byDesign": true,
+    "note": "inconclusive by design (evidence none): it writes nothing and reads nothing; the stock grade is carried unchanged and is not replaced by this suite"
+  },
+  "contractResult": {
+    "outcome": "supported",
+    "experiments": [
+      {"id":"pinned","role":"pinned","label":"the pinned fixture: slot 0 set to rgb:aa/bb/cc, then reset with the exact pinned spelling","controls":[{"description":"the baseline has no runtime override in any layer","passed":true},{"description":"the baseline readScreen binding equals the render theme (two App layers agree)","passed":true},{"description":"the scene is as written: text rows, steady scene colors and no reverse video","passed":true},{"description":"pinned: every query of every stage was answered","passed":true},{"description":"pinned/baseline: the exact query replies are the model's colors","passed":true},{"description":"pinned/baseline: the App's resolved colors and override metadata match","passed":true},{"description":"pinned/baseline: the render theme sources and override flags match","passed":true},{"description":"pinned/baseline: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"pinned/baseline: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"pinned/baseline: the complete theme, derived values included, equals the baseline","passed":true},{"description":"pinned/override: the exact query replies are the model's colors","passed":true},{"description":"pinned/override: the App's resolved colors and override metadata match","passed":true},{"description":"pinned/override: the render theme sources and override flags match","passed":true},{"description":"pinned/override: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"pinned/override: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"pinned/override: the override differs from the measured baseline","passed":true},{"description":"pinned/override: every overridden target differs from its baseline","passed":true},{"description":"pinned/override: the controlled render differs from the baseline render","passed":true}],"assertions":[{"description":"pinned/reset: the exact query replies are the model's colors","passed":true},{"description":"pinned/reset: the App's resolved colors and override metadata match","passed":true},{"description":"pinned/reset: the render theme sources and override flags match","passed":true},{"description":"pinned/reset: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"pinned/reset: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"pinned/reset: the complete theme, derived values included, equals the baseline","passed":true},{"description":"pinned/reset: the reset changed the controlled render","passed":true},{"description":"pinned: the final controlled render is byte-identical to the baseline render","passed":true}],"outcome":"supported"},
+      {"id":"individual-slots","role":"control","label":"five slots overridden (1, 9, 16, 200, 255); reset slot 1 alone, then 9 and 200 together, then the remaining 16 and 255, each time with the unrelated slots still overridden","controls":[{"description":"the baseline has no runtime override in any layer","passed":true},{"description":"the baseline readScreen binding equals the render theme (two App layers agree)","passed":true},{"description":"the scene is as written: text rows, steady scene colors and no reverse video","passed":true},{"description":"individual-slots: every query of every stage was answered","passed":true},{"description":"individual-slots/baseline: the exact query replies are the model's colors","passed":true},{"description":"individual-slots/baseline: the App's resolved colors and override metadata match","passed":true},{"description":"individual-slots/baseline: the render theme sources and override flags match","passed":true},{"description":"individual-slots/baseline: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"individual-slots/baseline: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"individual-slots/baseline: the complete theme, derived values included, equals the baseline","passed":true},{"description":"individual-slots/override: the exact query replies are the model's colors","passed":true},{"description":"individual-slots/override: the App's resolved colors and override metadata match","passed":true},{"description":"individual-slots/override: the render theme sources and override flags match","passed":true},{"description":"individual-slots/override: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"individual-slots/override: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"individual-slots/override: the override differs from the measured baseline","passed":true},{"description":"individual-slots/override: every overridden target differs from its baseline","passed":true},{"description":"individual-slots/override: the controlled render differs from the baseline render","passed":true}],"assertions":[{"description":"individual-slots/reset-one: the exact query replies are the model's colors","passed":true},{"description":"individual-slots/reset-one: the App's resolved colors and override metadata match","passed":true},{"description":"individual-slots/reset-one: the render theme sources and override flags match","passed":true},{"description":"individual-slots/reset-one: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"individual-slots/reset-one: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"individual-slots/reset-one: the reset changed the controlled render","passed":true},{"description":"individual-slots/reset-two: the exact query replies are the model's colors","passed":true},{"description":"individual-slots/reset-two: the App's resolved colors and override metadata match","passed":true},{"description":"individual-slots/reset-two: the render theme sources and override flags match","passed":true},{"description":"individual-slots/reset-two: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"individual-slots/reset-two: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"individual-slots/reset-two: the reset changed the controlled render","passed":true},{"description":"individual-slots/reset-rest: the exact query replies are the model's colors","passed":true},{"description":"individual-slots/reset-rest: the App's resolved colors and override metadata match","passed":true},{"description":"individual-slots/reset-rest: the render theme sources and override flags match","passed":true},{"description":"individual-slots/reset-rest: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"individual-slots/reset-rest: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"individual-slots/reset-rest: the complete theme, derived values included, equals the baseline","passed":true},{"description":"individual-slots: the final controlled render is byte-identical to the baseline render","passed":true}],"outcome":"supported"},
+      {"id":"isolation","role":"control","label":"slots 5 and 6 overridden beside the foreground, background and cursor; reset slot 5 alone, then the whole palette (ST spelling): the three dynamic colors must stay overridden","controls":[{"description":"the baseline has no runtime override in any layer","passed":true},{"description":"the baseline readScreen binding equals the render theme (two App layers agree)","passed":true},{"description":"the scene is as written: text rows, steady scene colors and no reverse video","passed":true},{"description":"isolation: every query of every stage was answered","passed":true},{"description":"isolation/baseline: the exact query replies are the model's colors","passed":true},{"description":"isolation/baseline: the App's resolved colors and override metadata match","passed":true},{"description":"isolation/baseline: the render theme sources and override flags match","passed":true},{"description":"isolation/baseline: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"isolation/baseline: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"isolation/baseline: the complete theme, derived values included, equals the baseline","passed":true},{"description":"isolation/override: the exact query replies are the model's colors","passed":true},{"description":"isolation/override: the App's resolved colors and override metadata match","passed":true},{"description":"isolation/override: the render theme sources and override flags match","passed":true},{"description":"isolation/override: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"isolation/override: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"isolation/override: the override differs from the measured baseline","passed":true},{"description":"isolation/override: every overridden target differs from its baseline","passed":true}],"assertions":[{"description":"isolation/reset-one: the exact query replies are the model's colors","passed":true},{"description":"isolation/reset-one: the App's resolved colors and override metadata match","passed":true},{"description":"isolation/reset-one: the render theme sources and override flags match","passed":true},{"description":"isolation/reset-one: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"isolation/reset-one: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"isolation/reset-all: the exact query replies are the model's colors","passed":true},{"description":"isolation/reset-all: the App's resolved colors and override metadata match","passed":true},{"description":"isolation/reset-all: the render theme sources and override flags match","passed":true},{"description":"isolation/reset-all: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"isolation/reset-all: stored text, cursor position, shape and visibility are as written","passed":true}],"outcome":"supported"},
+      {"id":"whole-palette","role":"control","label":"all 256 slots overridden, then reset with the parameterless whole-palette spelling ESC]104 BEL (a control: the pinned fixture resets slot 0 only)","controls":[{"description":"the baseline has no runtime override in any layer","passed":true},{"description":"the baseline readScreen binding equals the render theme (two App layers agree)","passed":true},{"description":"the scene is as written: text rows, steady scene colors and no reverse video","passed":true},{"description":"whole-palette: every query of every stage was answered","passed":true},{"description":"whole-palette/baseline: the exact query replies are the model's colors","passed":true},{"description":"whole-palette/baseline: the App's resolved colors and override metadata match","passed":true},{"description":"whole-palette/baseline: the render theme sources and override flags match","passed":true},{"description":"whole-palette/baseline: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"whole-palette/baseline: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"whole-palette/baseline: the complete theme, derived values included, equals the baseline","passed":true},{"description":"whole-palette/override: the exact query replies are the model's colors","passed":true},{"description":"whole-palette/override: the App's resolved colors and override metadata match","passed":true},{"description":"whole-palette/override: the render theme sources and override flags match","passed":true},{"description":"whole-palette/override: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"whole-palette/override: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"whole-palette/override: the override differs from the measured baseline","passed":true},{"description":"whole-palette/override: every overridden target differs from its baseline","passed":true},{"description":"whole-palette/override: the controlled render differs from the baseline render","passed":true}],"assertions":[{"description":"whole-palette/reset: the exact query replies are the model's colors","passed":true},{"description":"whole-palette/reset: the App's resolved colors and override metadata match","passed":true},{"description":"whole-palette/reset: the render theme sources and override flags match","passed":true},{"description":"whole-palette/reset: default markers, palette-indexed and literal cells resolve to the model","passed":true},{"description":"whole-palette/reset: stored text, cursor position, shape and visibility are as written","passed":true},{"description":"whole-palette/reset: the complete theme, derived values included, equals the baseline","passed":true},{"description":"whole-palette/reset: the reset changed the controlled render","passed":true},{"description":"whole-palette: the final controlled render is byte-identical to the baseline render","passed":true}],"outcome":"supported"}
+    ]
+  },
+  "conclusion": {
+    "outcome": "supported",
+    "evidence": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels",
+    "grading": "pinned-termless-plus-contract-v1",
+    "pinnedTermless": "supported",
+    "pinnedTerminal": "inconclusive-by-design",
+    "scope": "exact fenced query replies, the App-resolved colors and override metadata, stored default markers, palette-indexed and literal cells, the cursor and the controlled offscreen render at a fixed synthetic clock; real-time cadence, desktop appearance, selection and pointer colors, Kitty named colors and alternate-screen or DECSTR clearing of overrides are not claimed"
+  }
+}

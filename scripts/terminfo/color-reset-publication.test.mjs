@@ -157,7 +157,7 @@ test('the receipt binds the run, adapters and counts, and every predecessor and 
     assert.equal(receipt.colorResetEvidence.sha256, hash(JSON.stringify(report, null, 2) + '\n'));
     assert.equal(receipt.colorResetEvidence.runSha256, hash(JSON.stringify(run) + '\n'));
     assert.equal(summary.retained.colorResetJournalSha256, hash(report.snapshots.map(frame => JSON.stringify(frame) + '\n').join('')));
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v35');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v36');
     assert.equal(receipt.fixtureRemoved, true);
     const predecessors = benchmarkSuites.slice(0, benchmarkSuites.findIndex(item => item.suite === 'color-reset'));
     const expected = [];
