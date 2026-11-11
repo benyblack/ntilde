@@ -7,7 +7,10 @@ WORKFLOW = Path(__file__).resolve().parents[2] / '.github/workflows/ci.yml'
 TESTS = ['ownership', 'private-clipboard-request', 'private-clipboard-source',
          'private-clipboard-controller', 'private-clipboard-bridge',
          'private-clipboard-worker', 'private-clipboard-collector',
-         'private-clipboard-capture', 'private-clipboard-errors', 'private-clipboard-receipt']
+         'private-clipboard-capture', 'private-clipboard-errors', 'private-clipboard-receipt',
+         # The schema12 receipt tests, split over three files so they run in parallel processes.
+         'private-clipboard-receipt-refusals', 'private-clipboard-receipt-prefix']
+TERMINFO = WORKFLOW.parents[2] / 'scripts/terminfo'
 
 
 def jobs(text):
@@ -27,7 +30,8 @@ def validate(text):
     assert 'timeout-minutes: 10' in lane and "node-version: '24'" in lane
     assert 'os: [windows-latest, ubuntu-latest]' in lane and 'fail-fast: false' in lane
     for name in TESTS:
-        assert 'scripts/terminfo/' + name + '.test.mjs' in lane, 'missing test ' + name
+        # Whole names: private-clipboard-receipt must not count as present through private-clipboard-receipt-prefix.
+        assert re.search(r'[ /]' + re.escape(name) + r'\.test\.mjs(\s|$)', lane), 'missing test ' + name
     needs = re.search(r'^    needs: \[([^\]]+)\]', rollup, re.M)
     assert needs and 'private_clipboard_owned' in [value.strip() for value in needs[1].split(',')]
     assert 'if: ${{ always() }}' in rollup
@@ -40,6 +44,10 @@ def main():
     """Check the real workflow, then prove every deliberate weakening fails without running CI or a desktop."""
     real = WORKFLOW.read_text()
     validate(real)
+    # No other job runs these files, so one this list does not name - a further split, say - would
+    # never run in CI.
+    unlisted = sorted(path.name for path in TERMINFO.glob('private-clipboard*.test.mjs') if path.name[:-len('.test.mjs')] not in TESTS)
+    assert not unlisted, f'private clipboard test files the required lane does not run: {unlisted}'
     mutants = {
         'removed job': real.replace('\n  private_clipboard_owned:\n', '\n  private_clipboard_removed:\n'),
         'conditional job': real.replace('  private_clipboard_owned:\n', '  private_clipboard_owned:\n    if: false\n'),
@@ -47,6 +55,8 @@ def main():
         'missing result': real.replace('needs.private_clipboard_owned.result', 'needs.private_clipboard_owned.outputs'),
         'ignored failure': real.replace('[ "$clipboard" = success ] ||', '[ true ] ||'),
         'lost full finalizer': real.replace(' scripts/terminfo/private-clipboard-receipt.test.mjs', ''),
+        'lost finalizer refusals': real.replace(' scripts/terminfo/private-clipboard-receipt-refusals.test.mjs', ''),
+        'lost finalizer prefix checks': real.replace(' scripts/terminfo/private-clipboard-receipt-prefix.test.mjs', ''),
         'ignored step failure': real.replace('name: Source-pinned callbacks, parent controls and complete schema12 receipt\n        shell: bash\n',
                                             'name: Source-pinned callbacks, parent controls and complete schema12 receipt\n        shell: bash\n        continue-on-error: true\n'),
     }
