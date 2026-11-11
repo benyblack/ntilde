@@ -87,9 +87,9 @@ for (const [label, options, failed] of osc8Refusals) {
     });
 }
 
-test('OSC 8: a link-open that is ignored leaves the pinned termless verdict inconclusive (no link metadata) while the effect contract is unsupported, never supported', () => {
+test('OSC 8: a link-open ignored at the prepared stock read leaves the pinned termless verdict and the effect contract inconclusive, never supported', () => {
     const report = build(adjusting('extensions.osc8/stock', 'pinned', state => { state.runs = []; }));
-    assert.deepEqual(outcomes(report)[1], ['inconclusive', 'unsupported'].map((value, index) => index === 0 ? value : 'unsupported'.replace('unsupported', report.cases[1].effectContract.outcome)));
+    assert.deepEqual(outcomes(report)[1], ['inconclusive', 'inconclusive']);
     assert.equal(report.cases[1].conclusion.outcome, 'inconclusive');
     assert.equal(report.cases[1].effectContract.outcome, 'inconclusive', 'the prepared stock read did not match the oracle, so no conclusive grade');
 });
@@ -117,8 +117,8 @@ const osc7Refusals = [
     ['no update after the first OSC 7', adjusting('extensions.osc7-cwd/effect', 'first', state => { state.cwd = '/ntilde-qa/osc78-base'; }), 'first-update'],
     ['a stale second update that still reports the first path', adjusting('extensions.osc7-cwd/effect', 'second', state => { state.cwd = first; }), 'fresh-second-update'],
     ['a second update that reports the baseline again', adjusting('extensions.osc7-cwd/effect', 'second', state => { state.cwd = '/ntilde-qa/osc78-base'; }), 'fresh-second-update'],
-    ['an encoded space that is not decoded', adjusting('extensions.osc7-cwd/space', 'encoded', state => { state.cwd = space.replace(' ', '%20'); }), 'encoded-space'],
-    ['an encoded space that is dropped', adjusting('extensions.osc7-cwd/space', 'encoded', state => { state.cwd = space.replace(' ', ''); }), 'encoded-space'],
+    ['an encoded space that is not decoded', adjusting('extensions.osc7-cwd/space', 'encoded', state => { state.cwd = space.replaceAll(' ', '%20'); }), 'encoded-space'],
+    ['an encoded space that is dropped', adjusting('extensions.osc7-cwd/space', 'encoded', state => { state.cwd = space.replaceAll(' ', ''); }), 'encoded-space'],
     ['a host component left in the path', adjusting('extensions.osc7-cwd/effect', 'first', state => { state.cwd = 'localhost' + first; }), 'first-update'],
     ['a baseline that is not restored', adjusting('extensions.osc7-cwd/effect', 'restored', state => { state.cwd = `/ntilde-qa/osc7-${short}/second`; }), 'restoration-to-baseline'],
 ];
@@ -192,7 +192,7 @@ test('edited frames are refused: a changed digest, a changed hyperlink run and a
 });
 
 test('a wrong fixture is refused: changed recorded feeds, a changed barrier or a changed read kind', () => {
-    const cases = [run => { run.experiments[1].feeds[2] = run.experiments[1].feeds[2].replace('first', 'forged'); },
+    const cases = [run => { run.experiments[1].feeds[2] = run.experiments[1].feeds[2].replaceAll('first', 'forged'); },
         run => { run.experiments[0].barriers[0] = '\x1b[?9;9c'; }, run => { run.experiments[7].reads[0].kind = 'other'; },
         run => { run.experiments[7].reads[1].cursor = [3, 3]; }, run => { run.experiments.pop(); }, run => { run.experiments.reverse(); }];
     for (const change of cases) {

@@ -19,7 +19,7 @@ const load = () => cached ??= (() => {
     const summary = read('summary.json'), run = read('run-log.json'), common = read('journal-common.json');
     const frames = [common.frames.start, common.frames.bind];
     for (const experiment of run.experiments) {
-        const journal = read(`journal-${experiment.caseId.replace('/', '-')}.json`);
+        const journal = read(`journal-${experiment.caseId.replaceAll('/', '-')}.json`);
         assert.equal(journal.caseId, experiment.caseId);
         assert.equal(journal.firstSnapshot, frames.length);
         assert.equal(journal.frames.length, experiment.reads.length);
