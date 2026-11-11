@@ -66,10 +66,10 @@ selected and restored the same way. The App's `handled`/`inputSubmitted`/`textHa
 
 ## Measurement
 
-Scripts revision `f50245da` (full SHA in `summary.json`); App source revision `de5d921e` (the last commit that touched `src/`, the merged Core-gap change), Release sidecar built
-from that tree with the repository wrappers (`artifacts/sidecar-routed-input`). Owned run `b92a7063b3007c5573d59a7621659db0`, receipt schema 42,
+Scripts revision `91f0f63a` (full SHA in `summary.json`); App source revision `de5d921e` (the last commit that touched `src/`, the merged Core-gap change), Release sidecar built
+from that tree with the repository wrappers (`artifacts/sidecar-routed-input`). Owned run `aee54a96a4efae23d4e9189b11259e35`, receipt schema 42,
 source policy v36, App version 0.13.0 (operator supplied; not independently verified), executable SHA-256 `f5814e51…`, Node `v24.22.2`, macOS
-arm64, stock collector run `4d473b5aee48b878d240a2827498aa87`, measured 2026-11-11T09:59Z under the shared desktop-collection lock. Every one of the
+arm64, stock collector run `5f9325e8e35e29392bc23e20a204ee3e`, measured 2026-11-11T10:05Z under the shared desktop-collection lock. Every one of the
 26 earlier suites in the same-run table, both finding suites and the exact-query suite (33 matched, 7 mismatched, unchanged) reconfirmed in the same run
 with the outcomes of their own publications; the receipt re-derives all of them.
 
@@ -83,7 +83,9 @@ with the outcomes of their own publications; the receipt re-derives all of them.
    a required `textHandled` fact for paired events); its evidence stays in the ignored local run directory.
 4. Run `c1fc366b`, scripts `a09622ef`, source policy v35 / receipt 41: complete, all 60 matched, all three supported. Superseded because the Core-gap batch (PR 932)
    merged first and claimed v35 / receipt 41; this work was restacked onto it and re-measured as v36 / receipt 42 (evidence in the ignored local run directory).
-5. The published run.
+5. Run `b92a7063`, scripts `f50245da`, policy v36 / receipt 42: complete, all 60 matched. Re-measured because the final review found that a grid below the plan's
+   97 columns turned the earlier typed input-unavailable fallback into a failed run; the layer now records a typed unavailable marker (receipt checks and tests added).
+6. The published run.
 
 ## Layout and re-derivation
 

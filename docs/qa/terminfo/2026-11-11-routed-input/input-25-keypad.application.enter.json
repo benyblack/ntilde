@@ -5,13 +5,13 @@
     "index": 25,
     "caseId": "input.keypad.application.enter",
     "observed": {
-      "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
-      "runId": "b92a7063b3007c5573d59a7621659db0",
+      "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+      "runId": "aee54a96a4efae23d4e9189b11259e35",
       "request": {
         "modifiers": 0,
         "kind": "keyDown",
         "key": "enter",
-        "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19"
+        "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf"
       },
       "rpcStarted": true,
       "app": {
@@ -32,26 +32,26 @@
       },
       "before": {
         "app": {
-          "pid": 86919,
-          "ppid": 86811,
+          "pid": 13378,
+          "ppid": 13351,
           "uid": 501,
           "tty": "??",
           "executable": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde"
         },
         "worker": {
-          "pid": 86994,
-          "ppid": 86919,
+          "pid": 13383,
+          "ppid": 13378,
           "uid": 501,
           "tty": "ttys012",
           "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
         },
-        "appCommand": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde --ntilde-terminfo-owner=b92a7063b3007c5573d59a7621659db0 --ntilde-terminfo-private-clipboard=b92a7063b3007c5573d59a7621659db0\n",
-        "workerCommand": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node /private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-1KrNJz/scripts/terminfo/worker.mjs /Users/behnam/.ntilde-qa/nt-PVe3ZL/worker.json --ntilde-terminfo-worker=b92a7063b3007c5573d59a7621659db0\n",
+        "appCommand": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde --ntilde-terminfo-owner=aee54a96a4efae23d4e9189b11259e35 --ntilde-terminfo-private-clipboard=aee54a96a4efae23d4e9189b11259e35\n",
+        "workerCommand": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node /private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-QtYgRt/scripts/terminfo/worker.mjs /Users/behnam/.ntilde-qa/nt-ygedG2/worker.json --ntilde-terminfo-worker=aee54a96a4efae23d4e9189b11259e35\n",
         "pane": {
-          "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
-          "tabId": "e8a23002-c8d7-47f5-a631-7aba2d2a2424",
-          "title": "MD-base-b92a7063",
-          "profileName": "terminfo disposable worker b92a7063b3007c5573d59a7621659db0",
+          "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+          "tabId": "724b1c2c-c4da-4cef-8710-f186de26c556",
+          "title": "MD-base-aee54a96",
+          "profileName": "terminfo disposable worker aee54a96a4efae23d4e9189b11259e35",
           "kind": "local",
           "rows": 40,
           "cols": 140,
@@ -67,26 +67,26 @@
       },
       "after": {
         "app": {
-          "pid": 86919,
-          "ppid": 86811,
+          "pid": 13378,
+          "ppid": 13351,
           "uid": 501,
           "tty": "??",
           "executable": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde"
         },
         "worker": {
-          "pid": 86994,
-          "ppid": 86919,
+          "pid": 13383,
+          "ppid": 13378,
           "uid": 501,
           "tty": "ttys012",
           "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
         },
-        "appCommand": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde --ntilde-terminfo-owner=b92a7063b3007c5573d59a7621659db0 --ntilde-terminfo-private-clipboard=b92a7063b3007c5573d59a7621659db0\n",
-        "workerCommand": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node /private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-1KrNJz/scripts/terminfo/worker.mjs /Users/behnam/.ntilde-qa/nt-PVe3ZL/worker.json --ntilde-terminfo-worker=b92a7063b3007c5573d59a7621659db0\n",
+        "appCommand": "/Users/behnam/.codex/worktrees/terminfo-routed-input/ntilde/artifacts/sidecar-routed-input/Ntilde --ntilde-terminfo-owner=aee54a96a4efae23d4e9189b11259e35 --ntilde-terminfo-private-clipboard=aee54a96a4efae23d4e9189b11259e35\n",
+        "workerCommand": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node /private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-QtYgRt/scripts/terminfo/worker.mjs /Users/behnam/.ntilde-qa/nt-ygedG2/worker.json --ntilde-terminfo-worker=aee54a96a4efae23d4e9189b11259e35\n",
         "pane": {
-          "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
-          "tabId": "e8a23002-c8d7-47f5-a631-7aba2d2a2424",
-          "title": "MD-base-b92a7063",
-          "profileName": "terminfo disposable worker b92a7063b3007c5573d59a7621659db0",
+          "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
+          "tabId": "724b1c2c-c4da-4cef-8710-f186de26c556",
+          "title": "MD-base-aee54a96",
+          "profileName": "terminfo disposable worker aee54a96a4efae23d4e9189b11259e35",
           "kind": "local",
           "rows": 40,
           "cols": 140,
@@ -101,18 +101,18 @@
         }
       },
       "postVerified": true,
-      "observedAt": "2026-11-11T09:59:18.592Z"
+      "observedAt": "2026-11-11T10:04:35.442Z"
     }
   },
   "control": {
     "index": 52,
     "kind": "input-control",
-    "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
+    "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
     "screen": {
       "rows": 40,
       "cols": 140,
       "lines": [
-        "NTILDE_IN_b92a7063b3007c5573d59a7621659db0",
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
         "",
         "",
         "",
@@ -195,7 +195,7 @@
       "rows": 40,
       "cols": 140,
       "lines": [
-        "NTILDE_IN_b92a7063b3007c5573d59a7621659db0",
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
         "",
         "",
         "",
@@ -274,29 +274,29 @@
         "lines": []
       }
     },
-    "sha256": "720543475b0abf33e9fa5c55e40cf2aef156872b3a891e351ed78db1189a4f9b",
-    "afterSha256": "720543475b0abf33e9fa5c55e40cf2aef156872b3a891e351ed78db1189a4f9b",
+    "sha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
+    "afterSha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
     "caseId": "input.keypad.application.enter",
     "actionIndex": null,
     "capture": {
       "hex": "1b5b3f36363b3124791b5b3f393b3224791b5b3f313030303b3224791b5b3f313030323b3224791b5b3f313030333b3224791b5b3f313030363b3224791b5b3f3075",
       "byteLength": 66,
-      "barrier": "\u001b[?45234;0$y\u001b[?50763;0$y",
+      "barrier": "\u001b[?60712;0$y\u001b[?37230;0$y",
       "nonces": [
-        45234,
-        50763
+        60712,
+        37230
       ]
     }
   },
   "read": {
     "index": 53,
     "kind": "input-read",
-    "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
+    "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
     "screen": {
       "rows": 40,
       "cols": 140,
       "lines": [
-        "NTILDE_IN_b92a7063b3007c5573d59a7621659db0",
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
         "",
         "",
         "",
@@ -379,7 +379,7 @@
       "rows": 40,
       "cols": 140,
       "lines": [
-        "NTILDE_IN_b92a7063b3007c5573d59a7621659db0",
+        "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
         "",
         "",
         "",
@@ -458,17 +458,17 @@
         "lines": []
       }
     },
-    "sha256": "720543475b0abf33e9fa5c55e40cf2aef156872b3a891e351ed78db1189a4f9b",
-    "afterSha256": "720543475b0abf33e9fa5c55e40cf2aef156872b3a891e351ed78db1189a4f9b",
+    "sha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
+    "afterSha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
     "caseId": "input.keypad.application.enter",
     "actionIndex": 25,
     "capture": {
       "hex": "1b4f4d",
       "byteLength": 3,
-      "barrier": "\u001b[?51638;0$y\u001b[?55852;0$y",
+      "barrier": "\u001b[?54332;0$y\u001b[?38827;0$y",
       "nonces": [
-        51638,
-        55852
+        54332,
+        38827
       ]
     }
   }

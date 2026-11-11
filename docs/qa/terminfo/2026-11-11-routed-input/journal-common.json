@@ -2,39 +2,39 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
-    "runId": "b92a7063b3007c5573d59a7621659db0",
+    "runId": "aee54a96a4efae23d4e9189b11259e35",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-routed-input-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-      "bundleSha256": "b1c9d9c40ba6c74f11ee949cc7f97c8175ce772077403e062f1f312344f1e237",
+      "bundleSha256": "3c6225df205d82cc2b9e9fb1727121428deb2d1db7d14f963170cd248391976b",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 input.x10-mouse, input.button-event-mouse and modes.application-keypad termless code (always inconclusive by design: mouseInputProbe validates no generated event or report; the keypad probe returns notTestedResult) replayed over mode values the child itself received as DECRQM replies, preserved beside separately identified effect contracts graded from 60 declared Avalonia events routed through the production App input path in a disposable direct-local pane: exact child-received bytes from an independent raw stdin reader, literal protocol expectations cross-checked by an independent oracle, controls under the other tracking protocols and the numeric keypad, ordered FIFO capture barriers, and restoration. Generated App events are not physical keyboard or pointer input, App admission is not child receipt, and direct-local delivery does not qualify SSH, mux or Windows; no stock grades.",
     "inputSuiteId": "ntilde-owned-routed-input-v2",
-    "inputReportSha256": "d49e041e7cb7efec26c0ec811c8f5f3db351205a72d5e784a2d085efd483f976",
+    "inputReportSha256": "75a3c5d9f3aff76faf45ecf5b492175c12678c83e7c1c5bfbaa395d503c38c1e",
     "initialSnapshot": 0,
     "restoredSnapshot": 122
   },
   "inputReportHeader": {
     "schemaVersion": 2,
     "suiteId": "ntilde-owned-routed-input-v2",
-    "runId": "b92a7063b3007c5573d59a7621659db0",
+    "runId": "aee54a96a4efae23d4e9189b11259e35",
     "scope": "60 standalone declared Avalonia events in the benchmark plan (input.x10-mouse, input.button-event-mouse, modes.application-keypad); paired complete state, independent raw local-child bytes, source-selected mode queries and recorded (not asserted) event bytes. No native keyboard, remote/mux transport, Windows runtime or stock-grade claim.",
     "initialSnapshot": 0,
     "restoredSnapshot": 122,
     "observationCount": 60
   },
-  "inputReportSha256": "d49e041e7cb7efec26c0ec811c8f5f3db351205a72d5e784a2d085efd483f976",
+  "inputReportSha256": "75a3c5d9f3aff76faf45ecf5b492175c12678c83e7c1c5bfbaa395d503c38c1e",
   "seal": {
     "failed": false,
     "disposed": true,
     "attempts": 122,
     "lastAttempt": {
-      "hex": "1b5b3f36363b3224791b5b3f393b3224791b5b3f313030303b3224791b5b3f313030323b3224791b5b3f313030333b3224791b5b3f313030363b3224791b5b3f30751b5b3f34373635323b3024791b5b3f33373034343b302479",
+      "hex": "1b5b3f36363b3224791b5b3f393b3224791b5b3f313030303b3224791b5b3f313030323b3224791b5b3f313030333b3224791b5b3f313030363b3224791b5b3f30751b5b3f34313038383b3024791b5b3f34383230393b302479",
       "nonces": [
-        47652,
-        37044
+        41088,
+        48209
       ],
       "fenceRequested": true,
       "completed": true,
@@ -45,7 +45,7 @@
     "start": {
       "index": 0,
       "kind": "input-start",
-      "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
+      "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
       "screen": {
         "rows": 40,
         "cols": 140,
@@ -221,12 +221,12 @@
     "bind": {
       "index": 1,
       "kind": "input-bind",
-      "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
+      "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_IN_b92a7063b3007c5573d59a7621659db0",
+          "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
           "",
           "",
           "",
@@ -309,7 +309,7 @@
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_IN_b92a7063b3007c5573d59a7621659db0",
+          "NTILDE_IN_aee54a96a4efae23d4e9189b11259e35",
           "",
           "",
           "",
@@ -388,24 +388,24 @@
           "lines": []
         }
       },
-      "sha256": "720543475b0abf33e9fa5c55e40cf2aef156872b3a891e351ed78db1189a4f9b",
-      "afterSha256": "720543475b0abf33e9fa5c55e40cf2aef156872b3a891e351ed78db1189a4f9b",
+      "sha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
+      "afterSha256": "e8debe6d38dc429817d2f3aab7a127f88f5368dbeac1de5f762167a1596b14e4",
       "caseId": null,
       "actionIndex": null,
       "capture": {
         "hex": "",
         "byteLength": 0,
-        "barrier": "\u001b[?44782;0$y\u001b[?52542;0$y",
+        "barrier": "\u001b[?40507;0$y\u001b[?42213;0$y",
         "nonces": [
-          44782,
-          52542
+          40507,
+          42213
         ]
       }
     },
     "finish": {
       "index": 122,
       "kind": "input-finish",
-      "paneId": "9ac5c6c9-503b-4177-a8b9-9d1a0b1c3b19",
+      "paneId": "28a25d3b-cd21-4932-8b36-ec923c2089bf",
       "screen": {
         "rows": 40,
         "cols": 140,
@@ -579,10 +579,10 @@
       "capture": {
         "hex": "1b5b3f36363b3224791b5b3f393b3224791b5b3f313030303b3224791b5b3f313030323b3224791b5b3f313030333b3224791b5b3f313030363b3224791b5b3f3075",
         "byteLength": 66,
-        "barrier": "\u001b[?47652;0$y\u001b[?37044;0$y",
+        "barrier": "\u001b[?41088;0$y\u001b[?48209;0$y",
         "nonces": [
-          47652,
-          37044
+          41088,
+          48209
         ]
       }
     }

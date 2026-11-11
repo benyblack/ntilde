@@ -217,13 +217,14 @@ test('revisions, attempts (the superseded ones keep their actual reasons) and fi
     const { summary } = load();
     assert.match(summary.appRevision, /^[0-9a-f]{40}$/);
     assert.match(summary.scriptsRevision, /^[0-9a-f]{40}$/);
-    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [true, false, true, true, true]);
+    assert.deepEqual(summary.attempts.map(item => item.receiptCompleted), [true, false, true, true, true, true]);
     assert.equal(summary.attempts.at(-1).runId, summary.context.runId);
     assert.equal(summary.attempts.at(-1).scriptsRevision, summary.scriptsRevision);
     assert.match(summary.attempts[0].outcome, /once per cell change/);
     assert.match(summary.attempts[0].outcome, /clears the one-shot text correlation/);
     assert.match(summary.attempts[1].outcome, /Unexpected input during cell collection/);
     assert.match(summary.attempts[3].outcome, /Core-gap batch \(PR 932\) merged first/);
+    assert.match(summary.attempts[4].outcome, /typed input-unavailable fallback/);
     const first = read('superseded/attempt-1-routed-input-observations.json');
     assert.equal(first.runId, summary.attempts[0].runId);
     assert.deepEqual(first.cases.map(item => item.effectContract.outcome), ['supported', 'unsupported', 'unsupported']);
