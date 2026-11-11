@@ -39,6 +39,8 @@ const good = () => {
     roles['save:restored'] = frame(['AB'], [0, 2]);
     roles['control:ind'] = frame(['ABC'], [1, 3]); roles['control:nel'] = frame(['ABC'], [1, 0]);
     roles['control:cr'] = frame(['ABC'], [0, 0]);
+    roles['control:ind-interior:setup'] = frame([], [2, 3]);
+    roles['control:ind-interior'] = frame([], [3, 3]);
     return roles;
 };
 
@@ -68,6 +70,7 @@ test('bad setup, missing displacement, wrong controls and altered modes refuse g
     for (const mutate of [
         r => { r['text.cr:setup'].screen.cursorCol = 1; },
         r => { r['save:displaced'].screen.cursorRow = 0; },
+        r => { r['control:ind-interior:setup'].screen.cursorRow = 0; },
         r => { r['text.newline:setup'].screen.bufferState.insertMode = true; },
     ]) { const roles = good(); mutate(roles); assert.throws(() => gradeTextCursor(roles)); }
 });

@@ -45,6 +45,8 @@ export function textCursorPlan() {
         add(reset + marker, 'control:' + role + ':setup');
         add(fixture, 'control:' + role);
     }
+    add(reset + marker + '\x1b[3;4H', 'control:ind-interior:setup');
+    add('\x1bD', 'control:ind-interior');
     return plan;
 }
 
@@ -71,10 +73,12 @@ export function gradeTextCursor(roles) {
     for (const role of ['save:setup', 'control:ind:setup', 'control:nel:setup', 'control:cr:setup'])
         check(isState(roles[role], [], [0, 0]), role + ' invalid');
     check(isState(roles['save:displaced'], ['AB'], [4, 4]), 'save displacement invalid');
+    check(isState(roles['control:ind-interior:setup'], [], [2, 3]), 'IND interior setup invalid');
     return Object.fromEntries(cases.map(([id, fixture, lines, cursor]) => [id, {
         outcome: isState(roles[id + ':result'], lines, cursor)
             && (id !== 'cursor.save-restore' || isState(roles['save:restored'], ['AB'], [0, 2]))
-            && (id !== 'text.index' || isState(roles['control:ind'], ['ABC'], [1, 3]))
+            && (id !== 'text.index' || (isState(roles['control:ind'], ['ABC'], [1, 3])
+                && isState(roles['control:ind-interior'], [], [3, 3])))
             && (id !== 'text.next-line' || isState(roles['control:nel'], ['ABC'], [1, 0]))
             && (id !== 'text.cr' || isState(roles['control:cr'], ['ABC'], [0, 0])) ? 'supported' : 'unsupported',
         id: 'ntilde-core-text-cursor-effect-v1', fixture, expected: { lines, cursor }, layer: 'stored physical cells and cursor',
