@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "cc189a526ec881e26116c5337c595d2a",
+    "appRevision": "7858ae3be095284b7228acc2f495e5f5cc71b11a",
+    "scriptsRevision": "b6590c554ea6b01acad042d84a63a4dd3f761dc3",
+    "receiptSchema": 50,
+    "sourcePolicy": "readonly-owned-source-graph-v44"
+  },
+  "ownedArchiveSha256": "84163592e1570ac0ee370fe3f199b2a96814d45f1054fbedfecd519f0b015c61",
+  "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
+  "attempts": [
+    {
+      "runId": "78338e3ffc94a4c8df185489c50042f5",
+      "status": "superseded",
+      "reason": "Aborted by the collector at the first wide-character read (\"Attribute columns do not match the ASCII viewport\"): the attribute-string and resolved-color projections describe the ASCII viewport and cannot represent a wide row. The reverse-video fixture had already completed (DECRPM 2, 1, 2 beside the stored readback true only after DECSET 5) and the original state was restored, but the run is not a complete measurement. Fixed by observing the two wide-cell frames through the stored-cell projection only, which changes measured scripts.",
+      "archive": "attempt-1-superseded.zip",
+      "sha256": "27a2cd1a669223410a7096e4483452948883692caa319e084938cecea32ea8ca"
+    },
+    {
+      "runId": "6c95e1d2618ab87b9853e74b902644e1",
+      "status": "superseded",
+      "reason": "Complete and passing on source policy v42 (receipt 48), measured from scripts 262f62c5 before the concurrently merged wrapping layer (#948) took that policy and receipt slot. Replaced because restacking on the merged chain changes the measured source graph; the same two rows passed with the same controls.",
+      "archive": "attempt-2-superseded.zip",
+      "sha256": "9e8bfb7c51a87e9587947f9c09e715fc5fa3cce825020d90fb47b581c2ba5404"
+    },
+    {
+      "runId": "94d639c82f83dda2056ab9442a538bdc",
+      "status": "superseded",
+      "reason": "Complete and passing on the wrapping chain (policy v43, receipt 49), measured from scripts 3ab711fb. Replaced because a Sonar finding (a nested ternary in the measured suite module) was fixed there; measured scripts must be the final committed scripts.",
+      "archive": "attempt-3-superseded.zip",
+      "sha256": "9c833fc3d43a6a1b4862a7f0c4ed51280c6b73228a2d4d46e4f172387317c805"
+    },
+    {
+      "runId": "ecd56ae1e7c1ef2b672cbc3d0d84e44e",
+      "status": "superseded",
+      "reason": "Complete and passing on the wrapping chain, measured from scripts 6391aeb3. Replaced because a Codex review finding (restoration after a failed fence must use the bounded cleanup path, not an ordinary write that a failed fence rejects) changed the measured collector; measured scripts must be the final committed scripts.",
+      "archive": "attempt-4-superseded.zip",
+      "sha256": "3c90ede8b7c74ce64f5ecc4f7c2330c33fd291d8c95c86d8951b2e71210cec0c"
+    },
+    {
+      "runId": "13c63c9340fd46616a51a8083ad198f2",
+      "status": "superseded",
+      "reason": "Complete and passing on the wrapping chain (policy v43, receipt 49), measured from scripts 7ea5192b and reviewed clean by Codex. Replaced because the concurrently merged SGR reset raster layer (#949) took policy v43 and receipt 49 and this branch was restacked onto it (policy v44, receipt 50); the same two rows passed with the same controls.",
+      "archive": "attempt-5-superseded.zip",
+      "sha256": "46d1b4f7d1e7f04b89182aa196ec1fce005fa169c87d793dd63177cca0a86a23"
+    },
+    {
+      "runId": "cc189a526ec881e26116c5337c595d2a",
+      "status": "complete",
+      "reason": "Both exact specimens, the controls (as-found state, known mode-off, per-cell inverse, unrelated modes, clean home after a stale wide cell, narrow controls), the restoration of the original DECSCNM state and the merged predecessor suites (including the wrapping geometry phase and the SGR reset raster renders) completed; receipt, cleanup and trusted re-derivation verified."
+    }
+  ]
+}

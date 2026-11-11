@@ -150,3 +150,26 @@ test('a color exchange writes the caller\'s exact BEL or ST request and retains 
     await assert.rejects(another.colorExchange('x'.repeat(65), { code: 10 }), /Invalid owned color query request/);
     await assert.rejects(another.colorExchange('\x1b]10;?\x07', { code: 99 }), /Invalid owned color query/);
 });
+
+test('a caller-parsed exchange writes the exact request and the fence accepts only what the parser accepts', async () => {
+    const { modeReportQuery, parseModeReportFrame } = await import('./mode-report.mjs');
+    const exchange = async (chunks, mode = 5) => {
+        const input = new Input(); let written;
+        const fence = terminalFence(input, { write(value, callback) { written = value; callback(); } });
+        const result = fence.exchange(modeReportQuery(mode), bytes => parseModeReportFrame(bytes, mode));
+        assert.equal(written, `\x1b[?${mode}$p\x1b[c`);
+        for (const chunk of chunks) input.emit('data', Buffer.from(chunk));
+        try { return await result; } finally { fence.dispose(); }
+    };
+    // A DECRPM reply split across reads, then the DA barrier.
+    const split = await exchange(['\x1b[?5;', '1$y', '\x1b[?62;4c']);
+    assert.equal(split.reply.raw, '\x1b[?5;1$y'); assert.equal(split.reply.status, 1); assert.equal(split.barrier, '\x1b[?62;4c');
+    // A DA barrier alone is an explicit absence, never a reply.
+    assert.deepEqual(await exchange(['\x1b[?62;4c']), { barrier: '\x1b[?62;4c', reply: null });
+    // A reply for another mode, a malformed status, or stray bytes are refused.
+    for (const bad of ['\x1b[?7;1$y\x1b[?62;4c', '\x1b[?5;9$y\x1b[?62;4c', 'x\x1b[?62;4c']) await assert.rejects(exchange([bad]), /different mode|status|Unexpected|Invalid/);
+    // The fence rejects a malformed exchange request without writing it.
+    const input = new Input(), fence = terminalFence(input, { write() { throw new Error('written'); } });
+    for (const args of [['', () => null], ['x'.repeat(65), () => null], ['x', null], [5, () => null]]) await assert.rejects(fence.exchange(...args), /Invalid owned exchange/);
+    fence.dispose();
+});

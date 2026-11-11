@@ -290,5 +290,8 @@
     "coreWrapGeometrySourceSha256": "core-wrap-geometry.mjs",
     "coreWrapReceiptSourceSha256": "core-wrap-receipt.mjs",
     "sgrRasterSourceSha256": "core-sgr-raster.mjs",
-    "sgrRasterReceiptSourceSha256": "core-sgr-raster-receipt.mjs"
+    "sgrRasterReceiptSourceSha256": "core-sgr-raster-receipt.mjs",
+    "modeReportSourceSha256": "mode-report.mjs",
+    "reverseWideSourceSha256": "core-reverse-wide.mjs",
+    "reverseWideReceiptSourceSha256": "core-reverse-wide-receipt.mjs"
 }
