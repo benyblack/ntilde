@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inputPlanV1, inputPlanV2, inputPlanForPolicy, inputAttemptCount, inputFrameCount } from './input-plan.mjs';
 import { inputReset, makeInputCases } from './input-cases.mjs';
-import { benchmarkIds, makeRoutedInputCases } from './routed-input-cases.mjs';
+import { benchmarkIds, makeRoutedInputCases, minimumRoutedInputColumns } from './routed-input-cases.mjs';
 import { oracleDisagreements } from './routed-input-contracts.mjs';
 import { queryPriorCounts } from './queries.mjs';
 
@@ -72,9 +72,14 @@ test('keypad plan separates numeric controls, the pinned ESC = / ESC > pair, phy
 });
 
 test('geometry below the pointer cell is refused, never replaced by a smaller test', () => {
-    for (const [rows, cols] of [[5, 100], [129, 100], [24, 95], [24, 257], [40, 256], [NaN, 100], [24, 96.5]]) {
+    for (const [rows, cols] of [[5, 100], [129, 100], [24, 95], [24, 96], [24, 257], [40, 256], [NaN, 100], [24, 96.5]]) {
         assert.throws(() => makeRoutedInputCases(rows, cols), error => error.code === 'inputGeometryUnavailable');
     }
+    // The narrowest admitted grid holds every planned pointer cell (the held-button motion in a fresh cell is column 97).
+    const narrow = makeRoutedInputCases(6, minimumRoutedInputColumns);
+    assert.equal(minimumRoutedInputColumns, 97);
+    assert.equal(Math.max(...narrow.filter(item => item.event.column).map(item => item.event.column)), 97);
+    assert.ok(narrow.every(item => !(item.event.column > 97 || item.event.row > 6)));
 });
 
 test('plan selection keeps the frozen v1 foundation for earlier source policies', () => {

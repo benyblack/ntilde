@@ -10,6 +10,7 @@ export const ownedRoutedInputPolicy = 'one declared Avalonia event at a time in 
     + 'mode controls must match exactly before dispatch, event bytes are recorded and compared with literal protocol expectations; modes restored before teardown';
 const hex = value => Buffer.from(value, 'latin1').toString('hex');
 
+export const minimumRoutedInputColumns = 97;
 export const benchmarkIds = Object.freeze(['input.x10-mouse', 'input.button-event-mouse', 'modes.application-keypad']);
 const X10 = benchmarkIds[0], BUTTON = benchmarkIds[1], KEYPAD = benchmarkIds[2];
 
@@ -18,9 +19,10 @@ const noKeypad = { applicationKeypad: false, kittyKeyboardFlags: 0 };
 /** The 30 keypad and 30 mouse experiments, in dispatch order. Roles: required (graded), control (must hold before a
  * mismatch can be attributed) and label (reported, never graded). */
 export function makeRoutedInputCases(rows, cols) {
+    // The widest planned pointer cell is column 97 (a held-button motion in a fresh cell), so a grid narrower than that cannot run the plan.
     if (!Number.isSafeInteger(rows) || rows < 6 || rows > 128
-        || !Number.isSafeInteger(cols) || cols < 96 || cols > 256 || rows * cols > 8192) {
-        throw Object.assign(new Error('Routed-input qualification requires an observed grid with at least 96 columns.'), { code: 'inputGeometryUnavailable' });
+        || !Number.isSafeInteger(cols) || cols < minimumRoutedInputColumns || cols > 256 || rows * cols > 8192) {
+        throw Object.assign(new Error(`Routed-input qualification requires an observed grid with at least ${minimumRoutedInputColumns} columns.`), { code: 'inputGeometryUnavailable' });
     }
     const cases = [];
     const add = (id, setup, event, expected, modes, roles, reset = true) => cases.push({ id: 'input.' + id,
@@ -103,5 +105,9 @@ export function makeRoutedInputCases(rows, cols) {
     press('button.press.sgr', 'left', 0, '\x1b[<0;96;3M', { [BUTTON]: 'label' }, 1002, true);
     mouse('button.move.sgr', 1002, true, { kind: 'mouseMove', button: 'left' }, '\x1b[<32;96;3M', { [BUTTON]: 'label' });
     mouse('button.release.sgr', 1002, true, { kind: 'mouseRelease', button: 'left' }, '\x1b[<0;96;3m', { [BUTTON]: 'label' });
+    // Every planned pointer cell lies inside the grid it was admitted for (the App refuses an out-of-grid cell after earlier events already ran).
+    for (const item of cases) {
+        if (item.event.column > cols || item.event.row > rows) throw Object.assign(new Error(`Routed-input event ${item.id} lies outside the observed grid.`), { code: 'inputGeometryUnavailable' });
+    }
     return cases;
 }

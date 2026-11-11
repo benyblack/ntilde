@@ -20,7 +20,8 @@ export function inputActionProof(event, modes, runId = inputRunId, paneId = inpu
         observedAt: '2026-11-04T12:00:00.000Z', before: structuredClone(side), after: structuredClone(side),
         app: { eventDispatched: true, inputSubmitted: Boolean(event.kind !== 'keyUp'), handled: true,
             observationAvailable: true, boundary: 'avalonia-routed', rows, cols, viewRows: rows, viewCols: cols,
-            modifiers: event.modifiers, ...modes, column: pointer ? event.column : null, row: pointer ? event.row : null,
+            modifiers: event.modifiers, ...modes, ...(event.kind === 'keyDown' && event.text !== undefined ? { textHandled: true } : {}),
+            column: pointer ? event.column : null, row: pointer ? event.row : null,
             x: pointer ? (event.column - 0.5) * 10 : null, y: pointer ? (event.row - 0.5) * 10 : null } };
 }
 /** `actual(item)` overrides the child bytes of a read (v2 plans record mismatches); `plan` selects the experiment list (default frozen v1). */

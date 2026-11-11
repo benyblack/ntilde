@@ -46,11 +46,14 @@ function experimentsOf(caseId, plan, input, actions) {
     const byId = new Map(input.observations.map((item, index) => [item.featureId, { observation: item, index }]));
     return plan.filter(item => item.roles[caseId]).map(item => {
         const { observation, index } = byId.get(item.id), app = actions[index].observed.app;
-        return { id: item.id, role: item.roles[caseId], matched: observation.result === 'passed',
+        // A key-down that carried text certifies only when the App also reports that follow-up TextInput as handled: the bytes alone would
+        // equal the key-down's own if the text never reached the terminal.
+        const paired = item.event.kind === 'keyDown' && item.event.text !== undefined;
+        return { id: item.id, role: item.roles[caseId], matched: observation.result === 'passed' && (!paired || app.textHandled === true),
             event: item.event, modes: item.modes, setup: item.setup, expectedHex: item.expectedHex, actualHex: observation.actualHex,
             oracleHex: oracleHex(item), controlSnapshot: observation.controlSnapshot, snapshot: observation.snapshot, actionIndex: index,
-            appFacts: { eventDispatched: app.eventDispatched, handled: app.handled, inputSubmitted: app.inputSubmitted,
-                observationAvailable: app.observationAvailable, boundary: app.boundary } };
+            appFacts: { eventDispatched: app.eventDispatched, handled: app.handled, ...(paired ? { textHandled: app.textHandled } : {}),
+                inputSubmitted: app.inputSubmitted, observationAvailable: app.observationAvailable, boundary: app.boundary } };
     });
 }
 

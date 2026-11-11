@@ -96,6 +96,25 @@ for (const [label, mutate, pattern] of [
     assert.throws(() => build(evidence), pattern);
 });
 
+const actionOf = (evidence, id) => evidence.actions.find(action => action.caseId === 'input.' + id).observed;
+test('a paired key-down and text certifies only with the follow-up reported handled', () => {
+    for (const [label, mutate] of [['a missing follow-up fact', app => { delete app.textHandled; }], ['an unhandled follow-up', app => { app.textHandled = false; }]]) {
+        const evidence = syntheticRoutedInputEvidence({ mutate: journal => mutate(actionOf(journal, 'keypad.application.7.withText').app) });
+        if (label === 'a missing follow-up fact') { assert.throws(() => build(evidence), undefined, label); continue; }
+        const keypad = byCase(build(evidence))['modes.application-keypad'];
+        assert.equal(keypad.effectContract.outcome, 'unsupported', label);
+        assert.deepEqual(keypad.effectContract.failedRequired, ['input.keypad.application.7.withText']);
+        const experiment = keypad.experiments.find(item => item.id === 'input.keypad.application.7.withText');
+        assert.deepEqual([experiment.matched, experiment.actualHex === experiment.expectedHex, experiment.appFacts.textHandled], [false, true, false], 'the bytes alone are not enough');
+    }
+    const control = syntheticRoutedInputEvidence({ mutate: journal => { actionOf(journal, 'keypad.normal.7.withText').app.textHandled = false; } });
+    assert.equal(byCase(build(control))['modes.application-keypad'].effectContract.outcome, 'inconclusive', 'an unhandled numeric follow-up invalidates the control, not the benchmark');
+    const plain = syntheticRoutedInputEvidence({ mutate: journal => { actionOf(journal, 'keypad.application.7').app.textHandled = true; } });
+    assert.throws(() => build(plain), undefined, 'a follow-up fact on an event that carried no text is refused');
+    const report = build(syntheticRoutedInputEvidence()), paired = report.cases[2].experiments.filter(item => item.event.text !== undefined && item.event.kind === 'keyDown');
+    assert.equal(paired.length, 3); assert.ok(paired.every(item => item.appFacts.textHandled === true));
+});
+
 for (const [label, mutate, pattern] of [
     ['a pinned result that differs from its replay', e => { e.run.cases[0].pinned.response = '{"currentMode":true}'; }, /does not match its observed evidence/],
     ['a pinned verdict that gained a decision', e => { e.run.cases[2].pinned = { probeId: 'modes.application-keypad', pass: true, response: '{"on":true,"off":true}', note: 'keypad input',

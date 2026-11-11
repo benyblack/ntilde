@@ -65,6 +65,9 @@ export function validateInputAction(action, item, paneId, runId, geometry, profi
         && app.modifiers === item.event.modifiers && app.rows === geometry.rows && app.cols === geometry.cols
         && app.viewRows === geometry.rows && app.viewCols === geometry.cols
         && Object.entries(item.modes).every(([key, value]) => app[key] === value));
+    // A key-down that carries text raised that TextInput right after it: its handled fact is retained evidence, absent for every other event.
+    if (item.event.kind === 'keyDown' && item.event.text !== undefined) checkInput(typeof app.textHandled === 'boolean');
+    else checkInput(app.textHandled == null);
     if (item.event.kind.startsWith('mouse')) checkInput(app.column === item.event.column && app.row === item.event.row
         && Number.isFinite(app.x) && app.x >= 0 && Number.isFinite(app.y) && app.y >= 0);
     else checkInput(['column', 'row', 'x', 'y'].every(key => app[key] == null));
