@@ -176,9 +176,18 @@ jobs:
           "$py" scripts/tests/analyzer_gate_tests.py
           "$py" scripts/tests/private_clipboard_gate_tests.py
 
+      - name: Select Node for terminfo adapter self-tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # After setup-node: the shard self-test also runs scripts/ci/node-tests-run.mjs, and CI must
+      # not skip that for want of a new enough node.
       - name: Self-test the script self-test shards
         if: matrix.shard == 'rest'
         shell: bash
+        env:
+          NODE_TESTS_RUN_CHECK_REQUIRED: '1'
         run: |
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
@@ -201,11 +210,6 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/terminfo_core_report_tests.py
           "$py" scripts/terminfo-core-report.py --check
-
-      - name: Select Node for terminfo adapter self-tests
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
 
       - name: Self-test terminfo cell observations without a desktop or collector installation
         shell: bash

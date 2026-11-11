@@ -65,8 +65,10 @@ def node_major():
 def check_launcher():
     """scripts/ci/node-tests-run.mjs starts files in the order given (the CLI would sort them),
     writes each file's seconds and fails when a test fails. Needs node 22 or later (the workflow
-    uses 24); this step can run before setup-node, so an older or missing node skips the check."""
+    uses 24). Locally an older or missing node skips the check; CI sets
+    NODE_TESTS_RUN_CHECK_REQUIRED, which makes that a failure instead."""
     if node_major() < 22:
+        assert not os.environ.get('NODE_TESTS_RUN_CHECK_REQUIRED'), 'the launcher check needs node 22+ on PATH'
         return 'not checked (needs node 22+ on PATH)'
     launcher = ROOT / 'scripts/ci/node-tests-run.mjs'
     with tempfile.TemporaryDirectory() as tmp:
@@ -106,6 +108,10 @@ def main():
         'the step runs the selected files through scripts/ci/node-tests-run.mjs'
     commands = '\n'.join(line for line in block.splitlines() if not line.lstrip().startswith('#'))
     assert not re.search(r'node --test[^\n]*\$files', commands) and '--test-shard' not in commands, 'the step runs the selected files in order, not through the CLI'
+    # This test's own step runs after setup-node and requires the launcher check, so CI never skips it.
+    own = block.index('name: Self-test the script self-test shards')
+    assert block.index('uses: actions/setup-node@') < own, 'setup-node runs before the shard self-test'
+    assert "NODE_TESTS_RUN_CHECK_REQUIRED: '1'" in block[own:block.index('- name:', own + 1)], 'the shard self-test step requires the launcher check'
     files = workflow_files(block)
     assert len(set(files)) == len(files), 'the workflow lists each test file once'
     assert all((ROOT / path).is_file() for path in files), 'every listed test file exists'
