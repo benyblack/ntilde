@@ -102,6 +102,17 @@ export function buildEraseReport(frames, run, runId) {
     }
     return { schemaVersion: 1, suiteId: eraseSuiteId, runId, effects, snapshots: frames };
 }
+// A plan step completes before its caller advances to the next one.
+async function executeEraseStep(step, trace, fence, owner) {
+    if (step.feed) {
+        trace.feeds.push(step.feed);
+        trace.barriers.push(await fence.write(step.feed));
+        return;
+    }
+    const cpr = await fence.cursorReport();
+    await owner('ce-read', cpr.barrier, { cpr });
+    trace.reads.push({ role: step.role, cpr });
+}
 export async function collectErase({ config, fence, owner }) {
     const feeds = [], barriers = [], reads = [];
     const started = await owner('ce-start');
@@ -109,15 +120,9 @@ export async function collectErase({ config, fence, owner }) {
     let primary;
     try {
         await owner('ce-bind', await fence.write('\x1b[?47h' + reset + eraseNonce + config.runId));
+        const trace = { feeds, barriers, reads };
         for (const step of erasePlan()) {
-            if (step.feed) {
-                feeds.push(step.feed);
-                barriers.push(await fence.write(step.feed)); // NOSONAR: each write must finish before the next read.
-            } else {
-                const cpr = await fence.cursorReport(); // NOSONAR: the cursor report follows the preceding write.
-                await owner('ce-read', cpr.barrier, { cpr }); // NOSONAR: each observation finishes before the next write.
-                reads.push({ role: step.role, cpr });
-            }
+            await executeEraseStep(step, trace, fence, owner); // NOSONAR: the plan must run in order.
         }
     } catch (error) { primary = error; }
     try { await owner('ce-finish', await fence.write(reset + '\x1b7\x1b[?47l')); }
