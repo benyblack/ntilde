@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "4067a189259878047499257a67abc2eb",
+    "appRevision": "62918f47a03955cc515f077a0ef2799e920bbb94",
+    "scriptsRevision": "b90a21b9b288eb500f89f42994ced3a7e7a2d87b",
+    "receiptSchema": 48,
+    "sourcePolicy": "readonly-owned-source-graph-v42"
+  },
+  "ownedArchiveSha256": "7f51688d277cda7f7bb01986c29228ee77ec534b02b1e9b7bf37a3238acb9069",
+  "appSourceManifestSha256": "ed0bb85f46c133effe4ab6c9829e5def46cbf48b559d2aa2af2386e5f94b61ed",
+  "attempts": [
+    {
+      "runId": "not-started",
+      "status": "refused",
+      "reason": "The first launch stopped before creating a run or launching the App because the pinned collector cache was absent; the cache was then prepared from the repository lockfile."
+    },
+    {
+      "runId": "4067a189259878047499257a67abc2eb",
+      "status": "complete",
+      "reason": "All wrapping boundary and enabled/disabled specimens completed with verified App and kernel geometry and restoration; the full owned receipt finalized."
+    }
+  ]
+}
