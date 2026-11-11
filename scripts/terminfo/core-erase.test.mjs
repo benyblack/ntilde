@@ -11,7 +11,7 @@ import { extractOwnedArchive, loadMapping, root } from '../terminfo-core-results
 import { snapshotHash, OwnedCellObserver } from './agent-observer.mjs';
 import { deriveEraseCoreReport } from '../terminfo-core-erase-results.mjs';
 import { loadTextCursorMeasurement, textCursorPublication } from '../terminfo-core-text-cursor-results.mjs';
-import { specimens, erasePlan, gradeErase, buildEraseReport, eraseSuiteId, eraseNonce, EraseObserver } from './core-erase.mjs';
+import { specimens, erasePlan, gradeErase, buildEraseReport, eraseSuiteId, eraseNonce, EraseObserver, collectErase } from './core-erase.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'nt-ce-'));
 extractOwnedArchive(root, loadMapping(), dir);
@@ -155,4 +155,17 @@ test('observer binds each cursor reply to the completed read and rejects a wrong
         await assert.rejects(observer.handleRequest({ kind: 'ce-read', barrier: 'wrong', cpr }, 5), /barrier mismatch/);
         await assert.rejects(observer.handleRequest({ kind: 'ce-start', barrier, cpr }, 5), /unexpected CPR/);
     } finally { OwnedCellObserver.prototype.handle = original; }
+});
+
+test('collector waits for each write and read and restores after a failed observation', async () => {
+    const events = [], barrier = '\x1b[?1;2c';
+    const fence = { write: async bytes => { events.push(['write', bytes]); return barrier; },
+        cursorReport: async () => { events.push(['cpr']); return { barrier, reply: { raw: '\x1b[1;1R', row: 1, col: 1 } }; } };
+    let reads = 0;
+    const owner = async kind => { events.push([kind]); if (kind === 'ce-read' && ++reads === 2) throw new Error('refused'); return { screen: baseline }; };
+    await assert.rejects(collectErase({ config: { runId: 'a'.repeat(32) }, fence, owner }), /refused/);
+    const erase = events.findIndex(e => e[0] === 'write' && e[1] === '\x1b[K');
+    assert.ok(erase > 0); assert.deepEqual(events[erase + 1], ['cpr']);
+    assert.equal(events.at(-1)[0], 'ce-finish');
+    assert.equal(events.filter(e => e[0] === 'write' && e[1] === '\x1b[1J').length, 0);
 });

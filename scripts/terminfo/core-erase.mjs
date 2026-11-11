@@ -40,7 +40,7 @@ export function erasePlan() {
 }
 function matches(frame, lines, cursor, seedState) {
     const v = scrollbackView(frame.screen);
-    const expected = Array(v.rows).fill('');
+    const expected = new Array(v.rows).fill('');
     lines.forEach((line, i) => { expected[i] = line; });
     return v.alternate && !v.origin && !v.insert && v.autoWrap && !v.pending && v.cursorVisible
         && v.top === 0 && v.bottom === v.rows - 1 && v.count === 0 && v.history.length === 0
@@ -56,9 +56,10 @@ function retainedDetailsMatch(before, after, specimen) {
     const [cr, cc] = specimen.cursor;
     return a.every((cell, index) => {
         const row = Math.floor(index / cols), col = index % cols;
-        const erased = specimen.role.startsWith('el-') ? row === cr && col >= cc
-            : specimen.role.startsWith('ed1-') ? row < cr || (row === cr && col <= cc)
-                : row > cr || (row === cr && col >= cc);
+        let erased;
+        if (specimen.role.startsWith('el-')) erased = row === cr && col >= cc;
+        else if (specimen.role.startsWith('ed1-')) erased = row < cr || (row === cr && col <= cc);
+        else erased = row > cr || (row === cr && col >= cc);
         return erased || same(cell, b[index]);
     });
 }
@@ -109,16 +110,21 @@ export async function collectErase({ config, fence, owner }) {
     try {
         await owner('ce-bind', await fence.write('\x1b[?47h' + reset + eraseNonce + config.runId));
         for (const step of erasePlan()) {
-            if (step.feed) { feeds.push(step.feed); barriers.push(await fence.write(step.feed)); }
-            else {
-                const cpr = await fence.cursorReport();
-                await owner('ce-read', cpr.barrier, { cpr });
+            if (step.feed) {
+                feeds.push(step.feed);
+                barriers.push(await fence.write(step.feed)); // NOSONAR: each write must finish before the next read.
+            } else {
+                const cpr = await fence.cursorReport(); // NOSONAR: the cursor report follows the preceding write.
+                await owner('ce-read', cpr.barrier, { cpr }); // NOSONAR: each observation finishes before the next write.
                 reads.push({ role: step.role, cpr });
             }
         }
     } catch (error) { primary = error; }
     try { await owner('ce-finish', await fence.write(reset + '\x1b7\x1b[?47l')); }
-    catch (error) { if (primary) throw new AggregateError([primary, error], 'Core erase collection and restoration failed'); throw error; }
+    catch (error) {
+        if (primary) throw new AggregateError([primary, error], 'Core erase collection and restoration failed');
+        throw error;
+    }
     if (primary) throw primary;
     return { schemaVersion: 1, suiteId: eraseSuiteId, runId: config.runId, feeds, barriers, reads };
 }
