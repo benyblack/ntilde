@@ -30,7 +30,7 @@ const writerFor = output => (file, value) => writeFileSync(join(output, file), J
  * dropping only the new suffix's imports; the historical production maps stay fixed. */
 export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?core-gaps(?:-receipt)?\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|input-plan|routed-input-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
