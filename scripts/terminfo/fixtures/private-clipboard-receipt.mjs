@@ -22,10 +22,10 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writerFor = output => (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
 
 /** Synthetic old-scope source projection. Normalize checkout line endings before
- * dropping only the new suffix's imports; the historical production maps stay fixed. */
+ * dropping only the newer suffixes' imports (Core gaps, runtime-color reset); the historical production maps stay fixed. */
 export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?core-gaps(?:-receipt)?\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|color-reset-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
