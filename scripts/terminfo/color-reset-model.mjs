@@ -40,25 +40,36 @@ export const noOverrides = () => ({ palette: new Map(), foreground: null, backgr
 
 const dynamicKey = { 10: 'foreground', 11: 'background', 12: 'cursor' };
 
-/** Apply every OSC color string of `bytes` to a copy of `state` (queries change nothing; other codes are ignored). */
+/** OSC 4: set the palette slots named by (index, spec) pairs; a query pair and an invalid pair change nothing. */
+function applyPalette(next, params) {
+    for (let i = 0; i + 1 < params.length; i += 2) {
+        const index = Number(params[i]), value = params[i + 1] === '?' ? null : parseColorSpec(params[i + 1]);
+        if (Number.isInteger(index) && index >= 0 && index < 256 && value !== null) next.palette.set(index, value);
+    }
+}
+
+/** OSC 104: reset the named slots, or every slot when the string names none. */
+function resetPalette(next, params) {
+    if (params.length === 0) next.palette.clear();
+    else for (const item of params) next.palette.delete(Number(item));
+}
+
+const resetKey = { 110: 'foreground', 111: 'background', 112: 'cursor' };
+
+/** One OSC string applied to `next`; queries change nothing and other codes are ignored. */
+function applyOsc(next, { code, params }) {
+    if (code === '4') applyPalette(next, params);
+    else if (code === '104') resetPalette(next, params);
+    else if (Object.hasOwn(dynamicKey, code)) {
+        const value = parseColorSpec(params[0] ?? '');
+        if (value !== null) next[dynamicKey[code]] = value;
+    } else if (Object.hasOwn(resetKey, code)) next[resetKey[code]] = null;
+}
+
+/** Apply every OSC color string of `bytes` to a copy of `state`. */
 export function applyColorWrites(state, bytes) {
     const next = { palette: new Map(state.palette), foreground: state.foreground, background: state.background, cursor: state.cursor };
-    for (const { code, params } of oscStrings(bytes)) {
-        if (code === '4') {
-            for (let i = 0; i + 1 < params.length; i += 2) {
-                const index = Number(params[i]), value = params[i + 1] === '?' ? null : parseColorSpec(params[i + 1]);
-                if (Number.isInteger(index) && index >= 0 && index < 256 && value !== null) next.palette.set(index, value);
-            }
-        } else if (Object.hasOwn(dynamicKey, code)) {
-            const value = parseColorSpec(params[0] ?? '');
-            if (value !== null) next[dynamicKey[code]] = value;
-        } else if (code === '104') {
-            if (params.length === 0) next.palette.clear();
-            else for (const item of params) next.palette.delete(Number(item));
-        } else if (code === '110') next.foreground = null;
-        else if (code === '111') next.background = null;
-        else if (code === '112') next.cursor = null;
-    }
+    for (const item of oscStrings(bytes)) applyOsc(next, item);
     return next;
 }
 

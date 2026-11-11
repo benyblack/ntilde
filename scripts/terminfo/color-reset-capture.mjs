@@ -47,8 +47,8 @@ export class ColorResetObserver {
             || snapshotHash(details.theme) !== snapshotHash(this.frames[0].pixel.renderDetails.theme))) fail('Runtime-color baseline was not restored.');
     }
 
-    async handle(request, budget) {
-        if (this.busy || this.restored) fail('Color-reset observation busy or complete.');
+    /** The planned read this request must be (null for start, bind and finish), refusing any other case, experiment, stage or early finish. */
+    plannedRead(request) {
         const operation = request.kind.slice('crst-'.length);
         const expected = operation === 'read' ? colorResetReadPlan[this.next] : null;
         if (operation === 'read' && (!expected || request.caseId !== expected.caseId || request.experimentId !== expected.experimentId || request.stageId !== expected.stageId)) {
@@ -56,23 +56,35 @@ export class ColorResetObserver {
         }
         if (operation !== 'read' && (request.caseId !== undefined || request.queries !== undefined)) fail('Only reads carry color replies.');
         if (operation === 'finish' && this.next !== colorResetReadPlan.length) fail('Color-reset finish before the plan completed.');
+        return expected;
+    }
+
+    /** One controlled render of the observed state: bracketed by two identical reads, within the suite's pixel budget and the shared render context. */
+    async render(result, budget) {
+        this.after.paneId ??= this.paneId;
+        const endpoint = (this.before.endpoint ?? observerEndpoint)(this.before.appData, this.before.ownerPid);
+        const capture = await this.captureRpc(endpoint, this.paneId, null, budget());
+        const after = await this.after.capture(budget);
+        if (snapshotHash(result.screen) !== snapshotHash(after)) fail('Color-reset capture changed the observed screen.');
+        const { bytes, details } = validateColorCapture(capture, result.screen, null);
+        if (capture.width * capture.height * (colorResetReadPlan.length + 3) > totalPixelLimit) fail('Color-reset suite decoded budget exhausted.');
+        const policy = defaultCursorPolicy(result.screen, details);
+        if (this.defaultCursor && policy && policy !== this.defaultCursor) fail('Changed default cursor policy.');
+        this.defaultCursor ??= policy;
+        const stable = stableColorContext(details);
+        if (this.context && stable !== this.context) fail('Changed render context.');
+        this.context ??= stable;
+        return { capture, bytes, details, after };
+    }
+
+    async handle(request, budget) {
+        if (this.busy || this.restored) fail('Color-reset observation busy or complete.');
+        const expected = this.plannedRead(request);
         const queries = validateQueries(request.queries ?? [], expected?.queries ?? []);
         this.busy = true;
         try {
             const result = await this.before.handle(request.kind, budget, request.barrier);
-            this.after.paneId ??= this.paneId;
-            const endpoint = (this.before.endpoint ?? observerEndpoint)(this.before.appData, this.before.ownerPid);
-            const capture = await this.captureRpc(endpoint, this.paneId, null, budget());
-            const after = await this.after.capture(budget);
-            if (snapshotHash(result.screen) !== snapshotHash(after)) fail('Color-reset capture changed the observed screen.');
-            const { bytes, details } = validateColorCapture(capture, result.screen, null);
-            if (capture.width * capture.height * (colorResetReadPlan.length + 3) > totalPixelLimit) fail('Color-reset suite decoded budget exhausted.');
-            const policy = defaultCursorPolicy(result.screen, details);
-            if (this.defaultCursor && policy && policy !== this.defaultCursor) fail('Changed default cursor policy.');
-            this.defaultCursor ??= policy;
-            const stable = stableColorContext(details);
-            if (this.context && stable !== this.context) fail('Changed render context.');
-            this.context ??= stable;
+            const { capture, bytes, details, after } = await this.render(result, budget);
             const file = `${directory}/frame-${String(this.frames.length).padStart(3, '0')}.png`;
             const pixel = { file, sha256: pngHash(bytes), byteCount: bytes.length, width: capture.width, height: capture.height,
                 rows: capture.rows, cols: capture.cols, mode: capture.mode, scale: capture.scale, downscaled: false,
@@ -82,7 +94,7 @@ export class ColorResetObserver {
             writeFileSync(join(this.output, file), bytes, { flag: 'wx', mode: 0o600 });
             this.frames.push({ ...this.before.frames.at(-1), afterScreen: after, afterSha256: snapshotHash(after),
                 caseId: expected?.caseId ?? null, experimentId: expected?.experimentId ?? null, stageId: expected?.stageId ?? null, queries, pixel });
-            if (operation === 'read') this.next++;
+            if (request.kind === 'crst-read') this.next++;
             return result;
         } finally { this.busy = false; }
     }

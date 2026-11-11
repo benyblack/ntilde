@@ -143,6 +143,8 @@ test('grading: a correct App is supported in every case; each injected defect is
     assert.deepEqual(outcomes({ renderStale: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported'], 'replies and metadata restored but the render was not');
     // A reset the renderer never applied repeats the previous render, even where other overrides remain (the isolation experiments).
     assert.deepEqual(outcomes({ stalePng: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
+    // Where other overrides remain drawn, a reset render equal to the baseline render means the renderer dropped them too.
+    assert.deepEqual(outcomes({ baselinePng: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     // A reply that never arrived at the reset readback cannot establish unsupported: the pinned probe is inconclusive too.
     assert.deepEqual(outcomes({ noResetReplies: true }), ['inconclusive', 'inconclusive', 'inconclusive', 'inconclusive']);
 });

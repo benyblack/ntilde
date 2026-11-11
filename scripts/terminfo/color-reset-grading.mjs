@@ -38,19 +38,27 @@ const frameCount = () => 3 + colorResetContracts.reduce((sum, contract) => sum +
 /** The first complete `rgb:` group of one OSC color report in `raw` for this set code and index, or undefined: the pinned unanchored, case-insensitive pattern
  * (`rgb:` and one to four hex digits per channel, then BEL or ST). Written without a regex so no control character sits in a pattern. */
 function replyColor(raw, setCode, indexPart) {
-    const head = `\x1b]${setCode};${indexPart}rgb:`, lowered = raw.toLowerCase(), hex = '0123456789abcdef';
+    const head = `\x1b]${setCode};${indexPart}rgb:`, lowered = raw.toLowerCase();
     for (let at = lowered.indexOf(head); at >= 0; at = lowered.indexOf(head, at + 1)) {
-        let cursor = at + head.length, ok = true;
-        for (let channel = 0; channel < 3 && ok; channel++) {
-            const begin = cursor;
-            while (cursor < raw.length && cursor - begin <= 4 && hex.includes(lowered[cursor])) cursor++;
-            ok = cursor - begin >= 1 && cursor - begin <= 4 && (channel === 2 || lowered[cursor] === '/');
-            if (channel < 2) cursor++;
-        }
-        const terminated = lowered[cursor] === '\x07' || (lowered[cursor] === '\x1b' && lowered[cursor + 1] === '\\');
-        if (ok && terminated) return raw.slice(at + head.length - 4, cursor);
+        const end = colorGroupEnd(lowered, at + head.length);
+        if (end > 0) return raw.slice(at + head.length - 4, end);
     }
     return undefined;
+}
+
+/** Where the three hex channels (one to four digits each, separated by `/`) starting at `cursor` end when BEL or ST follows them, or -1. */
+function colorGroupEnd(lowered, start) {
+    const hex = '0123456789abcdef';
+    let cursor = start;
+    for (let channel = 0; channel < 3; channel++) {
+        const begin = cursor;
+        while (cursor < lowered.length && cursor - begin <= 4 && hex.includes(lowered[cursor])) cursor++;
+        const width = cursor - begin;
+        if (width < 1 || width > 4 || (channel < 2 && lowered[cursor] !== '/')) return -1;
+        if (channel < 2) cursor++;
+    }
+    const terminated = lowered[cursor] === '\x07' || (lowered[cursor] === '\x1b' && lowered[cursor + 1] === '\\');
+    return terminated ? cursor : -1;
 }
 
 /** The pinned sameRgb2: channels scaled to sixteen bits and compared. */
@@ -158,6 +166,32 @@ function checkPinned(contract, recorded, readFrames, replayModule) {
     return pinned;
 }
 
+/** The report entry of one case, after every cross-check of its journal slice. */
+function caseReport({ contract, recorded, readFrames, frames, contractsVersion, replayModule }) {
+    validateGradedCaptureRecord(contract, recorded, label);
+    crossCheckGradedCapture(contract, recorded, readFrames, label);
+    checkReplies(contract, recorded, readFrames);
+    for (const frame of readFrames) if (frame.caseId !== contract.caseId) throw new Error(`${label} ${contract.caseId} read frame belongs to another case.`);
+    const observation = colorResetObservation(contract, readFrames.map(frame => ({ screen: frame.screen, queries: frame.queries,
+        details: frame.pixel.renderDetails, pixelSha256: frame.pixel.sha256 })));
+    const contractResult = gradeColorResetCase(contract, observation, contractsVersion);
+    const pinned = checkPinned(contract, recorded, readFrames, replayModule);
+    const divergence = reconcile(contract, pinned.observation.outcome, contractResult);
+    const base = frames[0].screen.colorBinding;
+    return { caseId: contract.caseId, pinnedCriterion: contract.pinnedCriterion, pinnedFeeds: contract.pinnedFeeds, terminalFixture: contract.terminalFixture,
+        feeds: recorded.feeds, barriers: recorded.barriers,
+        reads: recorded.reads.map(read => ({ cursor: read.cursor, queries: read.queries.map(query => ({ query: query.spec, barrier: query.barrier, reply: query.reply?.raw ?? null })) })),
+        observed: contract.observed(observation),
+        colorBinding: { themeName: base.themeName, minimumContrast: base.minimumContrast, reverseVideo: base.reverseVideo, foregroundArgb: base.foregroundArgb, backgroundArgb: base.backgroundArgb,
+            cursorArgb: frames[0].pixel.renderDetails.theme.cursorArgb, paletteSha256: snapshotHash(base.ansiPaletteArgb) },
+        pinned: { pass: pinned.pass, response: pinned.response, note: pinned.note ?? null, observation: pinned.observation, assertions: pinned.assertions ?? null },
+        pinnedTerminal: { outcome: 'inconclusive', evidence: 'none', byDesign: true, note: contract.terminalFixture.note },
+        contractResult, ...(divergence ? { divergence } : {}),
+        conclusion: { outcome: contractResult.outcome, evidence: contract.evidence, grading: 'pinned-termless-plus-contract-v' + contractsVersion,
+            pinnedTermless: pinned.observation.outcome, pinnedTerminal: 'inconclusive-by-design',
+            ...(contractResult.note ? { note: contractResult.note } : {}), scope: contract.appearanceScope } };
+}
+
 /** Re-derive and cross-check every case; throw on any disagreement. */
 export function buildColorResetGradingReport(frames, run, runId, adapter, { contractsVersion = colorResetContractsVersion, replayModule = null, output = null, captureOf = null } = {}) {
     const load = captureOf ?? (output === null ? null : frame => retainedColorResetCapture(output, frame));
@@ -168,29 +202,8 @@ export function buildColorResetGradingReport(frames, run, runId, adapter, { cont
     for (const [position, contract] of colorResetContracts.entries()) {
         const recorded = run.cases[position];
         if (recorded.caseId !== contract.caseId) throw new Error(`${label} case order differs from the contracts.`);
-        validateGradedCaptureRecord(contract, recorded, label);
         const readFrames = recorded.reads.map(() => frames[frameIndex++]);
-        crossCheckGradedCapture(contract, recorded, readFrames, label);
-        checkReplies(contract, recorded, readFrames);
-        for (const frame of readFrames) if (frame.caseId !== contract.caseId) throw new Error(`${label} ${contract.caseId} read frame belongs to another case.`);
-        const observation = colorResetObservation(contract, readFrames.map(frame => ({ screen: frame.screen, queries: frame.queries,
-            details: frame.pixel.renderDetails, pixelSha256: frame.pixel.sha256 })));
-        const contractResult = gradeColorResetCase(contract, observation, contractsVersion);
-        const pinned = checkPinned(contract, recorded, readFrames, replayModule);
-        const divergence = reconcile(contract, pinned.observation.outcome, contractResult);
-        const base = frames[0].screen.colorBinding;
-        cases.push({ caseId: contract.caseId, pinnedCriterion: contract.pinnedCriterion, pinnedFeeds: contract.pinnedFeeds, terminalFixture: contract.terminalFixture,
-            feeds: recorded.feeds, barriers: recorded.barriers,
-            reads: recorded.reads.map(read => ({ cursor: read.cursor, queries: read.queries.map(query => ({ query: query.spec, barrier: query.barrier, reply: query.reply?.raw ?? null })) })),
-            observed: contract.observed(observation),
-            colorBinding: { themeName: base.themeName, minimumContrast: base.minimumContrast, reverseVideo: base.reverseVideo, foregroundArgb: base.foregroundArgb, backgroundArgb: base.backgroundArgb,
-                cursorArgb: frames[0].pixel.renderDetails.theme.cursorArgb, paletteSha256: snapshotHash(base.ansiPaletteArgb) },
-            pinned: { pass: pinned.pass, response: pinned.response, note: pinned.note ?? null, observation: pinned.observation, assertions: pinned.assertions ?? null },
-            pinnedTerminal: { outcome: 'inconclusive', evidence: 'none', byDesign: true, note: contract.terminalFixture.note },
-            contractResult, ...(divergence ? { divergence } : {}),
-            conclusion: { outcome: contractResult.outcome, evidence: contract.evidence, grading: 'pinned-termless-plus-contract-v' + contractsVersion,
-                pinnedTermless: pinned.observation.outcome, pinnedTerminal: 'inconclusive-by-design',
-                ...(contractResult.note ? { note: contractResult.note } : {}), scope: contract.appearanceScope } });
+        cases.push(caseReport({ contract, recorded, readFrames, frames, contractsVersion, replayModule }));
     }
     return { schemaVersion: 1, suiteId: colorResetSuiteId, runId, contractsVersion, adapter, scope,
         initialSnapshot: 0, restoredSnapshot: frames.length - 1, cases, snapshots: frames };

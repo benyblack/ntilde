@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { adaptColorResetCollector, colorResetAdapterId, colorResetSeams } from './color-reset-grading-collector.mjs';
 
 /** A verbatim source: seams appear exactly once each, as plain text. */
@@ -53,8 +54,8 @@ test('the real pinned bundle derives through every layer; its code agrees with t
     const { colorResetRecordingContext } = await import('./color-reset-collector.mjs');
     const { colorResetContracts } = await import('./color-reset-contracts.mjs');
     const { writeFileSync, rmSync, readFileSync } = await import('node:fs');
-    const { pathToFileURL, fileURLToPath } = await import('node:url');
-    let text = adaptCollector(readFileSync(bundleUrl).toString(), new URL('./ownership.mjs', import.meta.url).pathname);
+    const { pathToFileURL } = await import('node:url');
+    let text = adaptCollector(readFileSync(bundleUrl).toString(), fileURLToPath(new URL('./ownership.mjs', import.meta.url)));
     for (const adapt of [...layers, adaptColorResetCollector]) text = adapt(text);
     const file = fileURLToPath(new URL(`../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/ntilde-crst-test-${process.pid}.mjs`, import.meta.url));
     const reply = (code, value) => ({ raw: `\x1b]${code};rgb:${value}\x1b\\` });
