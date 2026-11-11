@@ -179,7 +179,7 @@ export function buildTabStopsReport(frames, run, runId) {
     const { provenance, effects } = gradeTabStops(roles, cols);
     for (const id of tabStopsIds) {
         const specimen = specimenFor[id];
-        Object.assign(effects[id], { fixture: specimen.fixture, expected: specimen.expected,
+        Object.assign(effects[id], { fixture: specimen.fixture, expected: structuredClone(specimen.expected),
             observed: { before: observedFrame(roles[specimen.before]), after: observedFrame(roles[specimen.after]) } });
     }
     const controls = Object.fromEntries(['found:walk', 'taint:ht1', 'taint:ht2', 'taint:ht3', 'reset:walk', 'final:walk', 'ctl:x', 'ctl:spaces',

@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { includesTabStopsEvidence, checkTabStopsEvidence } from './core-tab-stops-receipt.mjs';
 import { extractOwnedArchive, loadMapping, root } from '../terminfo-core-results.mjs';
+import { deriveTextCursorCoreReport, loadTextCursorMeasurement, textCursorPublication } from '../terminfo-core-text-cursor-results.mjs';
+import { deriveTabStopsCoreReport, readableTabStopsReport } from '../terminfo-core-tab-stops-results.mjs';
 import { snapshotHash, OwnedCellObserver } from './agent-observer.mjs';
 import { tabStopsIds, tabStopsPlan, tabStopsSteps, tabStopsSuiteId, tabStopsNonce, tabStopsSpecimens, defaultWalk, defaultStopColumns,
     gradeTabStops, buildTabStopsReport, collectTabStops, TabStopsObserver, fullReset } from './core-tab-stops.mjs';
@@ -259,4 +261,71 @@ test('specimen table keeps the exact target bytes and expectations for the two r
     assert.equal(tabStopsSpecimens['text.tab'].fixture, '\tX');
     assert.deepEqual(tabStopsSpecimens['text.tab'].expected.cursor, [0, 9]);
     assert.deepEqual(tabStopsSpecimens['unicode.tab-stops'].expected.cursor, [0, 8]);
+});
+
+/** The #937 report is the base here, so closing exactly the two rows yields 70/80; production builds on the merged erase publication. */
+const earlier = { derive: deriveTextCursorCoreReport, report: textCursorPublication + '/report.json',
+    sha256: '75791ae1ce7b1a5a0f156d8563c9171957ec9bd014c4ca97147071a970ba5a11' };
+function derivation(mutateEvidence = () => {}, mutatePrevious = {}) {
+    const temp = mkdtempSync(join(tmpdir(), 'nt-ts-rows-'));
+    try {
+        const m = loadTextCursorMeasurement(), mapping = loadMapping();
+        extractOwnedArchive(root, { archives: { 'owned-run.zip': m.ownedArchiveSha256 } }, temp, join(root, textCursorPublication, 'owned-run.zip'));
+        const { frames, run, id } = journal(), supplement = buildTabStopsReport(frames, run, id);
+        supplement.runId = m.measurement.runId; mutateEvidence(supplement);
+        writeFileSync(join(temp, 'ts-observations.json'), JSON.stringify(supplement));
+        const identity = { context: { runId: m.measurement.runId }, receipt: { tabStopsEvidence: { suiteId: tabStopsSuiteId } } };
+        const result = deriveTabStopsCoreReport(temp, mapping, identity, m.measurement, { ...earlier, ...mutatePrevious });
+        return { ...result, mapping };
+    } finally { rmSync(temp, { recursive: true, force: true }); }
+}
+test('80-row derivation closes exactly the two rows and computes 70/80 from the evidence', () => {
+    const { report, mapping } = derivation();
+    assert.equal(report.rows.length, 80); assert.equal(new Set(report.rows.map(r => r.id)).size, 80);
+    assert.deepEqual(report.totals, { pass: 70, fail: 0, inconclusive: 10 }); assert.equal(report.corePassPercentage, 87.5);
+    for (const id of tabStopsIds) {
+        const row = report.rows.find(r => r.id === id);
+        assert.equal(row.conclusion, 'pass'); assert.equal(row.historicalConclusion, 'inconclusive');
+        assert.equal(row.defaultStateProvenance.strategy, 'documented-reset-restoration');
+        assert.equal(row.exactFixtureEffects[0].observed.after.cpr.raw.startsWith('\x1b[1;'), true);
+        assert.ok(row.controls['taint:ht1'] && row.controls['reset:walk'] && row.controls['final:walk']);
+    }
+    const text = readableTabStopsReport(report, mapping);
+    assert.ok(!text.includes('[object Object]') && text.includes('70 pass / 0 fail / 10 inconclusive'));
+    const closed = report.rows.filter(r => r.conclusion === 'pass').map(r => r.id);
+    assert.ok(closed.includes('text.tab') && closed.includes('unicode.tab-stops'));
+});
+test('a failed, inconclusive or mislabeled specimen is never reported as a pass', () => {
+    const fail = derivation(s => { s.effects['text.tab'].outcome = 'unsupported'; });
+    assert.equal(fail.report.rows.find(r => r.id === 'text.tab').conclusion, 'fail');
+    assert.deepEqual(fail.report.totals, { pass: 69, fail: 1, inconclusive: 10 });
+    const open = derivation(s => {
+        for (const id of tabStopsIds) Object.assign(s.effects[id], { outcome: 'inconclusive', reason: 'default-state-not-established' });
+        s.provenance.defaultStopsRestoredAfterReset = false;
+    });
+    const row = open.report.rows.find(r => r.id === 'unicode.tab-stops');
+    assert.equal(row.conclusion, 'inconclusive'); assert.match(row.blocker, /custom-stop state, the reset restoration/);
+    assert.deepEqual(open.report.totals, { pass: 68, fail: 0, inconclusive: 12 });
+    assert.throws(() => derivation(s => { s.provenance.strategy = 'custom-stop-at-column-8'; }), /provenance/);
+    assert.throws(() => derivation(s => { s.provenance.reset.bytes = '\x1bH'; }), /provenance/);
+    assert.throws(() => derivation(s => { s.provenance.defaultStopsRestoredAfterReset = false; }), /without default-state proof/);
+    assert.throws(() => derivation(s => { s.provenance.customStatePrecededReset = false; }), /without default-state proof/);
+});
+test('wrong bytes or coordinates, cursor-only text.tab, duplicate, missing or stale evidence are refused', () => {
+    assert.throws(() => derivation(s => { s.effects['text.tab'].fixture = '\t'; }), /invalid specimen text.tab/);
+    assert.throws(() => derivation(s => { s.effects['unicode.tab-stops'].fixture = '\x1b[1;9H\x1bH\x1b[1;1H\t'; }), /invalid specimen unicode/);
+    assert.throws(() => derivation(s => { s.effects['text.tab'].expected.cursor = [0, 8]; }), /invalid specimen text.tab/);
+    assert.throws(() => derivation(s => { s.effects['unicode.tab-stops'].expected.cursor = [0, 9]; }), /invalid specimen unicode/);
+    assert.throws(() => derivation(s => { delete s.effects['text.tab'].observed.after.cpr; }), /invalid specimen text.tab/);
+    assert.throws(() => derivation(s => { delete s.effects['unicode.tab-stops']; }), /missing, duplicate/);
+    assert.throws(() => derivation(s => { s.effects = { 'unicode.tab-stops': s.effects['unicode.tab-stops'], 'text.tab': s.effects['text.tab'] }; }), /missing, duplicate or reordered/);
+    assert.throws(() => derivation(s => { s.runId = 'c'.repeat(32); }), /stale tab-stops/);
+    assert.throws(() => derivation(s => { s.suiteId = 'ntilde-core-erase-v1'; }), /stale tab-stops/);
+    assert.throws(() => derivation(() => {}, { sha256: '0'.repeat(64) }), /preceding publication changed/);
+});
+test('a conclusion of the preceding publication cannot be lost or silently changed', () => {
+    const lossy = { derive: (...args) => { const r = deriveTextCursorCoreReport(...args); r.report.rows.find(x => x.id === 'text.cr').conclusion = 'inconclusive'; return r; } };
+    assert.throws(() => derivation(() => {}, lossy), /unattributed conclusion change or lost merged conclusion: text.cr/);
+    const short = { derive: (...args) => { const r = deriveTextCursorCoreReport(...args); r.report.rows.pop(); return r; } };
+    assert.throws(() => derivation(() => {}, short), /80 exact unique/);
 });

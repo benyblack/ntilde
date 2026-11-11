@@ -74,7 +74,7 @@ export function deriveTabStopsCoreReport(directory, frozenMapping, identity, mea
 }
 
 const cell = value => String(value ?? '').replaceAll('|', String.raw`\|`).replaceAll('\n', ' ').replaceAll('\r', '');
-const literal = value => JSON.stringify(value).replaceAll('`', String.raw```);
+const literal = value => JSON.stringify(value).replaceAll('`', String.raw`\u0060`);
 function describeEffect(row) {
     const [e] = row.exactFixtureEffects, p = row.defaultStateProvenance;
     const c = row.controls;
