@@ -144,7 +144,9 @@ export function syntheticColorResetEvidence(runId = 'a'.repeat(32), bundleSha256
             for (const [index, step] of spec.stages.entries()) {
                 if (step.kind === 'reset') resetDone.value = true;
                 const overrides = appOverrides(spec, index, behavior), colors = appColors(baseline, overrides, behavior, resetDone.value);
-                const screen = stageScreen(spec, index, colors, overrides), theme = renderTheme(colors, overrides);
+                const screen = stageScreen(spec, index, colors, overrides);
+                const staleView = behavior.renderStale && step.kind === 'reset' ? appOverrides(spec, 1, {}) : overrides;
+                const theme = renderTheme(behavior.renderStale && step.kind === 'reset' ? appColors(baseline, staleView, {}, false) : colors, staleView);
                 const modelColors = behavior.staleReplies && step.kind === 'reset' ? appColors(baseline, appOverrides(spec, 1, {}), {}, false) : colors;
                 const queries = behavior.noReplies ? spec.queries.map(item => ({ spec: item, barrier: deviceAttribute, reply: null }))
                     : spec.queries.map(item => ({ spec: item, barrier: deviceAttribute, reply: reply(item, queryColor(modelColors, item)) }));
@@ -182,3 +184,6 @@ export function syntheticColorResetGrades(evidence) {
 }
 
 export { defaultChannel };
+
+/** A deep copy of the mutable parts of a run (journal, run log, adapter), sharing the retained PNG bytes. */
+export const cloneColorResetEvidence = evidence => ({ ...evidence, frames: structuredClone(evidence.frames), run: structuredClone(evidence.run), adapter: structuredClone(evidence.adapter) });
