@@ -33,6 +33,12 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
+/** Remove the new suffix from the synthetic v37 scope on LF and CRLF checkouts. */
+export function routedPrefixSource(bytes) {
+    return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?core-text-cursor(?:-receipt)?\.mjs';\n/gm, ''));
+}
+
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
 async function buildFixture(output, routed) {
     const write = writerFor(output);
@@ -89,7 +95,7 @@ async function buildFixture(output, routed) {
         for (const [key, file] of Object.entries(scope)) {
             let data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
             if (!routed && file.endsWith('.mjs')) data = legacyPrefixSource(data);
-            if (routed && file.endsWith('.mjs')) data = Buffer.from(data.toString().replace(/^import .*from '\.\/(?:terminfo\/)?core-text-cursor(?:-receipt)?\.mjs';\n/gm, ''));
+            if (routed && file.endsWith('.mjs')) data = routedPrefixSource(data);
             if (file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(scope, null, 2) + '\n');
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }

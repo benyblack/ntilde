@@ -1,3 +1,4 @@
+import { routedPrefixSource } from './fixtures/private-clipboard-receipt.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
@@ -168,4 +169,11 @@ test('Core report keeps the frozen denominator and admits only the eight identif
         assert.deepEqual(describeLayers([{ stored: 'supported', resolved: 'supported' }, [{ name: 'state', outcome: 'supported' }]]),
             ['stored: supported', 'resolved: supported', 'name: state', 'outcome: supported']);
     } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('synthetic historical source strips the new imports on LF and CRLF checkouts', () => {
+    const source = "import { collectTextCursor } from './core-text-cursor.mjs';\nimport { textCursorSuiteId } from './terminfo/core-text-cursor.mjs';\nimport { retained } from './retained.mjs';\n";
+    const expected = "import { retained } from './retained.mjs';\n";
+    assert.equal(routedPrefixSource(Buffer.from(source)).toString(), expected);
+    assert.equal(routedPrefixSource(Buffer.from(source.replaceAll('\n', '\r\n'))).toString(), expected);
 });
