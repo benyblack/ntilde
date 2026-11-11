@@ -50,8 +50,9 @@ export const queryBytes = (spec, term) => osc(`${spec.code};${spec.code === 4 ? 
 
 /** One stage: bytes written, then every query asked, then one read. `kind` says what the stage is for: a baseline and an override are
  * controls (they must hold before a reset can be graded), anything else is graded. `cells` are extra explicit cells the stage's
- * writes leave behind, expected from that stage on. */
-const stage = (id, kind, writes = [], cells = []) => ({ id, kind, writes, cells });
+ * writes leave behind, expected from that stage on. `rendered` marks a reset that changes something the scene draws, so the controlled render must
+ * differ from the previous stage's render (a renderer that never applied the reset would repeat it). */
+const stage = (id, kind, writes = [], cells = [], rendered = false) => ({ id, kind, writes, cells, rendered });
 
 /** The scene of an experiment: five rows of text under defaults, a palette color, a literal color and as backgrounds, and the cursor. */
 function sceneBytes(scene) {
@@ -96,7 +97,7 @@ function pinnedExperiment(caseId, setCode, resetCode, index, scene = {}) {
     return experiment({ id: 'pinned', caseId, role: 'pinned', term: bel, queries: [query], scene,
         label: `the pinned fixture: ${setCode === 4 ? 'slot 0' : 'the color'} set to ${pinnedColor}, then reset with the exact pinned spelling`,
         stages: [stage('baseline', 'baseline'), stage('override', 'override', [osc(`${setCode};${where}${pinnedColor}`, bel)]),
-            stage('reset', 'reset', [osc(`${resetCode}${index === undefined ? '' : ';' + index}`, bel)])] });
+            stage('reset', 'reset', [osc(`${resetCode}${index === undefined ? '' : ';' + index}`, bel)], [], true)] });
 }
 
 /** Overrides of the other two dynamic colors, written with the one under test, so a reset can be shown to leave them alone. */
@@ -120,7 +121,7 @@ function dynamicExperiments(caseId, code, resetCode, name, sgrDefault, sgrSet, e
         experiment({ id: 'isolation', caseId, queries: allThree, scene: extras?.scene,
             label: `the ${name} override reset (ST spelling) while the other two dynamic colors stay overridden`,
             stages: [stage('baseline', 'baseline'), stage('override', 'override', [...dynamicSets(others), ...dynamicSets(mine)]),
-                stage('reset', 'reset', [osc(String(resetCode))])] }),
+                stage('reset', 'reset', [osc(String(resetCode))], [], true)] }),
         ...(sgrDefault === null ? [] : [experiment({ id: 'sgr-default', caseId, queries: [{ code }], pixels: false,
             label: `SGR ${sgrDefault} changes the active pen, not the runtime ${sgrKind} default, and OSC ${resetCode} does not change the pen`,
             stages: [stage('baseline', 'baseline'), stage('override', 'override', [osc(`${code};${isolated[name]}`)]),
@@ -136,7 +137,7 @@ function cursorExperiments() {
         experiment({ id: 'isolation', caseId: osc112, queries: allThree, scene: { cursor: steadyBlock },
             label: 'the cursor override reset (ST spelling) while foreground and background stay overridden; the cursor keeps its steady block shape and visibility',
             stages: [stage('baseline', 'baseline'), stage('override', 'override', [...dynamicSets(dynamics.filter(([code]) => code !== 12)), ...dynamicSets([[12, 'cursor']])]),
-                stage('reset', 'reset', [osc('112')])] }),
+                stage('reset', 'reset', [osc('112')], [], true)] }),
         experiment({ id: 'hidden-beam', caseId: osc112, queries: [{ code: 12 }], scene: { cursor: steadyBeamHidden }, pixels: false,
             label: 'a hidden steady-beam cursor: the cursor color is set and reset, the shape stays beam, the cursor stays hidden',
             stages: [stage('baseline', 'baseline'), stage('override', 'override', [osc(`12;${isolated.cursor}`)]), stage('reset', 'reset', [osc('112')])] }),
@@ -151,10 +152,10 @@ function paletteExperiments() {
         experiment({ id: 'individual-slots', caseId: osc104, queries: slots.map(index => ({ code: 4, index })), scene: { fgIndex: 1, bgIndex: 200 },
             label: 'five slots overridden (1, 9, 16, 200, 255); reset slot 1 alone, then 9 and 200 together, then the remaining 16 and 255, each time with the unrelated slots still overridden',
             stages: [stage('baseline', 'baseline'), stage('override', 'override', [slotsSet(slots)]),
-                stage('reset-one', 'reset', [osc('104;1')]), stage('reset-two', 'reset', [osc('104;9;200')]), stage('reset-rest', 'reset', [osc('104;16;255')])] }),
+                stage('reset-one', 'reset', [osc('104;1')], [], true), stage('reset-two', 'reset', [osc('104;9;200')], [], true), stage('reset-rest', 'reset', [osc('104;16;255')])] }),
         experiment({ id: 'whole-palette', caseId: osc104, queries: wide.map(index => ({ code: 4, index })), scene: { fgIndex: 100, bgIndex: 231 }, term: bel,
             label: 'all 256 slots overridden, then reset with the parameterless whole-palette spelling ESC]104 BEL (a control: the pinned fixture resets slot 0 only)',
-            stages: [stage('baseline', 'baseline'), stage('override', 'override', [slotsSet(allSlots)]), stage('reset', 'reset', [osc('104', bel)])] }),
+            stages: [stage('baseline', 'baseline'), stage('override', 'override', [slotsSet(allSlots)]), stage('reset', 'reset', [osc('104', bel)], [], true)] }),
     ];
 }
 
@@ -222,9 +223,10 @@ const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right)
 /** The measured baseline colors of one stage's three App layers. */
 const colorsOfTheme = theme => ({ foreground: theme.foregroundArgb, background: theme.backgroundArgb, cursor: theme.cursorArgb, palette: [...theme.ansiPaletteArgb] });
 
-/** Compare queried replies to the colors the model demands. A reply carries its 16-bit channels. */
+/** Compare the replies that arrived to the colors the model demands. A reply carries its 16-bit channels. An absent reply is not a wrong color: whether every
+ * reply arrived is its own control, so a missing readback can only make the experiment inconclusive. */
 function queriesMatch(queries, effective) {
-    return queries.every(query => query.reply !== null && sameJson(query.reply.channels16, channels16(queriedColor(effective, query.spec))));
+    return queries.every(query => query.reply === null || sameJson(query.reply.channels16, channels16(queriedColor(effective, query.spec))));
 }
 
 /** The expected binding of readScreen at a stage: the measured baseline with the effective colors and the model's flags. */
@@ -335,11 +337,15 @@ function gradeExperiment(spec, stages) {
     const base = stages[0], baseline = colorsOfTheme(base.theme), writes = overridesByStageOf(spec);
     const wanted = cursorWanted(spec.scene), cells = sceneCells(spec.scene);
     const controls = baselineControls(spec, base, baseline), assertions = [];
+    controls.push(check(`${spec.id}: every query of every stage was answered`, stages.every(stage => stage.queries.every(query => query.reply !== null))));
     for (const [index, observed] of stages.entries()) {
         const overrides = writes[index], effective = effectiveColors(baseline, overrides);
         const target = observed.kind === 'baseline' || observed.kind === 'override' ? controls : assertions;
         target.push(...stageChecks({ spec, base, observed, index, overrides, effective, cells, wanted }));
         if (observed.kind === 'override') controls.push(...overrideControls({ spec, base, observed, overrides, effective, baseline }));
+        if (spec.pixels && spec.stages[index].rendered) {
+            assertions.push(check(`${spec.id}/${observed.id}: the reset changed the controlled render`, observed.pixelSha256 !== stages[index - 1].pixelSha256));
+        }
     }
     const last = stages.length - 1;
     if (spec.pixels && noneOverridden(writes[last])) {

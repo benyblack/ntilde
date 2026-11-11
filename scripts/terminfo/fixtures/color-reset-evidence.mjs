@@ -116,8 +116,8 @@ const pixelOf = (index, screen, theme, png) => {
     return { file: `crst-pixels/frame-${String(index).padStart(3, '0')}.png`, sha256: sha(png), byteCount: png.length, width, height, rows: colEditRows, cols: colEditCols,
         mode: 'render', scale: 1, downscaled: false, inlineOmitted: false, presentationTimeMs: 0, renderDetails: { ...details, theme } };
 };
-const frame = (index, kind, screen, barrier, theme, extra, pngs) => {
-    const png = renderPng(screen, theme), pixel = pixelOf(index, screen, theme, png);
+const frame = (index, kind, screen, barrier, theme, extra, pngs, repeat = null) => {
+    const png = repeat === null ? renderPng(screen, theme) : pngs.get(repeat.pixel.file), pixel = pixelOf(index, screen, theme, png);
     pngs.set(pixel.file, png);
     return { index, kind, paneId, barrier, screen, sha256: snapshotHash(screen), afterScreen: structuredClone(screen), afterSha256: snapshotHash(screen),
         caseId: null, experimentId: null, stageId: null, queries: [], ...extra, pixel };
@@ -148,10 +148,11 @@ export function syntheticColorResetEvidence(runId = 'a'.repeat(32), bundleSha256
                 const staleView = behavior.renderStale && step.kind === 'reset' ? appOverrides(spec, 1, {}) : overrides;
                 const theme = renderTheme(behavior.renderStale && step.kind === 'reset' ? appColors(baseline, staleView, {}, false) : colors, staleView);
                 const modelColors = behavior.staleReplies && step.kind === 'reset' ? appColors(baseline, appOverrides(spec, 1, {}), {}, false) : colors;
-                const queries = behavior.noReplies ? spec.queries.map(item => ({ spec: item, barrier: deviceAttribute, reply: null }))
+                const silent = behavior.noReplies || (behavior.noResetReplies && step.kind === 'reset');
+                const queries = silent ? spec.queries.map(item => ({ spec: item, barrier: deviceAttribute, reply: null }))
                     : spec.queries.map(item => ({ spec: item, barrier: deviceAttribute, reply: reply(item, queryColor(modelColors, item)) }));
                 const extra = { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries };
-                frames.push(frame(frames.length, 'crst-read', screen, deviceAttribute, theme, extra, pngs));
+                frames.push(frame(frames.length, 'crst-read', screen, deviceAttribute, theme, extra, pngs, behavior.stalePng && step.kind === 'reset' ? frames.at(-1) : null));
                 reads.push({ kind: 'state', cursor: [screen.cursorRow, screen.cursorCol], queries: structuredClone(queries) });
                 at++;
             }

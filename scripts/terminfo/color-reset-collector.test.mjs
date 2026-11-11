@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { collectColorResetGrading, colorResetRecordingContext, pinnedReplies } from './color-reset-collector.mjs';
 import { colorResetContracts, colorResetBind, colorResetFinish, colorResetNoncePrefix, colorResetReadPlan, colorResetFeeds, colorResetReads } from './color-reset-contracts.mjs';
-import { colorResetSeams } from './color-reset-grading-collector.mjs';
+import { pinnedColorResetProbe } from './fixtures/color-reset-pinned.mjs';
 import { applyColorWrites, noOverrides, effectiveColors, queriedColor, channels16 } from './color-reset-model.mjs';
 import { syntheticBaseline, syntheticColorResetEvidence } from './fixtures/color-reset-evidence.mjs';
 
 const screen = syntheticColorResetEvidence().frames[2].screen;
 
 const barrier = '\x1b[?62;4;22c', runId = 'c'.repeat(32);
-const { colorResetProbe } = new Function(colorResetSeams.slice(4, 9).join('\n') + '\nreturn { colorResetProbe };')();
+const colorResetProbe = await pinnedColorResetProbe();
 const pinnedArgs = { 'extensions.osc104-reset-palette': [4, 104, 0], 'extensions.osc110-reset-fg': [10, 110], 'extensions.osc111-reset-bg': [11, 111], 'extensions.osc112-reset-cursor': [12, 112] };
 /** The pinned probe, from the pinned seams, as the layered module would export it. */
 const gradingModule = Object.freeze({ ntildeColorResetAdapter: { id: 'stub', probeIds: colorResetContracts.map(item => item.caseId) },

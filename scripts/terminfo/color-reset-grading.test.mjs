@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { colorResetSeams } from './color-reset-grading-collector.mjs';
+import { pinnedColorResetProbe } from './fixtures/color-reset-pinned.mjs';
 import { colorResetContracts } from './color-reset-contracts.mjs';
 import { colorResetRecordingContext } from './color-reset-collector.mjs';
 import { buildColorResetGradingReport, replayColorResetPinned } from './color-reset-grading.mjs';
 import { syntheticColorResetEvidence, cloneColorResetEvidence } from './fixtures/color-reset-evidence.mjs';
 
 /** The verbatim pinned colorResetProbe and its helpers, evaluated from the pinned seams: the replay's oracle. */
-const { colorResetProbe } = new Function(colorResetSeams.slice(4, 9).join('\n') + '\nreturn { colorResetProbe };')();
+const colorResetProbe = await pinnedColorResetProbe();
 const pinnedArgs = [[4, 104, 0], [10, 110], [11, 111], [12, 112]];
 const reply = (code, value) => ({ raw: `\x1b]${code};rgb:${value}\x1b\\` });
 const codes = ['4;0', '10', '11', '12'];
