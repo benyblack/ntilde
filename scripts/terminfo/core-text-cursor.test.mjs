@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { includesTextCursorEvidence, checkTextCursorEvidence } from './core-text-cursor-receipt.mjs';
+import { extractOwnedArchive, loadMapping, root } from '../terminfo-core-results.mjs';
+import { deriveTextCursorCoreReport, describeLayers } from '../terminfo-core-text-cursor-results.mjs';
 import { execFileSync } from 'node:child_process';
 import { snapshotHash } from './agent-observer.mjs';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +16,7 @@ const archive = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-11-core-re
 const baseline = JSON.parse(execFileSync('unzip', ['-p', archive, 'cg-snapshots.jsonl'], { maxBuffer: 100_000_000 }).toString().split('\n')[0]).screen;
 const frame = (lines, cursor) => {
     const screen = structuredClone(baseline);
+    screen.bufferState.alternateScreen = true;
     screen.horizontalMargins = { leftRightMarginMode: false, leftMargin: 0, rightMargin: screen.cols - 1 };
     screen.lines = Array(screen.rows).fill('');
     lines.forEach((line, i) => { screen.lines[i] = line; });
@@ -79,7 +82,7 @@ test('failed operations in independent controls are observed failures', () => {
 function journal() {
     const id = 'a'.repeat(32), paneId = '11111111-1111-1111-1111-111111111111', barrier = '\x1b[?1;2c';
     const blank = structuredClone(baseline); blank.horizontalMargins = { leftRightMarginMode: false, leftMargin: 0, rightMargin: blank.cols - 1 };
-    const bind = structuredClone(blank); bind.lines[0] = textCursorNonce + id; bind.cursorCol = bind.lines[0].length;
+    const bind = structuredClone(blank); bind.bufferState.alternateScreen = true; bind.lines[0] = textCursorNonce + id; bind.cursorCol = bind.lines[0].length;
     const make = (screen, kind, index, cpr) => ({ index, kind, paneId, barrier: index ? barrier : null, screen, sha256: snapshotHash(screen), ...(cpr && { cpr }) });
     const frames = [make(blank, 'tc-start', 0), make(bind, 'tc-bind', 1)];
     const plan = textCursorPlan(), roles = good(), reads = [];
@@ -141,5 +144,25 @@ test('receipt refuses stripped artifacts and a coherently rehashed fixture alter
         const bytes = readFileSync(join(dir, 'tc-snapshots.jsonl')); writeFileSync(join(dir, 'tc-snapshots.jsonl'), bytes.subarray(0, 10));
         assert.throws(() => checkTextCursorEvidence(dir, evidence, id, context));
         assert.equal(includesTextCursorEvidence(dir, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v37' }), true);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('Core report keeps the frozen denominator and admits only the eight identified effects', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nt-tc-report-'));
+    try {
+        const mapping = loadMapping(); extractOwnedArchive(root, mapping, dir);
+        const context = JSON.parse(readFileSync(join(dir, 'context.json')));
+        const { frames, run, id } = journal(), supplement = buildTextCursorReport(frames, run, id);
+        supplement.runId = context.runId;
+        writeFileSync(join(dir, 'tc-observations.json'), JSON.stringify(supplement));
+        const derived = deriveTextCursorCoreReport(dir, mapping, { context }, { ...mapping.measurement, runId: context.runId });
+        assert.equal(derived.report.rows.length, 80);
+        assert.deepEqual(derived.report.totals, { pass: 68, fail: 0, inconclusive: 12 });
+        assert.equal(derived.report.rows.find(x => x.id === 'text.cr').observed.lines[0], 'CB');
+        supplement.cases[0].effectContract.id = 'other';
+        writeFileSync(join(dir, 'tc-observations.json'), JSON.stringify(supplement));
+        assert.throws(() => deriveTextCursorCoreReport(dir, mapping, { context }, { ...mapping.measurement, runId: context.runId }), /untrusted effect/);
+        assert.deepEqual(describeLayers([{ stored: 'supported', resolved: 'supported' }, [{ name: 'state', outcome: 'supported' }]]),
+            ['stored: supported', 'resolved: supported', 'name: state', 'outcome: supported']);
     } finally { rmSync(dir, { recursive: true, force: true }); }
 });

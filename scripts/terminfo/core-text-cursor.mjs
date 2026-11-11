@@ -22,7 +22,7 @@ const cases = [
     ['cursor.hpa', 'ABCDEFGH\x1b[5`', ['ABCDEFGH'], [0, 4]],
 ];
 export const textCursorIds = Object.freeze(cases.map(c => c[0]));
-const reset = scrollbackReset + '\x1b[?69l\x1b[20l\x1b[?7h\x1b[?25h';
+const reset = scrollbackReset.replace('\x1b[?1049l', '') + '\x1b[?69l\x1b[?7h\x1b[?25h';
 const marker = '\x1b[10;1HGUARD\x1b[H';
 
 /** Each fixture is a single fenced write. Controls use independent resets. */
@@ -55,7 +55,7 @@ function expectedLines(rows, firstRows) {
     return lines;
 }
 function stable(v) {
-    return !v.alternate && !v.origin && !v.insert && v.autoWrap && !v.pending && v.cursorVisible
+    return v.alternate && !v.origin && !v.insert && v.autoWrap && !v.pending && v.cursorVisible
         && v.top === 0 && v.bottom === v.rows - 1 && v.count === 0 && v.storedDefault;
 }
 function view(frame) { return scrollbackView(frame.screen); }
@@ -119,7 +119,7 @@ export async function collectTextCursor({ config, fence, owner }) {
     check(started.screen.rows >= 12 && started.screen.cols >= 48, 'geometry too small');
     let primary;
     try {
-        await owner('tc-bind', await fence.write(reset + textCursorNonce + config.runId));
+        await owner('tc-bind', await fence.write('\x1b[?47h' + reset + textCursorNonce + config.runId));
         for (const step of textCursorPlan()) {
             if (step.feed) {
                 feeds.push(step.feed);
@@ -131,7 +131,7 @@ export async function collectTextCursor({ config, fence, owner }) {
             }
         }
     } catch (error) { primary = error; }
-    try { await owner('tc-finish', await fence.write(reset)); }
+    try { await owner('tc-finish', await fence.write(reset + '\x1b7\x1b[?47l')); }
     catch (error) {
         if (primary) throw new AggregateError([primary, error], 'Core text/cursor collection and restoration failed.');
         throw error;
