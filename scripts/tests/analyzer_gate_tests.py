@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+DOTNET_GATE = "needs.dotnet_detect.outputs.run == 'true'"
 
 
 def jobs(text: str) -> dict:
@@ -58,7 +59,11 @@ def problems(text: str) -> list[str]:
         if "RunAnalyzers=false" in analyzers:
             out.append("the `analyzers` job turns analyzers off")
         # A job-level `if:` (four spaces in); its steps' own `if:`s - the SDK fallback - are fine.
-        if re.search(r"^    if:", analyzers, re.M):
+        # The one condition allowed is the .NET gate's, and only while `build` carries the same
+        # one: then the two skip together, on a PR that cannot change a .NET result, and the
+        # analyzers are never off in a build that ran.
+        conditions = re.findall(r"^    if: (.*)$", analyzers, re.M)
+        if conditions and (conditions != [DOTNET_GATE] or re.findall(r"^    if: (.*)$", build, re.M) != [DOTNET_GATE]):
             out.append("the `analyzers` job is conditional, so it can be skipped")
     rollup = code(found.get("unit_tests", ""))
     needs = re.search(r"^\s*needs:\s*\[([^\]]*)\]", rollup, re.M)
@@ -85,16 +90,19 @@ def main() -> int:
           "the build job skips analyzers (else this guard checks nothing)")
 
     analyzers_block = jobs(real)["analyzers"]
+    build_block = jobs(real)["build"]
     mutants = {
         "no analyzers job": real.replace("\n  analyzers:\n", "\n  analyzers_gone:\n"),
         "analyzers job turns them off": real.replace(
             analyzers_block, analyzers_block.replace("--no-restore\n", "--no-restore -p:RunAnalyzers=false\n", 1)),
         "roll-up does not need it": real.replace(
-            "needs: [build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, analyzers]",
-            "needs: [build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned]"),
+            "needs: [dotnet_detect, build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, analyzers]",
+            "needs: [dotnet_detect, build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned]"),
         "roll-up ignores its result": real.replace("needs.analyzers.result", "needs.analyzers.outputs"),
         "analyzers job made conditional": real.replace(
             "\n  analyzers:\n    name: Analyzers\n", "\n  analyzers:\n    name: Analyzers\n    if: false\n"),
+        "analyzers gated while build is not": real.replace(
+            build_block, build_block.replace(f"\n    if: {DOTNET_GATE}\n", "\n", 1), 1),
     }
     for label, text in mutants.items():
         check(text != real, f"mutant applies: {label}")
