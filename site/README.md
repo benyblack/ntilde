@@ -30,6 +30,31 @@ yourself to see the same notice locally
 (`NTILDE_LATEST_RELEASE=v0.12.0 npm run dev`); without it, the notice links to
 the releases list.
 
+## Qualification results
+
+`/qualification/` shows Ntilde's own Core qualification from one frozen publication under
+[`docs/qa/terminfo/`](../docs/qa/terminfo/). It has no results of its own: every row, total and
+identity field comes from that publication's `report.json`.
+
+- [`qualification-source.json`](./qualification-source.json) is the pin: which publication, the
+  SHA-256 of its report, readable report, measurement manifest and requirements, the run and
+  revisions it must name, and the totals it must have. Showing a newer result is an explicit edit
+  to this file (the self-test fails while a newer Core publication exists and the pin has not
+  moved).
+- [`scripts/qualification-data.mjs`](./scripts/qualification-data.mjs) builds the page data and
+  refuses a changed, missing or malformed source; `scripts/sync-qualification.mjs` writes it to the
+  git-ignored `src/data/ntilde-qualification.json` before every dev server, build and check.
+- `npm run build` ends by checking the built page (`npm run check:build` repeats that on an existing
+  `dist/`): the pinned rows and totals, the claim, that links resolve and that nothing
+  machine-specific is in the HTML. The Pages workflow builds with it, so a bad page is not deployed.
+- The generator's tests are
+  [`scripts/terminfo/site-qualification-data.test.mjs`](../scripts/terminfo/site-qualification-data.test.mjs),
+  which CI runs with the other terminfo self-tests. CI does not build the site on pull requests; the
+  Pages workflow builds it from `main`.
+
+To move the page to a newer publication, point `publication`, `publicationScript` and `evidenceRef`
+at it and update the digests and expectations; the build and the test then say what is wrong.
+
 ## Develop
 
 ```bash
@@ -132,8 +157,12 @@ site/
 │   ├── og.svg
 │   ├── robots.txt
 │   └── screenshots/           # Synced from docs/assets/screenshots/
+├── qualification-source.json  # Pins the publication /qualification/ shows
 ├── scripts/
-│   └── sync-screenshots.mjs   # Copies docs/assets/screenshots -> public/
+│   ├── sync-screenshots.mjs   # Copies docs/assets/screenshots -> public/
+│   ├── qualification-data.mjs # Builds and validates the /qualification/ data
+│   ├── sync-qualification.mjs # Writes src/data/ntilde-qualification.json (generated)
+│   └── check-qualification-build.mjs # Checks the built /qualification/ page
 ├── src/
 │   ├── components/            # One Astro file per page section
 │   ├── layouts/
