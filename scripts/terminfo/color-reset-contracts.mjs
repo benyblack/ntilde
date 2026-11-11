@@ -202,7 +202,7 @@ function makeContract(definition) {
         appearanceScope: 'exact fenced query replies, the App-resolved colors and override metadata, stored default markers, palette-indexed and literal cells, the cursor '
             + 'and the controlled offscreen render at a fixed synthetic clock; real-time cadence, desktop appearance, selection and pointer colors, Kitty named colors and '
             + 'alternate-screen or DECSTR clearing of overrides are not claimed',
-        evidence: 'owned-runtime-color-layers',
+        evidence: 'owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels',
         grade: observation => gradeCase(definition.caseId, experiments, observation),
         observed: observation => briefCase(experiments, observation),
     });
@@ -291,50 +291,58 @@ export function colorResetObservation(item, reads) {
     })]));
 }
 
+/** The model's overrides are all empty. */
+const noneOverridden = overrides => overrides.palette.size === 0 && overrides.foreground === null && overrides.background === null && overrides.cursor === null;
+
+/** The checks of one stage against the model: the four App layers, the stored text and the cursor, and (with no override left) the complete theme. */
+function stageChecks({ spec, base, observed, index, overrides, effective, cells, wanted }) {
+    const label = `${spec.id}/${observed.id}`;
+    let stepCells = cells;
+    for (const earlier of spec.stages.slice(0, index + 1)) stepCells = [...stepCells, ...earlier.cells];
+    const checks = [check(`${label}: the exact query replies are the model's colors`, queriesMatch(observed.queries, effective)),
+        check(`${label}: the App's resolved colors and override metadata match`, bindingMatches(observed.screen.colorBinding, base.screen.colorBinding, effective, overrides)),
+        check(`${label}: the render theme sources and override flags match`, themeMatches(observed.theme, base.theme, effective, overrides)),
+        check(`${label}: default markers, palette-indexed and literal cells resolve to the model`, cellsMatch(observed.screen, stepCells, effective)),
+        check(`${label}: stored text, cursor position, shape and visibility are as written`, sameJson(observed.screen.lines, expectedLines(observed.screen.rows, spec.stages, index))
+            && cursorMatches(observed.screen, { presentation: observed.presentation }, wanted) && (wanted.style === null || observed.presentation.cursorStyle === wanted.style))];
+    if (noneOverridden(overrides)) checks.push(check(`${label}: the complete theme, derived values included, equals the baseline`, snapshotHash(observed.theme) === snapshotHash(base.theme)));
+    return checks;
+}
+
+/** The controls an override stage must meet before a reset can be judged: a distinct change in every overridden target, visible in the render. */
+function overrideControls({ spec, base, observed, overrides, effective, baseline }) {
+    const label = `${spec.id}/${observed.id}`;
+    const changed = [effective.foreground !== baseline.foreground, effective.background !== baseline.background, effective.cursor !== baseline.cursor,
+        ...effective.palette.map((color, slot) => color !== baseline.palette[slot])];
+    const controls = [check(`${label}: the override differs from the measured baseline`, changed.some(Boolean)),
+        check(`${label}: every overridden target differs from its baseline`, targetsChanged(overrides, effective, baseline))];
+    if (spec.pixels) controls.push(check(`${label}: the controlled render differs from the baseline render`, observed.pixelSha256 !== base.pixelSha256));
+    return controls;
+}
+
+/** The baseline controls: no runtime override in any layer, two App layers agreeing, the scene as written and no reverse video. */
+function baselineControls(spec, base, baseline) {
+    const binding = base.screen.colorBinding, theme = base.theme;
+    return [check('the baseline has no runtime override in any layer', !theme.foregroundOverride && !theme.backgroundOverride && !theme.cursorOverride
+            && theme.paletteOverrideIndices.length === 0 && !binding.foregroundOverride && !binding.backgroundOverride && binding.paletteOverrideIndices.length === 0),
+        check('the baseline readScreen binding equals the render theme (two App layers agree)', binding.foregroundArgb === baseline.foreground
+            && binding.backgroundArgb === baseline.background && sameJson(binding.ansiPaletteArgb, baseline.palette)),
+        check('the scene is as written: text rows, steady scene colors and no reverse video', sameJson(base.screen.lines, expectedLines(base.screen.rows, spec.stages, 0)) && binding.reverseVideo === false)];
+}
+
 /** Grade one experiment: every stage's four layers against the model; controls (baseline, override) before assertions (resets). */
 function gradeExperiment(spec, stages) {
-    const base = stages[0], baseline = colorsOfTheme(base.theme);
-    const writes = overridesByStageOf(spec);
-    const controls = [], assertions = [];
-    const wanted = cursorWanted(spec.scene);
-    const cells = sceneCells(spec.scene);
-    controls.push(check('the baseline has no runtime override in any layer', writes[0].palette.size === 0 && !base.theme.foregroundOverride && !base.theme.backgroundOverride
-        && !base.theme.cursorOverride && base.theme.paletteOverrideIndices.length === 0 && !base.screen.colorBinding.foregroundOverride
-        && !base.screen.colorBinding.backgroundOverride && base.screen.colorBinding.paletteOverrideIndices.length === 0));
-    controls.push(check('the baseline readScreen binding equals the render theme (two App layers agree)', base.screen.colorBinding.foregroundArgb === baseline.foreground
-        && base.screen.colorBinding.backgroundArgb === baseline.background && sameJson(base.screen.colorBinding.ansiPaletteArgb, baseline.palette)));
-    controls.push(check('the scene is as written: text rows, steady scene colors and no reverse video', sameJson(base.screen.lines, expectedLines(base.screen.rows, spec.stages, 0))
-        && base.screen.colorBinding.reverseVideo === false));
-    stages.forEach((observed, index) => {
-        const overrides = writes[index];
-        const effective = effectiveColors(baseline, overrides);
+    const base = stages[0], baseline = colorsOfTheme(base.theme), writes = overridesByStageOf(spec);
+    const wanted = cursorWanted(spec.scene), cells = sceneCells(spec.scene);
+    const controls = baselineControls(spec, base, baseline), assertions = [];
+    for (const [index, observed] of stages.entries()) {
+        const overrides = writes[index], effective = effectiveColors(baseline, overrides);
         const target = observed.kind === 'baseline' || observed.kind === 'override' ? controls : assertions;
-        const label = `${spec.id}/${observed.id}`;
-        let stepCells = cells;
-        for (const earlier of spec.stages.slice(0, index + 1)) stepCells = [...stepCells, ...earlier.cells];
-        target.push(check(`${label}: the exact query replies are the model's colors`, queriesMatch(observed.queries, effective)),
-            check(`${label}: the App's resolved colors and override metadata match`, bindingMatches(observed.screen.colorBinding, base.screen.colorBinding, effective, overrides)),
-            check(`${label}: the render theme sources and override flags match`, themeMatches(observed.theme, base.theme, effective, overrides)),
-            check(`${label}: default markers, palette-indexed and literal cells resolve to the model`, cellsMatch(observed.screen, stepCells, effective)),
-            check(`${label}: stored text, cursor position, shape and visibility are as written`, sameJson(observed.screen.lines, expectedLines(observed.screen.rows, spec.stages, index))
-                && cursorMatches(observed.screen, { presentation: observed.presentation }, wanted)
-                && (wanted.style === null || observed.presentation.cursorStyle === wanted.style)));
-        if (overrides.palette.size === 0 && overrides.foreground === null && overrides.background === null && overrides.cursor === null) {
-            target.push(check(`${label}: the complete theme, derived values included, equals the baseline`, snapshotHash(observed.theme) === snapshotHash(base.theme)));
-        }
-    });
-    // The override must be a distinct, visible change before a reset can be judged.
-    stages.forEach((observed, index) => {
-        if (observed.kind !== 'override') return;
-        const effective = effectiveColors(baseline, writes[index]);
-        const changed = [effective.foreground !== baseline.foreground, effective.background !== baseline.background, effective.cursor !== baseline.cursor,
-            ...effective.palette.map((color, slot) => color !== baseline.palette[slot])];
-        controls.push(check(`${spec.id}/${observed.id}: the override differs from the measured baseline`, writes[index] && changed.some(Boolean)));
-        controls.push(check(`${spec.id}/${observed.id}: every overridden target differs from its baseline`, targetsChanged(writes[index], effective, baseline)));
-        if (spec.pixels) controls.push(check(`${spec.id}/${observed.id}: the controlled render differs from the baseline render`, observed.pixelSha256 !== base.pixelSha256));
-    });
+        target.push(...stageChecks({ spec, base, observed, index, overrides, effective, cells, wanted }));
+        if (observed.kind === 'override') controls.push(...overrideControls({ spec, base, observed, overrides, effective, baseline }));
+    }
     const last = stages.length - 1;
-    if (spec.pixels && writes[last].palette.size === 0 && writes[last].foreground === null && writes[last].background === null && writes[last].cursor === null) {
+    if (spec.pixels && noneOverridden(writes[last])) {
         assertions.push(check(`${spec.id}: the final controlled render is byte-identical to the baseline render`, stages[last].pixelSha256 === base.pixelSha256));
     }
     return { id: spec.id, role: spec.role, label: spec.label, controls, assertions, outcome: outcomeOf(controls, assertions) };
