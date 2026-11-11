@@ -44,7 +44,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
  * policy-v32 or later run always carries them, because the current worker collects this suite
  * unconditionally after the rectangle-editing suite. */
 export function includesColEditEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46'].includes(context.sourceSnapshotPolicy)
         || context.colEditAdapterId !== undefined || context.colEditSuiteId !== undefined
         || context.colEditBundleSha256 !== undefined || context.colEditContractsVersion !== undefined
         || evidence.colEditEvidence !== undefined

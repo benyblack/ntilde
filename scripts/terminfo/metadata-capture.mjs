@@ -27,7 +27,7 @@ function metadataPlan(snapshot, runId) {
 const metadataBaselineMatches = (snapshot, first, runId, finish) => matchesMetadataExpected(snapshot, { type: 'baseline' }, first.screen, runId, finish);
 /** Read actual host controls separately from the complete VT viewport; preserve both independent reads. Another suite on the same
  * paired observation path passes its own `prefix`, `planOf(snapshot, runId)` (one {} entry per read) and `matchesBaseline(snapshot, first, runId, finish)`;
- * the defaults are the frozen metadata suite's. */
+ * the defaults are the frozen metadata suite's. An optional `expose(snapshot)` returns small bounded facts the worker needs from the same observation; `monotonicHistory` accepts a history generation at or above the first one (a suite that runs RIS). */
 export class OwnedMetadataObserver {
     constructor(options) {
         check(/^[a-f\d]{32}$/.test(options.runId ?? ''));
@@ -36,7 +36,9 @@ export class OwnedMetadataObserver {
         this.planOf = options.planOf ?? metadataPlan;
         this.matchesBaseline = options.matchesBaseline ?? metadataBaselineMatches;
         const rpc = options.rpc ?? agentRequest;
-        const { planOf, matchesBaseline, ...cellOptions } = options;
+        this.expose = options.expose ?? null;
+        this.monotonicHistory = options.monotonicHistory === true;
+        const { planOf, matchesBaseline, expose, monotonicHistory, ...cellOptions } = options;
         const facts = { ...cellOptions, rpc: (...args) => this.recordRequest(rpc, ...args), prefix: this.prefix, includeCellDetails: true,
             includeCursorMode: true, includeOverline: true, includeBufferState: true };
         this.before = new OwnedCellObserver(facts); this.after = new OwnedCellObserver(facts);
@@ -81,9 +83,15 @@ export class OwnedMetadataObserver {
         const metadata = copyPaneMetadata(await observer.request('readPaneMetadata', { paneId: this.paneId }, budget));
         const rawStatus = await observer.request('getSessionStatus', { paneId: this.paneId }, budget);
         return validateMetadataSnapshot({ screen, metadata, rawStatus,
-            status: copyMetadataStatus(rawStatus, this.paneId) }, this.baseline, this.before.includeResolvedColors);
+            status: copyMetadataStatus(rawStatus, this.paneId) }, this.baseline, this.before.includeResolvedColors, this.monotonicHistory);
     }
     acceptPair(operation, snapshot) {
+        // A suite that opted into a raised history generation (RIS) still never accepts one that falls between consecutive observations.
+        const generation = snapshot.metadata.buffer.historyGeneration;
+        if (this.monotonicHistory) {
+            check(generation >= (this.lastGeneration ?? generation));
+            this.lastGeneration = generation;
+        }
         if (operation === 'start') {
             check(pristineEditing(snapshot.screen));
             const plan = this.planOf(snapshot, this.runId);
@@ -124,7 +132,7 @@ export class OwnedMetadataObserver {
                 before, sha256, after, afterSha256: sha256, caseId: stage?.caseId ?? null, stageId: stage?.stageId ?? null,
                 ...(this.lastAttempt.settling ? { settling: this.lastAttempt.settling } : {}) });
             if (operation === 'read') this.next++;
-            return { screen: before.screen, paneId: this.paneId };
+            return { screen: before.screen, paneId: this.paneId, ...(this.expose ? { facts: this.expose(before) } : {}) };
         } catch (error) { this.lastAttempt.error = this.failure(error); throw error; }
         finally { this.busy = false; }
     }

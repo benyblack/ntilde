@@ -1060,3 +1060,16 @@ session status, with unmarked controls, gates and the named defect controls (ign
 witness, stale, merged and leaked links; an undecoded encoded space, a stale second cwd, an unrestored baseline). Only reported metadata and stored cells are qualified: not the
 child's real working directory, path existence, click handling, URL opening or rendering. The suite reuses the paired metadata observer under its own prefix; no production
 code changed. Receipt schema 51 and source policy v45 (300 files) bind it; earlier policies stay frozen.
+
+### XTWINOPS title/icon stack qualification (push and pop)
+
+The [title/icon stack batch](terminfo/2026-11-11-title-stack-qualification.md) qualifies `device.xtwinops-22` and `device.xtwinops-23` through a layered collector extension
+(`ntilde-owned-title-stack-grading-v1`) over the left/right-margin one. Both pinned probes share one termless body (feed a title, `CSI 22;0t`, feed another title,
+`CSI 23;0t`, `getTitle()` after each stage; supported or inconclusive, never unsupported) and differ on a terminal path that only asks whether the cursor answered, which is
+the path the stock collector grades and which stays inconclusive. The retained code is replayed over parent-journaled observations: the termless path is supported on both
+cases and the terminal path is preserved inconclusive. Separately identified [effect contracts](terminfo/title-stack.md) (`ntilde-xtwinops-title-push-effect-v1`,
+`ntilde-xtwinops-title-pop-effect-v1`) are graded by an independent title-stack oracle from paired complete stored cells and the raw title, raw icon name, display title and
+actual tab text of the same observation: combined, title-only, icon-only, nested (LIFO), mixed-selector (the documented one-sided copy rule), empty-pop and bounded-depth
+experiments plus alternate-screen, DECSTR and RIS boundary observations, each from a stage that drains the stack and proves it empty by behavior. No production code changed;
+shared measurement code gained the raw icon name in pane-metadata frames, optional fact exposure and an opt-in raised-history mode (RIS). Raw icon-name state is not host icon
+presentation, and no title or icon report query or direct-slot addressing is claimed. Receipt schema 52 and source policy v46 (305 files) bind it; earlier policies stay frozen.
