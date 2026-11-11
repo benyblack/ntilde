@@ -287,7 +287,7 @@ jobs:
           node-version: '24'
       - name: Source-pinned callbacks, parent controls and complete schema12 receipt
         shell: bash
-        run: node --test scripts/terminfo/ownership.test.mjs scripts/terminfo/private-clipboard-request.test.mjs scripts/terminfo/private-clipboard-source.test.mjs scripts/terminfo/private-clipboard-controller.test.mjs scripts/terminfo/private-clipboard-bridge.test.mjs scripts/terminfo/private-clipboard-worker.test.mjs scripts/terminfo/private-clipboard-collector.test.mjs scripts/terminfo/private-clipboard-capture.test.mjs scripts/terminfo/private-clipboard-errors.test.mjs scripts/terminfo/private-clipboard-receipt.test.mjs
+        run: node --test scripts/terminfo/ownership.test.mjs scripts/terminfo/private-clipboard-request.test.mjs scripts/terminfo/private-clipboard-source.test.mjs scripts/terminfo/private-clipboard-controller.test.mjs scripts/terminfo/private-clipboard-bridge.test.mjs scripts/terminfo/private-clipboard-worker.test.mjs scripts/terminfo/private-clipboard-collector.test.mjs scripts/terminfo/private-clipboard-capture.test.mjs scripts/terminfo/private-clipboard-errors.test.mjs scripts/terminfo/private-clipboard-receipt.test.mjs scripts/terminfo/private-clipboard-receipt-refusals.test.mjs scripts/terminfo/private-clipboard-receipt-prefix.test.mjs
 
   build:
     name: Build (${{ matrix.os }})
