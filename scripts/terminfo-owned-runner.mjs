@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { eraseSuiteId as coreEraseSuiteId, EraseObserver, buildEraseReport as buildCoreEraseReport } from './terminfo/core-erase.mjs';
 import { textCursorSuiteId, TextCursorObserver, buildTextCursorReport } from './terminfo/core-text-cursor.mjs';
 import { coreGapsSuiteId, coreGapsAdapterId, adaptCoreGapsCollector, CoreGapsObserver, buildCoreGapsReport } from './terminfo/core-gaps.mjs';
 import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, readSourceSnapshot, removeSourceSnapshot, sourceSnapshotPolicy } from './terminfo/owned-sources.mjs';
@@ -164,7 +165,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'crst', 'shi', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'crst', 'shi', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const untranslatedCellSteps = new Set(['start', 'bind', 'read', 'finish']);
@@ -1352,6 +1353,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let lrMarginsEvidence;
     let coreGapsEvidence;
     let textCursorEvidence;
+    let coreEraseEvidence;
     let routedInputEvidence;
     let osc133Evidence;
     let colorResetEvidence;
@@ -1484,6 +1486,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let lrMarginsObserver;
         let coreGapsObserver;
         let textCursorObserver;
+        let coreEraseObserver;
         let colorResetObserver;
         let pixelObserver;
         let pixelUnavailable;
@@ -1513,7 +1516,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const image = statSync(executable);
         const context = {
             adapter: adapterId, adapterBundleSha256, upstreamBundleSha256, appVersion: args[3],
-            coreGapsSuiteId, coreGapsAdapterId, coreGapsBundleSha256, textCursorSuiteId,
+            coreGapsSuiteId, coreGapsAdapterId, coreGapsBundleSha256, textCursorSuiteId, coreEraseSuiteId,
             sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshot.sha256, sourceSnapshotRoot: sourceRepo,
             appVersionSource: 'operator supplied; not independently verified',
             initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))),
@@ -2389,6 +2392,21 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'csum-snapshots.jsonl'), JSON.stringify(rectChecksumObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'ce') {
+                if (!textCursorObserver?.restored) throw new Error('Text/cursor suite must restore before Core erase.');
+                coreEraseObserver ??= new EraseObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_CE_${runId}`, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeBufferState: true, includeResolvedColors: true, includeHorizontalMargins: true,
+                    prefix: 'ce', expectedPaneId: cellObserver.paneId });
+                try {
+                    const result = await coreEraseObserver.handleRequest(request, budget);
+                    appendFileSync(join(output, 'ce-snapshots.jsonl'), JSON.stringify(coreEraseObserver.frames.at(-1)) + '\n');
+                    return result;
+                } catch (error) {
+                    writeFileSync(join(output, 'ce-failed-observation.json'), JSON.stringify({ attempt: coreEraseObserver.lastAttempt, error: String(error) }) + '\n');
+                    throw error;
+                }
+            }
             if (prefix === 'tc') {
                 if (!coreGapsObserver?.restored || !colorResetObserver?.restored) throw new Error('Core gaps and color reset must restore before text/cursor observations.');
                 textCursorObserver ??= new TextCursorObserver({ appData, ownerPid: app.pid, profileName,
@@ -2635,6 +2653,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             textCursorEvidence = { runId, suiteId: textCursorSuiteId, file: 'tc-observations.json',
                 sha256: hash(readFileSync(join(output, 'tc-observations.json'))), runFile: 'tc-run.json', runSha256: hash(tcRunBytes),
                 provisionalUntil: 'cell-receipt.json' };
+            const ceRunBytes = readFileSync(join(output, 'ce-run.json'));
+            const ceFrames = readFileSync(join(output, 'ce-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            writeJson(join(output, 'ce-observations.json'), buildCoreEraseReport(ceFrames, JSON.parse(ceRunBytes), runId));
+            coreEraseEvidence = { runId, suiteId: coreEraseSuiteId, file: 'ce-observations.json',
+                sha256: hash(readFileSync(join(output, 'ce-observations.json'))), runFile: 'ce-run.json', runSha256: hash(ceRunBytes),
+                provisionalUntil: 'cell-receipt.json' };
             rgbEvidence = retainDetails('rgb');
             renditionEvidence = retainDetails('rendition');
             cursorEvidence = retainDetails('cursor');
@@ -2658,6 +2682,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             queryEvidence = retainQueryReport(output, queryState, runId);
             summary.coreGapsEvidence = coreGapsEvidence;
             summary.textCursorEvidence = textCursorEvidence;
+            summary.coreEraseEvidence = coreEraseEvidence;
             summary.privateClipboardEvidence = privateClipboardEvidence;
             summary.queryEvidence = queryEvidence;
             summary.staticImageEvidence = staticImageEvidence;
@@ -2745,7 +2770,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, coreEraseEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

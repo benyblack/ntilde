@@ -279,5 +279,7 @@
     "osc133CollectorSourceSha256": "osc133-collector.mjs",
     "osc133GradingSourceSha256": "osc133-grading.mjs",
     "osc133GradingCollectorSourceSha256": "osc133-grading-collector.mjs",
-    "osc133ReceiptSourceSha256": "osc133-receipt.mjs"
+    "osc133ReceiptSourceSha256": "osc133-receipt.mjs",
+    "coreEraseSourceSha256": "core-erase.mjs",
+    "coreEraseReceiptSourceSha256": "core-erase-receipt.mjs"
 }

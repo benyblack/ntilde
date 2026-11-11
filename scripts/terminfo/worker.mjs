@@ -1,3 +1,4 @@
+import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
 import { createHash } from 'node:crypto';
@@ -336,6 +337,8 @@ try {
         if (createHash('sha256').update(osc133Source).digest('hex') !== config.osc133BundleSha256) throw new Error('Local OSC 133 adapter bundle changed.');
         const osc133Result = await collectOsc133({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc133Bundle).href) });
         if (osc133Result.status === 'complete') writeFileSync(join(config.output, 'shi-run.json'), JSON.stringify(osc133Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        const coreEraseRun = await collectCoreErase({ config, fence, owner });
+        writeFileSync(join(config.output, 'ce-run.json'), JSON.stringify(coreEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
