@@ -65,5 +65,6 @@ registerHooks({ load(url, context, next) {
 code.set(new URL('core-sgr-raster.mjs', root).href, log + `export async function collectSgrRaster() { record('SgrRaster'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('core-wrap-collector.mjs', root).href, log + `export async function collectWrap() { record('CoreWrap'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('title-stack-collector.mjs', root).href, log + `export async function collectTitleStack() { record('TitleStack'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
+code.set(new URL('osc-title-collector.mjs', root).href, log + `export async function collectOscTitle() { record('OscTitle'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
 code.set(new URL('core-reverse-wide.mjs', root).href, log + `export async function collectReverseWide() { record('ReverseWide'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('osc78-collector.mjs', root).href, log + `export async function collectOsc78() { record('Osc78'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
