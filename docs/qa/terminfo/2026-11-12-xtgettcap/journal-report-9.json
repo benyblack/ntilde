@@ -5,13 +5,13 @@
   "frame": {
     "index": 11,
     "kind": "xgtc-read",
-    "paneId": "90409ce2-2656-4165-ab5e-5005a70502b7",
+    "paneId": "b9fe046e-06b8-470b-b98b-d18acd1dd871",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
       "rows": 40,
       "cols": 140,
       "lines": [
-        "NTILDE_XG_f9bb8499b273926bdfc3fea3e43c5c0a",
+        "NTILDE_XG_c004091c044e9f2dcdeaa67ec8080d33",
         "NtildeXT",
         "",
         "U",
@@ -500,7 +500,7 @@
         "lines": []
       }
     },
-    "sha256": "aa7ac4ca71c890b020cd8a4e62a7822240d1f2d76cff75d46df35a1ccf00a5e0",
+    "sha256": "0af574caf03e1d21f79ca79a5b3dec1c38e02a57e33406d8549989c4e4b5aa09",
     "report": {
       "barrier": "\u001b[?62;4;22c",
       "replies": [

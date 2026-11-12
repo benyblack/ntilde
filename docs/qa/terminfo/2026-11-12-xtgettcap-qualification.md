@@ -46,23 +46,27 @@ indexed-red text and a curly-underlined cell so "unchanged" covers real ink, not
 | malformed-mixed | `DCS +q436f;5 ST` | `DCS 0+r ST` (the whole list refused, valid name included) |
 | recovery-string | `DCS +q536d756c78 ST` | `DCS 1+r536d756c78=… ST` |
 
-Every exchange left the complete screen, cursor, rendition, margins, origin and active screen unchanged (`unchanged: true` on all twenty), and the fixture restored:
-the finish frame hashes equal to the start frame's. All twenty matched the independent reply oracle byte for byte (`matches: true`), including reply count and order on
-the multi-name lists.
+Every exchange left the complete screen, cursor with its visibility, rendition, margins, origin, wrap/insert/pending-wrap modes, active screen and saved-line count
+unchanged (`unchanged: true` on all twenty — the key compares the complete observed buffer state), and the fixture restored: the finish frame hashes equal to the start
+frame's. All twenty matched the independent reply oracle byte for byte (`matches: true`), including reply count and order on the multi-name lists.
 
 ## Identities
 
 App 0.13.0 (operator supplied) built from `2d8433d9` (arm64 Release, executable SHA-256 `f5814e51…9bf8` — bit-identical to the title/icon-stack run's binary; no
-production source changed in this batch); scripts at `6251515f`; source policy `readonly-owned-source-graph-v48` (312 files); receipt schema 53; Node v24.22.2; owned
-run `f9bb8499…c0a`; stock run `4ace6650…78`, measured 2026-11-12T11:21Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
+production source changed in this batch); scripts at `923253fc`; source policy `readonly-owned-source-graph-v48` (312 files); receipt schema 53; Node v24.22.2; owned
+run `c004091c…0d33`; stock run measured 2026-11-12T13:53Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
 attestation. Predecessor suites reconfirmed in the same run: all thirty benchmark layers' cases are supported (or their effect contracts supported — the two saved-reset
 pinned inconclusives keep their by-design verdicts), the five Core layers are receipt-bound, the query suite reproduces its frozen 33 matched / 7 mismatched, and the two
 findings reconfirm. Stock counts are re-collected in that run (not carried forward) and unchanged.
 
-Attempts, all retained with their actual reasons (archives in `superseded/`): the first (`4ace6650`-era run `b209a660`/`30072b41`, scripts `cd4ceee0`+fixes uncommitted)
-and the second (run under `b88d8c1c`) each collected every suite — the pinned refusal and all twenty controls already matched in both — but the finalizer refused the
-receipt because the v48 source policy was not yet admitted by the snapshot-manifest and receipt policy allowlists; both failures are measurement-machinery fixes, not
-App or contract changes. The third run (scripts `6251515f`) is the published one; the same refusal and the same twenty controls matched each time.
+Attempts, all retained with their actual reasons (archives in `superseded/`): the first two (`cd4ceee0` uncommitted, then `b88d8c1c`) each collected every suite — the
+pinned refusal and all twenty controls already matched in both — but the finalizer refused their receipts because the v48 source policy was not yet admitted by the
+snapshot-manifest and metadata allowlists; measurement-machinery fixes, not App or contract changes. The third (`6251515f`) and fourth (`dea61d0a`) collected cleanly and
+completed receipt schema 53 with identical evidence, and are superseded because review findings then changed measured modules: nine SonarCloud findings (unused import,
+re-export spelling, `fromCodePoint`, `includes`, a default parameter, a serial-replay NOSONAR and the report builder's cognitive complexity) and one Codex P2 — the
+unchanged-state key now also compares cursor visibility and every observed buffer mode (autowrap, insert and pending-wrap, active screen, saved-line count), so an exchange
+changing any of them can no longer pass as unchanged. The fifth run (scripts `923253fc`) is the published one; the same refusal and the same twenty controls matched each
+time.
 
 ## Newly fixed versus newly qualified
 

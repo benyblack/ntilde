@@ -2320,21 +2320,21 @@
         "device.xtgettcap"
       ],
       "evidence": {
-        "files": 28,
-        "bytes": 677287,
-        "sha256": "f452b3c42d7cec7eeafb7dc60294add5a771853de3ad6f500f21a75ee0406b09"
+        "files": 30,
+        "bytes": 960627,
+        "sha256": "1fa8e543f3e2682c90d8356cf667b299ca9ee9fb57416095e3034550940fe1d8"
       },
       "receipt": {
         "schemaVersion": 53,
-        "runId": "f9bb8499b273926bdfc3fea3e43c5c0a",
+        "runId": "c004091c044e9f2dcdeaa67ec8080d33",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "9aaab83a9e3ea34e36eed63b43d818ddc0fa83c6040eb90990023319bed9ef34"
+          "sha256": "84cbe0d693fc7c7ec7fd7fa0893a632ed431d6ee6385994f00a66bf6e22e47d5"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-xtgettcap-graded-v1",
           "file": "xgtc-observations.json",
-          "sha256": "dafcad7505ee9c8b99461a5ee36dc85f6cde71bf62725fdb73f270e5013b1a30",
+          "sha256": "f08531ff5de13b4b5ad860aaec941e134a42918a0cf8740460c9aaaaef291cd4",
           "runFile": "xgtc-run.json",
           "runSha256": "6fd043ad6c5f469103435356502ddb26585c98a9ff0ada49e8f38244de3c8d40",
           "counts": {
@@ -2344,38 +2344,38 @@
         }
       },
       "run": {
-        "ownedRunId": "f9bb8499b273926bdfc3fea3e43c5c0a",
-        "measuredAt": "2026-11-12T11:21:04.974Z",
+        "ownedRunId": "c004091c044e9f2dcdeaa67ec8080d33",
+        "measuredAt": "2026-11-12T12:40:45.850Z",
         "appRevision": "2d8433d9bee2dc7fa15895935e08eefe7f21354d",
         "appVersion": "0.13.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "6251515f8c4dede3b5fb428bf30e8bec3db0cc7a",
+        "scriptsRevision": "923253fc1f11ea4a540758c286d6f518e70396f3",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "a530b0470ae8d5fe0edb7814dd42a10d95c82b7ee4469a97c290351720a879aa",
+        "collectorAdapterBundleSha256": "57e35665c2edca280ccd1fdf2d051bc23b1064852ccc6e64748ac3d913744bb3",
         "gradingAdapterId": "ntilde-owned-xtgettcap-grading-v1",
-        "gradingAdapterBundleSha256": "64c4698ddfd9015e33f31d8f673fc62586521dc7450392f2339fbd6d36520d75",
+        "gradingAdapterBundleSha256": "e4c490ee844957c407313720c4ebef0f8560debaae2e2dc054e3aeab3e29234e",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v48",
-        "sourceSnapshotManifestSha256": "184549bbd1016e9c9ac6a8d425e27003b1ea24fc30b58b88a7dee3bc9826b4c9"
+        "sourceSnapshotManifestSha256": "6612d8d7ec037f880155c0663fa38a30c9b295c7e96e86a85ae79f4cbfb6f520"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "ba0d8157f95c8ad2ad997818fb0ff522",
+        "runId": "7b5d302760ae8428bfd16ac35e379875",
         "counts": {
           "inconclusive": 167,
           "supported": 87,
           "unsupported": 1
         },
         "suiteComplete": false,
-        "probeHash": "16a690f34c0e",
-        "rawSha256": "e6c6c60c8eea04fc8e9c7421e880ea83d46738e58dbb98aa52c45ae161b1a9ae",
-        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "probeHash": null,
+        "rawSha256": null,
+        "sourceRevision": null,
         "note": "Stock terminal-path grades; the owned effect contract does not change the stock score."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/xtgettcap-publication.test.mjs",
-        "testSha256": "96686a09989c10df43a323e282a075023fe70dfb80984834baafbf347e47166a"
+        "testSha256": "76620979a2a87e6ec930894e570b1a8c77dec9b8852fc13cb3640a10ba542ae6"
       }
     }
   ],

@@ -171,7 +171,11 @@ test('revisions and attempts (every superseded one keeps its actual reason), and
     assert.equal(summary.attempts.at(-1).scriptsRevision, summary.scriptsRevision);
     assert.match(summary.attempts[0].outcome, /source-snapshot manifest .* v46 policy/);
     assert.match(summary.attempts[1].outcome, /metadata snapshot check .* one more v46-only allowlist/);
-    for (const number of [1, 2]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
+    assert.match(summary.attempts[2].outcome, /SonarCloud fixes changed four measured modules/);
+    assert.match(summary.attempts[3].outcome, /Codex P2 finding/);
+    assert.match(summary.attempts[3].outcome, /extended the unchanged-state key/);
+    assert.equal(summary.attempts.filter(item => item.receiptCompleted).length, 3, 'three runs completed their receipts; only the last is published');
+    for (const number of [1, 2, 3, 4]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
     for (const name of readdirSync(dir)) {
         if (name === 'superseded') continue;
         assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2000 : 1500), name);
