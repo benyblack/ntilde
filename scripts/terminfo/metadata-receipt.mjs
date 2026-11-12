@@ -67,6 +67,7 @@ export function retainedInventory(output, context) {
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v33') return capturedV40SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v37') return capturedV44SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v48') return capturedV55SourceFiles;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v48') return capturedV55SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v47') return capturedV54SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v46') return capturedV53SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v45') return capturedV52SourceFiles;
