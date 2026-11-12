@@ -101,3 +101,11 @@ test('the XTGETTCAP receipt refuses a retained file that is not a regular file',
     symlinkSync(join(f.output, 'xgtc-run-target.json'), join(f.output, 'xgtc-run.json'));
     assert.throws(own(f), /not a regular file/);
 }));
+
+test('the XTGETTCAP receipt refuses a symlinked journal that names external evidence', () => privateClipboardReceiptFixture(f => {
+    const outside = join(f.output, '..', `xgtc-journal-outside-${process.pid}.jsonl`);
+    writeFileSync(outside, readFileSync(join(f.output, 'xgtc-snapshots.jsonl')));
+    rmSync(join(f.output, 'xgtc-snapshots.jsonl'));
+    symlinkSync(outside, join(f.output, 'xgtc-snapshots.jsonl'));
+    assert.throws(own(f), /not a regular file/);
+}));

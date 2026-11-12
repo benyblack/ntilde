@@ -64,6 +64,7 @@ export function checkGradedReceiptSuite(output, evidence, runId, context, suite)
     }
     const binding = requireSuiteBinding(evidence[evidenceKey], runId, suite);
     const bytes = readRetainedSuite(output, binding, context, suite);
+    requireRegularSuiteFiles(output, [suite.journalFile], suite.label);
     requireLayeredAdapter(output, bytes.adapterBytes, context, layerNames, suite);
     const report = JSON.parse(bytes.observations), run = JSON.parse(bytes.run);
     if (![report.adapter.bundleSha256 === binding.adapterBundleSha256,
