@@ -176,8 +176,9 @@ test('revisions and attempts (every superseded one keeps its actual reason), and
     assert.match(summary.attempts[3].outcome, /extended the unchanged-state key/);
     assert.match(summary.attempts[4].outcome, /now-re-exported fixture imports and the serial-replay NOSONAR placement/);
     assert.match(summary.attempts[5].outcome, /duplication gate .* shared single-copy core/);
-    assert.equal(summary.attempts.filter(item => item.receiptCompleted).length, 5, 'five runs completed their receipts; only the last is published');
-    for (const number of [1, 2, 3, 4, 5, 6]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
+    assert.match(summary.attempts[6].outcome, /symlinked journal escaped the regular-file validation/);
+    assert.equal(summary.attempts.filter(item => item.receiptCompleted).length, 6, 'six runs completed their receipts; only the last is published');
+    for (const number of [1, 2, 3, 4, 5, 6, 7]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
     for (const name of readdirSync(dir)) {
         if (name === 'superseded') continue;
         assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2000 : 1500), name);
