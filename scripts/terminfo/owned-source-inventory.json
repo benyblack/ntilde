@@ -309,5 +309,11 @@
     "oscTitleGradingSourceSha256": "osc-title-grading.mjs",
     "oscTitleGradingCollectorSourceSha256": "osc-title-grading-collector.mjs",
     "oscTitleReceiptSourceSha256": "osc-title-receipt.mjs",
-    "oscTitleTabLabelsSourceSha256": "osc-title-tab-labels.cs"
+    "oscTitleTabLabelsSourceSha256": "osc-title-tab-labels.cs",
+    "asciiReflowContractsSourceSha256": "ascii-reflow-contracts.mjs",
+    "asciiReflowObserverSourceSha256": "ascii-reflow-observer.mjs",
+    "asciiReflowCollectorSourceSha256": "ascii-reflow-collector.mjs",
+    "asciiReflowGradingSourceSha256": "ascii-reflow-grading.mjs",
+    "asciiReflowGradingCollectorSourceSha256": "ascii-reflow-grading-collector.mjs",
+    "asciiReflowReceiptSourceSha256": "ascii-reflow-receipt.mjs"
 }

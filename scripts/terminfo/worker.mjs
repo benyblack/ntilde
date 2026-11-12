@@ -61,6 +61,7 @@ import { collectStaticImages } from './static-images-collector.mjs';
 import { collectMetadata } from './metadata-cases.mjs';
 import { collectSaved } from './saved-cases.mjs';
 import { collectResize } from './resize-cases.mjs';
+import { collectReflowGrading } from './ascii-reflow-collector.mjs';
 import { collectHistory } from './history-cases.mjs';
 import { collectColors } from './color-cases.mjs';
 import { collectPixels } from './pixels-cases.mjs';
@@ -103,6 +104,13 @@ try {
         await collectEditing({ config, fence, owner });
         await collectHistory({ config, fence, owner });
         await collectResize({ config, fence, owner });
+        // The layered ASCII reflow qualification follows the resize suite on the same exclusively owned fence: it reuses the
+        // parent-owned resize action under its own prefix and plan. A typed refusal of its first observation is retained by
+        // the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+        const reflowSource = readFileSync(config.reflowBundle);
+        if (createHash('sha256').update(reflowSource).digest('hex') !== config.reflowBundleSha256) throw new Error('Local ASCII reflow adapter bundle changed.');
+        const reflowResult = await collectReflowGrading({ config, fence, owner, gradingModule: await import(pathToFileURL(config.reflowBundle).href) });
+        if (reflowResult.status === 'complete') writeFileSync(join(config.output, 'rf-run.json'), JSON.stringify(reflowResult.run) + '\n', { flag: 'wx', mode: 0o600 });
         await collectSaved({ config, fence, owner });
         await collectMetadata({ config, fence, owner });
         // Graded ASCII/SGR qualification replays the pinned fixtures through the

@@ -328,6 +328,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesOsc78) checkOsc78Evidence(output, evidence, runId, context);
     if (suffixes.includesTitleStack) checkTitleStackEvidence(output, evidence, runId, context);
     if (suffixes.includesOscTitle) checkOscTitleEvidence(output, evidence, runId, context);
+    if (suffixes.includesAsciiReflow) checkReflowEvidence(output, evidence.reflowEvidence, runId, context, proof);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
