@@ -39,9 +39,11 @@ test('receipt rederives journal and refuses substitution, tampering and missing 
     assert.throws(check);
     writeFileSync(path, original);
     f.context.titleStackBundleSha256 = 'a'.repeat(64); assert.throws(check, /derivation/);
-    f.context.titleStackBundleSha256 = hash(readFileSync(join(f.dir, 'collector-tst.mjs')));
-    const run = join(f.dir, 'ost-run.json'); rmSync(run); symlinkSync(path, run);
-    assert.throws(check, /regular file/);
+}));
+
+test('receipt refuses a symlinked artifact', { skip: process.platform === 'win32' }, () => fixture(f => {
+    const run = join(f.dir, 'ost-run.json'); rmSync(run); symlinkSync(join(f.dir, 'ost-snapshots.jsonl'), run);
+    assert.throws(() => checkOscTitleEvidence(f.dir, f.evidence, f.e.runId, f.context), /regular file/);
 }));
 
 test('typed initial unavailability is retained, while partial artifacts cannot be hidden', () => fixture(f => {

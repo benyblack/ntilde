@@ -126,6 +126,9 @@ test('owner refusal transport preserves only the known optional RGB budget code'
     try {
         const config = { socket: { host: '127.0.0.1', port: server.address().port }, token: 'test', runId: 'a'.repeat(32) };
         await assert.rejects(requestOwner(config, 'rgb-start'), error => error.code === code);
+        code = 'paneMetadataUnavailable';
+        await assert.rejects(requestOwner(config, 'ost-start'), error => error.code === code);
+        await assert.rejects(requestOwner(config, 'ost-read'), error => error.code === undefined);
         code = 'untrustedCode';
         await assert.rejects(requestOwner(config, 'rgb-start'), error => error.code === undefined);
     } finally { await new Promise(resolve => server.close(resolve)); }

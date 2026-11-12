@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'ebe8075905f3c4b699e6d4dcc82b5d073b8be1c2';
+export const measuredScriptsRevision = '13571f333698047070665b32c8f275ab294357eb';
 export const measuredAppRevision = '2d8433d9bee2dc7fa15895935e08eefe7f21354b';
 export function oscTitlePublication(dir) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
