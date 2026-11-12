@@ -126,6 +126,15 @@ test('owner refusal transport preserves only the known optional RGB budget code'
     try {
         const config = { socket: { host: '127.0.0.1', port: server.address().port }, token: 'test', runId: 'a'.repeat(32) };
         await assert.rejects(requestOwner(config, 'rgb-start'), error => error.code === code);
+        for (const [kind, expected] of [['resize-start', 'resizeGeometryUnavailable'], ['input-start', 'inputGeometryUnavailable'],
+            ['images-start', 'imageGeometryUnavailable'], ['saved-start', 'savedGeometryUnavailable']]) {
+            code = expected;
+            await assert.rejects(requestOwner(config, kind), error => error.code === expected);
+        }
+        for (const kind of ['metadata-start', 'shi-start', 'lnk-start', 'tst-start', 'ost-start']) {
+            code = 'metadataGeometryUnavailable';
+            await assert.rejects(requestOwner(config, kind), error => error.code === code);
+        }
         code = 'paneMetadataUnavailable';
         await assert.rejects(requestOwner(config, 'ost-start'), error => error.code === code);
         await assert.rejects(requestOwner(config, 'ost-read'), error => error.code === undefined);
