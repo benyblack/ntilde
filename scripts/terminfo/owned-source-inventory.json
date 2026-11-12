@@ -303,5 +303,12 @@
     "titleStackCollectorSourceSha256": "title-stack-collector.mjs",
     "titleStackGradingSourceSha256": "title-stack-grading.mjs",
     "titleStackGradingCollectorSourceSha256": "title-stack-grading-collector.mjs",
-    "titleStackReceiptSourceSha256": "title-stack-receipt.mjs"
+    "titleStackReceiptSourceSha256": "title-stack-receipt.mjs",
+    "xtgettcapReportSourceSha256": "xtgettcap-report.mjs",
+    "xtgettcapContractsSourceSha256": "xtgettcap-contracts.mjs",
+    "xtgettcapCaptureSourceSha256": "xtgettcap-capture.mjs",
+    "xtgettcapCollectorSourceSha256": "xtgettcap-collector.mjs",
+    "xtgettcapGradingSourceSha256": "xtgettcap-grading.mjs",
+    "xtgettcapGradingCollectorSourceSha256": "xtgettcap-grading-collector.mjs",
+    "xtgettcapReceiptSourceSha256": "xtgettcap-receipt.mjs"
 }

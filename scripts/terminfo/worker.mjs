@@ -44,6 +44,7 @@ import { collectSelectiveEraseGrading } from './selective-erase-collector.mjs';
 import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
+import { collectXtgettcapGrading } from './xtgettcap-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -365,6 +366,13 @@ try {
         if (createHash('sha256').update(titleStackSource).digest('hex') !== config.titleStackBundleSha256) throw new Error('Local title-stack adapter bundle changed.');
         const titleStackResult = await collectTitleStack({ config, fence, owner, gradingModule: await import(pathToFileURL(config.titleStackBundle).href) });
         if (titleStackResult.status === 'complete') writeFileSync(join(config.output, 'tst-run.json'), JSON.stringify(titleStackResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered XTGETTCAP qualification follows the title/icon-stack suite on the same exclusively owned fence: every request is
+        // one fenced exchange whose raw replies the parent journals beside the unchanged state.
+        const xtgettcapSource = readFileSync(config.xtgettcapBundle);
+        if (createHash('sha256').update(xtgettcapSource).digest('hex') !== config.xtgettcapBundleSha256) throw new Error('Local XTGETTCAP adapter bundle changed.');
+        const xtgettcapModule = await import(pathToFileURL(config.xtgettcapBundle).href);
+        const xtgettcapRun = await collectXtgettcapGrading({ config, fence, owner, gradingModule: xtgettcapModule });
+        writeFileSync(join(config.output, 'xgtc-run.json'), JSON.stringify(xtgettcapRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

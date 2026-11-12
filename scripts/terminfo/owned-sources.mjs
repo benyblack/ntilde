@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v46';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v48';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -588,11 +588,24 @@ export const capturedV53SourceFiles = Object.freeze({
     titleStackReceiptSourceSha256: 'title-stack-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v53 inventory and manifest environment pin before trusting any captured source. */
+// Frozen v55 XTGETTCAP (device.xtgettcap) grading scope; future experiments must create a distinct policy and map. The v54 scope
+// belongs to the OSC title/icon layer when it merges; this map is defined against it so the two siblings stay distinct.
+export const capturedV55SourceFiles = Object.freeze({
+    ...capturedV53SourceFiles,
+    xtgettcapReportSourceSha256: 'xtgettcap-report.mjs',
+    xtgettcapContractsSourceSha256: 'xtgettcap-contracts.mjs',
+    xtgettcapCaptureSourceSha256: 'xtgettcap-capture.mjs',
+    xtgettcapCollectorSourceSha256: 'xtgettcap-collector.mjs',
+    xtgettcapGradingSourceSha256: 'xtgettcap-grading.mjs',
+    xtgettcapGradingCollectorSourceSha256: 'xtgettcap-grading-collector.mjs',
+    xtgettcapReceiptSourceSha256: 'xtgettcap-receipt.mjs',
+});
+
+/** Bind the private temporary root, exact v55 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV53SourceFiles)) throw new Error('Invalid current v53 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV55SourceFiles)) throw new Error('Invalid current v55 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|xtgettcap)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -41,7 +41,7 @@ export function routedPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+)\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|xtgettcap-[a-z-]+)\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -64,6 +64,30 @@ async function addTitleStackEvidence({ output, write, context, evidence, lrMargi
         runFile: 'tst-run.json', runSha256: hash(readFileSync(join(output, 'tst-run.json'))),
         adapterBundleSha256: hash(titleStackBytes), contractsVersion: titleStackContractsVersion,
         counts: titleStackCounts(titleStackReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in XTGETTCAP suffix: synthetic journaled replies from the suite's own second oracle (never collected ones), written into
+ *  `output` and declared in `context` and `evidence`. Layered over the title-stack suffix, which must be added first. */
+async function addXtgettcapEvidence({ output, write, context, evidence, titleStackBytes }) {
+    const { syntheticXtgettcapEvidence } = await import('./xtgettcap-evidence.mjs');
+    const { buildXtgettcapGradingReport } = await import('../xtgettcap-grading.mjs');
+    const { xtgettcapCounts } = await import('../xtgettcap-receipt.mjs');
+    const { adaptXtgettcapCollector, xtgettcapAdapterId } = await import('../xtgettcap-grading-collector.mjs');
+    const { xtgettcapSuiteId, xtgettcapContractsVersion } = await import('../xtgettcap-contracts.mjs');
+    const xtgettcapBytes = Buffer.from(adaptXtgettcapCollector(titleStackBytes.toString()));
+    const xtgettcap = syntheticXtgettcapEvidence(context.runId, hash(xtgettcapBytes));
+    xtgettcap.adapter = { ...xtgettcap.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const xtgettcapReport = buildXtgettcapGradingReport(xtgettcap.frames, xtgettcap.run, context.runId, xtgettcap.adapter);
+    write('xgtc-observations.json', xtgettcapReport);
+    write('xgtc-run.json', xtgettcap.run);
+    writeFileSync(join(output, 'xgtc-snapshots.jsonl'), xtgettcap.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-xgtc.mjs'), xtgettcapBytes);
+    Object.assign(context, { xtgettcapAdapterId, xtgettcapSuiteId, xtgettcapBundleSha256: hash(xtgettcapBytes), xtgettcapContractsVersion });
+    evidence.xtgettcapEvidence = { runId: context.runId, suiteId: xtgettcapSuiteId,
+        file: 'xgtc-observations.json', sha256: hash(readFileSync(join(output, 'xgtc-observations.json'))),
+        runFile: 'xgtc-run.json', runSha256: hash(readFileSync(join(output, 'xgtc-run.json'))),
+        adapterBundleSha256: hash(xtgettcapBytes), contractsVersion: xtgettcapContractsVersion,
+        counts: xtgettcapCounts(xtgettcapReport), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
@@ -858,17 +882,21 @@ function fixtureTemplate(routed) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false } = {}) {
     const { output: source, state } = await fixtureTemplate(routed);
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
         cpSync(source, output, { recursive: true, verbatimSymlinks: true });
         const { context, proof, report, evidence, raw, manifest, old } = structuredClone(state);
         // The title-stack suffix is opt-in, so every other layer's receipt tests keep their own newest schema; it is added to this test's private copy.
-        if (titleStack) {
+        if (titleStack || xtgettcap) {
             await addTitleStackEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
-            writerFor(output)('context.json', context);
         }
+        // The XTGETTCAP suffix is layered over the title-stack one and equally opt-in.
+        if (xtgettcap) {
+            await addXtgettcapEvidence({ output, write: writerFor(output), context, evidence, titleStackBytes: readFileSync(join(output, 'collector-tst.mjs')) });
+        }
+        if (titleStack || xtgettcap) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }

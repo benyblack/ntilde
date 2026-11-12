@@ -128,6 +128,11 @@ import { adaptTitleStackCollector, titleStackAdapterId } from './terminfo/title-
 import { titleStackCaseIds, titleStackContractsVersion, titleStackMinimum, titleStackPrefix, titleStackSuiteId } from './terminfo/title-stack-contracts.mjs';
 import { buildTitleStackGradingReport, matchesTitleStackBaseline, titleStackCounts, titleStackObserverPlan } from './terminfo/title-stack-grading.mjs';
 import { exposeTitleStackFacts } from './terminfo/title-stack-collector.mjs';
+import { adaptXtgettcapCollector, xtgettcapAdapterId } from './terminfo/xtgettcap-grading-collector.mjs';
+import { xtgettcapCaseIds, xtgettcapContractsVersion, xtgettcapSuiteId } from './terminfo/xtgettcap-contracts.mjs';
+import { buildXtgettcapGradingReport } from './terminfo/xtgettcap-grading.mjs';
+import { xtgettcapCounts } from './terminfo/xtgettcap-receipt.mjs';
+import { XtgettcapObserver } from './terminfo/xtgettcap-capture.mjs';
 import { ColorResetObserver } from './terminfo/color-reset-capture.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
@@ -178,7 +183,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'shi', 'lnk', 'tst', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'shi', 'lnk', 'tst', 'xgtc', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -1181,6 +1186,31 @@ async function retainTitleStackEvidence(output, runId, titleStackBundle, upstrea
         contractsVersion: titleStackContractsVersion, counts: titleStackCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered XTGETTCAP grading extension over the title/icon-stack one. */
+function prepareXtgettcapCollector(tool, titleStackBundle, output) {
+    const adapted = adaptXtgettcapCollector(readFileSync(titleStackBundle));
+    const xtgettcapBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-xgtc-${xtgettcapBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== xtgettcapBundleSha256) throw new Error('Derived XTGETTCAP bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-xgtc.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, xtgettcapBundleSha256 };
+}
+
+/** Re-derive the XTGETTCAP report parent-side from the journaled replies and the layered pinned replay. */
+async function retainXtgettcapEvidence(output, runId, xtgettcapBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'xgtc-run.json'));
+    const frames = readFileSync(join(output, 'xgtc-snapshots.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-xgtc.mjs'));
+    const adapter = { id: xtgettcapAdapterId, derivedFromAdapterId: titleStackAdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(xtgettcapBundle).href);
+    const report = buildXtgettcapGradingReport(frames, JSON.parse(runBytes), runId, adapter, { replayModule });
+    writeJson(join(output, 'xgtc-observations.json'), report);
+    return { runId, suiteId: xtgettcapSuiteId, file: 'xgtc-observations.json', sha256: hash(readFileSync(join(output, 'xgtc-observations.json'))),
+        runFile: 'xgtc-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: xtgettcapContractsVersion, counts: xtgettcapCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the routed-input report parent-side from the owned input journal and the layered pinned replay. */
 async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstream, inputBinding, seal) {
     if (inputBinding?.status === 'unavailable') {
@@ -1436,6 +1466,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let osc133Evidence;
     let osc78Evidence;
     let titleStackEvidence;
+    let xtgettcapEvidence;
     let colorResetEvidence;
     let rgbEvidence;
     let renditionEvidence;
@@ -1500,6 +1531,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: osc133Bundle, osc133BundleSha256 } = prepareOsc133Collector(privateTool, lrMarginsBundle, output);
         const { bundle: osc78Bundle, osc78BundleSha256 } = prepareOsc78Collector(privateTool, lrMarginsBundle, output);
         const { bundle: titleStackBundle, titleStackBundleSha256 } = prepareTitleStackCollector(privateTool, lrMarginsBundle, output);
+        const { bundle: xtgettcapBundle, xtgettcapBundleSha256 } = prepareXtgettcapCollector(privateTool, titleStackBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
@@ -1511,7 +1543,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -1566,6 +1598,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let colEditObserver;
         let rectChecksumObserver;
         let lrMarginsObserver;
+        let xtgettcapObserver;
         let coreGapsObserver;
         let textCursorObserver;
         let coreEraseObserver;
@@ -1658,6 +1691,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc78: 'layered versioned collector extension; pinned extensions.osc7-cwd (no fixture bytes: declared-capability and no-readback results, inconclusive by design) and extensions.osc8 (termless: stored cells and hyperlink metadata of the pinned fixture; terminal: cursor position, inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, host working directory, hyperlink runs with snapshot-local identities) and session status by an independent oracle: reported working-directory metadata only (not the child process directory or path existence) and stored hyperlink-bearing cells only (not click handling, URL opening or rendering); protocol handling in a disposable direct-local App only; no stock-grade claim',
             titleStackAdapterId, titleStackSuiteId, titleStackBundleSha256, titleStackContractsVersion,
             titleStack: 'layered versioned collector extension; pinned device.xtwinops-22 and device.xtwinops-23 termless code (feed a title, CSI 22;0t, feed another title, CSI 23;0t, getTitle() after each stage; supported only when all three titles are as expected, never unsupported) and terminal code (the writes then a cursor query; inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells and the raw title, raw icon name, display title and tab text of the same observation by an independent title-stack oracle: each pinned fixture executed from a measured prepared baseline, plus combined, title-only, icon-only, nested (LIFO), mixed-selector, empty-pop, bounded-depth, alternate-screen, DECSTR and RIS experiments; raw icon-name state only, no host icon presentation, no title or icon report query, no direct-slot addressing, disposable direct-local App only, no stock grade',
+            xtgettcapAdapterId, xtgettcapSuiteId, xtgettcapBundleSha256, xtgettcapContractsVersion,
+            xtgettcap: 'layered versioned collector extension; pinned device.xtgettcap termless and terminal code (DCS + q 544e ST; a 1+r544e=<even hex> value reply is supported, the bare 0+r refusal and silence stay inconclusive) replayed byte-exactly over the journaled raw replies of its own fenced exchange and preserved — TN is deliberately refused, so both pinned verdicts stay inconclusive — beside the separately identified effect contract ntilde-xtgettcap-capability-report-effect-v1 graded by an independent reply oracle over the same fence: the exact pinned request, the numeric Co/colors replies, the RGB/Tc flag replies, one string reply, multi-name reply order with per-name outcomes, documented unavailable and unknown names, case-sensitivity, the uppercase echo, malformed lists with exactly one refusal and verified recovery after each; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged; capability-report replies only — no rendering, color accuracy, control-string execution, Ms clipboard, X resource, remote-delivery or other-platform claim, no stock grade',
             osc133: 'layered versioned collector extension; pinned extensions.osc133-a, -b, -c and -d termless and terminal code (marker + X consumption, always inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, cwd, input window, raw command/output anchors) and session status by an independent lifecycle oracle: each pinned fixture executed from a measured prior state with an unmarked control and gating markers, plus canonical cycle, payload, boundary, terminator-variant and exit-payload observations; protocol handling in a disposable direct-local App only, no real-shell, remote, OSC 133 P, OSC 633 or stock-grade claim',
             rectChecksum: 'layered versioned collector extension; pinned termless criterion editing.decrqcra (ESC[1;1;1;1;1;5*y after ABCDE ESC[1;1H, a framed DCS 1 ! ~ hhhh ST) replayed byte-exactly on a disposable App whose initial settings turn on AllowRectangleChecksumReport (off by default), graded from raw replies bound to their DA barriers and parent-observed stored cells by an independent checksum model (character sum, bold/blink/reverse/underline weights, defaults, origin offset, page clipping, request id, non-admitted spellings, unchanged state); stored ASCII cells only, no stock grades',
             colEdit: 'layered versioned collector extension; pinned termless criteria editing.sl (ESC[2 @), editing.sr (ESC[2 A), editing.decic (ESC[2\'}) and editing.decdc (ESC[2\'~) replayed byte-exactly on a disposable App and graded from parent-observed stored cells of the whole screen, the cursor, App-stored margins, origin and insert mode, stored attribute tuples and per-cell DECSCA protection, with count, default, zero, clamp, region-inside/outside, origin, insert-mode, non-admitted-identity, first/last-column, moved-attribute, attribute-free-blank and moved-protection controls over a seed at both page edges; the pending-wrap state is observed, never graded; stored ASCII state with full-width horizontal margins only (DECLRMM is not implemented or claimed), the pinned pixel path never carries a verdict and is not qualified; no Unicode, wide-cell, scaled-text, image-plane, DECRQCRA, rectangle or rendered-appearance claim; not stock output',
@@ -1721,6 +1756,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'shi-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'lnk-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'tst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'xgtc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'crst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
@@ -2568,6 +2604,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'csum-snapshots.jsonl'), JSON.stringify(rectChecksumObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'xgtc') {
+                // The XTGETTCAP suite runs after the title/icon-stack suite; a report read also journals the raw reply list bound to its barrier.
+                if (!titleStackState?.observer?.restored && titleStackState?.unavailable !== true) throw new Error('Title/icon-stack suite must restore before XTGETTCAP observations.');
+                xtgettcapObserver ??= new XtgettcapObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_XG_${runId}`, expectedPaneId: cellObserver.paneId });
+                const result = await xtgettcapObserver.handle(request, budget);
+                appendFileSync(join(output, 'xgtc-snapshots.jsonl'), JSON.stringify(xtgettcapObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             if (prefix === 'sr') {
                 // The SGR raster suite follows the Core wrap suite, which has restored the original geometry; its reads bracket a controlled render and carry the exact DECRQSS replies.
                 if (!coreWrapState?.observer.restored) throw new Error('Core wrap must restore before Core SGR raster observations.');
@@ -2943,6 +2988,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc133Evidence = await retainOsc133Evidence(output, runId, osc133Bundle, upstreamBundleSha256, osc133State?.unavailable === true);
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
+            xtgettcapEvidence = await retainXtgettcapEvidence(output, runId, xtgettcapBundle, upstreamBundleSha256);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
             queryEvidence = retainQueryReport(output, queryState, runId);
@@ -3014,6 +3060,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.osc133Evidence = osc133Evidence;
             summary.osc78Evidence = osc78Evidence;
             summary.titleStackEvidence = titleStackEvidence;
+            summary.xtgettcapEvidence = xtgettcapEvidence;
             summary.colorResetEvidence = colorResetEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
@@ -3054,7 +3101,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, xtgettcapEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
