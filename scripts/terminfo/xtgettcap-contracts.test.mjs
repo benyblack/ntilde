@@ -40,7 +40,7 @@ test('the pinned replay mirrors deviceReplyResult for this spec', () => {
     assert.equal(afterDa.observation.reason, 'no-response');
 
     assert.deepEqual(replayXtgettcapPinned('').observation, { outcome: 'inconclusive', reason: 'no-response', evidence: 'query' });
-    assert.deepEqual(replayXtgettcapPinned(null).observation, { outcome: 'inconclusive', reason: 'no-response', evidence: 'query' });
+    assert.deepEqual(replayXtgettcapPinned().observation, { outcome: 'inconclusive', reason: 'no-response', evidence: 'query' }, 'an absent capture is the empty default');
 });
 
 test('the reply oracle is written from the documented table, not the parser', () => {

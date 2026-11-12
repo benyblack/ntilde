@@ -108,4 +108,5 @@ export function syntheticXtgettcapGrade(binding = paletteBinding(), mutate = nul
         xtgettcapObservation(contract, reads.map(read => read.screen), reads.map(read => read.replies), 'NTILDE_XG_' + 'a'.repeat(32)));
 }
 
-export { colEditRows as xtgettcapRows, colEditCols as xtgettcapCols, exchanges as syntheticXtgettcapExchanges };
+export { colEditRows as xtgettcapRows, colEditCols as xtgettcapCols } from './col-edit-evidence.mjs';
+export { exchanges as syntheticXtgettcapExchanges };

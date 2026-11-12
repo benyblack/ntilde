@@ -32,7 +32,7 @@ import { adaptColEditCollector } from './col-edit-grading-collector.mjs';
 import { adaptRectChecksumCollector } from './rect-checksum-grading-collector.mjs';
 import { adaptLrMarginsCollector } from './lr-margins-grading-collector.mjs';
 import { adaptTitleStackCollector } from './title-stack-grading-collector.mjs';
-import { xtgettcapCaseIds, xtgettcapContractsVersion, xtgettcapSuiteId } from './xtgettcap-contracts.mjs';
+import { xtgettcapContractsVersion, xtgettcapSuiteId } from './xtgettcap-contracts.mjs';
 import { adaptXtgettcapCollector, xtgettcapAdapterId } from './xtgettcap-grading-collector.mjs';
 import { buildXtgettcapGradingReport } from './xtgettcap-grading.mjs';
 /** SHA-256 of exact bytes. */
@@ -150,4 +150,4 @@ export function checkXtgettcapEvidence(output, evidence, runId, context) {
 }
 
 /** The case ids this suite grades, exposed for the receipt's planned-case declarations. */
-export { xtgettcapCaseIds };
+export { xtgettcapCaseIds } from './xtgettcap-contracts.mjs';

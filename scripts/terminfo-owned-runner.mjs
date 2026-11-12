@@ -129,7 +129,7 @@ import { titleStackCaseIds, titleStackContractsVersion, titleStackMinimum, title
 import { buildTitleStackGradingReport, matchesTitleStackBaseline, titleStackCounts, titleStackObserverPlan } from './terminfo/title-stack-grading.mjs';
 import { exposeTitleStackFacts } from './terminfo/title-stack-collector.mjs';
 import { adaptXtgettcapCollector, xtgettcapAdapterId } from './terminfo/xtgettcap-grading-collector.mjs';
-import { xtgettcapCaseIds, xtgettcapContractsVersion, xtgettcapSuiteId } from './terminfo/xtgettcap-contracts.mjs';
+import { xtgettcapContractsVersion, xtgettcapSuiteId } from './terminfo/xtgettcap-contracts.mjs';
 import { buildXtgettcapGradingReport } from './terminfo/xtgettcap-grading.mjs';
 import { xtgettcapCounts } from './terminfo/xtgettcap-receipt.mjs';
 import { XtgettcapObserver } from './terminfo/xtgettcap-capture.mjs';

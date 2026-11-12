@@ -100,7 +100,7 @@ export async function collectXtgettcapGrading({ config, fence, owner, gradingMod
     const nonce = xtgettcapNoncePrefix + config.runId;
     const cases = await collectAndRestore({ fence, owner, nonce });
     const run = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds], cases: [] };
-    for (const item of cases) {
+    for (const item of cases) { // NOSONAR - serial by design: each pinned replay must settle in case order
         const contract = xtgettcapContracts.find(entry => entry.caseId === item.caseId);
         const pinnedExchange = item.reads[contract.pinnedRead]?.report ?? null;
         const termless = gradingModule.ntildeRunXtgettcapTermless(contract.caseId, xtgettcapRecordingContext(contract, pinnedExchange));

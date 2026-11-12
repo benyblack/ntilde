@@ -97,8 +97,8 @@ function pinnedMalformedPresent(raw) {
 }
 
 /** The pinned deviceReplyResult for this spec, key order included. */
-export function replayXtgettcapPinned(raw) {
-    const response = raw ?? '';
+export function replayXtgettcapPinned(raw = '') {
+    const response = raw;
     // The earliest (valid|refusal) frame, valid winning ties; a frame that only follows a primary-DA reply is not a reply to this request.
     const answer = pinnedAnswerFrame(response);
     const da1At = response.search(/\x1b\[\?[0-9;]*c/);
@@ -159,7 +159,7 @@ function decodeName(encoded) {
     for (let index = 0; index < encoded.length; index += 2) {
         const char = Number.parseInt(encoded.slice(index, index + 2), 16);
         if (char < 0x21 || char > 0x7e) return null;
-        name += String.fromCharCode(char);
+        name += String.fromCodePoint(char);
     }
     return name;
 }
@@ -174,7 +174,7 @@ export function oracleReplies(nameList) {
     const encodedNames = nameList === '' ? [] : nameList.split(';');
     if (encodedNames.length === 0 || encodedNames.length > xtgettcapMaxNames) return [xtgettcapRefusal];
     const decoded = encodedNames.map(decodeName);
-    if (decoded.some(name => name === null)) return [xtgettcapRefusal];
+    if (decoded.includes(null)) return [xtgettcapRefusal];
     return decoded.map((name, index) => {
         const entry = advertised.get(name);
         if (entry === undefined) return xtgettcapRefusal;

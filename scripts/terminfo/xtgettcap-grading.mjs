@@ -79,6 +79,43 @@ function reconcile(contract, pinnedOutcome, effect) {
     return effect.outcome === 'inconclusive' ? null : { pinnedOutcome, contractOutcome: effect.outcome, kind: 'pinned-inconclusive-by-design' };
 }
 
+/** Verify and replay one case's pinned results over its journaled replies; returns the verified pair and its replay data. */
+function verifyPinnedReplays(contract, recorded, readFrames, replies, { replayModule = null } = {}) {
+    const { termless, terminal } = recorded.pinned ?? {};
+    if (termless?.probeId !== contract.caseId || termless.observation?.evidence !== 'query'
+        || terminal?.probeId !== contract.caseId || terminal.observation?.evidence !== 'query') {
+        throw new Error(`Missing pinned ${contract.caseId} grading results.`);
+    }
+    requirePinnedAgreement(contract, termless, replayXtgettcapPinned(replies[contract.pinnedRead].join('')), label);
+    const pinnedExchange = exchangeOf(readFrames, contract.pinnedRead);
+    requirePinnedAgreement(contract, terminal,
+        replayXtgettcapPinned(pinnedExchange === null ? '' : pinnedExchange.replies.join('') + pinnedExchange.barrier), label);
+    if (replayModule) {
+        const context = xtgettcapRecordingContext(contract, { barrier: '', replies: replies[contract.pinnedRead] });
+        requireReplayAgreement(contract, replayModule.ntildeRunXtgettcapTermless(contract.caseId, context), termless);
+        if (context.fedCount !== contract.pinnedFeeds.length) throw new Error(`Pinned ${contract.caseId} replay fed a different number of pinned writes.`);
+    }
+    return { termless, terminal };
+}
+
+/** Derive one case's published record from its journaled frames, worker record and the graded effect. */
+function deriveXtgettcapCase(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, divergence, contractsVersion }) {
+    const theme = readFrames[0].screen.colorBinding;
+    return { caseId: contract.caseId, pinnedCriterion: contract.pinnedCriterion, pinnedFeeds: contract.pinnedFeeds,
+        terminalFixture: contract.terminalFixture, feeds: recorded.feeds, barriers: recorded.barriers,
+        reads: recorded.reads.map((read, index) => ({ kind: read.kind, cursor: read.cursor, ...(read.kind === 'report' ? { replies: replies[index] } : {}) })),
+        observed: contract.observed(observation),
+        colorBinding: { reverseVideo: theme.reverseVideo, themeName: theme.themeName, foregroundArgb: theme.foregroundArgb, backgroundArgb: theme.backgroundArgb,
+            minimumContrast: theme.minimumContrast, paletteOverrideIndices: [...theme.paletteOverrideIndices], bindingSha256: colorBindingHash(theme) },
+        pinned: { termless: { pass: termless.pass, response: termless.response, note: termless.note ?? null, observation: termless.observation, assertions: termless.assertions ?? null },
+            terminal: { pass: terminal.pass, response: terminal.response, note: terminal.note ?? null, observation: terminal.observation, assertions: terminal.assertions ?? null } },
+        effectContract: { id: xtgettcapEffectContractId, version: contractsVersion, outcome: effect.outcome, ...(effect.note ? { note: effect.note } : {}),
+            attribution: 'separately identified Ntilde effect contract; not the pinned probe' },
+        contractResult: effect, ...(divergence ? { divergence } : {}),
+        conclusion: { outcome: termless.observation.outcome, evidence: 'owned-raw-replies-and-unchanged-state', grading: 'pinned-termless-preserved-by-design',
+            note: termless.observation.note ?? null, scope: contract.appearanceScope } };
+}
+
 /** Re-derive and cross-check every case; throw on any disagreement. */
 export function buildXtgettcapGradingReport(frames, run, runId, adapter, { contractsVersion = xtgettcapContractsVersion, replayModule = null } = {}) {
     validateXtgettcapEvidence(frames, run, runId, adapter);
@@ -91,38 +128,11 @@ export function buildXtgettcapGradingReport(frames, run, runId, adapter, { contr
         const readFrames = recorded.reads.map(() => frames[frameIndex++]);
         crossCheckGradedCapture(contract, recorded, readFrames, label);
         const replies = repliesOf(contract, recorded, readFrames);
-        const screens = readFrames.map(frame => frame.screen);
-        const observation = xtgettcapObservation(contract, screens, replies, xtgettcapNoncePrefix + runId);
+        const observation = xtgettcapObservation(contract, readFrames.map(frame => frame.screen), replies, xtgettcapNoncePrefix + runId);
         const effect = gradeXtgettcapCase(contract, observation, contractsVersion);
-        const { termless, terminal } = recorded.pinned ?? {};
-        if (termless?.probeId !== contract.caseId || termless.observation?.evidence !== 'query'
-            || terminal?.probeId !== contract.caseId || terminal.observation?.evidence !== 'query') {
-            throw new Error(`Missing pinned ${contract.caseId} grading results.`);
-        }
-        requirePinnedAgreement(contract, termless, replayXtgettcapPinned(replies[contract.pinnedRead].join('')), label);
-        const pinnedExchange = exchangeOf(readFrames, contract.pinnedRead);
-        requirePinnedAgreement(contract, terminal,
-            replayXtgettcapPinned(pinnedExchange === null ? '' : pinnedExchange.replies.join('') + pinnedExchange.barrier), label);
+        const { termless, terminal } = verifyPinnedReplays(contract, recorded, readFrames, replies, { replayModule });
         const divergence = reconcile(contract, termless.observation.outcome, effect);
-        if (replayModule) {
-            const context = xtgettcapRecordingContext(contract, { barrier: '', replies: replies[contract.pinnedRead] });
-            requireReplayAgreement(contract, replayModule.ntildeRunXtgettcapTermless(contract.caseId, context), termless);
-            if (context.fedCount !== contract.pinnedFeeds.length) throw new Error(`Pinned ${contract.caseId} replay fed a different number of pinned writes.`);
-        }
-        const theme = screens[0].colorBinding;
-        cases.push({ caseId: contract.caseId, pinnedCriterion: contract.pinnedCriterion, pinnedFeeds: contract.pinnedFeeds,
-            terminalFixture: contract.terminalFixture, feeds: recorded.feeds, barriers: recorded.barriers,
-            reads: recorded.reads.map((read, index) => ({ kind: read.kind, cursor: read.cursor, ...(read.kind === 'report' ? { replies: replies[index] } : {}) })),
-            observed: contract.observed(observation),
-            colorBinding: { reverseVideo: theme.reverseVideo, themeName: theme.themeName, foregroundArgb: theme.foregroundArgb, backgroundArgb: theme.backgroundArgb,
-                minimumContrast: theme.minimumContrast, paletteOverrideIndices: [...theme.paletteOverrideIndices], bindingSha256: colorBindingHash(theme) },
-            pinned: { termless: { pass: termless.pass, response: termless.response, note: termless.note ?? null, observation: termless.observation, assertions: termless.assertions ?? null },
-                terminal: { pass: terminal.pass, response: terminal.response, note: terminal.note ?? null, observation: terminal.observation, assertions: terminal.assertions ?? null } },
-            effectContract: { id: xtgettcapEffectContractId, version: contractsVersion, outcome: effect.outcome, ...(effect.note ? { note: effect.note } : {}),
-                attribution: 'separately identified Ntilde effect contract; not the pinned probe' },
-            contractResult: effect, ...(divergence ? { divergence } : {}),
-            conclusion: { outcome: termless.observation.outcome, evidence: 'owned-raw-replies-and-unchanged-state', grading: 'pinned-termless-preserved-by-design',
-                note: termless.observation.note ?? null, scope: contract.appearanceScope } });
+        cases.push(deriveXtgettcapCase(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, divergence, contractsVersion }));
     }
     return { schemaVersion: 1, suiteId: xtgettcapSuiteId, runId, contractsVersion, adapter, scope,
         initialSnapshot: 0, restoredSnapshot: frames.length - 1, cases, snapshots: frames };
