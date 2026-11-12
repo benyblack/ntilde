@@ -50,6 +50,13 @@ function invariant(snapshot) {
     return { screen: snapshot.screen, metadata, status: snapshot.status };
 }
 
+function restoredContext(snapshot) {
+    const metadata = structuredClone(snapshot.metadata);
+    // The finish write restores the original screen and cursor; bind is at the nonce row.
+    delete metadata.buffer.cursorRow; delete metadata.buffer.cursorCol;
+    return { metadata, status: snapshot.status };
+}
+
 function titleFacts(snapshot, expected, runId) {
     const metadata = snapshot.metadata, display = metadata.displayTitle, tab = metadata.presentation.tabText;
     const fallback = expected.title.trim().length === 0;
@@ -73,6 +80,7 @@ export function buildOscTitleReport(frames, run, runId, adapter) {
     frames.forEach((frame, index) => validateFrame(frame, index, count - 1, first, null, oscTitlePrefix, true));
     check(matchesOscTitleBaseline(frames[1].before, first, runId, false) && matchesOscTitleBaseline(frames.at(-1).before, first, runId, true),
         'OSC title baseline or restoration failed.');
+    check(same(restoredContext(frames[1].before), restoredContext(frames.at(-1).before)), 'OSC title session or metadata restoration failed.');
     check(adapter?.id === oscTitleAdapterId && adapter.derivedFromAdapterId === 'ntilde-owned-title-stack-grading-v1'
         && /^[a-f\d]{64}$/.test(adapter.bundleSha256 ?? '') && /^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? '') && run?.adapterId === adapter.id
         && same(run.probeIds, oscTitleCaseIds) && Array.isArray(run.experiments) && run.experiments.length === contracts.length

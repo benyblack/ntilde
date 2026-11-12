@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { snapshotHash } from './agent-observer.mjs';
 import { metadataProjection } from './metadata.mjs';
+import { copyMetadataStatus } from './metadata-state.mjs';
 import { buildOscTitleReport, replayOscTitlePinned } from './osc-title-grading.mjs';
 import { syntheticOscTitleEvidence as synthetic } from './fixtures/osc-title-evidence.mjs';
 
@@ -41,6 +42,11 @@ test('complete paired evidence yields distinct effect results and refuses tamper
         last.after = structuredClone(last.before); last.sha256 = snapshotHash(metadataProjection(last.before)); last.afterSha256 = last.sha256;
         assert.throws(() => build(changed), /restoration/, field);
     }
+    const session = synthetic(), last = session.frames.at(-1);
+    last.before.rawStatus.isStalled = true;
+    last.before.status = copyMetadataStatus(last.before.rawStatus, last.paneId);
+    last.after = structuredClone(last.before); last.sha256 = snapshotHash(metadataProjection(last.before)); last.afterSha256 = last.sha256;
+    assert.throws(() => build(session), /session or metadata restoration/);
 });
 
 test('a wrong effect needs valid controls; unavailable or unrelated drift cannot become a verdict', () => {
