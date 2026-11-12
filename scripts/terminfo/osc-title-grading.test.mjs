@@ -51,3 +51,11 @@ test('a wrong effect needs valid controls; unavailable or unrelated drift cannot
     mutateRead(missing, 1, 1, value => { delete value.metadata.buffer.requestedIconName; });
     assert.throws(() => build(missing), /facts|evidence/);
 });
+
+test('a truncated fallback tab must retain a long prefix of the actual display title', () => {
+    const e = synthetic();
+    mutateRead(e, 1, 1, value => { value.metadata.presentation.tabText = value.metadata.displayTitle.slice(0, 41) + '… ⌨'; });
+    assert.equal(build(e).cases[0].effectContract.outcome, 'supported');
+    mutateRead(e, 1, 1, value => { value.metadata.presentation.tabText = 'unrelated stale title …'; });
+    assert.equal(build(e).cases[0].effectContract.outcome, 'inconclusive');
+});

@@ -51,10 +51,15 @@ function invariant(snapshot) {
 function titleFacts(snapshot, expected, runId) {
     const metadata = snapshot.metadata, display = metadata.displayTitle, tab = metadata.presentation.tabText;
     const fallback = expected.title.trim().length === 0;
+    // The tab can truncate its long profile/cwd fallback while retaining a run-specific prefix.
+    // Its actual text stays in the report; it must contain the full display title or a long exact prefix followed by an ellipsis.
+    const ellipsis = typeof tab === 'string' ? tab.indexOf('…') : -1;
+    const truncatedFallback = fallback && ellipsis >= 32 && typeof display === 'string'
+        && ellipsis < display.length && display.startsWith(tab.slice(0, ellipsis));
     return { title: metadata.oscTitle, icon: metadata.buffer.requestedIconName, displayTitle: display, tabText: tab,
         titleMatches: metadata.oscTitle === expected.title, iconMatches: metadata.buffer.requestedIconName === expected.icon,
         displayMatches: fallback ? display === `terminfo disposable worker ${runId} · osc-title-base` : display === expected.title,
-        tabMatches: typeof tab === 'string' && typeof display === 'string' && display.length > 0 && tab.includes(display) };
+        tabMatches: typeof tab === 'string' && typeof display === 'string' && display.length > 0 && (tab.includes(display) || truncatedFallback) };
 }
 
 /** Re-derive all reads, refusing changed identities, incomplete frames, feeds, ordering and restoration. */
