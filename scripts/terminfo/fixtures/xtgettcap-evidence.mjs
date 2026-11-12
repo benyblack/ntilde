@@ -52,11 +52,12 @@ const seedRows = () => [
 
 /** One journaled frame with its digest. */
 const frame = (index, kind, screen, barrier, report) => ({ index, kind, paneId, barrier, screen, sha256: snapshotHash(screen), ...(report ? { report } : {}) });
-/** A synthetic screen on the alternate screen the suite runs on, with the suite's margins. */
+/** A synthetic screen on the alternate screen the suite runs on, with the suite's margins (vertical and DECLRMM off/full-width). */
 const alternate = (screen, nonce) => ({
     ...screen,
     ...(nonce === undefined ? {} : { lines: [nonce, ...screen.lines.slice(1)] }),
     bufferState: { ...screen.bufferState, scrollTop: 1, scrollBottom: 5, alternateScreen: true },
+    horizontalMargins: { leftRightMarginMode: false, leftMargin: 0, rightMargin: screen.cols - 1 },
 });
 
 /** The screens and reply lists of every read; `mutate(role, read)` may return a changed read to build negative evidence. */
@@ -75,7 +76,9 @@ export function syntheticXtgettcapScreens(binding = paletteBinding(), mutate = n
 export function syntheticXtgettcapEvidence(runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), binding = paletteBinding(), mutate = null) {
     const contract = xtgettcapContracts[0];
     const nonce = 'NTILDE_XG_' + runId;
-    const main = syntheticColEditScreen([], [0, 0], undefined, [], binding);
+    const bare = syntheticColEditScreen([], [0, 0], undefined, [], binding);
+    // The main screen carries DECLRMM off with full-width margins, like every observed screen.
+    const main = { ...bare, horizontalMargins: { leftRightMarginMode: false, leftMargin: 0, rightMargin: bare.cols - 1 } };
     const bound = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], binding), nonce);
     bound.cursorRow = 0;
     bound.cursorCol = nonce.length;

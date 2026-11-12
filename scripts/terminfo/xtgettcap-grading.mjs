@@ -26,9 +26,10 @@ const scope = 'Pinned terminfo.dev@4.0.0 XTGETTCAP criterion (device.xtgettcap: 
     + 'unchanged. Capability-report replies only: an advertised flag or count proves no rendering, color accuracy or control-string '
     + 'execution; no Ms clipboard, X resource, remote-delivery or other-platform claim; no stock grades.';
 
-/** XTGETTCAP screens carry attributes, stored details (with overline and protection), resolved colors and the App's stored buffer state. */
+/** XTGETTCAP screens carry attributes, stored details (with overline and protection), resolved colors, the App's stored buffer state
+ *  and the DECLRMM left/right margins (an XTGETTCAP request must not change those either). */
 const screenOf = value => {
-    const screen = screenSnapshot(value, true, true, false, true, true, true, false, true);
+    const screen = screenSnapshot(value, true, true, false, true, true, true, false, true, true);
     validateXtgettcapScreen(screen);
     return screen;
 };
