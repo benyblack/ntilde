@@ -1218,12 +1218,12 @@ function retainOscTitleEvidence(output, runId, upstream, unavailable) {
 /** Derive and lock the ASCII reflow grading extension over the OSC-title one. */
 function prepareReflowCollector(tool, previous, output) {
     const adapted = adaptReflowCollector(readFileSync(previous));
-    const reflowBundleSha256 = hash(adapted);
-    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-rfl-${reflowBundleSha256}.mjs`);
+    const asciiReflowBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-rfl-${asciiReflowBundleSha256}.mjs`);
     writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
-    if (hash(readFileSync(bundle)) !== reflowBundleSha256) throw new Error('Derived ASCII reflow bundle digest mismatch.');
+    if (hash(readFileSync(bundle)) !== asciiReflowBundleSha256) throw new Error('Derived ASCII reflow bundle digest mismatch.');
     writeFileSync(join(output, 'collector-rfl.mjs'), adapted, { flag: 'wx', mode: 0o600 });
-    return { bundle, reflowBundleSha256 };
+    return { bundle, asciiReflowBundleSha256 };
 }
 
 /** Re-derive the ASCII reflow report parent-side from the paired journals and the layered pinned replay. */
@@ -1569,7 +1569,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: osc78Bundle, osc78BundleSha256 } = prepareOsc78Collector(privateTool, lrMarginsBundle, output);
         const { bundle: titleStackBundle, titleStackBundleSha256 } = prepareTitleStackCollector(privateTool, lrMarginsBundle, output);
         const { bundle: oscTitleBundle, oscTitleBundleSha256 } = prepareOscTitleCollector(privateTool, titleStackBundle, output);
-        const { bundle: reflowBundle, reflowBundleSha256 } = prepareReflowCollector(privateTool, oscTitleBundle, output);
+        const { bundle: reflowBundle, asciiReflowBundleSha256 } = prepareReflowCollector(privateTool, oscTitleBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
