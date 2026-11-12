@@ -99,6 +99,9 @@ export const coreGapsReferencePaths = Object.freeze({
     "core-icon-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneMetadataContracts.cs",
     "core-icon-window.cs": "src/Ntilde.App/MainWindow.AgentMetadata.cs",
 });
+export const oscTitleReferencePaths = Object.freeze({
+    "osc-title-tab-labels.cs": "src/Ntilde.App/MainWindow.TabLabels.cs",
+});
 export const privateClipboardReferencePaths = Object.freeze({
     "clipboard-app-program.cs": "src/Ntilde.App/Program.cs",
     "clipboard-app.cs": "src/Ntilde.App/App.axaml.cs",
@@ -221,6 +224,7 @@ export const capturedV18SourceFiles = Object.freeze({
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
 export function ownedSourcePath(root, file) {
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
+    if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
     if (Object.hasOwn(sgrRgbReferencePaths, file)) return join(root, sgrRgbReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file;
@@ -596,6 +600,7 @@ export const capturedV54SourceFiles = Object.freeze({
     oscTitleGradingSourceSha256: 'osc-title-grading.mjs',
     oscTitleGradingCollectorSourceSha256: 'osc-title-grading-collector.mjs',
     oscTitleReceiptSourceSha256: 'osc-title-receipt.mjs',
+    oscTitleTabLabelsSourceSha256: 'osc-title-tab-labels.cs',
 });
 
 /** Bind the private temporary root, exact v54 inventory and manifest environment pin before trusting any captured source. */
