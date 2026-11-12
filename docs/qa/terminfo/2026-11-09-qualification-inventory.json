@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 103,
-    "suiteClaims": 105,
+    "uniqueBenchmarkIds": 104,
+    "suiteClaims": 106,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 103,
-    "pinnedAndEffectSupportedIds": 84,
+    "effectSupportedIds": 104,
+    "pinnedAndEffectSupportedIds": 85,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
@@ -69,12 +69,12 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 102,
-    "pinnedSupportedOfStockInconclusive": 83,
+    "effectSupportedOfStockInconclusive": 103,
+    "pinnedSupportedOfStockInconclusive": 84,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 84,
+    "pinnedSupportedIds": 85,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -83,8 +83,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 66,
-      "notPinnedSupported": 85
+      "effectUnqualified": 65,
+      "notPinnedSupported": 84
     }
   },
   "suites": [
@@ -2380,6 +2380,76 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/osc-title-publication.test.mjs",
         "testSha256": "1b6459197ec336b855d93c6681175fca0a9769302747323e7443efdc9ab9417e"
+      }
+    },
+    {
+      "suite": "insert-replace",
+      "suiteId": "ntilde-owned-insert-replace-effect-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-12-insert-replace/",
+      "doc": "2026-11-12-insert-replace-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "modes.insert-replace"
+      ],
+      "evidence": {
+        "files": 4,
+        "bytes": 6353638,
+        "sha256": "0cde5588ff06c3fce865e66d0a583951fd952c6cdf402a7633bbf6061039eec7"
+      },
+      "receipt": {
+        "schemaVersion": 54,
+        "runId": "8b64561ded35ef5aa9e4635efa21c55e",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "a2247ed99fc88b195c92952f69c26776b8d5443704e6ec5d377fb109f816f38f"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-insert-replace-effect-v1",
+          "file": "irm-observations.json",
+          "sha256": "a79db3f2e069267ee9ba10648700d274dc515904f9720382e102967211655021",
+          "runFile": "irm-run.json",
+          "runSha256": "9b94ef97730e873f990bd04eaba883f6c5f1417f429629cf78392bb1186f38cb",
+          "counts": {
+            "supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "8b64561ded35ef5aa9e4635efa21c55e",
+        "measuredAt": "2026-11-12T09:05:20.367Z",
+        "appRevision": "2d8433d9bee2dc7fa15895935e08eefe7f21354b",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "f823eb45b984244fed2bd222f978df1df6c184f4",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "75b9d6db604205bfbbf7d5d2834ae7ed108b757774d2ba17e81c618ec1a3055a",
+        "gradingAdapterId": "ntilde-owned-insert-replace-grading-v1",
+        "gradingAdapterBundleSha256": "27d32d95d7a21c85d169cd6d1840e8f047f0f4fb3bf8bc4b24d958db448ce351",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v48",
+        "sourceSnapshotManifestSha256": "a751732fd3e7959a22884cd35f074ae7bc80bd0f09ed7fe0c25c53f42095d62b"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "ee4db125e51e24471dc4590950cf2dff",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "e764bf3ce45072962a2912b2fc7453d44569ed78d5a6f1c3bc092d883b627aab",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock collector result remains separate from the owned effect."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/insert-replace-publication.test.mjs",
+        "testSha256": "f9b43b9f1a5799876d0aa236e69f48fa6e0223ed56c3abd789015733e786319e"
       }
     }
   ],
@@ -5136,6 +5206,52 @@
             "generated-input-child-bytes"
           ],
           "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "modes.insert-replace",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "insert-replace",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "insert-replace",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.insert-replace",
+          "suite": "insert-replace",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed-over-owned-observations"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-stored-cells"
         }
       ]
     },
