@@ -5,8 +5,10 @@ const blank = char => char === '' || char === ' ';
 
 function result(pass, state, note) {
     const response = JSON.stringify(state);
+    let outcome = 'inconclusive';
+    if (pass !== null) outcome = pass ? 'supported' : 'unsupported';
     return { pass: pass === true, response, ...(note && { note }),
-        observation: { outcome: pass === null ? 'inconclusive' : pass ? 'supported' : 'unsupported',
+        observation: { outcome,
             ...(pass === null && { reason: 'insufficient-evidence' }), evidence: 'parser-state', ...(note && { note }) },
         ...(pass !== null && { assertions: [{ kind: pass ? 'positive' : 'negative', expected, observed: response }] }) };
 }
@@ -28,7 +30,8 @@ export function replayInsertReplacePinned({ cols, rows, seed, origin, after }) {
     }
     const inserted = after[0] === 'X' && after[1] === 'A' && after[2] === 'B' && after[3] === 'C';
     const replaced = after[0] === 'X' && after[1] === 'B' && after[2] === 'C' && blank(after[3]);
-    return result(inserted ? true : replaced ? false : null, { seed, origin, after },
+    const verdict = inserted || (replaced ? false : null);
+    return result(verdict, { seed, origin, after },
         inserted || replaced ? undefined : 'Measured cells match neither insertion nor replacement');
 }
 

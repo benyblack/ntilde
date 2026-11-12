@@ -44,7 +44,7 @@ export function checkInsertReplaceEvidence(output, evidence, runId, context) {
     const frames = text.split('\n').map(line => JSON.parse(line));
     const derived = buildInsertReplaceReport(frames, run, runId, report.adapter, { contractsVersion: binding.contractsVersion });
     if (JSON.stringify(report) !== JSON.stringify(derived) || JSON.stringify(report.snapshots) !== JSON.stringify(frames)
-        || !binding.counts || binding.counts[report.effect.outcome] !== 1 || Object.keys(binding.counts).length !== 1) {
+        || binding.counts?.[report.effect.outcome] !== 1 || Object.keys(binding.counts).length !== 1) {
         throw new Error('IRM report does not match retained evidence.');
     }
 }

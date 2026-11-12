@@ -37,16 +37,33 @@ export function insertReplaceTerminalContext(screen) {
         } };
 }
 
+/** The fence and reads are ordered deliberately: no observation may overtake its write. */
+async function collectPlan(fence, owner) {
+    const feeds = [], barriers = [], reads = [], screens = [];
+    for (const step of insertReplaceContract.plan) {
+        if (step.feed) {
+            feeds.push(step.feed);
+            barriers.push(await fence.write(step.feed)); // NOSONAR: the next read depends on this write.
+        } else {
+            const observed = await owner(`${prefix}-read`, barriers.at(-1)); // NOSONAR: journal each read before the next write.
+            screens.push(observed.screen);
+            reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol] });
+        }
+    }
+    if (feeds.length !== insertReplaceFeeds().length || screens.length !== insertReplaceReads()) throw new Error('Incomplete IRM fixture.');
+    return { feeds, barriers, reads, screens };
+}
+
 /** Collect serially and restore the original main-screen IRM and wrap state even on failure. */
 export async function collectInsertReplace({ config, fence, owner, gradingModule }) {
     const adapter = gradingModule.ntildeInsertReplaceAdapter;
-    if (!adapter || adapter.id !== 'ntilde-owned-insert-replace-grading-v1'
+    if (adapter?.id !== 'ntilde-owned-insert-replace-grading-v1'
         || JSON.stringify(adapter.probeIds) !== JSON.stringify(['modes.insert-replace'])) throw new Error('Invalid IRM adapter identity.');
     const started = await owner(`${prefix}-start`);
     const original = started.screen?.bufferState;
     const margins = started.screen?.horizontalMargins;
-    if (!original || original.alternateScreen !== false || typeof original.insertMode !== 'boolean' || typeof original.autoWrap !== 'boolean'
-        || !margins || margins.leftRightMarginMode !== false || margins.leftMargin !== 0 || margins.rightMargin !== started.screen.cols - 1) {
+    if (original?.alternateScreen !== false || typeof original.insertMode !== 'boolean' || typeof original.autoWrap !== 'boolean'
+        || margins?.leftRightMarginMode !== false || margins.leftMargin !== 0 || margins.rightMargin !== started.screen.cols - 1) {
         throw new Error('Cannot establish the original main-screen IRM, wrap and full-width margin state.');
     }
     const restore = `${insertReplaceReset}\x1b[?1049l\x1b[4${original.insertMode ? 'h' : 'l'}\x1b[?7${original.autoWrap ? 'h' : 'l'}`;
@@ -54,18 +71,7 @@ export async function collectInsertReplace({ config, fence, owner, gradingModule
     try {
         const bind = await fence.write(`\x1b[?1049h${insertReplaceReset}${insertReplaceNoncePrefix}${config.runId}`);
         await owner(`${prefix}-bind`, bind);
-        const feeds = [], barriers = [], reads = [], screens = [];
-        for (const step of insertReplaceContract.plan) {
-            if (step.feed) {
-                feeds.push(step.feed);
-                barriers.push(await fence.write(step.feed)); // serial: the next read depends on this write
-            } else {
-                const observed = await owner(`${prefix}-read`, barriers.at(-1));
-                screens.push(observed.screen);
-                reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol] });
-            }
-        }
-        if (feeds.length !== insertReplaceFeeds().length || screens.length !== insertReplaceReads()) throw new Error('Incomplete IRM fixture.');
+        const { feeds, barriers, reads, screens } = await collectPlan(fence, owner);
         const termless = insertReplaceTermlessContext(screens);
         const pinned = gradingModule.ntildeRunInsertReplaceTermless('modes.insert-replace', termless);
         if (pinned.observation?.outcome !== 'inconclusive' && termless.fedCount !== insertReplacePinnedFeeds.length) throw new Error('Incomplete pinned IRM replay.');
