@@ -1,4 +1,5 @@
 import { includesOscTitleEvidence, checkOscTitleEvidence } from './osc-title-receipt.mjs';
+import { includesInsertReplaceEvidence, checkInsertReplaceEvidence } from './insert-replace-receipt.mjs';
 import { includesTitleStackEvidence, checkTitleStackEvidence } from './title-stack-receipt.mjs';
 import { includesReverseWideEvidence, checkReverseWideEvidence } from './core-reverse-wide-receipt.mjs';
 import { includesSgrRasterEvidence, checkSgrRasterEvidence } from './core-sgr-raster-receipt.mjs';
@@ -206,6 +207,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesOsc78',
     'includesTitleStack',
     'includesOscTitle',
+    'includesInsertReplace',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
@@ -263,6 +265,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesOsc78 = includesOsc78Evidence(output, evidence, context);
     const includesTitleStack = includesTitleStackEvidence(output, evidence, context);
     const includesOscTitle = includesOscTitleEvidence(output, evidence, context);
+    const includesInsertReplace = includesInsertReplaceEvidence(output, evidence, context, 48);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
     const includesColorReset = includesColorResetEvidence(output, evidence, context);
@@ -273,7 +276,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -328,6 +331,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesOsc78) checkOsc78Evidence(output, evidence, runId, context);
     if (suffixes.includesTitleStack) checkTitleStackEvidence(output, evidence, runId, context);
     if (suffixes.includesOscTitle) checkOscTitleEvidence(output, evidence, runId, context);
+    if (suffixes.includesInsertReplace) checkInsertReplaceEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

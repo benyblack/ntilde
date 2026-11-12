@@ -34,6 +34,7 @@ import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
 import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectLineEditGrading } from './line-edit-collector.mjs';
+import { collectInsertReplace } from './insert-replace-collector.mjs';
 import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
@@ -229,6 +230,10 @@ try {
         const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
         const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
         writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const insertReplaceSource = readFileSync(config.insertReplaceBundle);
+        if (createHash('sha256').update(insertReplaceSource).digest('hex') !== config.insertReplaceBundleSha256) throw new Error('Local IRM adapter bundle changed.');
+        const insertReplaceRun = await collectInsertReplace({ config, fence, owner, gradingModule: await import(pathToFileURL(config.insertReplaceBundle).href) });
+        writeFileSync(join(config.output, 'irm-run.json'), JSON.stringify(insertReplaceRun) + '\n', { flag: 'wx', mode: 0o600 });
         // The layered charset qualification follows the line-editing suite on the same fence.
         const charsetsSource = readFileSync(config.charsetsBundle);
         if (createHash('sha256').update(charsetsSource).digest('hex') !== config.charsetsBundleSha256) {

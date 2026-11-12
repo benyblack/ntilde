@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v47';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v48';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -101,6 +101,12 @@ export const coreGapsReferencePaths = Object.freeze({
 });
 export const oscTitleReferencePaths = Object.freeze({
     "osc-title-tab-labels.cs": "src/Ntilde.App/MainWindow.TabLabels.cs",
+});
+export const insertReplaceReferencePaths = Object.freeze({
+    'irm-vt-write.cs': 'src/Ntilde.VT/TerminalBuffer.WritePath.cs',
+    'irm-vt-modes.cs': 'src/Ntilde.VT/ModeState.cs',
+    'irm-vt-margins.cs': 'src/Ntilde.VT/TerminalBuffer.Margins.cs',
+    'irm-observer-contract.cs': 'src/Ntilde.AgentHost.Contracts/BufferStateDto.cs',
 });
 export const privateClipboardReferencePaths = Object.freeze({
     "clipboard-app-program.cs": "src/Ntilde.App/Program.cs",
@@ -225,6 +231,7 @@ export const capturedV18SourceFiles = Object.freeze({
 export function ownedSourcePath(root, file) {
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
+    if (Object.hasOwn(insertReplaceReferencePaths, file)) return join(root, insertReplaceReferencePaths[file]);
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
     if (Object.hasOwn(sgrRgbReferencePaths, file)) return join(root, sgrRgbReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file;
@@ -603,11 +610,27 @@ export const capturedV54SourceFiles = Object.freeze({
     oscTitleTabLabelsSourceSha256: 'osc-title-tab-labels.cs',
 });
 
-/** Bind the private temporary root, exact v54 inventory and manifest environment pin before trusting any captured source. */
+// Fixed successor of the frozen OSC title scope for insert/replace mode.
+export const capturedV55SourceFiles = Object.freeze({
+    ...capturedV54SourceFiles,
+    insertReplaceContractsSourceSha256: 'insert-replace-contracts.mjs',
+    insertReplaceCollectorSourceSha256: 'insert-replace-collector.mjs',
+    insertReplaceGradingSourceSha256: 'insert-replace-grading.mjs',
+    insertReplaceGradingCollectorSourceSha256: 'insert-replace-grading-collector.mjs',
+    insertReplaceReceiptSourceSha256: 'insert-replace-receipt.mjs',
+    insertReplacePinnedSourceSha256: 'insert-replace-pinned.mjs',
+    insertReplaceReplaySourceSha256: 'insert-replace-pinned-replay.mjs',
+    insertReplaceVtWriteSourceSha256: 'irm-vt-write.cs',
+    insertReplaceVtModesSourceSha256: 'irm-vt-modes.cs',
+    insertReplaceVtMarginsSourceSha256: 'irm-vt-margins.cs',
+    insertReplaceObserverContractSourceSha256: 'irm-observer-contract.cs',
+});
+
+/** Bind the private temporary root, exact v55 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV54SourceFiles)) throw new Error('Invalid current v54 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV55SourceFiles)) throw new Error('Invalid current v55 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);
