@@ -25,5 +25,7 @@ test('publication keeps pinned, effect and stock outcomes and measured revisions
         assert.equal(report.cases[0].stock.outcome, 'inconclusive');
         assert.equal(report.cases[0].terminalPinned.observation.outcome, 'inconclusive');
         assert.throws(() => insertReplacePublication(directory, { appRevision: 'unknown', scriptsRevision }), /revision/);
+        write('summary.json', { measuredAt: '2026-11-12T08:00:00Z', counts: {}, suiteComplete: false, rawSha256: 'f'.repeat(64) });
+        assert.throws(() => insertReplacePublication(directory, { appRevision, scriptsRevision }), /digest does not match/);
     } finally { rmSync(directory, { recursive: true, force: true }); }
 });
