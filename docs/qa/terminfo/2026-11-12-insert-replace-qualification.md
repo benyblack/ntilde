@@ -28,14 +28,15 @@ matched separately measured cells under the current palette-4 background pen. Th
 enabled; both and the original captured main screen/state were restored. The completed cleanup receipt records the disposable
 fixture's removal. A non-default original horizontal-margin state is refused before the fixture writes anything.
 
-The run used scripts commit `3b99470bfd5426b3a72fb969e7ae666a8e3cddcf` and an uninstalled Release sidecar built from App source
+The run used scripts commit `981f097bad61452486c647c5f453b30c9374db0d` and an uninstalled Release sidecar built from App source
 revision `2d8433d9bee2dc7fa15895935e08eefe7f21354b`; the intervening merged title/icon batch changed no `src/` files. The App
 executable SHA-256 was `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8` and the mirrored assembly SHA-256
 was `62f27bb8f9edfc7b865e676ce23acb94ce97c701812577be7251588651b5b4fa`. The runner records the App version `0.13.0` as
 operator-supplied, not independently verified. Source policy v48 binds the executed script graph and selected production reference
-files; it is not a complete binary-to-source attestation. Receipt schema 54 binds owned run `91a97a7cf97b3d6e8c6d0f805fe26228`.
+files; it is not a complete binary-to-source attestation. Receipt schema 54 binds owned run `49bd73d770d9587ed06a01c052475889`.
 The [first completed run](2026-11-12-insert-replace/superseded/attempt-1.zip) is retained as superseded: Sonar findings changed
-measured collector, replay, receipt and source-checking scripts, requiring the second run. It also graded the pinned and effect paths supported.
+measured collector, replay, receipt and source-checking scripts. The [second run](2026-11-12-insert-replace/superseded/attempt-2.zip)
+was superseded after Codex found a missing terminal-path small-geometry guard. Both also graded the pinned and effect paths supported.
 
 Recheck with `node --test scripts/terminfo/insert-replace-publication.test.mjs`. The pinned stock collector remained incomplete due
 to its separately recorded reverse-wrap geometry diagnostic. No stock-score, common-harness-score or Core-percentage change follows

@@ -73,7 +73,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `osc78` | 2 | v1 | passed | 51 | `ca34a1d9` | v45 | 23 | `3e83213a` |
 | `title-stack` | 2 | v1 | passed | 52 | `926199a6` | v46 | 26 | `59877a14` |
 | `osc-title` | 3 | v1 | passed | 53 | `2d8433d9` | v47 | 14 | `13c1fb56` |
-| `insert-replace` | 1 | v1 | passed | 54 | `2d8433d9` | v48 | 5 | `c4735ffb` |
+| `insert-replace` | 1 | v1 | passed | 54 | `2d8433d9` | v48 | 6 | `a980f155` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -115,7 +115,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `osc78` | collected-run-id-recorded | `1370f859` | 167/87/1 | `cf7d8759` |
 | `title-stack` | collected-run-id-recorded | `e3884f90` | 167/87/1 | `cf7d8759` |
 | `osc-title` | collected-run-id-recorded | `900cca91` | 167/87/1 | `cf7d8759` |
-| `insert-replace` | collected-run-id-recorded | `67605bdc` | 167/87/1 | `cf7d8759` |
+| `insert-replace` | collected-run-id-recorded | `335e7153` | 167/87/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
