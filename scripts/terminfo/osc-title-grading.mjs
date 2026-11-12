@@ -76,20 +76,8 @@ function titleFacts(snapshot, expected, runId) {
         tabMatches: matchesTabText(display, tab, fallback) };
 }
 
-/** Re-derive all reads, refusing changed identities, incomplete frames, feeds, ordering and restoration. */
-export function buildOscTitleReport(frames, run, runId, adapter) {
-    const contracts = oscTitleExperiments(runId), count = 3 + contracts.reduce((n, item) => n + planReads(item), 0);
-    check(Array.isArray(frames) && frames.length === count && count <= 64, 'Incomplete OSC title journal.');
-    const first = validateMetadataSnapshot(frames[0]?.before, undefined, true);
-    check(pristineEditing(first.screen) && first.screen.rows >= 12 && first.screen.cols >= 48, 'Invalid OSC title initial screen.');
-    frames.forEach((frame, index) => validateFrame(frame, index, count - 1, first, null, oscTitlePrefix, true));
-    check(matchesOscTitleBaseline(frames[1].before, first, runId, false) && matchesOscTitleBaseline(frames.at(-1).before, first, runId, true),
-        'OSC title baseline or restoration failed.');
-    check(same(restoredContext(frames[1].before), restoredContext(frames.at(-1).before)), 'OSC title session or metadata restoration failed.');
-    check(adapter?.id === oscTitleAdapterId && adapter.derivedFromAdapterId === 'ntilde-owned-title-stack-grading-v1'
-        && /^[a-f\d]{64}$/.test(adapter.bundleSha256 ?? '') && /^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? '') && run?.adapterId === adapter.id
-        && same(run.probeIds, oscTitleCaseIds) && Array.isArray(run.experiments) && run.experiments.length === contracts.length
-        && same(run.pinned?.map(item => item.caseId), oscTitleCaseIds), 'Invalid OSC title run identity.');
+/** Evaluate contracted observations in journal order. */
+function evaluateExperiments(frames, run, runId, contracts) {
     const bound = frames[1].before, evaluations = [];
     let frameIndex = 2;
     for (const [index, contract] of contracts.entries()) {
@@ -118,6 +106,24 @@ export function buildOscTitleReport(frames, run, runId, adapter) {
         }
         evaluations.push({ caseId: contract.caseId, owner: contract.owner, role: contract.role, observations });
     }
+    return evaluations;
+}
+
+/** Re-derive all reads, refusing changed identities, incomplete frames, feeds, ordering and restoration. */
+export function buildOscTitleReport(frames, run, runId, adapter) {
+    const contracts = oscTitleExperiments(runId), count = 3 + contracts.reduce((n, item) => n + planReads(item), 0);
+    check(Array.isArray(frames) && frames.length === count && count <= 64, 'Incomplete OSC title journal.');
+    const first = validateMetadataSnapshot(frames[0]?.before, undefined, true);
+    check(pristineEditing(first.screen) && first.screen.rows >= 12 && first.screen.cols >= 48, 'Invalid OSC title initial screen.');
+    frames.forEach((frame, index) => validateFrame(frame, index, count - 1, first, null, oscTitlePrefix, true));
+    check(matchesOscTitleBaseline(frames[1].before, first, runId, false) && matchesOscTitleBaseline(frames.at(-1).before, first, runId, true),
+        'OSC title baseline or restoration failed.');
+    check(same(restoredContext(frames[1].before), restoredContext(frames.at(-1).before)), 'OSC title session or metadata restoration failed.');
+    check(adapter?.id === oscTitleAdapterId && adapter.derivedFromAdapterId === 'ntilde-owned-title-stack-grading-v1'
+        && /^[a-f\d]{64}$/.test(adapter.bundleSha256 ?? '') && /^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? '') && run?.adapterId === adapter.id
+        && same(run.probeIds, oscTitleCaseIds) && Array.isArray(run.experiments) && run.experiments.length === contracts.length
+        && same(run.pinned?.map(item => item.caseId), oscTitleCaseIds), 'Invalid OSC title run identity.');
+    const evaluations = evaluateExperiments(frames, run, runId, contracts);
     const cases = oscTitleCaseIds.map(id => {
         const experiments = evaluations.filter(item => item.owner === id), controlsHeld = experiments.every(item => item.observations[0].passed);
         // An unchanged target can be an old read as well as a failed setter. It is not a negative verdict.
