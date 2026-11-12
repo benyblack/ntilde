@@ -1,3 +1,4 @@
+import { collectOscTitle } from './osc-title-collector.mjs';
 import { collectTitleStack } from './title-stack-collector.mjs';
 import { collectReverseWide } from './core-reverse-wide.mjs';
 import { collectSgrRaster } from './core-sgr-raster.mjs';
@@ -365,6 +366,10 @@ try {
         if (createHash('sha256').update(titleStackSource).digest('hex') !== config.titleStackBundleSha256) throw new Error('Local title-stack adapter bundle changed.');
         const titleStackResult = await collectTitleStack({ config, fence, owner, gradingModule: await import(pathToFileURL(config.titleStackBundle).href) });
         if (titleStackResult.status === 'complete') writeFileSync(join(config.output, 'tst-run.json'), JSON.stringify(titleStackResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+        const oscTitleSource = readFileSync(config.oscTitleBundle);
+        if (createHash('sha256').update(oscTitleSource).digest('hex') !== config.oscTitleBundleSha256) throw new Error('Local OSC title adapter bundle changed.');
+        const oscTitleResult = await collectOscTitle({ config, fence, owner, gradingModule: await import(pathToFileURL(config.oscTitleBundle).href) });
+        if (oscTitleResult.status === 'complete') writeFileSync(join(config.output, 'ost-run.json'), JSON.stringify(oscTitleResult.run) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
