@@ -15,7 +15,7 @@ const read = name => readFileSync(join(dir, name));
 
 test('the retained owned run rederives its complete receipt, predecessor suites and publication', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '358c602533c5df4da807a7104df66d08278e53b339f738e081e460846121f559');
+    assert.equal(hash(manifestBytes), '9ec6eb7392f462bcf97bd1f028d9b2e7af7bb33fac7b3930fb953700849e576a');
     const manifest = JSON.parse(manifestBytes);
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-irm-publication-'));

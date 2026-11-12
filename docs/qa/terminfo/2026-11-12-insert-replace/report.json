@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-insert-replace-effect-v1",
   "contractsVersion": 1,
-  "runId": "8b64561ded35ef5aa9e4635efa21c55e",
+  "runId": "91a97a7cf97b3d6e8c6d0f805fe26228",
   "adapter": {
     "id": "ntilde-owned-insert-replace-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "27d32d95d7a21c85d169cd6d1840e8f047f0f4fb3bf8bc4b24d958db448ce351",
+    "bundleSha256": "0682c7f2115977daf8adc6437c20209b296052758daa5d39fe54c7ba4660fe27",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Bounded stored ASCII cells, cursor and stored attributes on the owned disposable App; terminal-path cursor projection and stock collector remain separate.",
