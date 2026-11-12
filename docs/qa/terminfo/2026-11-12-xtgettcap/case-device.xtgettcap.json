@@ -286,7 +286,7 @@
     "pinnedReply": "\\eP0+r\\e\\",
     "pinnedNote": "TN is deliberately refused (its value is the session TERM, which VT does not know); the pinned verdict stays inconclusive",
     "seed": {
-      "nonce": "NTILDE_XG_c004091c044e9f2dcdeaa67ec8080d33",
+      "nonce": "NTILDE_XG_ddfade8004b291c7f773963de6111fcc",
       "margins": [
         1,
         5

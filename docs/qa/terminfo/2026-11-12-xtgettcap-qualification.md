@@ -53,20 +53,20 @@ frame's. All twenty matched the independent reply oracle byte for byte (`matches
 ## Identities
 
 App 0.13.0 (operator supplied) built from `2d8433d9` (arm64 Release, executable SHA-256 `f5814e51…9bf8` — bit-identical to the title/icon-stack run's binary; no
-production source changed in this batch); scripts at `923253fc`; source policy `readonly-owned-source-graph-v48` (312 files); receipt schema 53; Node v24.22.2; owned
-run `c004091c…0d33`; stock run measured 2026-11-12T13:53Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
+production source changed in this batch); scripts at `5c4edc95`; source policy `readonly-owned-source-graph-v48` (312 files); receipt schema 53; Node v24.22.2; owned
+run `ddfade80…1fcc`; measured 2026-11-12T13:26Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
 attestation. Predecessor suites reconfirmed in the same run: all thirty benchmark layers' cases are supported (or their effect contracts supported — the two saved-reset
 pinned inconclusives keep their by-design verdicts), the five Core layers are receipt-bound, the query suite reproduces its frozen 33 matched / 7 mismatched, and the two
 findings reconfirm. Stock counts are re-collected in that run (not carried forward) and unchanged.
 
 Attempts, all retained with their actual reasons (archives in `superseded/`): the first two (`cd4ceee0` uncommitted, then `b88d8c1c`) each collected every suite — the
 pinned refusal and all twenty controls already matched in both — but the finalizer refused their receipts because the v48 source policy was not yet admitted by the
-snapshot-manifest and metadata allowlists; measurement-machinery fixes, not App or contract changes. The third (`6251515f`) and fourth (`dea61d0a`) collected cleanly and
-completed receipt schema 53 with identical evidence, and are superseded because review findings then changed measured modules: nine SonarCloud findings (unused import,
-re-export spelling, `fromCodePoint`, `includes`, a default parameter, a serial-replay NOSONAR and the report builder's cognitive complexity) and one Codex P2 — the
-unchanged-state key now also compares cursor visibility and every observed buffer mode (autowrap, insert and pending-wrap, active screen, saved-line count), so an exchange
-changing any of them can no longer pass as unchanged. The fifth run (scripts `923253fc`) is the published one; the same refusal and the same twenty controls matched each
-time.
+snapshot-manifest and metadata allowlists; measurement-machinery fixes, not App or contract changes. The third (`6251515f`), fourth (`dea61d0a`) and fifth (`923253fc`)
+collected cleanly and completed receipt schema 53 with identical evidence, and are superseded because review findings then changed measured modules: nine SonarCloud
+findings (unused import, re-export spelling, `fromCodePoint`, `includes`, a default parameter, a serial-replay NOSONAR and the report builder's cognitive complexity), one
+Codex P2 — the unchanged-state key now also compares cursor visibility and every observed buffer mode (autowrap, insert and pending-wrap, active screen, saved-line
+count), so an exchange changing any of them can no longer pass as unchanged — and a last Sonar pass (the now-re-exported fixture imports and the NOSONAR marker's
+placement). The sixth run (scripts `5c4edc95`) is the published one; the same refusal and the same twenty controls matched every time.
 
 ## Newly fixed versus newly qualified
 
