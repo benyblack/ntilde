@@ -288,16 +288,16 @@ export function validateXtgettcapFeeds(item, feeds) {
 
 // ---------- grading ----------
 
-/** A group's observation: its ink, cursor with visibility, complete stored buffer state with the DECLRMM left/right margins, and,
- *  for a report group, the raw replies or an empty list. */
+/** A group's observation: its ink, cursor with visibility and stored mode, complete stored buffer state with the DECLRMM left/right
+ *  margins, and, for a report group, the raw replies or an empty list. */
 const groupOf = (screen, replies) => ({ screen, ink: selectiveEraseInk(screen), cursor: [screen.cursorRow, screen.cursorCol], cursorVisible: screen.cursorVisible,
-    rows: screen.rows, cols: screen.cols, margins: [screen.bufferState.scrollTop, screen.bufferState.scrollBottom],
+    cursorMode: screen.cursorMode, rows: screen.rows, cols: screen.cols, margins: [screen.bufferState.scrollTop, screen.bufferState.scrollBottom],
     origin: screen.bufferState.originMode, alternate: screen.bufferState.alternateScreen, buffer: screen.bufferState,
     horizontalMargins: screen.horizontalMargins, replies });
-/** Everything an exchange must leave unchanged: ink (cells, stored attributes, protection), the cursor and its visibility, the complete
- *  observed buffer state — margins, origin, autowrap, insert and pending-wrap modes, the active screen, the saved-line count — and the
- *  DECLRMM mode with the left/right margins. */
-const stateKey = state => JSON.stringify([state.ink, state.cursor, state.cursorVisible, state.buffer, state.horizontalMargins]);
+/** Everything an exchange must leave unchanged: ink (cells, stored attributes, protection), the cursor with its visibility and stored
+ *  mode (style, blink, default), the complete observed buffer state — margins, origin, autowrap, insert and pending-wrap modes, the
+ *  active screen, the saved-line count — and the DECLRMM mode with the left/right margins. */
+const stateKey = state => JSON.stringify([state.ink, state.cursor, state.cursorVisible, state.cursorMode, state.buffer, state.horizontalMargins]);
 /** The roles of report groups. */
 const reportRoles = contract.roles.filter((role, index) => groups[index].request !== undefined);
 
@@ -332,7 +332,7 @@ function replyMismatch(observation) {
     for (const role of reportRoles) {
         const state = observation[role];
         if (stateKey(state) !== stateKey(observation.initial)) {
-            return `The ${role} request changed the screen, the cursor or its visibility, the rendition, the margins (vertical or horizontal), the wrap/insert modes or the active screen: a capability report must change nothing`;
+            return `The ${role} request changed the screen, the cursor (position, visibility or stored mode), the rendition, the margins (vertical or horizontal), the wrap/insert modes or the active screen: a capability report must change nothing`;
         }
         const request = contract.requests.find(item => item.role === role);
         const demanded = oracleReplies(request.nameList);

@@ -17,9 +17,10 @@ export function validateXtgettcapReadExtras(request) {
 
 export class XtgettcapObserver {
     constructor(options) {
-        // includeHorizontalMargins keeps DECLRMM and the left/right margins in the observed state, so the unchanged-state key sees them.
-        this.cells = new OwnedCellObserver({ ...options, prefix: 'xgtc', includeAttributes: true, includeCellDetails: true, includeOverline: true,
-            includeBufferState: true, includeResolvedColors: true, includeProtection: true, includeHorizontalMargins: true });
+        // includeCursorMode keeps the stored style/blink/default state, and includeHorizontalMargins the DECLRMM margins, in the
+        // observed state, so the unchanged-state key sees them.
+        this.cells = new OwnedCellObserver({ ...options, prefix: 'xgtc', includeAttributes: true, includeCellDetails: true, includeCursorMode: true,
+            includeOverline: true, includeBufferState: true, includeResolvedColors: true, includeProtection: true, includeHorizontalMargins: true });
         this.frames = [];
         this.busy = false;
     }

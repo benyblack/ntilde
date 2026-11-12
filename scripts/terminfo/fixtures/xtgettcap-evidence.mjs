@@ -58,6 +58,7 @@ const alternate = (screen, nonce) => ({
     ...(nonce === undefined ? {} : { lines: [nonce, ...screen.lines.slice(1)] }),
     bufferState: { ...screen.bufferState, scrollTop: 1, scrollBottom: 5, alternateScreen: true },
     horizontalMargins: { leftRightMarginMode: false, leftMargin: 0, rightMargin: screen.cols - 1 },
+    cursorMode: { style: 0, blink: true, isDefault: true },
 });
 
 /** The screens and reply lists of every read; `mutate(role, read)` may return a changed read to build negative evidence. */
@@ -78,7 +79,8 @@ export function syntheticXtgettcapEvidence(runId = 'a'.repeat(32), bundleSha256 
     const nonce = 'NTILDE_XG_' + runId;
     const bare = syntheticColEditScreen([], [0, 0], undefined, [], binding);
     // The main screen carries DECLRMM off with full-width margins, like every observed screen.
-    const main = { ...bare, horizontalMargins: { leftRightMarginMode: false, leftMargin: 0, rightMargin: bare.cols - 1 } };
+    const main = { ...bare, horizontalMargins: { leftRightMarginMode: false, leftMargin: 0, rightMargin: bare.cols - 1 },
+        cursorMode: { style: 0, blink: true, isDefault: true } };
     const bound = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], binding), nonce);
     bound.cursorRow = 0;
     bound.cursorCol = nonce.length;
