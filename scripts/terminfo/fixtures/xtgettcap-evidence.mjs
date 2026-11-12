@@ -6,7 +6,7 @@ import { snapshotHash } from '../agent-observer.mjs';
 import { planFeeds } from '../graded-plan.mjs';
 import { xtgettcapContracts, xtgettcapObservation, gradeXtgettcapCase, replayXtgettcapPinned } from '../xtgettcap-contracts.mjs';
 import { xtgettcapAdapterId } from '../xtgettcap-grading-collector.mjs';
-import { syntheticColEditScreen, colEditRows, colEditCols, paletteBinding, colorCell } from './col-edit-evidence.mjs';
+import { syntheticColEditScreen, paletteBinding, colorCell } from './col-edit-evidence.mjs';
 import { paletteChannel } from './sgr-palette-evidence.mjs';
 
 const paneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
