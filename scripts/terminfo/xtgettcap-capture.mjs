@@ -24,6 +24,7 @@ export class XtgettcapObserver {
     }
     get restored() { return this.cells.restored; }
     get paneId() { return this.cells.paneId; }
+    /** Observe one request, journaling the reply list of a report read beside that same observation's frame. */
     async handle(request, budget) {
         if (this.busy || this.restored) fail('XTGETTCAP observation busy or complete.');
         const extras = validateXtgettcapReadExtras(request);

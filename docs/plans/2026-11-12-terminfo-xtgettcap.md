@@ -70,7 +70,7 @@ batch merges first), exposing the pinned termless and terminal callbacks. The
 pinned termless code replays over the journaled raw reply; the terminal path
 replays over the same journaled bytes and stays inconclusive. Receipt suffix
 `includesXtgettcap` (schema 54 assuming the OSC-title layer takes 53), source
-policy `readonly-owned-source-graph-v48` (inventory 305 → 312 files), suite
+policy `readonly-owned-source-graph-v48` (inventory 305 → 313 files), suite
 prefix `xgtc`, worker position after the title-stack suite. Version numbers are
 re-read from main at PR time; merge serially and remeasure when integration
 changes measured inputs.

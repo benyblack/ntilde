@@ -310,5 +310,6 @@
     "xtgettcapCollectorSourceSha256": "xtgettcap-collector.mjs",
     "xtgettcapGradingSourceSha256": "xtgettcap-grading.mjs",
     "xtgettcapGradingCollectorSourceSha256": "xtgettcap-grading-collector.mjs",
-    "xtgettcapReceiptSourceSha256": "xtgettcap-receipt.mjs"
+    "xtgettcapReceiptSourceSha256": "xtgettcap-receipt.mjs",
+    "xtgettcapReceiptCoreSourceSha256": "xtgettcap-receipt-core.mjs"
 }

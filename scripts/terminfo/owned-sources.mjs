@@ -599,6 +599,7 @@ export const capturedV55SourceFiles = Object.freeze({
     xtgettcapGradingSourceSha256: 'xtgettcap-grading.mjs',
     xtgettcapGradingCollectorSourceSha256: 'xtgettcap-grading-collector.mjs',
     xtgettcapReceiptSourceSha256: 'xtgettcap-receipt.mjs',
+    xtgettcapReceiptCoreSourceSha256: 'xtgettcap-receipt-core.mjs',
 });
 
 /** Bind the private temporary root, exact v55 inventory and manifest environment pin before trusting any captured source. */

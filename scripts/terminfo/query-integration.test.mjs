@@ -12,7 +12,7 @@ import { completeOwnedReceipt } from './receipt.mjs';
 
 test('live query graph includes all query and shared-scanner dependencies under its next fixed policy', () => {
     assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v48');
-    assert.equal(Object.keys(ownedSourceFiles).length, 312);
+    assert.equal(Object.keys(ownedSourceFiles).length, 313);
     for (const file of ['queries.mjs', 'query-capture.mjs', 'query-collector.mjs', 'query-receipt.mjs', 'query-witness-cases.mjs', 'query-witness-frame.mjs', 'source-imports.mjs'])
         assert.ok(Object.values(ownedSourceFiles).includes(file), file);
 });
@@ -43,7 +43,7 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
                     "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v49';"));
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 313 : 312); assert.equal(Object.keys(sources.capturedV11SourceFiles).length, 74);
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 314 : 313); assert.equal(Object.keys(sources.capturedV11SourceFiles).length, 74);
             assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v49' : 'readonly-owned-source-graph-v48');
             const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href);
             const receipt = next.completeOwnedReceipt(f.output, join(f.output, 'removed-fixture'), f.evidence);

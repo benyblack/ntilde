@@ -53,7 +53,7 @@ frame's. All twenty matched the independent reply oracle byte for byte (`matches
 ## Identities
 
 App 0.13.0 (operator supplied) built from `2d8433d9` (arm64 Release, executable SHA-256 `f5814e51…9bf8` — bit-identical to the title/icon-stack run's binary; no
-production source changed in this batch); scripts at `5c4edc95`; source policy `readonly-owned-source-graph-v48` (312 files); receipt schema 53; Node v24.22.2; owned
+production source changed in this batch); scripts at `5c4edc95`; source policy `readonly-owned-source-graph-v48` (313 files); receipt schema 53; Node v24.22.2; owned
 run `ddfade80…1fcc`; measured 2026-11-12T13:26Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
 attestation. Predecessor suites reconfirmed in the same run: all thirty benchmark layers' cases are supported (or their effect contracts supported — the two saved-reset
 pinned inconclusives keep their by-design verdicts), the five Core layers are receipt-bound, the query suite reproduces its frozen 33 matched / 7 mismatched, and the two

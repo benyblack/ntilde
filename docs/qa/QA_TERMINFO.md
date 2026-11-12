@@ -1086,4 +1086,4 @@ documented unavailable names (`TN`, `kcuu1`, the case-sensitive `co`) and a cont
 mixed valid/invalid) each refused exactly once, and a verified recovery after each malformed request. Every exchange must leave the complete screen, cursor, rendition,
 margins, modes and active screen unchanged over an attributed seed. An advertised flag or count proves the reply only — never rendering, color accuracy or control-string
 execution; the settings-dependent `Ms` clipboard capability, X resources, clipboard permissions, remote delivery and other platforms are not claimed. No production code
-changed. Receipt schema 53 and source policy v48 (312 files) bind it; earlier policies stay frozen. Inventory: 101 qualified ids.
+changed. Receipt schema 53 and source policy v48 (313 files) bind it; earlier policies stay frozen. Inventory: 101 qualified ids.
