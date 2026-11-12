@@ -34,8 +34,10 @@ export function matchesOscTitleBaseline(snapshot, first, runId, finish) {
     const indices = first.screen.colorBinding.paletteOverrideIndices;
     const colors = finish ? colorBindingHash(snapshot.screen.colorBinding) === colorBindingHash(first.screen.colorBinding)
         : same(snapshot.screen.colorBinding.paletteOverrideIndices, [...indices, 7].sort((a, b) => a - b));
+    const title = titleFacts(snapshot, { title: fixture.title, icon: fixture.title }, runId);
     return snapshotHash(snapshot.screen.lines) === snapshotHash(screen.lines) && snapshot.screen.cursorRow === screen.cursorRow
         && snapshot.screen.cursorCol === screen.cursorCol && colors && metadata.oscTitle === fixture.title && buffer.requestedIconName === fixture.title
+        && title.displayMatches && title.tabMatches
         && metadata.workingDirectory === fixture.cwd && !buffer.acceptingCommandInput && buffer.commandStart === null && buffer.outputStart === null
         && buffer.links.length === 0 && !buffer.alternateScreen && buffer.scrollbackLines === 0
         && (!finish || snapshotHash(snapshot.screen) === snapshotHash(first.screen));

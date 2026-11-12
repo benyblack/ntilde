@@ -34,6 +34,13 @@ test('complete paired evidence yields distinct effect results and refuses tamper
     finish.before.metadata.oscTitle = 'not-restored'; finish.after = structuredClone(finish.before);
     finish.sha256 = snapshotHash(metadataProjection(finish.before)); finish.afterSha256 = finish.sha256;
     assert.throws(() => build(restoration), /restoration/);
+    for (const field of ['displayTitle', 'tabText']) {
+        const changed = synthetic(), last = changed.frames.at(-1);
+        if (field === 'displayTitle') last.before.metadata.displayTitle = 'stale display';
+        else last.before.metadata.presentation.tabText = 'stale tab';
+        last.after = structuredClone(last.before); last.sha256 = snapshotHash(metadataProjection(last.before)); last.afterSha256 = last.sha256;
+        assert.throws(() => build(changed), /restoration/, field);
+    }
 });
 
 test('a wrong effect needs valid controls; unavailable or unrelated drift cannot become a verdict', () => {
