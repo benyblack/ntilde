@@ -49,7 +49,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
 /** Any retained runtime-color reset artifact or declaration requires this suffix, and a policy-v37 run always carries it, because the current
  * worker collects this suite unconditionally after the left/right-margin suite. */
 export function includesColorResetEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v48'].includes(context.sourceSnapshotPolicy)
         || context.colorResetAdapterId !== undefined || context.colorResetSuiteId !== undefined
         || context.colorResetBundleSha256 !== undefined || context.colorResetContractsVersion !== undefined
         || evidence.colorResetEvidence !== undefined

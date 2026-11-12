@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core tab-stops receipt: ' + message); };
 
 export function includesTabStopsEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46'].includes(context.sourceSnapshotPolicy) || context.tabStopsSuiteId !== undefined || evidence.tabStopsEvidence !== undefined
+    return ['readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v48'].includes(context.sourceSnapshotPolicy) || context.tabStopsSuiteId !== undefined || evidence.tabStopsEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
