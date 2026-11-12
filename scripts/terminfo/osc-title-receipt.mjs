@@ -14,7 +14,8 @@ const read = (output, file) => {
 };
 export function includesOscTitleEvidence(output, evidence, context) {
     return Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0) >= 47
-        || context.oscTitleAdapterId !== undefined || evidence.oscTitleEvidence !== undefined
+        || context.oscTitleAdapterId !== undefined || context.oscTitleSuiteId !== undefined || context.oscTitleBundleSha256 !== undefined
+        || context.oscTitleContractsVersion !== undefined || evidence.oscTitleEvidence !== undefined
         || ['ost-run.json', 'ost-snapshots.jsonl', 'ost-observations.json', 'ost-unavailable.json', 'collector-ost.mjs']
             .some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined);
 }

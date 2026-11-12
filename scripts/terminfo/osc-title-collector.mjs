@@ -2,6 +2,17 @@ import { collectGradedPlans, planFeeds, planReads } from './graded-plan.mjs';
 import { oscTitleCaseIds, oscTitleCases, oscTitleExperiments, oscTitleFixture, oscTitlePrefix } from './osc-title-contracts.mjs';
 
 export const exposeOscTitleFacts = snapshot => ({ title: snapshot.metadata.oscTitle, icon: snapshot.metadata.buffer.requestedIconName ?? null });
+const unavailableReasons = ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'];
+
+/** A prerequisite may be skipped only through its typed initial refusal; otherwise it must have restored. */
+export function oscTitlePrerequisiteReason(restored, unavailable, reason) {
+    if (unavailable === true) {
+        if (!unavailableReasons.includes(reason)) throw new Error('Unexpected OSC title prerequisite refusal.');
+        return reason;
+    }
+    if (!restored) throw new Error('Title-stack suite must restore before OSC title observations.');
+    return null;
+}
 
 /** Serve the pinned code only its own feed and the title reads on either side of it. */
 export function oscTitleTermlessContext(caseId, before, after) {
@@ -30,7 +41,7 @@ export async function collectOscTitle({ config, fence, owner, gradingModule }) {
         collected = await collectGradedPlans({ contracts, prefix: oscTitlePrefix, reset: fixture.reset, bind: fixture.bind,
             finish: fixture.finish, nonce: fixture.nonce, fence, owner, planFeeds, planReads });
     } catch (error) {
-        if (['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error?.code)
+        if (unavailableReasons.includes(error?.code)
             && !error.message?.includes('after partial')) return { status: 'unavailable', reason: error.code };
         throw error;
     }

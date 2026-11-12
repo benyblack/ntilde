@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { oscTitleCases } from './osc-title-contracts.mjs';
-import { collectOscTitle, oscTitleTermlessContext } from './osc-title-collector.mjs';
+import { collectOscTitle, oscTitlePrerequisiteReason, oscTitleTermlessContext } from './osc-title-collector.mjs';
 import { oscTitleCaseIds } from './osc-title-contracts.mjs';
 import { adaptOscTitleCollector, oscTitleSeams } from './osc-title-grading-collector.mjs';
 
@@ -37,4 +37,11 @@ test('only typed initial unavailability can skip collection', async () => {
         await assert.rejects(collectOscTitle({ ...args, owner: partial }), /after partial/);
     }
     await assert.rejects(collectOscTitle({ ...args, owner: async () => { throw new Error('lost identity'); } }), /lost identity/);
+});
+
+test('a restored prerequisite proceeds and a typed unavailable prerequisite is propagated', () => {
+    assert.equal(oscTitlePrerequisiteReason(true, false, null), null);
+    assert.equal(oscTitlePrerequisiteReason(false, true, 'paneMetadataUnavailable'), 'paneMetadataUnavailable');
+    assert.throws(() => oscTitlePrerequisiteReason(false, false, null), /must restore/);
+    assert.throws(() => oscTitlePrerequisiteReason(false, true, 'unexpected'), /refusal/);
 });

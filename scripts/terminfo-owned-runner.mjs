@@ -2,7 +2,7 @@
 import { adaptOscTitleCollector, oscTitleAdapterId } from './terminfo/osc-title-grading-collector.mjs';
 import { oscTitleCaseIds, oscTitleContractsVersion, oscTitlePrefix, oscTitleSuiteId } from './terminfo/osc-title-contracts.mjs';
 import { buildOscTitleReport, matchesOscTitleBaseline, oscTitleCounts, oscTitleObserverPlan } from './terminfo/osc-title-grading.mjs';
-import { exposeOscTitleFacts } from './terminfo/osc-title-collector.mjs';
+import { exposeOscTitleFacts, oscTitlePrerequisiteReason } from './terminfo/osc-title-collector.mjs';
 import { reverseWideSuiteId, ReverseWideObserver, buildReverseWideReport } from './terminfo/core-reverse-wide.mjs';
 import { sgrRasterSuiteId, SgrRasterObserver, buildSgrRasterReport } from './terminfo/core-sgr-raster.mjs';
 import { WrapObserver } from './terminfo/core-wrap-observer.mjs';
@@ -2133,14 +2133,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             oscTitleState.unavailable = true;
         };
         const observeOscTitle = async (request, budget) => {
-            if (!titleStackState?.observer?.restored && titleStackState?.unavailable !== true) throw new Error('Title-stack suite must restore before OSC title observations.');
+            const reason = oscTitlePrerequisiteReason(titleStackState?.observer?.restored, titleStackState?.unavailable,
+                titleStackState?.unavailable === true ? JSON.parse(readFileSync(join(output, 'tst-unavailable.json'))).reason : null);
             oscTitleState ??= { workerPid: request.workerPid, tty: request.tty,
                 observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName, runId, expectedPaneId: cellObserver.paneId,
                     prefix: oscTitlePrefix, includeResolvedColors: true, planOf: oscTitleObserverPlan, matchesBaseline: matchesOscTitleBaseline, expose: exposeOscTitleFacts }) };
             const state = oscTitleState;
             if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC title fixture ownership or availability changed.');
-            if (request.kind === `${oscTitlePrefix}-start` && titleStackState?.unavailable === true) {
-                const reason = JSON.parse(readFileSync(join(output, 'tst-unavailable.json'))).reason;
+            if (request.kind === `${oscTitlePrefix}-start` && reason !== null) {
                 recordOscTitleUnavailable(reason);
                 throw Object.assign(new Error('OSC title fixture is unavailable.'), { code: reason });
             }

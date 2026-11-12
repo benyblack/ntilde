@@ -54,3 +54,9 @@ test('typed initial unavailability is retained, while partial artifacts cannot b
     writeFileSync(join(f.dir, 'ost-snapshots.jsonl'), 'partial');
     assert.throws(() => checkOscTitleEvidence(f.dir, f.evidence, f.e.runId, f.context), /partial evidence/);
 }));
+
+test('each partial declaration requires the suffix even under an older policy', () => {
+    for (const key of ['oscTitleAdapterId', 'oscTitleSuiteId', 'oscTitleBundleSha256', 'oscTitleContractsVersion']) {
+        assert.equal(includesOscTitleEvidence('/nonexistent', {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v46', [key]: 'present' }), true, key);
+    }
+});
