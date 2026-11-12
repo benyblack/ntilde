@@ -84,3 +84,22 @@ test('both originally disabled modes are restored from observation rather than a
     assert.deepEqual(result.original, { insertMode: false, autoWrap: false });
     assert.match(f.writes.at(-1), /\x1b\[\?1049l\x1b\[4l\x1b\[\?7l$/);
 });
+
+test('the pinned terminal geometry guard retains its inconclusive result without writes', async () => {
+    const f = fixture();
+    let reads = 0;
+    const owner = async kind => {
+        const result = await f.owner(kind);
+        if (kind === 'irm-read' && insertReplaceContract.roles[reads++] === 'terminal') result.screen.cols = 4;
+        return result;
+    };
+    const gradingModule = { ...module_, async ntildeRunInsertReplaceTerminal(_id, ctx) {
+        assert.equal(ctx.cols, 4);
+        return { probeId: 'modes.insert-replace', pass: false,
+            observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'none',
+                note: `Insert-replace fixture needs at least 1x5, measured ${ctx.rows}x${ctx.cols}` } };
+    } };
+    const result = await collectInsertReplace({ config: { runId: 'a'.repeat(32) }, owner, fence: f.fence, gradingModule });
+    assert.equal(result.terminalPinned.observation.outcome, 'inconclusive');
+    assert.equal(f.observed.at(-1), 'irm-finish');
+});

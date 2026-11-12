@@ -75,9 +75,12 @@ export async function collectInsertReplace({ config, fence, owner, gradingModule
         const termless = insertReplaceTermlessContext(screens);
         const pinned = gradingModule.ntildeRunInsertReplaceTermless('modes.insert-replace', termless);
         if (pinned.observation?.outcome !== 'inconclusive' && termless.fedCount !== insertReplacePinnedFeeds.length) throw new Error('Incomplete pinned IRM replay.');
-        const terminal = insertReplaceTerminalContext(at(screens, 'terminal'));
+        const terminalScreen = at(screens, 'terminal');
+        const terminal = insertReplaceTerminalContext(terminalScreen);
         const terminalPinned = await gradingModule.ntildeRunInsertReplaceTerminal('modes.insert-replace', terminal);
-        if (terminal.writtenCount !== insertReplaceTerminalWrites.length) throw new Error('Incomplete pinned IRM terminal replay.');
+        const terminalFits = Number.isSafeInteger(terminalScreen.rows) && terminalScreen.rows >= 1
+            && Number.isSafeInteger(terminalScreen.cols) && terminalScreen.cols >= 5;
+        if (terminal.writtenCount !== (terminalFits ? insertReplaceTerminalWrites.length : 0)) throw new Error('Incomplete pinned IRM terminal replay.');
         result = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds],
             original: { insertMode: original.insertMode, autoWrap: original.autoWrap }, feeds, barriers, reads, pinned, terminalPinned,
             terminalCursorEvidence: 'parent-observed cursor projection; not a PTY cursor reply' };
