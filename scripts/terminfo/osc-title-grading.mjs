@@ -91,6 +91,10 @@ export function buildOscTitleReport(frames, run, runId, adapter) {
                 && same(entry.cursor, [snapshot.screen.cursorRow, snapshot.screen.cursorCol])
                 && same(entry.facts, { title: snapshot.metadata.oscTitle, icon: snapshot.metadata.buffer.requestedIconName }), 'OSC title read identity changed.');
             check(typeof snapshot.metadata.oscTitle === 'string' && typeof snapshot.metadata.buffer.requestedIconName === 'string', 'Missing OSC title facts.');
+            // A different experiment's run-bound setup is not a negative result for this case.
+            check(!contracts.some(other => other.caseId !== contract.caseId
+                && (snapshot.metadata.oscTitle === other.baseline.title || snapshot.metadata.buffer.requestedIconName === other.baseline.icon)),
+            'Cross-case OSC title observation.');
             const facts = titleFacts(snapshot, step.kind === 'setup' ? contract.baseline : contract.expected, runId);
             const preserved = same(invariant(snapshot), invariant(bound));
             check(preserved, 'Unrelated OSC title state drifted.');

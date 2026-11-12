@@ -21,6 +21,9 @@ test('complete paired evidence yields distinct effect results and refuses tamper
     assert.throws(() => build(changedFeed), /feeds/);
     const crossCase = synthetic(); crossCase.run.experiments[0].caseId = crossCase.run.experiments[8].caseId;
     assert.throws(() => build(crossCase), /identity/);
+    const crossRead = synthetic(), other = crossRead.run.experiments[8].reads[0].facts;
+    mutateRead(crossRead, 1, 0, value => { value.metadata.oscTitle = other.title; value.metadata.buffer.requestedIconName = other.icon; });
+    assert.throws(() => build(crossRead), /Cross-case/);
     const incomplete = synthetic(); incomplete.frames.pop();
     assert.throws(() => build(incomplete), /Incomplete/);
     const tampered = synthetic(); tampered.frames[2].before.metadata.oscTitle = 'stale';
