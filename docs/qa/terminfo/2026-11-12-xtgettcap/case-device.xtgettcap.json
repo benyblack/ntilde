@@ -1,0 +1,605 @@
+{
+  "caseId": "device.xtgettcap",
+  "pinnedCriterion": "XTGETTCAP (DCS + q 544e ST) answers a framed DCS 1 + r 544e = <even-length hex> ST for TN; the deliberate DCS 0 + r ST refusal is inconclusive (insufficient-evidence) and is preserved, never upgraded",
+  "pinnedFeeds": [
+    "\u001bP+q544e\u001b\\"
+  ],
+  "terminalFixture": {
+    "writes": [
+      "\u001bP+q544e\u001b\\"
+    ],
+    "demand": "a framed DCS 1 + r 544e = <even-length hex> ST reply within 2000 ms of the sentinel write",
+    "minimum": {
+      "rows": 1,
+      "cols": 1
+    },
+    "note": "the stock collector's queryWithSentinelOutcome path; replayed beside the termless verdict and equally inconclusive on the refusal"
+  },
+  "feeds": [
+    "\u001b[2;1H\u001b[1mNtilde\u001b[31mXT\u001b[0m\u001b[4;1H\u001b[4:3mU\u001b[0m\u001b[2;6r\u001b[1;1H",
+    "\u001bP+q544e\u001b\\",
+    "\u001bP+q436f\u001b\\",
+    "\u001bP+q636f6c6f7273\u001b\\",
+    "\u001bP+q524742\u001b\\",
+    "\u001bP+q5463\u001b\\",
+    "\u001bP+q536d756c78\u001b\\",
+    "\u001bP+q436f;544e;5463;436f\u001b\\",
+    "\u001bP+q544e;436f\u001b\\",
+    "\u001bP+q6b63757531\u001b\\",
+    "\u001bP+q6e6f742d612d6361706162696c697479\u001b\\",
+    "\u001bP+q636f\u001b\\",
+    "\u001bP+q436F\u001b\\",
+    "\u001bP+q5\u001b\\",
+    "\u001bP+q5463\u001b\\",
+    "\u001bP+qzz\u001b\\",
+    "\u001bP+q436f\u001b\\",
+    "\u001bP+q\u001b\\",
+    "\u001bP+q544e\u001b\\",
+    "\u001bP+q436f;5\u001b\\",
+    "\u001bP+q536d756c78\u001b\\"
+  ],
+  "barriers": [
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c",
+    "\u001b[?62;4;22c"
+  ],
+  "reads": [
+    {
+      "kind": "cells",
+      "cursor": [
+        0,
+        0
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r436f=323536\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r636f6c6f7273=323536\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r524742\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r5463\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r536d756c78=1B5B343A25703125646D\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r436f=323536\u001b\\",
+        "\u001bP0+r\u001b\\",
+        "\u001bP1+r5463\u001b\\",
+        "\u001bP1+r436f=323536\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\",
+        "\u001bP1+r436f=323536\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r436F=323536\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r5463\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r436f=323536\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP0+r\u001b\\"
+      ]
+    },
+    {
+      "kind": "report",
+      "cursor": [
+        0,
+        0
+      ],
+      "replies": [
+        "\u001bP1+r536d756c78=1B5B343A25703125646D\u001b\\"
+      ]
+    }
+  ],
+  "observed": {
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "effectContract": "ntilde-xtgettcap-capability-report-effect-v1",
+    "pinnedFeeds": [
+      "\u001bP+q544e\u001b\\"
+    ],
+    "pinnedReply": "\\eP0+r\\e\\",
+    "pinnedNote": "TN is deliberately refused (its value is the session TERM, which VT does not know); the pinned verdict stays inconclusive",
+    "seed": {
+      "nonce": "NTILDE_XG_f9bb8499b273926bdfc3fea3e43c5c0a",
+      "margins": [
+        1,
+        5
+      ],
+      "origin": false,
+      "alternate": true,
+      "cells": true
+    },
+    "requests": {
+      "pinned": {
+        "request": "\\eP+q544e\\e\\",
+        "demand": "the exact pinned request is refused: DCS 0 + r ST",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "numeric-co": {
+        "request": "\\eP+q436f\\e\\",
+        "demand": "Co answers 256 as uppercase hex",
+        "demanded": [
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "received": [
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "numeric-colors": {
+        "request": "\\eP+q636f6c6f7273\\e\\",
+        "demand": "colors answers 256 as uppercase hex",
+        "demanded": [
+          "\\eP1+r636f6c6f7273=323536\\e\\"
+        ],
+        "received": [
+          "\\eP1+r636f6c6f7273=323536\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "flag-rgb": {
+        "request": "\\eP+q524742\\e\\",
+        "demand": "RGB is a flag reply with no value",
+        "demanded": [
+          "\\eP1+r524742\\e\\"
+        ],
+        "received": [
+          "\\eP1+r524742\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "flag-tc": {
+        "request": "\\eP+q5463\\e\\",
+        "demand": "Tc is a flag reply with no value",
+        "demanded": [
+          "\\eP1+r5463\\e\\"
+        ],
+        "received": [
+          "\\eP1+r5463\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "string-smulx": {
+        "request": "\\eP+q536d756c78\\e\\",
+        "demand": "Smulx answers its control string as uppercase hex",
+        "demanded": [
+          "\\eP1+r536d756c78=1B5B343A25703125646D\\e\\"
+        ],
+        "received": [
+          "\\eP1+r536d756c78=1B5B343A25703125646D\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "list-order": {
+        "request": "\\eP+q436f;544e;5463;436f\\e\\",
+        "demand": "four replies in request order, one per name",
+        "demanded": [
+          "\\eP1+r436f=323536\\e\\",
+          "\\eP0+r\\e\\",
+          "\\eP1+r5463\\e\\",
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "received": [
+          "\\eP1+r436f=323536\\e\\",
+          "\\eP0+r\\e\\",
+          "\\eP1+r5463\\e\\",
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "list-witness": {
+        "request": "\\eP+q544e;436f\\e\\",
+        "demand": "the Q12 witness list: refusal then value",
+        "demanded": [
+          "\\eP0+r\\e\\",
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\",
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "unavailable-kcuu1": {
+        "request": "\\eP+q6b63757531\\e\\",
+        "demand": "kcuu1 is inherited from xterm-256color and refused",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "unknown": {
+        "request": "\\eP+q6e6f742d612d6361706162696c697479\\e\\",
+        "demand": "a controlled unknown capability is refused",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "case-co": {
+        "request": "\\eP+q636f\\e\\",
+        "demand": "names are case-sensitive: co is refused",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "echo-upper": {
+        "request": "\\eP+q436F\\e\\",
+        "demand": "the name is echoed as spelled, uppercase included",
+        "demanded": [
+          "\\eP1+r436F=323536\\e\\"
+        ],
+        "received": [
+          "\\eP1+r436F=323536\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "malformed-odd": {
+        "request": "\\eP+q5\\e\\",
+        "demand": "an odd-length name is refused once",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "recovery-tc": {
+        "request": "\\eP+q5463\\e\\",
+        "demand": "the parser answers normally after odd-length input",
+        "demanded": [
+          "\\eP1+r5463\\e\\"
+        ],
+        "received": [
+          "\\eP1+r5463\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "malformed-hex": {
+        "request": "\\eP+qzz\\e\\",
+        "demand": "a non-hex name is refused once",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "recovery-co": {
+        "request": "\\eP+q436f\\e\\",
+        "demand": "the parser answers normally after non-hex input",
+        "demanded": [
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "received": [
+          "\\eP1+r436f=323536\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "malformed-empty": {
+        "request": "\\eP+q\\e\\",
+        "demand": "an empty name list is refused once",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "recovery-pinned": {
+        "request": "\\eP+q544e\\e\\",
+        "demand": "the exact pinned request is still refused after the empty list",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "malformed-mixed": {
+        "request": "\\eP+q436f;5\\e\\",
+        "demand": "a mixed valid/invalid list is refused as a whole",
+        "demanded": [
+          "\\eP0+r\\e\\"
+        ],
+        "received": [
+          "\\eP0+r\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      },
+      "recovery-string": {
+        "request": "\\eP+q536d756c78\\e\\",
+        "demand": "the parser answers normally after a mixed list",
+        "demanded": [
+          "\\eP1+r536d756c78=1B5B343A25703125646D\\e\\"
+        ],
+        "received": [
+          "\\eP1+r536d756c78=1B5B343A25703125646D\\e\\"
+        ],
+        "matches": true,
+        "unchanged": true
+      }
+    }
+  },
+  "colorBinding": {
+    "reverseVideo": false,
+    "themeName": "Default",
+    "foregroundArgb": 4292072403,
+    "backgroundArgb": 4278190080,
+    "minimumContrast": 1,
+    "paletteOverrideIndices": [],
+    "bindingSha256": "9a0281ab269860d9d1b22d47ad75844040a68e1aa0c014560acd1b72b1554c7e"
+  },
+  "pinned": {
+    "termless": {
+      "pass": false,
+      "response": "\u001bP0+r\u001b\\",
+      "note": null,
+      "observation": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Requested setting or name refused; other settings or names unmeasured"
+      },
+      "assertions": null
+    },
+    "terminal": {
+      "pass": false,
+      "response": "\u001bP0+r\u001b\\\u001b[?62;4;22c",
+      "note": null,
+      "observation": {
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Requested setting or name refused; other settings or names unmeasured"
+      },
+      "assertions": null
+    }
+  },
+  "effectContract": {
+    "id": "ntilde-xtgettcap-capability-report-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-raw-replies-and-unchanged-state",
+    "grading": "pinned-termless-preserved-by-design",
+    "note": "Requested setting or name refused; other settings or names unmeasured",
+    "scope": "exact capability-report replies only: the pinned TN request, the numeric Co/colors replies, the RGB/Tc flag replies, one string reply, multi-name reply order with per-name outcomes, the documented unavailable and unknown names, case-sensitivity, the uppercase echo, malformed lists (odd-length, non-hex, empty, mixed) with exactly one refusal, and verified recovery after each malformed request, all leaving the complete screen, cursor, rendition, margins, modes and active screen unchanged; an advertised flag or count proves the reply only — no rendering, color accuracy, control-string execution, Ms clipboard, X resource, remote-delivery or other-platform claim"
+  }
+}

@@ -40,15 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 100,
-    "suiteClaims": 102,
+    "uniqueBenchmarkIds": 101,
+    "suiteClaims": 103,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 100,
+    "effectSupportedIds": 101,
     "pinnedAndEffectSupportedIds": 83,
     "effectSupportedPinnedInconclusiveIds": [
+      "device.xtgettcap",
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
@@ -67,7 +68,7 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 99,
+    "effectSupportedOfStockInconclusive": 100,
     "pinnedSupportedOfStockInconclusive": 82,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -81,7 +82,7 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 69,
+      "effectUnqualified": 68,
       "notPinnedSupported": 86
     }
   },
@@ -2306,6 +2307,76 @@
         "command": "node --test scripts/terminfo/title-stack-publication.test.mjs",
         "testSha256": "1d64cb39a9e5bc120ded771dbd859c139f22e673d648b5c44b4102b2885d30a4"
       }
+    },
+    {
+      "suite": "xtgettcap",
+      "suiteId": "ntilde-owned-xtgettcap-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-12-xtgettcap/",
+      "doc": "2026-11-12-xtgettcap-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "device.xtgettcap"
+      ],
+      "evidence": {
+        "files": 28,
+        "bytes": 677287,
+        "sha256": "f452b3c42d7cec7eeafb7dc60294add5a771853de3ad6f500f21a75ee0406b09"
+      },
+      "receipt": {
+        "schemaVersion": 53,
+        "runId": "f9bb8499b273926bdfc3fea3e43c5c0a",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "9aaab83a9e3ea34e36eed63b43d818ddc0fa83c6040eb90990023319bed9ef34"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-xtgettcap-graded-v1",
+          "file": "xgtc-observations.json",
+          "sha256": "dafcad7505ee9c8b99461a5ee36dc85f6cde71bf62725fdb73f270e5013b1a30",
+          "runFile": "xgtc-run.json",
+          "runSha256": "6fd043ad6c5f469103435356502ddb26585c98a9ff0ada49e8f38244de3c8d40",
+          "counts": {
+            "inconclusive": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "f9bb8499b273926bdfc3fea3e43c5c0a",
+        "measuredAt": "2026-11-12T11:21:04.974Z",
+        "appRevision": "2d8433d9bee2dc7fa15895935e08eefe7f21354d",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "6251515f8c4dede3b5fb428bf30e8bec3db0cc7a",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "a530b0470ae8d5fe0edb7814dd42a10d95c82b7ee4469a97c290351720a879aa",
+        "gradingAdapterId": "ntilde-owned-xtgettcap-grading-v1",
+        "gradingAdapterBundleSha256": "64c4698ddfd9015e33f31d8f673fc62586521dc7450392f2339fbd6d36520d75",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v48",
+        "sourceSnapshotManifestSha256": "184549bbd1016e9c9ac6a8d425e27003b1ea24fc30b58b88a7dee3bc9826b4c9"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "ba0d8157f95c8ad2ad997818fb0ff522",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "e6c6c60c8eea04fc8e9c7421e880ea83d46738e58dbb98aa52c45ae161b1a9ae",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades; the owned effect contract does not change the stock score."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/xtgettcap-publication.test.mjs",
+        "testSha256": "96686a09989c10df43a323e282a075023fe70dfb80984834baafbf347e47166a"
+      }
     }
   ],
   "benchmark": [
@@ -2679,6 +2750,58 @@
             "controlled-pixels"
           ],
           "evidenceTag": "owned-stored-cursor-and-controlled-pixels"
+        }
+      ]
+    },
+    {
+      "id": "device.xtgettcap",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "xtgettcap",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "xtgettcap",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "device.xtgettcap",
+          "suite": "xtgettcap",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Requested setting or name refused; other settings or names unmeasured"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
         }
       ]
     },

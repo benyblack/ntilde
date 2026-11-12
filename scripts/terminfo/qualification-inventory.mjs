@@ -120,7 +120,8 @@ export function loadPublication(root, suite) {
 
 /** The pinned verdict of one case. A pinned probe that neither passed nor carries an observation is not interpretable. */
 export function pinnedVerdictOf(item) {
-    const observed = item.pinned?.observation?.outcome;
+    // A case that retains both probe paths side by side (the XTGETTCAP batch's { termless, terminal }) pins the termless verdict.
+    const observed = item.pinned?.observation?.outcome ?? item.pinned?.termless?.observation?.outcome;
     if (observed !== undefined) {
         if (!verdicts.includes(observed)) throw new Error(`${item.caseId}: unknown pinned outcome ${observed}.`);
         return observed;
@@ -142,7 +143,8 @@ export function effectVerdictOf(item) {
 export function measuredLayersOf(evidence, scope) {
     const text = String(evidence ?? '');
     const layers = [];
-    if (/stored|cells/.test(text)) layers.push('stored-state');
+    // An "unchanged-state" tag (the XTGETTCAP batch) is the same stored-cell observation: complete screens, attributes and modes.
+    if (/stored|cells|unchanged-state/.test(text)) layers.push('stored-state');
     if (/scrollback/.test(text)) layers.push('actual-scrollback');
     // The evidence tag decides whether a resolution layer was measured; the scope sentence only says where it came from (and often
     // says what was NOT measured, e.g. "never theme-resolved RGB").

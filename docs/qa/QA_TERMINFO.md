@@ -1073,3 +1073,17 @@ actual tab text of the same observation: combined, title-only, icon-only, nested
 experiments plus alternate-screen, DECSTR and RIS boundary observations, each from a stage that drains the stack and proves it empty by behavior. No production code changed;
 shared measurement code gained the raw icon name in pane-metadata frames, optional fact exposure and an opt-in raised-history mode (RIS). Raw icon-name state is not host icon
 presentation, and no title or icon report query or direct-slot addressing is claimed. Receipt schema 52 and source policy v46 (305 files) bind it; earlier policies stay frozen.
+
+### XTGETTCAP qualification (capability reports)
+
+The [XTGETTCAP batch](terminfo/2026-11-12-xtgettcap-qualification.md) qualifies exactly `device.xtgettcap` through a layered collector extension
+(`ntilde-owned-xtgettcap-grading-v1`) over the title/icon-stack one. The pinned probe sends `DCS + q 544e ST` (the name TN); Ntilde deliberately refuses it — its honest
+value is the session's TERM, which VT does not know — so both pinned verdicts (termless and terminal path, replayed byte-exactly over the journaled raw replies of the exact
+pinned exchange) stay **inconclusive by design** and no TN value is invented or inferred. The separately identified effect contract
+(`ntilde-xtgettcap-capability-report-effect-v1`) grades capability-report replies only, from an independent reply oracle over the same fence: the numeric `Co`/`colors`
+replies, the `RGB`/`Tc` flag replies, one string reply (`Smulx`), two multi-name lists with exact reply order and per-name outcomes (including the Q12 `TN;Co` witness), the
+documented unavailable names (`TN`, `kcuu1`, the case-sensitive `co`) and a controlled unknown, the uppercase echo, four malformed lists (odd-length, non-hex, empty,
+mixed valid/invalid) each refused exactly once, and a verified recovery after each malformed request. Every exchange must leave the complete screen, cursor, rendition,
+margins, modes and active screen unchanged over an attributed seed. An advertised flag or count proves the reply only — never rendering, color accuracy or control-string
+execution; the settings-dependent `Ms` clipboard capability, X resources, clipboard permissions, remote delivery and other platforms are not claimed. No production code
+changed. Receipt schema 53 and source policy v48 (312 files) bind it; earlier policies stay frozen. Inventory: 101 qualified ids.

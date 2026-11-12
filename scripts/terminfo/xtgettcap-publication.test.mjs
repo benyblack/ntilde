@@ -27,8 +27,11 @@ const load = () => cached ??= (() => {
         assert.equal(journal.firstSnapshot, frames.length);
         frames.push(journal.frame);
     }
-    frames.push(common.frames.finish);
-    return { summary, run, common, frames, report: read(`case-${contract.caseId}.json`) };
+    const finish = read('journal-finish.json');
+    assert.equal(finish.caseId, item.caseId);
+    assert.equal(finish.firstSnapshot, frames.length);
+    frames.push(finish.frame);
+    return { summary, run, common, frames, report: { ...common.reportHeader, cases: [read(`case-${contract.caseId}.json`)] } };
 })();
 const derive = loaded => buildXtgettcapGradingReport(loaded.frames, loaded.run, loaded.summary.context.runId, loaded.report.adapter, { contractsVersion: loaded.report.contractsVersion });
 const strip = ({ snapshots, ...rest }) => rest;
@@ -87,11 +90,12 @@ test('the exact pinned request was sent and refused with the bare DCS 0 + r ST, 
     const [item] = report.cases;
     assert.equal(run.cases[0].feeds[1], '\x1bP+q544e\x1b\\', 'the first exchange of the plan is the exact pinned request');
     const pinnedRead = item.reads[contract.pinnedRead];
-    assert.deepEqual(pinnedRead.replies, ['\x1bP0+r\x1b\\']);
-    assert.equal(item.observed.requests.pinned.demanded.join(''), '\x1bP0+r\x1b\\');
-    assert.equal(item.observed.requests.pinned.received.join(''), '\x1bP0+r\x1b\\');
+    assert.deepEqual(pinnedRead.replies, ['\x1bP0+r\x1b\\'], 'the raw retained reply bytes');
+    const printable = '\x1bP0+r\x1b\\'.replaceAll('\x1b', '\\e');
+    assert.equal(item.observed.requests.pinned.demanded.join(''), printable, 'the printable spelling of the oracle demand');
+    assert.equal(item.observed.requests.pinned.received.join(''), printable);
     assert.equal(item.observed.requests.pinned.matches, true);
-    assert.equal(item.observed.pinnedReply, String.raw`\eP0+r\e\\`);
+    assert.equal(item.observed.pinnedReply, printable);
 });
 
 test('every control answered exactly what the independent oracle demanded, with unchanged state', () => {
@@ -165,8 +169,9 @@ test('revisions and attempts (every superseded one keeps its actual reason), and
     assert.equal(summary.attempts.at(-1).runId, summary.context.runId);
     assert.equal(summary.attempts.at(-1).receiptCompleted, true);
     assert.equal(summary.attempts.at(-1).scriptsRevision, summary.scriptsRevision);
-    assert.ok(existsSync(new URL('owned-run.zip', dir)));
-    for (const number of summary.attempts.slice(0, -1)) assert.ok(existsSync(new URL(`superseded/attempt-${number.attempt}.zip`, dir)), number.attempt);
+    assert.match(summary.attempts[0].outcome, /source-snapshot manifest .* v46 policy/);
+    assert.match(summary.attempts[1].outcome, /metadata snapshot check .* one more v46-only allowlist/);
+    for (const number of [1, 2]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
     for (const name of readdirSync(dir)) {
         if (name === 'superseded') continue;
         assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2000 : 1500), name);

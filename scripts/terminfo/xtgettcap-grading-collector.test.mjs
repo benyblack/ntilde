@@ -73,13 +73,13 @@ test('the real pinned bundle derives through every layer and the pinned code run
         assert.equal(termless.observation.outcome, 'inconclusive');
         assert.equal(termless.observation.reason, 'insufficient-evidence');
         // The terminal path replays over the same journaled bytes and is equally inconclusive.
-        const terminalContext = xtgettcapRecordingContext(null, refused);
+        const terminalContext = xtgettcapRecordingContext(xtgettcapContracts[0], refused);
         const { probeId: terminalId, ...terminal } = await module.ntildeRunXtgettcapTerminal('device.xtgettcap', terminalContext);
         assert.equal(terminalId, 'device.xtgettcap');
         assert.deepEqual(terminal, replayXtgettcapPinned(refusal + da));
         assert.equal(terminal.observation.outcome, 'inconclusive');
         // A served value reply keeps the pinned criterion able to say supported (the refusal stays honest, not blind).
-        const valueContext = xtgettcapRecordingContext(null, { barrier: da, replies: ['\x1bP1+r544e=323536' + '\x1b\\'] });
+        const valueContext = xtgettcapRecordingContext(xtgettcapContracts[0], { barrier: da, replies: ['\x1bP1+r544e=323536' + '\x1b\\'] });
         assert.equal(module.ntildeRunXtgettcapTermless('device.xtgettcap', valueContext).observation.outcome, 'supported');
     } finally { rmSync(file, { force: true }); }
 });
