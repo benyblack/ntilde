@@ -131,6 +131,15 @@ function largeResponsePrefix(kind) {
     return typeof kind === 'string' && kind.includes('-') && largeResponsePrefixes.has(kind.slice(0, kind.indexOf('-')));
 }
 
+function preservedOwnerCode(kind, code) {
+    if (code === 'screenDetailsUnavailable') return true;
+    const geometry = { 'resize-start': 'resizeGeometryUnavailable', 'input-start': 'inputGeometryUnavailable',
+        'images-start': 'imageGeometryUnavailable', 'saved-start': 'savedGeometryUnavailable' };
+    if (geometry[kind] === code && code !== undefined) return true;
+    return ['metadata-start', 'shi-start', 'lnk-start', 'tst-start', 'ost-start'].includes(kind)
+        && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(code);
+}
+
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
@@ -156,16 +165,7 @@ export function requestOwner(config, kind, extra = {}) {
                 const response = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
                 if (!response.ok) {
                     const error = new Error(response.error ?? 'Ntilde ownership refused.');
-                    if (response.code === 'screenDetailsUnavailable'
-                        || (kind === 'resize-start' && response.code === 'resizeGeometryUnavailable')
-                        || (kind === 'input-start' && response.code === 'inputGeometryUnavailable')
-                        || (kind === 'images-start' && response.code === 'imageGeometryUnavailable')
-                        || (kind === 'saved-start' && response.code === 'savedGeometryUnavailable')
-                        || (kind === 'metadata-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
-                        || (kind === 'shi-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
-                        || (kind === 'lnk-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
-                        || (kind === 'tst-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
-                        || (kind === 'ost-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))) error.code = response.code;
+                    if (preservedOwnerCode(kind, response.code)) error.code = response.code;
                     return finish(error);
                 }
                 finish(null, response);

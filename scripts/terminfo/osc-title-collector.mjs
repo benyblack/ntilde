@@ -2,12 +2,12 @@ import { collectGradedPlans, planFeeds, planReads } from './graded-plan.mjs';
 import { oscTitleCaseIds, oscTitleCases, oscTitleExperiments, oscTitleFixture, oscTitlePrefix } from './osc-title-contracts.mjs';
 
 export const exposeOscTitleFacts = snapshot => ({ title: snapshot.metadata.oscTitle, icon: snapshot.metadata.buffer.requestedIconName ?? null });
-const unavailableReasons = ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'];
+const unavailableReasons = new Set(['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable']);
 
 /** A prerequisite may be skipped only through its typed initial refusal; otherwise it must have restored. */
 export function oscTitlePrerequisiteReason(restored, unavailable, reason) {
     if (unavailable === true) {
-        if (!unavailableReasons.includes(reason)) throw new Error('Unexpected OSC title prerequisite refusal.');
+        if (!unavailableReasons.has(reason)) throw new Error('Unexpected OSC title prerequisite refusal.');
         return reason;
     }
     if (!restored) throw new Error('Title-stack suite must restore before OSC title observations.');
@@ -25,7 +25,11 @@ export function oscTitleTermlessContext(caseId, before, after) {
             feeds++;
         },
         getTitle() {
-            if (spec.code === 2 ? feeds !== 1 || reads !== 0 : (reads === 0 ? feeds !== 0 : reads !== 1 || feeds !== 1)) {
+            let invalid;
+            if (spec.code === 2) invalid = feeds !== 1 || reads !== 0;
+            else if (reads === 0) invalid = feeds !== 0;
+            else invalid = reads !== 1 || feeds !== 1;
+            if (invalid) {
                 throw new Error('Changed pinned title read order.');
             }
             return reads++ === 0 && spec.code !== 2 ? before : after;
@@ -41,14 +45,13 @@ export async function collectOscTitle({ config, fence, owner, gradingModule }) {
         collected = await collectGradedPlans({ contracts, prefix: oscTitlePrefix, reset: fixture.reset, bind: fixture.bind,
             finish: fixture.finish, nonce: fixture.nonce, fence, owner, planFeeds, planReads });
     } catch (error) {
-        if (unavailableReasons.includes(error?.code)
+        if (unavailableReasons.has(error?.code)
             && !error.message?.includes('after partial')) return { status: 'unavailable', reason: error.code };
         throw error;
     }
     const experiments = collected.map(({ caseId, feeds, barriers, reads, facts }) => ({ caseId, feeds, barriers,
         reads: reads.map((entry, index) => ({ ...entry, facts: facts[index] })) }));
-    const pinned = [];
-    for (const caseId of oscTitleCaseIds) {
+    const pinned = await Promise.all(oscTitleCaseIds.map(async caseId => {
         const item = experiments.find(entry => entry.caseId === `${caseId}/pinned`);
         const context = oscTitleTermlessContext(caseId, item.reads[0].facts.title, item.reads[1].facts.title);
         const { probeId, ...termless } = gradingModule.ntildeRunOscTitleTermless(caseId, context);
@@ -57,7 +60,7 @@ export async function collectOscTitle({ config, fence, owner, gradingModule }) {
         if (probeId !== caseId || terminalId !== caseId || context.fedCount !== 1 || context.readCount !== (oscTitleCases[caseId].code === 2 ? 1 : 2)) {
             throw new Error('Incomplete pinned OSC title replay.');
         }
-        pinned.push({ caseId, termless, terminal });
-    }
+        return { caseId, termless, terminal };
+    }));
     return { status: 'complete', run: { schemaVersion: 1, adapterId: adapter.id, probeIds: [...oscTitleCaseIds], experiments, pinned } };
 }

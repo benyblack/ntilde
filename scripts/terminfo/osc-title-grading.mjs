@@ -57,18 +57,23 @@ function restoredContext(snapshot) {
     return { metadata, status: snapshot.status };
 }
 
+function matchesTabText(display, tab, fallback) {
+    // The tab can truncate its long profile/cwd fallback while retaining a run-specific prefix.
+    // Its actual text stays in the report; it must contain the full display title or a long exact prefix followed by an ellipsis.
+    if (typeof tab !== 'string' || typeof display !== 'string' || display.length === 0) return false;
+    const ellipsis = tab.indexOf('…');
+    const truncatedFallback = fallback && ellipsis >= 32
+        && ellipsis < display.length && display.startsWith(tab.slice(0, ellipsis));
+    return tab.includes(display) || truncatedFallback;
+}
+
 function titleFacts(snapshot, expected, runId) {
     const metadata = snapshot.metadata, display = metadata.displayTitle, tab = metadata.presentation.tabText;
     const fallback = expected.title.trim().length === 0;
-    // The tab can truncate its long profile/cwd fallback while retaining a run-specific prefix.
-    // Its actual text stays in the report; it must contain the full display title or a long exact prefix followed by an ellipsis.
-    const ellipsis = typeof tab === 'string' ? tab.indexOf('…') : -1;
-    const truncatedFallback = fallback && ellipsis >= 32 && typeof display === 'string'
-        && ellipsis < display.length && display.startsWith(tab.slice(0, ellipsis));
     return { title: metadata.oscTitle, icon: metadata.buffer.requestedIconName, displayTitle: display, tabText: tab,
         titleMatches: metadata.oscTitle === expected.title, iconMatches: metadata.buffer.requestedIconName === expected.icon,
         displayMatches: fallback ? display === `terminfo disposable worker ${runId} · osc-title-base` : display === expected.title,
-        tabMatches: typeof tab === 'string' && typeof display === 'string' && display.length > 0 && (tab.includes(display) || truncatedFallback) };
+        tabMatches: matchesTabText(display, tab, fallback) };
 }
 
 /** Re-derive all reads, refusing changed identities, incomplete frames, feeds, ordering and restoration. */
@@ -122,14 +127,14 @@ export function buildOscTitleReport(frames, run, runId, adapter) {
                 || (contract.expected.icon !== contract.baseline.icon && after.icon === before.icon);
         });
         const controlEffectsHeld = experiments.filter(item => item.role === 'control').every(item => item.observations[1].passed);
-        const outcome = !controlsHeld || !controlEffectsHeld || stale ? 'inconclusive'
-            : experiments[0].observations[1].passed ? 'supported' : 'unsupported';
+        let outcome = 'inconclusive';
+        if (controlsHeld && controlEffectsHeld && !stale) outcome = experiments[0].observations[1].passed ? 'supported' : 'unsupported';
         const pinned = run.pinned.find(item => item.caseId === id), stock = experiments[0].observations;
         const replay = replayOscTitlePinned(id, stock[0].title, stock[1].title);
         check(same(pinned?.termless, replay.termless) && same(pinned?.terminal, replay.terminal), 'Pinned OSC title result differs from observations.');
         const pinnedStale = stock[1].title === stock[0].title;
-        const pinnedOutcome = id !== 'extensions.osc2-title' ? 'inconclusive'
-            : !stock[0].passed || pinnedStale ? 'inconclusive' : pinned.termless.observation.outcome;
+        let pinnedOutcome = 'inconclusive';
+        if (id === 'extensions.osc2-title' && stock[0].passed && !pinnedStale) pinnedOutcome = pinned.termless.observation.outcome;
         return { caseId: id, effectContract: { id: `ntilde-${id}-effect-v1`, outcome, controlsHeld, controlEffectsHeld, stale }, experiments,
             pinned: { ...pinned, qualifiedOutcome: pinnedOutcome },
             divergences: [{ path: 'terminal', outcome: 'inconclusive' }, ...(pinnedOutcome !== outcome ? [{ path: 'termless', pinnedOutcome, effectOutcome: outcome }] : [])] };
