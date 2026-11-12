@@ -10,7 +10,8 @@ export function insertReplacePublication(directory, { appRevision, scriptsRevisi
     if (![appRevision, scriptsRevision].every(value => /^[a-f\d]{40}$/.test(value ?? ''))) throw new Error('Missing measured App or scripts revision.');
     const context = json(directory, 'context.json'), receipt = json(directory, 'cell-receipt.json');
     const measured = json(directory, 'irm-observations.json'), raw = json(directory, 'raw.json'), stock = json(directory, 'summary.json');
-    if (stock.rawSha256 && createHash('sha256').update(readFileSync(join(directory, 'raw.json'))).digest('hex') !== stock.rawSha256) {
+    if (stock.rawSha256 !== undefined && (!/^[a-f\d]{64}$/.test(stock.rawSha256)
+        || createHash('sha256').update(readFileSync(join(directory, 'raw.json'))).digest('hex') !== stock.rawSha256)) {
         throw new Error('Stock summary digest does not match raw.json.');
     }
     if (!context.runId || measured.runId !== context.runId || receipt.insertReplaceEvidence?.runId !== context.runId
