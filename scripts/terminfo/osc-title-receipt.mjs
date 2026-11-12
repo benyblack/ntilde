@@ -15,18 +15,29 @@ const read = (output, file) => {
 export function includesOscTitleEvidence(output, evidence, context) {
     return Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0) >= 47
         || context.oscTitleAdapterId !== undefined || evidence.oscTitleEvidence !== undefined
-        || ['ost-run.json', 'ost-snapshots.jsonl', 'ost-observations.json', 'collector-ost.mjs']
+        || ['ost-run.json', 'ost-snapshots.jsonl', 'ost-observations.json', 'ost-unavailable.json', 'collector-ost.mjs']
             .some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined);
 }
 export function checkOscTitleEvidence(output, evidence, runId, context) {
     const binding = evidence.oscTitleEvidence;
     if (!evidence.titleStackEvidence || context.oscTitleAdapterId !== oscTitleAdapterId || context.oscTitleSuiteId !== oscTitleSuiteId
         || context.oscTitleContractsVersion !== oscTitleContractsVersion || binding?.runId !== runId || binding?.suiteId !== oscTitleSuiteId
-        || binding?.contractsVersion !== oscTitleContractsVersion || binding?.provisionalUntil !== 'cell-receipt.json'
-        || binding.file !== 'ost-observations.json' || binding.runFile !== 'ost-run.json') throw new Error('Invalid OSC title receipt identity.');
+        || binding?.contractsVersion !== oscTitleContractsVersion || binding?.provisionalUntil !== 'cell-receipt.json') throw new Error('Invalid OSC title receipt identity.');
     const adapter = read(output, 'collector-ost.mjs'), previous = read(output, 'collector-tst.mjs');
     if (hash(previous) !== context.titleStackBundleSha256 || hash(adapter) !== context.oscTitleBundleSha256
         || hash(adapter) !== binding.adapterBundleSha256 || !adapter.equals(Buffer.from(adaptOscTitleCollector(previous)))) throw new Error('Invalid OSC title adapter derivation.');
+    if (binding.status === 'unavailable') {
+        const reasons = ['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'];
+        const markerBytes = read(output, 'ost-unavailable.json'), marker = JSON.parse(markerBytes);
+        if (binding.file !== 'ost-unavailable.json' || !reasons.includes(binding.reason) || !same(binding.counts, {}) || hash(markerBytes) !== binding.sha256
+            || marker.schemaVersion !== 1 || marker.runId !== runId || marker.suiteId !== oscTitleSuiteId || marker.status !== 'unavailable'
+            || marker.reason !== binding.reason || marker.plannedCases !== 3) throw new Error('Invalid OSC title unavailable binding.');
+        for (const file of ['ost-run.json', 'ost-observations.json', 'ost-snapshots.jsonl']) {
+            if (lstatSync(join(output, file), { throwIfNoEntry: false }) && read(output, file).length) throw new Error('Unavailable OSC title run retains partial evidence.');
+        }
+        return;
+    }
+    if (binding.file !== 'ost-observations.json' || binding.runFile !== 'ost-run.json') throw new Error('Invalid OSC title receipt paths.');
     const reportBytes = read(output, 'ost-observations.json'), runBytes = read(output, 'ost-run.json'), journal = read(output, 'ost-snapshots.jsonl');
     if (hash(reportBytes) !== binding.sha256 || hash(runBytes) !== binding.runSha256) throw new Error('Changed OSC title evidence.');
     const report = JSON.parse(reportBytes), run = JSON.parse(runBytes), frames = journal.toString('utf8').trim().split('\n').map(line => JSON.parse(line));

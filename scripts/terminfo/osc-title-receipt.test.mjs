@@ -43,3 +43,14 @@ test('receipt rederives journal and refuses substitution, tampering and missing 
     const run = join(f.dir, 'ost-run.json'); rmSync(run); symlinkSync(path, run);
     assert.throws(check, /regular file/);
 }));
+
+test('typed initial unavailability is retained, while partial artifacts cannot be hidden', () => fixture(f => {
+    const marker = { schemaVersion: 1, runId: f.e.runId, suiteId: oscTitleSuiteId, status: 'unavailable', reason: 'paneMetadataUnavailable', plannedCases: 3 };
+    const bytes = Buffer.from(JSON.stringify(marker) + '\n');
+    for (const name of ['ost-run.json', 'ost-observations.json', 'ost-snapshots.jsonl']) rmSync(join(f.dir, name));
+    writeFileSync(join(f.dir, 'ost-unavailable.json'), bytes);
+    Object.assign(f.evidence.oscTitleEvidence, { file: 'ost-unavailable.json', status: 'unavailable', reason: marker.reason, counts: {}, sha256: hash(bytes) });
+    assert.doesNotThrow(() => checkOscTitleEvidence(f.dir, f.evidence, f.e.runId, f.context));
+    writeFileSync(join(f.dir, 'ost-snapshots.jsonl'), 'partial');
+    assert.throws(() => checkOscTitleEvidence(f.dir, f.evidence, f.e.runId, f.context), /partial evidence/);
+}));

@@ -164,7 +164,8 @@ export function requestOwner(config, kind, extra = {}) {
                         || (kind === 'metadata-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
                         || (kind === 'shi-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
                         || (kind === 'lnk-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
-                        || (kind === 'tst-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))) error.code = response.code;
+                        || (kind === 'tst-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))
+                        || (kind === 'ost-start' && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(response.code))) error.code = response.code;
                     return finish(error);
                 }
                 finish(null, response);

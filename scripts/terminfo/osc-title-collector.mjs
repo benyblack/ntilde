@@ -25,8 +25,15 @@ export async function collectOscTitle({ config, fence, owner, gradingModule }) {
     const adapter = gradingModule.ntildeOscTitleAdapter;
     if (JSON.stringify(adapter?.probeIds) !== JSON.stringify(oscTitleCaseIds)) throw new Error('Changed OSC title adapter.');
     const fixture = oscTitleFixture(config.runId), contracts = oscTitleExperiments(config.runId);
-    const collected = await collectGradedPlans({ contracts, prefix: oscTitlePrefix, reset: fixture.reset, bind: fixture.bind,
-        finish: fixture.finish, nonce: fixture.nonce, fence, owner, planFeeds, planReads });
+    let collected;
+    try {
+        collected = await collectGradedPlans({ contracts, prefix: oscTitlePrefix, reset: fixture.reset, bind: fixture.bind,
+            finish: fixture.finish, nonce: fixture.nonce, fence, owner, planFeeds, planReads });
+    } catch (error) {
+        if (['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(error?.code)
+            && !error.message?.includes('after partial')) return { status: 'unavailable', reason: error.code };
+        throw error;
+    }
     const experiments = collected.map(({ caseId, feeds, barriers, reads, facts }) => ({ caseId, feeds, barriers,
         reads: reads.map((entry, index) => ({ ...entry, facts: facts[index] })) }));
     const pinned = [];
@@ -41,5 +48,5 @@ export async function collectOscTitle({ config, fence, owner, gradingModule }) {
         }
         pinned.push({ caseId, termless, terminal });
     }
-    return { schemaVersion: 1, adapterId: adapter.id, probeIds: [...oscTitleCaseIds], experiments, pinned };
+    return { status: 'complete', run: { schemaVersion: 1, adapterId: adapter.id, probeIds: [...oscTitleCaseIds], experiments, pinned } };
 }

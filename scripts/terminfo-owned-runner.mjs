@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { adaptOscTitleCollector, oscTitleAdapterId } from './terminfo/osc-title-grading-collector.mjs';
-import { oscTitleContractsVersion, oscTitlePrefix, oscTitleSuiteId } from './terminfo/osc-title-contracts.mjs';
+import { oscTitleCaseIds, oscTitleContractsVersion, oscTitlePrefix, oscTitleSuiteId } from './terminfo/osc-title-contracts.mjs';
 import { buildOscTitleReport, matchesOscTitleBaseline, oscTitleCounts, oscTitleObserverPlan } from './terminfo/osc-title-grading.mjs';
 import { exposeOscTitleFacts } from './terminfo/osc-title-collector.mjs';
 import { reverseWideSuiteId, ReverseWideObserver, buildReverseWideReport } from './terminfo/core-reverse-wide.mjs';
@@ -1194,8 +1194,13 @@ function prepareOscTitleCollector(tool, previous, output) {
     writeFileSync(join(output, 'collector-ost.mjs'), adapted, { flag: 'wx', mode: 0o600 });
     return { bundle, oscTitleBundleSha256 };
 }
-function retainOscTitleEvidence(output, runId, upstream) {
+function retainOscTitleEvidence(output, runId, upstream, unavailable) {
     const adapterBytes = readFileSync(join(output, 'collector-ost.mjs'));
+    if (unavailable) {
+        const bytes = readFileSync(join(output, 'ost-unavailable.json')), marker = JSON.parse(bytes);
+        return { runId, suiteId: oscTitleSuiteId, file: 'ost-unavailable.json', sha256: hash(bytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(adapterBytes), contractsVersion: oscTitleContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
     const runBytes = readFileSync(join(output, 'ost-run.json'));
     const frames = readFileSync(join(output, 'ost-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
     const adapter = { id: oscTitleAdapterId, derivedFromAdapterId: titleStackAdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
@@ -2122,13 +2127,23 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             }
         };
         let oscTitleState;
+        const recordOscTitleUnavailable = reason => {
+            if (!['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC title unavailability reason.');
+            writeJson(join(output, 'ost-unavailable.json'), { schemaVersion: 1, runId, suiteId: oscTitleSuiteId, status: 'unavailable', reason, plannedCases: oscTitleCaseIds.length });
+            oscTitleState.unavailable = true;
+        };
         const observeOscTitle = async (request, budget) => {
-            if (!titleStackState?.observer?.restored) throw new Error('Title-stack suite must restore before OSC title observations.');
+            if (!titleStackState?.observer?.restored && titleStackState?.unavailable !== true) throw new Error('Title-stack suite must restore before OSC title observations.');
             oscTitleState ??= { workerPid: request.workerPid, tty: request.tty,
                 observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName, runId, expectedPaneId: cellObserver.paneId,
                     prefix: oscTitlePrefix, includeResolvedColors: true, planOf: oscTitleObserverPlan, matchesBaseline: matchesOscTitleBaseline, expose: exposeOscTitleFacts }) };
             const state = oscTitleState;
-            if (state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC title fixture ownership changed.');
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC title fixture ownership or availability changed.');
+            if (request.kind === `${oscTitlePrefix}-start` && titleStackState?.unavailable === true) {
+                const reason = JSON.parse(readFileSync(join(output, 'tst-unavailable.json'))).reason;
+                recordOscTitleUnavailable(reason);
+                throw Object.assign(new Error('OSC title fixture is unavailable.'), { code: reason });
+            }
             try {
                 const result = await state.observer.handle(request, budget);
                 if (request.kind === `${oscTitlePrefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
@@ -2138,6 +2153,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 return result;
             } catch (error) {
                 retainFailedMetadataAttempt(output, request, error, state.observer, 'ost-failed-observation.json');
+                if (initialMetadataRefusal(request, error, state.observer)) recordOscTitleUnavailable(error.code);
                 throw metadataFailure(request, error, state.observer);
             }
         };
@@ -2993,7 +3009,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc133Evidence = await retainOsc133Evidence(output, runId, osc133Bundle, upstreamBundleSha256, osc133State?.unavailable === true);
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
-            oscTitleEvidence = retainOscTitleEvidence(output, runId, upstreamBundleSha256);
+            oscTitleEvidence = retainOscTitleEvidence(output, runId, upstreamBundleSha256, oscTitleState?.unavailable === true);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
             queryEvidence = retainQueryReport(output, queryState, runId);
