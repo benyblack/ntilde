@@ -40,18 +40,20 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 100,
-    "suiteClaims": 102,
+    "uniqueBenchmarkIds": 103,
+    "suiteClaims": 105,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 100,
-    "pinnedAndEffectSupportedIds": 83,
+    "effectSupportedIds": 103,
+    "pinnedAndEffectSupportedIds": 84,
     "effectSupportedPinnedInconclusiveIds": [
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
+      "extensions.osc0-icon-title",
+      "extensions.osc1-icon",
       "extensions.osc133-a",
       "extensions.osc133-b",
       "extensions.osc133-c",
@@ -67,12 +69,12 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 99,
-    "pinnedSupportedOfStockInconclusive": 82,
+    "effectSupportedOfStockInconclusive": 102,
+    "pinnedSupportedOfStockInconclusive": 83,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 83,
+    "pinnedSupportedIds": 84,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -81,8 +83,8 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 69,
-      "notPinnedSupported": 86
+      "effectUnqualified": 66,
+      "notPinnedSupported": 85
     }
   },
   "suites": [
@@ -2306,6 +2308,79 @@
         "command": "node --test scripts/terminfo/title-stack-publication.test.mjs",
         "testSha256": "1d64cb39a9e5bc120ded771dbd859c139f22e673d648b5c44b4102b2885d30a4"
       }
+    },
+    {
+      "suite": "osc-title",
+      "suiteId": "ntilde-owned-osc-title-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-12-osc-title/",
+      "doc": "2026-11-12-osc-title-qualification.md",
+      "caseCount": 3,
+      "caseIds": [
+        "extensions.osc0-icon-title",
+        "extensions.osc1-icon",
+        "extensions.osc2-title"
+      ],
+      "evidence": {
+        "files": 8,
+        "bytes": 30365748,
+        "sha256": "702d8b0301d8e7fd0d61d33a375acaf17147cd91ec61d32c0c527999e10d384a"
+      },
+      "receipt": {
+        "schemaVersion": 53,
+        "runId": "5a8f93ac040b11436c8712235e858353",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "241fa7dcb061a99b3e8ec3972d481443564c16c9c18353b0c9547d6e3fef0600"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc-title-graded-v1",
+          "file": "ost-observations.json",
+          "sha256": "d24e7f657e2991993797db0526664623fe997b3a1f21e84e97a76ece0ab876ca",
+          "runFile": "ost-run.json",
+          "runSha256": "e0859237766dcc47cfc993f3e00b667cd43f45c2757c3657b94407182063ad4b",
+          "counts": {
+            "inconclusive/supported": 2,
+            "supported/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "5a8f93ac040b11436c8712235e858353",
+        "measuredAt": "2026-11-12T08:12:05.927Z",
+        "appRevision": "2d8433d9bee2dc7fa15895935e08eefe7f21354b",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "f2e5bad2e2188ba5420c19b21035780aa41a9e13",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "f0051eac124f78beb89ef884377987298c935584eb6299e66c9d8e10441c65c3",
+        "gradingAdapterId": "ntilde-owned-osc-title-grading-v1",
+        "gradingAdapterBundleSha256": "ea207348c98edb70ddb5ca169908adb8db1dc029a9c2660ba1a1d59ab75cc039",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v47",
+        "sourceSnapshotManifestSha256": "350015d3c1976478db17557920b294a1ad36a11cc9d0c610809c4cfe61ee8580"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "62f8e31bc65c6d115a1d372a067a7d0f",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "987eed9b72bbee284ab7ef022d77d15639c37a41640d309ce1c624ad34d9c1fc",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades; owned effects do not change the stock score."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc-title-publication.test.mjs",
+        "testSha256": "b1f4b2260248558e6aaae76ce8ff80117a0acb8fa0283111bf80086d228ad548"
+      }
     }
   ],
   "benchmark": [
@@ -4104,6 +4179,112 @@
       ]
     },
     {
+      "id": "extensions.osc0-icon-title",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc-title",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc-title",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc0-icon-title",
+          "suite": "osc-title",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "icon-name state"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-replayed-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-termless-vs-effect",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "icon-name state"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc1-icon",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc-title",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc-title",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc1-icon",
+          "suite": "osc-title",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "icon-name state"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-replayed-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-termless-vs-effect",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "icon-name state"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
       "id": "extensions.osc104-reset-palette",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -4500,6 +4681,53 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc2-title",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "osc-title",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc-title",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc2-title",
+          "suite": "osc-title",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed-over-owned-observations"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status"
         }
       ]
     },

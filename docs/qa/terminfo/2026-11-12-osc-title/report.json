@@ -1,0 +1,1124 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc-title-graded-v1",
+  "contractsVersion": 1,
+  "runId": "5a8f93ac040b11436c8712235e858353",
+  "adapter": {
+    "id": "ntilde-owned-osc-title-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-title-stack-grading-v1",
+    "bundleSha256": "ea207348c98edb70ddb5ca169908adb8db1dc029a9c2660ba1a1d59ab75cc039",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned termless and terminal paths over independently staged fixtures, plus versioned effect contracts for stored title and icon state and pane-metadata-and-session-status. No host icon presentation, remote behavior or stock-score inference.",
+  "cases": [
+    {
+      "caseId": "extensions.osc0-icon-title",
+      "effectContract": {
+        "id": "ntilde-extensions.osc0-icon-title-effect-v1",
+        "outcome": "supported",
+        "controlsHeld": true,
+        "controlEffectsHeld": true,
+        "stale": false
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.osc0-icon-title/pinned",
+          "owner": "extensions.osc0-icon-title",
+          "role": "pinned",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 2,
+              "title": "title-5a8f93ac-0-0",
+              "icon": "icon-5a8f93ac-0-0",
+              "displayTitle": "title-5a8f93ac-0-0",
+              "tabText": "title-5a8f93ac-0-0 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 3,
+              "title": "My Title",
+              "icon": "My Title",
+              "displayTitle": "My Title",
+              "tabText": "My Title ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc0-icon-title/empty-bel",
+          "owner": "extensions.osc0-icon-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 4,
+              "title": "title-5a8f93ac-0-1",
+              "icon": "icon-5a8f93ac-0-1",
+              "displayTitle": "title-5a8f93ac-0-1",
+              "tabText": "title-5a8f93ac-0-1 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 5,
+              "title": "",
+              "icon": "",
+              "displayTitle": "terminfo disposable worker 5a8f93ac040b11436c8712235e858353 · osc-title-base",
+              "tabText": "terminfo disposable worker 5a8f93ac040b11… ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc0-icon-title/blank-st",
+          "owner": "extensions.osc0-icon-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 6,
+              "title": "title-5a8f93ac-0-2",
+              "icon": "icon-5a8f93ac-0-2",
+              "displayTitle": "title-5a8f93ac-0-2",
+              "tabText": "title-5a8f93ac-0-2 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 7,
+              "title": "   ",
+              "icon": "   ",
+              "displayTitle": "terminfo disposable worker 5a8f93ac040b11436c8712235e858353 · osc-title-base",
+              "tabText": "terminfo disposable worker 5a8f93ac040b11… ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc0-icon-title/spaces-bel",
+          "owner": "extensions.osc0-icon-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 8,
+              "title": "title-5a8f93ac-0-3",
+              "icon": "icon-5a8f93ac-0-3",
+              "displayTitle": "title-5a8f93ac-0-3",
+              "tabText": "title-5a8f93ac-0-3 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 9,
+              "title": " padded ",
+              "icon": " padded ",
+              "displayTitle": " padded ",
+              "tabText": " padded  ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc0-icon-title/unicode-st",
+          "owner": "extensions.osc0-icon-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 10,
+              "title": "title-5a8f93ac-0-4",
+              "icon": "icon-5a8f93ac-0-4",
+              "displayTitle": "title-5a8f93ac-0-4",
+              "tabText": "title-5a8f93ac-0-4 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 11,
+              "title": "東京-λ",
+              "icon": "東京-λ",
+              "displayTitle": "東京-λ",
+              "tabText": "東京-λ ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc0-icon-title/semicolon-bel",
+          "owner": "extensions.osc0-icon-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 12,
+              "title": "title-5a8f93ac-0-5",
+              "icon": "icon-5a8f93ac-0-5",
+              "displayTitle": "title-5a8f93ac-0-5",
+              "tabText": "title-5a8f93ac-0-5 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 13,
+              "title": "one;two",
+              "icon": "one;two",
+              "displayTitle": "one;two",
+              "tabText": "one;two ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc0-icon-title/ordinary-bel",
+          "owner": "extensions.osc0-icon-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 14,
+              "title": "title-5a8f93ac-0-6",
+              "icon": "icon-5a8f93ac-0-6",
+              "displayTitle": "title-5a8f93ac-0-6",
+              "tabText": "title-5a8f93ac-0-6 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 15,
+              "title": "terminator-control",
+              "icon": "terminator-control",
+              "displayTitle": "terminator-control",
+              "tabText": "terminator-control ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc0-icon-title/ordinary-st",
+          "owner": "extensions.osc0-icon-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 16,
+              "title": "title-5a8f93ac-0-7",
+              "icon": "icon-5a8f93ac-0-7",
+              "displayTitle": "title-5a8f93ac-0-7",
+              "tabText": "title-5a8f93ac-0-7 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 17,
+              "title": "terminator-control",
+              "icon": "terminator-control",
+              "displayTitle": "terminator-control",
+              "tabText": "terminator-control ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "pinned": {
+        "pass": false,
+        "response": "{\"before\":\"title-5a8f93ac-0-0\",\"after\":\"My Title\"}",
+        "note": "icon-name state",
+        "notTested": {
+          "reason": "no-semantic-observable",
+          "noObservable": "icon-name state"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"before\":\"title-5a8f93ac-0-0\",\"after\":\"My Title\"}",
+          "note": "icon-name state",
+          "notTested": {
+            "reason": "no-semantic-observable",
+            "noObservable": "icon-name state"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No icon-name and window-title readback for OSC 0",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No icon-name and window-title readback for OSC 0"
+          }
+        },
+        "qualifiedOutcome": "inconclusive"
+      },
+      "divergences": [
+        {
+          "path": "terminal",
+          "outcome": "inconclusive"
+        },
+        {
+          "path": "termless",
+          "pinnedOutcome": "inconclusive",
+          "effectOutcome": "supported"
+        }
+      ],
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc0-icon-title",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No icon-name and window-title readback for OSC 0",
+        "rawReplyRef": "extensions.osc0-icon-title"
+      },
+      "divergence": {
+        "kind": "pinned-termless-vs-effect",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "stored-state and pane-metadata-and-session-status",
+        "grading": "pinned-termless-replayed-over-owned-observations"
+      }
+    },
+    {
+      "caseId": "extensions.osc1-icon",
+      "effectContract": {
+        "id": "ntilde-extensions.osc1-icon-effect-v1",
+        "outcome": "supported",
+        "controlsHeld": true,
+        "controlEffectsHeld": true,
+        "stale": false
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.osc1-icon/pinned",
+          "owner": "extensions.osc1-icon",
+          "role": "pinned",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 18,
+              "title": "title-5a8f93ac-1-0",
+              "icon": "icon-5a8f93ac-1-0",
+              "displayTitle": "title-5a8f93ac-1-0",
+              "tabText": "title-5a8f93ac-1-0 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 19,
+              "title": "title-5a8f93ac-1-0",
+              "icon": "test-icon",
+              "displayTitle": "title-5a8f93ac-1-0",
+              "tabText": "title-5a8f93ac-1-0 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc1-icon/empty-bel",
+          "owner": "extensions.osc1-icon",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 20,
+              "title": "title-5a8f93ac-1-1",
+              "icon": "icon-5a8f93ac-1-1",
+              "displayTitle": "title-5a8f93ac-1-1",
+              "tabText": "title-5a8f93ac-1-1 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 21,
+              "title": "title-5a8f93ac-1-1",
+              "icon": "",
+              "displayTitle": "title-5a8f93ac-1-1",
+              "tabText": "title-5a8f93ac-1-1 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc1-icon/blank-st",
+          "owner": "extensions.osc1-icon",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 22,
+              "title": "title-5a8f93ac-1-2",
+              "icon": "icon-5a8f93ac-1-2",
+              "displayTitle": "title-5a8f93ac-1-2",
+              "tabText": "title-5a8f93ac-1-2 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 23,
+              "title": "title-5a8f93ac-1-2",
+              "icon": "   ",
+              "displayTitle": "title-5a8f93ac-1-2",
+              "tabText": "title-5a8f93ac-1-2 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc1-icon/spaces-bel",
+          "owner": "extensions.osc1-icon",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 24,
+              "title": "title-5a8f93ac-1-3",
+              "icon": "icon-5a8f93ac-1-3",
+              "displayTitle": "title-5a8f93ac-1-3",
+              "tabText": "title-5a8f93ac-1-3 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 25,
+              "title": "title-5a8f93ac-1-3",
+              "icon": " padded ",
+              "displayTitle": "title-5a8f93ac-1-3",
+              "tabText": "title-5a8f93ac-1-3 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc1-icon/unicode-st",
+          "owner": "extensions.osc1-icon",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 26,
+              "title": "title-5a8f93ac-1-4",
+              "icon": "icon-5a8f93ac-1-4",
+              "displayTitle": "title-5a8f93ac-1-4",
+              "tabText": "title-5a8f93ac-1-4 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 27,
+              "title": "title-5a8f93ac-1-4",
+              "icon": "東京-λ",
+              "displayTitle": "title-5a8f93ac-1-4",
+              "tabText": "title-5a8f93ac-1-4 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc1-icon/semicolon-bel",
+          "owner": "extensions.osc1-icon",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 28,
+              "title": "title-5a8f93ac-1-5",
+              "icon": "icon-5a8f93ac-1-5",
+              "displayTitle": "title-5a8f93ac-1-5",
+              "tabText": "title-5a8f93ac-1-5 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 29,
+              "title": "title-5a8f93ac-1-5",
+              "icon": "one;two",
+              "displayTitle": "title-5a8f93ac-1-5",
+              "tabText": "title-5a8f93ac-1-5 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc1-icon/ordinary-bel",
+          "owner": "extensions.osc1-icon",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 30,
+              "title": "title-5a8f93ac-1-6",
+              "icon": "icon-5a8f93ac-1-6",
+              "displayTitle": "title-5a8f93ac-1-6",
+              "tabText": "title-5a8f93ac-1-6 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 31,
+              "title": "title-5a8f93ac-1-6",
+              "icon": "terminator-control",
+              "displayTitle": "title-5a8f93ac-1-6",
+              "tabText": "title-5a8f93ac-1-6 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc1-icon/ordinary-st",
+          "owner": "extensions.osc1-icon",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 32,
+              "title": "title-5a8f93ac-1-7",
+              "icon": "icon-5a8f93ac-1-7",
+              "displayTitle": "title-5a8f93ac-1-7",
+              "tabText": "title-5a8f93ac-1-7 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 33,
+              "title": "title-5a8f93ac-1-7",
+              "icon": "terminator-control",
+              "displayTitle": "title-5a8f93ac-1-7",
+              "tabText": "title-5a8f93ac-1-7 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "pinned": {
+        "pass": false,
+        "response": "{\"before\":\"title-5a8f93ac-1-0\",\"after\":\"title-5a8f93ac-1-0\"}",
+        "note": "icon-name state",
+        "notTested": {
+          "reason": "no-semantic-observable",
+          "noObservable": "icon-name state"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"before\":\"title-5a8f93ac-1-0\",\"after\":\"title-5a8f93ac-1-0\"}",
+          "note": "icon-name state",
+          "notTested": {
+            "reason": "no-semantic-observable",
+            "noObservable": "icon-name state"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No icon-name readback for OSC 1",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No icon-name readback for OSC 1"
+          }
+        },
+        "qualifiedOutcome": "inconclusive"
+      },
+      "divergences": [
+        {
+          "path": "terminal",
+          "outcome": "inconclusive"
+        },
+        {
+          "path": "termless",
+          "pinnedOutcome": "inconclusive",
+          "effectOutcome": "supported"
+        }
+      ],
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc1-icon",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No icon-name readback for OSC 1",
+        "rawReplyRef": "extensions.osc1-icon"
+      },
+      "divergence": {
+        "kind": "pinned-termless-vs-effect",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "stored-state and pane-metadata-and-session-status",
+        "grading": "pinned-termless-replayed-over-owned-observations"
+      }
+    },
+    {
+      "caseId": "extensions.osc2-title",
+      "effectContract": {
+        "id": "ntilde-extensions.osc2-title-effect-v1",
+        "outcome": "supported",
+        "controlsHeld": true,
+        "controlEffectsHeld": true,
+        "stale": false
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.osc2-title/pinned",
+          "owner": "extensions.osc2-title",
+          "role": "pinned",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 34,
+              "title": "title-5a8f93ac-2-0",
+              "icon": "icon-5a8f93ac-2-0",
+              "displayTitle": "title-5a8f93ac-2-0",
+              "tabText": "title-5a8f93ac-2-0 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 35,
+              "title": "Test Title",
+              "icon": "icon-5a8f93ac-2-0",
+              "displayTitle": "Test Title",
+              "tabText": "Test Title ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc2-title/empty-bel",
+          "owner": "extensions.osc2-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 36,
+              "title": "title-5a8f93ac-2-1",
+              "icon": "icon-5a8f93ac-2-1",
+              "displayTitle": "title-5a8f93ac-2-1",
+              "tabText": "title-5a8f93ac-2-1 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 37,
+              "title": "",
+              "icon": "icon-5a8f93ac-2-1",
+              "displayTitle": "terminfo disposable worker 5a8f93ac040b11436c8712235e858353 · osc-title-base",
+              "tabText": "terminfo disposable worker 5a8f93ac040b11… ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc2-title/blank-st",
+          "owner": "extensions.osc2-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 38,
+              "title": "title-5a8f93ac-2-2",
+              "icon": "icon-5a8f93ac-2-2",
+              "displayTitle": "title-5a8f93ac-2-2",
+              "tabText": "title-5a8f93ac-2-2 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 39,
+              "title": "   ",
+              "icon": "icon-5a8f93ac-2-2",
+              "displayTitle": "terminfo disposable worker 5a8f93ac040b11436c8712235e858353 · osc-title-base",
+              "tabText": "terminfo disposable worker 5a8f93ac040b11… ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc2-title/spaces-bel",
+          "owner": "extensions.osc2-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 40,
+              "title": "title-5a8f93ac-2-3",
+              "icon": "icon-5a8f93ac-2-3",
+              "displayTitle": "title-5a8f93ac-2-3",
+              "tabText": "title-5a8f93ac-2-3 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 41,
+              "title": " padded ",
+              "icon": "icon-5a8f93ac-2-3",
+              "displayTitle": " padded ",
+              "tabText": " padded  ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc2-title/unicode-st",
+          "owner": "extensions.osc2-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 42,
+              "title": "title-5a8f93ac-2-4",
+              "icon": "icon-5a8f93ac-2-4",
+              "displayTitle": "title-5a8f93ac-2-4",
+              "tabText": "title-5a8f93ac-2-4 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 43,
+              "title": "東京-λ",
+              "icon": "icon-5a8f93ac-2-4",
+              "displayTitle": "東京-λ",
+              "tabText": "東京-λ ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc2-title/semicolon-bel",
+          "owner": "extensions.osc2-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 44,
+              "title": "title-5a8f93ac-2-5",
+              "icon": "icon-5a8f93ac-2-5",
+              "displayTitle": "title-5a8f93ac-2-5",
+              "tabText": "title-5a8f93ac-2-5 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 45,
+              "title": "one;two",
+              "icon": "icon-5a8f93ac-2-5",
+              "displayTitle": "one;two",
+              "tabText": "one;two ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc2-title/ordinary-bel",
+          "owner": "extensions.osc2-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 46,
+              "title": "title-5a8f93ac-2-6",
+              "icon": "icon-5a8f93ac-2-6",
+              "displayTitle": "title-5a8f93ac-2-6",
+              "tabText": "title-5a8f93ac-2-6 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 47,
+              "title": "terminator-control",
+              "icon": "icon-5a8f93ac-2-6",
+              "displayTitle": "terminator-control",
+              "tabText": "terminator-control ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc2-title/ordinary-st",
+          "owner": "extensions.osc2-title",
+          "role": "control",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 48,
+              "title": "title-5a8f93ac-2-7",
+              "icon": "icon-5a8f93ac-2-7",
+              "displayTitle": "title-5a8f93ac-2-7",
+              "tabText": "title-5a8f93ac-2-7 ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 49,
+              "title": "terminator-control",
+              "icon": "icon-5a8f93ac-2-7",
+              "displayTitle": "terminator-control",
+              "tabText": "terminator-control ⌨",
+              "titleMatches": true,
+              "iconMatches": true,
+              "displayMatches": true,
+              "tabMatches": true,
+              "preserved": true,
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "pinned": {
+        "pass": true,
+        "response": "{\"title\":\"Test Title\"}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "OSC 2 sets the exact requested window title",
+            "observed": "{\"title\":\"Test Title\"}"
+          }
+        ],
+        "termless": {
+          "pass": true,
+          "response": "{\"title\":\"Test Title\"}",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "OSC 2 sets the exact requested window title",
+              "observed": "{\"title\":\"Test Title\"}"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": false,
+          "note": "OSC 2 window title was not attempted; this probe has no effect readback or prior-state restoration",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "OSC 2 window title was not attempted; this probe has no effect readback or prior-state restoration"
+          }
+        },
+        "qualifiedOutcome": "supported"
+      },
+      "divergences": [
+        {
+          "path": "terminal",
+          "outcome": "inconclusive"
+        }
+      ],
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc2-title",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 2 window title was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc2-title"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "stored-state and pane-metadata-and-session-status",
+        "grading": "pinned-termless-replayed-over-owned-observations"
+      }
+    }
+  ]
+}
