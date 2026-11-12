@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { adaptOscTitleCollector, oscTitleAdapterId } from './terminfo/osc-title-grading-collector.mjs';
+import { oscTitleContractsVersion, oscTitlePrefix, oscTitleSuiteId } from './terminfo/osc-title-contracts.mjs';
+import { buildOscTitleReport, matchesOscTitleBaseline, oscTitleCounts, oscTitleObserverPlan } from './terminfo/osc-title-grading.mjs';
+import { exposeOscTitleFacts } from './terminfo/osc-title-collector.mjs';
 import { reverseWideSuiteId, ReverseWideObserver, buildReverseWideReport } from './terminfo/core-reverse-wide.mjs';
 import { sgrRasterSuiteId, SgrRasterObserver, buildSgrRasterReport } from './terminfo/core-sgr-raster.mjs';
 import { WrapObserver } from './terminfo/core-wrap-observer.mjs';
@@ -1181,6 +1185,27 @@ async function retainTitleStackEvidence(output, runId, titleStackBundle, upstrea
         contractsVersion: titleStackContractsVersion, counts: titleStackCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+function prepareOscTitleCollector(tool, previous, output) {
+    const adapted = adaptOscTitleCollector(readFileSync(previous));
+    const oscTitleBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-ost-${oscTitleBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== oscTitleBundleSha256) throw new Error('Derived OSC title bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-ost.mjs'), adapted, { flag: 'wx', mode: 0o600 });
+    return { bundle, oscTitleBundleSha256 };
+}
+function retainOscTitleEvidence(output, runId, upstream) {
+    const adapterBytes = readFileSync(join(output, 'collector-ost.mjs'));
+    const runBytes = readFileSync(join(output, 'ost-run.json'));
+    const frames = readFileSync(join(output, 'ost-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapter = { id: oscTitleAdapterId, derivedFromAdapterId: titleStackAdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const report = buildOscTitleReport(frames, JSON.parse(runBytes), runId, adapter);
+    writeJson(join(output, 'ost-observations.json'), report);
+    return { runId, suiteId: oscTitleSuiteId, file: 'ost-observations.json', sha256: hash(readFileSync(join(output, 'ost-observations.json'))),
+        runFile: 'ost-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: oscTitleContractsVersion, counts: oscTitleCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the routed-input report parent-side from the owned input journal and the layered pinned replay. */
 async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstream, inputBinding, seal) {
     if (inputBinding?.status === 'unavailable') {
@@ -1436,6 +1461,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let osc133Evidence;
     let osc78Evidence;
     let titleStackEvidence;
+    let oscTitleEvidence;
     let colorResetEvidence;
     let rgbEvidence;
     let renditionEvidence;
@@ -1500,6 +1526,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: osc133Bundle, osc133BundleSha256 } = prepareOsc133Collector(privateTool, lrMarginsBundle, output);
         const { bundle: osc78Bundle, osc78BundleSha256 } = prepareOsc78Collector(privateTool, lrMarginsBundle, output);
         const { bundle: titleStackBundle, titleStackBundleSha256 } = prepareTitleStackCollector(privateTool, lrMarginsBundle, output);
+        const { bundle: oscTitleBundle, oscTitleBundleSha256 } = prepareOscTitleCollector(privateTool, titleStackBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
@@ -1511,7 +1538,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, oscTitleBundle, oscTitleBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -1657,6 +1684,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc78AdapterId, osc78SuiteId, osc78BundleSha256, osc78ContractsVersion,
             osc78: 'layered versioned collector extension; pinned extensions.osc7-cwd (no fixture bytes: declared-capability and no-readback results, inconclusive by design) and extensions.osc8 (termless: stored cells and hyperlink metadata of the pinned fixture; terminal: cursor position, inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, host working directory, hyperlink runs with snapshot-local identities) and session status by an independent oracle: reported working-directory metadata only (not the child process directory or path existence) and stored hyperlink-bearing cells only (not click handling, URL opening or rendering); protocol handling in a disposable direct-local App only; no stock-grade claim',
             titleStackAdapterId, titleStackSuiteId, titleStackBundleSha256, titleStackContractsVersion,
+            oscTitleAdapterId, oscTitleSuiteId, oscTitleBundleSha256, oscTitleContractsVersion,
             titleStack: 'layered versioned collector extension; pinned device.xtwinops-22 and device.xtwinops-23 termless code (feed a title, CSI 22;0t, feed another title, CSI 23;0t, getTitle() after each stage; supported only when all three titles are as expected, never unsupported) and terminal code (the writes then a cursor query; inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells and the raw title, raw icon name, display title and tab text of the same observation by an independent title-stack oracle: each pinned fixture executed from a measured prepared baseline, plus combined, title-only, icon-only, nested (LIFO), mixed-selector, empty-pop, bounded-depth, alternate-screen, DECSTR and RIS experiments; raw icon-name state only, no host icon presentation, no title or icon report query, no direct-slot addressing, disposable direct-local App only, no stock grade',
             osc133: 'layered versioned collector extension; pinned extensions.osc133-a, -b, -c and -d termless and terminal code (marker + X consumption, always inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, cwd, input window, raw command/output anchors) and session status by an independent lifecycle oracle: each pinned fixture executed from a measured prior state with an unmarked control and gating markers, plus canonical cycle, payload, boundary, terminator-variant and exit-payload observations; protocol handling in a disposable direct-local App only, no real-shell, remote, OSC 133 P, OSC 633 or stock-grade claim',
             rectChecksum: 'layered versioned collector extension; pinned termless criterion editing.decrqcra (ESC[1;1;1;1;1;5*y after ABCDE ESC[1;1H, a framed DCS 1 ! ~ hhhh ST) replayed byte-exactly on a disposable App whose initial settings turn on AllowRectangleChecksumReport (off by default), graded from raw replies bound to their DA barriers and parent-observed stored cells by an independent checksum model (character sum, bold/blink/reverse/underline weights, defaults, origin offset, page clipping, request id, non-admitted spellings, unchanged state); stored ASCII cells only, no stock grades',
@@ -1721,6 +1749,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'shi-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'lnk-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'tst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'ost-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'crst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
@@ -2092,6 +2121,26 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 throw metadataFailure(request, error, state.observer);
             }
         };
+        let oscTitleState;
+        const observeOscTitle = async (request, budget) => {
+            if (!titleStackState?.observer?.restored) throw new Error('Title-stack suite must restore before OSC title observations.');
+            oscTitleState ??= { workerPid: request.workerPid, tty: request.tty,
+                observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName, runId, expectedPaneId: cellObserver.paneId,
+                    prefix: oscTitlePrefix, includeResolvedColors: true, planOf: oscTitleObserverPlan, matchesBaseline: matchesOscTitleBaseline, expose: exposeOscTitleFacts }) };
+            const state = oscTitleState;
+            if (state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC title fixture ownership changed.');
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === `${oscTitlePrefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
+                    throw new Error('Original geometry changed before OSC title observations.');
+                }
+                appendFileSync(join(output, 'ost-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
+                return result;
+            } catch (error) {
+                retainFailedMetadataAttempt(output, request, error, state.observer, 'ost-failed-observation.json');
+                throw metadataFailure(request, error, state.observer);
+            }
+        };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
         const recordInputUnavailable = reason => {
             const file = 'input-unavailable.json';
@@ -2295,6 +2344,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (prefix === osc133Prefix) return observeOsc133(request, budget);
             if (prefix === osc78Prefix) return observeOsc78(request, budget);
             if (prefix === titleStackPrefix) return observeTitleStack(request, budget);
+            if (prefix === oscTitlePrefix) return observeOscTitle(request, budget);
             if (prefix === 'pixel') return observePixels(request, budget);
             if (prefix === 'color') return observeColors(request, budget);
             if (Object.hasOwn(editingSpecs, prefix)) return observeEditing(prefix, request, budget);
@@ -2943,6 +2993,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc133Evidence = await retainOsc133Evidence(output, runId, osc133Bundle, upstreamBundleSha256, osc133State?.unavailable === true);
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
+            oscTitleEvidence = retainOscTitleEvidence(output, runId, upstreamBundleSha256);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
             queryEvidence = retainQueryReport(output, queryState, runId);
@@ -3014,6 +3065,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.osc133Evidence = osc133Evidence;
             summary.osc78Evidence = osc78Evidence;
             summary.titleStackEvidence = titleStackEvidence;
+            summary.oscTitleEvidence = oscTitleEvidence;
             summary.colorResetEvidence = colorResetEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
@@ -3054,7 +3106,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
