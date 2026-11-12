@@ -129,6 +129,9 @@ import { adaptOsc78Collector, osc78AdapterId } from './terminfo/osc78-grading-co
 import { osc78ContractsVersion, osc78Minimum, osc78Prefix, osc78SuiteId } from './terminfo/osc78-contracts.mjs';
 import { buildOsc78GradingReport, matchesOsc78Baseline, osc78Counts, osc78ObserverPlan } from './terminfo/osc78-grading.mjs';
 import { adaptTitleStackCollector, titleStackAdapterId } from './terminfo/title-stack-grading-collector.mjs';
+import { adaptInsertReplaceCollector, insertReplaceAdapterId } from './terminfo/insert-replace-grading-collector.mjs';
+import { insertReplaceContractsVersion, insertReplaceNoncePrefix, insertReplaceSuiteId } from './terminfo/insert-replace-contracts.mjs';
+import { buildInsertReplaceReport, verifyInsertReplaceTerminalReplay } from './terminfo/insert-replace-grading.mjs';
 import { titleStackCaseIds, titleStackContractsVersion, titleStackMinimum, titleStackPrefix, titleStackSuiteId } from './terminfo/title-stack-contracts.mjs';
 import { buildTitleStackGradingReport, matchesTitleStackBaseline, titleStackCounts, titleStackObserverPlan } from './terminfo/title-stack-grading.mjs';
 import { exposeTitleStackFacts } from './terminfo/title-stack-collector.mjs';
@@ -182,7 +185,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'shi', 'lnk', 'tst', 'ost', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'shi', 'lnk', 'tst', 'ost', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -1156,6 +1159,31 @@ async function retainOsc78Evidence(output, runId, osc78Bundle, upstream, unavail
 }
 
 /** Derive and lock the layered title-stack grading extension over the left/right-margin one. */
+function prepareInsertReplaceCollector(tool, lrMarginsBundle, output) {
+    const adapted = adaptInsertReplaceCollector(readFileSync(lrMarginsBundle));
+    const insertReplaceBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-irm-${insertReplaceBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== insertReplaceBundleSha256) throw new Error('Derived IRM bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-irm.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, insertReplaceBundleSha256 };
+}
+
+async function retainInsertReplaceEvidence(output, runId, bundle, upstream) {
+    const adapterBytes = readFileSync(join(output, 'collector-irm.mjs'));
+    const runBytes = readFileSync(join(output, 'irm-run.json'));
+    const frames = readFileSync(join(output, 'irm-snapshots.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapter = { id: insertReplaceAdapterId, derivedFromAdapterId: lrMarginsAdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(bundle).href);
+    const run = JSON.parse(runBytes);
+    const report = buildInsertReplaceReport(frames, run, runId, adapter, { replayModule });
+    await verifyInsertReplaceTerminalReplay(replayModule, frames.at(-2).screen, run.terminalPinned);
+    writeJson(join(output, 'irm-observations.json'), report);
+    return { runId, suiteId: insertReplaceSuiteId, file: 'irm-observations.json', sha256: hash(readFileSync(join(output, 'irm-observations.json'))),
+        runFile: 'irm-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256, contractsVersion: insertReplaceContractsVersion,
+        counts: { [report.effect.outcome]: 1 }, provisionalUntil: 'cell-receipt.json' };
+}
+
 function prepareTitleStackCollector(tool, lrMarginsBundle, output) {
     const adapted = adaptTitleStackCollector(readFileSync(lrMarginsBundle));
     const titleStackBundleSha256 = hash(adapted);
@@ -1443,6 +1471,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let charEditEvidence;
     let eraseDisplayEvidence;
     let lineEditEvidence;
+    let insertReplaceEvidence;
     let charsetsEvidence;
     let scrollbackEvidence;
     let savedResetEvidence;
@@ -1522,6 +1551,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: colEditBundle, colEditBundleSha256 } = prepareColEditCollector(privateTool, rectEditBundle, output);
         const { bundle: rectChecksumBundle, rectChecksumBundleSha256 } = prepareRectChecksumCollector(privateTool, colEditBundle, output);
         const { bundle: lrMarginsBundle, lrMarginsBundleSha256 } = prepareLrMarginsCollector(privateTool, rectChecksumBundle, output);
+        const { bundle: insertReplaceBundle, insertReplaceBundleSha256 } = prepareInsertReplaceCollector(privateTool, lrMarginsBundle, output);
         const coreGapsSource = adaptCoreGapsCollector(readFileSync(lrMarginsBundle));
         const coreGapsBundleSha256 = hash(coreGapsSource);
         const coreGapsBundle = join(privateTool, 'node_modules', 'terminfo.dev', 'dist', 'ntilde-cg-' + coreGapsBundleSha256 + '.mjs');
@@ -1543,7 +1573,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, oscTitleBundle, oscTitleBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, oscTitleBundle, oscTitleBundleSha256, insertReplaceBundle, insertReplaceBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -1586,6 +1616,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let charEditObserver;
         let eraseDisplayObserver;
         let lineEditObserver;
+        let insertReplaceObserver;
         let charsetsObserver;
         let scrollbackObserver;
         let savedResetObserver;
@@ -1665,6 +1696,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             charEdit: 'layered versioned collector extension; pinned character-editing termless criteria (editing.insert-chars with the explicit-1 ICH spelling, editing.delete-chars with the explicit-1 DCH spelling, editing.repeat-char with REP count 3) replayed on parent-observed stored ASCII cells, cursor and stored attribute details, with unmodified-seed, other-count-spelling, wide-row, right-edge, REP-after-barrier and attribute controls; REP graphic and repeat sent in one fenced write; created-blank and repeated-cell attributes observed not required; the pinned pixel/query paths never measure cells and are not qualified; no Unicode, wide-cell or combining editing; not stock output',
             eraseDisplayAdapterId, eraseDisplaySuiteId, eraseDisplayBundleSha256, eraseDisplayContractsVersion,
             lineEditAdapterId, lineEditSuiteId, lineEditBundleSha256, lineEditContractsVersion,
+            insertReplaceAdapterId, insertReplaceSuiteId, insertReplaceBundleSha256, insertReplaceContractsVersion,
             charsetsAdapterId, charsetsSuiteId, charsetsBundleSha256, charsetsContractsVersion,
             charsets: 'layered versioned collector extension; pinned charset termless criteria (charsets.utf8, charsets.dec-special, charsets.dec-line-drawing, charsets.g0-g1-switching) replayed byte-exactly (UTF-8 text, escape designations and shift controls untouched) on parent-observed decoded physical cells from complete stored cell details (never attribute strings or UTF-16 offsets), the cursor and neutral stored attributes, with ASCII, designation, invocation, uppercase and lowercase restoration-witness controls; the pinned terminal pixel capture and cursor-query paths are never verdicts and are not qualified; no glyph, pixel, font, keyboard, locale or platform claim',
             scrollbackAdapterId, scrollbackSuiteId, scrollbackBundleSha256, scrollbackContractsVersion,
@@ -1739,6 +1771,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'ched-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'erdi-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ledt-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'irm-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'chrs-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'scrl-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'svrs-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -2526,10 +2559,19 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'ledt-snapshots.jsonl'), JSON.stringify(lineEditObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === 'irm') {
+                if (!lineEditObserver?.restored) throw new Error('Line-editing suite must restore before IRM observations.');
+                insertReplaceObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: insertReplaceNoncePrefix + runId, includeAttributes: true, includeCellDetails: true, includeOverline: true,
+                    includeResolvedColors: true, includeBufferState: true, includeHorizontalMargins: true, prefix: 'irm', expectedPaneId: cellObserver.paneId });
+                const result = await insertReplaceObserver.handle(request.kind, budget, request.barrier);
+                appendFileSync(join(output, 'irm-snapshots.jsonl'), JSON.stringify(insertReplaceObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             if (prefix === 'chrs') {
                 // The charsets suite runs after the line-editing suite. It requests stored cell details only: attribute
                 // strings omit wide-continuation cells and would refuse any row holding a wide character.
-                if (!lineEditObserver?.restored) throw new Error('Line-editing suite must restore before charset observations.');
+                if (!insertReplaceObserver?.restored) throw new Error('IRM suite must restore before charset observations.');
                 charsetsObserver ??= new OwnedCellObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `NTILDE_CS_${runId}`, includeCellDetails: true, prefix: 'chrs', expectedPaneId: cellObserver.paneId });
                 const result = await charsetsObserver.handle(request.kind, budget, request.barrier);
@@ -2940,6 +2982,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             charEditEvidence = await retainCharEditEvidence(output, runId, charEditBundle, upstreamBundleSha256);
             eraseDisplayEvidence = await retainEraseDisplayEvidence(output, runId, eraseDisplayBundle, upstreamBundleSha256);
             lineEditEvidence = await retainLineEditEvidence(output, runId, lineEditBundle, upstreamBundleSha256);
+            insertReplaceEvidence = await retainInsertReplaceEvidence(output, runId, insertReplaceBundle, upstreamBundleSha256);
             charsetsEvidence = await retainCharsetsEvidence(output, runId, charsetsBundle, upstreamBundleSha256);
             scrollbackEvidence = await retainScrollbackEvidence(output, runId, scrollbackBundle, upstreamBundleSha256);
             savedResetEvidence = await retainSavedResetEvidence(output, runId, savedResetBundle, upstreamBundleSha256);
@@ -3065,6 +3108,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.charEditEvidence = charEditEvidence;
             summary.eraseDisplayEvidence = eraseDisplayEvidence;
             summary.lineEditEvidence = lineEditEvidence;
+            summary.insertReplaceEvidence = insertReplaceEvidence;
             summary.charsetsEvidence = charsetsEvidence;
             summary.scrollbackEvidence = scrollbackEvidence;
             summary.savedResetEvidence = savedResetEvidence;
@@ -3122,7 +3166,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, insertReplaceEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

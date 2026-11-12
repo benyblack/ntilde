@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "2d547ceaeda5b1fc1323ab1228a87af87182b4bc86f4fc6890bc4478006845b3",
+    "superseded/attempt-1.zip": "2586db7aa1549ea6780543898c5099a3118ea9fbe19ea7a2885591a8e8c248da",
+    "superseded/attempt-2.zip": "0d8faa5b0836b5c718cb67a0a8a28bd1f86ef861120d9ca39c21be290d8be0d6"
+  },
+  "appRevision": "2d8433d9bee2dc7fa15895935e08eefe7f21354b",
+  "scriptsRevision": "981f097bad61452486c647c5f453b30c9374db0d",
+  "appAssemblySha256": "62f27bb8f9edfc7b865e676ce23acb94ce97c701812577be7251588651b5b4fa",
+  "measurement": {
+    "runId": "49bd73d770d9587ed06a01c052475889",
+    "receiptSchema": 54,
+    "sourcePolicy": "readonly-owned-source-graph-v48"
+  },
+  "attempts": [
+    {
+      "archive": "superseded/attempt-1.zip",
+      "runId": "8b64561ded35ef5aa9e4635efa21c55e",
+      "reason": "Complete and supported, superseded because Sonar findings changed measured collector, replay, receipt and source-checking scripts."
+    },
+    {
+      "archive": "superseded/attempt-2.zip",
+      "runId": "91a97a7cf97b3d6e8c6d0f805fe26228",
+      "reason": "Complete and supported, superseded after Codex found the terminal-path small-geometry guard required correction."
+    }
+  ]
+}
