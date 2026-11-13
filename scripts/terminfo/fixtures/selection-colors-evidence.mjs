@@ -229,6 +229,11 @@ function stageFrameAndRead(ctx) {
         drawn = { ...renderTheme(baseline, colors, overrides, behavior), selectionForegroundOverride: true,
             selectionForegroundArgb: renderTheme(baseline, appColors(baseline, before, behavior), before, behavior).selectionForegroundArgb };
     }
+    // A renderer that paints the selected text in the selection fill's own color when only a background override is active.
+    if (behavior.invisibleInkUnderBackground && overrides.selectionBackground !== null && overrides.selectionForeground === null) {
+        drawn = { ...renderTheme(baseline, colors, overrides, behavior), selectionForegroundOverride: true,
+            selectionForegroundArgb: renderTheme(baseline, colors, overrides, behavior).selectionBackgroundArgb };
+    }
     const view = { theme: renderTheme(baseline, colors, overrides, behavior), extra: { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries },
         repeat, drawn };
     frames.push(frame(frames.length, 'selc-read', screen, deviceAttribute, view, store));

@@ -125,6 +125,8 @@ test('the grader refuses every injected defect with the right verdict class', ()
         'a foreground reset that leaves the stale ink drawn under a remaining background override fails the OSC 119 case only');
     assert.deepEqual(grades({ inkIgnoresForegroundUnderBackground: true }), ['supported', 'supported', 'inconclusive', 'inconclusive'],
         'a foreground override that is not drawn while a background override is active cannot pass the coupled experiments');
+    assert.deepEqual(grades({ invisibleInkUnderBackground: true }), ['inconclusive', 'supported', 'inconclusive', 'unsupported'],
+        'selected text drawn in the fill color under a background-only override is not accepted as the derived contrast ink');
     assert.deepEqual(grades({ lostOther: true }), ['supported', 'supported', 'unsupported', 'unsupported'], 'losing the unaffected override fails');
     assert.deepEqual(grades({ staleReplies: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     assert.deepEqual(grades({ renderStale: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
