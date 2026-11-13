@@ -31,7 +31,7 @@ Three classes are kept apart throughout:
 | --- | --- | --- |
 | **Shared-lock convention** | The run's wrapper took the shared `mkdir` lock (its own records show it); nothing in the collector enforced it | all 14 GUI attempts |
 | **Enforced lease** (this batch) | The launcher itself took and released a lease with verified cleanup, recorded in the audit log | none: it did not exist yet (only this batch's two validation runs) |
-| **Ownership cannot be established** | No retained record shows how, or whether, the run used the lock | the overlapping reflow collection `FoQxOl`; every other session's collection outside the OSC 9 worktree |
+| **Ownership cannot be established** | No retained record shows how, or whether, the run used the shared lock (or it used a different lock path, which the shared lease cannot see) | the overlapping reflow collection `FoQxOl`; every other session's collection outside the OSC 9 worktree (one live example, below, used `/tmp/ntilde-qa-desktop-collection.lock`) |
 
 ## Enforcement (what is code, what is documentation)
 
@@ -198,6 +198,18 @@ inventory change comes from them. Both runs used `node scripts/terminfo-owned.mj
 | Collection | failed in the colour-reset suite 80 s in ("crst collection and restoration failed"; the underlying worker error is not retained in the run's files); no receipt | completed, receipt written, exit 0 |
 | Cleanup verified (marker scan) / lease released | 15:13:26.782Z / 15:13:27.823Z | 15:15:51.062Z / 15:16:13.339Z (after the receipt was completed) |
 | Afterwards | lock absent; no process carrying a marker; no sidecar process | same |
+
+Run 3 (`316ed89a…`, final PR head `3e78d835`, same sidecar): acquired 15:52:16.718Z, launch persisted 15:52:18.293Z, cleanup verified
+15:54:45.273Z, released 15:55:08.899Z after the receipt was completed; collector exit 0; lock absent and no owned process of this
+batch afterwards.
+
+**A divergent lock path was observed live.** At 15:54:54Z, 14 s before run 3 released, another session's wrapper
+(`/tmp/selc-measure.sh`, the selection-colors measurement) launched an owned collection. Its header documents an advisory `mkdir`
+lock at `/tmp/ntilde-qa-desktop-collection.lock`, **not** the shared `~/.ntilde-qa-sidecars/.desktop-collection.lock`, so it neither
+waited for nor excluded the shared lease. Run 3's App had already exited and its cleanup was already verified (15:54:45Z), so
+nothing was disturbed; that session's work, lock and processes were not touched. It is the second class of "ownership cannot be
+established by the shared lock": a collection protected only by a different lock path. The enforced launcher cannot see such a
+path, which is why the shared path is the one documented convention; the owner of that wrapper should adopt it.
 
 The failed first run is retained as it happened. Its cause is **not established**: the same scripts, App and desktop
 completed in run 2 about two minutes later, and nothing in the lock path touches the colour-reset suite, but no evidence
