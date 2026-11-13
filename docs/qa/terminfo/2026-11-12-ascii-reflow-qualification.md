@@ -28,7 +28,7 @@ requires the App's `exact` + `layoutSettled` result at the planned grid, and the
 (`-opost` throughout). A DA ordering fence precedes every read. Four actions, nine paired frames (start, nonce bind on the alternate screen as a bounded control, six reads,
 finish), the nonce bind and final cleanup held to the pristine baseline.
 
-- **`reflow.width-roundtrip`** (shrink 40×140 → 40×133, then restore): six long hard lines (138-char at 140, rewrapping at different offsets at 133) interleaved with
+- **`reflow.width-roundtrip`** (shrink 40×140 → 40×133, then restore): six 210-char long hard lines (two wrapped rows at both 140 and 133 columns, with different break offsets) interleaved with
   short hard lines, one authored-single-space line and a bold+underline attribute probe. **All three stages matched the independent character-slicing model exactly**:
   the wrapped lines redistributed at the smaller width with the break offsets moved, the short lines, authored spaces and attribute probe stayed intact (probe flags 777,
   underline style 1, through all three states), the cursor parked inside the first line's wrapped continuation moved from [1, 46] to [1, 53] (+ the removed 7 columns) and
