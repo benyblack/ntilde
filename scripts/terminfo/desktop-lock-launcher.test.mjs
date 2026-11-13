@@ -86,7 +86,7 @@ const waitFor = async (condition, label) => { for (let i = 0; i < 400; i++) { if
 test('the pinned bootstrap digest names the exact lock helper bytes and the helper imports only node builtins', () => {
     const launcher = readFileSync(real('../terminfo-owned.mjs'), 'utf8');
     const pinned = /const desktopLockSha256 = '([a-f0-9]{64})';/.exec(launcher)?.[1];
-    assert.equal(pinned, sha256(readFileSync(real('./desktop-lock.mjs'))), 'update desktopLockSha256 in scripts/terminfo-owned.mjs whenever desktop-lock.mjs changes');
+    assert.equal(pinned, sha256(Buffer.from(readFileSync(real('./desktop-lock.mjs'), 'utf8').replaceAll('\r\n', '\n'))), 'update desktopLockSha256 in scripts/terminfo-owned.mjs whenever desktop-lock.mjs changes');
     const helper = readFileSync(real('./desktop-lock.mjs'), 'utf8');
     for (const match of helper.matchAll(/^import .* from '([^']+)';$/gm)) assert.match(match[1], /^node:[a-z_/]+$/);
     assert.ok(!/^\s*(?:await\s+)?import\s*\(/m.test(helper), 'no dynamic imports');
@@ -142,6 +142,13 @@ test('help and other offline runner paths never take the lease and work while an
         assert.equal(readDesktopLockState(lockPath).record.lease, holder.leaseId);
         assert.ok(!auditEvents(lockPath).includes('refused'));
     } finally { holder.release(); }
+}));
+
+test('a CRLF checkout of the helper still matches the pinned LF digest and loads', { skip: !posix && 'uses ps' }, () => fixture(async ({ root, lockPath, run }) => {
+    const helper = join(root, 'repo/scripts/terminfo/desktop-lock.mjs');
+    writeFileSync(helper, readFileSync(helper, 'utf8').replaceAll('\n', '\r\n'));
+    const result = await run('clean');
+    assert.equal(result.code, 0, result.stderr); assert.equal(existsSync(lockPath), false);
 }));
 
 test('a changed lock helper is refused by the pinned digest before any lock directory exists', { skip: !posix && 'uses ps' }, () => fixture(async ({ root, lockPath, run }) => {

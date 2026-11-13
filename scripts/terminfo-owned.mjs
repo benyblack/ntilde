@@ -72,7 +72,8 @@ async function loadDesktopLock() {
     const path = join(repo, 'scripts/terminfo/desktop-lock.mjs');
     const info = lstatSync(path);
     if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular desktop lock helper.');
-    const bytes = readFileSync(path);
+    // Pinned over the LF form so a CRLF checkout (core.autocrlf) names the same bytes; the LF form is also what is imported.
+    const bytes = Buffer.from(readFileSync(path, 'utf8').replaceAll('\r\n', '\n'));
     if (digest(bytes) !== desktopLockSha256) throw new Error('Missing or changed trusted desktop lock helper.');
     return import('data:text/javascript;base64,' + bytes.toString('base64'));
 }
