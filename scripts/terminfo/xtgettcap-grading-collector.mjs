@@ -1,5 +1,5 @@
 // Explicitly versioned collector extension for the XTGETTCAP qualification (device.xtgettcap). This is a digest-checked
-// derivation layered on top of the title/icon-stack grading extension, a sibling of the OSC 7/8 and OSC-title layers: the pinned
+// derivation layered on top of the title/icon-stack grading extension, a sibling of the OSC-title and insert/replace layers: the pinned
 // bundle, the owned adapter and every earlier grading extension stay byte-for-byte unchanged, and each graded result carries this
 // extension's identity so it can never be presented as stock output.
 //
@@ -27,7 +27,7 @@ const pinnedXtgettcapSeams = Object.freeze([
 /** The pinned seams, exposed so portable tests can build a synthetic layered source. */
 export const xtgettcapSeams = pinnedXtgettcapSeams;
 
-/** Derive the XTGETTCAP grading extension from the title/icon-stack grading extension. */
+/** Derive the XTGETTCAP grading extension from the title/icon-stack grading extension (sibling of the OSC-title layer). */
 export function adaptXtgettcapCollector(titleStackSource) {
     const source = String(titleStackSource);
     for (const seam of pinnedXtgettcapSeams) {
@@ -37,7 +37,7 @@ export function adaptXtgettcapCollector(titleStackSource) {
     return source + `
 
 // Local XTGETTCAP grading extension ${JSON.stringify(xtgettcapAdapterId)}.
-// Derived from the title/icon-stack grading extension; probe definitions, policy
+// Derived from the title/icon-stack grading extension (sibling of the OSC-title layer); probe definitions, policy
 // gates and stock grading remain intact.
 export const ntildeXtgettcapAdapter = Object.freeze({
   id: ${JSON.stringify(xtgettcapAdapterId)},

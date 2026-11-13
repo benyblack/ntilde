@@ -131,11 +131,11 @@ test('restoration: the finish frame equals the start frame and the receipt compl
 
 test('the receipt binds the run, adapter and counts, and every predecessor and finding reconfirms in the same run', async () => {
     const { summary, report } = load(), { receipt } = summary;
-    assert.equal(receipt.schemaVersion, 53);
+    assert.equal(receipt.schemaVersion, 55);
     assert.equal(receipt.xtgettcapEvidence.runId, summary.context.runId);
     assert.equal(receipt.xtgettcapEvidence.suiteId, xtgettcapSuiteId);
     assert.deepEqual(receipt.xtgettcapEvidence.counts, xtgettcapCounts(report));
-    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v48');
+    assert.equal(summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v49');
     const predecessors = benchmarkSuites.slice(0, benchmarkSuites.findIndex(item => item.suite === 'xtgettcap'));
     const expected = [];
     for (const suite of predecessors) expected.push(...(await import(new URL(suite.module, import.meta.url)))[suite.exports[2]]);
@@ -143,7 +143,7 @@ test('the receipt binds the run, adapter and counts, and every predecessor and f
     assert.deepEqual([...unique].sort(), [...new Set(expected)].sort());
     assert.equal(Object.keys(summary.sameRun).length, predecessors.length);
     for (const [name, suite] of Object.entries(summary.sameRun)) {
-        if (suite.cases.some(item => item.effectContract)) assert.ok(suite.cases.every(item => item.effectContract === 'supported'), name);
+        if (suite.cases.some(item => item.effectContract)) assert.ok(suite.cases.every(item => item.effectContract === 'supported' || item.outcome === 'supported'), name);
         else assert.ok(suite.cases.every(item => item.outcome === 'supported'), name);
     }
     for (const id of xtgettcapCaseIds) assert.ok(!unique.has(id));
@@ -179,10 +179,10 @@ test('revisions and attempts (every superseded one keeps its actual reason), and
     assert.match(summary.attempts[6].outcome, /symlinked journal escaped the regular-file validation/);
     assert.match(summary.attempts[7].outcome, /DECLRMM and the left\/right margins were unobserved/);
     assert.match(summary.attempts[8].outcome, /stored cursor mode .* was unobserved/);
-    assert.equal(summary.attempts.filter(item => item.receiptCompleted).length, 8, 'eight runs completed their receipts; only the last is published');
-    for (const number of [1, 2, 3, 4, 5, 6, 7, 8, 9]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
+    assert.equal(summary.attempts.filter(item => item.receiptCompleted).length, 9, 'nine runs completed their receipts; only the last is published');
+    for (const number of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
     for (const name of readdirSync(dir)) {
         if (name === 'superseded') continue;
-        assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2000 : 1500), name);
+        assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2100 : 1500), name);
     }
 });

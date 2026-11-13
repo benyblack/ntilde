@@ -21,7 +21,7 @@ const predecessors = ['sgrColors', 'sgrRgb', 'sgrAttrs', 'sgrPalette', 'sgrTruec
 
 test('a complete run carries the XTGETTCAP suffix: pinned-preserved counts, adapter identity and the layered derivation rederive without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 53);
+    assert.equal(f.finish().schemaVersion, 55);
     assert.deepEqual(f.evidence.xtgettcapEvidence.counts, { inconclusive: 1 }, 'the pinned verdict is the published conclusion');
     assert.equal(f.context.xtgettcapAdapterId, xtgettcapAdapterId);
     assert.equal(f.context.xtgettcapSuiteId, xtgettcapSuiteId);
@@ -32,7 +32,7 @@ test('the suffix is required whenever the policy, a declaration or an artifact n
     const empty = join(f.output, 'no-such-directory'), earlier = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v47' };
     assert.equal(xtgettcapFirstPolicy, 49);
     assert.equal(includesXtgettcapEvidence(f.output, f.evidence, f.context), true);
-    assert.equal(includesXtgettcapEvidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v48' }), true, 'the current policy always carries the suffix');
+    assert.equal(includesXtgettcapEvidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v49' }), true, 'the current policy always carries the suffix');
     assert.equal(includesXtgettcapEvidence(empty, {}, earlier), false, 'an earlier policy without any artifact or declaration does not');
     assert.equal(includesXtgettcapEvidence(empty, {}, { ...earlier, xtgettcapSuiteId: 'x' }), true);
     assert.equal(includesXtgettcapEvidence(empty, { xtgettcapEvidence: {} }, earlier), true);

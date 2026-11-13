@@ -9,16 +9,16 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 104 |
-| Suite claims (an id covered by two suites has two claims) | 106 |
+| Unique benchmark ids with qualified effect evidence | 105 |
+| Suite claims (an id covered by two suites has two claims) | 107 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 104 |
+| Effect contract supported | 105 |
 | Supported by both the pinned probe and the effect contract | 85 |
-| Effect supported, pinned verdict inconclusive | 19 |
+| Effect supported, pinned verdict inconclusive | 20 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
-Effect supported but pinned inconclusive: `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc7-cwd`, `input.button-event-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc7-cwd`, `input.button-event-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 ## Remaining cases against an explicit baseline
 
@@ -26,7 +26,7 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Effect-unqualified (168 − 103) | 65 |
+| Effect-unqualified (168 − 104) | 64 |
 | Not pinned-supported (168 − 84) | 84 |
 
 Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
@@ -74,6 +74,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `title-stack` | 2 | v1 | passed | 52 | `926199a6` | v46 | 26 | `59877a14` |
 | `osc-title` | 3 | v1 | passed | 53 | `2d8433d9` | v47 | 14 | `13c1fb56` |
 | `insert-replace` | 1 | v1 | passed | 54 | `2d8433d9` | v48 | 6 | `a980f155` |
+| `xtgettcap` | 1 | v1 | passed | 55 | `2d8433d9` | v49 | 36 | `c42273c0` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -116,6 +117,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `title-stack` | collected-run-id-recorded | `e3884f90` | 167/87/1 | `cf7d8759` |
 | `osc-title` | collected-run-id-recorded | `900cca91` | 167/87/1 | `cf7d8759` |
 | `insert-replace` | collected-run-id-recorded | `335e7153` | 167/87/1 | `cf7d8759` |
+| `xtgettcap` | collected-run-id-recorded | `e55c2fbd` | 167/87/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -132,6 +134,7 @@ The stock collector reports `suiteComplete=false` in every run.
 | `cursor.hide` | inconclusive | supported | supported | stored-state + controlled-pixels | cursor | - |
 | `cursor.reverse-wrap` | ungraded | supported | supported | stored-state + cursor-position-report | cursor | - |
 | `cursor.shape` | inconclusive | supported | supported | stored-state + controlled-pixels | cursor | - |
+| `device.xtgettcap` | inconclusive | inconclusive | supported | stored-state | xtgettcap | xtgettcap: pinned-inconclusive-by-design |
 | `device.xtwinops-22` | inconclusive | supported | supported | pane-metadata-and-session-status | title-stack | - |
 | `device.xtwinops-23` | inconclusive | supported | supported | pane-metadata-and-session-status | title-stack | - |
 | `editing.deccara` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-fixture-assumes-rectangle-extent |

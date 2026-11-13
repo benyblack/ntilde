@@ -96,7 +96,7 @@ for (const [label, mutate, pattern] of [
     ['a pinned result with another evidence kind', e => { e.run.cases[0].pinned.termless.observation.evidence = 'parser-state'; }, /Missing pinned/],
     ['a pinned result that claims support', e => { e.run.cases[0].pinned.termless.pass = true; }, /does not match its observed evidence/],
     ['a changed adapter identity', e => { e.adapter.id = 'other'; }, /adapter identity/],
-    ['a changed predecessor', e => { e.adapter.derivedFromAdapterId = 'ntilde-owned-lr-margins-grading-v1'; }, /adapter identity/],
+    ['a changed predecessor', e => { e.adapter.derivedFromAdapterId = 'ntilde-owned-left-right-margins-grading-v1'; }, /adapter identity/],
     ['a truncated journal', e => { e.frames.pop(); }, /Incomplete XTGETTCAP snapshot sequence/],
     ['changed feeds', e => { e.run.cases[0].feeds[1] = '\x1bP+q544e;436f\x1b\\'; }, /feeds do not match/],
     ['a reordered case list', e => { e.run.probeIds = []; }, /does not cover the contracted cases/],
