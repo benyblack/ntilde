@@ -199,6 +199,8 @@ const untranslatedCellPrefixes = new Set([
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
+/** The parent-performed focus actions of the OSC 9 suite: exact kinds, answered by the runner rather than by an observer. */
+const osc9ActionKinds = new Set(['osn-defocus', 'osn-refocus']);
 const untranslatedCellSteps = new Set(['start', 'bind', 'read', 'finish']);
 /** Whether a request kind is exactly `<prefix>-<step>` for one of the cell observation prefixes and steps. */
 function untranslatedCellKind(kind) {
@@ -2987,7 +2989,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (untranslatedCellKind(request.kind)
                 || coreWrapKinds.has(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
-                || /^osn-(?:defocus|refocus)$/.test(request.kind)
+                || osc9ActionKinds.has(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
                 return { ok: true, ownerPid: app.pid, ...result };

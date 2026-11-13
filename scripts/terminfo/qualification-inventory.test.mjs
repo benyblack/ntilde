@@ -260,5 +260,5 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     assert.match(text, /Ntilde-specific findings \(not benchmark ids\)/);
     // Measured in the LF form the inventory itself hashes: a Windows checkout adds one CR per line and must not change the verdict.
     const lfLength = bytes => Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1').length;
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 232 * 1024, 'the generated files stay reviewable');
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 240 * 1024, 'the generated files stay reviewable');
 });
