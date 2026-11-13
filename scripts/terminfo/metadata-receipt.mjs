@@ -60,6 +60,7 @@ function checkSnapshot(output, context, proof) {
 /** Each source-snapshot policy maps to exactly its own captured file set. */
 export function retainedInventory(output, context) {
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v48') return capturedV55SourceFiles;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v49') return capturedV56SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v11') return capturedV18SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v12') return capturedV19SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v20') return capturedV27SourceFiles;
