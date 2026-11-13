@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { overlappingCollections, readCollectionIntervals } from './collection-intervals.mjs';
+import { mergeCollectionRows, overlappingCollections, readCollectionIntervals } from './collection-intervals.mjs';
 
 function run(root, name, { startedAt, cleanedUpAt, executable = '/x/Ntilde', failed = false, context = true }) {
     const dir = join(root, name); mkdirSync(dir, { recursive: true });
@@ -49,5 +49,22 @@ test('the same run listed twice is not an overlap with itself', () => {
         run(root, 'owned-bbb', { startedAt: '2026-11-13T14:16:00.000Z', cleanedUpAt: '2026-11-13T14:16:30.000Z' });
         const all = readCollectionIntervals(root, 'one');
         assert.equal(overlappingCollections([...all, ...readCollectionIntervals(root, 'copy')]).length, 1, 'distinct runs still overlap, once');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('duplicate observations of one run keep the recorded cleanup whichever copy comes first', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-intervals-merge-'));
+    try {
+        run(root, 'owned-aaa', { startedAt: '2026-11-13T11:00:00.000Z', cleanedUpAt: '2026-11-13T11:30:00.000Z' });
+        run(root, 'owned-bbb', { startedAt: '2026-11-13T12:00:00.000Z', cleanedUpAt: '2026-11-13T12:10:00.000Z' });
+        const complete = readCollectionIntervals(root, 'complete');
+        const incomplete = complete.map(row => ({ ...row, end: null, location: 'copy-before-cleanup' }));
+        for (const order of [[...complete, ...incomplete], [...incomplete, ...complete]]) {
+            const merged = mergeCollectionRows(order);
+            assert.equal(merged.length, 2);
+            assert.ok(merged.every(row => row.end !== null), 'the recorded cleanup survives');
+            assert.deepEqual(overlappingCollections(order), [], 'a run that ended at 11:30 never overlaps one that started at 12:00');
+        }
+        assert.equal(mergeCollectionRows([{ ...complete[0], failed: false }, { ...complete[0], failed: true }])[0].failed, true);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });

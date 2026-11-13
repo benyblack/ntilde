@@ -30,11 +30,26 @@ export function readCollectionIntervals(artifactsTerminfoDir, label = artifactsT
     return rows.sort((a, b) => a.start - b.start);
 }
 
+/**
+ * One row per retained run. The same run seen twice (a repeated root or a copied artifact tree) is merged, never kept as two:
+ * a recorded cleanup time is kept whichever copy carries it (the later one if both do), and a failure in either copy stays a failure.
+ */
+export function mergeCollectionRows(rows) {
+    const merged = new Map();
+    for (const row of rows) {
+        const key = row.runId === '' ? Symbol(row.directory) : row.runId + '@' + row.start, seen = merged.get(key);
+        if (seen === undefined) merged.set(key, { ...row });
+        else {
+            seen.end = seen.end === null ? row.end : (row.end === null ? seen.end : Math.max(seen.end, row.end));
+            seen.failed ||= row.failed;
+        }
+    }
+    return [...merged.values()];
+}
+
 /** Pairs of GUI collections whose recorded intervals intersect; an interval without a cleanup time is reported open-ended. */
 export function overlappingCollections(rows) {
-    // The same retained run supplied twice (a repeated root or a copied artifact tree) is one run, never an overlap with itself.
-    const unique = new Map(rows.filter(row => row.gui).map(row => [row.runId === '' ? Symbol(row.directory) : row.runId + '@' + row.start, row]));
-    const gui = [...unique.values()], pairs = [];
+    const gui = mergeCollectionRows(rows.filter(row => row.gui)), pairs = [];
     for (let i = 0; i < gui.length; i++) {
         for (let j = i + 1; j < gui.length; j++) {
             const [a, b] = gui[i].start <= gui[j].start ? [gui[i], gui[j]] : [gui[j], gui[i]];
