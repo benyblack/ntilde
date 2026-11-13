@@ -334,5 +334,11 @@
     "modifyOtherKeysCollectorSourceSha256": "modify-other-keys-collector.mjs",
     "modifyOtherKeysGradingSourceSha256": "modify-other-keys-grading.mjs",
     "modifyOtherKeysGradingCollectorSourceSha256": "modify-other-keys-grading-collector.mjs",
-    "modifyOtherKeysReceiptSourceSha256": "modify-other-keys-receipt.mjs"
+    "modifyOtherKeysReceiptSourceSha256": "modify-other-keys-receipt.mjs",
+    "osc9ContractsSourceSha256": "osc9-contracts.mjs",
+    "osc9CollectorSourceSha256": "osc9-collector.mjs",
+    "osc9GradingSourceSha256": "osc9-grading.mjs",
+    "osc9GradingCollectorSourceSha256": "osc9-grading-collector.mjs",
+    "osc9ReceiptSourceSha256": "osc9-receipt.mjs",
+    "osc9FocusSourceSha256": "osc9-focus.mjs"
 }

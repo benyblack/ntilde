@@ -1,0 +1,1780 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc9-graded-v1",
+  "contractsVersion": 1,
+  "runId": "77fa834f56e94206bb3edfb3ebfa8d11",
+  "adapter": {
+    "id": "ntilde-owned-osc9-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "048ed0c5034cd8b9c2b017395b5b57c1817cca53c78cfa1c90f4d93f9a2d2417",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned termless and terminal paths (neither sends or reads a byte) preserved as inconclusive, plus versioned effect contracts for stored OSC 9;4 progress state, owner and actual tab suffix, and for the private in-window toast with its window-focus and opt-in preconditions, over pane-metadata-and-session-status. No OS taskbar or desktop notification delivery, remote behavior or stock-score inference.",
+  "focusActions": [
+    {
+      "action": "refocus",
+      "method": "osascript",
+      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 77487) to true",
+      "appPid": 77487,
+      "attempts": [
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 77487
+        }
+      ],
+      "budgetMs": 2000,
+      "startedAt": "2026-11-13T15:17:21.582Z",
+      "finishedAt": "2026-11-13T15:17:22.539Z"
+    },
+    {
+      "action": "defocus",
+      "method": "osascript",
+      "script": "tell application \"Finder\" to activate",
+      "appPid": 77487,
+      "attempts": [
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 79645
+        }
+      ],
+      "budgetMs": 2000,
+      "startedAt": "2026-11-13T15:17:30.578Z",
+      "finishedAt": "2026-11-13T15:17:31.315Z"
+    },
+    {
+      "action": "refocus",
+      "method": "osascript",
+      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 77487) to true",
+      "appPid": 77487,
+      "attempts": [
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 77487
+        }
+      ],
+      "budgetMs": 2000,
+      "startedAt": "2026-11-13T15:18:11.544Z",
+      "finishedAt": "2026-11-13T15:18:12.272Z"
+    }
+  ],
+  "cases": [
+    {
+      "caseId": "extensions.osc9-progress",
+      "effectContract": {
+        "id": "ntilde-osc9-progress-state-effect-v1",
+        "outcome": "supported",
+        "controlsHeld": true,
+        "stale": false,
+        "reason": null,
+        "protocolExperiments": [
+          {
+            "name": "normal",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "error",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "indeterminate",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "paused",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "replace-normal-with-error",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "withdraw",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "clamp-high",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "percent-zero",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "indeterminate-ignores-percent",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "st-terminated",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "withdraw-when-none",
+            "role": "control",
+            "passed": true
+          },
+          {
+            "name": "unmarked",
+            "role": "control",
+            "passed": true
+          }
+        ]
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.osc9-progress/normal",
+          "owner": "extensions.osc9-progress",
+          "name": "normal",
+          "role": "protocol",
+          "expected": {
+            "kind": "Normal",
+            "percent": 42
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 2,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 3,
+              "stored": {
+                "kind": "Normal",
+                "percent": 42
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 42%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/error",
+          "owner": "extensions.osc9-progress",
+          "name": "error",
+          "role": "protocol",
+          "expected": {
+            "kind": "Error",
+            "percent": 37
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 4,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 5,
+              "stored": {
+                "kind": "Error",
+                "percent": 37
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ✖ 37%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/indeterminate",
+          "owner": "extensions.osc9-progress",
+          "name": "indeterminate",
+          "role": "protocol",
+          "expected": {
+            "kind": "Indeterminate",
+            "percent": null
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 6,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 7,
+              "stored": {
+                "kind": "Indeterminate",
+                "percent": null
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ⋯",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/paused",
+          "owner": "extensions.osc9-progress",
+          "name": "paused",
+          "role": "protocol",
+          "expected": {
+            "kind": "Paused",
+            "percent": 61
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 8,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 9,
+              "stored": {
+                "kind": "Paused",
+                "percent": 61
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ⏸ 61%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/replace-normal-with-error",
+          "owner": "extensions.osc9-progress",
+          "name": "replace-normal-with-error",
+          "role": "protocol",
+          "expected": {
+            "kind": "Error",
+            "percent": 80
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 10,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 11,
+              "stored": {
+                "kind": "Error",
+                "percent": 80
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ✖ 80%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/withdraw",
+          "owner": "extensions.osc9-progress",
+          "name": "withdraw",
+          "role": "protocol",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 12,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 13,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/clamp-high",
+          "owner": "extensions.osc9-progress",
+          "name": "clamp-high",
+          "role": "protocol",
+          "expected": {
+            "kind": "Normal",
+            "percent": 100
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 14,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 15,
+              "stored": {
+                "kind": "Normal",
+                "percent": 100
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 100%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/percent-zero",
+          "owner": "extensions.osc9-progress",
+          "name": "percent-zero",
+          "role": "protocol",
+          "expected": {
+            "kind": "Normal",
+            "percent": 0
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 16,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 17,
+              "stored": {
+                "kind": "Normal",
+                "percent": 0
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 0%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/indeterminate-ignores-percent",
+          "owner": "extensions.osc9-progress",
+          "name": "indeterminate-ignores-percent",
+          "role": "protocol",
+          "expected": {
+            "kind": "Indeterminate",
+            "percent": null
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 18,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 19,
+              "stored": {
+                "kind": "Indeterminate",
+                "percent": null
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ⋯",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/st-terminated",
+          "owner": "extensions.osc9-progress",
+          "name": "st-terminated",
+          "role": "protocol",
+          "expected": {
+            "kind": "Normal",
+            "percent": 29
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 20,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 21,
+              "stored": {
+                "kind": "Normal",
+                "percent": 29
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 29%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/withdraw-when-none",
+          "owner": "extensions.osc9-progress",
+          "name": "withdraw-when-none",
+          "role": "control",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 22,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 23,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/unmarked",
+          "owner": "extensions.osc9-progress",
+          "name": "unmarked",
+          "role": "control",
+          "expected": {
+            "kind": "Normal",
+            "percent": 17
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 24,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 25,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/policy-absent-percent-normal",
+          "owner": "extensions.osc9-progress",
+          "name": "policy-absent-percent-normal",
+          "role": "policy",
+          "expected": {
+            "kind": "Normal",
+            "percent": null
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 26,
+              "stored": null,
+              "owner": null,
+              "tabText": "ON-base-77fa834f ⌨",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 27,
+              "stored": {
+                "kind": "Normal",
+                "percent": null
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ⋯",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/policy-absent-percent-error",
+          "owner": "extensions.osc9-progress",
+          "name": "policy-absent-percent-error",
+          "role": "policy",
+          "expected": {
+            "kind": "Error",
+            "percent": null
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 28,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 29,
+              "stored": {
+                "kind": "Error",
+                "percent": null
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ✖",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/policy-absent-percent-paused",
+          "owner": "extensions.osc9-progress",
+          "name": "policy-absent-percent-paused",
+          "role": "policy",
+          "expected": {
+            "kind": "Paused",
+            "percent": null
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 30,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 31,
+              "stored": {
+                "kind": "Paused",
+                "percent": null
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ ⏸",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/policy-unknown-state",
+          "owner": "extensions.osc9-progress",
+          "name": "policy-unknown-state",
+          "role": "policy",
+          "expected": {
+            "kind": "Normal",
+            "percent": 17
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 32,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 33,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/policy-bare-4",
+          "owner": "extensions.osc9-progress",
+          "name": "policy-bare-4",
+          "role": "policy",
+          "expected": {
+            "kind": "Normal",
+            "percent": 17
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 34,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 35,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": true,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc9-progress/policy-missing-state",
+          "owner": "extensions.osc9-progress",
+          "name": "policy-missing-state",
+          "role": "policy",
+          "expected": {
+            "kind": "Normal",
+            "percent": 17
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 36,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 37,
+              "stored": {
+                "kind": "Normal",
+                "percent": 17
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "tabText": "ON-base-77fa834f ⌨ 17%",
+              "toastVisible": false,
+              "storedMatches": true,
+              "ownerMatches": true,
+              "tabMatches": true,
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        }
+      ],
+      "policy": [
+        {
+          "name": "policy-absent-percent-normal",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "kind": "Normal",
+            "percent": null
+          },
+          "expected": {
+            "kind": "Normal",
+            "percent": null
+          }
+        },
+        {
+          "name": "policy-absent-percent-error",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "kind": "Error",
+            "percent": null
+          },
+          "expected": {
+            "kind": "Error",
+            "percent": null
+          }
+        },
+        {
+          "name": "policy-absent-percent-paused",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "kind": "Paused",
+            "percent": null
+          },
+          "expected": {
+            "kind": "Paused",
+            "percent": null
+          }
+        },
+        {
+          "name": "policy-unknown-state",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "kind": "Normal",
+            "percent": 17
+          },
+          "expected": {
+            "kind": "Normal",
+            "percent": 17
+          }
+        },
+        {
+          "name": "policy-bare-4",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "kind": "Normal",
+            "percent": 17
+          },
+          "expected": {
+            "kind": "Normal",
+            "percent": 17
+          }
+        },
+        {
+          "name": "policy-missing-state",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "kind": "Normal",
+            "percent": 17
+          },
+          "expected": {
+            "kind": "Normal",
+            "percent": 17
+          }
+        }
+      ],
+      "pinned": {
+        "termlessFunction": false,
+        "termless": null,
+        "terminal": {
+          "pass": false,
+          "note": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration"
+          }
+        },
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "none",
+          "note": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration"
+        },
+        "verdictSource": "terminal (the registration has no termless function)",
+        "qualifiedOutcome": "inconclusive",
+        "note": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration"
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc9-progress",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration",
+        "rawReplyRef": "extensions.osc9-progress"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "stored-state and pane-metadata-and-session-status",
+        "grading": "pinned-preserved-over-owned-observations"
+      }
+    },
+    {
+      "caseId": "extensions.notifications",
+      "effectContract": {
+        "id": "ntilde-osc9-notification-toast-effect-v1",
+        "outcome": "supported",
+        "controlsHeld": true,
+        "preconditionsMet": true,
+        "reason": null,
+        "preconditions": [
+          {
+            "name": "delivered",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "st-terminated",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "unmarked",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "progress-is-not-text",
+            "control": true,
+            "delivery": true
+          }
+        ],
+        "protocolExperiments": [
+          {
+            "name": "delivered",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "st-terminated",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "unmarked",
+            "role": "control",
+            "passed": true
+          },
+          {
+            "name": "progress-is-not-text",
+            "role": "protocol",
+            "passed": true
+          }
+        ]
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.notifications/focused-suppressed",
+          "owner": "extensions.notifications",
+          "name": "focused-suppressed",
+          "role": "policy",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 38,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": true,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 39,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": true,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ],
+          "actions": [
+            {
+              "action": "refocus",
+              "response": {
+                "ok": true,
+                "ownerPid": 77487,
+                "action": "refocus",
+                "method": "osascript",
+                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 77487) to true",
+                "appPid": 77487,
+                "attempts": [
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 77487
+                  }
+                ],
+                "budgetMs": 2000,
+                "startedAt": "2026-11-13T15:17:21.582Z",
+                "finishedAt": "2026-11-13T15:17:22.539Z"
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/delivered",
+          "owner": "extensions.notifications",
+          "name": "delivered",
+          "role": "protocol",
+          "expected": "NT-notify-77fa834f",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 40,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 41,
+              "toast": {
+                "visible": true,
+                "title": "ON-base-77fa834f",
+                "message": "NT-notify-77fa834f"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "hidden",
+              "kind": "hidden",
+              "snapshot": 42,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ],
+          "actions": [
+            {
+              "action": "defocus",
+              "response": {
+                "ok": true,
+                "ownerPid": 77487,
+                "action": "defocus",
+                "method": "osascript",
+                "script": "tell application \"Finder\" to activate",
+                "appPid": 77487,
+                "attempts": [
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 79645
+                  }
+                ],
+                "budgetMs": 2000,
+                "startedAt": "2026-11-13T15:17:30.578Z",
+                "finishedAt": "2026-11-13T15:17:31.315Z"
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/st-terminated",
+          "owner": "extensions.notifications",
+          "name": "st-terminated",
+          "role": "protocol",
+          "expected": "NT-notify-st-77fa834f",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 43,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 44,
+              "toast": {
+                "visible": true,
+                "title": "ON-base-77fa834f",
+                "message": "NT-notify-st-77fa834f"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/unmarked",
+          "owner": "extensions.notifications",
+          "name": "unmarked",
+          "role": "control",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 45,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 46,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/progress-is-not-text",
+          "owner": "extensions.notifications",
+          "name": "progress-is-not-text",
+          "role": "protocol",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 47,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 48,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "stored": {
+                "kind": "Normal",
+                "percent": 50
+              },
+              "owner": "f48f84fa-fd9e-4b62-b54d-84f0fc0be916",
+              "progressMatches": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/policy-flatten-control",
+          "owner": "extensions.notifications",
+          "name": "policy-flatten-control",
+          "role": "policy",
+          "expected": "one two-77fa834f",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 49,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 50,
+              "toast": {
+                "visible": true,
+                "title": "ON-base-77fa834f",
+                "message": "one two-77fa834f"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/policy-cap",
+          "owner": "extensions.notifications",
+          "name": "policy-cap",
+          "role": "policy",
+          "expected": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 51,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 52,
+              "toast": {
+                "visible": true,
+                "title": "ON-base-77fa834f",
+                "message": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/policy-whitespace-only",
+          "owner": "extensions.notifications",
+          "name": "policy-whitespace-only",
+          "role": "policy",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 53,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 54,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.notifications/policy-bare-4",
+          "owner": "extensions.notifications",
+          "name": "policy-bare-4",
+          "role": "policy",
+          "expected": "4",
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 55,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 56,
+              "toast": {
+                "visible": true,
+                "title": "ON-base-77fa834f",
+                "message": "4"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ],
+          "actions": [
+            {
+              "action": "refocus",
+              "response": {
+                "ok": true,
+                "ownerPid": 77487,
+                "action": "refocus",
+                "method": "osascript",
+                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 77487) to true",
+                "appPid": 77487,
+                "attempts": [
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 77487
+                  }
+                ],
+                "budgetMs": 2000,
+                "startedAt": "2026-11-13T15:18:11.544Z",
+                "finishedAt": "2026-11-13T15:18:12.272Z"
+              }
+            }
+          ]
+        }
+      ],
+      "policy": [
+        {
+          "name": "focused-suppressed",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": false,
+            "title": null,
+            "message": null
+          },
+          "expected": null
+        },
+        {
+          "name": "policy-flatten-control",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "ON-base-77fa834f",
+            "message": "one two-77fa834f"
+          },
+          "expected": "one two-77fa834f"
+        },
+        {
+          "name": "policy-cap",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "ON-base-77fa834f",
+            "message": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…"
+          },
+          "expected": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…"
+        },
+        {
+          "name": "policy-whitespace-only",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": false,
+            "title": null,
+            "message": null
+          },
+          "expected": null
+        },
+        {
+          "name": "policy-bare-4",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "ON-base-77fa834f",
+            "message": "4"
+          },
+          "expected": "4"
+        }
+      ],
+      "pinned": {
+        "termlessFunction": true,
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":true}",
+          "note": "Declared OSC 9 capability does not establish desktop notification delivery",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared OSC 9 capability does not establish desktop notification delivery"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No desktop notification delivery readback for OSC 9",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No desktop notification delivery readback for OSC 9"
+          }
+        },
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "Declared OSC 9 capability does not establish desktop notification delivery"
+        },
+        "verdictSource": "termless",
+        "qualifiedOutcome": "inconclusive",
+        "note": "Declared OSC 9 capability does not establish desktop notification delivery"
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.notifications",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No desktop notification delivery readback for OSC 9",
+        "rawReplyRef": "extensions.notifications"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "stored-state and pane-metadata-and-session-status",
+        "grading": "pinned-preserved-over-owned-observations"
+      }
+    }
+  ]
+}

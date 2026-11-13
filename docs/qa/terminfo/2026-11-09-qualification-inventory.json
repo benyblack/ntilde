@@ -40,19 +40,20 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 106,
-    "suiteClaims": 108,
+    "uniqueBenchmarkIds": 108,
+    "suiteClaims": 110,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 106,
+    "effectSupportedIds": 108,
     "pinnedAndEffectSupportedIds": 85,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
+      "extensions.notifications",
       "extensions.osc0-icon-title",
       "extensions.osc1-icon",
       "extensions.osc133-a",
@@ -60,6 +61,7 @@
       "extensions.osc133-c",
       "extensions.osc133-d",
       "extensions.osc7-cwd",
+      "extensions.osc9-progress",
       "input.button-event-mouse",
       "input.modify-other-keys",
       "input.x10-mouse",
@@ -71,7 +73,7 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 105,
+    "effectSupportedOfStockInconclusive": 107,
     "pinnedSupportedOfStockInconclusive": 84,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -85,7 +87,7 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 63,
+      "effectUnqualified": 61,
       "notPinnedSupported": 84
     }
   },
@@ -2593,6 +2595,77 @@
         "command": "node --test scripts/terminfo/modify-other-keys-publication.test.mjs",
         "testSha256": "31a79126eb4a3bc57cc33b3349e23ae5b2479b3fa164166bef9308fa3b00e7c7"
       }
+    },
+    {
+      "suite": "osc9",
+      "suiteId": "ntilde-owned-osc9-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-13-osc9/",
+      "doc": "2026-11-13-osc9-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "extensions.osc9-progress",
+        "extensions.notifications"
+      ],
+      "evidence": {
+        "files": 17,
+        "bytes": 91128596,
+        "sha256": "de13f6ad03b7bec67067a92a8c114c52d077f57f6fa6bf4912a4a6e0180a13f7"
+      },
+      "receipt": {
+        "schemaVersion": 57,
+        "runId": "77fa834f56e94206bb3edfb3ebfa8d11",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "8472ed34d5ec1a32a993cbe41b55319e60a7b0621f2ef9c37a495a57fb662213"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc9-graded-v1",
+          "file": "osn-observations.json",
+          "sha256": "5d69d808dad0c200f1215f5070835f2ea00ac0985fa55bf09df7c99be0d91ea0",
+          "runFile": "osn-run.json",
+          "runSha256": "41d7b01d9f1d83ffb2470a6e2ebeeafd072b99e668a417b57ef84be1296a9ff0",
+          "counts": {
+            "inconclusive/supported": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "77fa834f56e94206bb3edfb3ebfa8d11",
+        "measuredAt": "2026-11-13T15:18:34.215Z",
+        "appRevision": "1ac4476c856f9e57f82d89fd59c6dfaf3a8b3286",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "7a580871179b8d1da22ad98082051cfe42b61aea",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "a2c2dfde30c6bae09b8f2886ff4bf1d52c80f69030db32b6a562a01fa214e2bb",
+        "gradingAdapterId": "ntilde-owned-osc9-grading-v1",
+        "gradingAdapterBundleSha256": "048ed0c5034cd8b9c2b017395b5b57c1817cca53c78cfa1c90f4d93f9a2d2417",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v51",
+        "sourceSnapshotManifestSha256": "06d2410b794e562e4466b660a5b5a5f9890ccec869bbb96d8af0e858ea6598de"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "26c93f5a0b3c1783140b63305b2b403b",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "741730d5ebcdbc46608c2e6a83d151b53ba03119c02e544744e95e63bcad10b4",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades; owned effects do not change the stock score."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc9-publication.test.mjs",
+        "testSha256": "130b91493b34922d8ff9aa4c2072400686c6035c232ccd6190e3f51b7fda8fd3"
+      }
     }
   ],
   "benchmark": [
@@ -4443,6 +4516,59 @@
       ]
     },
     {
+      "id": "extensions.notifications",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc9",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc9",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.notifications",
+          "suite": "osc9",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared OSC 9 capability does not establish desktop notification delivery"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-preserved-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Declared OSC 9 capability does not establish desktop notification delivery"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
       "id": "extensions.osc0-icon-title",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -5091,6 +5217,59 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-stored-cells-and-pane-metadata"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc9-progress",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc9",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc9",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc9-progress",
+          "suite": "osc9",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-preserved-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "OSC 9;4 progress display was not attempted; this probe has no effect readback or prior-state restoration"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status"
         }
       ]
     },
