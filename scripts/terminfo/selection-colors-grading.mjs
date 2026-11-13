@@ -184,6 +184,8 @@ function checkPinned(contract, recorded, readFrames, replayModule) {
         const screen = pinnedScreen(contract, pinnedScreens);
         const replay = replaySelectionColorResetTermless(contract, screen);
         requirePinnedAgreement(contract, pinned, replay, label);
+        // The shared comparison does not cover the not-tested declaration, which is the reset cases' whole pinned verdict.
+        if (JSON.stringify(pinned.notTested) !== JSON.stringify(replay.notTested)) throw new Error(`Pinned ${contract.caseId} grading does not match its observed evidence (${label}).`);
         if (replayModule) {
             const live = replayModule.ntildeRunSelectionColorsTermless(contract.caseId, selectionColorsRecordingContext(contract, [], screen));
             if (live.pass !== pinned.pass || live.response !== pinned.response || (live.note ?? null) !== (pinned.note ?? null)

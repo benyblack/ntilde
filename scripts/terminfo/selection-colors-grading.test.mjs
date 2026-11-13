@@ -161,3 +161,10 @@ test('a changed run log or a doctored observation file is refused by the full re
     tampered.run.cases[0].reads[2].queries[0].reply = null;
     assert.throws(() => syntheticSelectionColorsReports(tampered), /replies differ from their read frame/, 'the rederivation refuses a reply swapped after the fact');
 });
+
+test('a retained reset-case pinned result whose not-tested declaration was altered is refused', () => {
+    const evidence = syntheticSelectionColorsEvidence('a'.repeat(32), 'f'.repeat(64), {});
+    const tampered = cloneSelectionColorsEvidence(evidence);
+    tampered.run.cases[2].pinned.notTested.noObservable = 'highlight foreground color';
+    assert.throws(() => syntheticSelectionColorsReports(tampered), /does not match its observed evidence/);
+});

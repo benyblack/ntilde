@@ -281,13 +281,12 @@ const inkCoverageOf = (render, effective, overrides) => {
 
 function renderMatches(render, effective, overrides) {
     if (!render || render.background !== effective.background || !render.controlUnchanged) return false;
-    if (overrides.selectionBackground !== null) return render.selectionBlank.solid === opaqueArgb(overrides.selectionBackground);
-    if (!render.selectionBlank.matchesBaseline) return false;
-    if (overrides.selectionForeground !== null) {
-        // The selected ink must carry whichever distinguishable value this stage set; any other color fails closed.
-        return inkCoverageOf(render, effective, overrides) > 10;
-    }
-    return render.selectedInk.dominantMatchesBaseline;
+    // The selection fill and the selected ink are checked independently: a background override never excuses a missing foreground.
+    if (overrides.selectionBackground !== null ? render.selectionBlank.solid !== opaqueArgb(overrides.selectionBackground) : !render.selectionBlank.matchesBaseline) return false;
+    // The selected ink must carry whichever distinguishable value this stage set; any other color fails closed.
+    if (overrides.selectionForeground !== null) return inkCoverageOf(render, effective, overrides) > 10;
+    // With no foreground override the ink follows the (possibly overridden) fill, so only an untouched fill pins it to the baseline.
+    return overrides.selectionBackground !== null || render.selectedInk.dominantMatchesBaseline;
 }
 
 /** The mode the scene's cursor configuration must read back as: hidden at its home. */

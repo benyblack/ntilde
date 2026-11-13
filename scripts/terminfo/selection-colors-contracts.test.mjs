@@ -121,6 +121,8 @@ test('the grader refuses every injected defect with the right verdict class', ()
     assert.deepEqual(grades({ ignoreReset: '117' }), ['supported', 'supported', 'unsupported', 'supported']);
     assert.deepEqual(grades({ ignoreReset: '119' }), ['supported', 'supported', 'supported', 'unsupported']);
     assert.deepEqual(grades({ wrongTarget: true }), ['supported', 'supported', 'unsupported', 'unsupported'], 'a crossed reset fails its own case');
+    assert.deepEqual(grades({ inkIgnoresForegroundUnderBackground: true }), ['supported', 'supported', 'inconclusive', 'inconclusive'],
+        'a foreground override that is not drawn while a background override is active cannot pass the coupled experiments');
     assert.deepEqual(grades({ lostOther: true }), ['supported', 'supported', 'unsupported', 'unsupported'], 'losing the unaffected override fails');
     assert.deepEqual(grades({ staleReplies: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     assert.deepEqual(grades({ renderStale: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);

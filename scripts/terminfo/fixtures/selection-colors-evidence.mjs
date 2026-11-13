@@ -65,7 +65,7 @@ function appOverrides(spec, index, behavior) {
     if (defect === 'ignore') return lastOverride();
     if (defect === 'wrong-target') {
         // The reset hits the other selection channel instead of its own: mine stays, the other is dropped.
-        const mine = spec.caseId.endsWith('117') ? 'selectionBackground' : 'selectionForeground';
+        const mine = spec.stages[index].writes.some(bytes => bytes.startsWith('\x1b]117')) ? 'selectionBackground' : 'selectionForeground';
         const other = mine === 'selectionBackground' ? 'selectionForeground' : 'selectionBackground';
         clone[mine] = states[index - 1][mine];
         clone[other] = null;
@@ -217,8 +217,12 @@ function stageFrameAndRead(ctx) {
     let repeat = null;
     if (behavior.renderStale && step.kind === 'reset') repeat = frames.at(-1);
     else if (behavior.baselinePng && step.kind === 'reset') repeat = frames[firstFrame];
-    const drawn = behavior.wrongRender && step.kind === 'reset'
+    let drawn = behavior.wrongRender && step.kind === 'reset'
         ? { ...renderTheme(baseline, colors, overrides, behavior), effectiveSelectionBackgroundArgb: 0xff123456 } : undefined;
+    // A renderer that draws the default ink whenever a selection background override is also active.
+    if (behavior.inkIgnoresForegroundUnderBackground && overrides.selectionBackground !== null && overrides.selectionForeground !== null) {
+        drawn = { ...renderTheme(baseline, colors, overrides, behavior), selectionForegroundOverride: false };
+    }
     const view = { theme: renderTheme(baseline, colors, overrides, behavior), extra: { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries },
         repeat, drawn };
     frames.push(frame(frames.length, 'selc-read', screen, deviceAttribute, view, store));
