@@ -342,19 +342,32 @@ export class DesktopLease {
     release() {
         if (this.launchAttempted && !this.cleanupVerified) throw new Error('Refusing to release the desktop lease: the launch has no verified cleanup.');
         this.assertHeld();
+        const claimed = claimOwnerRecord(this.#lockPath, this.#record.lease, this.#record.pid, 'release');
         const tombstone = this.#lockPath + '.release-' + this.#record.lease;
         renameSync(this.#lockPath, tombstone);
-        const after = parseOwnerRecord(safeRead(join(tombstone, ownerFile)));
-        if (after.kind !== 'owned' || after.record.lease !== this.#record.lease || after.record.pid !== this.#record.pid) {
-            try { renameSync(tombstone, this.#lockPath); }
-            catch { throw new Error('Desktop lock ownership changed during release and could not be restored; evidence kept at ' + tombstone + '.'); }
-            throw new Error('Desktop lock ownership changed during release; the lock was restored untouched.');
-        }
+        const claimedName = claimed.slice(this.#lockPath.length + 1);
         this.released = true;
-        try { unlinkSync(join(tombstone, ownerFile)); rmdirSync(tombstone); }
+        try { unlinkSync(join(tombstone, claimedName)); rmdirSync(tombstone); }
         catch (error) { console.error('[desktop-lock] released, but the tombstone ' + tombstone + ' could not be removed: ' + bounded(error.code ?? error.message, 80)); }
         audit(this.#lockPath, { event: 'released', lease: this.#record.lease, entrypoint: this.#record.entrypoint, launch: this.#record.launch }, this.#deps);
     }
+}
+
+/**
+ * Take the owner record out of the lock directory while keeping the directory itself in place, then confirm it is the expected
+ * lease. The canonical path is never free during the check, so a contender can only see an ownerless (refused) directory; a record
+ * that turns out to belong to someone else is put straight back. Returns the claimed record's path.
+ */
+function claimOwnerRecord(lockPath, lease, pid, suffix) {
+    const record = join(lockPath, ownerFile), claimed = join(lockPath, ownerFile + '.' + suffix + '-' + lease);
+    renameSync(record, claimed);
+    const found = parseOwnerRecord(safeRead(claimed));
+    if (found.kind !== 'owned' || found.record.lease !== lease || (pid !== undefined && found.record.pid !== pid)) {
+        try { renameSync(claimed, record); }
+        catch { throw new Error('A different owner record was moved aside during ' + suffix + ' and could not be restored; evidence kept at ' + claimed + '.'); }
+        throw new Error('Desktop lock ownership changed during ' + suffix + '; the lock was restored untouched.');
+    }
+    return claimed;
 }
 
 function safeRead(path) {
@@ -518,15 +531,12 @@ export function recoverDesktopLease(options) {
     if ((state.record.status === 'cleanup-failed' || state.record.launch === 'attempted') && options.confirmDesktopIdle !== true)
         throw new Error('This lease attempted a launch. Confirm no owned App window remains and pass --confirm-desktop-idle.');
     const aside = lockPath + '.recovered-' + state.record.lease + '-' + new Date(deps.now()).toISOString().replaceAll(/[^0-9TZ]/g, '') + '-' + randomBytes(3).toString('hex');
+    // The checks above are not atomic with what follows: a concurrent recovery plus a new collection could have put a different live
+    // lease at this path in between. Claim the record first (the directory stays, so nobody can acquire meanwhile), confirm it is the
+    // requested lease, and only then move the now-ownerless directory aside; a foreign record is restored untouched.
+    const claimed = claimOwnerRecord(lockPath, state.record.lease, undefined, 'recovery');
     renameSync(lockPath, aside);
-    // The checks above are not atomic with the rename: a concurrent recovery plus a new collection could have put a different
-    // live lease at this path in between. Verify what was actually moved and give a foreign lock straight back.
-    const moved = parseOwnerRecord(safeRead(join(aside, ownerFile)));
-    if (moved.kind !== 'owned' || moved.record.lease !== state.record.lease) {
-        try { renameSync(aside, lockPath); }
-        catch { throw new Error('A different lock was moved aside during recovery and could not be restored; evidence kept at ' + aside + '.'); }
-        throw new Error('The lock changed during recovery; it was restored untouched.');
-    }
+    renameSync(join(aside, claimed.slice(lockPath.length + 1)), join(aside, ownerFile));
     audit(lockPath, { event: 'recovered', lease: state.record.lease, holderPid: state.record.pid, holderReason: assessment.reason, confirmedIdle: options.confirmDesktopIdle === true, evidence: bounded(aside, 300) }, deps);
     return { recovered: state.record.lease, evidence: aside };
 }

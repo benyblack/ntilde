@@ -368,9 +368,11 @@ test('recovery re-verifies what it moved: a lease swapped in between the checks 
         rmSync(lockPath, { recursive: true }); mkdirSync(lockPath); writeFileSync(join(lockPath, 'owner'), rival('b'.repeat(32)));
         return [];
     } });
-    assert.throws(() => recoverDesktopLease({ lockPath, leaseId: lease32, deps: racing }), /changed during recovery; it was restored untouched/);
+    assert.throws(() => recoverDesktopLease({ lockPath, leaseId: lease32, deps: racing }), /ownership changed during recovery; the lock was restored untouched/);
     assert.equal(readDesktopLockState(lockPath).record.lease, 'b'.repeat(32));
     assert.deepEqual(readdirSync(root).filter(name => name.includes('.recovered-')), []);
+    assert.deepEqual(readdirSync(lockPath), ['owner'], 'the foreign record is back in place and no claim file is left behind');
+    assert.equal(readFileSync(join(lockPath, 'owner'), 'utf8'), rival('b'.repeat(32)));
 }));
 
 test('an entrypoint records only the marker kinds it really propagates; invalid kinds are refused before any directory exists', () => sandboxAsync(async ({ root, lockPath }) => {
