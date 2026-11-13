@@ -31,7 +31,7 @@ import { adaptRectEditCollector } from './rect-edit-grading-collector.mjs';
 import { adaptColEditCollector } from './col-edit-grading-collector.mjs';
 import { adaptRectChecksumCollector } from './rect-checksum-grading-collector.mjs';
 import { adaptLrMarginsCollector } from './lr-margins-grading-collector.mjs';
-import { inputPlanV2, routedInputFirstPolicy } from './input-plan.mjs';
+import { inputPlanForSuiteId, inputPlanV2, routedInputFirstPolicy } from './input-plan.mjs';
 import { routedInputCaseIds, routedInputContractsVersion, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
 import { adaptRoutedInputCollector, routedInputAdapterId } from './routed-input-grading-collector.mjs';
 import { buildRoutedInputGradingReport, routedInputCounts } from './routed-input-grading.mjs';
@@ -142,16 +142,18 @@ function checkUnavailable(output, evidence, runId, context) {
     requireLayeredDerivation(output, adapterBytes, context);
 }
 
-/** Full rederivation: owned input journal, run log, layered adapter bytes and conclusions. */
+/** Full rederivation: owned input journal, run log, layered adapter bytes and conclusions. Plan generations that keep the routed
+ * events verbatim (v3 and later) pass their policy-selected plan, so the layer keeps deciding on the same shared journal. */
 export function checkRoutedInputEvidence(output, evidence, runId, context, proof) {
+    const plan = inputPlanForSuiteId(context.inputSuiteId);
     if (context.routedInputAdapterId !== routedInputAdapterId || context.routedInputSuiteId !== routedInputGradedSuiteId) {
         throw new Error('Missing or changed routed-input adapter declaration.');
     }
     if (layerChain.some(([name]) => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
         throw new Error(`routed-input evidence requires ${predecessorList}.`);
     }
-    if (evidence.inputEvidence?.suiteId !== inputPlanV2.suiteId || context.inputSuiteId !== inputPlanV2.suiteId) {
-        throw new Error('routed-input evidence requires the owned routed-input suite.');
+    if (evidence.inputEvidence?.suiteId !== plan.suiteId || context.inputSuiteId !== plan.suiteId) {
+        throw new Error('routed-input evidence requires the owned routed-input suite of the run policy.');
     }
     if (evidence.inputEvidence.status === 'unavailable') return checkUnavailable(output, evidence, runId, context);
     if (evidence.inputEvidence.file !== 'input-observations.json') throw new Error('routed-input evidence requires the completed owned routed-input suite.');
@@ -164,7 +166,8 @@ export function checkRoutedInputEvidence(output, evidence, runId, context, proof
         report.inputReportSha256 === evidence.inputEvidence.sha256];
     if (!identityMatches.every(Boolean)) throw new Error('routed-input report adapter, contract or input identity differs from the receipt.');
     const input = { frames: jsonLines(output, 'input-snapshots.jsonl'), actions: jsonLines(output, 'input-actions.jsonl'), seal: proof?.proofs?.[0]?.input?.seal };
-    const derived = buildRoutedInputGradingReport(input, run, runId, report.adapter, { contractsVersion: report.contractsVersion, inputReportSha256: evidence.inputEvidence.sha256 });
+    const derived = buildRoutedInputGradingReport(input, run, runId, report.adapter, { contractsVersion: report.contractsVersion, inputPlan: plan,
+        inputReportSha256: evidence.inputEvidence.sha256 });
     if (!sameJson(report, derived)) throw new Error('routed-input observations do not match retained evidence.');
     if (!sameJson(routedInputCounts(report), binding.counts)) throw new Error('routed-input receipt counts do not match the report.');
 }

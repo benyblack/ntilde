@@ -24,27 +24,28 @@ export async function collectInput({ config, fence, owner, input = process.stdin
         throw error;
     }
     const cases = plan.make(initial.screen.rows, initial.screen.cols), controls = {};
+    const queries = plan.queries ?? inputModeQueries;
     fence.detachInput();
-    const capture = rawInputCapture(input, output);
+    const capture = rawInputCapture(input, output, 4500, undefined, plan.captureBudget);
     let attempts = 0;
     const take = async action => { attempts++; return capture.capture(action); };
     const tell = (kind, sample, extra = {}) => owner(kind, null, { ...extra, capture: sample });
     try {
         await tell('input-bind', await take(() => write(output, '\x1b[?1049h\x1b[!p\x1b[?6l\x1b[r\x1b[4l\x1b[0m\x1b[HNTILDE_IN_' + config.runId)));
         await cases.reduce((previous, item) => previous.then(async () => {
-            const control = await take(() => write(output, item.setup + inputModeQueries));
-            if (control.hex !== inputModeReplyHex(item.modes)) throw new Error('Independent input-mode control failed before dispatch.');
+            const control = await take(() => write(output, item.setup + queries));
+            if (control.hex !== (item.controlPrefixHex ?? '') + inputModeReplyHex(item.modes)) throw new Error('Independent input-mode control failed before dispatch.');
             controls[item.id] = control.hex;
             await tell('input-control', control, { caseId: item.id });
             const sample = await take(() => owner('input-apply', null, { caseId: item.id }));
             await tell('input-read', sample, { caseId: item.id });
         }), Promise.resolve());
-        const restored = await take(() => write(output, inputReset + inputFinalRestore + inputModeQueries));
-        if (restored.hex !== inputModeReplyHex(defaultInputModes)) throw new Error('Input modes were not restored.');
+        const restored = await take(() => write(output, inputReset + inputFinalRestore + queries));
+        if (restored.hex !== inputModeReplyHex(plan.finalModes ?? defaultInputModes)) throw new Error('Input modes were not restored.');
         await tell('input-finish', restored);
         capture.dispose();
         await owner('input-seal', null, { captureStatus: { failed: capture.failed, disposed: true, attempts, lastAttempt: capture.lastAttempt } });
-        // Child-received DECRQM replies of every mode control and of the restored state, for a layer that replays pinned code over them.
+        // Child-received DECRQM/XTQMODKEYS replies of every mode control and of the restored state, for layers that replay pinned code over them.
         return { status: 'complete', controls, restored: restored.hex, geometry: { rows: initial.screen.rows, cols: initial.screen.cols } };
     } catch (error) {
         writeFileSync(join(config.output, 'input-raw-failure.json'), JSON.stringify({ attempts, failed: capture.failed, lastAttempt: capture.lastAttempt,

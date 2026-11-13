@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { requirePinnedAgreement } from './graded-plan.mjs';
 import { buildInputReport, checkInput, sameInputFact } from './input-state.mjs';
-import { inputPlanV2 } from './input-plan.mjs';
+import { inputPlanV2, inputPlanForPolicy } from './input-plan.mjs';
 import { makeRoutedInputCases } from './routed-input-cases.mjs';
 import { routedInputAdapterId } from './routed-input-grading-collector.mjs';
 import { gradeRoutedInputCase, oracleDisagreements, oracleHex, pinnedOutcome, replayRoutedInputPinned, routedInputCaseIds,
@@ -94,18 +94,51 @@ function caseReport(caseId, recorded, context) {
             note: result.note ?? null, scope: 'declared Avalonia events in a disposable direct-local pane; child bytes captured independently of the App' } };
 }
 
-/** Re-derive and cross-check every case; throw on any disagreement. */
-export function buildRoutedInputGradingReport({ frames, actions, seal }, run, runId, adapter, { contractsVersion = routedInputContractsVersion, replayModule = null, inputReportSha256 } = {}) {
+/**
+ * The journal inputs of a plan generation that shares this benchmark plan (v3 keeps every routed event verbatim and adds the
+ * modifyOtherKeys cases) must match the frozen v2 cases exactly: same order, setup, event, roles, literal, and modes extended
+ * only by the negotiated level, which inputReset holds at 0. Returns the failure reason, or null.
+ */
+export function routedInputsDiverge(inputs, routedPlan = makeRoutedInputCases(40, 140)) {
+    const routed = inputs.filter(item => routedPlan.some(planItem => planItem.id === item.id));
+    if (routed.length !== routedPlan.length) return 'routed-input case count differs from the frozen plan';
+    for (let index = 0; index < routedPlan.length; index++) {
+        const journal = routed[index], expected = routedPlan[index];
+        if (journal.id !== expected.id) return `routed-input case order differs at ${expected.id}`;
+        for (const key of ['setup', 'expectedHex']) if (journal[key] !== expected[key]) return `routed-input ${expected.id} changed ${key}`;
+        if (JSON.stringify(journal.event) !== JSON.stringify(expected.event) || JSON.stringify(journal.roles) !== JSON.stringify(expected.roles)) {
+            return `routed-input ${expected.id} changed its event or roles`;
+        }
+        if (journal.modes.modifyOtherKeysLevel === 0) {
+            const without = { ...journal.modes, modifyOtherKeysLevel: undefined };
+            if (JSON.stringify(without) === JSON.stringify(expected.modes)) continue;
+        }
+        if (JSON.stringify(journal.modes) !== JSON.stringify(expected.modes)) return `routed-input ${expected.id} changed its modes`;
+    }
+    return null;
+}
+
+/** Re-derive and cross-check every case; throw on any disagreement. Plan generations that keep the routed events verbatim pass
+ * their policy-selected plan, and the subset check above proves the shared journal still carries these benchmarks unchanged. */
+export function buildRoutedInputGradingReport({ frames, actions, seal }, run, runId, adapter, { contractsVersion = routedInputContractsVersion, replayModule = null,
+    inputPlan = inputPlanV2, inputReportSha256 } = {}) {
     validateRoutedInputEvidence(run, adapter);
-    const input = buildInputReport(frames, actions, seal, runId, inputPlanV2);
+    if (inputPlan === undefined || typeof inputPlan.make !== 'function') throw new Error('routed-input requires a plan.');
+    const input = buildInputReport(frames, actions, seal, runId, inputPlan);
     const plan = makeRoutedInputCases(frames[0].screen.rows, frames[0].screen.cols);
-    checkInput(sameInputFact(input.inputs, plan) && oracleDisagreements(plan).length === 0);
+    if (inputPlan.id === inputPlanV2.id) {
+        checkInput(sameInputFact(input.inputs, plan) && oracleDisagreements(plan).length === 0);
+    } else {
+        const diverge = routedInputsDiverge(input.inputs, plan);
+        if (diverge) throw new Error(`The shared journal diverged from the frozen routed-input plan: ${diverge}.`);
+        checkInput(oracleDisagreements(plan).length === 0);
+    }
     const context = { plan, input, actions, frames, contractsVersion, replayModule };
     const cases = routedInputCaseIds.map((caseId, position) => {
         if (run.cases[position].caseId !== caseId) throw new Error(`${label} case order differs from the contracts.`);
         return caseReport(caseId, run.cases[position], context);
     });
-    return { schemaVersion: 1, suiteId: routedInputGradedSuiteId, runId, contractsVersion, adapter, scope, inputSuiteId: inputPlanV2.suiteId,
+    return { schemaVersion: 1, suiteId: routedInputGradedSuiteId, runId, contractsVersion, adapter, scope, inputSuiteId: inputPlan.suiteId,
         inputReportSha256: inputReportSha256 ?? hash(JSON.stringify(input, null, 2) + '\n'), initialSnapshot: 0, restoredSnapshot: frames.length - 1, cases };
 }
 

@@ -63,6 +63,7 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         Assert.False(result.ObservationAvailable); Assert.Null(result.Rows); Assert.Null(result.Cols);
         Assert.Null(result.ViewRows); Assert.Null(result.ViewCols); Assert.Null(result.ApplicationKeypad);
         Assert.Null(result.MouseTracking); Assert.Null(result.MouseSgr); Assert.Null(result.KittyKeyboardFlags);
+        Assert.Null(result.ModifyOtherKeysLevel);
     }
 
     private static Task<GeneratePaneInputResult?> Dispatch(MainWindow window, TerminalPane pane, GeneratePaneInputParams input,
@@ -153,6 +154,125 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "7", Text = "7" });
         Assert.Null(result);
         Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("a", 2, "\u001b[27;5;97~")]
+    [InlineData("a", 3, "\u001b[27;6;65~")]
+    [InlineData("a", 4, "\u001b[27;3;97~")]
+    [InlineData("a", 5, "\u001b[27;4;65~")]
+    [InlineData("digit1", 2, "\u001b[27;5;49~")]
+    [InlineData("digit2", 2, "\u001b[27;5;50~")]
+    [InlineData("digit1", 3, "\u001b[27;6;33~")]
+    [InlineData("digit1", 4, "\u001b[27;3;49~")]
+    [InlineData("leftBracket", 2, "\u001b[27;5;91~")]
+    [InlineData("semicolon", 2, "\u001b[27;5;59~")]
+    [InlineData("slash", 3, "\u001b[27;6;63~")]
+    [InlineData("return", 1, "\u001b[27;2;13~")]
+    [InlineData("return", 2, "\u001b[27;5;13~")]
+    [InlineData("return", 4, "\u001b[27;3;13~")]
+    [InlineData("tab", 2, "\u001b[27;5;9~")]
+    [InlineData("tab", 4, "\u001b[27;3;9~")]
+    [InlineData("tab", 1, "\u001b[Z")]
+    [InlineData("backspace", 1, "\u001b[27;2;127~")]
+    [InlineData("backspace", 4, "\u001b[27;3;127~")]
+    [InlineData("backspace", 3, "\u001b[27;6;8~")]
+    [InlineData("backspace", 2, "\u007f")]
+    [InlineData("escape", 2, "\u001b[27;5;27~")]
+    [InlineData("escape", 4, "\u001b[27;3;27~")]
+    [InlineData("space", 1, "\u001b[27;2;32~")]
+    [InlineData("i", 2, "\u001b[27;5;105~")]
+    public async Task Ordinary_modified_keys_encode_at_level_two_and_report_the_negotiated_level(string key, int modifiers, string expected)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[>4;2m");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key, Modifiers = modifiers });
+        Assert.NotNull(result); Assert.True(result.Handled); Assert.True(result.InputSubmitted);
+        Assert.Equal(expected, Assert.Single(session.SentInput));
+        Assert.Equal(2, result.ModifyOtherKeysLevel); Assert.Equal(modifiers, result.Modifiers);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("a", 2, "\u0001")]
+    [InlineData("leftBracket", 2, "\u001b")]
+    [InlineData("digit2", 2, "\u0000")]
+    [InlineData("slash", 2, "\u001f")]
+    [InlineData("digit1", 2, "\u001b[27;5;49~")]
+    [InlineData("digit1", 3, "\u001b[27;6;33~")]
+    [InlineData("semicolon", 2, "\u001b[27;5;59~")]
+    [InlineData("return", 1, "\u001b[27;2;13~")]
+    [InlineData("return", 2, "\u001b[27;5;13~")]
+    [InlineData("tab", 2, "\u001b[27;5;9~")]
+    [InlineData("tab", 1, "\u001b[Z")]
+    [InlineData("escape", 1, "\u001b")]
+    [InlineData("backspace", 1, "\u007f")]
+    [InlineData("a", 4, "\u001ba")]
+    public async Task At_level_one_aliases_keep_their_legacy_bytes_and_extended_chords_encode(string key, int modifiers, string expected)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[>4;1m");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key, Modifiers = modifiers });
+        Assert.NotNull(result); Assert.True(result.Handled);
+        Assert.Equal(expected, Assert.Single(session.SentInput));
+        Assert.Equal(1, result.ModifyOtherKeysLevel);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("a", 2, "\u0001")]
+    [InlineData("return", 1, "\r")]
+    [InlineData("tab", 1, "\u001b[Z")]
+    [InlineData("backspace", 1, "\u007f")]
+    [InlineData("escape", 1, "\u001b")]
+    [InlineData("a", 4, "\u001ba")]
+    public async Task At_level_zero_every_modified_ordinary_key_keeps_its_legacy_bytes(string key, int modifiers, string expected)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[>4;2m\u001b[>4m");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key, Modifiers = modifiers });
+        Assert.NotNull(result); Assert.True(result.Handled);
+        Assert.Equal(expected, Assert.Single(session.SentInput));
+        Assert.Equal(0, result.ModifyOtherKeysLevel);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("a", 8)]
+    [InlineData("a", 6)]
+    public async Task Meta_and_ctrl_alt_ordinary_chords_stay_unhandled_without_inventing_bytes(string key, int modifiers)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[>4;2m");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key, Modifiers = modifiers });
+        Assert.NotNull(result); Assert.False(result.Handled); Assert.False(result.InputSubmitted);
+        Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaFact]
+    public async Task A_handled_ordinary_key_suppresses_its_paired_backend_text_once()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[>4;2m");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "space", Modifiers = 1, Text = " " });
+        Assert.NotNull(result); Assert.True(result.Handled); Assert.True(result.TextHandled);
+        Assert.Equal("\u001b[27;2;32~", Assert.Single(session.SentInput));
+        // The paired decision was consumed: a later standalone commit is ordinary text again, and the next
+        // ordinary key can still be dispatched (no correlation latches the fixture).
+        var standalone = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "text", Text = "7" });
+        Assert.NotNull(standalone);
+        var next = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "a", Modifiers = 2 });
+        Assert.NotNull(next); Assert.True(next.Handled);
+        Assert.Equal(new[] { "\u001b[27;2;32~", "7", "\u001b[27;5;97~" }, session.SentInput);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("a", "A")]
+    [InlineData("digit1", "!")]
+    public async Task An_unhandled_shifted_ordinary_key_delivers_its_paired_text_exactly_once(string key, string text)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[>4;2m");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = key, Modifiers = 1, Text = text });
+        Assert.NotNull(result); Assert.False(result.Handled); Assert.True(result.TextHandled); Assert.True(result.InputSubmitted);
+        Assert.Equal(text, Assert.Single(session.SentInput));
     }
 
     [AvaloniaTheory]

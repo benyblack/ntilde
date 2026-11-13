@@ -11,13 +11,15 @@ public sealed record GeneratePaneInputParams
     /// <summary>keyDown, keyUp, text, mousePress, mouseRelease, mouseMove or mouseWheel.</summary>
     [JsonPropertyName("kind")]
     public required string Kind { get; init; }
-    /// <summary>Keypad 0–9, decimal, separator, add, subtract, multiply, divide or enter.</summary>
+    /// <summary>Keypad 0–9, decimal, separator, add, subtract, multiply, divide or enter; or one bounded ordinary main-block key.</summary>
     [JsonPropertyName("key")]
     public string? Key { get; init; }
     /// <summary>
     /// Exactly one keypad character for a routed TextInput event. On <c>text</c> it is the whole event. On <c>keyDown</c> it is a second
     /// routed TextInput raised right after that key-down within the same synchronous dispatch, the text some backends emit for a key
-    /// the terminal already handled (modifiers must be zero). It lets a single declared action exercise the handled-key duplicate guard.
+    /// the terminal already handled. For a keypad key it must be that key's own character with zero modifiers; for an ordinary key it
+    /// must be exactly the US-layout character the key produces with the declared (zero or Shift-only) modifiers, so a single declared
+    /// action can exercise the handled-key duplicate guard or the unhandled-key text path without fabricating a correlation.
     /// </summary>
     [JsonPropertyName("text")]
     public string? Text { get; init; }
@@ -75,6 +77,9 @@ public sealed record GeneratePaneInputResult
     /// <summary>Observed framework event modifiers, using the request bit mask.</summary>
     [JsonPropertyName("modifiers")]
     public required int Modifiers { get; init; }
+    /// <summary>Post-dispatch effective modifyOtherKeys level (0–2) of the active screen, or null when it was not observed.</summary>
+    [JsonPropertyName("modifyOtherKeysLevel")]
+    public int? ModifyOtherKeysLevel { get; init; }
     /// <summary>Post-dispatch parser mode samples, not atomic encoder or child-delivery attestations.</summary>
     [JsonPropertyName("applicationKeypad")]
     public bool? ApplicationKeypad { get; init; }
@@ -94,7 +99,7 @@ public static class GeneratePaneInputValidation
         if (p.PaneId == Guid.Empty || p.Modifiers < 0 || p.Modifiers > 15) return false;
         return p.Kind switch
         {
-            "keyDown" => HasNoPointerFields(p) && IsKey(p.Key) && (p.Text == null || (p.Modifiers == 0 && IsKeypadText(p.Text))),
+            "keyDown" => HasNoPointerFields(p) && IsKey(p.Key) && (p.Text == null || IsValidPairedText(p)),
             "keyUp" => HasNoPointerFields(p) && p.Text == null && IsKey(p.Key),
             "text" => IsTextInput(p),
             _ => IsMouseInput(p),
@@ -123,6 +128,57 @@ public static class GeneratePaneInputValidation
     }
 
     private static bool IsButton(string? button) => button is "left" or "middle" or "right";
-    private static bool IsKey(string? key) => key is "0" or "1" or "2" or "3" or "4" or "5" or "6" or "7" or "8" or "9"
+
+    private static bool IsKey(string? key) => IsKeypadKey(key) || IsOrdinaryKey(key);
+
+    private static bool IsKeypadKey(string? key) => key is "0" or "1" or "2" or "3" or "4" or "5" or "6" or "7" or "8" or "9"
         or "decimal" or "separator" or "add" or "subtract" or "multiply" or "divide" or "enter";
+
+    /// <summary>
+    /// Ordinary main-block keys the fixture accepts, named by their US-layout position: letters <c>a</c>–<c>z</c>,
+    /// digits <c>digit0</c>–<c>digit9</c> (main row, distinct from the keypad <c>0</c>–<c>9</c>), punctuation
+    /// (<c>grave</c> <c>minus</c> <c>equal</c> <c>leftBracket</c> <c>rightBracket</c> <c>backslash</c>
+    /// <c>semicolon</c> <c>apostrophe</c> <c>comma</c> <c>period</c> <c>slash</c>) and
+    /// <c>tab</c> <c>backspace</c> <c>escape</c> <c>space</c> <c>return</c>. Modifiers are declared facts;
+    /// <c>meta</c> and <c>control+alt</c> chords are refused with text so no declared event can fabricate an AltGr or Cmd correlation.
+    /// </summary>
+    private static bool IsOrdinaryKey(string? key) => key is { Length: 1 } && key[0] is >= 'a' and <= 'z'
+        || key is "digit0" or "digit1" or "digit2" or "digit3" or "digit4" or "digit5" or "digit6" or "digit7" or "digit8" or "digit9"
+        or "grave" or "minus" or "equal" or "leftBracket" or "rightBracket" or "backslash" or "semicolon" or "apostrophe"
+        or "comma" or "period" or "slash" or "tab" or "backspace" or "escape" or "space" or "return";
+
+    /// <summary>
+    /// A key-down's follow-up text must be a valid correlation: the keypad key's own character with zero modifiers, or the ordinary
+    /// key's exact US-layout character with zero or Shift-only modifiers. Ctrl, Alt, Meta and Ctrl+Alt chords are refused a text so a
+    /// declared pair can never masquerade as a backend commit those keys do not produce.
+    /// </summary>
+    private static bool IsValidPairedText(GeneratePaneInputParams p)
+    {
+        if (IsKeypadKey(p.Key)) return p.Modifiers == 0 && IsKeypadText(p.Text);
+        return IsOrdinaryKey(p.Key) && p.Modifiers is 0 or 1 && OrdinaryPairedText(p.Key, (p.Modifiers & 1) != 0) == p.Text;
+    }
+
+    /// <summary>The single US-layout character the ordinary key produces with that shift state, or null when it composes none.</summary>
+    private static string? OrdinaryPairedText(string? key, bool shift) => key switch
+    {
+        "space" => " ",
+        "grave" => shift ? "~" : "`",
+        "minus" => shift ? "_" : "-",
+        "equal" => shift ? "+" : "=",
+        "leftBracket" => shift ? "{" : "[",
+        "rightBracket" => shift ? "}" : "]",
+        "backslash" => shift ? "|" : "\\",
+        "semicolon" => shift ? ":" : ";",
+        "apostrophe" => shift ? "\"" : "'",
+        "comma" => shift ? "<" : ",",
+        "period" => shift ? ">" : ".",
+        "slash" => shift ? "?" : "/",
+        _ when key is { Length: 1 } && key[0] is >= 'a' and <= 'z' => shift
+            ? char.ToUpperInvariant(key[0]).ToString()
+            : key,
+        _ when key is ['d', 'i', 'g', 'i', 't', ..] && key.Length == 6 && key[5] is >= '0' and <= '9' => shift
+            ? ")!@#$%^&*("[key[5] - '0'].ToString()
+            : key[5].ToString(),
+        _ => null,
+    };
 }

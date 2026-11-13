@@ -328,5 +328,11 @@
     "xtgettcapGradingSourceSha256": "xtgettcap-grading.mjs",
     "xtgettcapGradingCollectorSourceSha256": "xtgettcap-grading-collector.mjs",
     "xtgettcapReceiptSourceSha256": "xtgettcap-receipt.mjs",
-    "xtgettcapReceiptCoreSourceSha256": "xtgettcap-receipt-core.mjs"
+    "xtgettcapReceiptCoreSourceSha256": "xtgettcap-receipt-core.mjs",
+    "modifyOtherKeysCasesSourceSha256": "modify-other-keys-cases.mjs",
+    "modifyOtherKeysContractsSourceSha256": "modify-other-keys-contracts.mjs",
+    "modifyOtherKeysCollectorSourceSha256": "modify-other-keys-collector.mjs",
+    "modifyOtherKeysGradingSourceSha256": "modify-other-keys-grading.mjs",
+    "modifyOtherKeysGradingCollectorSourceSha256": "modify-other-keys-grading-collector.mjs",
+    "modifyOtherKeysReceiptSourceSha256": "modify-other-keys-receipt.mjs"
 }

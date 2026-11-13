@@ -128,7 +128,8 @@ public partial class MainWindow
         if (input.Kind is "keyDown" or "keyUp")
         {
             if (input.Key is not { } keyName) return null;
-            var (key, physical) = GeneratedKey(keyName);
+            // Validation already bounded the name; ordinary keys and keypad keys are two disjoint vocabularies.
+            var (key, physical) = GeneratedOrdinaryKey(keyName) ?? GeneratedKey(keyName);
             return new KeyEventArgs
             {
                 RoutedEvent = input.Kind == "keyDown" ? InputElement.KeyDownEvent : InputElement.KeyUpEvent,
@@ -169,6 +170,41 @@ public partial class MainWindow
         };
     }
 
+    private static (Key, PhysicalKey)? GeneratedOrdinaryKey(string key)
+    {
+        // Letters and main-row digits are contiguous enum ranges; punctuation and named keys follow the US layout.
+        if (key.Length == 1 && key[0] is >= 'a' and <= 'z')
+        {
+            int offset = key[0] - 'a';
+            return ((Key)((int)Key.A + offset), (PhysicalKey)((int)PhysicalKey.A + offset));
+        }
+        if (key.Length == 6 && key is ['d', 'i', 'g', 'i', 't', ..] && key[5] is >= '0' and <= '9')
+        {
+            int offset = key[5] - '0';
+            return ((Key)((int)Key.D0 + offset), (PhysicalKey)((int)PhysicalKey.Digit0 + offset));
+        }
+        return key switch
+        {
+            "grave" => (Key.OemTilde, PhysicalKey.Backquote),
+            "minus" => (Key.OemMinus, PhysicalKey.Minus),
+            "equal" => (Key.OemPlus, PhysicalKey.Equal),
+            "leftBracket" => (Key.OemOpenBrackets, PhysicalKey.BracketLeft),
+            "rightBracket" => (Key.OemCloseBrackets, PhysicalKey.BracketRight),
+            "backslash" => (Key.OemBackslash, PhysicalKey.Backslash),
+            "semicolon" => (Key.OemSemicolon, PhysicalKey.Semicolon),
+            "apostrophe" => (Key.OemQuotes, PhysicalKey.Quote),
+            "comma" => (Key.OemComma, PhysicalKey.Comma),
+            "period" => (Key.OemPeriod, PhysicalKey.Period),
+            "slash" => (Key.OemQuestion, PhysicalKey.Slash),
+            "tab" => (Key.Tab, PhysicalKey.Tab),
+            "backspace" => (Key.Back, PhysicalKey.Backspace),
+            "escape" => (Key.Escape, PhysicalKey.Escape),
+            "space" => (Key.Space, PhysicalKey.Space),
+            "return" => (Key.Enter, PhysicalKey.Enter),
+            _ => null,
+        };
+    }
+
     private static (Key, PhysicalKey) GeneratedKey(string key) => key switch
     {
         "0" => (Key.NumPad0, PhysicalKey.NumPad0),
@@ -190,7 +226,6 @@ public partial class MainWindow
         "enter" => (Key.Enter, PhysicalKey.NumPadEnter),
         _ => throw new ArgumentException("Not a bounded keypad key.", nameof(key)),
     };
-
     private static int ObservedMouseTracking(Ntilde.VT.ModeState modes) => modes switch
     {
         { MouseModeAnyEvent: true } => 1003,
@@ -229,6 +264,7 @@ public partial class MainWindow
                 MouseSgr = modes.MouseModeSGR,
                 MouseTracking = ObservedMouseTracking(modes),
                 KittyKeyboardFlags = modes.KittyKeyboard.Flags,
+                ModifyOtherKeysLevel = modes.ModifyOtherKeys.Level,
             };
             return true;
         }

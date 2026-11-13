@@ -10,7 +10,8 @@ export class OwnedInputObserver {
         checkInput(typeof performInput === 'function' && /^NTILDE_IN_[a-f\d]{32}$/.test(options.nonce ?? ''));
         this.performInput = performInput; this.plan = plan; this.runId = options.nonce.slice(10); this.frames = []; this.actions = [];
         this.next = 0; this.phase = 'start'; this.challenges = new Set();
-        const facts = { ...options, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true };
+        const facts = { ...options, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true,
+            ...(plan.readerBudget ? { snapshotBudget: plan.readerBudget } : {}) };
         this.readers = Array.from({ length: 4 }, () => new OwnedCellObserver(facts));
     }
     get paneId() { return this.readers[0].paneId; }
@@ -37,9 +38,9 @@ export class OwnedInputObserver {
         return { actionIndex: action.index };
     }
     expectedHex(item) {
-        if (this.phase === 'control') return inputModeReplyHex(item.modes);
+        if (this.phase === 'control') return (item.controlPrefixHex ?? '') + inputModeReplyHex(item.modes);
         if (this.phase === 'read') return item.expectedHex;
-        if (this.phase === 'finish') return inputModeReplyHex(defaultInputModes);
+        if (this.phase === 'finish') return inputModeReplyHex(this.plan.finalModes ?? defaultInputModes);
         return '';
     }
     acceptScreen(pair) {
