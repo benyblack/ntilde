@@ -658,9 +658,20 @@ export const capturedV58SourceFiles = Object.freeze({
 });
 
 
-// Fixed successor of the frozen v58 scope for the selection-color qualification.
+// Fixed successor of the frozen v58 scope for the insert/replace and selection-color qualifications.
 export const capturedV59SourceFiles = Object.freeze({
     ...capturedV58SourceFiles,
+    insertReplaceContractsSourceSha256: 'insert-replace-contracts.mjs',
+    insertReplaceCollectorSourceSha256: 'insert-replace-collector.mjs',
+    insertReplaceGradingSourceSha256: 'insert-replace-grading.mjs',
+    insertReplaceGradingCollectorSourceSha256: 'insert-replace-grading-collector.mjs',
+    insertReplaceReceiptSourceSha256: 'insert-replace-receipt.mjs',
+    insertReplacePinnedSourceSha256: 'insert-replace-pinned.mjs',
+    insertReplaceReplaySourceSha256: 'insert-replace-pinned-replay.mjs',
+    insertReplaceVtWriteSourceSha256: 'irm-vt-write.cs',
+    insertReplaceVtModesSourceSha256: 'irm-vt-modes.cs',
+    insertReplaceVtMarginsSourceSha256: 'irm-vt-margins.cs',
+    insertReplaceObserverContractSourceSha256: 'irm-observer-contract.cs',
     selectionColorsContractsSourceSha256: 'selection-colors-contracts.mjs',
     selectionColorsModelSourceSha256: 'selection-colors-model.mjs',
     selectionColorsCollectorSourceSha256: 'selection-colors-collector.mjs',
@@ -673,7 +684,9 @@ export const capturedV59SourceFiles = Object.freeze({
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV59SourceFiles)) throw new Error('Invalid current v59 source inventory.');
+    { const okKeys = Object.keys(ownedSourceFiles).sort(), v59Keys = Object.keys(capturedV59SourceFiles).sort();
+    if (okKeys.length !== v59Keys.length || okKeys.some((k, i) => k !== v59Keys[i] || ownedSourceFiles[k] !== capturedV59SourceFiles[k]))
+        throw new Error('Invalid current v59 source inventory.'); }
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

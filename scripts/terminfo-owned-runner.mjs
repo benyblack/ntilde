@@ -204,7 +204,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'shi', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -1794,6 +1794,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let sgrRasterObserver;
         let reverseWideObserver;
         let colorResetObserver;
+        let selectionColorsObserver;
         let pixelObserver;
         let pixelUnavailable;
         let colorObserver;
@@ -3024,6 +3025,13 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: `NTILDE_CR_${runId}`, expectedPaneId: cellObserver.paneId });
                 const result = await colorResetObserver.handle(request, budget);
                 appendFileSync(join(output, 'crst-snapshots.jsonl'), JSON.stringify(colorResetObserver.frames.at(-1)) + '\n');
+                return result;
+            }
+            if (prefix === 'selc') {
+                selectionColorsObserver ??= new SelectionColorsObserver({ output, appData, ownerPid: app.pid, profileName,
+                    nonce: `NTILDE_SL_${runId}`, expectedPaneId: cellObserver.paneId });
+                const result = await selectionColorsObserver.handle(request, budget);
+                appendFileSync(join(output, 'selc-snapshots.jsonl'), JSON.stringify(selectionColorsObserver.frames.at(-1)) + '\n');
                 return result;
             }
             const attributes = request.kind.startsWith('sgr-');
