@@ -102,3 +102,9 @@ test('each partial declaration requires the suffix even under an older policy', 
     assert.equal(includesReflowEvidence('/nonexistent', {}, { sourceSnapshotPolicy: policy }), true);
     assert.equal(includesReflowEvidence('/nonexistent', {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v51' }), false);
 });
+
+test('the runner creates every journal the receipt reads before any reflow request, so a typed refusal can still finalize', () => {
+    const runner = readFileSync(fileURLToPath(new URL('../terminfo-owned-runner.mjs', import.meta.url)), 'utf8');
+    for (const name of ['reflow-snapshots.jsonl', 'reflow-actions.jsonl'])
+        assert.ok(runner.includes(`writeFileSync(join(output, '${name}'), '', { flag: 'wx', mode: 0o600 });`), name);
+});
