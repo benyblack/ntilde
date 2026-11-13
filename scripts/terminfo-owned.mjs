@@ -66,7 +66,7 @@ function pathFor(root, file) {
 const policy = 'readonly-owned-source-graph-v51';
 // The desktop lease helper is the second reviewed pure bootstrap dependency (BCL imports only). It lives outside the measured
 // source graph, so the policy above does not change for it; its exact bytes are pinned here and loaded only when the runner asks for the lease.
-const desktopLockSha256 = '06f43d658905a18fe46b92cc3aafa021f967bf43f8aca6822cc07d3af28ac1ff';
+const desktopLockSha256 = 'a18473f05010ee07e555d399157aca1d258ed5fe77cd421520758d289c61e455';
 const desktopLeaseKey = Symbol.for('ntilde.terminfo.desktopLease');
 async function loadDesktopLock() {
     const path = join(repo, 'scripts/terminfo/desktop-lock.mjs');

@@ -315,6 +315,9 @@ test('holder assessment: a dead pid, a reused pid and an unknowable pid are thre
     assert.deepEqual(assessDesktopHolder(rec, goneDeps()), { holder: 'gone', reason: 'pid-absent' });
     assert.deepEqual(assessDesktopHolder(rec, liveDeps({ processBirth: () => 'Sat Nov 14 11:11:11 2026' })), { holder: 'gone', reason: 'pid-reused' });
     assert.equal(assessDesktopHolder(rec, liveDeps({ processBirth: () => { throw new Error('no ps'); } })).holder, 'ambiguous');
+    // A lease that could not record its holder's start time never claims PID reuse while that PID lives; a dead PID is still gone.
+    assert.deepEqual(assessDesktopHolder(record({ birth: 'unavailable' }), liveDeps()), { holder: 'ambiguous', reason: 'birth-not-recorded' });
+    assert.equal(assessDesktopHolder(record({ birth: 'unavailable' }), goneDeps()).holder, 'gone');
     assert.equal(assessDesktopHolder(rec, liveDeps({ processAlive: () => { throw Object.assign(new Error('x'), { code: 'EIO' }); } })).holder, 'ambiguous');
 });
 

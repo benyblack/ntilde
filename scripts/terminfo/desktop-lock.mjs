@@ -212,6 +212,8 @@ export function assessDesktopHolder(record, depsInput) {
     try { alive = deps.processAlive(record.pid); }
     catch (error) { return { holder: 'ambiguous', reason: 'liveness-unavailable:' + bounded(error.code ?? error.message, 40) }; }
     if (!alive) return { holder: 'gone', reason: 'pid-absent' };
+    // A lease whose holder start time could not be recorded can never prove PID reuse: a live PID stays ambiguous (held).
+    if (record.birth === 'unavailable') return { holder: 'ambiguous', reason: 'birth-not-recorded' };
     let birth;
     try { birth = deps.processBirth(record.pid); }
     catch { return { holder: 'ambiguous', reason: 'birth-unavailable' }; }
