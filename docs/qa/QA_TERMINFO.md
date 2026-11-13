@@ -1091,3 +1091,15 @@ mixed valid/invalid) each refused exactly once, and a verified recovery after ea
 margins, modes and active screen unchanged over an attributed seed. An advertised flag or count proves the reply only — never rendering, color accuracy or control-string
 execution; the settings-dependent `Ms` clipboard capability, X resources, clipboard permissions, remote delivery and other platforms are not claimed. No production code
 changed. Receipt schema 53 and source policy v48 (313 files) bind it; earlier policies stay frozen. Inventory: 101 qualified ids.
+
+### OSC 9 qualification (progress and notifications)
+
+The [OSC 9 batch](terminfo/2026-11-13-osc9-qualification.md) qualifies exactly `extensions.osc9-progress` and `extensions.notifications` through a layered collector
+extension (`ntilde-owned-osc9-grading-v1`) over the left/right-margin one (a sibling of the OSC 7/8 and title/icon-stack layers). Both pinned probes send and read nothing and
+can only return inconclusive (`osc9-progress` has no termless function; `notifications` reports a declared capability), so both pinned verdicts are preserved. Two
+separately identified effect contracts (`ntilde-osc9-progress-state-effect-v1`, `ntilde-osc9-notification-toast-effect-v1`) are graded by an independent OSC 9 oracle over
+the pane-metadata-and-session-status observer: stored progress kind/percent/owner and the actual tab suffix, and the private in-window toast with the window-focus and opt-in
+preconditions recorded at control time and at delivery. The parent performs and retains verified focus actions (`osn-focus.json`); absent-percentage, unknown/malformed-state,
+bare-`4`, text-flattening, cap and focus-suppression behavior is recorded as policy and never graded. A notification case without a valid inactive-window positive control stays
+inconclusive with its reason. No OS taskbar or desktop notification delivery is claimed. No production code changed. Receipt schema 56 and source policy v50 (336 files) bind it;
+earlier policies stay frozen.
