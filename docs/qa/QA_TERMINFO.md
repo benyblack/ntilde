@@ -247,8 +247,10 @@ user, worktree, entrypoint and acquisition time, `status` (`held` or `cleanup-fa
 (`none` or `attempted`). It holds no payloads. Only a *live, verified, healthy* holder is waited for, and only up to
 `NTILDE_TERMINFO_DESKTOP_LOCK_WAIT_SECONDS` (default 0, maximum 3600; a duration, never a bypass). Everything else
 refuses at once with a bounded diagnostic and launches nothing: a dead or PID-reused holder, a `cleanup-failed`
-lease, a partial or malformed owner record, a regular file left by the older common-core driver, a line from the
-retired manual `mkdir` protocol, a symlink, or an unreadable path. Nothing unreadable is ever read as idle.
+lease, a malformed owner record, a regular file left by the older common-core driver, a line from the
+retired manual `mkdir` protocol, a symlink, or an unreadable path. The one pause is an ownerless lock directory (a peer between
+`mkdir` and its owner write, or an interrupted acquisition): it is rechecked for up to three seconds, whatever the wait setting, and
+then refused like the rest. Nothing unreadable is ever read as idle.
 
 **Ownership and delegation.** The launcher process owns the lease; the App and worker are its descendants and
 never acquire. Entrypoints are not re-entrant: a child (or the same process) asking again is refused and told
