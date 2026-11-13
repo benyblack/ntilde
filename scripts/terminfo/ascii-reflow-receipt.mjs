@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+// Receipt validator for the bounded ASCII reflow suite; rederives both experiments from retained bytes.
 import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { adaptReflowCollector, asciiReflowAdapterId } from './ascii-reflow-grading-collector.mjs';
