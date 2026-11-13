@@ -24,7 +24,7 @@ termless capability is an adapter-side declaration the pinned code is served; it
 | `extensions.notifications` | inconclusive by design | inconclusive by design | **supported** (`ntilde-osc9-notification-toast-effect-v1`) | inconclusive |
 
 The effect contracts are separately identified, with their own bytes and oracle; the divergence (`pinned-inconclusive-by-design`) is recorded in
-[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`e82396559ccb41f604ea9672424f3228`), still grades both inconclusive
+[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`8c3a02fcf25c679feff6fcc1611f676e`), still grades both inconclusive
 (87 supported / 1 unsupported / 167 inconclusive, `suiteComplete=false`): **no stock score and no Core point is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -57,9 +57,9 @@ admitted, respectively); each was kept as a superseded attempt, not graded.
 ## Identities
 
 App 0.13.0 (operator supplied) built from `1ac4476c856f9e57f82d89fd59c6dfaf3a8b3286` (main with the merged modifyOtherKeys batch) (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly
-SHA-256 `24dce3b87c0a79b9384bea18420525acbfd46d7c689e7e400d058c71be78aa3f`; the apphost launcher is byte-identical to the earlier batches' while the App assembly differs because #958 changed generated-input production code, which this batch does not touch; measured scripts `10fac591b48a217e295c66e96ca26b3179756821`; source policy `readonly-owned-source-graph-v51` (342 files; manifest SHA-256
-`a0fe7e403e7a4e32fd01c045a6dee3e11a7ad0e94a610745cf3d83c02af0f0a9`); initial settings SHA-256 `b3feb3f3cd221c687328cfe37793e4c8ff3ac3b542e14e646897c13123043eea`; receipt schema 57; Node
-v24.22.2; owned run `ce49a60a438a87190dbcb2f4e566ce55`; collected 2026-11-13T14:38Z on macOS. The App label is operator supplied and the build is not binary-to-source
+SHA-256 `24dce3b87c0a79b9384bea18420525acbfd46d7c689e7e400d058c71be78aa3f`; the apphost launcher is byte-identical to the earlier batches' while the App assembly differs because #958 changed generated-input production code, which this batch does not touch; measured scripts `94844638bb57fc742d75f1653cb9358e3454d8b8`; source policy `readonly-owned-source-graph-v51` (342 files; manifest SHA-256
+`21e70f54463b4a6e9ccd3245d8356327ca4362db6fc6e685e4fc01be475f98dd`); initial settings SHA-256 `12a2a8fc5631ce05b80142e0b37930deaa67b1a168b03bdf1adff325bfafb91c`; receipt schema 57; Node
+v24.22.2; owned run `b9369a7b5dca890d8aad5b964e3b3a14`; collected 2026-11-13T14:54Z on macOS. The App label is operator supplied and the build is not binary-to-source
 attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-13-osc9/superseded/))
@@ -81,7 +81,9 @@ attestation. Predecessor suites ran in the same full run and their receipt suffi
     fit: no focus action ran and the notification case stayed **inconclusive** with its reason. Kept as measured, ungraded.
 11. Completed on policy v50 with both supported; superseded because #958 (modifyOtherKeys) merged first, so the batch was restacked onto it: policy v51, receipt 57, a rebuilt App
     from the merged tree and a fresh measurement.
-12. Final run, restacked: a whole focus attempt (command, settle, query: 1.6 s worst case) is admitted only while the reported deadline remainder covers it.
+12. Completed on the restacked head with both supported; superseded by the remaining SonarCloud findings (a stringification, a nested ternary, and a function-position
+    complexity attribution in the shared fixture).
+13. Final run, restacked: a whole focus attempt (command, settle, query: 1.6 s worst case) is admitted only while the reported deadline remainder covers it.
 
 ## Not claimed
 
