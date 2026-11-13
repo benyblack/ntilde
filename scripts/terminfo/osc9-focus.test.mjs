@@ -34,6 +34,18 @@ test('retries are bounded inside the owner socket timeout, whether every call is
     assert.equal(focusBudget.commandMs + focusBudget.settleMs + focusBudget.queryMs <= 2500, true);
 });
 
+test('the action never outlives the owner request deadline it is given', async () => {
+    for (const [left, attempts] of [[3900, 3], [2300, 1], [2000, 0], [0, 0]]) {
+        const h = harness([null], 100);
+        const record = await runFocusAction({ action: 'refocus', appPid: 4242, run: h.run, sleep: h.sleep, now: h.now, remaining: () => Math.max(0, left - h.elapsed()) });
+        assert.equal(record.attempts.length, attempts, `left ${left}`);
+        assert.equal(record.budgetMs, left); assert.ok(h.elapsed() <= left, `left ${left}, took ${h.elapsed()}`);
+    }
+    const timeouts = []; const h = harness([77], 100);
+    await runFocusAction({ action: 'refocus', appPid: 4242, run: (args, ms) => { timeouts.push(ms); return h.run(args, ms); }, sleep: h.sleep, now: h.now, remaining: () => 2300 - h.elapsed() });
+    assert.ok(timeouts.every(ms => ms >= 1 && ms <= 1000), JSON.stringify(timeouts));
+});
+
 test('a malformed action or pid is refused before any command runs', async () => {
     const h = harness([1]);
     await assert.rejects(runFocusAction({ action: 'raise', appPid: 1, run: h.run, sleep: h.sleep }), /Invalid/);

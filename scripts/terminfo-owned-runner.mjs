@@ -2275,8 +2275,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc9State.unavailable = true;
         };
         /** The parent defocuses (activates Finder) or refocuses the disposable App between observations and retains exactly what it did: the observed window state is the evidence. */
-        const performOsc9Action = async request => {
-            const record = await runFocusAction({ action: request.kind.slice(osc9Prefix.length + 1), appPid: app.pid, sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+        const performOsc9Action = async (request, budget) => {
+            // What is left of this request's shared owner deadline (the lineage checks already spent part of it): the whole action stays inside it.
+            const remaining = () => { try { return budget(); } catch { return 0; } };
+            const record = await runFocusAction({ action: request.kind.slice(osc9Prefix.length + 1), appPid: app.pid, sleep: ms => new Promise(resolve => setTimeout(resolve, ms)), remaining,
                 run: (args, timeout) => spawnSync('/usr/bin/osascript', args, { encoding: 'utf8', timeout }) });
             osc9FocusRecords.push(record);
             writeFileSync(join(output, 'osn-focus.json'), JSON.stringify(osc9FocusRecords, null, 2) + '\n', { mode: 0o600 });
@@ -2290,7 +2292,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     prefix: osc9Prefix, includeResolvedColors: true, planOf: osc9ObserverPlan, matchesBaseline: matchesOsc9Baseline, expose: exposeOsc9Facts }) };
             const state = osc9State;
             if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC 9 fixture ownership or availability changed.');
-            if (request.kind === `${osc9Prefix}-defocus` || request.kind === `${osc9Prefix}-refocus`) return performOsc9Action(request);
+            if (request.kind === `${osc9Prefix}-defocus` || request.kind === `${osc9Prefix}-refocus`) return performOsc9Action(request, budget);
             try {
                 const result = await state.observer.handle(request, budget);
                 if (request.kind === `${osc9Prefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
