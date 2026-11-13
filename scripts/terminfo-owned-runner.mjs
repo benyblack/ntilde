@@ -2993,6 +2993,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (untranslatedCellKind(request.kind)
                 || coreWrapKinds.has(request.kind)
                 || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
+                || /^osn-(?:defocus|refocus)$/.test(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
                 return { ok: true, ownerPid: app.pid, ...result };

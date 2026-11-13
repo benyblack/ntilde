@@ -136,7 +136,7 @@ function preservedOwnerCode(kind, code) {
     const geometry = { 'resize-start': 'resizeGeometryUnavailable', 'input-start': 'inputGeometryUnavailable',
         'images-start': 'imageGeometryUnavailable', 'saved-start': 'savedGeometryUnavailable' };
     if (geometry[kind] === code && code !== undefined) return true;
-    return ['metadata-start', 'shi-start', 'lnk-start', 'tst-start', 'ost-start'].includes(kind)
+    return ['metadata-start', 'shi-start', 'lnk-start', 'tst-start', 'ost-start', 'osn-start'].includes(kind)
         && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(code);
 }
 

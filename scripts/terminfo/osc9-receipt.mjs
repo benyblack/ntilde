@@ -71,7 +71,8 @@ function checkUnavailable(output, evidence, runId, context) {
 function requireFocusRecord(output, binding, run) {
     const bytes = regularBytes(output, artifact.focus);
     if (hash(bytes) !== binding.focusSha256) fail('OSC 9 focus record bytes changed.');
-    const journaled = run.experiments.flatMap(item => item.actions ?? []).map(item => item.response);
+    // The owner socket adds its own transport fields (ok, ownerPid) to the parent's record.
+    const journaled = run.experiments.flatMap(item => item.actions ?? []).map(({ response: { ok, ownerPid, ...record } }) => record);
     if (!sameJson(JSON.parse(bytes), journaled)) fail('OSC 9 focus record differs from the journaled actions.');
 }
 

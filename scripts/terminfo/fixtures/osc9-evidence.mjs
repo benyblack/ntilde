@@ -8,7 +8,7 @@ import { osc9AdapterId } from '../osc9-grading-collector.mjs';
 import { replayOsc9PinnedStatic } from '../osc9-grading.mjs';
 
 const barrier = '\x1b[?1;2c';
-const focusRecord = action => ({ action, method: 'osascript', script: `synthetic ${action}`, exitCode: 0, signal: null, stderr: '',
+const focusRecord = action => ({ ok: true, ownerPid: 4242, action, method: 'osascript', script: `synthetic ${action}`, exitCode: 0, signal: null, stderr: '',
     startedAt: '2026-11-13T12:00:00.000Z', finishedAt: '2026-11-13T12:00:02.000Z' });
 
 /** The presentation a read of this plan step shows when the App behaves exactly as the contract's oracle says (never a collected observation). */
@@ -53,7 +53,7 @@ export function syntheticOsc9Evidence(options = {}) {
     }
     for (const caseId of osc9CaseIds) run.pinned.push({ caseId, ...replayOsc9PinnedStatic(caseId) });
     frames.push(frame(base, frames.length, 'finish', {}, true));
-    const focus = run.experiments.flatMap(item => item.actions ?? []).map(item => item.response);
+    const focus = run.experiments.flatMap(item => item.actions ?? []).map(({ response: { ok, ownerPid, ...record } }) => record);
     return { frames, run, runId, focus, adapter: { id: osc9AdapterId, derivedFromAdapterId: 'ntilde-owned-left-right-margins-grading-v1',
         bundleSha256: options.bundleSha256 ?? 'f'.repeat(64), upstreamBundleSha256: 'a'.repeat(64) } };
 }
