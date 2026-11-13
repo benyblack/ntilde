@@ -83,6 +83,12 @@ const progressSpecs = [
     progressSpec('policy-missing-state', 'policy', 'normal17', osc('4;'), state('Normal', 17)),
 ];
 
+/** What follows a notification's effect read: the delivered toast is waited out and read hidden (auto-hide, restoration); any other toast is waited out. */
+function toastTail(delivered, waitsForHide) {
+    if (delivered) return [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }];
+    return waitsForHide ? [{ wait: osc9ToastHideWaitMs }] : [];
+}
+
 /** Notification experiments. A suppression experiment waits too: when the window turns out not to be active its toast is shown and must be gone before the next setup. `focus` names the window condition under which the effect is graded. `toast` is the expected message or null for no toast. */
 function notificationSpecs(runId) {
     const marker = runId.slice(0, 8), long = 'L'.repeat(250);
@@ -112,7 +118,7 @@ export function osc9Experiments(runId) {
         const first = specs.findIndex(item => item[2] === focus) === index, last = index === specs.length - 1;
         const firstAction = focus === 'inactive' ? 'defocus' : 'refocus';
         const delivered = name === 'delivered', waitsForHide = toast !== null || focus === 'active';
-        const tail = delivered ? [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }] : (waitsForHide ? [{ wait: osc9ToastHideWaitMs }] : []);
+        const tail = toastTail(delivered, waitsForHide);
         return { caseId: `${osc9NotificationCaseId}/${name}`, owner: osc9NotificationCaseId, name, role, kind: 'notification', focus,
             title: fixture.title, expected: toast, ...(name === 'progress-is-not-text' ? { progress: state('Normal', 50) } : {}),
             plan: [{ feed: fixture.stage }, ...(first ? [{ action: firstAction }] : []), { read: 'before', kind: 'setup' }, { feed },
