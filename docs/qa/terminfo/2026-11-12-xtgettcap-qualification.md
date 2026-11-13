@@ -94,7 +94,13 @@ The test reassembles the journal, re-derives the report, the receipt digests and
 ## Limits
 
 Capability-report replies only: an advertised `RGB` flag or `colors` count proves the reply, never rendering, color accuracy, or execution of an advertised control
-string (the owning VT tests cover those). The settings-dependent `Ms` clipboard capability, X resources (`device.xtgetxres` is a different case), clipboard permissions,
+string (the owning VT tests cover those).
+The unchanged-state claim is scoped to the observed projection: cells with their stored attributes and protection, the cursor (position, visibility, stored
+cursor mode), the margins (vertical and DECLRMM with the left/right values), the wrap/insert/pending-wrap modes, the active screen and the saved-line count. The
+*active* SGR/protection pen is not exposed by the readScreen projection; a hypothetical active-pen change that rewrote no cell would not move the unchanged-state
+key. That residual is covered at its source by the owning VT regressions, which pin that the `DCS + q` handler replies under the write lock without mutating any
+exported state (including the pen); re-observing it here would require a new App/AgentHost readback API, i.e. a production change this batch deliberately does
+not make. The settings-dependent `Ms` clipboard capability, X resources (`device.xtgetxres` is a different case), clipboard permissions,
 remote (SSH, mux, persistent-session) delivery, Windows and Linux runtime, and the stock CLI's own grades are all outside this qualification. The fence bounds the
 request at 64 bytes, so the sixteen-name and 32-character-name list limits stay unit-evidenced (`TerminalCapabilityTests`), not desktop-qualified. No stock-score,
 common-harness or Core-percentage claim is made.
