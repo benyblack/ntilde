@@ -2464,23 +2464,23 @@
         "extensions.reflow"
       ],
       "evidence": {
-        "files": 12,
-        "bytes": 48832268,
-        "sha256": "ea929f3259040ca409e4d69c08628f97b83f0f5b0126ebf6f7576c2d40ba1630"
+        "files": 13,
+        "bytes": 55311640,
+        "sha256": "f3728c8d8f44803b71ef557709ceccf6c939cde43d27f05a72b00684f9111ded"
       },
       "receipt": {
         "schemaVersion": 55,
-        "runId": "f408ed88b40969e84e555a6d69a86305",
+        "runId": "84799e1486d69b884228bb650a65de5d",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "222e272d4299e699fd5dcf00344579372a20c4354b35d13732a78a698083b0d9"
+          "sha256": "7c11752634ee21a07c8917bebf3625e5ad5cbc4670c20e70f7327d7455fd96e4"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-ascii-reflow-v1",
           "file": "reflow-observations.json",
-          "sha256": "d0fb008efa14a22588eb9d1d8fe7acfb15d28cb539afee8ffa561f7f1d9b5bb5",
+          "sha256": "84881b1abfcff80351f405487324c2b6781241dafad6993ed9f58d5115d42963",
           "runFile": "rf-run.json",
-          "runSha256": "1c39afc07c8be065df2a9b19984d78ffad217dc80614f3a984268ea0821b4373",
+          "runSha256": "a38fab5e7ad6732e887a3f6597617a44e1599eb725f1ca91b35213afb57b2e8e",
           "counts": {
             "unsupported": 1
           },
@@ -2488,23 +2488,23 @@
         }
       },
       "run": {
-        "ownedRunId": "f408ed88b40969e84e555a6d69a86305",
-        "measuredAt": "2026-11-13T09:55:29.387Z",
-        "appRevision": "3680bf9bbdd2655aa3ba989ec9b8219a301dbca5",
-        "appVersion": "0.13.0+3680bf9bbdd2655aa3ba989ec9b8219a301dbca5",
+        "ownedRunId": "84799e1486d69b884228bb650a65de5d",
+        "measuredAt": "2026-11-13T11:15:00.366Z",
+        "appRevision": "0a0dc8d1b454ee267431d33e09dcd5a8637735dc",
+        "appVersion": "0.13.0+0a0dc8d1b454ee267431d33e09dcd5a8637735dc",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "3680bf9bbdd2655aa3ba989ec9b8219a301dbca5",
+        "scriptsRevision": "0a0dc8d1b454ee267431d33e09dcd5a8637735dc",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "7512be36a96088b70cd5b4a3ca84ca123f9fdad628eb9766c9eed592364d7b19",
+        "collectorAdapterBundleSha256": "1c10fd0ae93c00f2c9076b17e93421aa904f5c00a96a4d6278655051a3a7cddc",
         "gradingAdapterId": "ntilde-owned-ascii-reflow-grading-v1",
-        "gradingAdapterBundleSha256": "8f07ad0673390dbe7511209dc878ef25d5904a513719f09b701b02bb1b5e5438",
+        "gradingAdapterBundleSha256": "8f69c338ec6696584720ec9e779b0bfbc6e61d795994f31946233bbcdfc247c7",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v49",
-        "sourceSnapshotManifestSha256": "4a7305a0445e2657494254dfb2d416da2cce9abfe350f60be0b807625cf48b55"
+        "sourceSnapshotManifestSha256": "5403b78620f7e577d7fbacdd38a5fe13f453b78c3b6d402930743a11c7293f9a"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "300de1dbe98e73703984781bada73c5d",
+        "runId": "594bb6f660f9fb5bb107ce3495b4f540",
         "counts": {
           "inconclusive": 167,
           "supported": 87,
@@ -2512,14 +2512,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "30ba2171c1124c04dcd7819ff9debdb8e1c6785d65d84cb1523e3f0c77149836",
+        "rawSha256": "5ce7a93d138e571ad3aa31f21d0a72a1ac5b73f97f8240dc0becd06540ad9210",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades collected in the same owned run; the owned effect verdict does not change the stock score."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/ascii-reflow-publication.test.mjs",
-        "testSha256": "791fe6287fb975b42e79355320c574a5f6a454c51d7101781ce86d4c37be1b79"
+        "testSha256": "3780266c3196c51f666fdf7dd8968f478c77d4fc181a13edd6e3bf35f0eb1543"
       }
     }
   ],

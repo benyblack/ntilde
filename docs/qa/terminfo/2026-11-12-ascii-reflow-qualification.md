@@ -46,7 +46,7 @@ while lines 17–39 rewrapped individually, exactly as modeled. Every character 
 the cursor mapping still matches the logical-content model, and the restore re-wraps the merged lines losslessly back into the original projection (the inserted blanks
 become trailing row padding the cell projection cannot distinguish from unwritten cells — the authored-space limit stated in the contract).
 
-The divergence is **deterministic**: two independent owned runs (different runIds, `a54a250a…` and `236e8576…`) produced byte-identical layouts for all six fixture
+The divergence is **deterministic**: five independent owned runs produced byte-identical layouts for all six fixture
 reads (the only differing frame is the nonce bind, which embeds the runId), identical action targets and identical App-reported grids. The VT engine in isolation does
 **not** reproduce it: driving the same `Ntilde.VT` build with the same fixture, a one-shot `Resize(133, 36)`, one-column stepped resizes, height-first order, simultaneous
 steps, and randomized non-monotonic walk sequences all reproduce the model exactly (44 rows, cursor [35, 5]). The divergence is therefore specific to the live pane-resize
@@ -62,11 +62,12 @@ control), images, rendered appearance, saved-bank behavior beyond the bounded ma
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `3680bf9b` (arm64 Release, executable SHA-256 `f5814e51…d1d6`); scripts at commit `3680bf9b`; source policy
+App 0.13.0 (operator supplied) built from `3680bf9b` (arm64 Release, executable SHA-256 `f5814e51…d1d6`); scripts at commit `0a0dc8d1`; source policy
 `readonly-owned-source-graph-v49` (328 files — the restacked union of the insert/replace layer's 322 and these six modules); receipt schema 55; Node v24.22.2; owned run
-`f408ed88…6305`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
+`84799e14…65de`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
 (not carried forward). The insert/replace layer (PR 956), merged ahead of this batch, took policy v48 and receipt schema 54 for its own scope, so this layer was
-restacked above it (policy v49 / captured v56 / receipt 55) and **re-measured**: its suite is reconfirmed inside the published run's receipt (`supported: 1`). See [summary](2026-11-12-ascii-reflow/summary.json) for the full context: worker, PTY, output-processing proof, per-action parent/kernel geometry
+restacked above it (policy v49 / captured v56 / receipt 55) and **re-measured**: its suite is reconfirmed inside the published run's receipt (`supported: 1`). The full
+context: worker, PTY, output-processing proof, per-action parent/kernel geometry
 records and the completed cleanup receipt. Predecessor suites were reconfirmed in the same run through the established runner: the receipt re-derived every earlier layer,
 including the resize/history suites this batch reuses, and the stock counts are re-collected in that run and unchanged.
 
@@ -75,12 +76,12 @@ collection when the first launch's context named a bundle digest that did not ex
 naming mismatch; attempt 3 (`owned-7gsSlr`, no receipt) failed launching the worker on the renamed binding; attempt 4 (`owned-dNbnet`, no receipt) **completed collection
 with identical grading** but could not finalize: the metadata receipt's source-policy map lacked the then-current v48 entry (fixed in the measured scripts); attempt 5
 (`owned-Q0DShd`, no receipt) aborted when the disposable App did not respond at launch (desktop idle), retained unchanged. Runs `owned-NITRsC` (attempt 6),
-`owned-sWZqnR` (attempt 7) and `owned-KeiEHw` (attempt 8) **completed, graded identically (width model-exact, history shrunk diverged at 38 displaced rows, restored
-exact) and reproduced byte-identically by each other and by the final run** — four independent owned runs, same divergence — but are superseded: attempts 6 and 7 by
+`owned-sWZqnR` (attempt 7), `owned-KeiEHw` (attempt 8) and `owned-4VAYK1` (attempt 9) **completed, graded identically (width model-exact, history shrunk diverged at 38 displaced rows, restored
+exact) and reproduced byte-identically by each other and by the final run** — five independent owned runs, same divergence — but are superseded: attempts 6 and 7 by
 the serial restack (the insert/replace layer, PR 956, merged ahead of this batch and took policy v48 / receipt schema 54, so this layer was restacked to policy v49 /
-receipt 55 and their retained receipts bind the pre-restack scope), and attempt 8 by the two Codex review fixes to the measured scripts (the unavailable marker's
-experiment count and the unavailable receipt's completion-artifact rejection); their retained evidence re-derives under the merged validator with every graded field
-equal. The published run is the ninth.
+receipt 55 and their retained receipts bind the pre-restack scope), attempts 8 and 9 by the review fixes to the measured scripts (Codex: the unavailable marker's
+experiment count and the unavailable receipt's completion-artifact rejection; CodeRabbit: proof-marker admission, adapter-identity validation); their retained evidence re-derives under the merged validator with every graded field
+equal. The published run is the tenth.
 
 ## Newly fixed versus newly measured
 
