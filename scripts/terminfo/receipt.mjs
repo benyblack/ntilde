@@ -268,7 +268,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesTitleStack = includesTitleStackEvidence(output, evidence, context);
     const includesOscTitle = includesOscTitleEvidence(output, evidence, context);
     const includesInsertReplace = includesInsertReplaceEvidence(output, evidence, context, 48);
-    const includesAsciiReflow = includesReflowEvidence(output, evidence, context);
+    const includesAsciiReflow = includesReflowEvidence(output, evidence, context, proof);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
     const includesColorReset = includesColorResetEvidence(output, evidence, context);

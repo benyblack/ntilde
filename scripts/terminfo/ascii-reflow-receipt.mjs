@@ -32,18 +32,20 @@ const journal = (output, file, maximum) => {
 };
 
 /** Any retained ASCII reflow identity, source, action stream or parent declaration requires all checks. */
-export function includesReflowEvidence(output, evidence, context) {
+export function includesReflowEvidence(output, evidence, context, proof) {
     return Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0) >= 49
         || context.asciiReflowAdapterId !== undefined || context.asciiReflowSuiteId !== undefined
         || context.asciiReflowBundleSha256 !== undefined || context.asciiReflowContractsVersion !== undefined
         || context.ownedAsciiReflowPolicy !== undefined || evidence.reflowEvidence !== undefined
         || Object.keys(asciiReflowSources).some(key => context[key] !== undefined)
-        || asciiReflowPrefixFiles.some(file => present(join(output, file)));
+        || asciiReflowPrefixFiles.some(file => present(join(output, file)))
+        || proof?.proofs?.some(value => value.asciiReflow !== undefined) || false;
 }
 
 /** The private fixture and retained source copies must agree with the recorded capability and exact hashes. */
 function checkFixtureAndSources(output, context, marker) {
     check(context.asciiReflowSuiteId === asciiReflowSuiteId && context.asciiReflowContractsVersion === asciiReflowContractsVersion
+        && context.asciiReflowAdapterId === asciiReflowAdapterId
         && marker?.policy === context.ownedAsciiReflowPolicy && Array.isArray(marker.actions));
     const settingsBytes = bytes(output, 'initial-settings.json', 65536);
     check(hash(settingsBytes) === context.initialSettingsSha256);

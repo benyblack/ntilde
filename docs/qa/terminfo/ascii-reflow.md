@@ -29,7 +29,7 @@ history read grades **inconclusive** and can never become evidence.
 Two experiments under the single benchmark id `extensions.reflow`, seeded once each from the measured reset
 (`ESC [ ? 1049 l ESC [ ! p ESC [ ? 6 l ESC [ r ESC [ 4 l ESC [ 0 m CSI 2 J CSI 3 J CSI H`):
 
-- `reflow.width-roundtrip` (shrink 40×140 → 40×133, restore): six 138-char long hard lines interleaved with short
+- `reflow.width-roundtrip` (shrink 40×140 → 40×133, restore): six 210-char long hard lines (two wrapped rows at both widths, different break offsets) interleaved with short
   `RFs nnn ATTR REST` lines, one bold+underline probe (`SGR 1;4` over the first five cells, reset), the cursor parked at logical
   offset `cols + cols/3` inside the first line's wrapped continuation, six unwritten tail rows.
 - `reflow.history-roundtrip` (shrink 40×140 → 36×133, restore): a full viewport of 138-char long hard lines, the cursor at the
