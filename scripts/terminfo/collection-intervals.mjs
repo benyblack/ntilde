@@ -30,6 +30,13 @@ export function readCollectionIntervals(artifactsTerminfoDir, label = artifactsT
     return rows.sort((a, b) => a.start - b.start);
 }
 
+/** The later of two recorded cleanup times; a missing one never hides a recorded one. */
+function latestRecordedEnd(first, second) {
+    if (first === null) return second;
+    if (second === null) return first;
+    return Math.max(first, second);
+}
+
 /**
  * One row per retained run. The same run seen twice (a repeated root or a copied artifact tree) is merged, never kept as two:
  * a recorded cleanup time is kept whichever copy carries it (the later one if both do), and a failure in either copy stays a failure.
@@ -40,7 +47,7 @@ export function mergeCollectionRows(rows) {
         const key = row.runId === '' ? Symbol(row.directory) : row.runId + '@' + row.start, seen = merged.get(key);
         if (seen === undefined) merged.set(key, { ...row });
         else {
-            seen.end = seen.end === null ? row.end : (row.end === null ? seen.end : Math.max(seen.end, row.end));
+            seen.end = latestRecordedEnd(seen.end, row.end);
             seen.failed ||= row.failed;
         }
     }
