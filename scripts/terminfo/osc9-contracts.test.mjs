@@ -45,15 +45,16 @@ test('absent percentages, unknown and malformed states and bare 4 are policy, ne
     assert.equal(cap.length, osc9NotificationCap); assert.ok(cap.endsWith('…'));
 });
 
-test('the notification plan defocuses once before its first inactive control and refocuses at the end; toasts are waited out', () => {
+test('the notification plan focuses the App for the suppression policy, defocuses before its first inactive control and refocuses at the end; toasts are waited out', () => {
     const notifications = osc9Experiments(runId).filter(item => item.kind === 'notification');
     const actions = notifications.flatMap(item => item.plan.filter(step => step.action !== undefined).map(step => [item.name, step.action]));
-    assert.deepEqual(actions, [['delivered', 'defocus'], ['policy-bare-4', 'refocus']]);
+    assert.deepEqual(actions, [['focused-suppressed', 'refocus'], ['delivered', 'defocus'], ['policy-bare-4', 'refocus']]);
     const delivered = notifications.find(item => item.name === 'delivered');
     assert.deepEqual(delivered.plan.map(step => step.read ?? step.wait ?? step.action ?? 'feed'), ['feed', 'defocus', 'before', 'feed', 'after', osc9ToastHideWaitMs, 'hidden']);
     for (const item of notifications.filter(entry => entry.expected !== null && entry.name !== 'delivered')) assert.ok(item.plan.some(step => step.wait === osc9ToastHideWaitMs), item.name);
     for (const item of notifications.filter(entry => entry.expected === null)) assert.ok(!item.plan.some(step => step.wait !== undefined), item.name);
     assert.ok(osc9ToastHideWaitMs > 6500);
+    assert.ok(osc9Experiments(runId).find(item => item.name === 'policy-bare-4' && item.kind === 'progress').plan.some(step => step.wait === osc9ToastHideWaitMs));
 });
 
 test('the pinned descriptors say what the registrations can send and return', () => {

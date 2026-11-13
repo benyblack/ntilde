@@ -2283,7 +2283,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             const record = { action, method: 'osascript', script, exitCode: result.status ?? null, signal: result.signal ?? null,
                 stderr: String(result.stderr ?? '').slice(0, 512), startedAt, finishedAt: new Date().toISOString() };
             osc9FocusRecords.push(record);
-            writeJson(join(output, 'osn-focus.json'), osc9FocusRecords);
+            writeFileSync(join(output, 'osn-focus.json'), JSON.stringify(osc9FocusRecords, null, 2) + '\n', { mode: 0o600 });
             return record;
         };
         const observeOsc9 = async (request, budget) => {
