@@ -24,8 +24,10 @@ export function inputActionProof(event, modes, runId = inputRunId, paneId = inpu
             column: pointer ? event.column : null, row: pointer ? event.row : null,
             x: pointer ? (event.column - 0.5) * 10 : null, y: pointer ? (event.row - 0.5) * 10 : null } };
 }
-/** `actual(item)` overrides the child bytes of a read (v2 plans record mismatches); `plan` selects the experiment list (default frozen v1). */
-export function syntheticInputJournal(runId = inputRunId, { paneId = inputPaneId, initial = initialInputScreen(), plan = inputPlanV1, actual = item => item.expectedHex } = {}) {
+/** `actual(item)` overrides the child bytes of a read (v2 plans record mismatches); `plan` selects the experiment list (default frozen v1);
+ * `controlHex(item)` and `finalHex()` override the control and restoration reply profiles (plan v3 proves the XTQMODKEYS level too). */
+export function syntheticInputJournal(runId = inputRunId, { paneId = inputPaneId, initial = initialInputScreen(), plan = inputPlanV1, actual = item => item.expectedHex,
+    controlHex = item => inputModeReplyHex(item.modes), finalHex = () => inputModeReplyHex(defaultInputModes) } = {}) {
     const bound = boundInputScreen(initial, runId), frames = [], actions = [];
     let attempt = 0;
     const add = (kind, screen, capture = null, caseId = null, actionIndex = null) => frames.push({ index: frames.length,
@@ -33,11 +35,11 @@ export function syntheticInputJournal(runId = inputRunId, { paneId = inputPaneId
         sha256: snapshotHash(screen), afterSha256: snapshotHash(screen), caseId, actionIndex, capture });
     add('start', initial); add('bind', bound, inputCapture('', attempt++));
     for (const item of plan.make(initial.rows, initial.cols)) {
-        add('control', bound, inputCapture(inputModeReplyHex(item.modes), attempt++), item.id);
+        add('control', bound, inputCapture(controlHex(item), attempt++), item.id);
         actions.push({ index: actions.length, caseId: item.id, observed: inputActionProof(item.event, item.modes, runId, paneId, initial.rows, initial.cols) });
         add('read', bound, inputCapture(actual(item), attempt++), item.id, actions.length - 1);
     }
-    const capture = inputCapture(inputModeReplyHex(defaultInputModes), attempt++); add('finish', initial, capture);
+    const capture = inputCapture(finalHex(), attempt++); add('finish', initial, capture);
     const seal = { failed: false, disposed: true, attempts: attempt, lastAttempt: { completed: true, fenceRequested: true,
         hex: capture.hex + Buffer.from(capture.barrier).toString('hex'), nonces: [...capture.nonces], error: null } };
     return { frames, actions, seal };

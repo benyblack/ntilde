@@ -30,8 +30,9 @@ function challenge(nextNonces, used) {
         expected: Buffer.from(nonces.map(n => `\x1b[?${n};0$y`).join('')) };
 }
 
-export function rawInputCapture(input, output, timeoutMs = 4500, nextNonces = freshNonces) {
+export function rawInputCapture(input, output, timeoutMs = 4500, nextNonces = freshNonces, maxCaptures = 128) {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 10000
+        || !Number.isSafeInteger(maxCaptures) || maxCaptures < 1
         || input.listenerCount('data') !== 0 || input.readableEncoding != null) {
         throw new Error('Raw input capture requires exclusive, undecoded input and a bounded deadline.');
     }
@@ -76,7 +77,7 @@ export function rawInputCapture(input, output, timeoutMs = 4500, nextNonces = fr
             if (fatal) return Promise.reject(fatal);
             if (disposed || typeof action !== 'function') return Promise.reject(new Error('Expected an active capture and a declared action.'));
             if (pending) return Promise.reject(new Error('Concurrent generated-event captures are forbidden.'));
-            if (++captures > 128) return Promise.reject(new Error('Generated-event capture budget exhausted.'));
+            if (++captures > maxCaptures) return Promise.reject(new Error('Generated-event capture budget exhausted.'));
             return new Promise((resolve, reject) => {
                 const controller = new AbortController();
                 const timer = setTimeout(() => fail(new Error('Generated input capture timed out.')), timeoutMs);

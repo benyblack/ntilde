@@ -2,7 +2,9 @@ import { includesOscTitleEvidence, checkOscTitleEvidence } from './osc-title-rec
 import { includesInsertReplaceEvidence, checkInsertReplaceEvidence } from './insert-replace-receipt.mjs';
 import { includesTitleStackEvidence, checkTitleStackEvidence } from './title-stack-receipt.mjs';
 import { includesXtgettcapEvidence, checkXtgettcapEvidence } from './xtgettcap-receipt.mjs';
+import { includesOsc9Evidence, checkOsc9Evidence } from './osc9-receipt.mjs';
 import { includesReflowEvidence, checkReflowEvidence } from './ascii-reflow-receipt.mjs';
+import { includesModifyOtherKeysEvidence, checkModifyOtherKeysEvidence } from './modify-other-keys-receipt.mjs';
 import { includesReverseWideEvidence, checkReverseWideEvidence } from './core-reverse-wide-receipt.mjs';
 import { includesSgrRasterEvidence, checkSgrRasterEvidence } from './core-sgr-raster-receipt.mjs';
 import { includesCoreWrapEvidence, checkCoreWrapEvidence } from './core-wrap-receipt.mjs';
@@ -211,6 +213,8 @@ const receiptSuffixOrder = Object.freeze([
     'includesOscTitle',
     'includesInsertReplace',
     'includesXtgettcap',
+    'includesModifyOtherKeys',
+    'includesOsc9',
     'includesAsciiReflow',
 ]);
 
@@ -271,6 +275,8 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesOscTitle = includesOscTitleEvidence(output, evidence, context);
     const includesInsertReplace = includesInsertReplaceEvidence(output, evidence, context, 48);
     const includesXtgettcap = includesXtgettcapEvidence(output, evidence, context);
+    const includesModifyOtherKeys = includesModifyOtherKeysEvidence(output, evidence, context);
+    const includesOsc9 = includesOsc9Evidence(output, evidence, context);
     const includesAsciiReflow = includesReflowEvidence(output, evidence, context, proof);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
@@ -282,7 +288,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesAsciiReflow };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesModifyOtherKeys, includesOsc9, includesAsciiReflow };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -339,6 +345,8 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesOscTitle) checkOscTitleEvidence(output, evidence, runId, context);
     if (suffixes.includesInsertReplace) checkInsertReplaceEvidence(output, evidence, runId, context);
     if (suffixes.includesXtgettcap) checkXtgettcapEvidence(output, evidence, runId, context);
+    if (suffixes.includesModifyOtherKeys) checkModifyOtherKeysEvidence(output, evidence, runId, context, proof);
+    if (suffixes.includesOsc9) checkOsc9Evidence(output, evidence, runId, context);
     if (suffixes.includesAsciiReflow) checkReflowEvidence(output, evidence.reflowEvidence, runId, context, proof);
 }
 
@@ -366,3 +374,4 @@ export function completeOwnedReceipt(output, scratch, evidence) {
     writeFileSync(join(output, 'cell-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     return receipt;
 }
+

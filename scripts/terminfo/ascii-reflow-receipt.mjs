@@ -34,7 +34,7 @@ const journal = (output, file, maximum) => {
 
 /** Any retained ASCII reflow identity, source, action stream or parent declaration requires all checks. */
 export function includesReflowEvidence(output, evidence, context, proof) {
-    return Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0) >= 49
+    return Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0) >= 52
         || context.asciiReflowAdapterId !== undefined || context.asciiReflowSuiteId !== undefined
         || context.asciiReflowBundleSha256 !== undefined || context.asciiReflowContractsVersion !== undefined
         || context.ownedAsciiReflowPolicy !== undefined || evidence.reflowEvidence !== undefined

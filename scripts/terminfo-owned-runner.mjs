@@ -14,10 +14,11 @@ import { textCursorSuiteId, TextCursorObserver, buildTextCursorReport } from './
 import { coreGapsSuiteId, coreGapsAdapterId, adaptCoreGapsCollector, CoreGapsObserver, buildCoreGapsReport } from './terminfo/core-gaps.mjs';
 import { ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, readSourceSnapshot, removeSourceSnapshot, sourceSnapshotPolicy } from './terminfo/owned-sources.mjs';
 import { OwnedMetadataObserver, initialMetadataRefusal, metadataFailure } from './terminfo/metadata-capture.mjs';
+import { inputPlanForSuiteId as ownedInputPlanForSuiteId } from './terminfo/input-plan.mjs';
 import { metadataSuiteId, ownedMetadataPolicy, makeMetadataCases } from './terminfo/metadata-cases.mjs';
 import { buildMetadataReport } from './terminfo/metadata.mjs';
 // Launches a private macOS desktop instance; never attaches to an existing pane.
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -140,6 +141,15 @@ import { xtgettcapContractsVersion, xtgettcapSuiteId } from './terminfo/xtgettca
 import { buildXtgettcapGradingReport } from './terminfo/xtgettcap-grading.mjs';
 import { xtgettcapCounts } from './terminfo/xtgettcap-receipt.mjs';
 import { XtgettcapObserver } from './terminfo/xtgettcap-capture.mjs';
+import { adaptOsc9Collector, osc9AdapterId } from './terminfo/osc9-grading-collector.mjs';
+import { osc9CaseIds, osc9ContractsVersion, osc9Prefix, osc9SuiteId } from './terminfo/osc9-contracts.mjs';
+import { buildOsc9Report, matchesOsc9Baseline, osc9Counts, osc9ObserverPlan } from './terminfo/osc9-grading.mjs';
+import { exposeOsc9Facts, osc9PrerequisiteReason } from './terminfo/osc9-collector.mjs';
+import { runFocusAction } from './terminfo/osc9-focus.mjs';
+import { adaptModifyOtherKeysCollector, modifyOtherKeysAdapterId } from './terminfo/modify-other-keys-grading-collector.mjs';
+import { modifyOtherKeysCaseIds, modifyOtherKeysContractsVersion, modifyOtherKeysGradedSuiteId } from './terminfo/modify-other-keys-contracts.mjs';
+import { buildModifyOtherKeysGradingReport, modifyOtherKeysCounts } from './terminfo/modify-other-keys-grading.mjs';
+import { modifyOtherKeysFirstPolicy } from './terminfo/input-plan.mjs';
 import { ColorResetObserver } from './terminfo/color-reset-capture.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
@@ -190,10 +200,12 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'shi', 'lnk', 'tst', 'ost', 'xgtc', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'shi', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
+/** The parent-performed focus actions of the OSC 9 suite: exact kinds, answered by the runner rather than by an observer. */
+const osc9ActionKinds = new Set(['osn-defocus', 'osn-refocus']);
 const untranslatedCellSteps = new Set(['start', 'bind', 'read', 'finish']);
 /** Whether a request kind is exactly `<prefix>-<step>` for one of the cell observation prefixes and steps. */
 function untranslatedCellKind(kind) {
@@ -205,6 +217,16 @@ const sourceRepo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = process.env.NTILDE_TERMINFO_ORIGINAL_REPO ?? sourceRepo;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+/** The launcher owns the desktop lease; the runner may only take it (once) and report launch and cleanup facts through it. */
+async function acquireDesktopLease(pendingInterruption) {
+    const broker = globalThis[Symbol.for('ntilde.terminfo.desktopLease')];
+    if (typeof broker?.acquire !== 'function') throw new Error('The owned runner must be started through scripts/terminfo-owned.mjs, which owns the desktop lease.');
+    const lease = await broker.acquire();
+    lease.assertHeld();
+    const interruption = pendingInterruption();
+    if (interruption) throw interruption; // the launcher settles (releases) the lease: nothing was launched
+    return lease;
+}
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
 /** Attempt parent-owned abort, then retain bounded primary/cleanup facts before independent process shutdown. */
@@ -1199,6 +1221,17 @@ function prepareTitleStackCollector(tool, lrMarginsBundle, output) {
     return { bundle, titleStackBundleSha256 };
 }
 
+/** Derive and lock the layered modifyOtherKeys grading extension over the left/right-margin one. */
+function prepareModifyOtherKeysCollector(tool, lrMarginsBundle, output) {
+    const adapted = adaptModifyOtherKeysCollector(readFileSync(lrMarginsBundle));
+    const modifyOtherKeysBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-mok-${modifyOtherKeysBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== modifyOtherKeysBundleSha256) throw new Error('Derived modifyOtherKeys bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-mok.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, modifyOtherKeysBundleSha256 };
+}
+
 /** Re-derive the title-stack report parent-side from the paired journal and the layered pinned replay. */
 async function retainTitleStackEvidence(output, runId, titleStackBundle, upstream, unavailable) {
     const adapterBytes = readFileSync(join(output, 'collector-tst.mjs'));
@@ -1216,6 +1249,35 @@ async function retainTitleStackEvidence(output, runId, titleStackBundle, upstrea
     return { runId, suiteId: titleStackSuiteId, file: 'tst-observations.json', sha256: hash(readFileSync(join(output, 'tst-observations.json'))),
         runFile: 'tst-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
         contractsVersion: titleStackContractsVersion, counts: titleStackCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** Derive and lock the layered OSC 9 grading extension over the left/right-margin one (a sibling of the OSC 7/8 and title/icon-stack layers). */
+function prepareOsc9Collector(tool, lrMarginsBundle, output) {
+    const adapted = adaptOsc9Collector(readFileSync(lrMarginsBundle));
+    const osc9BundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-osn-${osc9BundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== osc9BundleSha256) throw new Error('Derived OSC 9 bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-osn.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, osc9BundleSha256 };
+}
+
+/** Re-derive the OSC 9 report parent-side from the paired journal, the worker's run log and the parent's focus record. */
+function retainOsc9Evidence(output, runId, upstream, unavailable) {
+    const adapterBytes = readFileSync(join(output, 'collector-osn.mjs'));
+    if (unavailable) {
+        const markerBytes = readFileSync(join(output, 'osn-unavailable.json')), marker = JSON.parse(markerBytes);
+        return { runId, suiteId: osc9SuiteId, file: 'osn-unavailable.json', sha256: hash(markerBytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(adapterBytes), contractsVersion: osc9ContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    const runBytes = readFileSync(join(output, 'osn-run.json'));
+    const frames = readFileSync(join(output, 'osn-snapshots.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapter = { id: osc9AdapterId, derivedFromAdapterId: lrMarginsAdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const report = buildOsc9Report(frames, JSON.parse(runBytes), runId, adapter);
+    writeJson(join(output, 'osn-observations.json'), report);
+    return { runId, suiteId: osc9SuiteId, file: 'osn-observations.json', sha256: hash(readFileSync(join(output, 'osn-observations.json'))),
+        runFile: 'osn-run.json', runSha256: hash(runBytes), focusFile: 'osn-focus.json', focusSha256: hash(readFileSync(join(output, 'osn-focus.json'))),
+        adapterBundleSha256: adapter.bundleSha256, contractsVersion: osc9ContractsVersion, counts: osc9Counts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Derive and lock the layered XTGETTCAP grading extension over the title/icon-stack one. */
@@ -1302,7 +1364,7 @@ async function retainReflowEvidence(output, runId, reflowBundle, upstream, unava
 }
 
 /** Re-derive the routed-input report parent-side from the owned input journal and the layered pinned replay. */
-async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstream, inputBinding, seal) {
+async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstream, inputBinding, seal, inputSuiteId) {
     if (inputBinding?.status === 'unavailable') {
         // The owned input suite could not run on this grid; the layer records the same typed unavailability and nothing else.
         const markerBytes = readFileSync(join(output, 'rin-unavailable.json')), marker = JSON.parse(markerBytes);
@@ -1319,12 +1381,37 @@ async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstr
         bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
     const replayModule = await import(pathToFileURL(routedInputBundle).href);
     const report = buildRoutedInputGradingReport({ frames: lines('input-snapshots.jsonl'), actions: lines('input-actions.jsonl'), seal }, run, runId, adapter,
-        { replayModule, inputReportSha256: inputBinding.sha256 });
+        { replayModule, inputPlan: ownedInputPlanForSuiteId(inputSuiteId), inputReportSha256: inputBinding.sha256 });
     writeJson(join(output, 'rin-observations.json'), report);
     return { runId, suiteId: routedInputGradedSuiteId, file: 'rin-observations.json',
         sha256: hash(readFileSync(join(output, 'rin-observations.json'))),
         runFile: 'rin-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
         contractsVersion: routedInputContractsVersion, counts: routedInputCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** Re-derive the modifyOtherKeys report parent-side from the owned input journal and the layered pinned replay. */
+async function retainModifyOtherKeysEvidence(output, runId, modifyOtherKeysBundle, upstream, inputBinding, seal, inputSuiteId) {
+    if (inputBinding?.status === 'unavailable') {
+        const markerBytes = readFileSync(join(output, 'mok-unavailable.json')), marker = JSON.parse(markerBytes);
+        if (marker.reason !== inputBinding.reason) throw new Error('modifyOtherKeys unavailable marker differs from the input suite.');
+        return { runId, suiteId: modifyOtherKeysGradedSuiteId, file: 'mok-unavailable.json', sha256: hash(markerBytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(readFileSync(join(output, 'collector-mok.mjs'))), contractsVersion: modifyOtherKeysContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    if (inputBinding?.file !== 'input-observations.json') throw new Error('modifyOtherKeys evidence requires the owned input suite.');
+    const runBytes = readFileSync(join(output, 'mok-run.json'));
+    const run = JSON.parse(runBytes);
+    const lines = file => readFileSync(join(output, file), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-mok.mjs'));
+    const adapter = { id: modifyOtherKeysAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(modifyOtherKeysBundle).href);
+    const report = buildModifyOtherKeysGradingReport({ frames: lines('input-snapshots.jsonl'), actions: lines('input-actions.jsonl'), seal }, run, runId, adapter,
+        { replayModule, inputPlan: ownedInputPlanForSuiteId(inputSuiteId), inputReportSha256: inputBinding.sha256 });
+    writeJson(join(output, 'mok-observations.json'), report);
+    return { runId, suiteId: modifyOtherKeysGradedSuiteId, file: 'mok-observations.json',
+        sha256: hash(readFileSync(join(output, 'mok-observations.json'))),
+        runFile: 'mok-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: modifyOtherKeysContractsVersion, counts: modifyOtherKeysCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Re-derive the SGR-underline-color report parent-side with the layered pinned replay. */
@@ -1446,13 +1533,18 @@ async function retainGradingEvidence(output, runId, gradingBundle, upstream) {
 async function terminateLaunchedApp(app) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
     app.kill('SIGTERM');
-    await new Promise(resolve => {
-        const timer = setTimeout(() => app.kill('SIGKILL'), 2000);
-        app.once('exit', () => { clearTimeout(timer); resolve(); });
+    await new Promise((resolve, reject) => {
+        let killTimer, giveUpTimer;
+        app.once('exit', () => { clearTimeout(killTimer); clearTimeout(giveUpTimer); resolve(); });
+        killTimer = setTimeout(() => {
+            app.kill('SIGKILL');
+            // An App that outlives SIGKILL must fail cleanup (and so retain the desktop lease), not hang the run.
+            giveUpTimer = setTimeout(() => { app.unref(); reject(new Error(`Owned app ${app.pid} did not exit after SIGKILL.`)); }, 2000);
+        }, 2000);
     });
 }
 
-async function cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }) {
+async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }) {
     let workerError;
     try { await terminateRecordedWorker(workerIdentity, runId); }
     catch (error) { workerError = error; }
@@ -1464,7 +1556,14 @@ async function cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, outp
     await new Promise(resolve => server.close(() => resolve()));
     // Parent shutdown can reap an already-exited worker that was a zombie.
     if (workerError && workerIdentity && !workerExists(workerIdentity.pid)) workerError = undefined;
-    const cleanupError = workerError ?? appError;
+    // Cleanup is verified only when both terminations succeeded AND no process carrying this lease's run markers survives; a
+    // failed scan is a failure. A failed termination never reaches the scan, so a changed command line cannot hide a live process.
+    let survivorError;
+    if (!workerError && !appError) {
+        try { await lease.verifyCleanup(); }
+        catch (error) { survivorError = error; }
+    }
+    const cleanupError = workerError ?? appError ?? survivorError;
     const cleanup = cleanupError
         ? { cleanupError: cleanupError.message, retainedFixture: scratch }
         : { cleanedUpAt: new Date().toISOString() };
@@ -1512,8 +1611,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     };
     const onInt = () => interrupted('SIGINT');
     const onTerm = () => interrupted('SIGTERM');
+    const onHup = () => interrupted('SIGHUP');
     let scratch;
     let output;
+    let lease;
     let preserveScratch = false;
     let cellEvidence;
     let sgrEvidence;
@@ -1554,10 +1655,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let sgrRasterEvidence;
     let reverseWideEvidence;
     let routedInputEvidence;
+    let modifyOtherKeysEvidence;
     let osc133Evidence;
     let osc78Evidence;
     let titleStackEvidence;
     let xtgettcapEvidence;
+    let osc9Evidence;
     let oscTitleEvidence;
     let colorResetEvidence;
     let rgbEvidence;
@@ -1580,8 +1683,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
-    if (['SIGINT', 'SIGTERM'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
+    process.on('SIGHUP', onHup);
+    if (['SIGINT', 'SIGTERM', 'SIGHUP'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
     try {
+        // Exclusive desktop ownership before any output, App or window action; refused contenders launch nothing.
+        lease = await acquireDesktopLease(() => interruption);
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
         scratch = createPrivateScratch();
@@ -1627,11 +1733,13 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: titleStackBundle, titleStackBundleSha256 } = prepareTitleStackCollector(privateTool, lrMarginsBundle, output);
         const { bundle: oscTitleBundle, oscTitleBundleSha256 } = prepareOscTitleCollector(privateTool, titleStackBundle, output);
         const { bundle: xtgettcapBundle, xtgettcapBundleSha256 } = prepareXtgettcapCollector(privateTool, titleStackBundle, output);
+        const { bundle: osc9Bundle, osc9BundleSha256 } = prepareOsc9Collector(privateTool, lrMarginsBundle, output);
+        const { bundle: modifyOtherKeysBundle, modifyOtherKeysBundleSha256 } = prepareModifyOtherKeysCollector(privateTool, lrMarginsBundle, output);
         const { bundle: reflowBundle, asciiReflowBundleSha256 } = prepareReflowCollector(privateTool, oscTitleBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
-        const runId = randomBytes(16).toString('hex');
+        const runId = lease.leaseId; // the App/worker markers carry the lease identity, so survivors are attributable
         const token = randomBytes(32).toString('hex');
         const configPath = join(scratch, 'worker.json');
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
@@ -1639,7 +1747,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, oscTitleBundle, oscTitleBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, oscTitleBundle, oscTitleBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -1784,6 +1892,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             colorReset: 'layered versioned collector extension; pinned termless criteria extensions.osc104-reset-palette, osc110-reset-fg, osc111-reset-bg and osc112-reset-cursor (the BEL-spelled query, set of rgb:aa/bb/cc, query, reset and query) replayed byte-exactly on a disposable App and graded from exact fenced OSC replies, the App-resolved colors and override metadata, stored default/palette/literal cells, the cursor and controlled offscreen renders by an independent runtime-color model over the measured baseline; the pinned terminal paths (unmeasuredStateEffect) stay inconclusive by design; not stock CLI data',
             lrMargins: 'layered versioned collector extension; pinned termless modes.left-right-margin code (ESC[?69h, the mode metadata, ESC[?69l; inconclusive by design) replayed byte-exactly and preserved, beside a separately identified effect contract graded from parent-observed stored cells, the cursor and the App-stored region, left/right margins, DECLRMM, origin and insert mode by an independent margins model over sixteen controls; stored ASCII cells only, no stock grades',
             routedInputAdapterId, routedInputSuiteId: routedInputGradedSuiteId, routedInputBundleSha256, routedInputContractsVersion,
+            modifyOtherKeysAdapterId, modifyOtherKeysSuiteId: modifyOtherKeysGradedSuiteId, modifyOtherKeysBundleSha256, modifyOtherKeysContractsVersion, modifyOtherKeysFirstPolicy,
+            modifyOtherKeys: 'layered versioned collector extension; pinned termless input.modify-other-keys code (always inconclusive by design) replayed over the declaration value the child itself answered by XTGETTCAP and preserved, beside a separately identified effect contract graded from the owned routed-input v3 plan: declared Avalonia events routed through the production App input path and the exact bytes the child received for the negotiated XTMODKEYS levels 1 and 2 (subcases of one benchmark id), every dispatch preceded by a child XTQMODKEYS proof of the level, literal protocol expectations cross-checked by an independent oracle, disabled/level-1/level-2 transitions, paired key-down/backend-text duplicate suppression, documented Shift-only-printable, Meta and AltGr policy limits, key-up and deliberately unhandled controls and a bounded kitty-precedence control; generated events, not physical keyboard input; no level 3, no formatOtherKeys, no Kitty expansion; direct-local only; no stock grades',
             routedInput: 'layered versioned collector extension; pinned termless input.x10-mouse, input.button-event-mouse and modes.application-keypad code (always inconclusive by design) replayed over mode values the child itself received as DECRQM replies and preserved, beside separately identified effect contracts graded from the owned routed-input suite: declared Avalonia events routed through the production App input path and the exact bytes the child received, literal protocol expectations cross-checked by an independent oracle; generated events, not physical input; direct-local only; no stock grades',
             osc133AdapterId, osc133SuiteId, osc133BundleSha256, osc133ContractsVersion,
             osc78AdapterId, osc78SuiteId, osc78BundleSha256, osc78ContractsVersion,
@@ -1793,8 +1903,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             titleStack: 'layered versioned collector extension; pinned device.xtwinops-22 and device.xtwinops-23 termless code (feed a title, CSI 22;0t, feed another title, CSI 23;0t, getTitle() after each stage; supported only when all three titles are as expected, never unsupported) and terminal code (the writes then a cursor query; inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells and the raw title, raw icon name, display title and tab text of the same observation by an independent title-stack oracle: each pinned fixture executed from a measured prepared baseline, plus combined, title-only, icon-only, nested (LIFO), mixed-selector, empty-pop, bounded-depth, alternate-screen, DECSTR and RIS experiments; raw icon-name state only, no host icon presentation, no title or icon report query, no direct-slot addressing, disposable direct-local App only, no stock grade',
             xtgettcapAdapterId, xtgettcapSuiteId, xtgettcapBundleSha256, xtgettcapContractsVersion,
             asciiReflowAdapterId, asciiReflowSuiteId, asciiReflowBundleSha256, asciiReflowContractsVersion, ownedAsciiReflowPolicy,
+            osc9AdapterId, osc9SuiteId, osc9BundleSha256, osc9ContractsVersion,
             xtgettcap: 'layered versioned collector extension; pinned device.xtgettcap termless and terminal code (DCS + q 544e ST; a 1+r544e=<even hex> value reply is supported, the bare 0+r refusal and silence stay inconclusive) replayed byte-exactly over the journaled raw replies of its own fenced exchange and preserved — TN is deliberately refused, so both pinned verdicts stay inconclusive — beside the separately identified effect contract ntilde-xtgettcap-capability-report-effect-v1 graded by an independent reply oracle over the same fence: the exact pinned request, the numeric Co/colors replies, the RGB/Tc flag replies, one string reply, multi-name reply order with per-name outcomes, documented unavailable and unknown names, case-sensitivity, the uppercase echo, malformed lists with exactly one refusal and verified recovery after each; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged; capability-report replies only — no rendering, color accuracy, control-string execution, Ms clipboard, X resource, remote-delivery or other-platform claim, no stock grade',
             asciiReflow: 'layered versioned collector extension; pinned extensions.reflow code (no fixture, no resize request, no cell readback; both arms always inconclusive by design) replayed byte-exactly over the journaled declared capability and preserved, beside a separately identified effect contract graded from paired complete stored cells, cursor, modes, attributes and complete ordered history at three actual geometries per experiment, proven by parent-selected App resize actions with independent kernel geometry and output-processing proof: an independent character-slicing model must reproduce the width round trip and the history round trip with top-anchored restoration in a disposable main screen buffer; the alternate screen is observed once as the nonce-bind control; no Unicode, wide-cell, grapheme or history-attribute claim, no images, pixels or rendered appearance, no saved banks, remote delivery or other platforms, no stock grades',
+            osc9: 'layered versioned collector extension; pinned extensions.osc9-progress (no termless function; terminal path unmeasuredStateEffect) and extensions.notifications (declared-capability report; no delivery readback) preserved as always inconclusive and replayed over the layered derivation, beside separately identified effect contracts graded by an independent OSC 9 oracle from paired complete stored cells, pane metadata and session status: OSC 9;4 stored progress kind, percent and owner and the actual horizontal tab suffix (states 1-4, withdrawal, percentage present/clamped, ST terminator, unmarked and withdrawal controls; absent-percentage, unknown/malformed-state and bare-4 behavior recorded as policy, never graded), and the private in-window toast title, message, visibility and auto-hide with the window-focus and opt-in preconditions recorded at control time and at delivery (the parent defocuses the App by activating Finder and records it); no OS taskbar or desktop notification delivery, no OSC 777/99 or other OSC 9 variants, no real-program emission, no remote/mux, Windows/Linux, hidden-pane or unobserved focus-change claim, no stock grade',
             osc133: 'layered versioned collector extension; pinned extensions.osc133-a, -b, -c and -d termless and terminal code (marker + X consumption, always inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, cwd, input window, raw command/output anchors) and session status by an independent lifecycle oracle: each pinned fixture executed from a measured prior state with an unmarked control and gating markers, plus canonical cycle, payload, boundary, terminator-variant and exit-payload observations; protocol handling in a disposable direct-local App only, no real-shell, remote, OSC 133 P, OSC 633 or stock-grade claim',
             rectChecksum: 'layered versioned collector extension; pinned termless criterion editing.decrqcra (ESC[1;1;1;1;1;5*y after ABCDE ESC[1;1H, a framed DCS 1 ! ~ hhhh ST) replayed byte-exactly on a disposable App whose initial settings turn on AllowRectangleChecksumReport (off by default), graded from raw replies bound to their DA barriers and parent-observed stored cells by an independent checksum model (character sum, bold/blink/reverse/underline weights, defaults, origin offset, page clipping, request id, non-admitted spellings, unchanged state); stored ASCII cells only, no stock grades',
             colEdit: 'layered versioned collector extension; pinned termless criteria editing.sl (ESC[2 @), editing.sr (ESC[2 A), editing.decic (ESC[2\'}) and editing.decdc (ESC[2\'~) replayed byte-exactly on a disposable App and graded from parent-observed stored cells of the whole screen, the cursor, App-stored margins, origin and insert mode, stored attribute tuples and per-cell DECSCA protection, with count, default, zero, clamp, region-inside/outside, origin, insert-mode, non-admitted-identity, first/last-column, moved-attribute, attribute-free-blank and moved-protection controls over a seed at both page edges; the pending-wrap state is observed, never graded; stored ASCII state with full-width horizontal margins only (DECLRMM is not implemented or claimed), the pinned pixel path never carries a verdict and is not qualified; no Unicode, wide-cell, scaled-text, image-plane, DECRQCRA, rectangle or rendered-appearance claim; not stock output',
@@ -1861,6 +1973,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'tst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ost-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xgtc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'osn-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'crst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
@@ -2314,6 +2427,45 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 throw metadataFailure(request, error, state.observer);
             }
         };
+        let osc9State;
+        const osc9FocusRecords = [];
+        const recordOsc9Unavailable = reason => {
+            if (!['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC 9 unavailability reason.');
+            writeJson(join(output, 'osn-unavailable.json'), { schemaVersion: 1, runId, suiteId: osc9SuiteId, status: 'unavailable', reason, plannedCases: osc9CaseIds.length });
+            osc9State.unavailable = true;
+        };
+        /** The parent defocuses (activates Finder) or refocuses the disposable App between observations and retains exactly what it did: the observed window state is the evidence. */
+        const performOsc9Action = async (request, budget) => {
+            // What is left of this request's shared owner deadline (the lineage checks already spent part of it): the whole action stays inside it.
+            const remaining = () => { try { return budget(); } catch { return 0; } };
+            const record = await runFocusAction({ action: request.kind.slice(osc9Prefix.length + 1), appPid: app.pid, sleep: ms => new Promise(resolve => setTimeout(resolve, ms)), remaining,
+                run: (args, timeout) => spawnSync('/usr/bin/osascript', args, { encoding: 'utf8', timeout }) });
+            osc9FocusRecords.push(record);
+            writeFileSync(join(output, 'osn-focus.json'), JSON.stringify(osc9FocusRecords, null, 2) + '\n', { mode: 0o600 });
+            return record;
+        };
+        const observeOsc9 = async (request, budget) => {
+            // Throws unless the XTGETTCAP suite restored; this suite has no typed-unavailable predecessor, so there is no reason to carry.
+            osc9PrerequisiteReason(xtgettcapObserver?.restored, false, null);
+            osc9State ??= { workerPid: request.workerPid, tty: request.tty,
+                observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName, runId, expectedPaneId: cellObserver.paneId,
+                    prefix: osc9Prefix, includeResolvedColors: true, planOf: osc9ObserverPlan, matchesBaseline: matchesOsc9Baseline, expose: exposeOsc9Facts }) };
+            const state = osc9State;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC 9 fixture ownership or availability changed.');
+            if (request.kind === `${osc9Prefix}-defocus` || request.kind === `${osc9Prefix}-refocus`) return performOsc9Action(request, budget);
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === `${osc9Prefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
+                    throw new Error('Original geometry changed before OSC 9 observations.');
+                }
+                appendFileSync(join(output, 'osn-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
+                return result;
+            } catch (error) {
+                retainFailedMetadataAttempt(output, request, error, state.observer, 'osn-failed-observation.json');
+                if (initialMetadataRefusal(request, error, state.observer)) recordOsc9Unavailable(error.code);
+                throw metadataFailure(request, error, state.observer);
+            }
+        };
         /** Route owned observations serially, preserving suite restoration and pane identity dependencies. */
         const recordInputUnavailable = reason => {
             const file = 'input-unavailable.json';
@@ -2519,6 +2671,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (prefix === osc78Prefix) return observeOsc78(request, budget);
             if (prefix === titleStackPrefix) return observeTitleStack(request, budget);
             if (prefix === oscTitlePrefix) return observeOscTitle(request, budget);
+            if (prefix === osc9Prefix) return observeOsc9(request, budget);
             if (prefix === 'pixel') return observePixels(request, budget);
             if (prefix === 'color') return observeColors(request, budget);
             if (Object.hasOwn(editingSpecs, prefix)) return observeEditing(prefix, request, budget);
@@ -3000,6 +3153,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (untranslatedCellKind(request.kind)
                 || coreWrapKinds.has(request.kind)
                 || /^(?:resize|reflow)-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
+                || osc9ActionKinds.has(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
                 return { ok: true, ownerPid: app.pid, ...result };
@@ -3088,6 +3242,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY',
                 'TERMINFO_CAPTURE_DIRECTORY', 'TERMINFO_CLIPBOARD_FIXTURE_RECEIPT', 'TERMINFO_RUNTIME_PROVENANCE']) delete env[name];
             logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
+            lease.noteLaunchAttempt(); // persisted in the lease before the App can exist; a failed write stops the launch
             app = spawn(executable, [`--ntilde-terminfo-owner=${runId}`, `--ntilde-terminfo-private-clipboard=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
             app.once('error', rejectDone);
             app.once('exit', (code, signal) => { if (!completed) rejectDone(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
@@ -3183,11 +3338,13 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             metadataEvidence = metadataState?.unavailable ?? retainCellReport(output, metadataState?.observer, runId, buildMetadataReport, 'metadata-observations.json');
             inputEvidence = inputState?.unavailable ?? retainCellReport(output, inputState?.observer, runId,
                 () => inputState.observer.report, 'input-observations.json');
-            routedInputEvidence = await retainRoutedInputEvidence(output, runId, routedInputBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal);
+            routedInputEvidence = await retainRoutedInputEvidence(output, runId, routedInputBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
+            modifyOtherKeysEvidence = await retainModifyOtherKeysEvidence(output, runId, modifyOtherKeysBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
             osc133Evidence = await retainOsc133Evidence(output, runId, osc133Bundle, upstreamBundleSha256, osc133State?.unavailable === true);
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
             xtgettcapEvidence = await retainXtgettcapEvidence(output, runId, xtgettcapBundle, upstreamBundleSha256);
+            osc9Evidence = retainOsc9Evidence(output, runId, upstreamBundleSha256, osc9State?.unavailable === true);
             oscTitleEvidence = retainOscTitleEvidence(output, runId, upstreamBundleSha256, oscTitleState?.unavailable === true);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
@@ -3259,10 +3416,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.rectChecksumEvidence = rectChecksumEvidence;
             summary.lrMarginsEvidence = lrMarginsEvidence;
             summary.routedInputEvidence = routedInputEvidence;
+            summary.modifyOtherKeysEvidence = modifyOtherKeysEvidence;
             summary.osc133Evidence = osc133Evidence;
             summary.osc78Evidence = osc78Evidence;
             summary.titleStackEvidence = titleStackEvidence;
             summary.xtgettcapEvidence = xtgettcapEvidence;
+            summary.osc9Evidence = osc9Evidence;
             summary.oscTitleEvidence = oscTitleEvidence;
             summary.colorResetEvidence = colorResetEvidence;
             writeJson(join(output, 'summary.json'), summary);
@@ -3277,7 +3436,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;
-            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }));
+            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }));
             preserveScratch = cleanupOutcome.failed;
         }
         throwOwnedRunFailures(runOutcome, cleanupOutcome);
@@ -3291,6 +3450,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             process.removeListener('SIGINT', onInt);
             process.removeListener('SIGTERM', onTerm);
+            process.removeListener('SIGHUP', onHup);
         }
     }
     if (interruption) {
@@ -3304,7 +3464,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, insertReplaceEvidence, xtgettcapEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

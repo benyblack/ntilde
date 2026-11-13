@@ -70,3 +70,12 @@ select the plan explicitly, the receipt by source policy. Mode controls are stil
 observation now records the child's bytes and a mismatch is a graded `failed` observation instead of an abort, so a defect can yield a complete,
 honest receipt. A `keyDown` event may carry `text`, and its `textHandled` fact is then required. The plan needs at least 97 columns; the query suite
 owes 152 earlier challenges (110 for v1) and the image suite 122 (80). Receipt schema 42 adds the layered grading suffix.
+
+## Benchmark plan v3 (source policy v47 and later)
+
+Runs on policy v47 and later execute a 118-event plan (`ntilde-owned-routed-input-v3`, [modify-other-keys.md](modify-other-keys.md)): every v2 event
+verbatim — the routed-input benchmarks keep re-deriving from the same journal — plus the modifyOtherKeys qualification, whose control captures also
+append XTQMODKEYS `CSI ? 4 m` and prove the negotiated level through the child's `CSI > 4 ; Pv m` reply. Every case is self-contained: the child
+shell's prompt signal resets the negotiated level by documented policy, so no case assumes a level a previous case set. The query suite owes 268
+earlier challenges and the image suite 238. Receipt schema 55 adds the layered modifyOtherKeys suffix; the suite-id declaration (not the policy
+number) binds the journal, so older plans keep re-deriving unchanged.

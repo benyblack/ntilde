@@ -97,7 +97,7 @@ for (const newline of ['\n', '\r\n']) for (const primary of [new Error('original
         privateClipboardState: undefined, queryState: undefined, retainPrivateClipboardJournal() {}, retainQueryJournal() {},
         retainPrivateClipboardAbort: async () => {}, retainOwnedFailure: () => wrapped,
         cleanupOwnedRun: async () => { throw cleanup; }, output: '/synthetic', workerIdentity: undefined, runId: 'a'.repeat(32),
-        app: undefined, proofs: [], completed: false, scratch: '/synthetic', preserveScratch: false,
+        app: undefined, proofs: [], completed: false, scratch: '/synthetic', preserveScratch: false, lease: { noteLaunchAttempt() {} },
     };
     const helperStart = actualSource.indexOf('async function captureOwnedCleanup('), helperEnd = actualSource.indexOf('/** Preserve only', helperStart);
     const run = new AsyncFunction(...Object.keys(dependencies), actualSource.slice(helperStart, helperEnd) + actualSource.slice(start, end));
@@ -118,7 +118,7 @@ for (const [label, primary] of [['Error', new Error('original operation failed')
         retainPrivateClipboardJournal() {}, retainQueryJournal() {}, retainPrivateClipboardAbort: async () => { throw retention; },
         retainOwnedFailure: (_output, reason) => { retained = new Error('retained failure', { cause: reason }); return retained; },
         cleanupOwnedRun: async () => { cleaned = true; throw undefined; }, output: '/synthetic', workerIdentity: undefined,
-        runId: 'a'.repeat(32), app: undefined, proofs: [], completed: false, scratch: '/synthetic', preserveScratch: false };
+        runId: 'a'.repeat(32), app: undefined, proofs: [], completed: false, scratch: '/synthetic', preserveScratch: false, lease: { noteLaunchAttempt() {} } };
     const helperStart = source.indexOf('async function captureOwnedCleanup('), helperEnd = source.indexOf('/** Preserve only', helperStart);
     const run = new AsyncFunction(...Object.keys(dependencies), source.slice(helperStart, helperEnd) + source.slice(start, end));
     await assert.rejects(run(...Object.values(dependencies)), error => cleaned && error instanceof AggregateError

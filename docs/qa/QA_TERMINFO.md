@@ -229,6 +229,68 @@ diagnostic or `suiteComplete: false` must remain visible; it is not a terminal
 failure. See the [first owned run](terminfo/2026-10-30-macos-owned.md) and the
 [refreshed before/after run](terminfo/2026-10-31-macos-owned.md).
 
+### Desktop collection lock
+
+Every supported terminfo entrypoint that launches or drives a GUI App takes one **exclusive, cooperative
+lease** on `~/.ntilde-qa-sidecars/.desktop-collection.lock` (the passwd home, so separate worktrees and sessions
+share it; no environment value or argument moves it):
+
+| Entrypoint | Enforced by |
+| --- | --- |
+| `node scripts/terminfo-owned.mjs ...` (owned App collections, their preflights, retries and smoke launches) | The trusted launcher loads `scripts/terminfo/desktop-lock.mjs` by a pinned SHA-256 (a second reviewed pure bootstrap dependency, outside the measured source graph, so no source policy or receipt changes). The runner takes the lease before it creates output or any App, window or focus action, and only the launcher releases it. |
+| `bun scripts/terminfo/common-core-driver.ts ...` (iTerm2, Ghostty and Ntilde native comparisons) | Takes the same lease before creating its output directory. |
+
+Not covered, by design: `terminfo-baseline.mjs` (runs in the invoking tab, launches nothing),
+`terminfo-platform-preflight.py`, the Linux self-tests (no App), publication rederivation, inventory and receipt
+checks, `--help` and the deterministic tests. They stay usable while another session owns the desktop; the
+launcher takes the lease lazily, so `--help` and refused invocations never touch it.
+
+**Lease.** `mkdir` of the lock directory is the atomic acquisition; the `owner` file inside records one line:
+unique lease id (also the run marker carried by the App and worker command lines), PID and process start time,
+user, worktree, entrypoint and acquisition time, `status` (`held` or `cleanup-failed`) and `launch`
+(`none` or `attempted`). It holds no payloads. Only a *live, verified, healthy* holder is waited for, and only up to
+`NTILDE_TERMINFO_DESKTOP_LOCK_WAIT_SECONDS` (default 0, maximum 3600; a duration, never a bypass). Everything else
+refuses at once with a bounded diagnostic and launches nothing: a dead or PID-reused holder, a `cleanup-failed`
+lease, a malformed owner record, a regular file left by the older common-core driver, a line from the
+retired manual `mkdir` protocol, a symlink, or an unreadable path. The one pause is an ownerless lock directory (a peer between
+`mkdir` and its owner write, or an interrupted acquisition): it is rechecked for up to three seconds, whatever the wait setting, and
+then refused like the rest. Nothing unreadable is ever read as idle.
+
+**Ownership and delegation.** The launcher process owns the lease; the App and worker are its descendants and
+never acquire. Entrypoints are not re-entrant: a child (or the same process) asking again is refused and told
+that an ancestor holds it. The runner can only request the lease once and report facts through a facade that has no
+release or retain; an arbitrary environment variable or marker cannot stand in for the lease.
+
+**Lifecycle and cleanup.** The launch intent is persisted in the lease *before* the App is spawned (a failed write
+stops the launch). Cleanup is verified only when the recorded worker and App have exited **and** a scan finds no
+process carrying this lease's `--ntilde-terminfo-owner/-worker/-private-clipboard` markers; a failed scan is a
+failed verification. A preparation failure before any launch releases the lease immediately. Release is
+ownership-checked (the directory is renamed aside, verified to be this lease, then removed) and refused outright
+for an attempted launch without verified cleanup; such a lease is marked `cleanup-failed` and retained, with the
+primary error and cleanup evidence preserved. Signals stay handled until the lease is settled. An App that survives
+`SIGKILL` fails cleanup (and retains the lease) instead of hanging the run.
+
+**Recovery is explicit, never automatic.** A dead parent PID alone never frees the desktop (descendants or an owned
+window may survive, and PIDs are reused):
+
+```sh
+node scripts/terminfo-desktop-lock.mjs status                       # read-only, bounded JSON
+node scripts/terminfo-desktop-lock.mjs recover --lease <32-hex id> [--confirm-desktop-idle]
+```
+
+`recover` renames the lock aside (evidence kept, never deleted) only for a well-formed lease with exactly that id
+whose recorded process is gone, with no surviving marked process, and, after an attempted launch or a failed
+cleanup, only with `--confirm-desktop-idle` after checking that no owned App window remains. Legacy, partial,
+malformed and live-holder locks are never recovered by the tool. Real acquisitions, refusals, launches, verified
+cleanups, retentions, releases and recoveries are appended to `~/.ntilde-qa-sidecars/.desktop-collection.log`
+(bounded, rotated at 512 KiB), so later audits have facts instead of memory; runs before this log existed have none.
+
+**Boundary.** This is cooperation between sessions of one user. It does not stop a hostile or careless same-user
+process that ignores it, deletes the directory or forges a record, and an absent lock never proves the desktop idle
+while a legacy collector may still run without it (collectors that predate this change did not use code-enforced
+locking; the older manual protocol is still honored because it uses the same atomic `mkdir`). Holding the lease is a
+precondition for a measurement, not evidence about it: it adds no benchmark, compatibility or conformance claim.
+
 ### Supplemental ASCII cell observations
 
 The owned runner also measures eight local text/cursor experiments through the
@@ -1095,3 +1157,29 @@ mixed valid/invalid) each refused exactly once, and a verified recovery after ea
 margins, modes and active screen unchanged over an attributed seed. An advertised flag or count proves the reply only — never rendering, color accuracy or control-string
 execution; the settings-dependent `Ms` clipboard capability, X resources, clipboard permissions, remote delivery and other platforms are not claimed. No production code
 changed. Receipt schema 53 and source policy v48 (313 files) bind it; earlier policies stay frozen. Inventory: 101 qualified ids.
+
+### modifyOtherKeys qualification (generated-input routing and encoding)
+
+The [modifyOtherKeys batch](terminfo/2026-11-12-modify-other-keys-qualification.md) qualifies `input.modify-other-keys` (levels 1 and 2 as subcases; level 3 only
+as an ignored request) through a layered collector extension (`ntilde-owned-modify-other-keys-grading-v1`) over the left/right-margins one, and adds the first
+generated-input capability: the AgentHost fixture now injects ordinary modified-key events with their paired backend text through the production App input path. The
+pinned probe reads only the capability declaration and feeds nothing; the child refuses the `modifyOtherKeys` XTGETTCAP name, so the pinned verdict stays
+**inconclusive by design** while the separately identified effect contract (`ntilde-modify-other-keys-effect-v1`) grades the exact bytes an independent raw stdin
+reader captured for 118 declared Avalonia events against an independent literal oracle: 46 required experiments (the X11 C0 aliases at level 1, the `CSI 27;m;code~`
+chords at level 2, the Enter/Tab/Backspace/Escape table, set/reset/disable transitions and the ignored level 3), 9 controls (disabled legacy bytes, Shift-only-printable
+text handling, Meta and Ctrl+Alt refusals, kitty precedence in a verified neutral state) and 3 labels (declaration, text-masquerade and label refusals) — every
+negotiation proved by the child's `XTQMODKEYS` reply before dispatch and the original state restored afterwards. Generated events are not physical keyboard input,
+App admission is not child receipt, and direct-local delivery does not qualify SSH, mux or Windows; `formatOtherKeys=1` and Kitty expansion of these events are not
+claimed. Receipt schema 56 and source policy v50 (336 files) bind it; earlier policies stay frozen. Inventory: 106 qualified ids.
+
+### OSC 9 qualification (progress and notifications)
+
+The [OSC 9 batch](terminfo/2026-11-13-osc9-qualification.md) qualifies exactly `extensions.osc9-progress` and `extensions.notifications` through a layered collector
+extension (`ntilde-owned-osc9-grading-v1`) over the left/right-margin one (a sibling of the OSC 7/8 and title/icon-stack layers). Both pinned probes send and read nothing and
+can only return inconclusive (`osc9-progress` has no termless function; `notifications` reports a declared capability), so both pinned verdicts are preserved. Two
+separately identified effect contracts (`ntilde-osc9-progress-state-effect-v1`, `ntilde-osc9-notification-toast-effect-v1`) are graded by an independent OSC 9 oracle over
+the pane-metadata-and-session-status observer: stored progress kind/percent/owner and the actual tab suffix, and the private in-window toast with the window-focus and opt-in
+preconditions recorded at control time and at delivery. The parent performs and retains verified focus actions (`osn-focus.json`); absent-percentage, unknown/malformed-state,
+bare-`4`, text-flattening, cap and focus-suppression behavior is recorded as policy and never graded. A notification case without a valid inactive-window positive control stays
+inconclusive with its reason. No OS taskbar or desktop notification delivery is claimed. No production code changed. Receipt schema 57 and source policy v51 (342 files) bind it;
+earlier policies stay frozen.

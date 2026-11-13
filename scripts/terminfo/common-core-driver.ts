@@ -16,13 +16,13 @@ import {
     writeFileSync,
     openSync,
     closeSync,
-    unlinkSync,
     realpathSync,
     readdirSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { randomBytes, randomUUID, createHash } from 'node:crypto';
+import { acquireDesktopLease, desktopLockWaitMs } from './desktop-lock.mjs';
+import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -87,24 +87,28 @@ function nativeProcessAbsent(pid: number) {
     ).trim();
     return absent && registration === 'true';
 }
-const lockPath = join(homedir(), '.ntilde-qa-sidecars', '.desktop-collection.lock');
-mkdirSync(dirname(lockPath), { recursive: true });
-mkdirSync(output, { mode: 0o700 });
-const lockFd = openSync(lockPath, 'wx', 0o600);
-const runId = randomBytes(16).toString('hex');
-writeFileSync(
-    lockFd,
-    JSON.stringify({
-        owner: 'codex-core-terminal-comparison',
-        pid: process.pid,
-        runId,
-        startedAt: new Date().toISOString(),
-        worktree: root,
-    }),
-);
-closeSync(lockFd);
+// Exclusive desktop lease before any output, launch or window action; ownership-checked release only after verified cleanup.
+const lease = await acquireDesktopLease({
+    entrypoint: 'common-core-driver.ts',
+    worktree: root,
+    waitMs: desktopLockWaitMs(),
+    // Record only the markers this driver really puts on its processes: the worker command line always, the App only for Ntilde.
+    markerKinds: appId === 'ntilde' ? ['owner', 'worker'] : ['worker'],
+});
+const runId = lease.leaseId;
+try {
+    mkdirSync(output, { mode: 0o700 });
+} catch (error) {
+    lease.release(); // nothing was launched
+    throw error;
+}
 let applicationState: any;
 let launchAttempted = false;
+/** Persist the launch intent in the lease first: a failed write stops the launch before it can happen. */
+function markLaunchAttempt() {
+    lease.noteLaunchAttempt();
+    launchAttempted = true;
+}
 let launch: any, windowId: number | undefined, worker: any, ownedWindow: any;
 const nativeApps: Record<string, string> = { iterm2: '/Applications/iTerm.app', ghostty: '/Applications/Ghostty.app' };
 const appPath = nativeApps[appId];
@@ -266,7 +270,7 @@ try {
         '#!/bin/bash -p\n' +
         `tty > ${quote(identityPath)}\n` +
         'unset TMUX STY SSH_CONNECTION SSH_TTY __CFBundleIdentifier\n' +
-        `exec env ${assignmentText} ${quote(process.execPath)} --no-env-file ${quote(join(harnessDirectory, 'common-core-worker.ts'))} ${quote(join(output, 'config.json'))}\n`;
+        `exec env ${assignmentText} ${quote(process.execPath)} --no-env-file ${quote(join(harnessDirectory, 'common-core-worker.ts'))} ${quote(join(output, 'config.json'))} ${quote('--ntilde-terminfo-worker=' + runId)}\n`;
     writeFileSync(scriptPath, script, { flag: 'wx', mode: 0o700 });
     if (appId === 'ghostty') {
         const { prepareCliLaunch, launchPreparedCli } = await importUpstream('packages/admin/src/app.ts');
@@ -277,7 +281,7 @@ try {
             readFileSync(prepared.marker.value, 'utf8') + 'window-width = 140\nwindow-height = 41\n',
             { mode: 0o600 },
         );
-        launchAttempted = true;
+        markLaunchAttempt();
         launch = launchPreparedCli(prepared, output);
     } else if (appId === 'iterm2') {
         const apple = `tell application "iTerm"
@@ -304,7 +308,7 @@ print(json.dumps({'source':'iTerm default profile display fields only','fields':
         );
         write('display-settings.json', JSON.parse(displaySettings));
         write('launch-request.json', { command: 'osascript', args: ['-e', apple] });
-        launchAttempted = true;
+        markLaunchAttempt();
         const launchedId = Number(String(execFileSync('/usr/bin/osascript', ['-e', apple], { timeout: 30000 })).trim());
         if (!Number.isSafeInteger(launchedId) || launchedId < 1)
             throw new Error('iTerm returned no newly owned window id.');
@@ -349,7 +353,7 @@ end tell`,
         };
         writeFileSync(join(appData, 'settings.json'), JSON.stringify(settings), { flag: 'wx', mode: 0o600 });
         const log = openSync(join(output, 'app-output.log'), 'wx', 0o600);
-        launchAttempted = true;
+        markLaunchAttempt();
         applicationState = spawnCommonCoreApplication(executable, [`--ntilde-terminfo-owner=${runId}`], {
             cwd: dirname(executable),
             env: { ...process.env, NTILDE_APPDATA_ROOT: appData },
@@ -628,17 +632,14 @@ async function confirmWorkerExit() {
     );
 }
 
-/** Publish cleanup evidence before releasing the owned lock; failures keep the lock for inspection. */
+/** Publish cleanup evidence before releasing the lease; failures retain it (marked cleanup-failed) for inspection. */
 function finishCleanupRecord(failures: string[], ownedWindowAbsent: boolean, workerExited: boolean) {
-    let lock: any;
+    let ownLock = true;
     try {
-        lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+        lease.assertHeld();
     } catch (error) {
-        failures.push('Collection lock could not be read: ' + String(error));
-    }
-    const ownLock = lock?.pid === process.pid && lock?.runId === runId;
-    if (!ownLock) {
-        failures.push('Collection lock ownership changed before cleanup completed.');
+        ownLock = false;
+        failures.push('Collection lock ownership changed before cleanup completed: ' + String(error));
     }
     write('cleanup.json', { runId, completedAt: new Date().toISOString(), failures, ownedWindowAbsent, workerExited });
     if (failures.length) {
@@ -648,9 +649,9 @@ function finishCleanupRecord(failures: string[], ownedWindowAbsent: boolean, wor
         return;
     }
     if (failures.length) {
-        writeFileSync(lockPath, JSON.stringify({ ...lock, status: 'cleanup-failed', failures }), { mode: 0o600 });
+        lease.retain(failures.join('; '));
     } else {
-        unlinkSync(lockPath);
+        lease.release();
     }
 }
 
@@ -672,6 +673,14 @@ async function cleanupLaunch() {
         workerExited = true;
     } catch (error) {
         failures.push(String(error));
+    }
+    // The lease may be released only when the existing checks held AND no process carrying its run markers survives.
+    if (failures.length === 0) {
+        try {
+            await lease.verifyCleanup();
+        } catch (error) {
+            failures.push(String(error));
+        }
     }
     finishCleanupRecord(failures, ownedWindowAbsent, workerExited);
 }

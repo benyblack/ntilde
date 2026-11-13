@@ -1,10 +1,8 @@
 import { snapshotHash, screenSnapshot } from './agent-observer.mjs';
-import { inputAttemptCount, inputFrameCount, inputPlanV1 } from './input-plan.mjs';
+import { defaultInputModes, inputAttemptCount, inputFrameCount, inputModeNumbers, inputModeQueries, inputPlanV1 } from './input-plan.mjs';
 import { pristineEditing } from './editing-capture.mjs';
 import { validateOutputGeometry } from './terminal-output.mjs';
-export const inputModeNumbers = Object.freeze([66, 9, 1000, 1002, 1003, 1006]);
-export const inputModeQueries = inputModeNumbers.map(n => `\x1b[?${n}$p`).join('') + '\x1b[?u';
-export const defaultInputModes = Object.freeze({ applicationKeypad: false, mouseTracking: 0, mouseSgr: false, kittyKeyboardFlags: 0 });
+export { defaultInputModes, inputModeNumbers, inputModeQueries };
 export const inputFinalRestore = '\x1b[?1049l\x1b[!p\x1b[?6l\x1b[r\x1b[4l\x1b[0m\x1b[2J\x1b[3J\x1b[H\x1b[?25h';
 export const sameInputFact = (a, b) => snapshotHash(a) === snapshotHash(b);
 export const checkInput = value => { if (!value) throw new Error('Invalid or incomplete owned routed-input evidence.'); };
@@ -19,8 +17,12 @@ function inputModeSet(number, modes) {
     return modes.mouseTracking === number;
 }
 export function inputModeReplyHex(modes) {
-    return Buffer.from(inputModeNumbers.map(n => `\x1b[?${n};${inputModeSet(n, modes) ? 1 : 2}$y`).join('')
+    const base = Buffer.from(inputModeNumbers.map(n => `\x1b[?${n};${inputModeSet(n, modes) ? 1 : 2}$y`).join('')
         + `\x1b[?${modes.kittyKeyboardFlags}u`).toString('hex');
+    // v3 plans prove the negotiated modifyOtherKeys level through XTQMODKEYS; plans whose modes never carry the
+    // level re-derive byte-for-byte as before.
+    return modes.modifyOtherKeysLevel === undefined ? base
+        : base + Buffer.from(`\x1b[>4;${modes.modifyOtherKeysLevel}m`).toString('hex');
 }
 /** Raw hex is a copied child observation; challenge bytes are never event bytes. */
 export function validateInputBytes(value, expectedHex, used, exact = true) {
@@ -86,6 +88,8 @@ export function buildInputReport(frames, actions, seal, runId, plan = inputPlanV
     checkInput(pristineEditing(initial));
     const cases = plan.make(initial.rows, initial.cols), used = new Set(), profileName = actions[0]?.observed?.before?.pane?.profileName;
     checkInput(cases.length === count);
+    const finalModes = plan.finalModes ?? defaultInputModes;
+    const controlHex = item => (item.controlPrefixHex ?? '') + inputModeReplyHex(item.modes);
     validateInputFrame(frames[0], 0, 'input-start', paneId);
     validateInputFrame(frames[1], 1, 'input-bind', paneId);
     const bound = boundInputScreen(initial, runId);
@@ -97,18 +101,18 @@ export function buildInputReport(frames, actions, seal, runId, plan = inputPlanV
         checkInput(control.caseId === item.id && observed.caseId === item.id && observed.actionIndex === index
             && sameInputFact(control.screen, bound) && sameInputFact(observed.screen, bound)
             && actions[index].index === index && actions[index].caseId === item.id);
-        validateInputBytes(control.capture, inputModeReplyHex(item.modes), used);
+        validateInputBytes(control.capture, controlHex(item), used);
         validateInputBytes(observed.capture, item.expectedHex, used, plan.exactEvents);
         validateInputAction(actions[index].observed, item, paneId, runId, geometry, profileName);
         return { featureId: item.id, result: observed.capture.hex === item.expectedHex ? 'passed' : 'failed', expectedHex: item.expectedHex, actualHex: observed.capture.hex,
             controlSnapshot: control.index, snapshot: observed.index, actionIndex: index };
     });
     const final = frames.at(-1); validateInputFrame(final, frames.length - 1, 'input-finish', paneId);
-    checkInput(sameInputFact(final.screen, initial)); validateInputBytes(final.capture, inputModeReplyHex(defaultInputModes), used);
+    checkInput(sameInputFact(final.screen, initial)); validateInputBytes(final.capture, inputModeReplyHex(finalModes), used);
     checkInput(seal?.failed === false && seal.disposed === true && seal.attempts === inputAttemptCount(count) && seal.lastAttempt?.completed === true
         && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
         && seal.lastAttempt.hex === final.capture.hex + Buffer.from(final.capture.barrier).toString('hex')
         && sameInputFact(seal.lastAttempt.nonces, final.capture.nonces));
-    return { schemaVersion: plan.id === 'v1' ? 1 : 2, suiteId: plan.suiteId, runId, scope: plan.scope(count),
+    return { schemaVersion: plan.id === 'v1' ? 1 : plan.id === 'v2' ? 2 : 3, suiteId: plan.suiteId, runId, scope: plan.scope(count),
         inputs: cases, initialSnapshot: 0, restoredSnapshot: frames.length - 1, snapshots: frames, actions, seal, observations };
 }

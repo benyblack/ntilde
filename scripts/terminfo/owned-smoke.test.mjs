@@ -11,6 +11,8 @@ import { ownedSourcePath, ownedSourceFiles } from './owned-sources.mjs';
 import { upstreamReceipt } from './collector.mjs';
 import { installLockedCollector } from './runtime.mjs';
 import { terminateRecordedWorker } from './ownership.mjs';
+import { inspectDesktopLock } from './desktop-lock.mjs';
+import { installPrivateLockLauncher } from './fixtures/desktop-lock-fixture.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const prepared = process.platform === 'darwin'
@@ -47,9 +49,9 @@ function withCollectorFixture(receipt, lockfile, action) {
     // Clone the small runner fixture so tests never mutate the real tool cache.
     const root = mkdtempSync(join(tmpdir(), 'nt-receipt-'));
     try {
-        for (const file of ['terminfo-owned.mjs', 'terminfo-baseline.mjs']) {
-            mkdirSync(join(root, 'scripts'), { recursive: true }); copyFileSync(join(repo, 'scripts', file), join(root, 'scripts', file));
-        }
+        mkdirSync(join(root, 'scripts'), { recursive: true }); copyFileSync(join(repo, 'scripts', 'terminfo-baseline.mjs'), join(root, 'scripts', 'terminfo-baseline.mjs'));
+        // The copied launcher uses a private lock: these tests exercise preparation failures, never the shared desktop.
+        installPrivateLockLauncher(repo, root, join(root, 'private-desktop-lock', '.desktop-collection.lock'));
         for (const file of Object.values(ownedSourceFiles)) {
             const target = ownedSourcePath(root, file); mkdirSync(dirname(target), { recursive: true });
             copyFileSync(ownedSourcePath(repo, file), target);
@@ -231,7 +233,10 @@ function assertCleaned(result) {
     assert.ok(!existsSync(resolve(directory, 'cell-receipt.json')), 'A failed run cannot finalize cell evidence.');
 }
 
-test('an early app exit fails promptly and removes the private fixture', { skip: !prepared }, async () => {
+// The real launcher takes the shared desktop lock even for /usr/bin/true (it cannot know the executable is harmless), so leave
+// the slot alone while another session holds it instead of failing, or briefly holding it against, that session.
+const desktopIdle = inspectDesktopLock().state === 'idle';
+test('an early app exit fails promptly and removes the private fixture', { skip: !prepared ? true : (!desktopIdle && 'the shared desktop lock is held by another session') }, async () => {
     const result = await launch('/usr/bin/true', false);
     assert.match(result.errors, /exited before collection/);
     assertCleaned(result);

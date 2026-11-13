@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v50';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v52';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -639,9 +639,31 @@ export const capturedV56SourceFiles = Object.freeze({
     xtgettcapReceiptCoreSourceSha256: 'xtgettcap-receipt-core.mjs',
 });
 
-// Frozen v57 ASCII-reflow grading scope; future experiments must create a distinct policy and map.
+/** Frozen v57 modifyOtherKeys (input.modify-other-keys, levels 1 and 2) grading scope; future experiments must create a distinct policy and map. */
 export const capturedV57SourceFiles = Object.freeze({
     ...capturedV56SourceFiles,
+    modifyOtherKeysCasesSourceSha256: 'modify-other-keys-cases.mjs',
+    modifyOtherKeysContractsSourceSha256: 'modify-other-keys-contracts.mjs',
+    modifyOtherKeysCollectorSourceSha256: 'modify-other-keys-collector.mjs',
+    modifyOtherKeysGradingSourceSha256: 'modify-other-keys-grading.mjs',
+    modifyOtherKeysGradingCollectorSourceSha256: 'modify-other-keys-grading-collector.mjs',
+    modifyOtherKeysReceiptSourceSha256: 'modify-other-keys-receipt.mjs',
+});
+
+// Frozen v58 OSC 9 (extensions.osc9-progress, extensions.notifications) grading scope; future experiments must create a distinct policy and map.
+export const capturedV58SourceFiles = Object.freeze({
+    ...capturedV57SourceFiles,
+    osc9ContractsSourceSha256: 'osc9-contracts.mjs',
+    osc9CollectorSourceSha256: 'osc9-collector.mjs',
+    osc9GradingSourceSha256: 'osc9-grading.mjs',
+    osc9GradingCollectorSourceSha256: 'osc9-grading-collector.mjs',
+    osc9ReceiptSourceSha256: 'osc9-receipt.mjs',
+    osc9FocusSourceSha256: 'osc9-focus.mjs',
+});
+
+// Frozen v59 ASCII-reflow grading scope; future experiments must create a distinct policy and map.
+export const capturedV59SourceFiles = Object.freeze({
+    ...capturedV58SourceFiles,
     asciiReflowContractsSourceSha256: 'ascii-reflow-contracts.mjs',
     asciiReflowObserverSourceSha256: 'ascii-reflow-observer.mjs',
     asciiReflowCollectorSourceSha256: 'ascii-reflow-collector.mjs',
@@ -650,11 +672,11 @@ export const capturedV57SourceFiles = Object.freeze({
     asciiReflowReceiptSourceSha256: 'ascii-reflow-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v57 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v59 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV57SourceFiles)) throw new Error('Invalid current v57 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV59SourceFiles)) throw new Error('Invalid current v59 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);
@@ -672,3 +694,4 @@ export function removeSourceSnapshot(root) {
     try { lstatSync(root); throw new Error('Captured source tree remains.'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
+

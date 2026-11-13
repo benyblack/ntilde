@@ -47,9 +47,12 @@ import { collectRectEditGrading } from './rect-edit-collector.mjs';
 import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
 import { collectXtgettcapGrading } from './xtgettcap-collector.mjs';
+import { collectOsc9 } from './osc9-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
+import { collectModifyOtherKeysPinned } from './modify-other-keys-collector.mjs';
+import { modifyOtherKeysCaseIds, modifyOtherKeysGradedSuiteId } from './modify-other-keys-contracts.mjs';
 import { collectColorResetGrading } from './color-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
@@ -391,6 +394,12 @@ try {
         const xtgettcapModule = await import(pathToFileURL(config.xtgettcapBundle).href);
         const xtgettcapRun = await collectXtgettcapGrading({ config, fence, owner, gradingModule: xtgettcapModule });
         writeFileSync(join(config.output, 'xgtc-run.json'), JSON.stringify(xtgettcapRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered OSC 9 qualification follows the XTGETTCAP suite on the same exclusively owned fence. A typed refusal of its first observation is
+        // retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+        const osc9Source = readFileSync(config.osc9Bundle);
+        if (createHash('sha256').update(osc9Source).digest('hex') !== config.osc9BundleSha256) throw new Error('Local OSC 9 adapter bundle changed.');
+        const osc9Result = await collectOsc9({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc9Bundle).href) });
+        if (osc9Result.status === 'complete') writeFileSync(join(config.output, 'osn-run.json'), JSON.stringify(osc9Result.run) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
@@ -399,11 +408,20 @@ try {
         if (inputResult?.status === 'unavailable') {
             writeFileSync(join(config.output, 'rin-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: routedInputGradedSuiteId,
                 status: 'unavailable', reason: inputResult.reason, plannedCases: routedInputCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
+            writeFileSync(join(config.output, 'mok-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: modifyOtherKeysGradedSuiteId,
+                status: 'unavailable', reason: inputResult.reason, plannedCases: modifyOtherKeysCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
         } else {
             if (inputResult?.status !== 'complete') throw new Error('Routed-input qualification requires the owned input suite to complete or be unavailable.');
             const routedInputRun = collectRoutedInputPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
                 gradingModule: await import(pathToFileURL(config.routedInputBundle).href) });
             writeFileSync(join(config.output, 'rin-run.json'), JSON.stringify(routedInputRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered modifyOtherKeys qualification replays the pinned probe over the child's own XTGETTCAP declaration capture
+            // from the same collection; the routed-input events stay verbatim in the v3 plan so that layer keeps deciding.
+            const modifyOtherKeysSource = readFileSync(config.modifyOtherKeysBundle);
+            if (createHash('sha256').update(modifyOtherKeysSource).digest('hex') !== config.modifyOtherKeysBundleSha256) throw new Error('Local modifyOtherKeys adapter bundle changed.');
+            const modifyOtherKeysRun = collectModifyOtherKeysPinned({ geometry: inputResult.geometry, controls: inputResult.controls,
+                gradingModule: await import(pathToFileURL(config.modifyOtherKeysBundle).href) });
+            writeFileSync(join(config.output, 'mok-run.json'), JSON.stringify(modifyOtherKeysRun) + '\n', { flag: 'wx', mode: 0o600 });
         }
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
