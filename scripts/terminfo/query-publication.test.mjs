@@ -227,11 +227,11 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
             }
             if (policy) {
                 const path = join(modules, 'owned-sources.mjs'); writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v51';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v52';"));
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
-            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v51' : 'readonly-owned-source-graph-v50');
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 337 : 336); assert.deepEqual(sources.capturedV11SourceFiles, capturedV11SourceFiles);
+            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v52' : 'readonly-owned-source-graph-v51');
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 343 : 342); assert.deepEqual(sources.capturedV11SourceFiles, capturedV11SourceFiles);
             const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
             const files = historicalArchive(name); writeFiles(files, output); const old = read(files, 'cell-receipt.json'); rmSync(join(output, 'cell-receipt.json'));
             compareReceipt(next.completeOwnedReceipt(output, join(output, 'removed-fixture'), evidenceFrom(old)), read(files, 'cell-receipt.json'));
@@ -251,3 +251,4 @@ test('a coherently rehashed expanded graph cannot acquire the frozen v11 policy'
     rmSync(join(output, 'cell-receipt.json'));
     assert.throws(() => completeOwnedReceipt(output, join(output, 'removed-fixture'), evidenceFrom(original)), /Invalid/);
 }));
+

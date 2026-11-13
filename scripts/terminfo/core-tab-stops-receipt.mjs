@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core tab-stops receipt: ' + message); };
 
 export function includesTabStopsEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50'].includes(context.sourceSnapshotPolicy) || context.tabStopsSuiteId !== undefined || evidence.tabStopsEvidence !== undefined
+    return ['readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51'].includes(context.sourceSnapshotPolicy) || context.tabStopsSuiteId !== undefined || evidence.tabStopsEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
@@ -28,3 +28,4 @@ export function checkTabStopsEvidence(output, evidence, runId, context) {
     const derived = buildTabStopsReport(frames, JSON.parse(run), runId);
     check(JSON.stringify(derived) === JSON.stringify(JSON.parse(observation)), 'journal rederivation mismatch');
 }
+

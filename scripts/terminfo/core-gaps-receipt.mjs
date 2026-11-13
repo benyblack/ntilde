@@ -8,7 +8,7 @@ const files = ['cg-run.json', 'cg-observations.json', 'cg-snapshots.jsonl', 'col
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = condition => { if (!condition) throw new Error('Invalid Core-gap receipt binding.'); };
 export function includesCoreGapsEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50'].includes(context.sourceSnapshotPolicy) || context.coreGapsSuiteId !== undefined
+    return ['readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51'].includes(context.sourceSnapshotPolicy) || context.coreGapsSuiteId !== undefined
         || evidence.coreGapsEvidence !== undefined || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 export function checkCoreGapsEvidence(output, evidence, runId, context, proof) {
@@ -30,3 +30,4 @@ export function checkCoreGapsEvidence(output, evidence, runId, context, proof) {
     // The child that emitted TERM must be the independently proved App session worker.
     check(proof.proofs.some(entry => entry.worker?.pid === run.child.pid));
 }
+

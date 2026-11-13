@@ -43,7 +43,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
  * policy-v31 or policy-v32 run always carries them, because the worker collects this suite
  * unconditionally after the selective-erasure suite. */
 export function includesRectEditEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50'].includes(context.sourceSnapshotPolicy)
+    return ['readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51'].includes(context.sourceSnapshotPolicy)
         || context.rectEditAdapterId !== undefined || context.rectEditSuiteId !== undefined
         || context.rectEditBundleSha256 !== undefined || context.rectEditContractsVersion !== undefined
         || evidence.rectEditEvidence !== undefined
@@ -146,3 +146,4 @@ export function checkRectEditEvidence(output, evidence, runId, context) {
     if (!sameJson(frames, report.snapshots)) throw new Error('rectangle-editing journal does not match the report.');
     if (!sameJson(rectEditCounts(report), binding.counts)) throw new Error('rectangle-editing receipt counts do not match the report.');
 }
+

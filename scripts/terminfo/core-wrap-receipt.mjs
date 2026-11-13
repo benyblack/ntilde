@@ -8,7 +8,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core wrap receipt: ' + message); };
 export function includesCoreWrapEvidence(output, evidence, context, proof) {
-    return ['readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50'].includes(context.sourceSnapshotPolicy) || context.coreWrapSuiteId !== undefined
+    return ['readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51'].includes(context.sourceSnapshotPolicy) || context.coreWrapSuiteId !== undefined
         || evidence.coreWrapEvidence !== undefined || proof.proofs?.some(p => p.coreWrap !== undefined)
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
@@ -32,3 +32,4 @@ export function checkCoreWrapEvidence(output, evidence, runId, context, proof) {
     const derived = deriveWrapEvidence(frames, JSON.parse(run), runId, geometry);
     check(same(derived, JSON.parse(observation)), 'journal rederivation mismatch');
 }
+

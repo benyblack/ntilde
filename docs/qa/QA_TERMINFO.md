@@ -1092,6 +1092,20 @@ margins, modes and active screen unchanged over an attributed seed. An advertise
 execution; the settings-dependent `Ms` clipboard capability, X resources, clipboard permissions, remote delivery and other platforms are not claimed. No production code
 changed. Receipt schema 53 and source policy v48 (313 files) bind it; earlier policies stay frozen. Inventory: 101 qualified ids.
 
+### modifyOtherKeys qualification (generated-input routing and encoding)
+
+The [modifyOtherKeys batch](terminfo/2026-11-12-modify-other-keys-qualification.md) qualifies `input.modify-other-keys` (levels 1 and 2 as subcases; level 3 only
+as an ignored request) through a layered collector extension (`ntilde-owned-modify-other-keys-grading-v1`) over the left/right-margins one, and adds the first
+generated-input capability: the AgentHost fixture now injects ordinary modified-key events with their paired backend text through the production App input path. The
+pinned probe reads only the capability declaration and feeds nothing; the child refuses the `modifyOtherKeys` XTGETTCAP name, so the pinned verdict stays
+**inconclusive by design** while the separately identified effect contract (`ntilde-modify-other-keys-effect-v1`) grades the exact bytes an independent raw stdin
+reader captured for 118 declared Avalonia events against an independent literal oracle: 46 required experiments (the X11 C0 aliases at level 1, the `CSI 27;m;code~`
+chords at level 2, the Enter/Tab/Backspace/Escape table, set/reset/disable transitions and the ignored level 3), 9 controls (disabled legacy bytes, Shift-only-printable
+text handling, Meta and Ctrl+Alt refusals, kitty precedence in a verified neutral state) and 3 labels (declaration, text-masquerade and label refusals) — every
+negotiation proved by the child's `XTQMODKEYS` reply before dispatch and the original state restored afterwards. Generated events are not physical keyboard input,
+App admission is not child receipt, and direct-local delivery does not qualify SSH, mux or Windows; `formatOtherKeys=1` and Kitty expansion of these events are not
+claimed. Receipt schema 56 and source policy v50 (336 files) bind it; earlier policies stay frozen. Inventory: 106 qualified ids.
+
 ### OSC 9 qualification (progress and notifications)
 
 The [OSC 9 batch](terminfo/2026-11-13-osc9-qualification.md) qualifies exactly `extensions.osc9-progress` and `extensions.notifications` through a layered collector
@@ -1101,5 +1115,5 @@ separately identified effect contracts (`ntilde-osc9-progress-state-effect-v1`, 
 the pane-metadata-and-session-status observer: stored progress kind/percent/owner and the actual tab suffix, and the private in-window toast with the window-focus and opt-in
 preconditions recorded at control time and at delivery. The parent performs and retains verified focus actions (`osn-focus.json`); absent-percentage, unknown/malformed-state,
 bare-`4`, text-flattening, cap and focus-suppression behavior is recorded as policy and never graded. A notification case without a valid inactive-window positive control stays
-inconclusive with its reason. No OS taskbar or desktop notification delivery is claimed. No production code changed. Receipt schema 56 and source policy v50 (336 files) bind it;
+inconclusive with its reason. No OS taskbar or desktop notification delivery is claimed. No production code changed. Receipt schema 57 and source policy v51 (342 files) bind it;
 earlier policies stay frozen.

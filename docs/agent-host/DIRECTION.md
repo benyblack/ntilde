@@ -213,14 +213,21 @@ split, inactive, hidden, stale and dead targets are unavailable.
 The BCL contract validates the following bounds before any UI work:
 
 - `key`: keypad `0`–`9`, `decimal`, `separator`, `add`, `subtract`, `multiply`,
-  `divide` or physical keypad `enter`, only for key events.
+  `divide` or physical keypad `enter`; or one bounded ordinary main-block key named
+  by its US-layout position — letters `a`–`z`, digits `digit0`–`digit9` (distinct from
+  the keypad digits), punctuation (`grave` `minus` `equal` `leftBracket` `rightBracket`
+  `backslash` `semicolon` `apostrophe` `comma` `period` `slash`) and `tab` `backspace`
+  `escape` `space` `return` — only for key events, with any declared modifier bits.
 - `text`: exactly one character from `0123456789.+-*/,=` or carriage return.
-  Alone it is a standalone text event. On a `keyDown` (modifiers zero) it is the one
+  Alone it is a standalone text event. On a `keyDown` it is the one
   follow-up TextInput raised right after that key-down in the same synchronous
   dispatch, the text some backends emit for a key the terminal already handled, so a
   single declared action can exercise the handled-key duplicate guard; the result's
-  `textHandled` says whether that follow-up was marked handled. Separate calls
-  still never form a backend key/text callback pair, and a pending human correlation
+  `textHandled` says whether that follow-up was marked handled. For a keypad key it
+  must be that key's own character with zero modifiers; for an ordinary key it must be
+  exactly the key's US-layout character with zero or Shift-only modifiers, so a declared
+  pair can never fabricate a correlation a Ctrl, Alt, Meta or AltGr chord does not produce.
+  Separate calls still never form a backend key/text callback pair, and a pending human correlation
   still refuses the action.
 - `modifiers`: bits shift=1, control=2, alt=4, meta=8; text requires zero.
 - Pointer `column`/`row`: one-based viewport cells within 256×128 and the actual

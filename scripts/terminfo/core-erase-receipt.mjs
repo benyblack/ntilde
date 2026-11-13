@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core erase receipt: ' + message); };
 
 export function includesCoreEraseEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50'].includes(context.sourceSnapshotPolicy) || context.coreEraseSuiteId !== undefined || evidence.coreEraseEvidence !== undefined
+    return ['readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51'].includes(context.sourceSnapshotPolicy) || context.coreEraseSuiteId !== undefined || evidence.coreEraseEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
@@ -28,3 +28,4 @@ export function checkCoreEraseEvidence(output, evidence, runId, context) {
     const derived = buildEraseReport(frames, JSON.parse(run), runId);
     check(JSON.stringify(derived) === JSON.stringify(JSON.parse(observation)), 'journal rederivation mismatch');
 }
+

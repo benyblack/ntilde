@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { inputPlanForPolicy, inputPlanV1 } from './input-plan.mjs';
+import { inputPlanForSuiteId, inputPlanV1 } from './input-plan.mjs';
 import { buildInputReport, checkInput, sameInputFact } from './input-state.mjs';
 import { capturedV9SourceFiles } from './owned-sources.mjs';
 /** Every policy from v2 on carries the routed-input suite (v2..v35 the frozen v1 plan, later ones the benchmark plan). */
@@ -42,8 +42,8 @@ export function inputCounts(report) {
     return counts;
 }
 export function checkInputEvidence(output, binding, runId, context, proof) {
-    const marker = proof.proofs?.[0]?.input, plan = inputPlanForPolicy(context.sourceSnapshotPolicy);
-    checkInput(context.inputSuiteId === plan.suiteId && context.ownedInputPolicy === plan.policy
+    const marker = proof.proofs?.[0]?.input, plan = inputPlanForSuiteId(context.inputSuiteId);
+    checkInput(plan !== undefined && context.ownedInputPolicy === plan.policy
         && inputPolicyAdmitted(context.sourceSnapshotPolicy) && marker?.policy === plan.policy
         && Array.isArray(marker.actions) && !present(join(output, 'input-failed-observation.json')) && !present(join(output, 'input-raw-failure.json')));
     for (const [key, file] of Object.entries(inputSources)) checkInput(/^[a-f\d]{64}$/.test(context[key] ?? '')

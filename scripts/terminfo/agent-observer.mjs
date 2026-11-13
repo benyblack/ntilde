@@ -161,8 +161,9 @@ export function screenSnapshot(value, includeAttributes = false, includeCellDeta
 }
 
 export class OwnedCellObserver {
-    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false, includeHorizontalMargins = false, prefix = 'cell', expectedPaneId, rpc = agentRequest, endpoint = observerEndpoint }) {
+    constructor({ appData, ownerPid, profileName, nonce, includeAttributes = false, includeCellDetails = false, includeCursorMode = false, includeOverline = false, includeBufferState = false, includeResolvedColors = false, includeResolvedUnderlineColors = false, includeProtection = false, includeHorizontalMargins = false, prefix = 'cell', expectedPaneId, snapshotBudget, rpc = agentRequest, endpoint = observerEndpoint }) {
         Object.assign(this, { appData, ownerPid, profileName, nonce, includeAttributes, includeCellDetails, includeCursorMode, includeOverline, includeBufferState, includeResolvedColors, includeResolvedUnderlineColors, includeProtection, includeHorizontalMargins, prefix, rpc, endpoint });
+        this.snapshotBudget = snapshotBudget;
         this.paneId = expectedPaneId;
         this.snapshots = 0;
         this.frames = [];
@@ -184,7 +185,7 @@ export class OwnedCellObserver {
 
     /** Capture one coherent singleton pane under the shared deadline, including requested complete details. */
     async capture(budget) {
-        if (++this.snapshots > 64) throw new Error('Cell snapshot budget exhausted.');
+        if (++this.snapshots > (this.snapshotBudget ?? 64)) throw new Error('Cell snapshot budget exhausted.');
         const before = await this.session(budget);
         const raw = await this.request('readScreen', { paneId: before.paneId, includeAttributes: this.includeAttributes,
             ...(this.includeCellDetails ? { includeCellDetails: true } : {}),

@@ -2,6 +2,7 @@ import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { snapshotHash, screenSnapshot } from './agent-observer.mjs';
 import { validateInputBytes, inputModeReplyHex, defaultInputModes, inputModeQueries as routedInputModeQueries } from './input-state.mjs';
+import { inputPriorCaptureCap } from './input-plan.mjs';
 import { staticImageCases, staticImageCommand, staticImageAnchor, staticImageCellEnvelope, staticImageSuiteId, parseStaticKittyReply } from './static-images-cases.mjs';
 import { staticImageInput, staticSixel, staticSixelSha256 } from './static-images-inputs.mjs';
 import { inspectStaticImagePixels, validateStaticImageDetails } from './static-images-oracle.mjs';
@@ -130,7 +131,7 @@ export function validateImageOwnership(actual, original, geometry) {
 }
 export function buildStaticImageReport(frames, actions, seal, runId, output, priorChallenges = []) {
     checkImages(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 31 && actions?.length === 30
-        && Array.isArray(priorChallenges) && priorChallenges.length <= 122 && new Set(priorChallenges).size === priorChallenges.length);
+        && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap && new Set(priorChallenges).size === priorChallenges.length);
     const builder = new StaticImageReport(frames, actions, runId, output, priorChallenges);
     frames.forEach((frame, index) => builder.processFrame(frame, index));
     builder.checkSeal(seal);

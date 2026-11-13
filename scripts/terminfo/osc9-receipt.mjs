@@ -15,7 +15,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'osn-observations.json', run: 'osn-run.json', journal: 'osn-snapshots.jsonl', marker: 'osn-unavailable.json', focus: 'osn-focus.json', adapter: 'collector-osn.mjs' });
 /** The first source policy whose worker always runs this suite. */
-export const osc9FirstPolicy = 50;
+export const osc9FirstPolicy = 51;
 const unavailableReasons = new Set(['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable']);
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);

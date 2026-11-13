@@ -1,0 +1,1848 @@
+{
+  "caseId": "input.modify-other-keys",
+  "pinnedCriterion": "probe(\"input.modify-other-keys\", (ctx) => ({ pass: false, response: JSON.stringify({ declaredModifyOtherKeys: ctx.capabilities.extensions.has(\"modifyOtherKeys\") }), note: absentEventNote, observation: { outcome: \"inconclusive\", reason: \"insufficient-evidence\", evidence: \"legacy\", note: absentEventNote } }), () => Promise.resolve({ pass: false, note: absentEventNote, observation: { outcome: \"inconclusive\", reason: \"insufficient-evidence\", evidence: \"none\", note: absentEventNote } })): reads only the capability declaration, feeds nothing and looks at no event, and is inconclusive for any value; the terminal path returns inconclusive without touching the terminal",
+  "pinnedFeeds": [],
+  "served": {
+    "declaredModifyOtherKeys": false,
+    "source": "child-xtgettcap-modifyOtherKeys"
+  },
+  "pinned": {
+    "pass": false,
+    "response": "{\"declaredModifyOtherKeys\":false}",
+    "note": "No generated input event and encoded report were validated",
+    "observation": {
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "legacy",
+      "note": "No generated input event and encoded report were validated"
+    },
+    "notTested": null
+  },
+  "experiments": [
+    {
+      "id": "input.mok.declaration.xtgettcap",
+      "role": "label",
+      "matched": true,
+      "event": {
+        "kind": "keyUp",
+        "key": "a",
+        "modifiers": 0
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001bP+q6d6f646966794f746865724b657973\u001b\\",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 122,
+      "snapshot": 123,
+      "actionIndex": 60,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.disabled.ctrl.a",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "01",
+      "actualHex": "01",
+      "oracleHex": "01",
+      "controlSnapshot": 124,
+      "snapshot": 125,
+      "actionIndex": 61,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.disabled.alt.a",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "1b61",
+      "actualHex": "1b61",
+      "oracleHex": "1b61",
+      "controlSnapshot": 126,
+      "snapshot": 127,
+      "actionIndex": 62,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.disabled.enter.shift",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "return"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "0d",
+      "actualHex": "0d",
+      "oracleHex": "0d",
+      "controlSnapshot": 128,
+      "snapshot": 129,
+      "actionIndex": 63,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.disabled.tab.shift",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "tab"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "1b5b5a",
+      "actualHex": "1b5b5a",
+      "oracleHex": "1b5b5a",
+      "controlSnapshot": 130,
+      "snapshot": 131,
+      "actionIndex": 64,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.disabled.backspace.shift",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "backspace"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "7f",
+      "actualHex": "7f",
+      "oracleHex": "7f",
+      "controlSnapshot": 132,
+      "snapshot": 133,
+      "actionIndex": 65,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.disabled.escape.ctrl",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "escape"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l",
+      "expectedHex": "1b",
+      "actualHex": "1b",
+      "oracleHex": "1b",
+      "controlSnapshot": 134,
+      "snapshot": 135,
+      "actionIndex": 66,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrl.a.alias",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "01",
+      "actualHex": "01",
+      "oracleHex": "01",
+      "controlSnapshot": 136,
+      "snapshot": 137,
+      "actionIndex": 67,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrl.leftbracket.alias",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "leftBracket"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b",
+      "actualHex": "1b",
+      "oracleHex": "1b",
+      "controlSnapshot": 138,
+      "snapshot": 139,
+      "actionIndex": 68,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrl.digit2.alias",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "digit2"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "00",
+      "actualHex": "00",
+      "oracleHex": "00",
+      "controlSnapshot": 140,
+      "snapshot": 141,
+      "actionIndex": 69,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrl.slash.alias",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "slash"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1f",
+      "actualHex": "1f",
+      "oracleHex": "1f",
+      "controlSnapshot": 142,
+      "snapshot": 143,
+      "actionIndex": 70,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrlshift.digit2.alias",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 3,
+        "kind": "keyDown",
+        "key": "digit2"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "00",
+      "actualHex": "00",
+      "oracleHex": "00",
+      "controlSnapshot": 144,
+      "snapshot": 145,
+      "actionIndex": 71,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrl.digit1",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "digit1"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b32373b353b34397e",
+      "actualHex": "1b5b32373b353b34397e",
+      "oracleHex": "1b5b32373b353b34397e",
+      "controlSnapshot": 146,
+      "snapshot": 147,
+      "actionIndex": 72,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrlshift.digit1",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 3,
+        "kind": "keyDown",
+        "key": "digit1"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b32373b363b33337e",
+      "actualHex": "1b5b32373b363b33337e",
+      "oracleHex": "1b5b32373b363b33337e",
+      "controlSnapshot": 148,
+      "snapshot": 149,
+      "actionIndex": 73,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.ctrl.semicolon",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "semicolon"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b32373b353b35397e",
+      "actualHex": "1b5b32373b353b35397e",
+      "oracleHex": "1b5b32373b353b35397e",
+      "controlSnapshot": 150,
+      "snapshot": 151,
+      "actionIndex": 74,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.alt.a.legacy",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b61",
+      "actualHex": "1b61",
+      "oracleHex": "1b61",
+      "controlSnapshot": 152,
+      "snapshot": 153,
+      "actionIndex": 75,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.enter.shift",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "return"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b32373b323b31337e",
+      "actualHex": "1b5b32373b323b31337e",
+      "oracleHex": "1b5b32373b323b31337e",
+      "controlSnapshot": 154,
+      "snapshot": 155,
+      "actionIndex": 76,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.enter.ctrl",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "return"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b32373b353b31337e",
+      "actualHex": "1b5b32373b353b31337e",
+      "oracleHex": "1b5b32373b353b31337e",
+      "controlSnapshot": 156,
+      "snapshot": 157,
+      "actionIndex": 77,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.tab.ctrl",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "tab"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b32373b353b397e",
+      "actualHex": "1b5b32373b353b397e",
+      "oracleHex": "1b5b32373b353b397e",
+      "controlSnapshot": 158,
+      "snapshot": 159,
+      "actionIndex": 78,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.tab.shift.backtab",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "tab"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b5a",
+      "actualHex": "1b5b5a",
+      "oracleHex": "1b5b5a",
+      "controlSnapshot": 160,
+      "snapshot": 161,
+      "actionIndex": 79,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.escape.shift.legacy",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "escape"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b",
+      "actualHex": "1b",
+      "oracleHex": "1b",
+      "controlSnapshot": 162,
+      "snapshot": 163,
+      "actionIndex": 80,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l1.backspace.shift.legacy",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "backspace"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "7f",
+      "actualHex": "7f",
+      "oracleHex": "7f",
+      "controlSnapshot": 164,
+      "snapshot": 165,
+      "actionIndex": 81,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.trans.set2.from1",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b39377e",
+      "actualHex": "1b5b32373b353b39377e",
+      "oracleHex": "1b5b32373b353b39377e",
+      "controlSnapshot": 166,
+      "snapshot": 167,
+      "actionIndex": 82,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.trans.reset.form",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m\u001b[>4m",
+      "expectedHex": "01",
+      "actualHex": "01",
+      "oracleHex": "01",
+      "controlSnapshot": 168,
+      "snapshot": 169,
+      "actionIndex": 83,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.trans.set1.from0",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "digit1"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 1
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;1m",
+      "expectedHex": "1b5b32373b353b34397e",
+      "actualHex": "1b5b32373b353b34397e",
+      "oracleHex": "1b5b32373b353b34397e",
+      "controlSnapshot": 170,
+      "snapshot": 171,
+      "actionIndex": 84,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.trans.disable.form",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 0
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m\u001b[>4n",
+      "expectedHex": "01",
+      "actualHex": "01",
+      "oracleHex": "01",
+      "controlSnapshot": 172,
+      "snapshot": 173,
+      "actionIndex": 85,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.trans.l3.ignored",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m\u001b[>4;3m",
+      "expectedHex": "1b5b32373b353b39377e",
+      "actualHex": "1b5b32373b353b39377e",
+      "oracleHex": "1b5b32373b353b39377e",
+      "controlSnapshot": 174,
+      "snapshot": 175,
+      "actionIndex": 86,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrl.a",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b39377e",
+      "actualHex": "1b5b32373b353b39377e",
+      "oracleHex": "1b5b32373b353b39377e",
+      "controlSnapshot": 176,
+      "snapshot": 177,
+      "actionIndex": 87,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrlshift.a",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 3,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b363b36357e",
+      "actualHex": "1b5b32373b363b36357e",
+      "oracleHex": "1b5b32373b363b36357e",
+      "controlSnapshot": 178,
+      "snapshot": 179,
+      "actionIndex": 88,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.alt.a",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b333b39377e",
+      "actualHex": "1b5b32373b333b39377e",
+      "oracleHex": "1b5b32373b333b39377e",
+      "controlSnapshot": 180,
+      "snapshot": 181,
+      "actionIndex": 89,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.altshift.a",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 5,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b343b36357e",
+      "actualHex": "1b5b32373b343b36357e",
+      "oracleHex": "1b5b32373b343b36357e",
+      "controlSnapshot": 182,
+      "snapshot": 183,
+      "actionIndex": 90,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrl.i",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "i"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b3130357e",
+      "actualHex": "1b5b32373b353b3130357e",
+      "oracleHex": "1b5b32373b353b3130357e",
+      "controlSnapshot": 184,
+      "snapshot": 185,
+      "actionIndex": 91,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrl.digit2.alias",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "digit2"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b35307e",
+      "actualHex": "1b5b32373b353b35307e",
+      "oracleHex": "1b5b32373b353b35307e",
+      "controlSnapshot": 186,
+      "snapshot": 187,
+      "actionIndex": 92,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrl.leftbracket.alias",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "leftBracket"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b39317e",
+      "actualHex": "1b5b32373b353b39317e",
+      "oracleHex": "1b5b32373b353b39317e",
+      "controlSnapshot": 188,
+      "snapshot": 189,
+      "actionIndex": 93,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrlshift.digit1",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 3,
+        "kind": "keyDown",
+        "key": "digit1"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b363b33337e",
+      "actualHex": "1b5b32373b363b33337e",
+      "oracleHex": "1b5b32373b363b33337e",
+      "controlSnapshot": 190,
+      "snapshot": 191,
+      "actionIndex": 94,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.alt.digit1",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "digit1"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b333b34397e",
+      "actualHex": "1b5b32373b333b34397e",
+      "oracleHex": "1b5b32373b333b34397e",
+      "controlSnapshot": 192,
+      "snapshot": 193,
+      "actionIndex": 95,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrl.semicolon",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "semicolon"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b35397e",
+      "actualHex": "1b5b32373b353b35397e",
+      "oracleHex": "1b5b32373b353b35397e",
+      "controlSnapshot": 194,
+      "snapshot": 195,
+      "actionIndex": 96,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrlshift.slash",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 3,
+        "kind": "keyDown",
+        "key": "slash"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b363b36337e",
+      "actualHex": "1b5b32373b363b36337e",
+      "oracleHex": "1b5b32373b363b36337e",
+      "controlSnapshot": 196,
+      "snapshot": 197,
+      "actionIndex": 97,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.enter.shift",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "return"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b323b31337e",
+      "actualHex": "1b5b32373b323b31337e",
+      "oracleHex": "1b5b32373b323b31337e",
+      "controlSnapshot": 198,
+      "snapshot": 199,
+      "actionIndex": 98,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.enter.alt",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "return"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b333b31337e",
+      "actualHex": "1b5b32373b333b31337e",
+      "oracleHex": "1b5b32373b333b31337e",
+      "controlSnapshot": 200,
+      "snapshot": 201,
+      "actionIndex": 99,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.tab.ctrl",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "tab"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b397e",
+      "actualHex": "1b5b32373b353b397e",
+      "oracleHex": "1b5b32373b353b397e",
+      "controlSnapshot": 202,
+      "snapshot": 203,
+      "actionIndex": 100,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.tab.alt",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "tab"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b333b397e",
+      "actualHex": "1b5b32373b333b397e",
+      "oracleHex": "1b5b32373b333b397e",
+      "controlSnapshot": 204,
+      "snapshot": 205,
+      "actionIndex": 101,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.tab.shift.backtab",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "tab"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b5a",
+      "actualHex": "1b5b5a",
+      "oracleHex": "1b5b5a",
+      "controlSnapshot": 206,
+      "snapshot": 207,
+      "actionIndex": 102,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.escape.ctrl",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "escape"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b353b32377e",
+      "actualHex": "1b5b32373b353b32377e",
+      "oracleHex": "1b5b32373b353b32377e",
+      "controlSnapshot": 208,
+      "snapshot": 209,
+      "actionIndex": 103,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.escape.alt",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "escape"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b333b32377e",
+      "actualHex": "1b5b32373b333b32377e",
+      "oracleHex": "1b5b32373b333b32377e",
+      "controlSnapshot": 210,
+      "snapshot": 211,
+      "actionIndex": 104,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.backspace.shift",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "backspace"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b323b3132377e",
+      "actualHex": "1b5b32373b323b3132377e",
+      "oracleHex": "1b5b32373b323b3132377e",
+      "controlSnapshot": 212,
+      "snapshot": 213,
+      "actionIndex": 105,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.backspace.alt",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 4,
+        "kind": "keyDown",
+        "key": "backspace"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b333b3132377e",
+      "actualHex": "1b5b32373b333b3132377e",
+      "oracleHex": "1b5b32373b333b3132377e",
+      "controlSnapshot": 214,
+      "snapshot": 215,
+      "actionIndex": 106,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.backspace.ctrl.legacy",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "backspace"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "7f",
+      "actualHex": "7f",
+      "oracleHex": "7f",
+      "controlSnapshot": 216,
+      "snapshot": 217,
+      "actionIndex": 107,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.backspace.ctrlshift.bs",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 3,
+        "kind": "keyDown",
+        "key": "backspace"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b363b387e",
+      "actualHex": "1b5b32373b363b387e",
+      "oracleHex": "1b5b32373b363b387e",
+      "controlSnapshot": 218,
+      "snapshot": 219,
+      "actionIndex": 108,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.space.shift.withText",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "space",
+        "text": " "
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "1b5b32373b323b33327e",
+      "actualHex": "1b5b32373b323b33327e",
+      "oracleHex": "1b5b32373b323b33327e",
+      "controlSnapshot": 220,
+      "snapshot": 221,
+      "actionIndex": 109,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "textHandled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.shift.a.withText",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 1,
+        "kind": "keyDown",
+        "key": "a",
+        "text": "A"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "41",
+      "actualHex": "41",
+      "oracleHex": "41",
+      "controlSnapshot": 222,
+      "snapshot": 223,
+      "actionIndex": 110,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "textHandled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.normal.a.withText",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "keyDown",
+        "key": "a",
+        "text": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "61",
+      "actualHex": "61",
+      "oracleHex": "61",
+      "controlSnapshot": 224,
+      "snapshot": 225,
+      "actionIndex": 111,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "textHandled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.text.recovery",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 0,
+        "kind": "text",
+        "text": "7"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "37",
+      "actualHex": "37",
+      "oracleHex": "37",
+      "controlSnapshot": 226,
+      "snapshot": 227,
+      "actionIndex": 112,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.meta.a.unhandled",
+      "role": "label",
+      "matched": true,
+      "event": {
+        "modifiers": 8,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 228,
+      "snapshot": 229,
+      "actionIndex": 113,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.ctrlalt.a.unhandled",
+      "role": "label",
+      "matched": true,
+      "event": {
+        "modifiers": 6,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 230,
+      "snapshot": 231,
+      "actionIndex": 114,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.keyup.ctrl.a",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyUp",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m",
+      "expectedHex": "",
+      "actualHex": "",
+      "oracleHex": "",
+      "controlSnapshot": 232,
+      "snapshot": 233,
+      "actionIndex": 115,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": false,
+        "inputSubmitted": false,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.kitty.wins.control",
+      "role": "control",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 1,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m\u001b[>1u",
+      "expectedHex": "1b5b39373b3575",
+      "actualHex": "1b5b39373b3575",
+      "oracleHex": "1b5b39373b3575",
+      "controlSnapshot": 234,
+      "snapshot": 235,
+      "actionIndex": 116,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    },
+    {
+      "id": "input.mok.l2.kitty.pop.restores",
+      "role": "required",
+      "matched": true,
+      "event": {
+        "modifiers": 2,
+        "kind": "keyDown",
+        "key": "a"
+      },
+      "modes": {
+        "applicationKeypad": false,
+        "mouseTracking": 0,
+        "mouseSgr": false,
+        "kittyKeyboardFlags": 0,
+        "modifyOtherKeysLevel": 2
+      },
+      "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[>4;2m\u001b[>1u\u001b[<u",
+      "expectedHex": "1b5b32373b353b39377e",
+      "actualHex": "1b5b32373b353b39377e",
+      "oracleHex": "1b5b32373b353b39377e",
+      "controlSnapshot": 236,
+      "snapshot": 237,
+      "actionIndex": 117,
+      "appFacts": {
+        "eventDispatched": true,
+        "handled": true,
+        "inputSubmitted": true,
+        "observationAvailable": true,
+        "boundary": "avalonia-routed"
+      }
+    }
+  ],
+  "effectContract": {
+    "id": "ntilde-modify-other-keys-effect-v1",
+    "version": 1,
+    "outcome": "supported",
+    "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+  },
+  "contractResult": {
+    "outcome": "supported"
+  },
+  "divergence": {
+    "pinnedOutcome": "inconclusive",
+    "contractOutcome": "supported",
+    "kind": "pinned-inconclusive-by-design"
+  },
+  "conclusion": {
+    "outcome": "inconclusive",
+    "evidence": "owned-generated-input-child-bytes",
+    "grading": "pinned-termless-preserved-by-design",
+    "note": "No generated input event and encoded report were validated",
+    "scope": "declared Avalonia events in a disposable direct-local pane; child bytes captured independently of the App"
+  }
+}

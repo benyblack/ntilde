@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest } from './agent-observer.mjs';
+import { inputPriorCaptureCap } from './input-plan.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
 import { staticImageCases } from './static-images-cases.mjs';
 import { checkImages, imagePlan, imageAction, imageReply, imageBoundScreen, imageInputs, buildStaticImageReport, validateImageOwnership,
@@ -10,7 +11,7 @@ import { checkImages, imagePlan, imageAction, imageReply, imageBoundScreen, imag
 /** No new action surface: worker emits bytes only after each parent ownership admission. */
 export class OwnedStaticImageObserver {
     constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, ...options }) {
-        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= 122);
+        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap);
         this.output = output; this.runId = options.nonce.slice(11); this.priorChallenges = [...priorChallenges];
         this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.frames = []; this.actions = []; this.states = new Map();
         this.next = 0; this.phase = 'start'; this.totalPixels = 0;

@@ -51,6 +51,7 @@ code.set(new URL('col-edit-collector.mjs', root).href, log + `export async funct
 code.set(new URL('rect-checksum-collector.mjs', root).href, log + `export async function collectRectChecksumGrading() { record('RectChecksum'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('input-collector.mjs', root).href, log + `export async function collectInput() { record('Input'); return { status: 'complete', controls: {}, restored: '', geometry: { rows: 12, cols: 120 } }; }`);
 code.set(new URL('routed-input-collector.mjs', root).href, log + `export function collectRoutedInputPinned() { record('RoutedInput'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('modify-other-keys-collector.mjs', root).href, log + `export function collectModifyOtherKeysPinned() { record('ModifyOtherKeys'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('lr-margins-collector.mjs', root).href, log + `export async function collectLrMarginsGrading() { record('LrMargins'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('core-gaps.mjs', root).href, log + `export async function collectCoreGaps() { record('CoreGaps'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('osc133-collector.mjs', root).href, log + `export async function collectOsc133() { record('Osc133'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);

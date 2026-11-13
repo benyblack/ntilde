@@ -72,6 +72,47 @@ public sealed class AgentHostGeneratedInputProtocolTests
         Assert.Single(s.Journal.Snapshot());
     }
 
+    [Theory]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"7\",\"column\":1,\"row\":1")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"A\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"capslock\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"text\":\"a\",\"modifiers\":2")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"text\":\"A\",\"modifiers\":5")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"space\",\"text\":\"x\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"space\",\"text\":\" \",\"modifiers\":5")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"digit1\",\"text\":\"1\",\"modifiers\":1")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"digit1\",\"text\":\"!\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"return\",\"text\":\"\\r\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"backspace\",\"text\":\"\\u007f\"")]
+    [InlineData("\"kind\":\"keyUp\",\"key\":\"a\",\"text\":\"a\"")]
+    public async Task Invalid_or_uncorrelatable_ordinary_events_never_reach_the_executor(string fields)
+    {
+        var s = Setup(); using var service = s.Service;
+        var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId, fields), TestContext.Current.CancellationToken);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, response.Error?.Code);
+        Assert.Equal(0, s.Executor.GenerateInputCalls);
+        Assert.Single(s.Journal.Snapshot());
+    }
+
+    [Theory]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"text\":\"a\"", "a", "a", 0)]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"text\":\"A\",\"modifiers\":1", "a", "A", 1)]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"space\",\"text\":\" \",\"modifiers\":1", "space", " ", 1)]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"digit1\",\"text\":\"!\",\"modifiers\":1", "digit1", "!", 1)]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"digit1\",\"text\":\"1\"", "digit1", "1", 0)]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"modifiers\":2", "a", null, 2)]
+    [InlineData("\"kind\":\"keyUp\",\"key\":\"a\",\"modifiers\":2", "a", null, 2)]
+    public async Task Valid_correlated_ordinary_events_reach_the_executor(string fields, string key, string? text, int modifiers)
+    {
+        var s = Setup(); using var service = s.Service;
+        GeneratePaneInputParams? seen = null;
+        s.Executor.OnGenerateInput = (input, _, _, _) => { seen = input; return Task.FromResult<GeneratePaneInputResult?>(Observed()); };
+        var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId, fields), TestContext.Current.CancellationToken);
+        Assert.Null(response.Error);
+        Assert.Equal((key, text, modifiers), (seen!.Key, seen.Text, seen.Modifiers));
+        Assert.Equal(1, s.Executor.GenerateInputCalls);
+    }
+
     [Fact]
     public async Task One_keypad_key_down_may_carry_its_backend_text_as_a_single_bounded_action()
     {

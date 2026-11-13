@@ -8,14 +8,12 @@ import { queryPriorCounts } from './queries.mjs';
 
 const cases = makeRoutedInputCases(40, 140), byId = id => cases.find(item => item.id === 'input.' + id);
 
-test('the benchmark plan is 60 unique source-selected events within the per-reader capture limits', () => {
+test('the frozen v2 benchmark plan is 60 unique source-selected events within the per-reader capture limits', () => {
     assert.equal(cases.length, 60);
     assert.equal(new Set(cases.map(item => item.id)).size, cases.length);
     // 64 captures per phase reader include start/bind/finish; 128 raw attempts include the bind and the final restoration.
     assert.ok(cases.length + 3 <= 64 && inputAttemptCount(cases.length) <= 128);
     assert.equal(inputFrameCount(cases.length), 123);
-    // The query suite owes every input and image challenge, the image suite every input one: both limits track this plan.
-    assert.equal(inputAttemptCount(cases.length) + 30, queryPriorCounts.at(-1));
     for (const id of benchmarkIds) assert.ok(cases.some(item => item.roles[id] === 'required'), id);
     assert.ok(cases.every(item => Object.values(item.roles).every(role => ['required', 'control', 'label'].includes(role))));
     assert.ok(cases.every(item => item.event.modifiers >= 0 && item.event.modifiers <= 15));

@@ -18,7 +18,7 @@ const predecessors = layerChain.map(([name]) => name);
 
 test('a complete run carries the OSC 9 suffix: pinned-preserved counts, identity, focus record and the layered derivation rederive without the collector', () => fixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 56);
+    assert.equal(f.finish().schemaVersion, 57);
     assert.deepEqual(f.evidence.osc9Evidence.counts, { 'inconclusive/supported': 2 });
     assert.equal(f.context.osc9AdapterId, osc9AdapterId); assert.equal(f.context.osc9SuiteId, osc9SuiteId);
     for (const name of predecessors) assert.ok(f.evidence[`${name}Evidence`] !== undefined, name);
@@ -26,9 +26,9 @@ test('a complete run carries the OSC 9 suffix: pinned-preserved counts, identity
 
 test('the suffix is required whenever the policy, a declaration or an artifact names it', () => fixture(f => {
     const empty = join(f.output, 'no-such-directory'), earlier = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v47' };
-    assert.equal(osc9FirstPolicy, 50);
+    assert.equal(osc9FirstPolicy, 51);
     assert.equal(includesOsc9Evidence(f.output, f.evidence, f.context), true);
-    assert.equal(includesOsc9Evidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v50' }), true, 'the current policy always carries the suffix');
+    assert.equal(includesOsc9Evidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v51' }), true, 'the current policy always carries the suffix');
     assert.equal(includesOsc9Evidence(empty, {}, earlier), false);
     assert.equal(includesOsc9Evidence(empty, {}, { ...earlier, osc9SuiteId: 'x' }), true);
     assert.equal(includesOsc9Evidence(empty, { osc9Evidence: {} }, earlier), true);

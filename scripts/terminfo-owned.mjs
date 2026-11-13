@@ -63,7 +63,7 @@ function pathFor(root, file) {
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
     return join(root, 'scripts', relative);
 }
-const policy = 'readonly-owned-source-graph-v50';
+const policy = 'readonly-owned-source-graph-v51';
 function setDirectoryModes(root, mode) {
     for (const entry of readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) setDirectoryModes(join(root, entry.name), mode);
     chmodSync(root, mode);
@@ -138,3 +138,4 @@ async function launch() {
 
 try { await launch(); }
 catch (error) { console.error('[terminfo-owned] ' + error.message); process.exitCode = 1; }
+
