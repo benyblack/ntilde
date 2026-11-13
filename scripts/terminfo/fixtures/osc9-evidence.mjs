@@ -19,7 +19,9 @@ function presentationFor(contract, step, fixture) {
             tabText: fixture.title + progressSuffix(progress ?? null) };
     }
     const toast = step.kind === 'effect' && contract.expected !== null;
-    return { windowActive: contract.focus === 'active', toastVisible: toast, toastTitle: toast ? fixture.title : '', toastMessage: toast ? contract.expected : '' };
+    const progress = step.kind === 'effect' && contract.progress ? { progressOwner: 'pane', progressKind: contract.progress.kind, progressPercent: contract.progress.percent,
+        tabText: fixture.title + progressSuffix(contract.progress) } : {};
+    return { ...progress, windowActive: contract.focus === 'active', toastVisible: toast, toastTitle: toast ? fixture.title : '', toastMessage: toast ? contract.expected : '' };
 }
 
 export function syntheticOsc9Evidence(options = {}) {

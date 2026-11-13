@@ -159,3 +159,21 @@ test('the baseline predicate requires withdrawn progress, a hidden toast and the
         assert.equal(matchesOsc9Baseline(broken, first, e.runId, false), false);
     }
 });
+
+test('progress-is-not-text requires the payload to be stored as progress, not merely to show no toast', () => {
+    const e = syntheticOsc9Evidence();
+    patch(e, 'progress-is-not-text', 'after', p => { p.progressOwner = null; p.progressKind = null; p.progressPercent = null; p.tabText = p.tabText.replace(' 50%', ''); });
+    assert.equal(verdict(e, notifications).outcome, 'unsupported');
+});
+
+test('attention markers that follow the live focus state never count as drift or as unrestored state', () => {
+    const e = syntheticOsc9Evidence(), last = e.frames.length - 1;
+    for (const index of [1, ...e.frames.keys()].filter(i => i > 1 && i < last)) {
+        const f = e.frames[index];
+        f.before.metadata.presentation.tabText = f.before.metadata.presentation.tabText.replace(/^(\S+)/, '$1 ⌨');
+        f.after = structuredClone(f.before); f.sha256 = f.afterSha256 = snapshotHash(metadataProjection(f.before));
+        const read = e.run.experiments.flatMap(item => item.reads).find(entry => entry.facts.tabText === f.after.metadata.presentation.tabText.replace(' ⌨', ''));
+        if (read) read.facts = exposeOsc9Facts(f.before);
+    }
+    assert.doesNotThrow(() => buildOsc9Report(e.frames, e.run, e.runId, e.adapter));
+});

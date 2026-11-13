@@ -49,17 +49,22 @@ export function matchesOsc9Baseline(snapshot, first, runId, finish) {
 }
 
 /** Compare everything except the channels the experiment qualifies (and the live window focus, which is recorded, not asserted). */
-function invariant(snapshot, kind) {
+/** Attention markers (bell, activity, agent) follow the tab's live focus state and precede any progress suffix: compare the tab text only up to the run title. */
+const tabCore = (tab, title) => { const at = tab.indexOf(title); return at < 0 ? tab : tab.slice(0, at + title.length); };
+
+function invariant(snapshot, kind, title, ownsProgress) {
     const metadata = structuredClone(snapshot.metadata), p = metadata.presentation;
     delete p.windowActive;
-    const channels = kind === 'progress' ? ['progressOwner', 'progressKind', 'progressPercent', 'progressBar', 'tabText'] : [];
+    p.tabText = tabCore(p.tabText, title);
+    const channels = kind === 'progress' || ownsProgress ? ['progressOwner', 'progressKind', 'progressPercent', 'progressBar', 'tabText'] : [];
     // A bare "4" is notification text by documented policy, so a progress experiment may legitimately raise a toast: toast fields are recorded there, never compared.
     for (const key of [...channels, 'toastVisible', 'toastTitle', 'toastMessage']) delete p[key];
     return { screen: snapshot.screen, metadata, status: snapshot.status };
 }
 
-function restoredContext(snapshot) {
+function restoredContext(snapshot, title) {
     const metadata = structuredClone(snapshot.metadata);
+    metadata.presentation.tabText = tabCore(metadata.presentation.tabText, title);
     // The finish write restores the original screen and cursor; bind is at the nonce row. Hidden toast text and window focus are not restored state.
     delete metadata.buffer.cursorRow; delete metadata.buffer.cursorCol;
     for (const key of ['windowActive', 'toastTitle', 'toastMessage']) delete metadata.presentation[key];
@@ -90,7 +95,12 @@ function expectedFor(contract, step) {
 
 function readFacts(contract, snapshot, step, fixtureTitle) {
     const expected = expectedFor(contract, step);
-    return contract.kind === 'progress' ? progressObservation(snapshot, expected, fixtureTitle) : toastObservation(snapshot, expected, fixtureTitle);
+    if (contract.kind === 'progress') return progressObservation(snapshot, expected, fixtureTitle);
+    const toast = toastObservation(snapshot, expected, fixtureTitle);
+    if (contract.progress === undefined || step.kind !== 'effect') return toast;
+    // An OSC 9;4 payload is progress, not text: the stored progress must show it was parsed as such while no toast appears.
+    const stored = progressObservation(snapshot, contract.progress, fixtureTitle);
+    return { ...toast, stored: stored.stored, owner: stored.owner, progressMatches: stored.passed, passed: toast.passed && stored.passed };
 }
 
 function checkActions(contract, recorded) {
@@ -117,8 +127,8 @@ function evaluateExperiments(frames, run, runId, contracts) {
             const frame = frames[frameIndex++], entry = recorded.reads[read++], snapshot = frame.before;
             check(entry.kind === step.read && frame.barrier === recorded.barriers[feeds - 1] && same(entry.cursor, [snapshot.screen.cursorRow, snapshot.screen.cursorCol])
                 && same(entry.facts, exposeOsc9Facts(snapshot)), 'OSC 9 read identity changed.');
-            const preserved = same(invariant(snapshot, contract.kind), invariant(bound, contract.kind));
-            check(preserved, 'Unrelated OSC 9 state drifted.');
+            const preserved = same(invariant(snapshot, contract.kind, title, contract.progress !== undefined), invariant(bound, contract.kind, title, contract.progress !== undefined));
+            check(preserved, `Unrelated OSC 9 state drifted (${contract.caseId} ${step.read}).`);
             observations.push({ label: step.read, kind: step.kind, snapshot: frame.index, ...readFacts(contract, snapshot, step, title), preserved });
         }
         evaluations.push({ caseId: contract.caseId, owner: contract.owner, name: contract.name, role: contract.role, expected: contract.expected, observations, ...(actions.length ? { actions } : {}) });
@@ -178,7 +188,7 @@ export function buildOsc9Report(frames, run, runId, adapter) {
     check(pristineEditing(first.screen) && first.screen.rows >= osc9Minimum.rows && first.screen.cols >= osc9Minimum.cols, 'Invalid OSC 9 initial screen.');
     frames.forEach((frame, index) => validateFrame(frame, index, count - 1, first, null, osc9Prefix, true));
     check(matchesOsc9Baseline(frames[1].before, first, runId, false) && matchesOsc9Baseline(frames.at(-1).before, first, runId, true), 'OSC 9 baseline or restoration failed.');
-    check(same(restoredContext(frames[1].before), restoredContext(frames.at(-1).before)), 'OSC 9 session or metadata restoration failed.');
+    check(same(restoredContext(frames[1].before, osc9Fixture(runId).title), restoredContext(frames.at(-1).before, osc9Fixture(runId).title)), 'OSC 9 session or metadata restoration failed.');
     check(adapter?.id === osc9AdapterId && adapter.derivedFromAdapterId === 'ntilde-owned-left-right-margins-grading-v1'
         && /^[a-f\d]{64}$/.test(adapter.bundleSha256 ?? '') && /^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? '') && run?.adapterId === adapter.id
         && same(run.probeIds, osc9CaseIds) && Array.isArray(run.experiments) && run.experiments.length === contracts.length

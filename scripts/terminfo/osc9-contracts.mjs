@@ -111,7 +111,7 @@ export function osc9Experiments(runId) {
         const first = specs.findIndex(item => item[2] === focus) === index, last = index === specs.length - 1;
         const delivered = name === 'delivered';
         return { caseId: `${osc9NotificationCaseId}/${name}`, owner: osc9NotificationCaseId, name, role, kind: 'notification', focus,
-            title: fixture.title, expected: toast,
+            title: fixture.title, expected: toast, ...(name === 'progress-is-not-text' ? { progress: state('Normal', 50) } : {}),
             plan: [{ feed: fixture.stage }, ...(first ? [{ action: focus === 'inactive' ? 'defocus' : 'refocus' }] : []), { read: 'before', kind: 'setup' }, { feed },
                 { read: 'after', kind: 'effect' }, ...(delivered ? [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }] : toast !== null ? [{ wait: osc9ToastHideWaitMs }] : []),
                 ...(last ? [{ action: 'refocus' }] : [])] };
