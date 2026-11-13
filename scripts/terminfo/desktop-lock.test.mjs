@@ -9,7 +9,7 @@ import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-    DesktopLockRefusal, acquireDesktopLease, assessDesktopHolder, canonicalDesktopLockPath, createDesktopLeaseBroker, desktopLockAuditPath,
+    DesktopLockRefusal, acquireDesktopLease, assessDesktopHolder, canonicalDesktopLockPath, createDesktopLeaseBroker, desktopLockAuditPath, findMarkedProcesses,
     desktopLockWaitMs, formatOwnerRecord, inspectDesktopLock, parseOwnerRecord, readDesktopLockState, recoverDesktopLease,
 } from './desktop-lock.mjs';
 
@@ -415,6 +415,16 @@ test('a real marked process is found by the scan and clears once it exits', { sk
     await lease.verifyCleanup();
     lease.release();
     assert.equal(existsSync(lockPath), false);
+}));
+
+test('the survivor scan sees a marker at the end of a long command line even when the caller exports a narrow COLUMNS', { skip: !posix && 'needs ps' }, () => sandboxAsync(async () => {
+    const marker = '--ntilde-terminfo-worker=' + 'e'.repeat(32);
+    const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)', '--', ...Array.from({ length: 30 }, (_, index) => 'padding-argument-' + index), marker], { stdio: 'ignore' });
+    await new Promise(resolve => child.once('spawn', resolve));
+    const before = process.env.COLUMNS;
+    process.env.COLUMNS = '40';
+    try { assert.deepEqual(findMarkedProcesses([marker]), [child.pid]); }
+    finally { if (before === undefined) delete process.env.COLUMNS; else process.env.COLUMNS = before; child.kill('SIGKILL'); }
 }));
 
 test('offline commands never import the lock: only the launcher, the common-core driver, the lock tooling and its test fixture reference it', () => {

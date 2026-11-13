@@ -53,7 +53,10 @@ export function desktopLockWaitMs(environment = process.env) {
 }
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const psEnvironment = () => ({ ...process.env, LC_ALL: 'C', LANG: 'C', TZ: 'UTC' });
+const psEnvironment = () => {
+    const { COLUMNS: ignoredWidth, ...rest } = process.env;
+    return { ...rest, LC_ALL: 'C', LANG: 'C', TZ: 'UTC' };
+};
 
 /** Real process facts. Every one may throw: a thrown fact is "unknown", never "idle". */
 export const defaultDesktopLockDeps = Object.freeze({
@@ -84,7 +87,8 @@ export const defaultDesktopLockDeps = Object.freeze({
         return Number(value);
     },
     listProcesses() {
-        const text = execFileSync('/bin/ps', ['-axo', 'pid=,command='], {
+        // -ww and no COLUMNS: never inherit the caller's display width, which would truncate a marker near the end of argv.
+        const text = execFileSync('/bin/ps', ['-axww', '-o', 'pid=,command='], {
             encoding: 'utf8', timeout: 5000, maxBuffer: 32 * 1024 * 1024, env: psEnvironment(), stdio: ['ignore', 'pipe', 'ignore'],
         });
         const rows = [];
