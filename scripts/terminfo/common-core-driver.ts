@@ -651,7 +651,6 @@ function finishCleanupRecord(failures: string[], ownedWindowAbsent: boolean, wor
     if (failures.length) {
         lease.retain(failures.join('; '));
     } else {
-        lease.attestCleanup('common-core-cleanup-record');
         lease.release();
     }
 }
@@ -674,6 +673,14 @@ async function cleanupLaunch() {
         workerExited = true;
     } catch (error) {
         failures.push(String(error));
+    }
+    // The lease may be released only when the existing checks held AND no process carrying its run markers survives.
+    if (failures.length === 0) {
+        try {
+            await lease.verifyCleanup();
+        } catch (error) {
+            failures.push(String(error));
+        }
     }
     finishCleanupRecord(failures, ownedWindowAbsent, workerExited);
 }

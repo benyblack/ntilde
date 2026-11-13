@@ -208,7 +208,9 @@ test('the common-core driver acquires before creating output and persists every 
         assert.ok(mark > 0 && at(launch) - mark < 400, launch + ' must directly follow markLaunchAttempt()');
     }
     assert.equal(driver.match(/launchAttempted = true/g).length, 1);
-    assert.ok(at("lease.attestCleanup('common-core-cleanup-record')") < driver.lastIndexOf('lease.release()'));
+    assert.ok(at('await lease.verifyCleanup()') < at('finishCleanupRecord(failures, ownedWindowAbsent, workerExited);'), 'the marker scan runs before the record is finished and the lease released');
+    assert.ok(!driver.includes('attestCleanup'), 'the driver no longer self-attests cleanup');
+    assert.ok(at('if (failures.length === 0) {') < at('await lease.verifyCleanup()'), 'a failed earlier check never reaches the scan that could mark cleanup verified');
     assert.ok(driver.indexOf('lease.release()') < at('const upstreamRevision'), 'the only earlier release is the pre-launch output failure');
     assert.ok(at('lease.retain(failures.join') > 0);
     assert.ok(!/\.desktop-collection\.lock/.test(driver), 'the driver no longer hand-rolls its own lock file');
