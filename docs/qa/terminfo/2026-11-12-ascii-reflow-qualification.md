@@ -62,9 +62,9 @@ control), images, rendered appearance, saved-bank behavior beyond the bounded ma
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `d74f445b` (arm64 Release, executable SHA-256 `f5814e51…9bf8`); scripts at commit `d74f445b`; source policy
+App 0.13.0 (operator supplied) built from `04be5caf` (arm64 Release, executable SHA-256 `f5814e51…9bf8`); scripts at commit `04be5caf`; source policy
 `readonly-owned-source-graph-v52` (348 files — main's 342 through the OSC 9 layer plus these six modules); receipt schema 58; Node v24.22.2; owned run
-`9aee574f…31aa`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
+`b19d1f52…aa20`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
 (not carried forward). The insert/replace (PR 956), XTGETTCAP (PR 957), modifyOtherKeys and OSC 9 (PR 960) layers merged ahead of this batch (policy v48–v51, receipt schemas 54–57 for their own
 scopes), so this layer was restacked above all of them (policy v52 / captured v59 / receipt 58) and **re-measured**: their suites are reconfirmed inside the
 published run's receipt (insert/replace `supported: 1`, XTGETTCAP `inconclusive: 1`, plus the modifyOtherKeys and OSC 9 suites). The full
@@ -77,12 +77,12 @@ collection when the first launch's context named a bundle digest that did not ex
 naming mismatch; attempt 3 (`owned-7gsSlr`, no receipt) failed launching the worker on the renamed binding; attempt 4 (`owned-dNbnet`, no receipt) **completed collection
 with identical grading** but could not finalize: the metadata receipt's source-policy map lacked the then-current v48 entry (fixed in the measured scripts); attempt 5
 (`owned-Q0DShd`, no receipt) aborted when the disposable App did not respond at launch (desktop idle), retained unchanged. Runs `owned-NITRsC` (attempt 6), `owned-sWZqnR` (attempt 7), `owned-KeiEHw` (attempt 8), `owned-4VAYK1` (attempt 9), `owned-iUlKFK` (attempt 10,
-aborted: the XTGETTCAP merge removed this suite's context bindings from the runner mid-flight) and `owned-FoQxOl` (attempt 11, the previously published run `4b6916b3…609b` at policy v50 / receipt 56, superseded by the modifyOtherKeys and OSC 9 merges) and `owned-jR4FIO` (attempt 12, run `481a15b5…40c5` at policy v52 / receipt 58, superseded by Codex's final-head P2: the runner now creates `reflow-actions.jsonl` before any request so a typed refusal can finalize) **completed and graded identically (width model-exact,
-history shrunk diverged at 38 displaced rows, restored exact) and reproduced byte-identically by each other and by the final run** — eight independent owned
+aborted: the XTGETTCAP merge removed this suite's context bindings from the runner mid-flight) and `owned-FoQxOl` (attempt 11, the previously published run `4b6916b3…609b` at policy v50 / receipt 56, superseded by the modifyOtherKeys and OSC 9 merges) and `owned-jR4FIO` (attempt 12, run `481a15b5…40c5` at policy v52 / receipt 58, superseded by Codex's final-head P2: the runner now creates `reflow-actions.jsonl` before any request so a typed refusal can finalize) and `owned-eTCUl0` (attempt 13, run `9aee574f…31aa`, superseded by the SonarCloud fixes in the measured scripts: nested ternaries, complexity, optional chains, one unused import and one re-export, with no behavior change) **completed and graded identically (width model-exact,
+history shrunk diverged at 38 displaced rows, restored exact) and reproduced byte-identically by each other and by the final run** — nine independent owned
 runs, same divergence — but are superseded by the serial restacks (insert/replace took v48/54, XTGETTCAP v49/55, modifyOtherKeys v50/56 and OSC 9 v51/57, so this layer was restacked to
 v52/58 above all of them; their retained receipts bind pre-restack scopes) and by the review fixes to the measured scripts (Codex: the unavailable marker's
 experiment count and the unavailable receipt's completion-artifact rejection; CodeRabbit: proof-marker admission, adapter-identity validation). The
-published run is the thirteenth.
+published run is the fourteenth.
 
 ## Newly fixed versus newly measured
 
