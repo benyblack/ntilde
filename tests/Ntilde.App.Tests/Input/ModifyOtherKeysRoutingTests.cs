@@ -138,6 +138,18 @@ public sealed class ModifyOtherKeysRoutingTests
     }
 
     [AvaloniaFact]
+    public void ShiftSpace_WithASymbollessGeneratedKey_SuppressesItsPairedTextOnce()
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;2m");
+        Assert.True(view.Down(Key.Space, KeyModifiers.Shift, PhysicalKey.Space).Handled);
+        Assert.Equal(new[] { "\x1b[27;2;32~" }, sent);
+        view.Text(" ");
+        Assert.Equal(new[] { "\x1b[27;2;32~" }, sent);
+        view.Text("x");
+        Assert.Equal(new[] { "\x1b[27;2;32~", "x" }, sent);
+    }
+
+    [AvaloniaFact]
     public void ShiftSpace_IsEncodedOnce_AndItsTextCallbackIsSuppressed()
     {
         var (view, _, _, _, sent) = Create("\x1b[>4;2m");

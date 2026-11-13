@@ -1,5 +1,6 @@
 // Exact queries use independently retained bytes and exposed state; parent process proofs remain mandatory.
 import { createHash } from 'node:crypto';
+import { inputPriorCaptureCap } from './input-plan.mjs';
 import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
 import { pristineEditing } from './editing-capture.mjs';
 import { queryWitnessPlan } from './query-witness-cases.mjs';
@@ -14,8 +15,8 @@ export const legacyQueryPolicy = 'owned-exact-query-paired-raw-state-v1';
 export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v2';
 export const queryPolicies = Object.freeze([legacyQueryPolicy, ownedQueryPolicy]);
 /** Earlier challenges a query suite owes: every raw input capture plus the 30 image captures. 110 is the frozen 39-event input plan (80 captures);
- * 152 is the 60-event benchmark plan (122 captures). Any other count is not a plan this suite follows. */
-export const queryPriorCounts = Object.freeze([110, 152]);
+ * 152 is the 60-event benchmark plan (122 captures); 268 is the 118-event v3 plan (238 captures). Any other count is not a plan this suite follows. */
+export const queryPriorCounts = Object.freeze([110, 152, inputPriorCaptureCap + 30]);
 export const pristineQuery = screen => typeof screen.cursorVisible === 'boolean' && pristineEditing({ ...screen, cursorVisible: true });
 export const checkQueries = value => { if (!value) throw new Error('Invalid or incomplete owned query evidence.'); };
 const check = checkQueries;

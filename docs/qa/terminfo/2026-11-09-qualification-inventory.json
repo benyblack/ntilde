@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 105,
-    "suiteClaims": 107,
+    "uniqueBenchmarkIds": 106,
+    "suiteClaims": 108,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 105,
+    "effectSupportedIds": 106,
     "pinnedAndEffectSupportedIds": 85,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
@@ -61,6 +61,7 @@
       "extensions.osc133-d",
       "extensions.osc7-cwd",
       "input.button-event-mouse",
+      "input.modify-other-keys",
       "input.x10-mouse",
       "modes.altscreen-1047",
       "modes.altscreen-47",
@@ -70,7 +71,7 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 104,
+    "effectSupportedOfStockInconclusive": 105,
     "pinnedSupportedOfStockInconclusive": 84,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -84,7 +85,7 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 64,
+      "effectUnqualified": 63,
       "notPinnedSupported": 84
     }
   },
@@ -2521,6 +2522,76 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/xtgettcap-publication.test.mjs",
         "testSha256": "a81f4d922e4bfc5ec9a1ef0abd55bffdfe30c86ca060d3b6ed53706b9aa301ec"
+      }
+    },
+    {
+      "suite": "modify-other-keys",
+      "suiteId": "ntilde-owned-modify-other-keys-benchmark-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-12-modify-other-keys/",
+      "doc": "2026-11-12-modify-other-keys-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "input.modify-other-keys"
+      ],
+      "evidence": {
+        "files": 122,
+        "bytes": 1746190,
+        "sha256": "f01ed9c233353d926b76407e296978d8e806a2c17129a3cf55dd52934272dfee"
+      },
+      "receipt": {
+        "schemaVersion": 56,
+        "runId": "3eb9b7ed6086a62767d54104c014e48e",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "5f4ce22134bbfeb5f39e0ff2818ca9da04dba6b4a1cfbedbd3e3396d6df036fe"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-modify-other-keys-benchmark-graded-v1",
+          "file": "mok-observations.json",
+          "sha256": "d908c62ff0c899b52f04325d5decaf83c84c896d0c5618ecdff5b265276a9ae8",
+          "runFile": "mok-run.json",
+          "runSha256": "ac4636b5463c51e2cbec9fc49fb62247308b2e6063bd3105c35cf2408e463155",
+          "counts": {
+            "inconclusive/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "3eb9b7ed6086a62767d54104c014e48e",
+        "measuredAt": "2026-11-13T12:27:46.906Z",
+        "appRevision": "2091d3d6265190ce2c396d6e7b978d9cb58fd2b2",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "3519ad1a758ed6adbeced3b05788f4e4567e3eb3",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "2a686c44c1f1de7009182eb28106a7e791e9c12421b7298afef783b3d027ebc8",
+        "gradingAdapterId": "ntilde-owned-modify-other-keys-grading-v1",
+        "gradingAdapterBundleSha256": "13f79b43ce2bd0d46ce8add12490fa65d57f6d03fef586b269774bda12518043",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v50",
+        "sourceSnapshotManifestSha256": "994059c33cb8706c21a40d0904248350a55113571bead17ded3a1ecc135e2d7a"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "65f007795dd0bb86bc0d6e415e9dce32",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "6bf46cc683f6846a557ad7802ec733dc908d8642f76f4c3bea8cbc09575c372c",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/modify-other-keys-publication.test.mjs",
+        "testSha256": "31a79126eb4a3bc57cc33b3349e23ae5b2479b3fa164166bef9308fa3b00e7c7"
       }
     }
   ],
@@ -5049,6 +5120,58 @@
         {
           "id": "input.button-event-mouse",
           "suite": "routed-input",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "input.modify-other-keys",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "modify-other-keys",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "modify-other-keys",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.modify-other-keys",
+          "suite": "modify-other-keys",
           "status": "qualified",
           "pinned": {
             "verdict": "inconclusive",
