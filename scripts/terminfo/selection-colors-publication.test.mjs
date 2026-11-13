@@ -37,7 +37,7 @@ test('retained run independently rederives the complete receipt and published pr
         assert.ok(projected.report.cases.every(item => item.stock.outcome === 'inconclusive'));
         assert.deepEqual(projected.report.cases.map(item => item.divergence?.kind ?? null),
             ['pinned-query-only-unset-default', 'pinned-query-only-unset-default', 'pinned-inconclusive-by-design', 'pinned-inconclusive-by-design']);
-        assert.equal(schemaVersion, 54); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 58); assert.equal(fixtureRemoved, true);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

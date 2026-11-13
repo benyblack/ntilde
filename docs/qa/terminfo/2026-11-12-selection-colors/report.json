@@ -1,0 +1,3975 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-selection-colors-graded-v1",
+  "contractsVersion": 1,
+  "runId": "9dfbaccd612098f3a9ed6b288c4ed9e6",
+  "adapter": {
+    "id": "ntilde-owned-selection-colors-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-osc-title-grading-v1",
+    "bundleSha256": "e4668b938179440d4a7ae5f4cb908fef7cdb0fb70be29eb79e0c3f2677ed259d",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned selection-color termless paths over independently journaled fixtures, plus versioned effect contracts for exact fenced replies, app-resolved colors, stored cells and controlled renders with the established synthetic selection. Unset selection sources reply nothing behind the completed ordering barrier and are never substituted with an RGB value. No physical mouse selection, native desktop appearance, pointer color, clipboard behavior or stock-score inference",
+  "cases": [
+    {
+      "caseId": "extensions.osc17-highlight-bg",
+      "pinnedCriterion": "the termless oscColorQueryProbe feedCaptures \"\\u001b]17;?\\u0007\" once and is supported iff a complete rgb:{1-4}/{1-4}/{1-4} reply (BEL or ST terminated) is present; otherwise inconclusive (invalid-reply or no-response)",
+      "pinnedFeeds": [
+        "\u001b]17;?\u0007"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b]17;?\u0007"
+        ],
+        "demand": "query",
+        "note": "the pinned terminal path re-asks the same query behind a sentinel and grades by the same oscReplyResult; in the default state the source is unset and no reply can arrive; it is preserved as metadata and is never run as a verdict by this suite"
+      },
+      "feeds": [
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]17;?\u0007",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]17;?\u001b\\",
+        "\u001b]17;rgb:aa/bb/cc\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]17;rgb:12/34/56\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]117\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]17;?\u0007",
+        "\u001b]17;rgb:aa/bb/cc\u0007",
+        "\u001b]17;?\u0007",
+        "\u001b]117\u0007",
+        "\u001b]17;?\u0007"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]17;rgb:aaaa/bbbb/cccc\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]17;rgb:1212/3434/5656\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]17;rgb:aaaa/bbbb/cccc\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        }
+      ],
+      "observed": {
+        "pinned": {
+          "role": "pinned",
+          "label": "the pinned fixture: one BEL-spelled query of the selection background in the pristine default state, where the source is unset",
+          "term": "BEL",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        },
+        "set-query": {
+          "role": "control",
+          "label": "the selection background set with the ST spelling to two distinguishable values and reset: each reply must equal the newest value (never a stale one), every layer must show the override, and the reset must restore the measured unset default",
+          "term": "ST",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override-a",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": "\\e]17;rgb:aaaa/bbbb/cccc\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": "#aabbcc",
+                "selectionForeground": null,
+                "selectionBackgroundOverride": true,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#aabbcc",
+                "effectiveSelectionForeground": "#494949"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "197877f67301253232c6765841c22037f3793bf8eb236519d0bb9448ade4acb4"
+            },
+            {
+              "stage": "override-b",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": "\\e]17;rgb:1212/3434/5656\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": "#123456",
+                "selectionForeground": null,
+                "selectionBackgroundOverride": true,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#123456",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "2069eddeebd11b2b7dfa0e935f2b08f1ae07e2f59442268663b686c621eeb192"
+            },
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        },
+        "bel-spelling": {
+          "role": "control",
+          "label": "a labeled control: the BEL spellings of the same selection background set, query and reset",
+          "term": "BEL",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": "\\e]17;rgb:aaaa/bbbb/cccc\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": "#aabbcc",
+                "selectionForeground": null,
+                "selectionBackgroundOverride": true,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#aabbcc",
+                "effectiveSelectionForeground": "#494949"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "197877f67301253232c6765841c22037f3793bf8eb236519d0bb9448ade4acb4"
+            },
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        }
+      },
+      "colorBinding": {
+        "themeName": "Default",
+        "minimumContrast": 1,
+        "reverseVideo": false,
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "cursorArgb": 4294967295,
+        "paletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+      },
+      "pinned": {
+        "pass": false,
+        "response": "",
+        "note": null,
+        "notTested": null,
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "no-response",
+          "evidence": "query"
+        },
+        "assertions": null
+      },
+      "pinnedTerminal": {
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "byDesign": false,
+        "note": "the pinned terminal path re-asks the same query behind a sentinel and grades by the same oscReplyResult; in the default state the source is unset and no reply can arrive; it is preserved as metadata and is never run as a verdict by this suite"
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "experiments": [
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "label": "the pinned fixture: one BEL-spelled query of the selection background in the pristine default state, where the source is unset",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "pinned: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "set-query",
+            "role": "control",
+            "label": "the selection background set with the ST spelling to two distinguishable values and reset: each reply must equal the newest value (never a stale one), every layer must show the override, and the reset must restore the measured unset default",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: every overridden target differs from its baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the controlled render differs from the baseline render",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "set-query/override-b: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the second value rejects a stale observation",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the second value changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the stage changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "set-query: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "bel-spelling",
+            "role": "control",
+            "label": "a labeled control: the BEL spellings of the same selection background set, query and reset",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: every overridden target differs from its baseline",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "bel-spelling/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          }
+        ]
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-query-only-unset-default"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels",
+        "grading": "pinned-termless-plus-contract-v1",
+        "pinnedTermless": "inconclusive",
+        "pinnedTerminal": "inconclusive-default-state",
+        "scope": "exact fenced query replies (unset selection sources demand explicit absence behind the completed ordering barrier), the App-resolved colors and override metadata, stored default markers, palette-indexed and literal cells, the cursor and the controlled offscreen render at a fixed synthetic clock with the established synthetic selection (2,4)..(4,10); pointer colors, ordinary foreground/background/cursor resets, clipboard behavior, physical mouse selection, native desktop appearance, other themes or platforms and remote delivery are not claimed"
+      },
+      "stock": {
+        "featureId": "extensions.osc17-highlight-bg",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc17-highlight-bg"
+      }
+    },
+    {
+      "caseId": "extensions.osc19-highlight-fg",
+      "pinnedCriterion": "the termless oscColorQueryProbe feedCaptures \"\\u001b]19;?\\u0007\" once and is supported iff a complete rgb:{1-4}/{1-4}/{1-4} reply (BEL or ST terminated) is present; otherwise inconclusive (invalid-reply or no-response)",
+      "pinnedFeeds": [
+        "\u001b]19;?\u0007"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b]19;?\u0007"
+        ],
+        "demand": "query",
+        "note": "the pinned terminal path re-asks the same query behind a sentinel and grades by the same oscReplyResult; in the default state the source is unset and no reply can arrive; it is preserved as metadata and is never run as a verdict by this suite"
+      },
+      "feeds": [
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]19;?\u0007",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]19;?\u001b\\",
+        "\u001b]19;rgb:aa/bb/cc\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]19;rgb:12/34/56\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]119\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]19;?\u0007",
+        "\u001b]19;rgb:aa/bb/cc\u0007",
+        "\u001b]19;?\u0007",
+        "\u001b]119\u0007",
+        "\u001b]19;?\u0007"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]19;rgb:aaaa/bbbb/cccc\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]19;rgb:1212/3434/5656\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]19;rgb:aaaa/bbbb/cccc\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        }
+      ],
+      "observed": {
+        "pinned": {
+          "role": "pinned",
+          "label": "the pinned fixture: one BEL-spelled query of the selection foreground in the pristine default state, where the source is unset",
+          "term": "BEL",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        },
+        "set-query": {
+          "role": "control",
+          "label": "the selection foreground set with the ST spelling to two distinguishable values and reset: each reply must equal the newest value (never a stale one), every layer must show the override, and the reset must restore the measured unset default",
+          "term": "ST",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override-a",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": "\\e]19;rgb:aaaa/bbbb/cccc\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": "#aabbcc",
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": true,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": "#aabbcc"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "7dd1e0ac579acb6b40115b1606c4701bc67fd4b101da73ffdd343bccea358ca9"
+            },
+            {
+              "stage": "override-b",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": "\\e]19;rgb:1212/3434/5656\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": "#123456",
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": true,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": "#123456"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "ee0f2b6b05e5c6d8cafbba6b3a4ecdbedc1753097f2b11f3247f83667df34123"
+            },
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        },
+        "bel-spelling": {
+          "role": "control",
+          "label": "a labeled control: the BEL spellings of the same selection foreground set, query and reset",
+          "term": "BEL",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": "\\e]19;rgb:aaaa/bbbb/cccc\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": "#aabbcc",
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": true,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": "#aabbcc"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "7dd1e0ac579acb6b40115b1606c4701bc67fd4b101da73ffdd343bccea358ca9"
+            },
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        }
+      },
+      "colorBinding": {
+        "themeName": "Default",
+        "minimumContrast": 1,
+        "reverseVideo": false,
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "cursorArgb": 4294967295,
+        "paletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+      },
+      "pinned": {
+        "pass": false,
+        "response": "",
+        "note": null,
+        "notTested": null,
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "no-response",
+          "evidence": "query"
+        },
+        "assertions": null
+      },
+      "pinnedTerminal": {
+        "outcome": "inconclusive",
+        "evidence": "query",
+        "byDesign": false,
+        "note": "the pinned terminal path re-asks the same query behind a sentinel and grades by the same oscReplyResult; in the default state the source is unset and no reply can arrive; it is preserved as metadata and is never run as a verdict by this suite"
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "experiments": [
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "label": "the pinned fixture: one BEL-spelled query of the selection foreground in the pristine default state, where the source is unset",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "pinned/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "pinned: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "set-query",
+            "role": "control",
+            "label": "the selection foreground set with the ST spelling to two distinguishable values and reset: each reply must equal the newest value (never a stale one), every layer must show the override, and the reset must restore the measured unset default",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: every overridden target differs from its baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-a: the controlled render differs from the baseline render",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "set-query/override-b: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the second value rejects a stale observation",
+                "passed": true
+              },
+              {
+                "description": "set-query/override-b: the second value changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "set-query/reset: the stage changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "set-query: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "bel-spelling",
+            "role": "control",
+            "label": "a labeled control: the BEL spellings of the same selection foreground set, query and reset",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/override: every overridden target differs from its baseline",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "bel-spelling/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "bel-spelling/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          }
+        ]
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-query-only-unset-default"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels",
+        "grading": "pinned-termless-plus-contract-v1",
+        "pinnedTermless": "inconclusive",
+        "pinnedTerminal": "inconclusive-default-state",
+        "scope": "exact fenced query replies (unset selection sources demand explicit absence behind the completed ordering barrier), the App-resolved colors and override metadata, stored default markers, palette-indexed and literal cells, the cursor and the controlled offscreen render at a fixed synthetic clock with the established synthetic selection (2,4)..(4,10); pointer colors, ordinary foreground/background/cursor resets, clipboard behavior, physical mouse selection, native desktop appearance, other themes or platforms and remote delivery are not claimed"
+      },
+      "stock": {
+        "featureId": "extensions.osc19-highlight-fg",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc19-highlight-fg"
+      }
+    },
+    {
+      "caseId": "extensions.osc117-reset-highlight-bg",
+      "pinnedCriterion": "the termless fixture feeds \"\\u001b]117\\u0007X\", reads cell (0,0) and returns notTestedResult (pass false, notTested.reason no-semantic-observable): it never decides",
+      "pinnedFeeds": [
+        "\u001b]117\u0007X"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]117\u0007"
+        ],
+        "demand": "cursor-position-report",
+        "note": "inconclusive by construction (evidence consumed): the pinned terminal path writes the pinned bytes, queries the cursor and returns unverifiedEffect whatever the cursor answers; the stock grade is carried unchanged and is not replaced by this suite"
+      },
+      "feeds": [
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[1;1H",
+        "\u001b]117\u0007X",
+        "\u001b]17;?\u0007",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;rgb:aa/bb/cc\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]117\u0007",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]19;rgb:12/34/56\u001b\\",
+        "\u001b]17;rgb:aa/bb/cc\u001b\\",
+        "\u001b]4;5;#d0c010\u001b\\",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]117\u001b\\",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]119\u0007",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;?\u001b\\"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "cursor": [
+            0,
+            1
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]17;rgb:aaaa/bbbb/cccc\u001b\\"
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:cdcd/0000/cdcd\u001b\\"
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]17;rgb:aaaa/bbbb/cccc\u001b\\"
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]19;rgb:1212/3434/5656\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]19;rgb:1212/3434/5656\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        }
+      ],
+      "observed": {
+        "pinned": {
+          "role": "pinned",
+          "label": "the pinned fixture: feed \"\\u001b]117\\u0007X\" and read cell (0,0), on the default state, with the selection background query asked beside it",
+          "term": "BEL",
+          "stages": [
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 0,
+                "col": 1,
+                "visible": false
+              },
+              "pixelSha256": "3a1a95113c75899f3b3694d011db12718c29f92b82db45c0ccc312b51cf0211c"
+            }
+          ]
+        },
+        "cycle": {
+          "role": "control",
+          "label": "the selection background override set (ST) while the selection foreground stays unset, then reset with the exact pinned BEL spelling: the measured unset default must return in every layer",
+          "term": "ST",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": "\\e]17;rgb:aaaa/bbbb/cccc\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": "#aabbcc",
+                "selectionForeground": null,
+                "selectionBackgroundOverride": true,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#aabbcc",
+                "effectiveSelectionForeground": "#494949"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "197877f67301253232c6765841c22037f3793bf8eb236519d0bb9448ade4acb4"
+            },
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        },
+        "independence": {
+          "role": "control",
+          "label": "selection background and selection foreground overrides and an unrelated palette slot set together; reset only the selection background (ST): the selection foreground override and the slot must survive; then reset the selection foreground (BEL): only the slot survives; the two stages exercise both reset orders and end at the measured default",
+          "term": "ST",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": "\\e]17;rgb:aaaa/bbbb/cccc\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": "\\e]19;rgb:1212/3434/5656\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": [
+                  5
+                ]
+              },
+              "theme": {
+                "selectionBackground": "#aabbcc",
+                "selectionForeground": "#123456",
+                "selectionBackgroundOverride": true,
+                "selectionForegroundOverride": true,
+                "effectiveSelectionBackground": "#aabbcc",
+                "effectiveSelectionForeground": "#123456"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "615f82198e9b741538de769ca7c559da74e94a1832569eec13136de97f57b46a"
+            },
+            {
+              "stage": "reset-selection-background",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": "\\e]19;rgb:1212/3434/5656\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": [
+                  5
+                ]
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": "#123456",
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": true,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": "#123456"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "ee0f2b6b05e5c6d8cafbba6b3a4ecdbedc1753097f2b11f3247f83667df34123"
+            },
+            {
+              "stage": "reset-selection-foreground",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": [
+                  5
+                ]
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        }
+      },
+      "colorBinding": {
+        "themeName": "Default",
+        "minimumContrast": 1,
+        "reverseVideo": false,
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "cursorArgb": 4294967295,
+        "paletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+      },
+      "pinned": {
+        "pass": false,
+        "response": "{\"cell\":{\"char\":\"X\"}}",
+        "note": "highlight background color",
+        "notTested": {
+          "reason": "no-semantic-observable",
+          "noObservable": "highlight background color"
+        },
+        "observation": null,
+        "assertions": null
+      },
+      "pinnedTerminal": {
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "byDesign": true,
+        "note": "inconclusive by construction (evidence consumed): the pinned terminal path writes the pinned bytes, queries the cursor and returns unverifiedEffect whatever the cursor answers; the stock grade is carried unchanged and is not replaced by this suite"
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "experiments": [
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "label": "the pinned fixture: feed \"\\u001b]117\\u0007X\" and read cell (0,0), on the default state, with the selection background query asked beside it",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "pinned/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "pinned: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "cycle",
+            "role": "control",
+            "label": "the selection background override set (ST) while the selection foreground stays unset, then reset with the exact pinned BEL spelling: the measured unset default must return in every layer",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: every overridden target differs from its baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the controlled render differs from the baseline render",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "cycle/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the stage changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "cycle: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "independence",
+            "role": "control",
+            "label": "selection background and selection foreground overrides and an unrelated palette slot set together; reset only the selection background (ST): the selection foreground override and the slot must survive; then reset the selection foreground (BEL): only the slot survives; the two stages exercise both reset orders and end at the measured default",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/override: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/override: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "independence/override: every overridden target differs from its baseline",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the controlled render differs from the baseline render",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "independence/reset-selection-background: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the stage changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the overrides that remain are still drawn (the render is not the baseline render)",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the stage changed the controlled render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          }
+        ]
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-by-design"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels",
+        "grading": "pinned-termless-plus-contract-v1",
+        "pinnedTermless": "inconclusive",
+        "pinnedTerminal": "inconclusive-by-design",
+        "scope": "exact fenced query replies (unset selection sources demand explicit absence behind the completed ordering barrier), the App-resolved colors and override metadata, stored default markers, palette-indexed and literal cells, the cursor and the controlled offscreen render at a fixed synthetic clock with the established synthetic selection (2,4)..(4,10); pointer colors, ordinary foreground/background/cursor resets, clipboard behavior, physical mouse selection, native desktop appearance, other themes or platforms and remote delivery are not claimed"
+      },
+      "stock": {
+        "featureId": "extensions.osc117-reset-highlight-bg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; highlight background was not read back",
+        "rawReplyRef": "extensions.osc117-reset-highlight-bg"
+      }
+    },
+    {
+      "caseId": "extensions.osc119-reset-highlight-fg",
+      "pinnedCriterion": "the termless fixture feeds \"\\u001b]119\\u0007X\", reads cell (0,0) and returns notTestedResult (pass false, notTested.reason no-semantic-observable): it never decides",
+      "pinnedFeeds": [
+        "\u001b]119\u0007X"
+      ],
+      "terminalFixture": {
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]119\u0007"
+        ],
+        "demand": "cursor-position-report",
+        "note": "inconclusive by construction (evidence consumed): the pinned terminal path writes the pinned bytes, queries the cursor and returns unverifiedEffect whatever the cursor answers; the stock grade is carried unchanged and is not replaced by this suite"
+      },
+      "feeds": [
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[1;1H",
+        "\u001b]119\u0007X",
+        "\u001b]19;?\u0007",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]19;rgb:aa/bb/cc\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]119\u0007",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]104\u001b\\\u001b]110\u001b\\\u001b]111\u001b\\\u001b]112\u001b\\\u001b]117\u001b\\\u001b]119\u001b\\\u001b[!p\u001b[?6l\u001b[r\u001b[4l\u001b[0m\u001b[2J\u001b[H\u001b[?25l\u001b[2;5H\u001b[38;2;240;240;240;48;2;16;16;16mHMWqg_|\u001b[0m\u001b[4;5HHMWqg_|\u001b[0m\u001b[5;5H\u001b[38;5;33;48;5;34mHMWqg_|\u001b[0m\u001b[6;5H\u001b[38;2;240;240;240;48;2;16;32;48mHMWqg_|\u001b[0m\u001b[9;9H",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]17;rgb:12/34/56\u001b\\",
+        "\u001b]19;rgb:aa/bb/cc\u001b\\",
+        "\u001b]4;5;#d0c010\u001b\\",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]119\u001b\\",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;?\u001b\\",
+        "\u001b]117\u0007",
+        "\u001b]10;?\u001b\\",
+        "\u001b]11;?\u001b\\",
+        "\u001b]12;?\u001b\\",
+        "\u001b]4;5;?\u001b\\",
+        "\u001b]19;?\u001b\\",
+        "\u001b]17;?\u001b\\"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "cursor": [
+            0,
+            1
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]19;rgb:aaaa/bbbb/cccc\u001b\\"
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:cdcd/0000/cdcd\u001b\\"
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]19;rgb:aaaa/bbbb/cccc\u001b\\"
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]17;rgb:1212/3434/5656\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]17;rgb:1212/3434/5656\u001b\\"
+            }
+          ]
+        },
+        {
+          "cursor": [
+            8,
+            8
+          ],
+          "queries": [
+            {
+              "query": {
+                "code": 10
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\"
+            },
+            {
+              "query": {
+                "code": 11
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]11;rgb:0000/0000/0000\u001b\\"
+            },
+            {
+              "query": {
+                "code": 12
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]12;rgb:ffff/ffff/ffff\u001b\\"
+            },
+            {
+              "query": {
+                "code": 4,
+                "index": 5
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": "\u001b]4;5;rgb:d0d0/c0c0/1010\u001b\\"
+            },
+            {
+              "query": {
+                "code": 19
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            },
+            {
+              "query": {
+                "code": 17
+              },
+              "barrier": "\u001b[?62;4;22c",
+              "reply": null
+            }
+          ]
+        }
+      ],
+      "observed": {
+        "pinned": {
+          "role": "pinned",
+          "label": "the pinned fixture: feed \"\\u001b]119\\u0007X\" and read cell (0,0), on the default state, with the selection foreground query asked beside it",
+          "term": "BEL",
+          "stages": [
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 0,
+                "col": 1,
+                "visible": false
+              },
+              "pixelSha256": "3a1a95113c75899f3b3694d011db12718c29f92b82db45c0ccc312b51cf0211c"
+            }
+          ]
+        },
+        "cycle": {
+          "role": "control",
+          "label": "the selection foreground override set (ST) while the selection background stays unset, then reset with the exact pinned BEL spelling: the measured unset default must return in every layer",
+          "term": "ST",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": "\\e]19;rgb:aaaa/bbbb/cccc\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": "#aabbcc",
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": true,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": "#aabbcc"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "7dd1e0ac579acb6b40115b1606c4701bc67fd4b101da73ffdd343bccea358ca9"
+            },
+            {
+              "stage": "reset",
+              "replies": [
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        },
+        "independence": {
+          "role": "control",
+          "label": "selection foreground and selection background overrides and an unrelated palette slot set together; reset only the selection foreground (ST): the selection background override and the slot must survive; then reset the selection background (BEL): only the slot survives; the two stages exercise both reset orders and end at the measured default",
+          "term": "ST",
+          "stages": [
+            {
+              "stage": "baseline",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": []
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            },
+            {
+              "stage": "override",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": "\\e]19;rgb:aaaa/bbbb/cccc\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": "\\e]17;rgb:1212/3434/5656\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": [
+                  5
+                ]
+              },
+              "theme": {
+                "selectionBackground": "#123456",
+                "selectionForeground": "#aabbcc",
+                "selectionBackgroundOverride": true,
+                "selectionForegroundOverride": true,
+                "effectiveSelectionBackground": "#123456",
+                "effectiveSelectionForeground": "#aabbcc"
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "d0596d819fc32ba1bbc1360cdc87f9e0407d7142c56af8daf9e5c477df9f78b4"
+            },
+            {
+              "stage": "reset-selection-foreground",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": "\\e]17;rgb:1212/3434/5656\\e\\"
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": [
+                  5
+                ]
+              },
+              "theme": {
+                "selectionBackground": "#123456",
+                "selectionForeground": null,
+                "selectionBackgroundOverride": true,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#123456",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "2069eddeebd11b2b7dfa0e935f2b08f1ae07e2f59442268663b686c621eeb192"
+            },
+            {
+              "stage": "reset-selection-background",
+              "replies": [
+                {
+                  "query": {
+                    "code": 10
+                  },
+                  "reply": "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 11
+                  },
+                  "reply": "\\e]11;rgb:0000/0000/0000\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 12
+                  },
+                  "reply": "\\e]12;rgb:ffff/ffff/ffff\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 4,
+                    "index": 5
+                  },
+                  "reply": "\\e]4;5;rgb:d0d0/c0c0/1010\\e\\"
+                },
+                {
+                  "query": {
+                    "code": 19
+                  },
+                  "reply": null
+                },
+                {
+                  "query": {
+                    "code": 17
+                  },
+                  "reply": null
+                }
+              ],
+              "binding": {
+                "foregroundOverride": false,
+                "backgroundOverride": false,
+                "paletteOverrideIndices": [
+                  5
+                ]
+              },
+              "theme": {
+                "selectionBackground": null,
+                "selectionForeground": null,
+                "selectionBackgroundOverride": false,
+                "selectionForegroundOverride": false,
+                "effectiveSelectionBackground": "#2626c8",
+                "effectiveSelectionForeground": null
+              },
+              "cursor": {
+                "row": 8,
+                "col": 8,
+                "visible": false
+              },
+              "pixelSha256": "f60c96fcbaa0756a0696c04e08d850b359229c8be64324e70f4e9bcf38700c27"
+            }
+          ]
+        }
+      },
+      "colorBinding": {
+        "themeName": "Default",
+        "minimumContrast": 1,
+        "reverseVideo": false,
+        "foregroundArgb": 4292072403,
+        "backgroundArgb": 4278190080,
+        "cursorArgb": 4294967295,
+        "paletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+      },
+      "pinned": {
+        "pass": false,
+        "response": "{\"cell\":{\"char\":\"X\"}}",
+        "note": "highlight foreground color",
+        "notTested": {
+          "reason": "no-semantic-observable",
+          "noObservable": "highlight foreground color"
+        },
+        "observation": null,
+        "assertions": null
+      },
+      "pinnedTerminal": {
+        "outcome": "inconclusive",
+        "evidence": "consumed",
+        "byDesign": true,
+        "note": "inconclusive by construction (evidence consumed): the pinned terminal path writes the pinned bytes, queries the cursor and returns unverifiedEffect whatever the cursor answers; the stock grade is carried unchanged and is not replaced by this suite"
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "experiments": [
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "label": "the pinned fixture: feed \"\\u001b]119\\u0007X\" and read cell (0,0), on the default state, with the selection foreground query asked beside it",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "pinned/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "pinned/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "pinned: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "cycle",
+            "role": "control",
+            "label": "the selection foreground override set (ST) while the selection background stays unset, then reset with the exact pinned BEL spelling: the measured unset default must return in every layer",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "cycle/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: every overridden target differs from its baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/override: the controlled render differs from the baseline render",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "cycle/reset: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "cycle/reset: the stage changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "cycle: the final controlled render is byte-identical to the baseline render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          },
+          {
+            "id": "independence",
+            "role": "control",
+            "label": "selection foreground and selection background overrides and an unrelated palette slot set together; reset only the selection foreground (ST): the selection background override and the slot must survive; then reset the selection background (BEL): only the slot survives; the two stages exercise both reset orders and end at the measured default",
+            "controls": [
+              {
+                "description": "the baseline has no runtime override in any layer",
+                "passed": true
+              },
+              {
+                "description": "the baseline readScreen binding equals the render theme (two App layers agree)",
+                "passed": true
+              },
+              {
+                "description": "the scene is as written: text rows, steady scene colors and no reverse video",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/baseline: the complete theme, derived selection paints and cursor text included, equals the baseline",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/override: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/override: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the override differs from the measured baseline",
+                "passed": true
+              },
+              {
+                "description": "independence/override: every overridden target differs from its baseline",
+                "passed": true
+              },
+              {
+                "description": "independence/override: the controlled render differs from the baseline render",
+                "passed": true
+              }
+            ],
+            "assertions": [
+              {
+                "description": "independence/reset-selection-foreground: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the stage changed the controlled render",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-foreground: the overrides that remain are still drawn (the render is not the baseline render)",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the exact query replies are the model's colors, with an unset selection source replying nothing",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the App's resolved colors and override metadata match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the render theme sources and override flags match",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: default markers, palette-indexed and literal cells resolve to the model",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: stored text, cursor position and visibility are as written",
+                "passed": true
+              },
+              {
+                "description": "independence/reset-selection-background: the stage changed the controlled render",
+                "passed": true
+              }
+            ],
+            "outcome": "supported"
+          }
+        ]
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-by-design"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels",
+        "grading": "pinned-termless-plus-contract-v1",
+        "pinnedTermless": "inconclusive",
+        "pinnedTerminal": "inconclusive-by-design",
+        "scope": "exact fenced query replies (unset selection sources demand explicit absence behind the completed ordering barrier), the App-resolved colors and override metadata, stored default markers, palette-indexed and literal cells, the cursor and the controlled offscreen render at a fixed synthetic clock with the established synthetic selection (2,4)..(4,10); pointer colors, ordinary foreground/background/cursor resets, clipboard behavior, physical mouse selection, native desktop appearance, other themes or platforms and remote delivery are not claimed"
+      },
+      "stock": {
+        "featureId": "extensions.osc119-reset-highlight-fg",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; highlight foreground was not read back",
+        "rawReplyRef": "extensions.osc119-reset-highlight-fg"
+      }
+    }
+  ]
+}

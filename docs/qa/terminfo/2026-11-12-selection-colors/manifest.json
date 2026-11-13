@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "6270e2285097b78d1771a1cd5668b71d11eb689c31e0f760b4369614c1026006",
+    "superseded/attempt-25.zip": "a834bc3d57b82ea5acea0c976a1451d6aa4f50285a9c993072c0f8a113751b9b",
+    "superseded/attempt-26.zip": "9a7aed51a18dd2da58e589d6b59f320a47487f091e0eaa9e0cc5295d519b65f6",
+    "superseded/attempt-27.zip": "5e6394f6edefe0d85d519f1e9ea025420c9ed7713a598f6395418859a08523bb",
+    "superseded/attempt12-pre-v52-infrastructure.zip": "dbba67650840c110b453926acc2b577faf93d21755d5578b090bee9cb33c2211"
+  },
+  "appRevision": "5a20054d70ff72b0953ea0b342381d93035b7571",
+  "scriptsRevision": "e6c4571ba48c1d716feb18d9c208695637ca587d",
+  "appAssemblySha256": "c9c0119ce7a08e79d9c1b36b161fc9015e6a55ce6e482c588cbd509a06587f1a",
+  "measurement": {
+    "runId": "9dfbaccd612098f3a9ed6b288c4ed9e6",
+    "receiptSchema": 58,
+    "sourcePolicy": "readonly-owned-source-graph-v52"
+  },
+  "attempts": [
+    {
+      "archive": "superseded/attempt-25.zip",
+      "runId": "4dbe97e8ff59c6659b4f21445a1530a0",
+      "reason": "Collected all suites (selection colors included) but the final receipt refused it: the rebase had reordered the captured v55-v58 source inventories, so the retained inventory did not equal the pinned v59 inventory (Invalid or incomplete v8 owned metadata-state receipt)."
+    },
+    {
+      "archive": "superseded/attempt-26.zip",
+      "runId": "6bf2084f85c6db05a339bf94cbfc8c78",
+      "reason": "Collected all suites but the runner never built or passed the selection-color evidence binding and identity into the receipt context (Invalid selection-color receipt identity)."
+    },
+    {
+      "archive": "superseded/attempt-27.zip",
+      "runId": "9222501a4a407da83896aec15c02efa4",
+      "reason": "Complete receipt, but all four effect contracts were inconclusive: the shared observer requested every capture with a null selection, so no render-only synthetic selection was drawn, the controlled renders were byte-identical across stages and every render control failed. Superseded by the observer fix."
+    },
+    {
+      "archive": "superseded/attempt12-pre-v52-infrastructure.zip",
+      "runId": null,
+      "reason": "Earlier collection made before the suite was rewired onto the current main infrastructure (policy v52 scope); retained unchanged."
+    }
+  ]
+}
