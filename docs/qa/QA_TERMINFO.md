@@ -8,6 +8,10 @@ schema 11/fixed 74-source policy v4. Its packet/state/ownership contract is
 [the owned query model](terminfo/owned-query-model.md). The preceding calibrated
 static-image suite and frozen v10 publication retain their original 67-source
 scope; published v9 input and v8 observations likewise keep their original bytes.
+The newest graded layer is the [controlled ASCII resize/reflow suite](terminfo/ascii-reflow.md)
+(schema 54/source policy v48), which qualifies `extensions.reflow` through a
+separately identified effect contract and records a deterministic divergence of
+the live pane-resize path; the pinned criterion stays inconclusive by design.
 
 
 [terminfo.dev](https://github.com/beorn/terminfo.dev) collects external terminal

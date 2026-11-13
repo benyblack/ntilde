@@ -40,8 +40,8 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 103,
-    "suiteClaims": 105,
+    "uniqueBenchmarkIds": 104,
+    "suiteClaims": 106,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
@@ -2380,6 +2380,76 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/osc-title-publication.test.mjs",
         "testSha256": "1b6459197ec336b855d93c6681175fca0a9769302747323e7443efdc9ab9417e"
+      }
+    },
+    {
+      "suite": "ascii-reflow",
+      "suiteId": "ntilde-owned-ascii-reflow-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-12-ascii-reflow/",
+      "doc": "2026-11-12-ascii-reflow-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.reflow"
+      ],
+      "evidence": {
+        "files": 10,
+        "bytes": 35877711,
+        "sha256": "ae539880227f5e32c072feed37d8367e82d84f940cb4312a29ef71f3a04c4c0e"
+      },
+      "receipt": {
+        "schemaVersion": 54,
+        "runId": "236e85761a40ab731fe07f86e4477172",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "e9570e43a7dcf86f1be79625fdb186ddcf20ecf13b08a4bbfd385eedce8c60a8"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-ascii-reflow-v1",
+          "file": "reflow-observations.json",
+          "sha256": "4d1b5be31fcfe2ca48edaf7c9f65351b75eabf53aebcd8e15b60c7d794121674",
+          "runFile": "rf-run.json",
+          "runSha256": "0c8c39ac446f1f7fcdb4e15916287040d69efa7306c7cdc8a9a8ef88b99cdcfd",
+          "counts": {
+            "unsupported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "236e85761a40ab731fe07f86e4477172",
+        "measuredAt": "2026-11-12T15:40:50.851Z",
+        "appRevision": "35ef59e09e511a90f68a2d730b7d2725acf314f3",
+        "appVersion": "0.13.0+35ef59e09e511a90f68a2d730b7d2725acf314f3",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "35ef59e09e511a90f68a2d730b7d2725acf314f3",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "33c825af64f2ca8ac2f2923946f6dcff047886153c2d7114798360df79336548",
+        "gradingAdapterId": "ntilde-owned-ascii-reflow-grading-v1",
+        "gradingAdapterBundleSha256": "e5d90994f0733df224be8cf8208a8b8d05adb14941ccb30b1ed76bae74c1d357",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v48",
+        "sourceSnapshotManifestSha256": "554ea888b229efa59d98e5adad451e334ed23a67a1a071be2eee2f3bc76d1a19"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "6cb2df30e96c4197bbb62091daa25118",
+        "counts": {
+          "inconclusive": 167,
+          "supported": 87,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "a13b735e673e2d46a40c5b981caa1716e010220261443aecff480fe44ab62e66",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades collected in the same owned run; the owned effect verdict does not change the stock score."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/ascii-reflow-publication.test.mjs",
+        "testSha256": "5ddb1f42d340a86ad2629638182d4048cd86abaecdaf39e3ffd07d7d924e9e31"
       }
     }
   ],
@@ -4827,6 +4897,59 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-stored-cells-and-pane-metadata"
+        }
+      ]
+    },
+    {
+      "id": "extensions.reflow",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "ascii-reflow",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "ascii-reflow",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.reflow",
+          "suite": "ascii-reflow",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No controlled resize and cell-content readback to measure reflow"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "No controlled resize and cell-content readback to measure reflow"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "actual-scrollback"
+          ],
+          "evidenceTag": "stored-state and actual-scrollback"
         }
       ]
     },

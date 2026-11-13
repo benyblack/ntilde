@@ -60,6 +60,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('osc78', '2026-11-11-osc7-osc8', '2026-11-11-osc7-osc8-qualification.md'), module: 'osc78-contracts.mjs', exports: ['osc78SuiteId', 'osc78ContractsVersion', 'osc78CaseIds'], test: 'osc78-publication.test.mjs' },
     { ...directory('title-stack', '2026-11-11-title-stack', '2026-11-11-title-stack-qualification.md'), module: 'title-stack-contracts.mjs', exports: ['titleStackSuiteId', 'titleStackContractsVersion', 'titleStackCaseIds'], test: 'title-stack-publication.test.mjs' },
     { ...directory('osc-title', '2026-11-12-osc-title', '2026-11-12-osc-title-qualification.md'), module: 'osc-title-contracts.mjs', exports: ['oscTitleSuiteId', 'oscTitleContractsVersion', 'oscTitleCaseIds'], test: 'osc-title-publication.test.mjs' },
+    { ...directory('ascii-reflow', '2026-11-12-ascii-reflow', '2026-11-12-ascii-reflow-qualification.md'), module: 'ascii-reflow-contracts.mjs', exports: ['asciiReflowSuiteId', 'asciiReflowContractsVersion', 'asciiReflowCaseIds'], test: 'ascii-reflow-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */
