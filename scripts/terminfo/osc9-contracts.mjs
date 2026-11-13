@@ -82,7 +82,7 @@ const progressSpecs = [
     ['policy-missing-state', 'policy', 'normal17', osc('4;'), state('Normal', 17)],
 ];
 
-/** Notification experiments. `focus` names the window condition under which the effect is graded. `toast` is the expected message or null for no toast. */
+/** Notification experiments. A suppression experiment waits too: when the window turns out not to be active its toast is shown and must be gone before the next setup. `focus` names the window condition under which the effect is graded. `toast` is the expected message or null for no toast. */
 function notificationSpecs(runId) {
     const marker = runId.slice(0, 8), long = 'L'.repeat(250);
     return [
@@ -113,7 +113,7 @@ export function osc9Experiments(runId) {
         return { caseId: `${osc9NotificationCaseId}/${name}`, owner: osc9NotificationCaseId, name, role, kind: 'notification', focus,
             title: fixture.title, expected: toast, ...(name === 'progress-is-not-text' ? { progress: state('Normal', 50) } : {}),
             plan: [{ feed: fixture.stage }, ...(first ? [{ action: focus === 'inactive' ? 'defocus' : 'refocus' }] : []), { read: 'before', kind: 'setup' }, { feed },
-                { read: 'after', kind: 'effect' }, ...(delivered ? [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }] : toast !== null ? [{ wait: osc9ToastHideWaitMs }] : []),
+                { read: 'after', kind: 'effect' }, ...(delivered ? [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }] : toast !== null || focus === 'active' ? [{ wait: osc9ToastHideWaitMs }] : []),
                 ...(last ? [{ action: 'refocus' }] : [])] };
     });
     return [...progress, ...notifications];

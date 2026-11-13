@@ -52,7 +52,7 @@ test('the notification plan focuses the App for the suppression policy, defocuse
     const delivered = notifications.find(item => item.name === 'delivered');
     assert.deepEqual(delivered.plan.map(step => step.read ?? step.wait ?? step.action ?? 'feed'), ['feed', 'defocus', 'before', 'feed', 'after', osc9ToastHideWaitMs, 'hidden']);
     for (const item of notifications.filter(entry => entry.expected !== null && entry.name !== 'delivered')) assert.ok(item.plan.some(step => step.wait === osc9ToastHideWaitMs), item.name);
-    for (const item of notifications.filter(entry => entry.expected === null)) assert.ok(!item.plan.some(step => step.wait !== undefined), item.name);
+    for (const item of notifications.filter(entry => entry.expected === null)) assert.equal(item.plan.some(step => step.wait !== undefined), item.focus === 'active', item.name);
     assert.ok(osc9ToastHideWaitMs > 6500);
     assert.ok(osc9Experiments(runId).find(item => item.name === 'policy-bare-4' && item.kind === 'progress').plan.some(step => step.wait === osc9ToastHideWaitMs));
 });

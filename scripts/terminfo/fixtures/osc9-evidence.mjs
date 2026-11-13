@@ -8,7 +8,7 @@ import { osc9AdapterId } from '../osc9-grading-collector.mjs';
 import { replayOsc9PinnedStatic } from '../osc9-grading.mjs';
 
 const barrier = '\x1b[?1;2c';
-const focusRecord = action => ({ ok: true, ownerPid: 4242, action, method: 'osascript', script: `synthetic ${action}`, exitCode: 0, signal: null, stderr: '',
+const focusRecord = action => ({ ok: true, ownerPid: 4242, action, method: 'osascript', script: `synthetic ${action}`, appPid: 4242, attempts: [{ exitCode: 0, signal: null, stderr: '', frontmostPid: action === 'refocus' ? 4242 : 1 }],
     startedAt: '2026-11-13T12:00:00.000Z', finishedAt: '2026-11-13T12:00:02.000Z' });
 
 /** The presentation a read of this plan step shows when the App behaves exactly as the contract's oracle says (never a collected observation). */

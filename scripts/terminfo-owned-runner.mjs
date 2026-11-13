@@ -2277,11 +2277,20 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (!['defocus', 'refocus'].includes(action)) throw new Error('Unknown OSC 9 action.');
             const script = action === 'defocus' ? 'tell application "Finder" to activate'
                 : `tell application "System Events" to set frontmost of (first process whose unix id is ${app.pid}) to true`;
-            const startedAt = new Date().toISOString();
-            const result = spawnSync('/usr/bin/osascript', ['-e', script], { encoding: 'utf8', timeout: 8000 });
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            const record = { action, method: 'osascript', script, exitCode: result.status ?? null, signal: result.signal ?? null,
-                stderr: String(result.stderr ?? '').slice(0, 512), startedAt, finishedAt: new Date().toISOString() };
+            const frontmost = () => {
+                const query = spawnSync('/usr/bin/osascript', ['-e', 'tell application "System Events" to get unix id of first process whose frontmost is true'], { encoding: 'utf8', timeout: 8000 });
+                return query.status === 0 ? Number(query.stdout.trim()) : null;
+            };
+            // A focus change is retried (bounded) until the frontmost process is the wanted one; the App's own window state is still what is graded.
+            const startedAt = new Date().toISOString(), attempts = [];
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const result = spawnSync('/usr/bin/osascript', ['-e', script], { encoding: 'utf8', timeout: 8000 });
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const frontmostPid = frontmost();
+                attempts.push({ exitCode: result.status ?? null, signal: result.signal ?? null, stderr: String(result.stderr ?? '').slice(0, 256), frontmostPid });
+                if (frontmostPid !== null && (action === 'refocus') === (frontmostPid === app.pid)) break;
+            }
+            const record = { action, method: 'osascript', script, appPid: app.pid, attempts, startedAt, finishedAt: new Date().toISOString() };
             osc9FocusRecords.push(record);
             writeFileSync(join(output, 'osn-focus.json'), JSON.stringify(osc9FocusRecords, null, 2) + '\n', { mode: 0o600 });
             return record;
