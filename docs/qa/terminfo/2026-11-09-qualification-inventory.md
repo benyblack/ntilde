@@ -9,8 +9,8 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 104 |
-| Suite claims (an id covered by two suites has two claims) | 106 |
+| Unique benchmark ids with qualified effect evidence | 105 |
+| Suite claims (an id covered by two suites has two claims) | 107 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
 | Effect contract supported | 104 |
 | Supported by both the pinned probe and the effect contract | 85 |
@@ -74,6 +74,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `title-stack` | 2 | v1 | passed | 52 | `926199a6` | v46 | 26 | `59877a14` |
 | `osc-title` | 3 | v1 | passed | 53 | `2d8433d9` | v47 | 14 | `13c1fb56` |
 | `insert-replace` | 1 | v1 | passed | 54 | `2d8433d9` | v48 | 6 | `a980f155` |
+| `ascii-reflow` | 1 | v1 | passed | 55 | `a20c5480` | v49 | 11 | `96f7bb6b` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -116,6 +117,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `title-stack` | collected-run-id-recorded | `e3884f90` | 167/87/1 | `cf7d8759` |
 | `osc-title` | collected-run-id-recorded | `900cca91` | 167/87/1 | `cf7d8759` |
 | `insert-replace` | collected-run-id-recorded | `335e7153` | 167/87/1 | `cf7d8759` |
+| `ascii-reflow` | collected-run-id-recorded | `dc900bac` | 167/87/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -175,6 +177,7 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc2-title` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc-title | - |
 | `extensions.osc7-cwd` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc78 | osc78: pinned-inconclusive-by-design |
 | `extensions.osc8` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc78 | - |
+| `extensions.reflow` | inconclusive | inconclusive | unsupported | stored-state + actual-scrollback | ascii-reflow | ascii-reflow: pinned-inconclusive-by-design |
 | `input.button-event-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `input.x10-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `modes.alt-screen.exit` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |

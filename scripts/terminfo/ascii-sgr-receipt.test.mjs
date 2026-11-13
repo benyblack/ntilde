@@ -122,7 +122,7 @@ test('historical v12 receipts stay valid without any grading artifacts', async (
     // 103 sources) still resolves to its own frozen file set.
     const { retainedInventory } = await import('./metadata-receipt.mjs');
     const { capturedV44SourceFiles, capturedV43SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV12SourceFiles, capturedV13SourceFiles, capturedV14SourceFiles, capturedV15SourceFiles, capturedV16SourceFiles, capturedV17SourceFiles, capturedV18SourceFiles, capturedV19SourceFiles, capturedV20SourceFiles, capturedV21SourceFiles, capturedV22SourceFiles, capturedV23SourceFiles, capturedV24SourceFiles, capturedV25SourceFiles, capturedV26SourceFiles, capturedV27SourceFiles, capturedV28SourceFiles, capturedV29SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV33SourceFiles, capturedV36SourceFiles, capturedV37SourceFiles, capturedV38SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV32SourceFiles, sourceSnapshotPolicy } = await import('./owned-sources.mjs');
-    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v48');
+    assert.equal(sourceSnapshotPolicy, 'readonly-owned-source-graph-v49');
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v5' }), capturedV12SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v6' }), capturedV13SourceFiles);
     assert.equal(retainedInventory(null, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v7' }), capturedV14SourceFiles);
