@@ -19,7 +19,7 @@ const read = (output, file) => {
     return readFileSync(path);
 };
 export function includesSelectionColorsEvidence(output, evidence, context) {
-    return Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0) >= 48
+    return Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0) >= 52
         || context.selectionColorsAdapterId !== undefined || context.selectionColorsSuiteId !== undefined || context.selectionColorsBundleSha256 !== undefined
         || context.selectionColorsContractsVersion !== undefined || evidence.selectionColorsEvidence !== undefined
         || ['selc-run.json', 'selc-snapshots.jsonl', 'selc-observations.json', 'collector-selc.mjs']

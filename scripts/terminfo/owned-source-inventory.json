@@ -330,13 +330,6 @@
     "xtgettcapReceiptSourceSha256": "xtgettcap-receipt.mjs",
     "xtgettcapReceiptCoreSourceSha256": "xtgettcap-receipt-core.mjs",
     "modifyOtherKeysCasesSourceSha256": "modify-other-keys-cases.mjs",
-    "selectionColorsContractsSourceSha256": "selection-colors-contracts.mjs",
-    "selectionColorsModelSourceSha256": "selection-colors-model.mjs",
-    "selectionColorsCollectorSourceSha256": "selection-colors-collector.mjs",
-    "selectionColorsCaptureSourceSha256": "selection-colors-capture.mjs",
-    "selectionColorsGradingSourceSha256": "selection-colors-grading.mjs",
-    "selectionColorsGradingCollectorSourceSha256": "selection-colors-grading-collector.mjs",
-    "selectionColorsReceiptSourceSha256": "selection-colors-receipt.mjs",
     "modifyOtherKeysContractsSourceSha256": "modify-other-keys-contracts.mjs",
     "modifyOtherKeysCollectorSourceSha256": "modify-other-keys-collector.mjs",
     "modifyOtherKeysGradingSourceSha256": "modify-other-keys-grading.mjs",
@@ -347,5 +340,12 @@
     "osc9GradingSourceSha256": "osc9-grading.mjs",
     "osc9GradingCollectorSourceSha256": "osc9-grading-collector.mjs",
     "osc9ReceiptSourceSha256": "osc9-receipt.mjs",
-    "osc9FocusSourceSha256": "osc9-focus.mjs"
+    "osc9FocusSourceSha256": "osc9-focus.mjs",
+    "selectionColorsContractsSourceSha256": "selection-colors-contracts.mjs",
+    "selectionColorsModelSourceSha256": "selection-colors-model.mjs",
+    "selectionColorsCollectorSourceSha256": "selection-colors-collector.mjs",
+    "selectionColorsCaptureSourceSha256": "selection-colors-capture.mjs",
+    "selectionColorsGradingSourceSha256": "selection-colors-grading.mjs",
+    "selectionColorsGradingCollectorSourceSha256": "selection-colors-grading-collector.mjs",
+    "selectionColorsReceiptSourceSha256": "selection-colors-receipt.mjs"
 }

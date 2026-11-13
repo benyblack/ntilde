@@ -59,9 +59,10 @@ function checkSnapshot(output, context, proof) {
 }
 /** Each source-snapshot policy maps to exactly its own captured file set. */
 export function retainedInventory(output, context) {
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v52') return capturedV59SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v51') return capturedV58SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v50') return capturedV57SourceFiles;
-    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v52') return capturedV59SourceFiles;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v48') return capturedV55SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v49') return capturedV56SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v11') return capturedV18SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v12') return capturedV19SourceFiles;
@@ -72,7 +73,7 @@ export function retainedInventory(output, context) {
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v37') return capturedV44SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v47') return capturedV54SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v46') return capturedV53SourceFiles;
-    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v52') return capturedV59SourceFiles;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v48') return capturedV55SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v45') return capturedV52SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v44') return capturedV51SourceFiles;
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v43') return capturedV50SourceFiles;
