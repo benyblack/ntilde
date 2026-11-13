@@ -54,8 +54,9 @@ export function desktopLockWaitMs(environment = process.env) {
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const psEnvironment = () => {
-    const { COLUMNS: ignoredWidth, ...rest } = process.env;
-    return { ...rest, LC_ALL: 'C', LANG: 'C', TZ: 'UTC' };
+    const environment = { ...process.env, LC_ALL: 'C', LANG: 'C', TZ: 'UTC' };
+    delete environment.COLUMNS;
+    return environment;
 };
 
 /** Real process facts. Every one may throw: a thrown fact is "unknown", never "idle". */
