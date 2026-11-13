@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 335 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 335); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 336 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 336); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -79,10 +79,10 @@ test('repeated spurious comment candidates fail closed within the cumulative tra
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('private v57 fixed335 source scope adds the five OSC 9 scripts to v56 fixed330 (XTGETTCAP)', () => {
+test('private v57 fixed336 source scope adds the six OSC 9 scripts to v56 fixed330 (XTGETTCAP)', () => {
     assert.deepEqual(ownedSourceFiles, capturedV57SourceFiles);
     assert.deepEqual(Object.keys(capturedV57SourceFiles).slice(0, 330), Object.keys(capturedV56SourceFiles));
-    assert.deepEqual(Object.values(capturedV57SourceFiles).slice(330), ['osc9-contracts.mjs', 'osc9-collector.mjs', 'osc9-grading.mjs', 'osc9-grading-collector.mjs', 'osc9-receipt.mjs']);
+    assert.deepEqual(Object.values(capturedV57SourceFiles).slice(330), ['osc9-contracts.mjs', 'osc9-collector.mjs', 'osc9-grading.mjs', 'osc9-grading-collector.mjs', 'osc9-receipt.mjs', 'osc9-focus.mjs']);
 });
 
 test('private v56 fixed330 source scope adds the eight XTGETTCAP scripts to v55 fixed322 (insert/replace) to v54 fixed311 (OSC title; the tab-labels input makes seven) to v53 fixed305 (title-stack)', () => {

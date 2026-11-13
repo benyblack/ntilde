@@ -144,6 +144,7 @@ import { adaptOsc9Collector, osc9AdapterId } from './terminfo/osc9-grading-colle
 import { osc9CaseIds, osc9ContractsVersion, osc9Prefix, osc9SuiteId } from './terminfo/osc9-contracts.mjs';
 import { buildOsc9Report, matchesOsc9Baseline, osc9Counts, osc9ObserverPlan } from './terminfo/osc9-grading.mjs';
 import { exposeOsc9Facts, osc9PrerequisiteReason } from './terminfo/osc9-collector.mjs';
+import { runFocusAction } from './terminfo/osc9-focus.mjs';
 import { ColorResetObserver } from './terminfo/color-reset-capture.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
@@ -2273,24 +2274,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         /** The parent defocuses (activates Finder) or refocuses the disposable App between observations and retains exactly what it did: the observed window state is the evidence. */
         const performOsc9Action = async request => {
-            const action = request.kind.slice(osc9Prefix.length + 1);
-            if (!['defocus', 'refocus'].includes(action)) throw new Error('Unknown OSC 9 action.');
-            const script = action === 'defocus' ? 'tell application "Finder" to activate'
-                : `tell application "System Events" to set frontmost of (first process whose unix id is ${app.pid}) to true`;
-            const frontmost = () => {
-                const query = spawnSync('/usr/bin/osascript', ['-e', 'tell application "System Events" to get unix id of first process whose frontmost is true'], { encoding: 'utf8', timeout: 8000 });
-                return query.status === 0 ? Number(query.stdout.trim()) : null;
-            };
-            // A focus change is retried (bounded) until the frontmost process is the wanted one; the App's own window state is still what is graded.
-            const startedAt = new Date().toISOString(), attempts = [];
-            for (let attempt = 0; attempt < 3; attempt++) {
-                const result = spawnSync('/usr/bin/osascript', ['-e', script], { encoding: 'utf8', timeout: 8000 });
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const frontmostPid = frontmost();
-                attempts.push({ exitCode: result.status ?? null, signal: result.signal ?? null, stderr: String(result.stderr ?? '').slice(0, 256), frontmostPid });
-                if (frontmostPid !== null && (action === 'refocus') === (frontmostPid === app.pid)) break;
-            }
-            const record = { action, method: 'osascript', script, appPid: app.pid, attempts, startedAt, finishedAt: new Date().toISOString() };
+            const record = await runFocusAction({ action: request.kind.slice(osc9Prefix.length + 1), appPid: app.pid, sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+                run: (args, timeout) => spawnSync('/usr/bin/osascript', args, { encoding: 'utf8', timeout }) });
             osc9FocusRecords.push(record);
             writeFileSync(join(output, 'osn-focus.json'), JSON.stringify(osc9FocusRecords, null, 2) + '\n', { mode: 0o600 });
             return record;

@@ -333,5 +333,6 @@
     "osc9CollectorSourceSha256": "osc9-collector.mjs",
     "osc9GradingSourceSha256": "osc9-grading.mjs",
     "osc9GradingCollectorSourceSha256": "osc9-grading-collector.mjs",
-    "osc9ReceiptSourceSha256": "osc9-receipt.mjs"
+    "osc9ReceiptSourceSha256": "osc9-receipt.mjs",
+    "osc9FocusSourceSha256": "osc9-focus.mjs"
 }

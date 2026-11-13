@@ -647,6 +647,7 @@ export const capturedV57SourceFiles = Object.freeze({
     osc9GradingSourceSha256: 'osc9-grading.mjs',
     osc9GradingCollectorSourceSha256: 'osc9-grading-collector.mjs',
     osc9ReceiptSourceSha256: 'osc9-receipt.mjs',
+    osc9FocusSourceSha256: 'osc9-focus.mjs',
 });
 
 /** Bind the private temporary root, exact v57 inventory and manifest environment pin before trusting any captured source. */
