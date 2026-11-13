@@ -42,7 +42,7 @@ function replayFor(caseId, frames, cases) {
 }
 
 /** The graded experiments of one benchmark: each plan case's role, literal and oracle expectation, child bytes and the App's own facts, kept apart. */
-function experimentsOf(caseId, plan, input, actions) {
+export function experimentsOf(caseId, plan, input, actions, oracleHex) {
     const byId = new Map(input.observations.map((item, index) => [item.featureId, { observation: item, index }]));
     return plan.filter(item => item.roles[caseId]).map(item => {
         const { observation, index } = byId.get(item.id), app = actions[index].observed.app;
@@ -82,7 +82,7 @@ const effectOf = (caseId, contractsVersion, effect) => ({ id: routedInputEffectC
 function caseReport(caseId, recorded, context) {
     const { plan, input, actions, frames, contractsVersion, replayModule } = context, pinnedFixture = routedInputPinned[caseId];
     if (JSON.stringify(recorded.feeds) !== JSON.stringify([...pinnedFixture.feeds])) throw new Error(`Pinned ${caseId} fixture differs from the contract.`);
-    const experiments = experimentsOf(caseId, plan, input, actions);
+    const experiments = experimentsOf(caseId, plan, input, actions, oracleHex);
     const effect = gradeRoutedInputCase(caseId, experiments, contractsVersion), served = replayFor(caseId, frames, plan);
     if (JSON.stringify(recorded.served) !== JSON.stringify(served)) throw new Error(`Pinned ${caseId} served modes differ from the child's replies.`);
     const result = checkPinned(caseId, recorded, served, replayModule), outcome = pinnedOutcome(result);

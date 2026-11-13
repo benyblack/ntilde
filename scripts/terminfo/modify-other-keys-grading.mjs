@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { requirePinnedAgreement } from './graded-plan.mjs';
 import { buildInputReport, checkInput, sameInputFact } from './input-state.mjs';
 import { makeRoutedInputCases } from './routed-input-cases.mjs';
-import { routedInputsDiverge } from './routed-input-grading.mjs';
+import { experimentsOf, routedInputsDiverge } from './routed-input-grading.mjs';
 import { makeModifyOtherKeysCases } from './modify-other-keys-cases.mjs';
 import { modifyOtherKeysAdapterId } from './modify-other-keys-grading-collector.mjs';
 import { gradeModifyOtherKeys, modifyOtherKeysCaseIds, modifyOtherKeysContractsVersion, modifyOtherKeysEffectContracts,
@@ -40,21 +40,7 @@ export function validateModifyOtherKeysEvidence(run, adapter) {
     }
 }
 
-/** The graded experiments of the benchmark: each plan case's role, literal and oracle expectation, child bytes and the App's own facts, kept apart. */
-function experimentsOf(caseId, plan, input, actions) {
-    const byId = new Map(input.observations.map((item, index) => [item.featureId, { observation: item, index }]));
-    return plan.filter(item => item.roles[caseId]).map(item => {
-        const { observation, index } = byId.get(item.id), app = actions[index].observed.app;
-        // A key-down that carried text certifies only when the App also reports that follow-up TextInput as handled: the bytes alone would
-        // equal the key-down's own if the text never reached the terminal.
-        const paired = item.event.kind === 'keyDown' && item.event.text !== undefined;
-        return { id: item.id, role: item.roles[caseId], matched: observation.result === 'passed' && (!paired || app.textHandled === true),
-            event: item.event, modes: item.modes, setup: item.setup, expectedHex: item.expectedHex, actualHex: observation.actualHex,
-            oracleHex: oracleHex(item), controlSnapshot: observation.controlSnapshot, snapshot: observation.snapshot, actionIndex: index,
-            appFacts: { eventDispatched: app.eventDispatched, handled: app.handled, ...(paired ? { textHandled: app.textHandled } : {}),
-                inputSubmitted: app.inputSubmitted, observationAvailable: app.observationAvailable, boundary: app.boundary } };
-    });
-}
+
 
 /** The recorded pinned result must equal its replay over the child's declaration (and the parent module replay), and be inconclusive by design. */
 function checkPinned(recorded, served, replayModule) {
@@ -84,7 +70,7 @@ function caseReport(recorded, context) {
     const pinnedFixture = modifyOtherKeysPinned[caseId];
     if (recorded.caseId !== caseId || recorded.declarationCase !== 'input.mok.declaration.xtgettcap'
         || JSON.stringify(recorded.feeds) !== JSON.stringify([...pinnedFixture.feeds])) throw new Error(`Pinned ${caseId} fixture differs from the contract.`);
-    const experiments = experimentsOf(caseId, plan, input, actions);
+    const experiments = experimentsOf(caseId, plan, input, actions, oracleHex);
     const effect = gradeModifyOtherKeys(caseId, experiments, contractsVersion);
     const controls = {};
     for (const frame of context.frames) if (frame.kind === 'input-control') controls[frame.caseId] = frame.capture.hex;

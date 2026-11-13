@@ -55,17 +55,18 @@ export function includesRoutedInputEvidence(output, evidence, context) {
         || files.some(file => present(join(output, file)));
 }
 
-/** Every retained artifact must be a regular file inside the output directory: a symlink could point at valid evidence
- * that later disappears, leaving a run that can no longer be rederived. */
-function requireRegularFiles(output) {
-    for (const file of ['rin-observations.json', 'rin-run.json', 'collector-rin.mjs', 'input-snapshots.jsonl', 'input-actions.jsonl', 'input-observations.json']) {
-        if (!lstatSync(join(output, file)).isFile()) throw new Error(`routed-input artifact is not a regular file: ${file}`);
+/** Every retained artifact of one layered suffix must be a regular file inside the output directory: a symlink could point at
+ * valid evidence that later disappears, leaving a run that can no longer be rederived. */
+export function requireRegularFiles(output, files, label) {
+    for (const file of files) {
+        if (!lstatSync(join(output, file)).isFile()) throw new Error(`${label} artifact is not a regular file: ${file}`);
     }
 }
+const retainedRoutedFiles = ['rin-observations.json', 'rin-run.json', 'collector-rin.mjs', 'input-snapshots.jsonl', 'input-actions.jsonl', 'input-observations.json'];
 
 /** The predecessor layers, oldest first (the left/right-margin layer last). Each entry names the layer (its `<name>AdapterId`, `<name>Evidence`
  * and `<name>BundleSha256` in the receipt) and the adapter that derives its bundle from the layer before it. */
-const layerChain = [
+export const layerChain = [
     ['sgrColors', adaptSgrColorsCollector], ['sgrRgb', adaptSgrRgbCollector], ['sgrAttrs', adaptSgrAttrsCollector], ['sgrPalette', adaptSgrPaletteCollector],
     ['sgrTruecolor', adaptSgrTruecolorCollector], ['sgrUnderline', adaptSgrUnderlineCollector], ['sgrUnderlineColor', adaptSgrUnderlineColorCollector],
     ['sgrReset', adaptSgrResetCollector], ['sgrClosure', adaptSgrClosureCollector], ['eraseLine', adaptEraseLineCollector], ['charEdit', adaptCharEditCollector],
@@ -74,51 +75,62 @@ const layerChain = [
     ['attrRect', adaptAttrRectCollector], ['cursorQual', adaptCursorQualCollector], ['eraseCharsHistory', adaptEraseCharsHistoryCollector], ['selectiveErase', adaptSelectiveEraseCollector],
     ['rectEdit', adaptRectEditCollector], ['colEdit', adaptColEditCollector], ['rectChecksum', adaptRectChecksumCollector], ['lrMargins', adaptLrMarginsCollector],
 ];
-const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
-const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-const predecessorList = 'every earlier grading layer (SGR through left/right-margin)';
+export const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
+export const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+export const predecessorList = 'every earlier grading layer (SGR through left/right-margin)';
 
-/** The receipt binding of this suite, or a refusal when it is missing or does not match the run. */
-function requireBinding(evidence, runId, context) {
-    const binding = evidence.routedInputEvidence;
-    if (binding === undefined) throw new Error('Missing routed-input suite receipt binding.');
-    const identity = binding && binding.runId === runId && binding.suiteId === routedInputGradedSuiteId && binding.file === 'rin-observations.json'
-        && binding.runFile === 'rin-run.json' && binding.provisionalUntil === 'cell-receipt.json';
+/** The receipt binding of one layered suffix, or a refusal when it is missing or does not match the run. */
+export function requireLayeredSuiteBinding(binding, runId, { suiteId, file, runFile, contractsVersion, contextContractsVersion, label }) {
+    if (binding === undefined) throw new Error(`Missing ${label} suite receipt binding.`);
+    const identity = binding && binding.runId === runId && binding.suiteId === suiteId && binding.file === file
+        && binding.runFile === runFile && binding.provisionalUntil === 'cell-receipt.json';
     const digests = binding && [binding.sha256, binding.runSha256, binding.adapterBundleSha256].every(isDigest);
-    if (!identity || !digests || binding.contractsVersion !== routedInputContractsVersion || context.routedInputContractsVersion !== binding.contractsVersion) {
-        throw new Error('Invalid routed-input suite receipt binding.');
+    if (!identity || !digests || binding.contractsVersion !== contractsVersion || contextContractsVersion !== binding.contractsVersion) {
+        throw new Error(`Invalid ${label} suite receipt binding.`);
     }
     return binding;
 }
 
-/** The retained bytes of the suite, each checked against its receipt digest. */
-function readRetained(output, binding, context) {
-    requireRegularFiles(output);
+/** The receipt binding of this suite, or a refusal when it is missing or does not match the run. */
+function requireBinding(evidence, runId, context) {
+    return requireLayeredSuiteBinding(evidence.routedInputEvidence, runId, { suiteId: routedInputGradedSuiteId, file: 'rin-observations.json',
+        runFile: 'rin-run.json', contractsVersion: routedInputContractsVersion, contextContractsVersion: context.routedInputContractsVersion, label: 'routed-input' });
+}
+
+/** The retained bytes of one layered suffix, each checked against its receipt digest. */
+export function readRetainedLayeredSuite(output, binding, context, { regularFiles, collectorFile, contextBundleKey, label }) {
+    requireRegularFiles(output, regularFiles, label);
     const bytes = readFileSync(join(output, binding.file));
-    if (hash(bytes) !== binding.sha256) throw new Error('routed-input observation bytes changed.');
+    if (hash(bytes) !== binding.sha256) throw new Error(`${label} observation bytes changed.`);
     const runBytes = readFileSync(join(output, binding.runFile));
-    if (hash(runBytes) !== binding.runSha256) throw new Error('routed-input run log bytes changed.');
-    const adapterBytes = readFileSync(join(output, 'collector-rin.mjs'));
-    if (hash(adapterBytes) !== binding.adapterBundleSha256 || context.routedInputBundleSha256 !== binding.adapterBundleSha256) {
-        throw new Error('routed-input adapter bytes changed.');
+    if (hash(runBytes) !== binding.runSha256) throw new Error(`${label} run log bytes changed.`);
+    const adapterBytes = readFileSync(join(output, collectorFile));
+    if (hash(adapterBytes) !== binding.adapterBundleSha256 || context[contextBundleKey] !== binding.adapterBundleSha256) {
+        throw new Error(`${label} adapter bytes changed.`);
     }
     return { bytes, runBytes, adapterBytes };
 }
 
-/** The retained extension must be exactly the layered derivation of every predecessor extension over the retained first grading
- * extension over the retained owned adapter, and every predecessor bundle must be the one the run declared. */
-function requireLayeredDerivation(output, adapterBytes, context) {
+/** The retained bytes of the suite, each checked against its receipt digest. */
+function readRetained(output, binding, context) {
+    return readRetainedLayeredSuite(output, binding, context, { regularFiles: retainedRoutedFiles, collectorFile: 'collector-rin.mjs',
+        contextBundleKey: 'routedInputBundleSha256', label: 'routed-input' });
+}
+
+/** The retained extension of one layered suffix must be exactly the layered derivation of every predecessor extension over the
+ * retained first grading extension over the retained owned adapter, and every predecessor bundle must be the one the run declared. */
+export function requireLayeredDerivation(output, adapterBytes, context, adapt, label) {
     let layer = Buffer.from(adaptGradingCollector(readFileSync(join(output, 'collector-adapter.mjs'))));
     const derived = [];
-    for (const [name, adapt] of layerChain) {
-        layer = Buffer.from(adapt(layer.toString()));
+    for (const [name, adaptLayer] of layerChain) {
+        layer = Buffer.from(adaptLayer(layer.toString()));
         derived.push([name, layer]);
     }
-    if (Buffer.compare(Buffer.from(adaptRoutedInputCollector(layer.toString())), adapterBytes) !== 0) {
-        throw new Error('routed-input adapter is not the retained layered derivation.');
+    if (Buffer.compare(Buffer.from(adapt(layer.toString())), adapterBytes) !== 0) {
+        throw new Error(`${label} is not the retained layered derivation.`);
     }
     if (derived.some(([name, bytes]) => hash(bytes) !== context[`${name}BundleSha256`])) {
-        throw new Error(`routed-input adapter is not derived from the retained ${predecessorList}.`);
+        throw new Error(`${label} is not derived from the retained ${predecessorList}.`);
     }
 }
 
@@ -139,7 +151,7 @@ function checkUnavailable(output, evidence, runId, context) {
         || marker.status !== 'unavailable' || marker.reason !== input.reason || marker.plannedCases !== routedInputCaseIds.length) throw new Error('routed-input unavailable marker changed.');
     const adapterBytes = readFileSync(join(output, 'collector-rin.mjs'));
     if (hash(adapterBytes) !== binding.adapterBundleSha256 || context.routedInputBundleSha256 !== binding.adapterBundleSha256) throw new Error('routed-input adapter bytes changed.');
-    requireLayeredDerivation(output, adapterBytes, context);
+    requireLayeredDerivation(output, adapterBytes, context, adaptRoutedInputCollector, 'routed-input adapter');
 }
 
 /** Full rederivation: owned input journal, run log, layered adapter bytes and conclusions. Plan generations that keep the routed
@@ -159,7 +171,7 @@ export function checkRoutedInputEvidence(output, evidence, runId, context, proof
     if (evidence.inputEvidence.file !== 'input-observations.json') throw new Error('routed-input evidence requires the completed owned routed-input suite.');
     const binding = requireBinding(evidence, runId, context);
     const { bytes, runBytes, adapterBytes } = readRetained(output, binding, context);
-    requireLayeredDerivation(output, adapterBytes, context);
+    requireLayeredDerivation(output, adapterBytes, context, adaptRoutedInputCollector, 'routed-input adapter');
     const report = JSON.parse(bytes), run = JSON.parse(runBytes);
     const identityMatches = [report.adapter.bundleSha256 === binding.adapterBundleSha256,
         report.adapter.upstreamBundleSha256 === context.upstreamBundleSha256, report.contractsVersion === binding.contractsVersion,

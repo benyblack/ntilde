@@ -6,6 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { benchmarkSuites } from './qualification-inventory.mjs';
 import { inputPlanForSuiteId } from './input-plan.mjs';
 import { modifyOtherKeysContractsVersion, modifyOtherKeysGradedSuiteId } from './modify-other-keys-contracts.mjs';
@@ -13,7 +14,7 @@ import { modifyOtherKeysAdapterId } from './modify-other-keys-grading-collector.
 import { buildModifyOtherKeysGradingReport } from './modify-other-keys-grading.mjs';
 
 const dir = new URL('../../docs/qa/terminfo/2026-11-12-modify-other-keys/', import.meta.url);
-const dirPath = new URL('.', dir).pathname;
+const dirPath = fileURLToPath(new URL('.', dir));
 const read = name => JSON.parse(readFileSync(new URL(name, dir)));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const strip = ({ snapshots, ...rest }) => rest;

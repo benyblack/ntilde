@@ -2591,7 +2591,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/modify-other-keys-publication.test.mjs",
-        "testSha256": "52043842684fe3df54b6fd98fb5aa170b633e40543adb95fc7860b40d5ef6e00"
+        "testSha256": "31a79126eb4a3bc57cc33b3349e23ae5b2479b3fa164166bef9308fa3b00e7c7"
       }
     }
   ],
