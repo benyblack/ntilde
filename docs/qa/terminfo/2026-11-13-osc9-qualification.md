@@ -24,7 +24,7 @@ termless capability is an adapter-side declaration the pinned code is served; it
 | `extensions.notifications` | inconclusive by design | inconclusive by design | **supported** (`ntilde-osc9-notification-toast-effect-v1`) | inconclusive |
 
 The effect contracts are separately identified, with their own bytes and oracle; the divergence (`pinned-inconclusive-by-design`) is recorded in
-[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`b9369a7b5dca890d8aad5b964e3b3a14`; stock collector run `8c3a02fcf25c679feff6fcc1611f676e`), still grades both inconclusive
+[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`77fa834f56e94206bb3edfb3ebfa8d11`; stock collector run `26c93f5a0b3c1783140b63305b2b403b`), still grades both inconclusive
 (87 supported / 1 unsupported / 167 inconclusive, `suiteComplete=false`): **no stock score and no Core point is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -57,9 +57,9 @@ admitted, respectively); each was kept as a superseded attempt, not graded.
 ## Identities
 
 App 0.13.0 (operator supplied) built from `1ac4476c856f9e57f82d89fd59c6dfaf3a8b3286` (main with the merged modifyOtherKeys batch) (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly
-SHA-256 `24dce3b87c0a79b9384bea18420525acbfd46d7c689e7e400d058c71be78aa3f`; the apphost launcher is byte-identical to the earlier batches' while the App assembly differs because #958 changed generated-input production code, which this batch does not touch; measured scripts `94844638bb57fc742d75f1653cb9358e3454d8b8`; source policy `readonly-owned-source-graph-v51` (342 files; manifest SHA-256
-`21e70f54463b4a6e9ccd3245d8356327ca4362db6fc6e685e4fc01be475f98dd`); initial settings SHA-256 `12a2a8fc5631ce05b80142e0b37930deaa67b1a168b03bdf1adff325bfafb91c`; receipt schema 57; Node
-v24.22.2; owned run `b9369a7b5dca890d8aad5b964e3b3a14`; collected 2026-11-13T14:54Z on macOS. The App label is operator supplied and the build is not binary-to-source
+SHA-256 `24dce3b87c0a79b9384bea18420525acbfd46d7c689e7e400d058c71be78aa3f`; the apphost launcher is byte-identical to the earlier batches' while the App assembly differs because #958 changed generated-input production code, which this batch does not touch; measured scripts `7a580871179b8d1da22ad98082051cfe42b61aea`; source policy `readonly-owned-source-graph-v51` (342 files; manifest SHA-256
+`06d2410b794e562e4466b660a5b5a5f9890ccec869bbb96d8af0e858ea6598de`); initial settings SHA-256 `d97bbfe2bd29f33c82741a63d8687fadee0d188f4165eb54a9fc05cebdd1d974`; receipt schema 57; Node
+v24.22.2; owned run `77fa834f56e94206bb3edfb3ebfa8d11`; collected 2026-11-13T15:16Z on macOS. The App label is operator supplied and the build is not binary-to-source
 attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-13-osc9/superseded/))
@@ -75,7 +75,8 @@ attestation. Predecessor suites ran in the same full run and their receipt suffi
 7. Completed with both supported; superseded by the SonarCloud findings (nested ternaries, an unused prerequisite value, a stringification and a one-line conditional in
    measured files).
 8. Completed, but the notification case came out **inconclusive** (`inactive-window-precondition-unmet`): the App window became active again after the second delivery
-   experiment although the parent took no action. Kept as measured, ungraded.
+   experiment although the parent took no action. Kept as measured, ungraded. A later audit by another session found that this run overlapped an unlocked ascii-reflow
+   collection for about 67 s; that overlap is a likely but unproven cause. Runs 9 to 14 have no recorded overlap.
 9. The same scripts rerun: both supported; superseded by CodeRabbit's finding that the focus action was not bounded by the owner request's remaining deadline.
 10. Completed with the focus action bounded by that deadline, but the shared deadline reports at most two seconds at a time, which my first attempt-sized bound could never
     fit: no focus action ran and the notification case stayed **inconclusive** with its reason. Kept as measured, ungraded.
@@ -83,7 +84,8 @@ attestation. Predecessor suites ran in the same full run and their receipt suffi
     from the merged tree and a fresh measurement.
 12. Completed on the restacked head with both supported; superseded by the remaining SonarCloud findings (a stringification, a nested ternary, and a function-position
     complexity attribution in the shared fixture).
-13. Final run, restacked: a whole focus attempt (command, settle, query: 1.6 s worst case) is admitted only while the reported deadline remainder covers it.
+13. Completed with both supported; superseded by the last SonarCloud finding (a nested ternary in the measured contracts module).
+14. Final run, restacked: a whole focus attempt (command, settle, query: 1.6 s worst case) is admitted only while the reported deadline remainder covers it.
 
 ## Not claimed
 
