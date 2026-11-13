@@ -217,6 +217,16 @@ const sourceRepo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = process.env.NTILDE_TERMINFO_ORIGINAL_REPO ?? sourceRepo;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+/** The launcher owns the desktop lease; the runner may only take it (once) and report launch and cleanup facts through it. */
+async function acquireDesktopLease(pendingInterruption) {
+    const broker = globalThis[Symbol.for('ntilde.terminfo.desktopLease')];
+    if (typeof broker?.acquire !== 'function') throw new Error('The owned runner must be started through scripts/terminfo-owned.mjs, which owns the desktop lease.');
+    const lease = await broker.acquire();
+    lease.assertHeld();
+    const interruption = pendingInterruption();
+    if (interruption) throw interruption; // the launcher settles (releases) the lease: nothing was launched
+    return lease;
+}
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
 
 /** Attempt parent-owned abort, then retain bounded primary/cleanup facts before independent process shutdown. */
@@ -1491,13 +1501,18 @@ async function retainGradingEvidence(output, runId, gradingBundle, upstream) {
 async function terminateLaunchedApp(app) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
     app.kill('SIGTERM');
-    await new Promise(resolve => {
-        const timer = setTimeout(() => app.kill('SIGKILL'), 2000);
-        app.once('exit', () => { clearTimeout(timer); resolve(); });
+    await new Promise((resolve, reject) => {
+        let killTimer, giveUpTimer;
+        app.once('exit', () => { clearTimeout(killTimer); clearTimeout(giveUpTimer); resolve(); });
+        killTimer = setTimeout(() => {
+            app.kill('SIGKILL');
+            // An App that outlives SIGKILL must fail cleanup (and so retain the desktop lease), not hang the run.
+            giveUpTimer = setTimeout(() => { app.unref(); reject(new Error(`Owned app ${app.pid} did not exit after SIGKILL.`)); }, 2000);
+        }, 2000);
     });
 }
 
-async function cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }) {
+async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }) {
     let workerError;
     try { await terminateRecordedWorker(workerIdentity, runId); }
     catch (error) { workerError = error; }
@@ -1509,7 +1524,14 @@ async function cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, outp
     await new Promise(resolve => server.close(() => resolve()));
     // Parent shutdown can reap an already-exited worker that was a zombie.
     if (workerError && workerIdentity && !workerExists(workerIdentity.pid)) workerError = undefined;
-    const cleanupError = workerError ?? appError;
+    // Cleanup is verified only when both terminations succeeded AND no process carrying this lease's run markers survives; a
+    // failed scan is a failure. A failed termination never reaches the scan, so a changed command line cannot hide a live process.
+    let survivorError;
+    if (!workerError && !appError) {
+        try { await lease.verifyCleanup(); }
+        catch (error) { survivorError = error; }
+    }
+    const cleanupError = workerError ?? appError ?? survivorError;
     const cleanup = cleanupError
         ? { cleanupError: cleanupError.message, retainedFixture: scratch }
         : { cleanedUpAt: new Date().toISOString() };
@@ -1557,8 +1579,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     };
     const onInt = () => interrupted('SIGINT');
     const onTerm = () => interrupted('SIGTERM');
+    const onHup = () => interrupted('SIGHUP');
     let scratch;
     let output;
+    let lease;
     let preserveScratch = false;
     let cellEvidence;
     let sgrEvidence;
@@ -1626,8 +1650,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
-    if (['SIGINT', 'SIGTERM'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
+    process.on('SIGHUP', onHup);
+    if (['SIGINT', 'SIGTERM', 'SIGHUP'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
     try {
+        // Exclusive desktop ownership before any output, App or window action; refused contenders launch nothing.
+        lease = await acquireDesktopLease(() => interruption);
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
         scratch = createPrivateScratch();
@@ -1678,7 +1705,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
-        const runId = randomBytes(16).toString('hex');
+        const runId = lease.leaseId; // the App/worker markers carry the lease identity, so survivors are attributable
         const token = randomBytes(32).toString('hex');
         const configPath = join(scratch, 'worker.json');
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
@@ -3126,6 +3153,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY',
                 'TERMINFO_CAPTURE_DIRECTORY', 'TERMINFO_CLIPBOARD_FIXTURE_RECEIPT', 'TERMINFO_RUNTIME_PROVENANCE']) delete env[name];
             logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
+            lease.noteLaunchAttempt(); // persisted in the lease before the App can exist; a failed write stops the launch
             app = spawn(executable, [`--ntilde-terminfo-owner=${runId}`, `--ntilde-terminfo-private-clipboard=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
             app.once('error', rejectDone);
             app.once('exit', (code, signal) => { if (!completed) rejectDone(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
@@ -3317,7 +3345,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;
-            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }));
+            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }));
             preserveScratch = cleanupOutcome.failed;
         }
         throwOwnedRunFailures(runOutcome, cleanupOutcome);
@@ -3331,6 +3359,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             process.removeListener('SIGINT', onInt);
             process.removeListener('SIGTERM', onTerm);
+            process.removeListener('SIGHUP', onHup);
         }
     }
     if (interruption) {

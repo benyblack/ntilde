@@ -64,6 +64,19 @@ function pathFor(root, file) {
     return join(root, 'scripts', relative);
 }
 const policy = 'readonly-owned-source-graph-v51';
+// The desktop lease helper is the second reviewed pure bootstrap dependency (BCL imports only). It lives outside the measured
+// source graph, so the policy above does not change for it; its exact bytes are pinned here and loaded only when the runner asks for the lease.
+const desktopLockSha256 = '96076ef3a4afb7cc5c1bef8c6ac6f22ee86745270637e40b4792d58ce34dd9cf';
+const desktopLeaseKey = Symbol.for('ntilde.terminfo.desktopLease');
+async function loadDesktopLock() {
+    const path = join(repo, 'scripts/terminfo/desktop-lock.mjs');
+    const info = lstatSync(path);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular desktop lock helper.');
+    // Pinned over the LF form so a CRLF checkout (core.autocrlf) names the same bytes; the LF form is also what is imported.
+    const bytes = Buffer.from(readFileSync(path, 'utf8').replaceAll('\r\n', '\n'));
+    if (digest(bytes) !== desktopLockSha256) throw new Error('Missing or changed trusted desktop lock helper.');
+    return import('data:text/javascript;base64,' + bytes.toString('base64'));
+}
 function setDirectoryModes(root, mode) {
     for (const entry of readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) setDirectoryModes(join(root, entry.name), mode);
     chmodSync(root, mode);
@@ -109,12 +122,22 @@ async function capture(root) {
     await checkCapturedImports(sources);
     return digest(manifest);
 }
+/** Release the lease only after the runner reported no launch or verified cleanup; otherwise keep it held and say so loudly. */
+function settleDesktopLease(broker) {
+    const outcome = broker?.finish();
+    if (!outcome?.held) return;
+    if (outcome.released) { console.error('[terminfo-owned] desktop lease ' + outcome.leaseId + ' released after verified cleanup.'); return; }
+    process.exitCode = 1;
+    console.error('[terminfo-owned] DESKTOP LOCK RETAINED (lease ' + outcome.leaseId + (outcome.retained ? ': launch or cleanup is unverified' : '') + (outcome.error ? '; ' + outcome.error : '')
+        + '). No other collection may start. Inspect: node scripts/terminfo-desktop-lock.mjs status');
+}
 /** Import only the verified captured runner; restore environment/signal handlers and retire the snapshot on every exit. */
 async function launch() {
-    let root, interrupted;
+    let root, interrupted, broker;
     const note = signal => { interrupted ??= signal; process.env.NTILDE_TERMINFO_PENDING_SIGNAL = signal; };
-    const onInt = () => note('SIGINT'), onTerm = () => note('SIGTERM');
-    process.on('SIGINT', onInt); process.on('SIGTERM', onTerm);
+    const onInt = () => note('SIGINT'), onTerm = () => note('SIGTERM'), onHup = () => note('SIGHUP');
+    // Persistent until after the desktop lease is released or deliberately retained: a late signal must not kill the process mid-cleanup.
+    process.on('SIGINT', onInt); process.on('SIGTERM', onTerm); process.on('SIGHUP', onHup);
     const names = ['NTILDE_TERMINFO_ORIGINAL_REPO', 'NTILDE_TERMINFO_SOURCE_SNAPSHOT', 'NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256', 'NTILDE_TERMINFO_PENDING_SIGNAL'];
     const previous = names.map(name => [name, process.env[name]]);
     try {
@@ -125,12 +148,20 @@ async function launch() {
         process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT = root;
         process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256 = sha256;
         delete process.env.NTILDE_TERMINFO_PENDING_SIGNAL;
+        // Lazy and single-use: only the runner's first desktop-affecting step takes the lease. Help and refused invocations never do.
+        globalThis[desktopLeaseKey] = Object.freeze({ async acquire() {
+            const { createDesktopLeaseBroker, desktopLockWaitMs } = await loadDesktopLock();
+            broker = createDesktopLeaseBroker({ entrypoint: 'terminfo-owned.mjs', worktree: repo, waitMs: desktopLockWaitMs(), aborted: () => interrupted !== undefined });
+            return broker.acquire();
+        } });
         await import(pathToFileURL(pathFor(root, 'terminfo-owned-runner.mjs')).href);
         if (interrupted) process.exitCode = 1;
     } finally {
         try { removeSnapshot(root); }
         finally {
-            process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm);
+            try { settleDesktopLease(broker); }
+            finally { delete globalThis[desktopLeaseKey]; }
+            process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm); process.removeListener('SIGHUP', onHup);
             for (const [name, value] of previous) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
         }
     }
