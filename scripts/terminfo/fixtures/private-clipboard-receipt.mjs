@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|osc9)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|osc9)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -65,6 +65,28 @@ async function addTitleStackEvidence({ output, write, context, evidence, lrMargi
         runFile: 'tst-run.json', runSha256: hash(readFileSync(join(output, 'tst-run.json'))),
         adapterBundleSha256: hash(titleStackBytes), contractsVersion: titleStackContractsVersion,
         counts: titleStackCounts(titleStackReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in OSC 9 suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes the title-stack suffix also uses. */
+async function addOsc9Evidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticOsc9Evidence } = await import('./osc9-evidence.mjs');
+    const { buildOsc9Report } = await import('../osc9-grading.mjs');
+    const { osc9Counts } = await import('../osc9-receipt.mjs');
+    const { adaptOsc9Collector, osc9AdapterId } = await import('../osc9-grading-collector.mjs');
+    const { osc9SuiteId, osc9ContractsVersion } = await import('../osc9-contracts.mjs');
+    const osc9Bytes = Buffer.from(adaptOsc9Collector(lrMarginsBytes.toString()));
+    const osc9 = syntheticOsc9Evidence({ runId: context.runId, bundleSha256: hash(osc9Bytes) });
+    osc9.adapter = { ...osc9.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const osc9Report = buildOsc9Report(osc9.frames, osc9.run, context.runId, osc9.adapter);
+    write('osn-observations.json', osc9Report);
+    write('osn-run.json', osc9.run);
+    write('osn-focus.json', osc9.focus);
+    writeFileSync(join(output, 'osn-snapshots.jsonl'), osc9.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-osn.mjs'), osc9Bytes);
+    Object.assign(context, { osc9AdapterId, osc9SuiteId, osc9BundleSha256: hash(osc9Bytes), osc9ContractsVersion });
+    evidence.osc9Evidence = { runId: context.runId, suiteId: osc9SuiteId, file: 'osn-observations.json', sha256: hash(readFileSync(join(output, 'osn-observations.json'))),
+        runFile: 'osn-run.json', runSha256: hash(readFileSync(join(output, 'osn-run.json'))), focusFile: 'osn-focus.json', focusSha256: hash(readFileSync(join(output, 'osn-focus.json'))),
+        adapterBundleSha256: hash(osc9Bytes), contractsVersion: osc9ContractsVersion, counts: osc9Counts(osc9Report), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** The opt-in XTGETTCAP suffix: synthetic journaled replies from the suite's own second oracle (never collected ones), written into
@@ -883,7 +905,7 @@ function fixtureTemplate(routed) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, osc9 = false } = {}) {
     const { output: source, state } = await fixtureTemplate(routed);
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -897,7 +919,11 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (xtgettcap) {
             await addXtgettcapEvidence({ output, write: writerFor(output), context, evidence, titleStackBytes: readFileSync(join(output, 'collector-tst.mjs')) });
         }
-        if (titleStack || xtgettcap) writerFor(output)('context.json', context);
+        // The OSC 9 suffix derives from the left/right-margin bytes (a sibling of the title-stack one) and is equally opt-in.
+        if (osc9) {
+            await addOsc9Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }

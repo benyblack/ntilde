@@ -1,6 +1,7 @@
 import { includesOscTitleEvidence, checkOscTitleEvidence } from './osc-title-receipt.mjs';
 import { includesInsertReplaceEvidence, checkInsertReplaceEvidence } from './insert-replace-receipt.mjs';
 import { includesTitleStackEvidence, checkTitleStackEvidence } from './title-stack-receipt.mjs';
+import { includesOsc9Evidence, checkOsc9Evidence } from './osc9-receipt.mjs';
 import { includesXtgettcapEvidence, checkXtgettcapEvidence } from './xtgettcap-receipt.mjs';
 import { includesReverseWideEvidence, checkReverseWideEvidence } from './core-reverse-wide-receipt.mjs';
 import { includesSgrRasterEvidence, checkSgrRasterEvidence } from './core-sgr-raster-receipt.mjs';
@@ -210,6 +211,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesOscTitle',
     'includesInsertReplace',
     'includesXtgettcap',
+    'includesOsc9',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
@@ -269,6 +271,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesOscTitle = includesOscTitleEvidence(output, evidence, context);
     const includesInsertReplace = includesInsertReplaceEvidence(output, evidence, context, 48);
     const includesXtgettcap = includesXtgettcapEvidence(output, evidence, context);
+    const includesOsc9 = includesOsc9Evidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
     const includesColorReset = includesColorResetEvidence(output, evidence, context);
@@ -279,7 +282,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesOsc9 };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -336,6 +339,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesOscTitle) checkOscTitleEvidence(output, evidence, runId, context);
     if (suffixes.includesInsertReplace) checkInsertReplaceEvidence(output, evidence, runId, context);
     if (suffixes.includesXtgettcap) checkXtgettcapEvidence(output, evidence, runId, context);
+    if (suffixes.includesOsc9) checkOsc9Evidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */
