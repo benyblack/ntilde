@@ -53,8 +53,8 @@ frame's. All twenty matched the independent reply oracle byte for byte (`matches
 ## Identities
 
 App 0.13.0 (operator supplied) built from `2d8433d9` (arm64 Release, executable SHA-256 `f5814e51…9bf8` — bit-identical to the title/icon-stack run's binary; no
-production source changed in this batch); scripts at `7c830c6b`; source policy `readonly-owned-source-graph-v48` (313 files); receipt schema 53; Node v24.22.2; owned
-run `79337831…0db0`; measured 2026-11-12T15:20Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
+production source changed in this batch); scripts at `5c38d9f4`; source policy `readonly-owned-source-graph-v48` (313 files); receipt schema 53; Node v24.22.2; owned
+run `84b5777e…4199`; measured 2026-11-12T15:52Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
 attestation. Predecessor suites reconfirmed in the same run: all thirty benchmark layers' cases are supported (or their effect contracts supported — the two saved-reset
 pinned inconclusives keep their by-design verdicts), the five Core layers are receipt-bound, the query suite reproduces its frozen 33 matched / 7 mismatched, and the two
 findings reconfirm. Stock counts are re-collected in that run (not carried forward) and unchanged.
@@ -68,8 +68,8 @@ builder's cognitive complexity), one Codex P2 — the unchanged-state key now al
 pending-wrap, active screen, saved-line count), so an exchange changing any of them can no longer pass as unchanged — a last Sonar pass (the now-re-exported fixture
 imports and the NOSONAR marker's placement), the new-code duplication gate, which drove the receipt scaffolding into the shared single-copy core
 `xtgettcap-receipt-core.mjs` (the source inventory grew to 313 files), a Codex P2 that a symlinked journal escaped the regular-file validation (the journal now joins
-it), and a final Codex P2 that DECLRMM and the left/right margins were unobserved (the observer now captures them and the state key compares them). The ninth run is
-the published one; the same refusal and the same twenty controls matched every time.
+it), and final Codex P2s that DECLRMM and the left/right margins, then the stored cursor mode (style, blink, default), were unobserved — the observer now captures
+both and the state key compares them. The tenth run is the published one; the same refusal and the same twenty controls matched every time.
 
 ## Newly fixed versus newly qualified
 

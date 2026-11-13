@@ -5,13 +5,13 @@
   "frame": {
     "index": 2,
     "kind": "xgtc-read",
-    "paneId": "e3d8c893-91f4-4815-abc8-d2d075c89fe6",
+    "paneId": "c9373b88-a1be-41d5-92b0-9580f0726468",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
       "rows": 40,
       "cols": 140,
       "lines": [
-        "NTILDE_XG_793378318e4f169056daf3f31c900db0",
+        "NTILDE_XG_84b5777e1ebf240b65d4dd64b76f4199",
         "NtildeXT",
         "",
         "U",
@@ -484,6 +484,11 @@
           }
         }
       ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
       "bufferState": {
         "scrollTop": 1,
         "scrollBottom": 5,
@@ -505,6 +510,6 @@
         "rightMargin": 139
       }
     },
-    "sha256": "440667b4810e8f57050eed12e941cc45d8ca5a1fd24838363eef6e56d77cae02"
+    "sha256": "a69010f70ae31a465d0e9b5a7968daeabbb002259d61253e9444757b2e0bf098"
   }
 }

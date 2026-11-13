@@ -2,12 +2,12 @@
   "reportHeader": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-xtgettcap-graded-v1",
-    "runId": "793378318e4f169056daf3f31c900db0",
+    "runId": "84b5777e1ebf240b65d4dd64b76f4199",
     "contractsVersion": 1,
     "adapter": {
       "id": "ntilde-owned-xtgettcap-grading-v1",
       "derivedFromAdapterId": "ntilde-owned-title-stack-grading-v1",
-      "bundleSha256": "ac11570328b3de186e2115d8457ec7d47e7d2b96ed30fb55a1061d873d97716f",
+      "bundleSha256": "d7d96ac60f834dba717d5ffe3967bbc3278e9c6391cab38e53378e4beacd28c8",
       "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
     },
     "scope": "Pinned terminfo.dev@4.0.0 XTGETTCAP criterion (device.xtgettcap: DCS + q 544e ST answers DCS 1 + r 544e = <even-length hex> ST for TN; the deliberate DCS 0 + r ST refusal is inconclusive and preserved, never upgraded — TN's honest value is the session TERM, which VT does not know) replayed byte-exactly on a disposable App, both pinned paths over the journaled raw replies of its own fenced exchange, beside the separately identified effect contract ntilde-xtgettcap-capability-report-effect-v1 graded by an independent reply oracle over the same fence: the exact pinned request, the numeric Co/colors replies, the RGB/Tc flag replies, one string reply, multi-name reply order with per-name outcomes, the documented unavailable and unknown names, case-sensitivity, the uppercase echo, malformed lists (odd-length, non-hex, empty, mixed) with exactly one refusal, and verified recovery after each malformed request; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged. Capability-report replies only: an advertised flag or count proves no rendering, color accuracy or control-string execution; no Ms clipboard, X resource, remote-delivery or other-platform claim; no stock grades.",
@@ -18,7 +18,7 @@
     "start": {
       "index": 0,
       "kind": "xgtc-start",
-      "paneId": "e3d8c893-91f4-4815-abc8-d2d075c89fe6",
+      "paneId": "c9373b88-a1be-41d5-92b0-9580f0726468",
       "barrier": null,
       "screen": {
         "rows": 40,
@@ -376,6 +376,11 @@
             }
           }
         ],
+        "cursorMode": {
+          "style": 2,
+          "blink": true,
+          "isDefault": true
+        },
         "bufferState": {
           "scrollTop": 0,
           "scrollBottom": 39,
@@ -397,18 +402,18 @@
           "rightMargin": 139
         }
       },
-      "sha256": "da21fcc9306cfc02f0b0bdc5a2064eafd7648c544b5980f1e183208fd809a3a9"
+      "sha256": "22c541e6a0f1424da556d44812e006bb35aa7e66f8ccf185eadbccfbea3afb99"
     },
     "bind": {
       "index": 1,
       "kind": "xgtc-bind",
-      "paneId": "e3d8c893-91f4-4815-abc8-d2d075c89fe6",
+      "paneId": "c9373b88-a1be-41d5-92b0-9580f0726468",
       "barrier": "\u001b[?62;4;22c",
       "screen": {
         "rows": 40,
         "cols": 140,
         "lines": [
-          "NTILDE_XG_793378318e4f169056daf3f31c900db0",
+          "NTILDE_XG_84b5777e1ebf240b65d4dd64b76f4199",
           "NtildeXT",
           "",
           "U",
@@ -881,6 +886,11 @@
             }
           }
         ],
+        "cursorMode": {
+          "style": 2,
+          "blink": true,
+          "isDefault": true
+        },
         "bufferState": {
           "scrollTop": 1,
           "scrollBottom": 5,
@@ -902,7 +912,7 @@
           "rightMargin": 139
         }
       },
-      "sha256": "31c80e3b3d6b2051de76618e932f612e7144d50c2b84e0c1fe2d4ee82622d611"
+      "sha256": "f7717a2f4884547b407c9f598a532e2e4026cc3e0e95b29aede90079667e6fe6"
     }
   }
 }

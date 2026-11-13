@@ -4,7 +4,7 @@
   "frame": {
     "index": 23,
     "kind": "xgtc-finish",
-    "paneId": "e3d8c893-91f4-4815-abc8-d2d075c89fe6",
+    "paneId": "c9373b88-a1be-41d5-92b0-9580f0726468",
     "barrier": "\u001b[?62;4;22c",
     "screen": {
       "rows": 40,
@@ -362,6 +362,11 @@
           }
         }
       ],
+      "cursorMode": {
+        "style": 2,
+        "blink": true,
+        "isDefault": true
+      },
       "bufferState": {
         "scrollTop": 0,
         "scrollBottom": 39,
@@ -383,6 +388,6 @@
         "rightMargin": 139
       }
     },
-    "sha256": "da21fcc9306cfc02f0b0bdc5a2064eafd7648c544b5980f1e183208fd809a3a9"
+    "sha256": "22c541e6a0f1424da556d44812e006bb35aa7e66f8ccf185eadbccfbea3afb99"
   }
 }
