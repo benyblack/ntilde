@@ -53,7 +53,7 @@ const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right)
  * layers oldest-first; `build(observations, run, runId, adapter)` re-derives the report; `counts(report)` derives the bound counts.
  */
 export function checkGradedReceiptSuite(output, evidence, runId, context, suite) {
-    const { adapterId, suiteId, contractsVersion, evidenceKey, observationsFile, runFile, adapterFile, journalFile, layerNames, build, counts } = suite;
+    const { adapterId, suiteId, evidenceKey, journalFile, layerNames, build, counts } = suite;
     if (context[suite.contextAdapterKey] !== adapterId || context[suite.contextSuiteKey] !== suiteId) {
         throw new Error(`Missing or changed ${suite.label} adapter declaration.`);
     }
