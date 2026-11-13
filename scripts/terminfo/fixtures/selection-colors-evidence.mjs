@@ -223,6 +223,12 @@ function stageFrameAndRead(ctx) {
     if (behavior.inkIgnoresForegroundUnderBackground && overrides.selectionBackground !== null && overrides.selectionForeground !== null) {
         drawn = { ...renderTheme(baseline, colors, overrides, behavior), selectionForegroundOverride: false };
     }
+    // A renderer that keeps drawing the foreground it was given after that foreground was reset while a background override remains.
+    if (behavior.staleInkAfterReset && step.kind === 'reset' && overrides.selectionBackground !== null && overrides.selectionForeground === null) {
+        const before = appOverrides(spec, index - 1, behavior);
+        drawn = { ...renderTheme(baseline, colors, overrides, behavior), selectionForegroundOverride: true,
+            selectionForegroundArgb: renderTheme(baseline, appColors(baseline, before, behavior), before, behavior).selectionForegroundArgb };
+    }
     const view = { theme: renderTheme(baseline, colors, overrides, behavior), extra: { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries },
         repeat, drawn };
     frames.push(frame(frames.length, 'selc-read', screen, deviceAttribute, view, store));
