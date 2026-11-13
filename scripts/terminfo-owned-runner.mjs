@@ -1443,6 +1443,22 @@ async function retainColorResetEvidence(output, runId, colorResetBundle, upstrea
         contractsVersion: colorResetContractsVersion, counts: colorResetCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Re-derive the selection-color report parent-side over the retained captures (no pinned replay: the layer's own model and the App-resolved colors decide). */
+function retainSelectionColorsEvidence(output, runId, upstream) {
+    const runBytes = readFileSync(join(output, 'selc-run.json'));
+    const run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'selc-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-selc.mjs'));
+    const adapter = { id: selectionColorsAdapterId, derivedFromAdapterId: oscTitleAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const report = buildSelectionColorsGradingReport(frames, run, runId, adapter, { output });
+    writeJson(join(output, 'selc-observations.json'), report);
+    return { runId, suiteId: selectionColorsSuiteId, file: 'selc-observations.json',
+        sha256: hash(readFileSync(join(output, 'selc-observations.json'))),
+        runFile: 'selc-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: selectionColorsContractsVersion, counts: selectionColorsCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the SGR-underline report parent-side with the layered pinned replay. */
 async function retainSgrUnderlineEvidence(output, runId, sgrUnderlineBundle, upstream) {
     const runBytes = readFileSync(join(output, 'sgus-run.json'));
@@ -1871,6 +1887,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             rectChecksumAdapterId, rectChecksumSuiteId, rectChecksumBundleSha256, rectChecksumContractsVersion,
             lrMarginsAdapterId, lrMarginsSuiteId, lrMarginsBundleSha256, lrMarginsContractsVersion,
             colorResetAdapterId, colorResetSuiteId, colorResetBundleSha256, colorResetContractsVersion,
+            selectionColorsAdapterId, selectionColorsSuiteId, selectionColorsBundleSha256, selectionColorsContractsVersion,
             colorReset: 'layered versioned collector extension; pinned termless criteria extensions.osc104-reset-palette, osc110-reset-fg, osc111-reset-bg and osc112-reset-cursor (the BEL-spelled query, set of rgb:aa/bb/cc, query, reset and query) replayed byte-exactly on a disposable App and graded from exact fenced OSC replies, the App-resolved colors and override metadata, stored default/palette/literal cells, the cursor and controlled offscreen renders by an independent runtime-color model over the measured baseline; the pinned terminal paths (unmeasuredStateEffect) stay inconclusive by design; not stock CLI data',
             lrMargins: 'layered versioned collector extension; pinned termless modes.left-right-margin code (ESC[?69h, the mode metadata, ESC[?69l; inconclusive by design) replayed byte-exactly and preserved, beside a separately identified effect contract graded from parent-observed stored cells, the cursor and the App-stored region, left/right margins, DECLRMM, origin and insert mode by an independent margins model over sixteen controls; stored ASCII cells only, no stock grades',
             routedInputAdapterId, routedInputSuiteId: routedInputGradedSuiteId, routedInputBundleSha256, routedInputContractsVersion,
@@ -3229,6 +3246,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 sha256: hash(readFileSync(join(output, 'cg-observations.json'))), runFile: 'cg-run.json', runSha256: hash(coreRunBytes),
                 adapterBundleSha256: coreGapsBundleSha256, provisionalUntil: 'cell-receipt.json' };
             colorResetEvidence = await retainColorResetEvidence(output, runId, colorResetBundle, upstreamBundleSha256);
+            selectionColorsEvidence = retainSelectionColorsEvidence(output, runId, upstreamBundleSha256);
             const tcRunBytes = readFileSync(join(output, 'tc-run.json'));
             const tcFrames = readFileSync(join(output, 'tc-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
             const tcReport = buildTextCursorReport(tcFrames, JSON.parse(tcRunBytes), runId);
