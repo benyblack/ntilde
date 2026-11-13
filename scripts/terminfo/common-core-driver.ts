@@ -92,6 +92,8 @@ const lease = await acquireDesktopLease({
     entrypoint: 'common-core-driver.ts',
     worktree: root,
     waitMs: desktopLockWaitMs(),
+    // Record only the markers this driver really puts on its processes: the worker command line always, the App only for Ntilde.
+    markerKinds: appId === 'ntilde' ? ['owner', 'worker'] : ['worker'],
 });
 const runId = lease.leaseId;
 try {
@@ -268,7 +270,7 @@ try {
         '#!/bin/bash -p\n' +
         `tty > ${quote(identityPath)}\n` +
         'unset TMUX STY SSH_CONNECTION SSH_TTY __CFBundleIdentifier\n' +
-        `exec env ${assignmentText} ${quote(process.execPath)} --no-env-file ${quote(join(harnessDirectory, 'common-core-worker.ts'))} ${quote(join(output, 'config.json'))}\n`;
+        `exec env ${assignmentText} ${quote(process.execPath)} --no-env-file ${quote(join(harnessDirectory, 'common-core-worker.ts'))} ${quote(join(output, 'config.json'))} ${quote('--ntilde-terminfo-worker=' + runId)}\n`;
     writeFileSync(scriptPath, script, { flag: 'wx', mode: 0o700 });
     if (appId === 'ghostty') {
         const { prepareCliLaunch, launchPreparedCli } = await importUpstream('packages/admin/src/app.ts');

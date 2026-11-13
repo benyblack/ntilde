@@ -373,6 +373,15 @@ test('recovery re-verifies what it moved: a lease swapped in between the checks 
     assert.deepEqual(readdirSync(root).filter(name => name.includes('.recovered-')), []);
 }));
 
+test('an entrypoint records only the marker kinds it really propagates; invalid kinds are refused before any directory exists', () => sandboxAsync(async ({ root, lockPath }) => {
+    const lease = await acquireDesktopLease({ lockPath, entrypoint: 'd.mjs', worktree: root, markerKinds: ['worker'] });
+    assert.deepEqual(lease.record.markers, [`--ntilde-terminfo-worker=${lease.leaseId}`]);
+    lease.release();
+    for (const markerKinds of [[], ['owner', 'owner'], ['bogus'], 'owner'])
+        await assert.rejects(acquireDesktopLease({ lockPath, entrypoint: 'd.mjs', worktree: root, markerKinds }), /Invalid desktop lease marker kinds/);
+    assert.equal(existsSync(lockPath), false);
+}));
+
 test('a driver-style lease (unlaunched, dead holder) recovers without confirmation, and a launched one needs it', () => sandboxAsync(async ({ lockPath }) => {
     plant(lockPath, { launch: 'none' });
     assert.equal(recoverDesktopLease({ lockPath, leaseId: lease32, deps: goneDeps() }).recovered, lease32);

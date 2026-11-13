@@ -205,5 +205,6 @@ test('the common-core driver acquires before creating output and persists every 
     assert.ok(driver.indexOf('lease.release()') < at('const upstreamRevision'), 'the only earlier release is the pre-launch output failure');
     assert.ok(at('lease.retain(failures.join') > 0);
     assert.ok(!/\.desktop-collection\.lock/.test(driver), 'the driver no longer hand-rolls its own lock file');
-    assert.ok(!/processMarkers:\s*false/.test(driver), 'driver leases carry the run markers so explicit recovery can scan for survivors');
+    assert.ok(/markerKinds: appId === 'ntilde' \? \['owner', 'worker'\] : \['worker'\]/.test(driver) && driver.includes("'--ntilde-terminfo-worker=' + runId"),
+        'the driver records only the markers it puts on its processes, and the worker command line carries its marker');
 });

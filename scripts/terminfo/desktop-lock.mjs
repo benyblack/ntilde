@@ -378,7 +378,9 @@ export function findMarkedProcesses(markers, depsInput) {
         && row.command.split(/\s+/).some(token => markers.includes(token))).map(row => row.pid);
 }
 
-const markersFor = lease => ['owner', 'worker', 'private-clipboard'].map(kind => `--ntilde-terminfo-${kind}=${lease}`);
+const markerKinds = ['owner', 'worker', 'private-clipboard'];
+/** The run markers a lease records: all three by default, or only the kinds an entrypoint really puts on its processes. */
+const markersFor = (lease, kinds = markerKinds) => kinds.map(kind => `--ntilde-terminfo-${kind}=${lease}`);
 
 /** A contender waits only for a verified live, healthy, non-ancestor holder; legacy and unverifiable states refuse at once. */
 function isWaitableHolder(state, deps) {
@@ -400,7 +402,7 @@ function publishLease(lockPath, options, deps, start) {
     try { birth = deps.processBirth(deps.pid()); } catch { /* an unprovable identity leaves later holders "ambiguous", i.e. conservative */ }
     const lease = randomBytes(16).toString('hex');
     const record = { lease, pid: deps.pid(), birth, uid: deps.uid(), worktree: options.worktree, entrypoint: options.entrypoint, since: new Date(deps.now()).toISOString(),
-        status: 'held', launch: 'none', markers: options.processMarkers === false ? [] : markersFor(lease) };
+        status: 'held', launch: 'none', markers: markersFor(lease, options.markerKinds) };
     try { writeFileSync(join(lockPath, ownerFile), formatOwnerRecord(record), { flag: 'wx', mode: 0o600 }); }
     catch (error) {
         try { rmdirSync(lockPath); } catch { /* an unremovable empty directory stays "partial" = held */ }
@@ -450,6 +452,8 @@ export async function acquireDesktopLease(options) {
     if (!/^[A-Za-z0-9._-]{1,64}$/.test(entrypoint ?? '') || typeof worktree !== 'string' || !worktree || Buffer.byteLength(worktree) > maxFieldBytes)
         throw new Error('Invalid desktop lease entrypoint or worktree.');
     if (!Number.isSafeInteger(waitMs) || waitMs < 0 || waitMs > maxWaitMs || !Number.isSafeInteger(pollMs) || pollMs < 1) throw new Error('Invalid desktop lease wait.');
+    if (options.markerKinds !== undefined && (!Array.isArray(options.markerKinds) || options.markerKinds.length === 0 || new Set(options.markerKinds).size !== options.markerKinds.length
+        || !options.markerKinds.every(kind => markerKinds.includes(kind)))) throw new Error('Invalid desktop lease marker kinds.');
     mkdirSync(dirname(lockPath), { recursive: true, mode: 0o700 });
     return acquireLoop({ lockPath, options, deps, waitMs, pollMs, start: deps.now(), partialSince: undefined });
 }
