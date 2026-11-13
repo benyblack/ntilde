@@ -62,9 +62,9 @@ control), images, rendered appearance, saved-bank behavior beyond the bounded ma
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `a20c5480` (arm64 Release, executable SHA-256 `f5814e51…d1d6`); scripts at commit `a20c5480`; source policy
+App 0.13.0 (operator supplied) built from `3680bf9b` (arm64 Release, executable SHA-256 `f5814e51…d1d6`); scripts at commit `3680bf9b`; source policy
 `readonly-owned-source-graph-v49` (328 files — the restacked union of the insert/replace layer's 322 and these six modules); receipt schema 55; Node v24.22.2; owned run
-`b33aab55…5627`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
+`f408ed88…6305`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
 (not carried forward). The insert/replace layer (PR 956), merged ahead of this batch, took policy v48 and receipt schema 54 for its own scope, so this layer was
 restacked above it (policy v49 / captured v56 / receipt 55) and **re-measured**: its suite is reconfirmed inside the published run's receipt (`supported: 1`). See [summary](2026-11-12-ascii-reflow/summary.json) for the full context: worker, PTY, output-processing proof, per-action parent/kernel geometry
 records and the completed cleanup receipt. Predecessor suites were reconfirmed in the same run through the established runner: the receipt re-derived every earlier layer,
@@ -74,11 +74,13 @@ Attempts, all retained with their actual reasons (archives in [superseded/](2026
 collection when the first launch's context named a bundle digest that did not exist yet; attempt 2 (`owned-DD0VT3`, no receipt) failed at parent bootstrap on the same
 naming mismatch; attempt 3 (`owned-7gsSlr`, no receipt) failed launching the worker on the renamed binding; attempt 4 (`owned-dNbnet`, no receipt) **completed collection
 with identical grading** but could not finalize: the metadata receipt's source-policy map lacked the then-current v48 entry (fixed in the measured scripts); attempt 5
-(`owned-Q0DShd`, no receipt) aborted when the disposable App did not respond at launch (desktop idle), retained unchanged. Runs `owned-NITRsC` (attempt 6) and
-`owned-sWZqnR` (attempt 7) **completed, graded identically (width model-exact, history shrunk diverged at 38 displaced rows) and reproduced byte-identically by each
-other and by the final run** — three independent owned runs, same divergence — but are superseded by the serial restack: the insert/replace layer (PR 956) merged ahead
-of this batch and took policy v48 / receipt schema 54, so this layer was restacked to policy v49 / receipt 55 and re-measured; their retained receipts bind the
-pre-restack scope and cannot re-derive under the merged mapping. The published run is the eighth.
+(`owned-Q0DShd`, no receipt) aborted when the disposable App did not respond at launch (desktop idle), retained unchanged. Runs `owned-NITRsC` (attempt 6),
+`owned-sWZqnR` (attempt 7) and `owned-KeiEHw` (attempt 8) **completed, graded identically (width model-exact, history shrunk diverged at 38 displaced rows, restored
+exact) and reproduced byte-identically by each other and by the final run** — four independent owned runs, same divergence — but are superseded: attempts 6 and 7 by
+the serial restack (the insert/replace layer, PR 956, merged ahead of this batch and took policy v48 / receipt schema 54, so this layer was restacked to policy v49 /
+receipt 55 and their retained receipts bind the pre-restack scope), and attempt 8 by the two Codex review fixes to the measured scripts (the unavailable marker's
+experiment count and the unavailable receipt's completion-artifact rejection); their retained evidence re-derives under the merged validator with every graded field
+equal. The published run is the ninth.
 
 ## Newly fixed versus newly measured
 
