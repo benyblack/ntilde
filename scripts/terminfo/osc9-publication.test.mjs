@@ -16,9 +16,9 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '2b46072e371b3da22020f3283907eea5804b01dae1ed6479e19e03e949e050de');
+    assert.equal(hash(manifestBytes), '89f023293c1517ed4c559b607d12440dde4e55dd79f11c34d6ca3dba703655ec');
     const manifest = JSON.parse(manifestBytes);
-    assert.equal(Object.keys(manifest.archives).length, 11, 'the final run and ten retained superseded attempts');
+    assert.equal(Object.keys(manifest.archives).length, 12, 'the final run and eleven retained superseded attempts');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-osc9-publication-'));
     try {
@@ -48,6 +48,6 @@ test('retained run independently rederives the complete receipt and published pr
         assert.deepEqual(projected.report.focusActions.map(item => item.action), ['refocus', 'defocus', 'refocus']);
         assert.ok(projected.report.focusActions.every(item => item.attempts.length >= 1 && item.appPid > 0));
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 167, supported: 87, unsupported: 1 });
-        assert.equal(schemaVersion, 56); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 57); assert.equal(fixtureRemoved, true);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });

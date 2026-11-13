@@ -24,7 +24,7 @@ termless capability is an adapter-side declaration the pinned code is served; it
 | `extensions.notifications` | inconclusive by design | inconclusive by design | **supported** (`ntilde-osc9-notification-toast-effect-v1`) | inconclusive |
 
 The effect contracts are separately identified, with their own bytes and oracle; the divergence (`pinned-inconclusive-by-design`) is recorded in
-[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`32751fafa46975094d07cdffa41fe454`), still grades both inconclusive
+[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`e82396559ccb41f604ea9672424f3228`), still grades both inconclusive
 (87 supported / 1 unsupported / 167 inconclusive, `suiteComplete=false`): **no stock score and no Core point is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -56,11 +56,10 @@ admitted, respectively); each was kept as a superseded attempt, not graded.
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `b2121100df7c76773e1a15ba569cb3f5526209dc` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly
-SHA-256 `ce358b1b093775e507df6ac50b0d9b2f3a2674b54c675654c510a33a042c773a`; the binary is bit-identical to the title/icon-stack and XTGETTCAP runs, since no production
-source changed); measured scripts `c98482ee2aa9c7ca7ee3ee760774a2d082a2c5b3`; source policy `readonly-owned-source-graph-v50` (336 files; manifest SHA-256
-`94bcd9440b4b53738750757be89eab4486eb2a9a92226280b29cf63c5d61e4a6`); initial settings SHA-256 `e907bb0eb015d37d1ffe53af385bf1553e880b4efcdd0bd56076be9cf0956d60`; receipt schema 56; Node
-v24.22.2; owned run `e6d1207f698b7f9ef4b12a6ae245cbb0`; collected 2026-11-13T14:27Z on macOS. The App label is operator supplied and the build is not binary-to-source
+App 0.13.0 (operator supplied) built from `1ac4476c856f9e57f82d89fd59c6dfaf3a8b3286` (main with the merged modifyOtherKeys batch) (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly
+SHA-256 `24dce3b87c0a79b9384bea18420525acbfd46d7c689e7e400d058c71be78aa3f`; the apphost launcher is byte-identical to the earlier batches' while the App assembly differs because #958 changed generated-input production code, which this batch does not touch; measured scripts `10fac591b48a217e295c66e96ca26b3179756821`; source policy `readonly-owned-source-graph-v51` (342 files; manifest SHA-256
+`a0fe7e403e7a4e32fd01c045a6dee3e11a7ad0e94a610745cf3d83c02af0f0a9`); initial settings SHA-256 `b3feb3f3cd221c687328cfe37793e4c8ff3ac3b542e14e646897c13123043eea`; receipt schema 57; Node
+v24.22.2; owned run `ce49a60a438a87190dbcb2f4e566ce55`; collected 2026-11-13T14:38Z on macOS. The App label is operator supplied and the build is not binary-to-source
 attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-13-osc9/superseded/))
@@ -80,7 +79,9 @@ attestation. Predecessor suites ran in the same full run and their receipt suffi
 9. The same scripts rerun: both supported; superseded by CodeRabbit's finding that the focus action was not bounded by the owner request's remaining deadline.
 10. Completed with the focus action bounded by that deadline, but the shared deadline reports at most two seconds at a time, which my first attempt-sized bound could never
     fit: no focus action ran and the notification case stayed **inconclusive** with its reason. Kept as measured, ungraded.
-11. Final run: a whole focus attempt (command, settle, query: 1.6 s worst case) is admitted only while the reported deadline remainder covers it.
+11. Completed on policy v50 with both supported; superseded because #958 (modifyOtherKeys) merged first, so the batch was restacked onto it: policy v51, receipt 57, a rebuilt App
+    from the merged tree and a fresh measurement.
+12. Final run, restacked: a whole focus attempt (command, settle, query: 1.6 s worst case) is admitted only while the reported deadline remainder covers it.
 
 ## Not claimed
 

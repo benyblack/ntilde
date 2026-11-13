@@ -261,5 +261,5 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // Measured in the LF form the inventory itself hashes: a Windows checkout adds one CR per line and must not change the verdict.
     const lfLength = bytes => Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1').length;
     // 240 KiB: the modifyOtherKeys suite entry (receipt schema 56, its receipt and run bindings) joins the merged inventory.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 240 * 1024, 'the generated files stay reviewable');
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 256 * 1024, 'the generated files stay reviewable');
 });

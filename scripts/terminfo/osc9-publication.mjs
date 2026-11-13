@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'c98482ee2aa9c7ca7ee3ee760774a2d082a2c5b3';
-export const measuredAppRevision = 'b2121100df7c76773e1a15ba569cb3f5526209dc';
+export const measuredScriptsRevision = '10fac591b48a217e295c66e96ca26b3179756821';
+export const measuredAppRevision = '1ac4476c856f9e57f82d89fd59c6dfaf3a8b3286';
 export function osc9Publication(dir) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
     const measured = json(dir, 'osn-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json'), focus = json(dir, 'osn-focus.json');
