@@ -15,7 +15,7 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '8a7b1800b51798915fc8914df6306f29b48d4883221d4cad066f41d2e984255b', 'the retained archive manifest is pinned');
+    assert.equal(hash(manifestBytes), '2347696625ce80b010bb0efa53ba0bae52c26a680edfa816783932b9c06edae3', 'the retained archive manifest is pinned');
     const manifest = JSON.parse(manifestBytes);
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-ascii-reflow-publication-'));
