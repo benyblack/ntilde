@@ -128,8 +128,11 @@ export async function collectGradedPlans({ contracts, contractsFor, prefix, rese
         const bindBarrier = await fence.write(bind ?? ('\x1b[?1049h' + reset + nonce));
         await owner(`${prefix}-bind`, bindBarrier);
         for (const contract of plans) {
-            const feeds = [], barriers = [], reads = [], screens = [], facts = [];
+            const feeds = [], barriers = [], reads = [], screens = [], facts = [], actions = [];
             for (const step of contract.plan) {
+                // Optional steps only the OSC 9 suite uses: a bounded host wait, and a parent-performed action answered by the owner (its record is retained there).
+                if (step.wait !== undefined) { await new Promise(resolve => setTimeout(resolve, step.wait)); continue; } // NOSONAR serial by design
+                if (step.action !== undefined) { actions.push({ action: step.action, response: await owner(`${prefix}-${step.action}`, barriers.at(-1)) }); continue; } // NOSONAR serial by design
                 if (step.feed) {
                     feeds.push(step.feed);
                     barriers.push(await fence.write(step.feed)); // serial by design: each write must settle before the next (NOSONAR)
@@ -144,7 +147,7 @@ export async function collectGradedPlans({ contracts, contractsFor, prefix, rese
                 throw new Error(`Incomplete ${contract.caseId} graded fixture.`);
             }
             // Facts (small bounded values a suite's observer exposed beside the screen) are carried only when present.
-            cases.push({ caseId: contract.caseId, feeds, barriers, reads, screens, ...(facts.some(item => item !== undefined) ? { facts } : {}) });
+            cases.push({ caseId: contract.caseId, feeds, barriers, reads, screens, ...(facts.some(item => item !== undefined) ? { facts } : {}), ...(actions.length ? { actions } : {}) });
         }
     } catch (error) { primary = error; failed = true; }
     let restoreFailed = false, restoreError;

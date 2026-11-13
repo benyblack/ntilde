@@ -63,6 +63,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('insert-replace', '2026-11-12-insert-replace', '2026-11-12-insert-replace-qualification.md'), module: 'insert-replace-contracts.mjs', exports: ['insertReplaceSuiteId', 'insertReplaceContractsVersion', 'insertReplaceCaseIds'], test: 'insert-replace-publication.test.mjs' },
     { ...directory('xtgettcap', '2026-11-12-xtgettcap', '2026-11-12-xtgettcap-qualification.md'), module: 'xtgettcap-contracts.mjs', exports: ['xtgettcapSuiteId', 'xtgettcapContractsVersion', 'xtgettcapCaseIds'], test: 'xtgettcap-publication.test.mjs' },
     { ...directory('modify-other-keys', '2026-11-12-modify-other-keys', '2026-11-12-modify-other-keys-qualification.md'), module: 'modify-other-keys-contracts.mjs', exports: ['modifyOtherKeysGradedSuiteId', 'modifyOtherKeysContractsVersion', 'modifyOtherKeysCaseIds'], test: 'modify-other-keys-publication.test.mjs' },
+    { ...directory('osc9', '2026-11-13-osc9', '2026-11-13-osc9-qualification.md'), module: 'osc9-contracts.mjs', exports: ['osc9SuiteId', 'osc9ContractsVersion', 'osc9CaseIds'], test: 'osc9-publication.test.mjs' },
 ]);
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */
