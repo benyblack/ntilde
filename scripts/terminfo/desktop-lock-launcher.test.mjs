@@ -167,6 +167,9 @@ test('the runner takes the lease before any output, App or window action, and re
     assert.ok(at('const runId = lease.leaseId;') > at('lease = await acquireDesktopLease();'));
     const cleanup = runner.slice(at('async function cleanupOwnedRun'), at('function retainPreparationFailure'));
     assert.ok(cleanup.includes('await lease.verifyCleanup()') && cleanup.includes('workerError ?? appError ?? survivorError'));
+    assert.ok(cleanup.indexOf('if (!workerError && !appError)') > 0 && cleanup.indexOf('if (!workerError && !appError)') < cleanup.indexOf('await lease.verifyCleanup()'),
+        'a failed worker or App termination never reaches the scan that could mark cleanup verified');
+    assert.ok(runner.includes("process.on('SIGHUP', onHup)") && runner.includes("process.removeListener('SIGHUP', onHup)") && /\['SIGINT', 'SIGTERM', 'SIGHUP'\]\.includes\(process\.env\.NTILDE_TERMINFO_PENDING_SIGNAL\)/.test(runner));
     assert.equal(runner.match(/\bspawn\(/g).length, 1, 'one App spawn site, and it is the guarded one');
     assert.ok(!/process\.env\.[A-Z_]*(?:LOCK|LEASE)/.test(runner) && !/process\.env\[[^\]]*(?:LOCK|LEASE)/.test(runner), 'no environment value can stand in for the lease');
     assert.ok(!/\.release\(\)|\.retain\(/.test(runner), 'only the launcher releases or retains');
@@ -196,4 +199,5 @@ test('the common-core driver acquires before creating output and persists every 
     assert.ok(driver.indexOf('lease.release()') < at('const upstreamRevision'), 'the only earlier release is the pre-launch output failure');
     assert.ok(at('lease.retain(failures.join') > 0);
     assert.ok(!/\.desktop-collection\.lock/.test(driver), 'the driver no longer hand-rolls its own lock file');
+    assert.ok(!/processMarkers:\s*false/.test(driver), 'driver leases carry the run markers so explicit recovery can scan for survivors');
 });

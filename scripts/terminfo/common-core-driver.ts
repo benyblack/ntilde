@@ -92,7 +92,6 @@ const lease = await acquireDesktopLease({
     entrypoint: 'common-core-driver.ts',
     worktree: root,
     waitMs: desktopLockWaitMs(),
-    processMarkers: false,
 });
 const runId = lease.leaseId;
 try {

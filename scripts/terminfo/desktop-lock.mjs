@@ -498,8 +498,16 @@ export function recoverDesktopLease(options) {
     // Windows owned by a dead App have no process to scan for: a cleanup-failed or launched lease needs the operator's word.
     if ((state.record.status === 'cleanup-failed' || state.record.launch === 'attempted') && options.confirmDesktopIdle !== true)
         throw new Error('This lease attempted a launch. Confirm no owned App window remains and pass --confirm-desktop-idle.');
-    const aside = lockPath + '.recovered-' + state.record.lease + '-' + new Date(deps.now()).toISOString().replaceAll(/[^0-9TZ]/g, '');
+    const aside = lockPath + '.recovered-' + state.record.lease + '-' + new Date(deps.now()).toISOString().replaceAll(/[^0-9TZ]/g, '') + '-' + randomBytes(3).toString('hex');
     renameSync(lockPath, aside);
+    // The checks above are not atomic with the rename: a concurrent recovery plus a new collection could have put a different
+    // live lease at this path in between. Verify what was actually moved and give a foreign lock straight back.
+    const moved = parseOwnerRecord(safeRead(join(aside, ownerFile)));
+    if (moved.kind !== 'owned' || moved.record.lease !== state.record.lease) {
+        try { renameSync(aside, lockPath); }
+        catch { throw new Error('A different lock was moved aside during recovery and could not be restored; evidence kept at ' + aside + '.'); }
+        throw new Error('The lock changed during recovery; it was restored untouched.');
+    }
     audit(lockPath, { event: 'recovered', lease: state.record.lease, holderPid: state.record.pid, holderReason: assessment.reason, confirmedIdle: options.confirmDesktopIdle === true, evidence: bounded(aside, 300) }, deps);
     return { recovered: state.record.lease, evidence: aside };
 }

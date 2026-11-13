@@ -1486,10 +1486,13 @@ async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, serve
     await new Promise(resolve => server.close(() => resolve()));
     // Parent shutdown can reap an already-exited worker that was a zombie.
     if (workerError && workerIdentity && !workerExists(workerIdentity.pid)) workerError = undefined;
-    // Cleanup is verified only when no process carrying this lease's run markers survives; a failed scan is a failure.
+    // Cleanup is verified only when both terminations succeeded AND no process carrying this lease's run markers survives; a
+    // failed scan is a failure. A failed termination never reaches the scan, so a changed command line cannot hide a live process.
     let survivorError;
-    try { await lease.verifyCleanup(); }
-    catch (error) { survivorError = error; }
+    if (!workerError && !appError) {
+        try { await lease.verifyCleanup(); }
+        catch (error) { survivorError = error; }
+    }
     const cleanupError = workerError ?? appError ?? survivorError;
     const cleanup = cleanupError
         ? { cleanupError: cleanupError.message, retainedFixture: scratch }
@@ -1538,6 +1541,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     };
     const onInt = () => interrupted('SIGINT');
     const onTerm = () => interrupted('SIGTERM');
+    const onHup = () => interrupted('SIGHUP');
     let scratch;
     let output;
     let lease;
@@ -1607,7 +1611,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     // Persistent handlers also protect against a second signal during teardown.
     process.on('SIGINT', onInt);
     process.on('SIGTERM', onTerm);
-    if (['SIGINT', 'SIGTERM'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
+    process.on('SIGHUP', onHup);
+    if (['SIGINT', 'SIGTERM', 'SIGHUP'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
     try {
         // Exclusive desktop ownership before any output, App or window action; refused contenders launch nothing.
         lease = await acquireDesktopLease();
@@ -3269,6 +3274,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             process.removeListener('SIGINT', onInt);
             process.removeListener('SIGTERM', onTerm);
+            process.removeListener('SIGHUP', onHup);
         }
     }
     if (interruption) {

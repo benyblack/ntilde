@@ -353,6 +353,27 @@ test('recovery needs the exact lease, a gone holder, no surviving marked process
     assert.ok(events.some(entry => entry.event === 'recovered' && entry.confirmedIdle === true && entry.holderReason === 'pid-absent'));
 }));
 
+test('recovery re-verifies what it moved: a lease swapped in between the checks and the rename is restored, never discarded', () => sandboxAsync(async ({ root, lockPath }) => {
+    const rival = lease => formatOwnerRecord(record({ lease, pid: process.pid, birth: 'unavailable' }));
+    plant(lockPath);
+    // Simulate the race with a dependency that runs after the holder/scan checks, immediately before the rename.
+    const racing = goneDeps({ listProcesses: () => {
+        rmSync(lockPath, { recursive: true }); mkdirSync(lockPath); writeFileSync(join(lockPath, 'owner'), rival('b'.repeat(32)));
+        return [];
+    } });
+    assert.throws(() => recoverDesktopLease({ lockPath, leaseId: lease32, deps: racing }), /changed during recovery; it was restored untouched/);
+    assert.equal(readDesktopLockState(lockPath).record.lease, 'b'.repeat(32));
+    assert.deepEqual(readdirSync(root).filter(name => name.includes('.recovered-')), []);
+}));
+
+test('a driver-style lease (unlaunched, dead holder) recovers without confirmation, and a launched one needs it', () => sandboxAsync(async ({ lockPath }) => {
+    plant(lockPath, { launch: 'none' });
+    assert.equal(recoverDesktopLease({ lockPath, leaseId: lease32, deps: goneDeps() }).recovered, lease32);
+    plant(lockPath, { launch: 'attempted', markers: [`--ntilde-terminfo-owner=${lease32}`, `--ntilde-terminfo-worker=${lease32}`, `--ntilde-terminfo-private-clipboard=${lease32}`] });
+    assert.throws(() => recoverDesktopLease({ lockPath, leaseId: lease32, deps: goneDeps() }), /confirm-desktop-idle/);
+    assert.equal(recoverDesktopLease({ lockPath, leaseId: lease32, confirmDesktopIdle: true, deps: goneDeps() }).recovered, lease32);
+}));
+
 test('a really dead holder process (not a fake) is classified gone and still refuses contenders', { skip: !posix && 'needs ps' }, () => sandboxAsync(async ({ root, lockPath }) => {
     const dead = spawnSync(process.execPath, ['-e', '']);
     plant(lockPath, { pid: dead.pid });
