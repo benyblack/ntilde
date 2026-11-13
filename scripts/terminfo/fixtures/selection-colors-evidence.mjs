@@ -174,7 +174,8 @@ const pixelOf = (index, screen, theme, png) => {
     const details = syntheticRenderDetails(screen, 0, width, height);
     return { file: `selc-pixels/frame-${String(index).padStart(3, '0')}.png`, sha256: sha(png), byteCount: png.length, width, height, rows: colEditRows, cols: colEditCols,
         mode: 'render', scale: 1, downscaled: false, inlineOmitted: false, presentationTimeMs: 0,
-        renderDetails: { ...details, theme } };
+        syntheticSelection: structuredClone(selectionColorsFixture.selectionColorsSelection),
+        renderDetails: { ...details, theme, syntheticSelection: structuredClone(selectionColorsFixture.selectionColorsSelection) } };
 };
 /** One journaled frame; `view` is `{ theme, extra, repeat, drawn }`: the render theme, the read's case/stage/replies, a frame whose render is
  * repeated (a stale render) and a theme the renderer drew differently from the one it reported. */

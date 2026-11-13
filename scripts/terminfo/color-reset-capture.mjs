@@ -69,7 +69,7 @@ export class ColorResetObserver {
     async render(result, budget) {
         this.after.paneId ??= this.paneId;
         const endpoint = (this.before.endpoint ?? observerEndpoint)(this.before.appData, this.before.ownerPid);
-        const capture = await this.captureRpc(endpoint, this.paneId, null, budget());
+        const capture = await this.captureRpc(endpoint, this.paneId, this.selection, budget());
         const after = await this.after.capture(budget);
         if (snapshotHash(result.screen) !== snapshotHash(after)) fail(`${this.suiteLabel} capture changed the observed screen.`);
         const { bytes, details } = validateColorCapture(capture, result.screen, this.selection);
@@ -106,12 +106,12 @@ export class ColorResetObserver {
     }
 }
 
-import { selectionColorsReadPlan } from './selection-colors-contracts.mjs';
+import { selectionColorsReadPlan, selectionColorsSelection } from './selection-colors-contracts.mjs';
 
 /** Selection-colors suite: the shared observer configured for the selc prefix and its read plan. */
 export class SelectionColorsObserver extends ColorResetObserver {
     constructor({ output, captureRpc, ...options }) {
         super({ output, captureRpc, directory: 'selc-pixels', prefix: 'selc', plan: selectionColorsReadPlan,
-            selection: null, suiteLabel: 'Selection-color', ...options });
+            selection: structuredClone(selectionColorsSelection), suiteLabel: 'Selection-color', ...options });
     }
 }

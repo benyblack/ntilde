@@ -22,6 +22,6 @@ export function retainedSelectionColorsCapture(output, frame) {
     if (!entry.isFile() || entry.isSymbolicLink() || entry.size > 5 * 1024 * 1024) throw new Error('Invalid retained selection-color capture file.');
     const bytes = readFileSync(path);
     if (bytes.length !== pixel.byteCount || pngHash(bytes) !== pixel.sha256) throw new Error('Retained selection-color PNG bytes changed.');
-    return validateColorCapture({ ...pixel, pngBase64: bytes.toString('base64'), renderDetails: pixel.renderDetails }, frame.screen, null);
+    return validateColorCapture({ ...pixel, pngBase64: bytes.toString('base64'), renderDetails: pixel.renderDetails }, frame.screen, selectionColorsSelection);
 }
 

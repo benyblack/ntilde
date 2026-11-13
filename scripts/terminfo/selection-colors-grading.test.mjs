@@ -133,7 +133,7 @@ test('the evidence validation refuses every tampering with a specific failure', 
     assert.throws(() => validateSelectionColorsEvidence(replyFrame.frames, replyFrame.run, replyFrame.runId, replyFrame.adapter, captureOf), /reply frame/);
 
     const wrongBinding = cloneSelectionColorsEvidence(evidence);
-    wrongBinding.frames[3].pixel.scale = 2;
+    wrongBinding.frames[3].pixel.syntheticSelection = null;
     assert.throws(() => validateSelectionColorsEvidence(wrongBinding.frames, wrongBinding.run, wrongBinding.runId, wrongBinding.adapter, captureOf), /capture binding/);
 
     const drifted = cloneSelectionColorsEvidence(evidence);
