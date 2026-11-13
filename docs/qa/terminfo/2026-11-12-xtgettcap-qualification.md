@@ -54,7 +54,7 @@ frame's. All twenty matched the independent reply oracle byte for byte (`matches
 
 App 0.13.0 (operator supplied) built from `2d8433d9` (arm64 Release, executable SHA-256 `f5814e51…9bf8` — bit-identical to the title/icon-stack run's binary; no
 production source changed in this batch); scripts at the restacked head (`01b6ce2b` + merge); source policy `readonly-owned-source-graph-v49` (330 files, merged insert/replace + OSC title layers); receipt schema 55; Node v24.22.2; owned
-run `0cf8bb83…6244`; measured 2026-11-12T15:52Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
+run `aa7a5ca7…2beb`; measured 2026-11-13T11:32Z on macOS 27.0.1. The operator-supplied build-source label is not binary-to-source
 attestation. Predecessor suites reconfirmed in the same run: all thirty benchmark layers' cases are supported (or their effect contracts supported — the two saved-reset
 pinned inconclusives keep their by-design verdicts), the five Core layers are receipt-bound, the query suite reproduces its frozen 33 matched / 7 mismatched, and the two
 findings reconfirm. Stock counts are re-collected in that run (not carried forward) and unchanged.

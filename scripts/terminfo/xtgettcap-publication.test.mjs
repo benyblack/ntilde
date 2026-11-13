@@ -179,8 +179,8 @@ test('revisions and attempts (every superseded one keeps its actual reason), and
     assert.match(summary.attempts[6].outcome, /symlinked journal escaped the regular-file validation/);
     assert.match(summary.attempts[7].outcome, /DECLRMM and the left\/right margins were unobserved/);
     assert.match(summary.attempts[8].outcome, /stored cursor mode .* was unobserved/);
-    assert.equal(summary.attempts.filter(item => item.receiptCompleted).length, 9, 'nine runs completed their receipts; only the last is published');
-    for (const number of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
+    assert.equal(summary.attempts.filter(item => item.receiptCompleted).length, 10, 'ten runs completed their receipts; only the last is published');
+    for (const number of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) assert.ok(existsSync(new URL(`superseded/attempt-${number}-superseded.zip`, dir)), number);
     for (const name of readdirSync(dir)) {
         if (name === 'superseded') continue;
         assert.ok(readFileSync(new URL(name, dir), 'utf8').split('\n').length <= (name === 'summary.json' ? 2100 : 1500), name);
