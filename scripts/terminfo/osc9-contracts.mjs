@@ -61,25 +61,26 @@ const state = (kind, percent) => Object.freeze({ kind, percent });
 const setups = Object.freeze({ none: Object.freeze({ feed: '', progress: null }), normal17: Object.freeze({ feed: osc('4;1;17'), progress: state('Normal', 17) }) });
 
 // role: protocol = graded against the OSC 9;4 protocol; control = unmarked/withdrawal control that gates validity; policy = recorded only.
+const progressSpec = (name, role, setup, feed, expected) => ({ name, role, setup, feed, expected });
 const progressSpecs = [
-    ['normal', 'protocol', 'none', osc('4;1;42'), state('Normal', 42)],
-    ['error', 'protocol', 'none', osc('4;2;37'), state('Error', 37)],
-    ['indeterminate', 'protocol', 'none', osc('4;3'), state('Indeterminate', null)],
-    ['paused', 'protocol', 'none', osc('4;4;61'), state('Paused', 61)],
-    ['replace-normal-with-error', 'protocol', 'normal17', osc('4;2;80'), state('Error', 80)],
-    ['withdraw', 'protocol', 'normal17', osc('4;0'), null],
-    ['clamp-high', 'protocol', 'none', osc('4;1;150'), state('Normal', 100)],
-    ['percent-zero', 'protocol', 'none', osc('4;1;0'), state('Normal', 0)],
-    ['indeterminate-ignores-percent', 'protocol', 'none', osc('4;3;55'), state('Indeterminate', null)],
-    ['st-terminated', 'protocol', 'none', osc('4;1;29', '\x1b\\'), state('Normal', 29)],
-    ['withdraw-when-none', 'control', 'none', osc('4;0'), null],
-    ['unmarked', 'control', 'normal17', '\x1b[0m', state('Normal', 17)],
-    ['policy-absent-percent-normal', 'policy', 'none', osc('4;1'), state('Normal', null)],
-    ['policy-absent-percent-error', 'policy', 'normal17', osc('4;2'), state('Error', null)],
-    ['policy-absent-percent-paused', 'policy', 'normal17', osc('4;4'), state('Paused', null)],
-    ['policy-unknown-state', 'policy', 'normal17', osc('4;7;10'), state('Normal', 17)],
-    ['policy-bare-4', 'policy', 'normal17', osc('4'), state('Normal', 17)],
-    ['policy-missing-state', 'policy', 'normal17', osc('4;'), state('Normal', 17)],
+    progressSpec('normal', 'protocol', 'none', osc('4;1;42'), state('Normal', 42)),
+    progressSpec('error', 'protocol', 'none', osc('4;2;37'), state('Error', 37)),
+    progressSpec('indeterminate', 'protocol', 'none', osc('4;3'), state('Indeterminate', null)),
+    progressSpec('paused', 'protocol', 'none', osc('4;4;61'), state('Paused', 61)),
+    progressSpec('replace-normal-with-error', 'protocol', 'normal17', osc('4;2;80'), state('Error', 80)),
+    progressSpec('withdraw', 'protocol', 'normal17', osc('4;0'), null),
+    progressSpec('clamp-high', 'protocol', 'none', osc('4;1;150'), state('Normal', 100)),
+    progressSpec('percent-zero', 'protocol', 'none', osc('4;1;0'), state('Normal', 0)),
+    progressSpec('indeterminate-ignores-percent', 'protocol', 'none', osc('4;3;55'), state('Indeterminate', null)),
+    progressSpec('st-terminated', 'protocol', 'none', osc('4;1;29', '\x1b\\'), state('Normal', 29)),
+    progressSpec('withdraw-when-none', 'control', 'none', osc('4;0'), null),
+    progressSpec('unmarked', 'control', 'normal17', '\x1b[0m', state('Normal', 17)),
+    progressSpec('policy-absent-percent-normal', 'policy', 'none', osc('4;1'), state('Normal', null)),
+    progressSpec('policy-absent-percent-error', 'policy', 'normal17', osc('4;2'), state('Error', null)),
+    progressSpec('policy-absent-percent-paused', 'policy', 'normal17', osc('4;4'), state('Paused', null)),
+    progressSpec('policy-unknown-state', 'policy', 'normal17', osc('4;7;10'), state('Normal', 17)),
+    progressSpec('policy-bare-4', 'policy', 'normal17', osc('4'), state('Normal', 17)),
+    progressSpec('policy-missing-state', 'policy', 'normal17', osc('4;'), state('Normal', 17)),
 ];
 
 /** Notification experiments. A suppression experiment waits too: when the window turns out not to be active its toast is shown and must be gone before the next setup. `focus` names the window condition under which the effect is graded. `toast` is the expected message or null for no toast. */
@@ -101,19 +102,20 @@ function notificationSpecs(runId) {
 /** Every observation follows a distinct, observed setup. */
 export function osc9Experiments(runId) {
     const fixture = osc9Fixture(runId);
-    const progress = progressSpecs.map(([spec, role, setup, feed, expected]) => ({ caseId: `${osc9ProgressCaseId}/${String(spec)}`, owner: osc9ProgressCaseId, name: String(spec), role,
+    const progress = progressSpecs.map(({ name, role, setup, feed, expected }) => ({ caseId: `${osc9ProgressCaseId}/${name}`, owner: osc9ProgressCaseId, name, role,
         kind: 'progress', setup: setups[setup].progress, expected, plan: [{ feed: fixture.stage }, ...(setups[setup].feed ? [{ feed: setups[setup].feed }] : []),
             { read: 'before', kind: 'setup' }, { feed }, { read: 'after', kind: 'effect' },
             // A bare "4" is notification text by documented policy, so an inactive window may show its toast: wait it out before the next experiment.
-            ...(spec === 'policy-bare-4' ? [{ wait: osc9ToastHideWaitMs }] : [])] }));
+            ...(name === 'policy-bare-4' ? [{ wait: osc9ToastHideWaitMs }] : [])] }));
     const specs = notificationSpecs(runId);
     const notifications = specs.map(([name, role, focus, feed, toast], index) => {
         const first = specs.findIndex(item => item[2] === focus) === index, last = index === specs.length - 1;
+        const firstAction = focus === 'inactive' ? 'defocus' : 'refocus';
         const delivered = name === 'delivered', waitsForHide = toast !== null || focus === 'active';
         const tail = delivered ? [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }] : (waitsForHide ? [{ wait: osc9ToastHideWaitMs }] : []);
         return { caseId: `${osc9NotificationCaseId}/${name}`, owner: osc9NotificationCaseId, name, role, kind: 'notification', focus,
             title: fixture.title, expected: toast, ...(name === 'progress-is-not-text' ? { progress: state('Normal', 50) } : {}),
-            plan: [{ feed: fixture.stage }, ...(first ? [{ action: focus === 'inactive' ? 'defocus' : 'refocus' }] : []), { read: 'before', kind: 'setup' }, { feed },
+            plan: [{ feed: fixture.stage }, ...(first ? [{ action: firstAction }] : []), { read: 'before', kind: 'setup' }, { feed },
                 { read: 'after', kind: 'effect' }, ...tail,
                 ...(last ? [{ action: 'refocus' }] : [])] };
     });

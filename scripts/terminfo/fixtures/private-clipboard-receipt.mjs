@@ -67,28 +67,6 @@ async function addTitleStackEvidence({ output, write, context, evidence, lrMargi
         counts: titleStackCounts(titleStackReport), provisionalUntil: 'cell-receipt.json' };
 }
 
-/** The opt-in OSC 9 suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes the title-stack suffix also uses. */
-async function addOsc9Evidence({ output, write, context, evidence, lrMarginsBytes }) {
-    const { syntheticOsc9Evidence } = await import('./osc9-evidence.mjs');
-    const { buildOsc9Report } = await import('../osc9-grading.mjs');
-    const { osc9Counts } = await import('../osc9-receipt.mjs');
-    const { adaptOsc9Collector, osc9AdapterId } = await import('../osc9-grading-collector.mjs');
-    const { osc9SuiteId, osc9ContractsVersion } = await import('../osc9-contracts.mjs');
-    const osc9Bytes = Buffer.from(adaptOsc9Collector(lrMarginsBytes.toString()));
-    const osc9 = syntheticOsc9Evidence({ runId: context.runId, bundleSha256: hash(osc9Bytes) });
-    osc9.adapter = { ...osc9.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
-    const osc9Report = buildOsc9Report(osc9.frames, osc9.run, context.runId, osc9.adapter);
-    write('osn-observations.json', osc9Report);
-    write('osn-run.json', osc9.run);
-    write('osn-focus.json', osc9.focus);
-    writeFileSync(join(output, 'osn-snapshots.jsonl'), osc9.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
-    writeFileSync(join(output, 'collector-osn.mjs'), osc9Bytes);
-    Object.assign(context, { osc9AdapterId, osc9SuiteId, osc9BundleSha256: hash(osc9Bytes), osc9ContractsVersion });
-    evidence.osc9Evidence = { runId: context.runId, suiteId: osc9SuiteId, file: 'osn-observations.json', sha256: hash(readFileSync(join(output, 'osn-observations.json'))),
-        runFile: 'osn-run.json', runSha256: hash(readFileSync(join(output, 'osn-run.json'))), focusFile: 'osn-focus.json', focusSha256: hash(readFileSync(join(output, 'osn-focus.json'))),
-        adapterBundleSha256: hash(osc9Bytes), contractsVersion: osc9ContractsVersion, counts: osc9Counts(osc9Report), provisionalUntil: 'cell-receipt.json' };
-}
-
 /** The opt-in XTGETTCAP suffix: synthetic journaled replies from the suite's own second oracle (never collected ones), written into
  *  `output` and declared in `context` and `evidence`. Layered over the title-stack suffix, which must be added first. */
 async function addXtgettcapEvidence({ output, write, context, evidence, titleStackBytes }) {
@@ -964,4 +942,26 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
+}
+
+/** The opt-in OSC 9 suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes the title-stack suffix also uses. */
+async function addOsc9Evidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticOsc9Evidence } = await import('./osc9-evidence.mjs');
+    const { buildOsc9Report } = await import('../osc9-grading.mjs');
+    const { osc9Counts } = await import('../osc9-receipt.mjs');
+    const { adaptOsc9Collector, osc9AdapterId } = await import('../osc9-grading-collector.mjs');
+    const { osc9SuiteId, osc9ContractsVersion } = await import('../osc9-contracts.mjs');
+    const osc9Bytes = Buffer.from(adaptOsc9Collector(lrMarginsBytes.toString()));
+    const osc9 = syntheticOsc9Evidence({ runId: context.runId, bundleSha256: hash(osc9Bytes) });
+    osc9.adapter = { ...osc9.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const osc9Report = buildOsc9Report(osc9.frames, osc9.run, context.runId, osc9.adapter);
+    write('osn-observations.json', osc9Report);
+    write('osn-run.json', osc9.run);
+    write('osn-focus.json', osc9.focus);
+    writeFileSync(join(output, 'osn-snapshots.jsonl'), osc9.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-osn.mjs'), osc9Bytes);
+    Object.assign(context, { osc9AdapterId, osc9SuiteId, osc9BundleSha256: hash(osc9Bytes), osc9ContractsVersion });
+    evidence.osc9Evidence = { runId: context.runId, suiteId: osc9SuiteId, file: 'osn-observations.json', sha256: hash(readFileSync(join(output, 'osn-observations.json'))),
+        runFile: 'osn-run.json', runSha256: hash(readFileSync(join(output, 'osn-run.json'))), focusFile: 'osn-focus.json', focusSha256: hash(readFileSync(join(output, 'osn-focus.json'))),
+        adapterBundleSha256: hash(osc9Bytes), contractsVersion: osc9ContractsVersion, counts: osc9Counts(osc9Report), provisionalUntil: 'cell-receipt.json' };
 }
