@@ -24,7 +24,12 @@ export function osc9PrerequisiteReason(restored, unavailable, reason) {
 
 /** A context that serves the pinned code nothing but what it legitimately reads: any other access is a changed probe. */
 function pinnedContext(served) {
-    return new Proxy(served, { get(target, key) { if (key in target) return target[key]; throw new Error(`Unexpected pinned context access: ${String(key)}.`); } });
+    return new Proxy(served, {
+        get(target, key) {
+            if (!(key in target)) throw new Error(`Unexpected pinned context access: ${String(key)}.`);
+            return target[key];
+        },
+    });
 }
 
 /** Run every pinned path of both probes. Neither probe writes, feeds or reads anything, so the contexts serve at most the declared capabilities. */

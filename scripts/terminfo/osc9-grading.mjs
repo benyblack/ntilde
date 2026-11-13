@@ -151,7 +151,9 @@ function progressVerdict(experiments, contracts) {
     const matched = relevant.every(item => item.observations[1].passed);
     let outcome = 'inconclusive';
     if (controlsHeld && !stale) outcome = matched ? 'supported' : 'unsupported';
-    return { id: osc9ProgressContractId, outcome, controlsHeld, stale, reason: outcome === 'inconclusive' ? (stale ? 'stale-observation' : 'validity-control-failed') : null,
+    let reason = null;
+    if (outcome === 'inconclusive') reason = stale ? 'stale-observation' : 'validity-control-failed';
+    return { id: osc9ProgressContractId, outcome, controlsHeld, stale, reason,
         protocolExperiments: relevant.map(item => ({ name: item.name, role: item.role, passed: item.observations[1].passed })) };
 }
 

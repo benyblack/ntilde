@@ -2283,7 +2283,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             return record;
         };
         const observeOsc9 = async (request, budget) => {
-            const reason = osc9PrerequisiteReason(xtgettcapObserver?.restored, false, null);
+            // Throws unless the XTGETTCAP suite restored; this suite has no typed-unavailable predecessor, so there is no reason to carry.
+            osc9PrerequisiteReason(xtgettcapObserver?.restored, false, null);
             osc9State ??= { workerPid: request.workerPid, tty: request.tty,
                 observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName, runId, expectedPaneId: cellObserver.paneId,
                     prefix: osc9Prefix, includeResolvedColors: true, planOf: osc9ObserverPlan, matchesBaseline: matchesOsc9Baseline, expose: exposeOsc9Facts }) };

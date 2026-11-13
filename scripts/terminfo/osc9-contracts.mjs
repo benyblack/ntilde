@@ -101,19 +101,20 @@ function notificationSpecs(runId) {
 /** Every observation follows a distinct, observed setup. */
 export function osc9Experiments(runId) {
     const fixture = osc9Fixture(runId);
-    const progress = progressSpecs.map(([name, role, setup, feed, expected]) => ({ caseId: `${osc9ProgressCaseId}/${name}`, owner: osc9ProgressCaseId, name, role,
+    const progress = progressSpecs.map(([spec, role, setup, feed, expected]) => ({ caseId: `${osc9ProgressCaseId}/${String(spec)}`, owner: osc9ProgressCaseId, name: String(spec), role,
         kind: 'progress', setup: setups[setup].progress, expected, plan: [{ feed: fixture.stage }, ...(setups[setup].feed ? [{ feed: setups[setup].feed }] : []),
             { read: 'before', kind: 'setup' }, { feed }, { read: 'after', kind: 'effect' },
             // A bare "4" is notification text by documented policy, so an inactive window may show its toast: wait it out before the next experiment.
-            ...(name === 'policy-bare-4' ? [{ wait: osc9ToastHideWaitMs }] : [])] }));
+            ...(spec === 'policy-bare-4' ? [{ wait: osc9ToastHideWaitMs }] : [])] }));
     const specs = notificationSpecs(runId);
     const notifications = specs.map(([name, role, focus, feed, toast], index) => {
         const first = specs.findIndex(item => item[2] === focus) === index, last = index === specs.length - 1;
-        const delivered = name === 'delivered';
+        const delivered = name === 'delivered', waitsForHide = toast !== null || focus === 'active';
+        const tail = delivered ? [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }] : (waitsForHide ? [{ wait: osc9ToastHideWaitMs }] : []);
         return { caseId: `${osc9NotificationCaseId}/${name}`, owner: osc9NotificationCaseId, name, role, kind: 'notification', focus,
             title: fixture.title, expected: toast, ...(name === 'progress-is-not-text' ? { progress: state('Normal', 50) } : {}),
             plan: [{ feed: fixture.stage }, ...(first ? [{ action: focus === 'inactive' ? 'defocus' : 'refocus' }] : []), { read: 'before', kind: 'setup' }, { feed },
-                { read: 'after', kind: 'effect' }, ...(delivered ? [{ wait: osc9ToastHideWaitMs }, { read: 'hidden', kind: 'hidden' }] : toast !== null || focus === 'active' ? [{ wait: osc9ToastHideWaitMs }] : []),
+                { read: 'after', kind: 'effect' }, ...tail,
                 ...(last ? [{ action: 'refocus' }] : [])] };
     });
     return [...progress, ...notifications];
