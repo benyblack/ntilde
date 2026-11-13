@@ -24,7 +24,7 @@ termless capability is an adapter-side declaration the pinned code is served; it
 | `extensions.notifications` | inconclusive by design | inconclusive by design | **supported** (`ntilde-osc9-notification-toast-effect-v1`) | inconclusive |
 
 The effect contracts are separately identified, with their own bytes and oracle; the divergence (`pinned-inconclusive-by-design`) is recorded in
-[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`8c3a02fcf25c679feff6fcc1611f676e`), still grades both inconclusive
+[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`b9369a7b5dca890d8aad5b964e3b3a14`; stock collector run `8c3a02fcf25c679feff6fcc1611f676e`), still grades both inconclusive
 (87 supported / 1 unsupported / 167 inconclusive, `suiteComplete=false`): **no stock score and no Core point is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
