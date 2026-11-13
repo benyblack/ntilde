@@ -24,7 +24,7 @@ termless capability is an adapter-side declaration the pinned code is served; it
 | `extensions.notifications` | inconclusive by design | inconclusive by design | **supported** (`ntilde-osc9-notification-toast-effect-v1`) | inconclusive |
 
 The effect contracts are separately identified, with their own bytes and oracle; the divergence (`pinned-inconclusive-by-design`) is recorded in
-[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`5ed96449b689ed53f576596d89842759`), still grades both inconclusive
+[report.json](2026-11-13-osc9/report.json). The stock collector, re-run in the same owned run (`32751fafa46975094d07cdffa41fe454`), still grades both inconclusive
 (87 supported / 1 unsupported / 167 inconclusive, `suiteComplete=false`): **no stock score and no Core point is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -51,16 +51,16 @@ after the wait (auto-hide verified, restored), the unmarked control and an `OSC 
 capped at 200 characters ending in an ellipsis, a whitespace-only text is dropped, and a bare `4` is shown as text `4`.
 
 **Decision rule.** Had the inactive-window delivery control not held at both control time and delivery, the notification case would have stayed inconclusive with the
-concrete reason retained; attempt 4 below shows exactly that outcome (a refocus that did not take left a toast visible into the next setup, so validity controls
-failed) and it was kept as a superseded attempt, not graded.
+concrete reason retained; attempts 4, 8 and 10 below show exactly that outcome (a refocus that did not take, a window that became active again, and a focus action that was never
+admitted, respectively); each was kept as a superseded attempt, not graded.
 
 ## Identities
 
 App 0.13.0 (operator supplied) built from `b2121100df7c76773e1a15ba569cb3f5526209dc` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly
 SHA-256 `ce358b1b093775e507df6ac50b0d9b2f3a2674b54c675654c510a33a042c773a`; the binary is bit-identical to the title/icon-stack and XTGETTCAP runs, since no production
-source changed); measured scripts `d859c9c0481db865b7248069abaac6a8d56231c2`; source policy `readonly-owned-source-graph-v50` (336 files; manifest SHA-256
-`62089f7ae93d0574d9b8c92c3f3b4207ec2679b4ab632ea283edd767ca93d270`); initial settings SHA-256 `079fd25e06ad24cc4f7643b9f1e76cb9442efda2b4f3694eb7d3fb79bb05221d`; receipt schema 56; Node
-v24.22.2; owned run `129e1504c2cfdda490c87f2b65246059`; collected 2026-11-13T13:57Z on macOS. The App label is operator supplied and the build is not binary-to-source
+source changed); measured scripts `c98482ee2aa9c7ca7ee3ee760774a2d082a2c5b3`; source policy `readonly-owned-source-graph-v50` (336 files; manifest SHA-256
+`94bcd9440b4b53738750757be89eab4486eb2a9a92226280b29cf63c5d61e4a6`); initial settings SHA-256 `e907bb0eb015d37d1ffe53af385bf1553e880b4efcdd0bd56076be9cf0956d60`; receipt schema 56; Node
+v24.22.2; owned run `e6d1207f698b7f9ef4b12a6ae245cbb0`; collected 2026-11-13T14:27Z on macOS. The App label is operator supplied and the build is not binary-to-source
 attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-13-osc9/superseded/))
@@ -73,7 +73,14 @@ attestation. Predecessor suites ran in the same full run and their receipt suffi
 5. Completed with both effect contracts supported; superseded by a local Codex finding (focus retries could outlast the owner socket's five-second limit).
 6. Completed with both effect contracts supported on the bounded focus action; superseded because the full script suite requires the runner's dispatch to stay three anchored
    expressions and one prefix set, so the focus actions moved to an exact-kind set (the runner is a measured file).
-7. Final run.
+7. Completed with both supported; superseded by the SonarCloud findings (nested ternaries, an unused prerequisite value, a stringification and a one-line conditional in
+   measured files).
+8. Completed, but the notification case came out **inconclusive** (`inactive-window-precondition-unmet`): the App window became active again after the second delivery
+   experiment although the parent took no action. Kept as measured, ungraded.
+9. The same scripts rerun: both supported; superseded by CodeRabbit's finding that the focus action was not bounded by the owner request's remaining deadline.
+10. Completed with the focus action bounded by that deadline, but the shared deadline reports at most two seconds at a time, which my first attempt-sized bound could never
+    fit: no focus action ran and the notification case stayed **inconclusive** with its reason. Kept as measured, ungraded.
+11. Final run: a whole focus attempt (command, settle, query: 1.6 s worst case) is admitted only while the reported deadline remainder covers it.
 
 ## Not claimed
 
