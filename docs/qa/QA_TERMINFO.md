@@ -1,5 +1,9 @@
 # Optional terminfo.dev desktop baseline
 
+The [insert/replace qualification](terminfo/2026-11-12-insert-replace-qualification.md) separately preserves the pinned termless,
+terminal-path, stock and stored-cell effect outcomes for `modes.insert-replace`. Its ASCII transition, edge, attribute and restoration
+controls were collected on a disposable macOS sidecar under source policy v48 and receipt schema 54; this adds no automatic Core score.
+
 
 The [2026-11-11 Core results](terminfo/2026-11-11-core-results/report.md) give one criterion-matched conclusion per current Core requirement, with fresh retained evidence, separate pinned/effect verdicts and an offline rederivation command. The older Core baseline remains an immutable evidence map.
 

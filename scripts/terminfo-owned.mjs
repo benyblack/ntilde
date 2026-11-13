@@ -16,6 +16,12 @@ const coreGapsReferencePaths = Object.freeze({
 const oscTitleReferencePaths = Object.freeze({
     "osc-title-tab-labels.cs": "src/Ntilde.App/MainWindow.TabLabels.cs",
 });
+const insertReplaceReferencePaths = Object.freeze({
+    'irm-vt-write.cs': 'src/Ntilde.VT/TerminalBuffer.WritePath.cs',
+    'irm-vt-modes.cs': 'src/Ntilde.VT/ModeState.cs',
+    'irm-vt-margins.cs': 'src/Ntilde.VT/TerminalBuffer.Margins.cs',
+    'irm-observer-contract.cs': 'src/Ntilde.AgentHost.Contracts/BufferStateDto.cs',
+});
 const privateClipboardReferencePaths = Object.freeze({
     "clipboard-app-program.cs": "src/Ntilde.App/Program.cs",
     "clipboard-app.cs": "src/Ntilde.App/App.axaml.cs",
@@ -51,6 +57,7 @@ const sgrRgbReferencePaths = Object.freeze({
 function pathFor(root, file) {
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
+    if (Object.hasOwn(insertReplaceReferencePaths, file)) return join(root, insertReplaceReferencePaths[file]);
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
     if (Object.hasOwn(sgrRgbReferencePaths, file)) return join(root, sgrRgbReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
@@ -89,7 +96,7 @@ async function capture(root) {
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
     for (const [key, file] of Object.entries(inventory)) {
         if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)
-            && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file))) throw new Error('Invalid source inventory entry.');
+            && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(insertReplaceReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);
         if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular source file.');
         const bytes = file === 'owned-source-inventory.json' ? input : readFileSync(source);

@@ -12,7 +12,7 @@ import { asciiReflowSuiteId } from './ascii-reflow-contracts.mjs';
 import { asciiReflowSources, asciiReflowPrefixFiles, includesReflowEvidence, checkReflowEvidence } from './ascii-reflow-receipt.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
-const policy = 'readonly-owned-source-graph-v48', ownedPolicy = 'parent-selected App resize in proved private pane; independent kernel geometry and -opost; two ASCII reflow experiments on one disposable main screen';
+const policy = 'readonly-owned-source-graph-v49', ownedPolicy = 'parent-selected App resize in proved private pane; independent kernel geometry and -opost; two ASCII reflow experiments on one disposable main screen';
 const suiteRoot = fileURLToPath(new URL('.', import.meta.url));
 
 function fixture(action) {
@@ -87,9 +87,9 @@ test('typed initial unavailability is retained, while partial artifacts cannot b
 
 test('each partial declaration requires the suffix even under an older policy', () => {
     for (const key of ['asciiReflowAdapterId', 'asciiReflowSuiteId', 'asciiReflowBundleSha256', 'asciiReflowContractsVersion', 'ownedAsciiReflowPolicy', ...Object.keys(asciiReflowSources)]) {
-        assert.equal(includesReflowEvidence('/nonexistent', {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v47', [key]: 'present' }), true, key);
+        assert.equal(includesReflowEvidence('/nonexistent', {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v48', [key]: 'present' }), true, key);
     }
-    assert.equal(includesReflowEvidence('/nonexistent', { reflowEvidence: {} }, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v47' }), true);
+    assert.equal(includesReflowEvidence('/nonexistent', { reflowEvidence: {} }, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v48' }), true);
     assert.equal(includesReflowEvidence('/nonexistent', {}, { sourceSnapshotPolicy: policy }), true);
-    assert.equal(includesReflowEvidence('/nonexistent', {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v47' }), false);
+    assert.equal(includesReflowEvidence('/nonexistent', {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v48' }), false);
 });

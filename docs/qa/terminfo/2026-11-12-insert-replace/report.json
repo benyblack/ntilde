@@ -1,0 +1,335 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-insert-replace-effect-v1",
+  "contractsVersion": 1,
+  "runId": "49bd73d770d9587ed06a01c052475889",
+  "adapter": {
+    "id": "ntilde-owned-insert-replace-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "0b01ac91e9364fd4f0965a072ce4d35271198141427c708c15d902e592a777e9",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Bounded stored ASCII cells, cursor and stored attributes on the owned disposable App; terminal-path cursor projection and stock collector remain separate.",
+  "cases": [
+    {
+      "caseId": "modes.insert-replace",
+      "pinned": {
+        "probeId": "modes.insert-replace",
+        "pass": true,
+        "response": "{\"seed\":[\"A\",\"B\",\"C\",\" \"],\"origin\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[\"X\",\"A\",\"B\",\"C\"]}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "IRM inserts X before measured ABC instead of replacing A",
+            "observed": "{\"seed\":[\"A\",\"B\",\"C\",\" \"],\"origin\":{\"x\":0,\"y\":0,\"visible\":true},\"after\":[\"X\",\"A\",\"B\",\"C\"]}"
+          }
+        ]
+      },
+      "terminalPinned": {
+        "probeId": "modes.insert-replace",
+        "pass": false,
+        "response": "{\"row\":1,\"col\":3}",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query",
+          "note": "Cursor advance does not measure whether X displaced the existing cells"
+        }
+      },
+      "terminalCursorEvidence": "parent-observed cursor projection; not a PTY cursor reply",
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "modes.insert-replace",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "Cursor advance does not measure whether X displaced the existing cells",
+        "rawReplyRef": "modes.insert-replace"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "wrap": "disabled",
+        "seed": {
+          "text": "ABC     ",
+          "cursor": [
+            0,
+            3
+          ]
+        },
+        "inserted": {
+          "text": "XABC    ",
+          "cursor": [
+            0,
+            1
+          ]
+        },
+        "replaced": {
+          "text": "XYBC    ",
+          "cursor": [
+            0,
+            2
+          ]
+        },
+        "wideBefore": {
+          "text": "ABCDEFGHIJ  ",
+          "cursor": [
+            1,
+            2
+          ]
+        },
+        "wideInserted": {
+          "text": "ABxyCDEFGHIJ",
+          "cursor": [
+            1,
+            4
+          ]
+        },
+        "wideReplaced": {
+          "text": "ABxyZDEFGHIJ",
+          "cursor": [
+            1,
+            5
+          ]
+        },
+        "edgeBefore": {
+          "text": "WXY",
+          "cursor": [
+            0,
+            137
+          ]
+        },
+        "edgeInserted": {
+          "text": "QRW",
+          "cursor": [
+            0,
+            139
+          ]
+        },
+        "attributes": {
+          "beforeD": {
+            "char": "D",
+            "flags": 769,
+            "bold": true,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": null,
+            "fgSource": "default",
+            "bgSource": "default",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "afterD": {
+            "char": "D",
+            "flags": 769,
+            "bold": true,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": null,
+            "fgSource": "default",
+            "bgSource": "default",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "beforeE": {
+            "char": "E",
+            "flags": 769,
+            "bold": true,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": null,
+            "fgSource": "default",
+            "bgSource": "default",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "afterE": {
+            "char": "E",
+            "flags": 769,
+            "bold": true,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": null,
+            "fgSource": "default",
+            "bgSource": "default",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": -1,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "writtenX": {
+            "char": "x",
+            "flags": 33024,
+            "bold": false,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": {
+              "r": 0,
+              "g": 0,
+              "b": 238
+            },
+            "fgSource": "default",
+            "bgSource": "palette",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": 4,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "writtenY": {
+            "char": "y",
+            "flags": 33024,
+            "bold": false,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": {
+              "r": 0,
+              "g": 0,
+              "b": 238
+            },
+            "fgSource": "default",
+            "bgSource": "palette",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": 4,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "penX": {
+            "char": "x",
+            "flags": 33024,
+            "bold": false,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": {
+              "r": 0,
+              "g": 0,
+              "b": 238
+            },
+            "fgSource": "default",
+            "bgSource": "palette",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": 4,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          },
+          "penY": {
+            "char": "y",
+            "flags": 33024,
+            "bold": false,
+            "dim": false,
+            "italic": false,
+            "underline": false,
+            "inverse": false,
+            "hidden": false,
+            "strikethrough": false,
+            "blink": false,
+            "overline": false,
+            "fg": null,
+            "bg": {
+              "r": 0,
+              "g": 0,
+              "b": 238
+            },
+            "fgSource": "default",
+            "bgSource": "palette",
+            "underlineStyle": 0,
+            "underlineColorIndex": -1,
+            "underlineArgb": null,
+            "fgIndex": -1,
+            "bgIndex": 4,
+            "foregroundArgb": null,
+            "backgroundArgb": null
+          }
+        }
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-stored-cells",
+        "grading": "pinned-termless-replayed-over-owned-observations"
+      }
+    }
+  ]
+}
