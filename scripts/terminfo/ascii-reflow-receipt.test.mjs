@@ -81,6 +81,15 @@ test('typed initial unavailability is retained, while partial artifacts cannot b
     delete f.evidence.reflowEvidence.runFile; delete f.evidence.reflowEvidence.runSha256;
     f.proof.proofs[0].asciiReflow = { policy: ownedPolicy, actions: [] };
     assert.doesNotThrow(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof));
+    // A retained completion artifact under an unavailable binding must refuse.
+    writeFileSync(join(f.dir, 'rf-run.json'), '{"schemaVersion":1}');
+    assert.throws(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof), /completion artifacts/);
+    rmSync(join(f.dir, 'rf-run.json'));
+    // A completion-only binding field on an unavailable run must refuse.
+    f.evidence.reflowEvidence.runFile = 'rf-run.json';
+    assert.throws(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof), /regular bounded file|Changed|Invalid|JSON/);
+    delete f.evidence.reflowEvidence.runFile;
+    // Partial journal bytes cannot be hidden either.
     writeFileSync(join(f.dir, 'reflow-snapshots.jsonl'), 'partial');
     assert.throws(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof));
 }));

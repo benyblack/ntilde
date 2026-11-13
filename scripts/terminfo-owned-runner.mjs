@@ -2020,7 +2020,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const recordReflowUnavailable = reason => {
             const file = 'reflow-unavailable.json';
             writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: asciiReflowSuiteId,
-                status: 'unavailable', reason, fixtureStarted: false, plannedExperiments: asciiReflowCaseIds.length });
+                status: 'unavailable', reason, fixtureStarted: false, plannedExperiments: 2 });
             reflowState.unavailable = { runId, suiteId: asciiReflowSuiteId, file, sha256: hash(readFileSync(join(output, file))),
                 status: 'unavailable', reason, counts: {}, provisionalUntil: 'cell-receipt.json' };
         };
