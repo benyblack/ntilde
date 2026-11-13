@@ -58,7 +58,7 @@ direct observation unless marked *inference*.
    records, not by per-frame time) with no parent focus action performed. The retained report grades the notification case
    `inconclusive` (`inactive-window-precondition-unmet`) for that reason; its progress case is `supported` with its controls
    held, which does not establish desktop exclusivity. Frame times are not recorded, so
-   tying the activation to the other App's window opening or closing (14:15:36Z / 14:16:43Z) is *inference*, not observation.
+   tying the activation to the other App's window opening or closing (14:15:36Z / 14:16:43Z) is *inference*, not observation: it is this audit's inference, and neither this audit nor the OSC 9 owner has direct evidence that the overlap caused the focus change (a user or another process could equally have activated the window).
 4. **No other run shows an unexplained transition.** In every other GUI run the `windowActive` transitions are exactly
    those of the parent's `refocus` / `defocus` / `refocus` actions; terminal geometry is 40 rows throughout; no wrapper log
    contains an "unexpected input" line. No other recorded GUI collection in any worktree overlaps any other OSC 9 run.
