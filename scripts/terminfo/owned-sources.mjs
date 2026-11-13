@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v49';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v50';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -626,9 +626,22 @@ export const capturedV55SourceFiles = Object.freeze({
     insertReplaceObserverContractSourceSha256: 'irm-observer-contract.cs',
 });
 
-// Frozen v56 ASCII-reflow grading scope; future experiments must create a distinct policy and map.
+// Frozen v56 XTGETTCAP (device.xtgettcap) grading scope; future experiments must create a distinct policy and map.
 export const capturedV56SourceFiles = Object.freeze({
     ...capturedV55SourceFiles,
+    xtgettcapReportSourceSha256: 'xtgettcap-report.mjs',
+    xtgettcapContractsSourceSha256: 'xtgettcap-contracts.mjs',
+    xtgettcapCaptureSourceSha256: 'xtgettcap-capture.mjs',
+    xtgettcapCollectorSourceSha256: 'xtgettcap-collector.mjs',
+    xtgettcapGradingSourceSha256: 'xtgettcap-grading.mjs',
+    xtgettcapGradingCollectorSourceSha256: 'xtgettcap-grading-collector.mjs',
+    xtgettcapReceiptSourceSha256: 'xtgettcap-receipt.mjs',
+    xtgettcapReceiptCoreSourceSha256: 'xtgettcap-receipt-core.mjs',
+});
+
+// Frozen v57 ASCII-reflow grading scope; future experiments must create a distinct policy and map.
+export const capturedV57SourceFiles = Object.freeze({
+    ...capturedV56SourceFiles,
     asciiReflowContractsSourceSha256: 'ascii-reflow-contracts.mjs',
     asciiReflowObserverSourceSha256: 'ascii-reflow-observer.mjs',
     asciiReflowCollectorSourceSha256: 'ascii-reflow-collector.mjs',
@@ -637,11 +650,11 @@ export const capturedV56SourceFiles = Object.freeze({
     asciiReflowReceiptSourceSha256: 'ascii-reflow-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v56 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v57 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV56SourceFiles)) throw new Error('Invalid current v56 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV57SourceFiles)) throw new Error('Invalid current v57 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

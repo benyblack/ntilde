@@ -46,9 +46,10 @@
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 104,
+    "effectSupportedIds": 105,
     "pinnedAndEffectSupportedIds": 85,
     "effectSupportedPinnedInconclusiveIds": [
+      "device.xtgettcap",
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
@@ -69,7 +70,7 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 103,
+    "effectSupportedOfStockInconclusive": 104,
     "pinnedSupportedOfStockInconclusive": 84,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -83,7 +84,7 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 65,
+      "effectUnqualified": 64,
       "notPinnedSupported": 84
     }
   },
@@ -2453,58 +2454,58 @@
       }
     },
     {
-      "suite": "ascii-reflow",
-      "suiteId": "ntilde-owned-ascii-reflow-v1",
+      "suite": "xtgettcap",
+      "suiteId": "ntilde-owned-xtgettcap-graded-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-12-ascii-reflow/",
-      "doc": "2026-11-12-ascii-reflow-qualification.md",
+      "publication": "2026-11-12-xtgettcap/",
+      "doc": "2026-11-12-xtgettcap-qualification.md",
       "caseCount": 1,
       "caseIds": [
-        "extensions.reflow"
+        "device.xtgettcap"
       ],
       "evidence": {
-        "files": 13,
-        "bytes": 55311640,
-        "sha256": "f3728c8d8f44803b71ef557709ceccf6c939cde43d27f05a72b00684f9111ded"
+        "files": 37,
+        "bytes": 1946169,
+        "sha256": "f0caebd71a05897e8d97a5b6a4b135da9428d2760cc7e8144efca64b203bb07c"
       },
       "receipt": {
         "schemaVersion": 55,
-        "runId": "84799e1486d69b884228bb650a65de5d",
+        "runId": "aa7a5ca73f48684b78b86f0fc29a2beb",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "7c11752634ee21a07c8917bebf3625e5ad5cbc4670c20e70f7327d7455fd96e4"
+          "sha256": "98ba47071943d1b77c5aee88eef58d4319e3c5cd59ce492751d02e6d541f9022"
         },
         "suiteEvidence": {
-          "suiteId": "ntilde-owned-ascii-reflow-v1",
-          "file": "reflow-observations.json",
-          "sha256": "84881b1abfcff80351f405487324c2b6781241dafad6993ed9f58d5115d42963",
-          "runFile": "rf-run.json",
-          "runSha256": "a38fab5e7ad6732e887a3f6597617a44e1599eb725f1ca91b35213afb57b2e8e",
+          "suiteId": "ntilde-owned-xtgettcap-graded-v1",
+          "file": "xgtc-observations.json",
+          "sha256": "23bc4532fceb50951f44c13904c3e8724ae1fce8158f8a3a1cf0877f85526d12",
+          "runFile": "xgtc-run.json",
+          "runSha256": "6fd043ad6c5f469103435356502ddb26585c98a9ff0ada49e8f38244de3c8d40",
           "counts": {
-            "unsupported": 1
+            "inconclusive": 1
           },
           "contractsVersion": 1
         }
       },
       "run": {
-        "ownedRunId": "84799e1486d69b884228bb650a65de5d",
-        "measuredAt": "2026-11-13T11:15:00.366Z",
-        "appRevision": "0a0dc8d1b454ee267431d33e09dcd5a8637735dc",
-        "appVersion": "0.13.0+0a0dc8d1b454ee267431d33e09dcd5a8637735dc",
+        "ownedRunId": null,
+        "measuredAt": null,
+        "appRevision": "2d8433d9bee2dc7fa15895935e08eefe7f21354d",
+        "appVersion": "0.13.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "0a0dc8d1b454ee267431d33e09dcd5a8637735dc",
+        "scriptsRevision": "fad37d25d6899d6161309c62ce7ab7b3412f529e",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "1c10fd0ae93c00f2c9076b17e93421aa904f5c00a96a4d6278655051a3a7cddc",
-        "gradingAdapterId": "ntilde-owned-ascii-reflow-grading-v1",
-        "gradingAdapterBundleSha256": "8f69c338ec6696584720ec9e779b0bfbc6e61d795994f31946233bbcdfc247c7",
+        "collectorAdapterBundleSha256": "cb887b08683c7cb20c859ef596cab4b8c42cc39a27e3796e55c700435f5a9d07",
+        "gradingAdapterId": "ntilde-owned-xtgettcap-grading-v1",
+        "gradingAdapterBundleSha256": "bba3861a3154ba2f83583dd64b79a3ee02098d744db9be69c6e15f78809fa48a",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v49",
-        "sourceSnapshotManifestSha256": "5403b78620f7e577d7fbacdd38a5fe13f453b78c3b6d402930743a11c7293f9a"
+        "sourceSnapshotManifestSha256": "121aaef600cab19a276828c2cdc57b8fc9edc50bc0871461b5f5a99ec7a90474"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "594bb6f660f9fb5bb107ce3495b4f540",
+        "runId": "db8145b172dbf0ab7b5fe8221dfb2c36",
         "counts": {
           "inconclusive": 167,
           "supported": 87,
@@ -2512,14 +2513,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "5ce7a93d138e571ad3aa31f21d0a72a1ac5b73f97f8240dc0becd06540ad9210",
+        "rawSha256": "00bd8bc13e297f3231fbb71bad47cde052ebd5d44625e3c051fd7b1568020632",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
-        "note": "Stock terminal-path grades collected in the same owned run; the owned effect verdict does not change the stock score."
+        "note": "Stock terminal-path grades; the owned effect contract does not change the stock score."
       },
       "rederivation": {
         "status": "passed",
-        "command": "node --test scripts/terminfo/ascii-reflow-publication.test.mjs",
-        "testSha256": "3780266c3196c51f666fdf7dd8968f478c77d4fc181a13edd6e3bf35f0eb1543"
+        "command": "node --test scripts/terminfo/xtgettcap-publication.test.mjs",
+        "testSha256": "a81f4d922e4bfc5ec9a1ef0abd55bffdfe30c86ca060d3b6ed53706b9aa301ec"
       }
     }
   ],
@@ -2894,6 +2895,58 @@
             "controlled-pixels"
           ],
           "evidenceTag": "owned-stored-cursor-and-controlled-pixels"
+        }
+      ]
+    },
+    {
+      "id": "device.xtgettcap",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "xtgettcap",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "xtgettcap",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "device.xtgettcap",
+          "suite": "xtgettcap",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Requested setting or name refused; other settings or names unmeasured"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
         }
       ]
     },
@@ -4967,59 +5020,6 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-stored-cells-and-pane-metadata"
-        }
-      ]
-    },
-    {
-      "id": "extensions.reflow",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "ascii-reflow",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "unsupported",
-        "byClaim": [
-          {
-            "suite": "ascii-reflow",
-            "verdict": "unsupported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.reflow",
-          "suite": "ascii-reflow",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": "No controlled resize and cell-content readback to measure reflow"
-          },
-          "effect": {
-            "verdict": "unsupported"
-          },
-          "reportedConclusion": {
-            "outcome": "inconclusive",
-            "grading": "pinned-termless-preserved-by-design"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-inconclusive-by-design",
-            "pinned": "inconclusive",
-            "effect": "unsupported",
-            "reason": "No controlled resize and cell-content readback to measure reflow"
-          },
-          "measuredLayers": [
-            "stored-state",
-            "actual-scrollback"
-          ],
-          "evidenceTag": "stored-state and actual-scrollback"
         }
       ]
     },

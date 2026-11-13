@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "ntilde-owned-xtgettcap-grading-v1",
+  "probeIds": [
+    "device.xtgettcap"
+  ],
+  "cases": [
+    {
+      "caseId": "device.xtgettcap",
+      "feeds": [
+        "\u001b[2;1H\u001b[1mNtilde\u001b[31mXT\u001b[0m\u001b[4;1H\u001b[4:3mU\u001b[0m\u001b[2;6r\u001b[1;1H",
+        "\u001bP+q544e\u001b\\",
+        "\u001bP+q436f\u001b\\",
+        "\u001bP+q636f6c6f7273\u001b\\",
+        "\u001bP+q524742\u001b\\",
+        "\u001bP+q5463\u001b\\",
+        "\u001bP+q536d756c78\u001b\\",
+        "\u001bP+q436f;544e;5463;436f\u001b\\",
+        "\u001bP+q544e;436f\u001b\\",
+        "\u001bP+q6b63757531\u001b\\",
+        "\u001bP+q6e6f742d612d6361706162696c697479\u001b\\",
+        "\u001bP+q636f\u001b\\",
+        "\u001bP+q436F\u001b\\",
+        "\u001bP+q5\u001b\\",
+        "\u001bP+q5463\u001b\\",
+        "\u001bP+qzz\u001b\\",
+        "\u001bP+q436f\u001b\\",
+        "\u001bP+q\u001b\\",
+        "\u001bP+q544e\u001b\\",
+        "\u001bP+q436f;5\u001b\\",
+        "\u001bP+q536d756c78\u001b\\"
+      ],
+      "barriers": [
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c",
+        "\u001b[?62;4;22c"
+      ],
+      "reads": [
+        {
+          "kind": "cells",
+          "cursor": [
+            0,
+            0
+          ]
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r436f=323536\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r636f6c6f7273=323536\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r524742\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r5463\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r536d756c78=1B5B343A25703125646D\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r436f=323536\u001b\\",
+              "\u001bP0+r\u001b\\",
+              "\u001bP1+r5463\u001b\\",
+              "\u001bP1+r436f=323536\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\",
+              "\u001bP1+r436f=323536\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r436F=323536\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r5463\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r436f=323536\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP0+r\u001b\\"
+            ]
+          }
+        },
+        {
+          "kind": "report",
+          "cursor": [
+            0,
+            0
+          ],
+          "report": {
+            "barrier": "\u001b[?62;4;22c",
+            "replies": [
+              "\u001bP1+r536d756c78=1B5B343A25703125646D\u001b\\"
+            ]
+          }
+        }
+      ],
+      "pinned": {
+        "termless": {
+          "probeId": "device.xtgettcap",
+          "pass": false,
+          "response": "\u001bP0+r\u001b\\",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query",
+            "note": "Requested setting or name refused; other settings or names unmeasured"
+          }
+        },
+        "terminal": {
+          "probeId": "device.xtgettcap",
+          "pass": false,
+          "response": "\u001bP0+r\u001b\\\u001b[?62;4;22c",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query",
+            "note": "Requested setting or name refused; other settings or names unmeasured"
+          }
+        }
+      }
+    }
+  ]
+}
