@@ -1,17 +1,18 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "6270e2285097b78d1771a1cd5668b71d11eb689c31e0f760b4369614c1026006",
+    "owned-run.zip": "c53b9c9902c9f2e0a0dd111fa7a0175530daccf8935e06a2e41987b5c4d71c81",
     "superseded/attempt-25.zip": "a834bc3d57b82ea5acea0c976a1451d6aa4f50285a9c993072c0f8a113751b9b",
     "superseded/attempt-26.zip": "9a7aed51a18dd2da58e589d6b59f320a47487f091e0eaa9e0cc5295d519b65f6",
     "superseded/attempt-27.zip": "5e6394f6edefe0d85d519f1e9ea025420c9ed7713a598f6395418859a08523bb",
+    "superseded/attempt-28.zip": "6270e2285097b78d1771a1cd5668b71d11eb689c31e0f760b4369614c1026006",
     "superseded/attempt12-pre-v52-infrastructure.zip": "dbba67650840c110b453926acc2b577faf93d21755d5578b090bee9cb33c2211"
   },
   "appRevision": "5a20054d70ff72b0953ea0b342381d93035b7571",
-  "scriptsRevision": "e6c4571ba48c1d716feb18d9c208695637ca587d",
+  "scriptsRevision": "83da0a5208ec9e29e2b6412021278835c9558e28",
   "appAssemblySha256": "c9c0119ce7a08e79d9c1b36b161fc9015e6a55ce6e482c588cbd509a06587f1a",
   "measurement": {
-    "runId": "9dfbaccd612098f3a9ed6b288c4ed9e6",
+    "runId": "698c89fd233a5c545916ca120e31c077",
     "receiptSchema": 58,
     "sourcePolicy": "readonly-owned-source-graph-v52"
   },
@@ -30,6 +31,11 @@
       "archive": "superseded/attempt-27.zip",
       "runId": "9222501a4a407da83896aec15c02efa4",
       "reason": "Complete receipt, but all four effect contracts were inconclusive: the shared observer requested every capture with a null selection, so no render-only synthetic selection was drawn, the controlled renders were byte-identical across stages and every render control failed. Superseded by the observer fix."
+    },
+    {
+      "archive": "superseded/attempt-28.zip",
+      "runId": "9dfbaccd612098f3a9ed6b288c4ed9e6",
+      "reason": "Complete and supported on all four cases, superseded because Codex and CodeRabbit found that the render checks skipped the selected-ink check while a background override was active, and that the reset cases did not compare the pinned not-tested declaration; the measured contract and grading scripts changed."
     },
     {
       "archive": "superseded/attempt12-pre-v52-infrastructure.zip",
