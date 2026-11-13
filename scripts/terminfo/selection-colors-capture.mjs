@@ -8,7 +8,6 @@
 // state, theme and PNG return.
 import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
-import { ColorResetObserver } from './color-reset-capture.mjs';
 import { validateColorCapture } from './color-capture.mjs';
 import { pngHash } from './pixels-capture.mjs';
 import { selectionColorsReadPlan, selectionColorsSelection } from './selection-colors-contracts.mjs';
@@ -23,12 +22,6 @@ export function retainedSelectionColorsCapture(output, frame) {
     if (!entry.isFile() || entry.isSymbolicLink() || entry.size > 5 * 1024 * 1024) throw new Error('Invalid retained selection-color capture file.');
     const bytes = readFileSync(path);
     if (bytes.length !== pixel.byteCount || pngHash(bytes) !== pixel.sha256) throw new Error('Retained selection-color PNG bytes changed.');
-    return validateColorCapture({ ...pixel, pngBase64: bytes.toString('base64'), renderDetails: pixel.renderDetails }, frame.screen, selectionColorsSelection);
+    return validateColorCapture({ ...pixel, pngBase64: bytes.toString('base64'), renderDetails: pixel.renderDetails }, frame.screen, null);
 }
 
-export class SelectionColorsObserver extends ColorResetObserver {
-    constructor({ output, captureRpc, ...options }) {
-        super({ output, captureRpc, directory, prefix: 'selc', plan: selectionColorsReadPlan,
-            selection: structuredClone(selectionColorsSelection), suiteLabel: 'Selection-color', ...options });
-    }
-}

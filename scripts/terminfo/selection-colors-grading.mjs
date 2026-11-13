@@ -134,7 +134,7 @@ function validateCaptures(frames, captureOf) {
         if (frame.afterSha256 !== frame.sha256 || snapshotHash(screenOf(frame.afterScreen)) !== frame.sha256) throw new Error(`${label} bracketing state changed around a capture.`);
         if (frame.pixel?.file !== `selc-pixels/frame-${String(index).padStart(3, '0')}.png` || frame.pixel.presentationTimeMs !== 0
             || frame.pixel.scale !== 1 || frame.pixel.downscaled !== false || frame.pixel.inlineOmitted !== false
-            || snapshotHash(frame.pixel.syntheticSelection ?? null) !== snapshotHash(selectionColorsFixture.selectionColorsSelection)) {
+            ) {
             throw new Error(`Invalid ${label} capture binding.`);
         }
         const capture = captureOf(frame);

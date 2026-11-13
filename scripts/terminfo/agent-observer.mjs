@@ -228,7 +228,7 @@ export class OwnedCellObserver {
     async handle(kind, budget, barrier = null) {
         if (this.busy || this.restored) throw new Error('Cell observation is busy or already complete.');
         const operation = kind.startsWith(this.prefix + '-') ? kind.slice(this.prefix.length + 1) : '';
-        if (!['start', 'bind', 'read', 'finish'].includes(operation)) throw new Error('Unknown cell operation. kind=' + kind + ' prefix=' + this.prefix);
+        if (!['start', 'bind', 'read', 'finish'].includes(operation)) throw new Error('Unknown cell operation.');
         if (operation !== 'start' && (typeof barrier !== 'string' || barrier.length > 128 || !/^\x1b\[\?[\d;]+c$/.test(barrier))) {
             throw new Error('Missing cell ordering barrier.');
         }

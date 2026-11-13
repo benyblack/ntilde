@@ -151,7 +151,7 @@ import { modifyOtherKeysCaseIds, modifyOtherKeysContractsVersion, modifyOtherKey
 import { buildModifyOtherKeysGradingReport, modifyOtherKeysCounts } from './terminfo/modify-other-keys-grading.mjs';
 import { modifyOtherKeysFirstPolicy } from './terminfo/input-plan.mjs';
 import { ColorResetObserver } from './terminfo/color-reset-capture.mjs';
-import { SelectionColorsObserver } from './terminfo/selection-colors-capture.mjs';
+import { SelectionColorsObserver } from './terminfo/color-reset-capture.mjs';
 import { adaptSelectionColorsCollector, selectionColorsAdapterId } from './terminfo/selection-colors-grading-collector.mjs';
 import { selectionColorsContractsVersion, selectionColorsSuiteId } from './terminfo/selection-colors-contracts.mjs';
 import { buildSelectionColorsGradingReport, selectionColorsCounts } from './terminfo/selection-colors-grading.mjs';

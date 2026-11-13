@@ -82,7 +82,7 @@ test('reads must follow the plan: case, experiment and stage, and exactly the pl
 test('only reads carry replies', async () => {
     const w = world();
     try {
-        await assert.rejects(w.call(w.evidence.frames[0], { queries: w.evidence.frames[2].queries }), /Only reads carry color replies/);
+        await assert.rejects(w.call(w.evidence.frames[0], { queries: w.evidence.frames[2].queries }), /Only reads carry color-reset replies/);
     } finally { w.done(); }
 });
 

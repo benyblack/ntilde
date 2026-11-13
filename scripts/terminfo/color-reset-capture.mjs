@@ -26,36 +26,42 @@ export function retainedColorResetCapture(output, frame) {
 }
 
 export class ColorResetObserver {
-    constructor({ output, captureRpc = colorCaptureRequest, ...options }) {
+    constructor({ output, captureRpc = colorCaptureRequest, directory = 'crst-pixels', prefix = 'crst', plan = colorResetReadPlan,
+        selection = null, suiteLabel = 'Color-reset', ...options }) {
         this.output = output;
         this.captureRpc = captureRpc;
-        const details = { ...options, prefix: 'crst', includeAttributes: true, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeResolvedColors: true };
+        this.directory = directory;
+        this.prefix = prefix;
+        this.plan = plan;
+        this.selection = selection;
+        this.suiteLabel = suiteLabel;
+        const details = { ...options, prefix, includeAttributes: true, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeResolvedColors: true };
         this.before = new OwnedCellObserver(details);
         this.after = new OwnedCellObserver(details);
         this.frames = [];
         this.next = 0;
     }
-    get restored() { return this.before.restored && this.frames.at(-1)?.kind === 'crst-finish'; }
+    get restored() { return this.before.restored && this.frames.at(-1)?.kind === `${this.prefix}-finish`; }
     get paneId() { return this.before.paneId; }
 
     /** The first frame must be a pristine private baseline; the finish frame must reproduce it exactly (render theme and PNG included). */
     validateRestoration(kind, screen, pixel, details) {
         if (!this.frames.length && (!pristineColorTheme(details.theme) || !pristineCursorBaseline(screen) || screen.cellDetails.some(cell => cell.overline))) {
-            fail('Runtime-color reset requires a pristine private baseline.');
+            fail(`${this.suiteLabel} requires a pristine private baseline.`);
         }
-        if (kind === 'crst-finish' && (pixel.sha256 !== this.frames[0].pixel.sha256
-            || snapshotHash(details.theme) !== snapshotHash(this.frames[0].pixel.renderDetails.theme))) fail('Runtime-color baseline was not restored.');
+        if (kind === `${this.prefix}-finish` && (pixel.sha256 !== this.frames[0].pixel.sha256
+            || snapshotHash(details.theme) !== snapshotHash(this.frames[0].pixel.renderDetails.theme))) fail(`${this.suiteLabel} baseline was not restored.`);
     }
 
     /** The planned read this request must be (null for start, bind and finish), refusing any other case, experiment, stage or early finish. */
     plannedRead(request) {
-        const operation = request.kind.slice('crst-'.length);
-        const expected = operation === 'read' ? colorResetReadPlan[this.next] : null;
+        const operation = request.kind.slice(this.prefix.length + 1);
+        const expected = operation === 'read' ? this.plan[this.next] : null;
         if (operation === 'read' && (!expected || request.caseId !== expected.caseId || request.experimentId !== expected.experimentId || request.stageId !== expected.stageId)) {
-            fail('Unexpected color-reset read.');
+            fail(`Unexpected ${this.suiteLabel.toLowerCase()} read.`);
         }
-        if (operation !== 'read' && (request.caseId !== undefined || request.queries !== undefined)) fail('Only reads carry color replies.');
-        if (operation === 'finish' && this.next !== colorResetReadPlan.length) fail('Color-reset finish before the plan completed.');
+        if (operation !== 'read' && (request.caseId !== undefined || request.queries !== undefined)) fail(`Only reads carry ${this.suiteLabel.toLowerCase()} replies.`);
+        if (operation === 'finish' && this.next !== this.plan.length) fail(`${this.suiteLabel} finish before the plan completed.`);
         return expected;
     }
 
@@ -65,9 +71,9 @@ export class ColorResetObserver {
         const endpoint = (this.before.endpoint ?? observerEndpoint)(this.before.appData, this.before.ownerPid);
         const capture = await this.captureRpc(endpoint, this.paneId, null, budget());
         const after = await this.after.capture(budget);
-        if (snapshotHash(result.screen) !== snapshotHash(after)) fail('Color-reset capture changed the observed screen.');
-        const { bytes, details } = validateColorCapture(capture, result.screen, null);
-        if (capture.width * capture.height * (colorResetReadPlan.length + 3) > totalPixelLimit) fail('Color-reset suite decoded budget exhausted.');
+        if (snapshotHash(result.screen) !== snapshotHash(after)) fail(`${this.suiteLabel} capture changed the observed screen.`);
+        const { bytes, details } = validateColorCapture(capture, result.screen, this.selection);
+        if (capture.width * capture.height * (this.plan.length + 3) > totalPixelLimit) fail(`${this.suiteLabel} suite decoded budget exhausted.`);
         const policy = defaultCursorPolicy(result.screen, details);
         if (this.defaultCursor && policy && policy !== this.defaultCursor) fail('Changed default cursor policy.');
         this.defaultCursor ??= policy;
@@ -78,24 +84,34 @@ export class ColorResetObserver {
     }
 
     async handle(request, budget) {
-        if (this.busy || this.restored) fail('Color-reset observation busy or complete.');
+        if (this.busy || this.restored) fail(`${this.suiteLabel} observation busy or complete.`);
         const expected = this.plannedRead(request);
         const queries = validateQueries(request.queries ?? [], expected?.queries ?? []);
         this.busy = true;
         try {
             const result = await this.before.handle(request.kind, budget, request.barrier);
             const { capture, bytes, details, after } = await this.render(result, budget);
-            const file = `${directory}/frame-${String(this.frames.length).padStart(3, '0')}.png`;
+            const file = `${this.directory}/frame-${String(this.frames.length).padStart(3, '0')}.png`;
             const pixel = { file, sha256: pngHash(bytes), byteCount: bytes.length, width: capture.width, height: capture.height,
                 rows: capture.rows, cols: capture.cols, mode: capture.mode, scale: capture.scale, downscaled: false,
-                inlineOmitted: false, presentationTimeMs: 0, renderDetails: details };
+                inlineOmitted: false, presentationTimeMs: 0, ...(this.selection ? { syntheticSelection: structuredClone(this.selection) } : {}), renderDetails: details };
             this.validateRestoration(request.kind, result.screen, pixel, details);
-            if (!this.frames.length) mkdirSync(join(this.output, directory), { mode: 0o700 });
+            if (!this.frames.length) mkdirSync(join(this.output, this.directory), { mode: 0o700 });
             writeFileSync(join(this.output, file), bytes, { flag: 'wx', mode: 0o600 });
             this.frames.push({ ...this.before.frames.at(-1), afterScreen: after, afterSha256: snapshotHash(after),
                 caseId: expected?.caseId ?? null, experimentId: expected?.experimentId ?? null, stageId: expected?.stageId ?? null, queries, pixel });
-            if (request.kind === 'crst-read') this.next++;
+            if (request.kind === `${this.prefix}-read`) this.next++;
             return result;
         } finally { this.busy = false; }
+    }
+}
+
+import { selectionColorsReadPlan } from './selection-colors-contracts.mjs';
+
+/** Selection-colors suite: the shared observer configured for the selc prefix and its read plan. */
+export class SelectionColorsObserver extends ColorResetObserver {
+    constructor({ output, captureRpc, ...options }) {
+        super({ output, captureRpc, directory: 'selc-pixels', prefix: 'selc', plan: selectionColorsReadPlan,
+            selection: null, suiteLabel: 'Selection-color', ...options });
     }
 }
