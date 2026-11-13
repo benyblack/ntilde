@@ -23,27 +23,25 @@ test('a focus action verifies the frontmost process and stops at the first succe
     assert.equal(defocus.script, 'tell application "Finder" to activate'); assert.equal(defocus.attempts.length, 1);
 });
 
-test('retries are bounded inside the owner socket timeout, whether every call is instant, slow or takes its full timeout', async () => {
-    for (const [cost, attempts] of [[100, 3], [400, 2], [undefined, 1]]) {
+test('retries are bounded inside the owner request deadline whatever each call costs', async () => {
+    // The shared deadline reports at most two seconds at a time (createProcessBudget), so the model caps what it reports.
+    for (const [cost, left, attempts] of [[100, 3900, 3], [400, 3900, 2], [undefined, 3900, 2], [100, 2000, 1], [100, 1500, 0], [100, 0, 0]]) {
         const h = harness([null], cost);
-        const record = await runFocusAction({ action: 'refocus', appPid: 4242, run: h.run, sleep: h.sleep, now: h.now });
+        const record = await runFocusAction({ action: 'refocus', appPid: 4242, run: h.run, sleep: h.sleep, now: h.now, remaining: () => Math.min(2000, Math.max(0, left - h.elapsed())) });
         assert.ok(record.attempts.every(item => item.frontmostPid === null));
-        assert.equal(record.attempts.length, attempts, `cost ${cost}`);
-        assert.ok(h.elapsed() < 5000, `cost ${cost} took ${h.elapsed()} ms`);
+        assert.equal(record.attempts.length, attempts, `cost ${cost} left ${left}`);
+        assert.ok(h.elapsed() <= left, `cost ${cost} left ${left}: took ${h.elapsed()} ms`);
+        assert.ok(h.elapsed() < 5000);
     }
-    assert.equal(focusBudget.commandMs + focusBudget.settleMs + focusBudget.queryMs <= 2500, true);
+    assert.equal(focusBudget.commandMs + focusBudget.settleMs + focusBudget.queryMs <= 2000, true);
 });
 
-test('the action never outlives the owner request deadline it is given', async () => {
-    for (const [left, attempts] of [[3900, 3], [2300, 1], [2000, 0], [0, 0]]) {
-        const h = harness([null], 100);
-        const record = await runFocusAction({ action: 'refocus', appPid: 4242, run: h.run, sleep: h.sleep, now: h.now, remaining: () => Math.max(0, left - h.elapsed()) });
-        assert.equal(record.attempts.length, attempts, `left ${left}`);
-        assert.equal(record.budgetMs, left); assert.ok(h.elapsed() <= left, `left ${left}, took ${h.elapsed()}`);
-    }
-    const timeouts = []; const h = harness([77], 100);
-    await runFocusAction({ action: 'refocus', appPid: 4242, run: (args, ms) => { timeouts.push(ms); return h.run(args, ms); }, sleep: h.sleep, now: h.now, remaining: () => 2300 - h.elapsed() });
-    assert.ok(timeouts.every(ms => ms >= 1 && ms <= 1000), JSON.stringify(timeouts));
+test('no command waits longer than the deadline remainder, and the first success ends the action', async () => {
+    const timeouts = [], h = harness([77, 4242], 100);
+    const record = await runFocusAction({ action: 'refocus', appPid: 4242, run: (args, ms) => { timeouts.push(ms); return h.run(args, ms); }, sleep: h.sleep, now: h.now, remaining: () => Math.min(2000, 3900 - h.elapsed()) });
+    assert.deepEqual(record.attempts.map(item => item.frontmostPid), [77, 4242]);
+    assert.ok(timeouts.every(ms => ms >= 1 && ms <= focusBudget.commandMs), JSON.stringify(timeouts));
+    assert.equal(record.budgetMs, 2000);
 });
 
 test('a malformed action or pid is refused before any command runs', async () => {
