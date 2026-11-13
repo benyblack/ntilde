@@ -320,5 +320,13 @@
     "insertReplaceVtWriteSourceSha256": "irm-vt-write.cs",
     "insertReplaceVtModesSourceSha256": "irm-vt-modes.cs",
     "insertReplaceVtMarginsSourceSha256": "irm-vt-margins.cs",
-    "insertReplaceObserverContractSourceSha256": "irm-observer-contract.cs"
+    "insertReplaceObserverContractSourceSha256": "irm-observer-contract.cs",
+    "xtgettcapReportSourceSha256": "xtgettcap-report.mjs",
+    "xtgettcapContractsSourceSha256": "xtgettcap-contracts.mjs",
+    "xtgettcapCaptureSourceSha256": "xtgettcap-capture.mjs",
+    "xtgettcapCollectorSourceSha256": "xtgettcap-collector.mjs",
+    "xtgettcapGradingSourceSha256": "xtgettcap-grading.mjs",
+    "xtgettcapGradingCollectorSourceSha256": "xtgettcap-grading-collector.mjs",
+    "xtgettcapReceiptSourceSha256": "xtgettcap-receipt.mjs",
+    "xtgettcapReceiptCoreSourceSha256": "xtgettcap-receipt-core.mjs"
 }
