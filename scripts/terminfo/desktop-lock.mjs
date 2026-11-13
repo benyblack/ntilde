@@ -89,8 +89,8 @@ export const defaultDesktopLockDeps = Object.freeze({
         });
         const rows = [];
         for (const line of text.split('\n')) {
-            const match = /^\s*(\d+)\s+(.*)$/.exec(line);
-            if (match) rows.push({ pid: Number(match[1]), command: match[2] });
+            const trimmed = line.trimStart(), gap = trimmed.indexOf(' ');
+            if (gap > 0 && /^\d+$/.test(trimmed.slice(0, gap))) rows.push({ pid: Number(trimmed.slice(0, gap)), command: trimmed.slice(gap).trim() });
         }
         return rows;
     },
@@ -103,6 +103,7 @@ const bounded = (value, limit = 160) => String(value).replaceAll(/[^\x20-\x7E]/g
 // Owner record: one line of `key=value` pairs, values percent-encoded so it stays strictly parseable.
 
 const recordKeys = ['schema', 'owner', 'lease', 'pid', 'birth', 'uid', 'worktree', 'entrypoint', 'since', 'status', 'launch', 'markers', 'failure'];
+const recordKeySet = new Set(recordKeys);
 
 /** Serialize an owner record; only the declared keys are written. */
 export function formatOwnerRecord(record) {
@@ -149,7 +150,7 @@ export function parseOwnerRecord(text) {
 
 /** Validate a schema-1 field map into a record; any unknown key, bad value or oversize field makes it malformed. */
 function parseOwnedFields(fields) {
-    const unknown = Object.keys(fields).filter(key => !recordKeys.includes(key));
+    const unknown = Object.keys(fields).filter(key => !recordKeySet.has(key));
     if (unknown.length || fields.schema !== String(desktopLockSchema) || fields.owner !== 'ntilde-terminfo') return { kind: 'malformed', reason: 'schema' };
     const decoded = {};
     for (const key of ['birth', 'worktree', 'entrypoint', 'since', 'failure']) {
@@ -236,7 +237,8 @@ const summarizeRecord = record => ({
 });
 
 /** Bounded, offline-safe diagnostic. Never mutates; the recovery advice never guesses ownership. */
-export function inspectDesktopLock(lockPath = canonicalDesktopLockPath(), depsInput) {
+export function inspectDesktopLock(lockPathInput, depsInput) {
+    const lockPath = lockPathInput ?? canonicalDesktopLockPath();
     const state = readDesktopLockState(lockPath);
     if (state.kind === 'absent') return { state: 'idle', lockPath, advice: 'No lock directory exists. Live validation of idleness still needs the coordinating sessions, because legacy collectors may not use the lock.' };
     if (state.kind === 'owned') {
@@ -322,15 +324,8 @@ export class DesktopLease {
     async verifyCleanup() {
         this.assertHeld();
         if (this.#record.markers.length === 0) throw new Error('This lease records no process markers; use attestCleanup with explicit evidence.');
-        const deadline = this.#deps.now() + cleanupScanBudgetMs;
-        for (;;) {
-            let survivors;
-            try { survivors = findMarkedProcesses(this.#record.markers, this.#deps); }
-            catch (error) { throw new Error('Owned process scan failed, so cleanup is unverified: ' + bounded(error.code ?? error.message, 80)); }
-            if (survivors.length === 0) break;
-            if (this.#deps.now() >= deadline) throw new Error('Owned processes survive cleanup (pids ' + survivors.slice(0, 8).join(',') + '); the desktop lease is retained.');
-            await this.#deps.sleep(100);
-        }
+        const survivors = await scanUntilClear(this.#record.markers, this.#deps, this.#deps.now() + cleanupScanBudgetMs);
+        if (survivors.length > 0) throw new Error('Owned processes survive cleanup (pids ' + survivors.slice(0, 8).join(',') + '); the desktop lease is retained.');
         this.cleanupVerified = true;
         audit(this.#lockPath, { event: 'cleanup-verified', lease: this.#record.lease, by: 'marker-scan' }, this.#deps);
     }
@@ -366,6 +361,16 @@ function safeRead(path) {
     try { return readFileSync(path, 'utf8'); } catch { return ''; }
 }
 
+/** Poll for run-marker survivors until none remain or the budget ends; a failed scan is a failed verification. */
+async function scanUntilClear(markers, deps, deadline) {
+    let survivors;
+    try { survivors = findMarkedProcesses(markers, deps); }
+    catch (error) { throw new Error('Owned process scan failed, so cleanup is unverified: ' + bounded(error.code ?? error.message, 80)); }
+    if (survivors.length === 0 || deps.now() >= deadline) return survivors;
+    await deps.sleep(100);
+    return scanUntilClear(markers, deps, deadline);
+}
+
 /** Pids whose command line carries any of the exact run markers (never the scanner itself). */
 export function findMarkedProcesses(markers, depsInput) {
     const deps = withDeps(depsInput), self = deps.pid();
@@ -375,12 +380,11 @@ export function findMarkedProcesses(markers, depsInput) {
 
 const markersFor = lease => ['owner', 'worker', 'private-clipboard'].map(kind => `--ntilde-terminfo-${kind}=${lease}`);
 
-/** What a contender may do about an occupied lock: wait for a live healthy holder, or refuse. Never take it over. */
-function classifyContention(state, deps) {
-    if (state.kind !== 'owned') return { waitable: state.kind === 'legacy-manual' || state.kind === 'legacy-file' };
+/** A contender waits only for a verified live, healthy, non-ancestor holder; legacy and unverifiable states refuse at once. */
+function isWaitableHolder(state, deps) {
+    if (state.kind !== 'owned' || state.record.status !== 'held') return false;
     const assessment = assessDesktopHolder(state.record, deps);
-    const ancestor = assessment.holder === 'alive' && isSelfOrAncestor(state.record.pid, deps);
-    return { assessment, ancestor, waitable: !ancestor && state.record.status === 'held' && assessment.holder === 'alive' };
+    return assessment.holder === 'alive' && !isSelfOrAncestor(state.record.pid, deps);
 }
 
 function refuseContender(lockPath, entrypoint, deps) {
@@ -406,6 +410,34 @@ function publishLease(lockPath, options, deps, start) {
     return new DesktopLease(lockPath, record, deps);
 }
 
+/** One contention decision: retry after a pause, or refuse. A partial directory first gets a short grace for a mid-acquisition peer. */
+function decideContention(context) {
+    const { lockPath, deps, waitMs, pollMs, start } = context;
+    const state = readDesktopLockState(lockPath);
+    if (state.kind === 'absent') return { retryAfterMs: 0 }; // released between mkdir and the read
+    const now = deps.now();
+    if (state.kind === 'partial') {
+        context.partialSince ??= now;
+        if (now - context.partialSince < partialGraceMs) return { retryAfterMs: Math.min(100, pollMs) };
+    } else context.partialSince = undefined;
+    if (now - start < waitMs && isWaitableHolder(state, deps)) return { retryAfterMs: Math.min(pollMs, waitMs - (now - start)) };
+    return undefined;
+}
+
+async function acquireLoop(context) {
+    const { lockPath, options, deps } = context;
+    if (options.aborted?.()) throw new Error('Interrupted before the desktop lease was acquired.');
+    try { mkdirSync(lockPath, { mode: 0o700 }); }
+    catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+        const decision = decideContention(context);
+        if (!decision) throw refuseContender(lockPath, options.entrypoint, deps);
+        await deps.sleep(decision.retryAfterMs);
+        return acquireLoop(context);
+    }
+    return publishLease(lockPath, options, deps, context.start);
+}
+
 /**
  * Acquire exclusive ownership of the desktop. Returns only after `mkdir` succeeded and the owner record is written.
  * `waitMs` bounds how long a *live, verified, healthy* holder is waited for; every other occupied state refuses at once.
@@ -419,24 +451,7 @@ export async function acquireDesktopLease(options) {
         throw new Error('Invalid desktop lease entrypoint or worktree.');
     if (!Number.isSafeInteger(waitMs) || waitMs < 0 || waitMs > maxWaitMs || !Number.isSafeInteger(pollMs) || pollMs < 1) throw new Error('Invalid desktop lease wait.');
     mkdirSync(dirname(lockPath), { recursive: true, mode: 0o700 });
-    const start = deps.now();
-    let partialSince;
-    for (;;) {
-        if (options.aborted?.()) throw new Error('Interrupted before the desktop lease was acquired.');
-        try { mkdirSync(lockPath, { mode: 0o700 }); }
-        catch (error) {
-            if (error.code !== 'EEXIST') throw error;
-            const state = readDesktopLockState(lockPath);
-            if (state.kind === 'absent') continue; // released between mkdir and the read
-            const now = deps.now();
-            // A partial directory may be a peer between mkdir and its owner write: a short grace, then refusal.
-            if (state.kind === 'partial') partialSince ??= now; else partialSince = undefined;
-            if (state.kind === 'partial' && now - partialSince < partialGraceMs) { await deps.sleep(Math.min(100, pollMs)); continue; }
-            if (classifyContention(state, deps).waitable && now - start < waitMs) { await deps.sleep(Math.min(pollMs, waitMs - (now - start))); continue; }
-            throw refuseContender(lockPath, entrypoint, deps);
-        }
-        return publishLease(lockPath, options, deps, start);
-    }
+    return acquireLoop({ lockPath, options, deps, waitMs, pollMs, start: deps.now(), partialSince: undefined });
 }
 
 /**

@@ -211,11 +211,13 @@ const repo = process.env.NTILDE_TERMINFO_ORIGINAL_REPO ?? sourceRepo;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const writeJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
 /** The launcher owns the desktop lease; the runner may only take it (once) and report launch and cleanup facts through it. */
-async function acquireDesktopLease() {
+async function acquireDesktopLease(pendingInterruption) {
     const broker = globalThis[Symbol.for('ntilde.terminfo.desktopLease')];
     if (typeof broker?.acquire !== 'function') throw new Error('The owned runner must be started through scripts/terminfo-owned.mjs, which owns the desktop lease.');
     const lease = await broker.acquire();
     lease.assertHeld();
+    const interruption = pendingInterruption();
+    if (interruption) throw interruption; // the launcher settles (releases) the lease: nothing was launched
     return lease;
 }
 const quote = value => "'" + value.replaceAll("'", String.raw`'\''`) + "'";
@@ -1615,8 +1617,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (['SIGINT', 'SIGTERM', 'SIGHUP'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
     try {
         // Exclusive desktop ownership before any output, App or window action; refused contenders launch nothing.
-        lease = await acquireDesktopLease();
-        if (interruption) throw interruption;
+        lease = await acquireDesktopLease(() => interruption);
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
         scratch = createPrivateScratch();

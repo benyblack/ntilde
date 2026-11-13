@@ -75,6 +75,12 @@ async function fixture(action) {
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
 const auditEvents = lockPath => readFileSync(desktopLockAuditPath(lockPath), 'utf8').trim().split('\n').map(JSON.parse).map(entry => entry.event);
+/** Gone means absent or a zombie: a container's PID 1 may never reap an orphan, and a zombie runs nothing. */
+function processGone(pid) {
+    try { process.kill(pid, 0); } catch { return true; }
+    const state = spawnSync('/bin/ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' });
+    return state.status !== 0 || state.stdout.trim().startsWith('Z');
+}
 const waitFor = async (condition, label) => { for (let i = 0; i < 400; i++) { if (condition()) return; await new Promise(resolve => setTimeout(resolve, 25)); } throw new Error('timeout: ' + label); };
 
 test('the pinned bootstrap digest names the exact lock helper bytes and the helper imports only node builtins', () => {
@@ -118,7 +124,7 @@ test('a surviving owned process keeps the lease, refuses the next collector befo
         // The launcher process has exited but its descendant has not: a dead parent alone does not free the desktop.
         assert.throws(() => recoverDesktopLease({ lockPath, leaseId: state.record.lease, confirmDesktopIdle: true }), /survive \(pids/);
     } finally { try { process.kill(survivor, 'SIGKILL'); } catch { /* already gone */ } }
-    await waitFor(() => { try { process.kill(survivor, 0); return false; } catch { return true; } }, 'survivor exit');
+    await waitFor(() => processGone(survivor), 'survivor exit');
     const leaseId = readDesktopLockState(lockPath).record.lease;
     assert.throws(() => recoverDesktopLease({ lockPath, leaseId }), /confirm-desktop-idle/);
     recoverDesktopLease({ lockPath, leaseId, confirmDesktopIdle: true });
@@ -161,10 +167,10 @@ test('repeated signals during cleanup do not kill the launcher: the lease is rel
 test('the runner takes the lease before any output, App or window action, and reports launch and cleanup through it', () => {
     const runner = readFileSync(real('../terminfo-owned-runner.mjs'), 'utf8');
     const at = text => { const index = runner.indexOf(text); assert.ok(index > 0, text); return index; };
-    assert.ok(at('lease = await acquireDesktopLease();') < at("output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-')"));
-    assert.ok(at('lease = await acquireDesktopLease();') < at('app = spawn(executable'));
+    assert.ok(at('lease = await acquireDesktopLease(() => interruption);') < at("output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-')"));
+    assert.ok(at('lease = await acquireDesktopLease(() => interruption);') < at('app = spawn(executable'));
     assert.ok(at('lease.noteLaunchAttempt();') < at('app = spawn(executable'));
-    assert.ok(at('const runId = lease.leaseId;') > at('lease = await acquireDesktopLease();'));
+    assert.ok(at('const runId = lease.leaseId;') > at('lease = await acquireDesktopLease(() => interruption);'));
     const cleanup = runner.slice(at('async function cleanupOwnedRun'), at('function retainPreparationFailure'));
     assert.ok(cleanup.includes('await lease.verifyCleanup()') && cleanup.includes('workerError ?? appError ?? survivorError'));
     assert.ok(cleanup.indexOf('if (!workerError && !appError)') > 0 && cleanup.indexOf('if (!workerError && !appError)') < cleanup.indexOf('await lease.verifyCleanup()'),

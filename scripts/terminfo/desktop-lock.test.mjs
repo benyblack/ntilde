@@ -57,7 +57,7 @@ test('owner records round-trip exactly and every malformed or foreign spelling i
     assert.equal(legacy.kind, 'legacy-manual');
     for (const bad of ['', '\n', 'garbage', line.replace('schema=1', 'schema=2'), line.replace(lease32, 'xyz'), line + 'x=1\n', line.trim() + ' extra=1\n',
         line.replace('status=cleanup-failed', 'status=idle'), line.replace(/pid=\d+/, 'pid=0'), line.replace(' markers=', ' markers=--evil%20x,'), line + line,
-        line.replace('since=', 'since=not-a-date%20'), 'schema=1 schema=1\n', 'a'.repeat(5000), line.replace('\n', '\0\n')]) {
+        line.replace('since=', 'since=not-a-date%20'), 'schema=1 schema=1\n', 'a'.repeat(5000), line.replaceAll('\n', '\0\n')]) {
         assert.notEqual(parseOwnerRecord(bad).kind, 'owned', JSON.stringify(bad).slice(0, 80));
     }
     assert.throws(() => formatOwnerRecord(record({ failure: 'x'.repeat(5000) })), /too large/);
@@ -191,16 +191,23 @@ test('partial, malformed, legacy and foreign lock state is refused and left unto
     assert.ok(time.clock.value - started >= 3000);
 }));
 
-test('a legacy holder is waited for up to the bounded wait, then refused; an unhealthy lease is refused at once', () => sandboxAsync(async ({ root, lockPath }) => {
-    mkdirSync(lockPath); writeFileSync(join(lockPath, 'owner'), 'owner=other pid=1 since=2026-11-13T10:00Z\n');
-    const time = fakeTime(), started = time.clock.value;
-    await assert.rejects(acquireDesktopLease({ lockPath, entrypoint: 'w.mjs', worktree: root, waitMs: 3000, pollMs: 1000, deps: { ...time } }), DesktopLockRefusal);
+test('only a verified live healthy holder is waited for: legacy, unhealthy and unverifiable states refuse at once even with a long wait', () => sandboxAsync(async ({ root, lockPath }) => {
+    const time = fakeTime();
+    const refusedAtOnce = async setup => {
+        setup();
+        const before = time.clock.value;
+        await assert.rejects(acquireDesktopLease({ lockPath, entrypoint: 'w.mjs', worktree: root, waitMs: 600000, deps: { ...time, ...liveDeps() } }), DesktopLockRefusal);
+        assert.equal(time.clock.value, before, 'no waiting');
+        rmSync(lockPath, { recursive: true, force: true });
+    };
+    await refusedAtOnce(() => { mkdirSync(lockPath); writeFileSync(join(lockPath, 'owner'), 'owner=other pid=1 since=2026-11-13T10:00Z\n'); });
+    await refusedAtOnce(() => writeFileSync(lockPath, JSON.stringify({ owner: 'old-driver', pid: 1 })));
+    await refusedAtOnce(() => plant(lockPath, { status: 'cleanup-failed', failure: 'worker survived' }));
+    // A live, verified, healthy holder is the only thing waited for, and only for the bounded duration.
+    plant(lockPath);
+    const started = time.clock.value;
+    await assert.rejects(acquireDesktopLease({ lockPath, entrypoint: 'w.mjs', worktree: root, waitMs: 3000, pollMs: 1000, deps: { ...time, ...liveDeps() } }), DesktopLockRefusal);
     assert.ok(time.clock.value - started >= 3000);
-    rmSync(lockPath, { recursive: true });
-    plant(lockPath, { status: 'cleanup-failed', failure: 'worker survived' });
-    const before = time.clock.value;
-    await assert.rejects(acquireDesktopLease({ lockPath, entrypoint: 'w.mjs', worktree: root, waitMs: 60000, deps: { ...time, ...liveDeps() } }), error => error.diagnostic.state === 'owned' && error.diagnostic.record.status === 'cleanup-failed');
-    assert.equal(time.clock.value, before, 'no waiting for a lease that cannot clear itself');
 }));
 
 test('an abort signal stops a waiting contender before it takes anything', () => sandboxAsync(async ({ root, lockPath }) => {
