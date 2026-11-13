@@ -13,7 +13,7 @@ schema 11/fixed 74-source policy v4. Its packet/state/ownership contract is
 static-image suite and frozen v10 publication retain their original 67-source
 scope; published v9 input and v8 observations likewise keep their original bytes.
 The newest graded layer is the [controlled ASCII resize/reflow suite](terminfo/ascii-reflow.md)
-(receipt schema 55/source policy v49, on top of the insert/replace layer's schema 54/policy v48), which qualifies `extensions.reflow` through a
+(receipt schema 58/source policy v52, on top of the OSC 9 layer's schema 57/policy v51), which qualifies `extensions.reflow` through a
 separately identified effect contract and records a deterministic divergence of
 the live pane-resize path; the pinned criterion stays inconclusive by design.
 

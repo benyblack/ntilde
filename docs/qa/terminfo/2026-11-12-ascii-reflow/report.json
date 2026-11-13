@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-ascii-reflow-v1",
   "contractsVersion": 1,
-  "runId": "4b6916b373ff4bffd586aa143416609b",
+  "runId": "481a15b5b6f476daffeba6d2229340c5",
   "adapter": {
     "id": "ntilde-owned-ascii-reflow-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-osc-title-grading-v1",
-    "bundleSha256": "fc10fa00da94488f4922dbf3f2ce2c28dfe75baf073845e1c788a7296b3615cc",
+    "bundleSha256": "3c38d45bee4deb65525149ee560ea1ee1434d775d29e39fe9aa3ff5064ebcd25",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned termless and terminal paths (always inconclusive by design, no fixture, no resize request, no cell readback) replayed byte-exactly over the journaled declared capability, plus the versioned effect contract for controlled ASCII reflow in a disposable main screen buffer: two parent-owned shrink/restore experiments graded from paired complete stored cells, cursor, modes, attributes and complete ordered history at three actual geometries, with independent kernel geometry and output-processing proof per action. No Unicode, wide-cell, grapheme or history-attribute claim, no rendered appearance, no stock-score inference.",

@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '8ee2fe4fd417d3733451eca28953f0774c3faabd';
-export const measuredAppRevision = '8ee2fe4fd417d3733451eca28953f0774c3faabd';
+export const measuredScriptsRevision = 'e8c8e9dbae96500d421b57e61a9eae81d1af8d4e';
+export const measuredAppRevision = 'e8c8e9dbae96500d421b57e61a9eae81d1af8d4e';
 export function asciiReflowPublication(dir) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
     const measured = json(dir, 'reflow-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json');
