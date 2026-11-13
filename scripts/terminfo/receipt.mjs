@@ -3,6 +3,7 @@ import { includesInsertReplaceEvidence, checkInsertReplaceEvidence } from './ins
 import { includesTitleStackEvidence, checkTitleStackEvidence } from './title-stack-receipt.mjs';
 import { includesXtgettcapEvidence, checkXtgettcapEvidence } from './xtgettcap-receipt.mjs';
 import { includesOsc9Evidence, checkOsc9Evidence } from './osc9-receipt.mjs';
+import { includesSelectionColorsEvidence, checkSelectionColorsEvidence } from './selection-colors-receipt.mjs';
 import { includesModifyOtherKeysEvidence, checkModifyOtherKeysEvidence } from './modify-other-keys-receipt.mjs';
 import { includesReverseWideEvidence, checkReverseWideEvidence } from './core-reverse-wide-receipt.mjs';
 import { includesSgrRasterEvidence, checkSgrRasterEvidence } from './core-sgr-raster-receipt.mjs';
@@ -214,6 +215,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesXtgettcap',
     'includesModifyOtherKeys',
     'includesOsc9',
+    'includesSelectionColors',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
@@ -275,6 +277,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesXtgettcap = includesXtgettcapEvidence(output, evidence, context);
     const includesModifyOtherKeys = includesModifyOtherKeysEvidence(output, evidence, context);
     const includesOsc9 = includesOsc9Evidence(output, evidence, context);
+    const includesSelectionColors = includesSelectionColorsEvidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
     const includesColorReset = includesColorResetEvidence(output, evidence, context);
@@ -344,6 +347,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesXtgettcap) checkXtgettcapEvidence(output, evidence, runId, context);
     if (suffixes.includesModifyOtherKeys) checkModifyOtherKeysEvidence(output, evidence, runId, context, proof);
     if (suffixes.includesOsc9) checkOsc9Evidence(output, evidence, runId, context);
+    if (suffixes.includesSelectionColors) checkSelectionColorsEvidence(output, evidence, runId, context);
 }
 
 /** Finalize all required suite bindings only after verified cleanup; never overwrite a receipt. */

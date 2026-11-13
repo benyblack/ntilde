@@ -27,11 +27,11 @@ for (const [name, grow, policy] of [
         if (policy) {
             const path = join(scripts, 'owned-sources.mjs');
             writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v52';"));
+                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v3';"));
         }
         const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
         assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 343 : 342);
-        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v52' : 'readonly-owned-source-graph-v51');
+        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v3' : 'readonly-owned-source-graph-v2');
         const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-04-metadata-snapshot.json', import.meta.url)));
         const paths = Object.keys(published.archive.fileSha256).filter(name => name.startsWith('sources/')).map(name => name.slice(8));
         assert.equal(paths.length, 52);
@@ -94,7 +94,7 @@ for (const [name, grow, policy] of [['inventory', true, false], ['policy', false
             if (policy) {
                 const path = join(scripts, 'owned-sources.mjs');
                 writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v52';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v3';"));
             }
             const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
             assert.equal(Object.keys(sources.capturedV9SourceFiles).length, 60);

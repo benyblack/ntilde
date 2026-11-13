@@ -151,6 +151,10 @@ import { modifyOtherKeysCaseIds, modifyOtherKeysContractsVersion, modifyOtherKey
 import { buildModifyOtherKeysGradingReport, modifyOtherKeysCounts } from './terminfo/modify-other-keys-grading.mjs';
 import { modifyOtherKeysFirstPolicy } from './terminfo/input-plan.mjs';
 import { ColorResetObserver } from './terminfo/color-reset-capture.mjs';
+import { SelectionColorsObserver } from './terminfo/selection-colors-capture.mjs';
+import { adaptSelectionColorsCollector, selectionColorsAdapterId } from './terminfo/selection-colors-grading-collector.mjs';
+import { selectionColorsContractsVersion, selectionColorsSuiteId } from './terminfo/selection-colors-contracts.mjs';
+import { buildSelectionColorsGradingReport, selectionColorsCounts } from './terminfo/selection-colors-grading.mjs';
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
@@ -1305,6 +1309,16 @@ async function retainXtgettcapEvidence(output, runId, xtgettcapBundle, upstream)
         contractsVersion: xtgettcapContractsVersion, counts: xtgettcapCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered selection-color grading extension over the OSC title one. */
+function prepareSelectionColorsCollector(tool, oscTitleBundle, output) {
+    const adapted = adaptSelectionColorsCollector(readFileSync(oscTitleBundle));
+    const sha = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-selc-${sha}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== sha) throw new Error('Derived selection-color bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-selc.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, selectionColorsBundleSha256: sha };
+}
 function prepareOscTitleCollector(tool, previous, output) {
     const adapted = adaptOscTitleCollector(readFileSync(previous));
     const oscTitleBundleSha256 = hash(adapted);
@@ -1630,6 +1644,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let xtgettcapEvidence;
     let osc9Evidence;
     let oscTitleEvidence;
+    let selectionColorsEvidence;
     let colorResetEvidence;
     let rgbEvidence;
     let renditionEvidence;
@@ -1703,6 +1718,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: osc9Bundle, osc9BundleSha256 } = prepareOsc9Collector(privateTool, lrMarginsBundle, output);
         const { bundle: modifyOtherKeysBundle, modifyOtherKeysBundleSha256 } = prepareModifyOtherKeysCollector(privateTool, lrMarginsBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
+        const { bundle: selectionColorsBundle, selectionColorsBundleSha256 } = prepareSelectionColorsCollector(privateTool, oscTitleBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
         const runId = lease.leaseId; // the App/worker markers carry the lease identity, so survivors are attributable
@@ -1713,7 +1729,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, oscTitleBundle, oscTitleBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -3332,6 +3348,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.xtgettcapEvidence = xtgettcapEvidence;
             summary.osc9Evidence = osc9Evidence;
             summary.oscTitleEvidence = oscTitleEvidence;
+            summary.selectionColorsEvidence = selectionColorsEvidence;
             summary.colorResetEvidence = colorResetEvidence;
             writeJson(join(output, 'summary.json'), summary);
             console.log(JSON.stringify(summary, null, 2));
@@ -3373,7 +3390,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
