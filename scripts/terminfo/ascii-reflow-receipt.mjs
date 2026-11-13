@@ -63,10 +63,11 @@ function checkUnavailableReflow(output, { report, binding, marker, frames, actio
         if (present(join(output, file)) && bytes(output, file, 64 * 1024).length) throw new Error('Unavailable ASCII reflow run retains completion artifacts.');
     }
     // A directory holding both would finalize a run that was never rederived.
-    check(report.status === 'unavailable' && ['screenDetailsUnavailable', 'asciiReflowGeometryUnavailable'].includes(report.reason)
+    check(report.schemaVersion === 1 && report.status === 'unavailable' && ['screenDetailsUnavailable', 'asciiReflowGeometryUnavailable'].includes(report.reason)
         && report.fixtureStarted === false && report.plannedExperiments === 2 && frames.length === 0 && actions.length === 0
         && marker.paneId === undefined && marker.originalGeometry === undefined
         && binding.status === 'unavailable' && binding.reason === report.reason && same(binding.counts, {})
+        && binding.provisionalUntil === 'cell-receipt.json'
         && binding.runFile === undefined && binding.runSha256 === undefined);
 }
 

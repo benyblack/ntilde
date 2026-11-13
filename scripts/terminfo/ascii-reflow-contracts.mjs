@@ -281,7 +281,7 @@ export function gradeReflowCase(stages, revision = asciiReflowContractsVersion) 
         for (const stage of ['initial', 'shrunk', 'restored']) {
             const observed = stages[experiment][stage];
             if (!Array.isArray(observed?.screen?.cellDetails)) {
-                throw new Error(`Missing ${experiment}.${stage} read captures.`);
+                throw new TypeError(`Missing ${experiment}.${stage} read captures.`);
             }
         }
     }

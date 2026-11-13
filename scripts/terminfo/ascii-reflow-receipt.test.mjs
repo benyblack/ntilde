@@ -89,6 +89,15 @@ test('typed initial unavailability is retained, while partial artifacts cannot b
     f.evidence.reflowEvidence.runFile = 'rf-run.json';
     assert.throws(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof), /regular bounded file|Changed|Invalid|JSON/);
     delete f.evidence.reflowEvidence.runFile;
+    // The marker schema and the binding's finalization guard are part of the unavailable shape.
+    const savedGuard = f.evidence.reflowEvidence.provisionalUntil; delete f.evidence.reflowEvidence.provisionalUntil;
+    assert.throws(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof), /Invalid or incomplete ASCII reflow receipt/);
+    f.evidence.reflowEvidence.provisionalUntil = savedGuard;
+    const rehashed = Buffer.from(JSON.stringify({ ...marker, schemaVersion: 2 }) + '\n');
+    writeFileSync(join(f.dir, 'reflow-unavailable.json'), rehashed); f.evidence.reflowEvidence.sha256 = hash(rehashed);
+    assert.throws(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof), /Invalid or incomplete ASCII reflow receipt/);
+    writeFileSync(join(f.dir, 'reflow-unavailable.json'), bytes); f.evidence.reflowEvidence.sha256 = hash(bytes);
+    assert.doesNotThrow(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof));
     // Partial journal bytes cannot be hidden either.
     writeFileSync(join(f.dir, 'reflow-snapshots.jsonl'), 'partial');
     assert.throws(() => checkReflowEvidence(f.dir, f.evidence.reflowEvidence, f.e.runId, f.context, f.proof));
