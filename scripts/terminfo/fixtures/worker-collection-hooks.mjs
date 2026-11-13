@@ -39,6 +39,7 @@ code.set(new URL('scrollback-collector.mjs', root).href, log + `export async fun
 code.set(new URL('erase-display-collector.mjs', root).href, log + `export async function collectEraseDisplayGrading() { record('EraseDisplay'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('scrollback-collector.mjs', root).href, log + `export async function collectScrollbackGrading() { record('Scrollback'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('line-edit-collector.mjs', root).href, log + `export async function collectLineEditGrading() { record('LineEdit'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('insert-replace-collector.mjs', root).href, log + `export async function collectInsertReplace() { record('InsertReplace'); return { schemaVersion: 1, adapterId: 'stub' }; }`);
 code.set(new URL('saved-reset-collector.mjs', root).href, log + `export async function collectSavedResetGrading() { record('SavedReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('erase-attrs-region-collector.mjs', root).href, log + `export async function collectEraseAttrsRegionGrading() { record('EraseAttrsRegion'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('attr-rect-collector.mjs', root).href, log + `export async function collectAttrRectGrading() { record('AttrRect'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
@@ -65,6 +66,7 @@ registerHooks({ load(url, context, next) {
 code.set(new URL('core-sgr-raster.mjs', root).href, log + `export async function collectSgrRaster() { record('SgrRaster'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('core-wrap-collector.mjs', root).href, log + `export async function collectWrap() { record('CoreWrap'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('title-stack-collector.mjs', root).href, log + `export async function collectTitleStack() { record('TitleStack'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
+code.set(new URL('osc-title-collector.mjs', root).href, log + `export async function collectOscTitle() { record('OscTitle'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
 code.set(new URL('xtgettcap-collector.mjs', root).href, log + `export async function collectXtgettcapGrading() { record('Xtgettcap'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('core-reverse-wide.mjs', root).href, log + `export async function collectReverseWide() { record('ReverseWide'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('osc78-collector.mjs', root).href, log + `export async function collectOsc78() { record('Osc78'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);

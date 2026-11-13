@@ -29,7 +29,7 @@ test('no dispatch expression can backtrack: literal alternations only, no quanti
 
 test('the dispatch accepts exactly prefix-suffix pairs and rejects near misses', () => {
     const [images, resize, input] = expressions;
-    assert.ok(untranslatedCellPrefixes.size >= 25 && ['scrl', 'svrs', 'atrc', 'rect'].every(prefix => untranslatedCellPrefixes.has(prefix)));
+    assert.ok(untranslatedCellPrefixes.size >= 25 && ['scrl', 'svrs', 'atrc', 'rect', 'ost'].every(prefix => untranslatedCellPrefixes.has(prefix)));
     assert.deepEqual([...untranslatedCellSteps], ['start', 'bind', 'read', 'finish']);
     for (const prefix of untranslatedCellPrefixes) for (const suffix of untranslatedCellSteps) assert.ok(untranslatedCellKind(`${prefix}-${suffix}`), `${prefix}-${suffix}`);
     for (const miss of ['cell-apply', 'cell-start\n', 'cell-startx', 'xcell-start', 'cell-', '-start', 'cell-start-start', 'scrl', 'CELL-START', ' cell-start', 'cell-start ', '', undefined]) assert.equal(untranslatedCellKind(miss), false, JSON.stringify(miss));

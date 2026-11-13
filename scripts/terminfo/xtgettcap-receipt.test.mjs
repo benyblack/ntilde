@@ -30,7 +30,7 @@ test('a complete run carries the XTGETTCAP suffix: pinned-preserved counts, adap
 
 test('the suffix is required whenever the policy, a declaration or an artifact names it', () => privateClipboardReceiptFixture(f => {
     const empty = join(f.output, 'no-such-directory'), earlier = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v47' };
-    assert.equal(xtgettcapFirstPolicy, 48);
+    assert.equal(xtgettcapFirstPolicy, 49);
     assert.equal(includesXtgettcapEvidence(f.output, f.evidence, f.context), true);
     assert.equal(includesXtgettcapEvidence(empty, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v48' }), true, 'the current policy always carries the suffix');
     assert.equal(includesXtgettcapEvidence(empty, {}, earlier), false, 'an earlier policy without any artifact or declaration does not');

@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v48';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v49';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -98,6 +98,15 @@ export const coreGapsReferencePaths = Object.freeze({
     "core-icon-capture.cs": "src/Ntilde.App/AgentHost/AgentPaneMetadataCapture.cs",
     "core-icon-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneMetadataContracts.cs",
     "core-icon-window.cs": "src/Ntilde.App/MainWindow.AgentMetadata.cs",
+});
+export const oscTitleReferencePaths = Object.freeze({
+    "osc-title-tab-labels.cs": "src/Ntilde.App/MainWindow.TabLabels.cs",
+});
+export const insertReplaceReferencePaths = Object.freeze({
+    'irm-vt-write.cs': 'src/Ntilde.VT/TerminalBuffer.WritePath.cs',
+    'irm-vt-modes.cs': 'src/Ntilde.VT/ModeState.cs',
+    'irm-vt-margins.cs': 'src/Ntilde.VT/TerminalBuffer.Margins.cs',
+    'irm-observer-contract.cs': 'src/Ntilde.AgentHost.Contracts/BufferStateDto.cs',
 });
 export const privateClipboardReferencePaths = Object.freeze({
     "clipboard-app-program.cs": "src/Ntilde.App/Program.cs",
@@ -221,6 +230,8 @@ export const capturedV18SourceFiles = Object.freeze({
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
 export function ownedSourcePath(root, file) {
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
+    if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
+    if (Object.hasOwn(insertReplaceReferencePaths, file)) return join(root, insertReplaceReferencePaths[file]);
     if (Object.hasOwn(privateClipboardReferencePaths, file)) return join(root, privateClipboardReferencePaths[file]);
     if (Object.hasOwn(sgrRgbReferencePaths, file)) return join(root, sgrRgbReferencePaths[file]);
     const relative = file === 'terminfo-owned-runner.mjs' || file === 'terminfo-owned.mjs' ? file : 'terminfo/' + file;
@@ -588,10 +599,36 @@ export const capturedV53SourceFiles = Object.freeze({
     titleStackReceiptSourceSha256: 'title-stack-receipt.mjs',
 });
 
-// Frozen v55 XTGETTCAP (device.xtgettcap) grading scope; future experiments must create a distinct policy and map. The v54 scope
-// belongs to the OSC title/icon layer when it merges; this map is defined against it so the two siblings stay distinct.
-export const capturedV55SourceFiles = Object.freeze({
+// Fixed successor of the frozen v53 scope for OSC title setters.
+export const capturedV54SourceFiles = Object.freeze({
     ...capturedV53SourceFiles,
+    oscTitleContractsSourceSha256: 'osc-title-contracts.mjs',
+    oscTitleCollectorSourceSha256: 'osc-title-collector.mjs',
+    oscTitleGradingSourceSha256: 'osc-title-grading.mjs',
+    oscTitleGradingCollectorSourceSha256: 'osc-title-grading-collector.mjs',
+    oscTitleReceiptSourceSha256: 'osc-title-receipt.mjs',
+    oscTitleTabLabelsSourceSha256: 'osc-title-tab-labels.cs',
+});
+
+// Fixed successor of the frozen OSC title scope for insert/replace mode.
+export const capturedV55SourceFiles = Object.freeze({
+    ...capturedV54SourceFiles,
+    insertReplaceContractsSourceSha256: 'insert-replace-contracts.mjs',
+    insertReplaceCollectorSourceSha256: 'insert-replace-collector.mjs',
+    insertReplaceGradingSourceSha256: 'insert-replace-grading.mjs',
+    insertReplaceGradingCollectorSourceSha256: 'insert-replace-grading-collector.mjs',
+    insertReplaceReceiptSourceSha256: 'insert-replace-receipt.mjs',
+    insertReplacePinnedSourceSha256: 'insert-replace-pinned.mjs',
+    insertReplaceReplaySourceSha256: 'insert-replace-pinned-replay.mjs',
+    insertReplaceVtWriteSourceSha256: 'irm-vt-write.cs',
+    insertReplaceVtModesSourceSha256: 'irm-vt-modes.cs',
+    insertReplaceVtMarginsSourceSha256: 'irm-vt-margins.cs',
+    insertReplaceObserverContractSourceSha256: 'irm-observer-contract.cs',
+});
+
+// Frozen v56 XTGETTCAP (device.xtgettcap) grading scope; future experiments must create a distinct policy and map.
+export const capturedV56SourceFiles = Object.freeze({
+    ...capturedV55SourceFiles,
     xtgettcapReportSourceSha256: 'xtgettcap-report.mjs',
     xtgettcapContractsSourceSha256: 'xtgettcap-contracts.mjs',
     xtgettcapCaptureSourceSha256: 'xtgettcap-capture.mjs',
@@ -602,11 +639,11 @@ export const capturedV55SourceFiles = Object.freeze({
     xtgettcapReceiptCoreSourceSha256: 'xtgettcap-receipt-core.mjs',
 });
 
-/** Bind the private temporary root, exact v55 inventory and manifest environment pin before trusting any captured source. */
+/** Bind the private temporary root, exact v56 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV55SourceFiles)) throw new Error('Invalid current v55 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV56SourceFiles)) throw new Error('Invalid current v56 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

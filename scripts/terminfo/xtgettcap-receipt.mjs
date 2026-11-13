@@ -11,7 +11,7 @@ import { buildXtgettcapGradingReport } from './xtgettcap-grading.mjs';
 /** Every retained artifact this suffix owns. */
 const files = ['xgtc-observations.json', 'xgtc-run.json', 'xgtc-snapshots.jsonl', 'collector-xgtc.mjs'];
 /** The first source policy whose worker always runs this suite. */
-export const xtgettcapFirstPolicy = 48;
+export const xtgettcapFirstPolicy = 49;
 
 /** Whether a retained artifact path exists; any failure other than a missing entry is fatal. */
 const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined;

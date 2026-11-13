@@ -1,3 +1,4 @@
+import { collectOscTitle } from './osc-title-collector.mjs';
 import { collectTitleStack } from './title-stack-collector.mjs';
 import { collectReverseWide } from './core-reverse-wide.mjs';
 import { collectSgrRaster } from './core-sgr-raster.mjs';
@@ -33,6 +34,7 @@ import { collectEraseLineGrading } from './erase-line-collector.mjs';
 import { collectCharEditGrading } from './char-edit-collector.mjs';
 import { collectEraseDisplayGrading } from './erase-display-collector.mjs';
 import { collectLineEditGrading } from './line-edit-collector.mjs';
+import { collectInsertReplace } from './insert-replace-collector.mjs';
 import { collectCharsetsGrading } from './charsets-collector.mjs';
 import { collectScrollbackGrading } from './scrollback-collector.mjs';
 import { collectSavedResetGrading } from './saved-reset-collector.mjs';
@@ -229,6 +231,10 @@ try {
         const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
         const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
         writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const insertReplaceSource = readFileSync(config.insertReplaceBundle);
+        if (createHash('sha256').update(insertReplaceSource).digest('hex') !== config.insertReplaceBundleSha256) throw new Error('Local IRM adapter bundle changed.');
+        const insertReplaceRun = await collectInsertReplace({ config, fence, owner, gradingModule: await import(pathToFileURL(config.insertReplaceBundle).href) });
+        writeFileSync(join(config.output, 'irm-run.json'), JSON.stringify(insertReplaceRun) + '\n', { flag: 'wx', mode: 0o600 });
         // The layered charset qualification follows the line-editing suite on the same fence.
         const charsetsSource = readFileSync(config.charsetsBundle);
         if (createHash('sha256').update(charsetsSource).digest('hex') !== config.charsetsBundleSha256) {
@@ -366,7 +372,11 @@ try {
         if (createHash('sha256').update(titleStackSource).digest('hex') !== config.titleStackBundleSha256) throw new Error('Local title-stack adapter bundle changed.');
         const titleStackResult = await collectTitleStack({ config, fence, owner, gradingModule: await import(pathToFileURL(config.titleStackBundle).href) });
         if (titleStackResult.status === 'complete') writeFileSync(join(config.output, 'tst-run.json'), JSON.stringify(titleStackResult.run) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered XTGETTCAP qualification follows the title/icon-stack suite on the same exclusively owned fence: every request is
+        const oscTitleSource = readFileSync(config.oscTitleBundle);
+        if (createHash('sha256').update(oscTitleSource).digest('hex') !== config.oscTitleBundleSha256) throw new Error('Local OSC title adapter bundle changed.');
+        const oscTitleResult = await collectOscTitle({ config, fence, owner, gradingModule: await import(pathToFileURL(config.oscTitleBundle).href) });
+        if (oscTitleResult.status === 'complete') writeFileSync(join(config.output, 'ost-run.json'), JSON.stringify(oscTitleResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered XTGETTCAP qualification follows the OSC title suite on the same exclusively owned fence: every request is
         // one fenced exchange whose raw replies the parent journals beside the unchanged state.
         const xtgettcapSource = readFileSync(config.xtgettcapBundle);
         if (createHash('sha256').update(xtgettcapSource).digest('hex') !== config.xtgettcapBundleSha256) throw new Error('Local XTGETTCAP adapter bundle changed.');
