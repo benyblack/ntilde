@@ -39,3 +39,15 @@ test('recorded intervals overlap only when the later start precedes the earlier 
         assert.deepEqual(open.map(pair => [pair.first.directory, pair.second.directory]), [['owned-eee', 'owned-fff'], ['owned-eee', 'owned-iii']]);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('the same run listed twice is not an overlap with itself', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-intervals-dup-'));
+    try {
+        run(root, 'owned-aaa', { startedAt: '2026-11-13T14:15:29.143Z', cleanedUpAt: '2026-11-13T14:17:34.830Z' });
+        const once = readCollectionIntervals(root, 'one');
+        assert.deepEqual(overlappingCollections([...once, ...readCollectionIntervals(root, 'copy')]), []);
+        run(root, 'owned-bbb', { startedAt: '2026-11-13T14:16:00.000Z', cleanedUpAt: '2026-11-13T14:16:30.000Z' });
+        const all = readCollectionIntervals(root, 'one');
+        assert.equal(overlappingCollections([...all, ...readCollectionIntervals(root, 'copy')]).length, 1, 'distinct runs still overlap, once');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});

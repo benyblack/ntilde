@@ -32,7 +32,9 @@ export function readCollectionIntervals(artifactsTerminfoDir, label = artifactsT
 
 /** Pairs of GUI collections whose recorded intervals intersect; an interval without a cleanup time is reported open-ended. */
 export function overlappingCollections(rows) {
-    const gui = rows.filter(row => row.gui), pairs = [];
+    // The same retained run supplied twice (a repeated root or a copied artifact tree) is one run, never an overlap with itself.
+    const unique = new Map(rows.filter(row => row.gui).map(row => [row.runId === '' ? Symbol(row.directory) : row.runId + '@' + row.start, row]));
+    const gui = [...unique.values()], pairs = [];
     for (let i = 0; i < gui.length; i++) {
         for (let j = i + 1; j < gui.length; j++) {
             const [a, b] = gui[i].start <= gui[j].start ? [gui[i], gui[j]] : [gui[j], gui[i]];
