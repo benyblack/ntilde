@@ -46,7 +46,7 @@ while lines 17–39 rewrapped individually, exactly as modeled. Every character 
 the cursor mapping still matches the logical-content model, and the restore re-wraps the merged lines losslessly back into the original projection (the inserted blanks
 become trailing row padding the cell projection cannot distinguish from unwritten cells — the authored-space limit stated in the contract).
 
-The divergence is **deterministic**: five independent owned runs produced byte-identical layouts for all six fixture
+The divergence is **deterministic**: six independent owned runs produced byte-identical layouts for all six fixture
 reads (the only differing frame is the nonce bind, which embeds the runId), identical action targets and identical App-reported grids. The VT engine in isolation does
 **not** reproduce it: driving the same `Ntilde.VT` build with the same fixture, a one-shot `Resize(133, 36)`, one-column stepped resizes, height-first order, simultaneous
 steps, and randomized non-monotonic walk sequences all reproduce the model exactly (44 rows, cursor [35, 5]). The divergence is therefore specific to the live pane-resize
@@ -62,11 +62,12 @@ control), images, rendered appearance, saved-bank behavior beyond the bounded ma
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `3680bf9b` (arm64 Release, executable SHA-256 `f5814e51…d1d6`); scripts at commit `0a0dc8d1`; source policy
-`readonly-owned-source-graph-v49` (328 files — the restacked union of the insert/replace layer's 322 and these six modules); receipt schema 55; Node v24.22.2; owned run
-`84799e14…65de`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
-(not carried forward). The insert/replace layer (PR 956), merged ahead of this batch, took policy v48 and receipt schema 54 for its own scope, so this layer was
-restacked above it (policy v49 / captured v56 / receipt 55) and **re-measured**: its suite is reconfirmed inside the published run's receipt (`supported: 1`). The full
+App 0.13.0 (operator supplied) built from `8ee2fe4f` (arm64 Release, executable SHA-256 `f5814e51…d1d6`); scripts at commit `8ee2fe4f`; source policy
+`readonly-owned-source-graph-v50` (336 files — the restacked union of the insert/replace and XTGETTCAP layers' 330 and these six modules); receipt schema 56; Node v24.22.2; owned run
+`4b6916b3…609b`, measured on macOS 27.0.1 arm64; pane and settings bound in [summary](2026-11-12-ascii-reflow/summary.json); the stock collector re-ran in the same run
+(not carried forward). The insert/replace (PR 956) and XTGETTCAP (PR 957) layers merged ahead of this batch (policy v48/49, receipt schemas 54/55 for their own
+scopes), so this layer was restacked above both (policy v50 / captured v57 / receipt 56) and **re-measured**: their suites are reconfirmed inside the
+published run's receipt (insert/replace `supported: 1`, XTGETTCAP `inconclusive: 1`). The full
 context: worker, PTY, output-processing proof, per-action parent/kernel geometry
 records and the completed cleanup receipt. Predecessor suites were reconfirmed in the same run through the established runner: the receipt re-derived every earlier layer,
 including the resize/history suites this batch reuses, and the stock counts are re-collected in that run and unchanged.
@@ -75,13 +76,13 @@ Attempts, all retained with their actual reasons (archives in [superseded/](2026
 collection when the first launch's context named a bundle digest that did not exist yet; attempt 2 (`owned-DD0VT3`, no receipt) failed at parent bootstrap on the same
 naming mismatch; attempt 3 (`owned-7gsSlr`, no receipt) failed launching the worker on the renamed binding; attempt 4 (`owned-dNbnet`, no receipt) **completed collection
 with identical grading** but could not finalize: the metadata receipt's source-policy map lacked the then-current v48 entry (fixed in the measured scripts); attempt 5
-(`owned-Q0DShd`, no receipt) aborted when the disposable App did not respond at launch (desktop idle), retained unchanged. Runs `owned-NITRsC` (attempt 6),
-`owned-sWZqnR` (attempt 7), `owned-KeiEHw` (attempt 8) and `owned-4VAYK1` (attempt 9) **completed, graded identically (width model-exact, history shrunk diverged at 38 displaced rows, restored
-exact) and reproduced byte-identically by each other and by the final run** — five independent owned runs, same divergence — but are superseded: attempts 6 and 7 by
-the serial restack (the insert/replace layer, PR 956, merged ahead of this batch and took policy v48 / receipt schema 54, so this layer was restacked to policy v49 /
-receipt 55 and their retained receipts bind the pre-restack scope), attempts 8 and 9 by the review fixes to the measured scripts (Codex: the unavailable marker's
-experiment count and the unavailable receipt's completion-artifact rejection; CodeRabbit: proof-marker admission, adapter-identity validation); their retained evidence re-derives under the merged validator with every graded field
-equal. The published run is the tenth.
+(`owned-Q0DShd`, no receipt) aborted when the disposable App did not respond at launch (desktop idle), retained unchanged. Runs `owned-NITRsC` (attempt 6), `owned-sWZqnR` (attempt 7), `owned-KeiEHw` (attempt 8), `owned-4VAYK1` (attempt 9) and `owned-iUlKFK` (attempt 10,
+aborted: the XTGETTCAP merge removed this suite's context bindings from the runner mid-flight) **completed and graded identically (width model-exact,
+history shrunk diverged at 38 displaced rows, restored exact) and reproduced byte-identically by each other and by the final run** — six independent owned
+runs, same divergence — but are superseded by the two serial restacks (insert/replace took v48/54, XTGETTCAP took v49/55, so this layer was restacked to
+v50/56 above both; their retained receipts bind pre-restack scopes) and by the review fixes to the measured scripts (Codex: the unavailable marker's
+experiment count and the unavailable receipt's completion-artifact rejection; CodeRabbit: proof-marker admission, adapter-identity validation). The
+published run is the eleventh.
 
 ## Newly fixed versus newly measured
 

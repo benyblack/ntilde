@@ -44,7 +44,7 @@ Everything is stored ASCII single-width with neutral attributes except the probe
 
 The width round trip reproduced the model exactly (redistribution, cursor +7 columns, attributes, lossless restore). The history
 round trip's initial and restored stages reproduced the model exactly (top-anchor policy with 22 retained rows and bottom
-padding); its shrunk stage diverged deterministically — reproduced identically in five independent owned runs: the live
+padding); its shrunk stage diverged deterministically — reproduced identically in six independent owned runs: the live
 pane-resize path merged hard lines in pairs — the logical line for (k, k+1) with k ∈ {0, 3, 6, 9, 12, 15} became `line k` + two
 blank layout cells + `line k+1` — displacing 38 ordered rows instead of 44, losslessly. The VT engine's own `Resize` in isolation
 reproduces the model for the same fixture under every tried resize sequence, isolating the divergence to the live pane-resize

@@ -15,14 +15,14 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '330819f72f8e5303e38a4875f9682c8cb5db05362ed1852b00801ae68feea74e', 'the retained archive manifest is pinned');
+    assert.equal(hash(manifestBytes), '9ea9604a56c3e751ad350eef9d7ae3ed251a71db991ec6da3086f70928757161', 'the retained archive manifest is pinned');
     const manifest = JSON.parse(manifestBytes);
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-ascii-reflow-publication-'));
     try {
         extractOwnedArchive(dir, manifest, root, join(dir, 'owned-run.zip'));
         const original = JSON.parse(readFileSync(join(root, 'cell-receipt.json')));
-        assert.equal(original.schemaVersion, 55);
+        assert.equal(original.schemaVersion, 56);
         const { schemaVersion, ownershipProofSha256, contextSha256, rawSha256, fixtureRemoved, completedAt, ...evidence } = original;
         rmSync(join(root, 'cell-receipt.json'));
         const derived = completeOwnedReceipt(root, join(root, 'removed-fixture'), evidence);
@@ -47,6 +47,6 @@ test('retained run independently rederives the complete receipt and published pr
         assert.equal(observed.history.shrunk.matchesModel, false);
         assert.equal(observed.history.restored.matchesModel, true);
         assert.equal(observed.history.restored.history, 22);
-        assert.equal(schemaVersion, 55); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 56); assert.equal(fixtureRemoved, true);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
