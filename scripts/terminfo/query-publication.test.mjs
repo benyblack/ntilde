@@ -227,7 +227,7 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
             }
             if (policy) {
                 const path = join(modules, 'owned-sources.mjs'); writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v50';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v51';"));
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
             assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v51' : 'readonly-owned-source-graph-v50');

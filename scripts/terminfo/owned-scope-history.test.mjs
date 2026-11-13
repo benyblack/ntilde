@@ -27,7 +27,7 @@ for (const [name, grow, policy] of [
         if (policy) {
             const path = join(scripts, 'owned-sources.mjs');
             writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v50';"));
+                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v51';"));
         }
         const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
         assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 337 : 336);
@@ -94,7 +94,7 @@ for (const [name, grow, policy] of [['inventory', true, false], ['policy', false
             if (policy) {
                 const path = join(scripts, 'owned-sources.mjs');
                 writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v50';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v51';"));
             }
             const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
             assert.equal(Object.keys(sources.capturedV9SourceFiles).length, 60);
