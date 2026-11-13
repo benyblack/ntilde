@@ -126,11 +126,7 @@ export async function terminateRecordedWorker(recorded, runId) {
  */
 /** The observation kinds (`<prefix>-<operation>`) whose answers may carry complete screens and metadata: they get the 512 KiB response cap, every other kind 16 KiB. */
 const largeResponsePrefixes = new Set(['cell', 'sgr', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing', 'history', 'resize', 'saved', 'metadata', 'input', 'images',
-<<<<<<< HEAD
-    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'lnk', 'tst', 'xgtc', 'cw']);
-=======
-    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'lnk', 'tst', 'ost', 'cw', 'irm']);
->>>>>>> origin/main
+    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'lnk', 'tst', 'ost', 'xgtc', 'cw', 'irm']);
 function largeResponsePrefix(kind) {
     return typeof kind === 'string' && kind.includes('-') && largeResponsePrefixes.has(kind.slice(0, kind.indexOf('-')));
 }
