@@ -37,13 +37,14 @@ export async function collectReflowGrading({ config, fence, owner, gradingModule
         bound = true;
         for (const item of cases) {
             stages.push({ caseId: item.id, stageId: 'control' });
-            const seeded = await owner('reflow-read', await recordFeed(fence, feeds, barriers, item.setup), { caseId: item.id, stageId: 'control' });
+            // Serial by design: each observation must finish before the next write.
+            const seeded = await owner('reflow-read', await recordFeed(fence, feeds, barriers, item.setup), { caseId: item.id, stageId: 'control' }); // NOSONAR
             reads.push({ cursor: [seeded.screen.cursorRow, seeded.screen.cursorCol] });
             for (const stageId of ['after', 'restored']) {
-                await owner('reflow-apply', null, { caseId: item.id, stageId });
+                await owner('reflow-apply', null, { caseId: item.id, stageId }); // NOSONAR
                 stages.push({ caseId: item.id, stageId });
                 // The parent chose and verified the geometry. Fence later output before reading its state.
-                const observed = await owner('reflow-read', await fence.write(''), { caseId: item.id, stageId });
+                const observed = await owner('reflow-read', await fence.write(''), { caseId: item.id, stageId }); // NOSONAR
                 reads.push({ cursor: [observed.screen.cursorRow, observed.screen.cursorCol] });
             }
         }

@@ -5,7 +5,7 @@ import { screenSnapshot, snapshotHash } from '../agent-observer.mjs';
 import { replayReflowPinned } from '../ascii-reflow-grading.mjs';
 import { asciiReflowAdapterId } from '../ascii-reflow-grading-collector.mjs';
 
-export const reflowPaneId = editingPaneId;
+export { editingPaneId as reflowPaneId } from './editing-journal.mjs';
 export function reflowWire(state) {
     return { ...editingWire(state), rows: state.grid.length, cols: state.grid[0].length };
 }

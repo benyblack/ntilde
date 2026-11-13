@@ -49,13 +49,36 @@ export function replayReflowPinned() {
         observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'legacy', note } };
 }
 
-/** Validate journal, actions, run identity, binding stability and restoration; return the derived cases. */
-export function validateReflowEvidence(frames, actions, run, runId, adapter) {
+/** The retained frame kind implied by a frame's position in the nine-frame journal. */
+function frameKind(index, count) {
+    if (index === 0) return 'start';
+    if (index === 1) return 'bind';
+    return index === count - 1 ? 'finish' : 'read';
+}
+
+/** Journal shape, run identity and adapter derivation. */
+function checkReflowIdentity(frames, actions, run, runId, adapter) {
     check(/^[a-f\d]{32}$/.test(runId ?? '') && Array.isArray(frames) && frames.length === 9
         && Array.isArray(actions) && actions.length === 4 && adapter?.id === asciiReflowAdapterId
         && run?.adapterId === asciiReflowAdapterId && run.suiteId === asciiReflowSuiteId && run.runId === runId
         && same(run.probeIds, [...asciiReflowCaseIds]) && /^[a-f\d]{64}$/.test(adapter.bundleSha256 ?? '')
         && /^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? '') && adapter.derivedFromAdapterId === derivedFrom);
+}
+
+/** The run record: byte-exact fixture feeds, barriers aligned with their reads, plan order and read cursors. */
+function checkReflowRunRecord(run, cases, plan, frames) {
+    check(same(run.feeds, [cases[0].setup, cases[1].setup, asciiReflowFinalRestore])
+        && Array.isArray(run.barriers) && run.barriers.length === 3
+        && run.barriers.every(barrier => typeof barrier === 'string' && /^\x1b\[\?[\d;]+c$/.test(barrier))
+        && run.barriers[0] === frames[2].barrier && run.barriers[1] === frames[5].barrier && run.barriers[2] === frames[8].barrier
+        && same(run.stages, plan.map(stage => ({ caseId: stage.caseId, stageId: stage.stageId })))
+        && Array.isArray(run.reads) && run.reads.length === 6
+        && run.reads.every((read, index) => same(read.cursor, [frames[index + 2].screen.cursorRow, frames[index + 2].screen.cursorCol])));
+}
+
+/** Validate journal, actions, run identity, binding stability and restoration; return the derived cases. */
+export function validateReflowEvidence(frames, actions, run, runId, adapter) {
+    checkReflowIdentity(frames, actions, run, runId, adapter);
     const first = frames[0], last = frames.at(-1), original = geometry(first.screen ?? {});
     const cases = makeReflowCases(original.rows, original.cols);
     const plan = cases.flatMap(item => ['control', 'after', 'restored'].map(stageId => ({
@@ -64,7 +87,7 @@ export function validateReflowEvidence(frames, actions, run, runId, adapter) {
     let actionIndex = 0;
     for (const [index, frame] of frames.entries()) {
         const stage = plan[index - 2];
-        const kind = index === 0 ? 'start' : index === 1 ? 'bind' : index === frames.length - 1 ? 'finish' : 'read';
+        const kind = frameKind(index, frames.length);
         const expectedAction = stage && stage.stageId !== 'control' ? actionIndex++ : null;
         const screen = screenSnapshot(frame.screen, false, true, true, true, true);
         const after = screenSnapshot(frame.afterScreen, false, true, true, true, true);
@@ -83,14 +106,7 @@ export function validateReflowEvidence(frames, actions, run, runId, adapter) {
     bound.lines[0] = asciiReflowNoncePrefix + runId; bound.cursorCol = (asciiReflowNoncePrefix + runId).length;
     bound.bufferState.alternateScreen = true;
     check(same(bound, frames[1].screen));
-    // The run record: byte-exact fixture feeds, barriers aligned with their reads, plan order and read cursors.
-    check(same(run.feeds, [cases[0].setup, cases[1].setup, asciiReflowFinalRestore])
-        && Array.isArray(run.barriers) && run.barriers.length === 3
-        && run.barriers.every(barrier => typeof barrier === 'string' && /^\x1b\[\?[\d;]+c$/.test(barrier))
-        && run.barriers[0] === frames[2].barrier && run.barriers[1] === frames[5].barrier && run.barriers[2] === frames[8].barrier
-        && same(run.stages, plan.map(stage => ({ caseId: stage.caseId, stageId: stage.stageId })))
-        && Array.isArray(run.reads) && run.reads.length === 6
-        && run.reads.every((read, index) => same(read.cursor, [frames[index + 2].screen.cursorRow, frames[index + 2].screen.cursorCol])));
+    checkReflowRunRecord(run, cases, plan, frames);
     return cases;
 }
 

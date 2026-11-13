@@ -57,6 +57,19 @@ function checkFixtureAndSources(output, context, marker) {
         check(/^[a-f\d]{64}$/.test(context[key] ?? '') && hash(bytes(output, join('sources', file), 2 * 1024 * 1024)) === context[key]);
 }
 
+/** An unavailable run is a typed initial refusal: no fixture, no journals and, crucially, no completion artifacts. */
+function checkUnavailableReflow(output, { report, binding, marker, frames, actions }) {
+    for (const file of ['rf-run.json', 'reflow-observations.json']) {
+        if (present(join(output, file)) && bytes(output, file, 64 * 1024).length) throw new Error('Unavailable ASCII reflow run retains completion artifacts.');
+    }
+    // A directory holding both would finalize a run that was never rederived.
+    check(report.status === 'unavailable' && ['screenDetailsUnavailable', 'asciiReflowGeometryUnavailable'].includes(report.reason)
+        && report.fixtureStarted === false && report.plannedExperiments === 2 && frames.length === 0 && actions.length === 0
+        && marker.paneId === undefined && marker.originalGeometry === undefined
+        && binding.status === 'unavailable' && binding.reason === report.reason && same(binding.counts, {})
+        && binding.runFile === undefined && binding.runSha256 === undefined);
+}
+
 /** Re-derive both experiments, the four parent-selected actions and the pinned replay before finalizing. */
 export function checkReflowEvidence(output, binding, runId, context, proof) {
     const marker = proof.proofs?.[0]?.asciiReflow;
@@ -75,16 +88,7 @@ export function checkReflowEvidence(output, binding, runId, context, proof) {
         || hash(adapterBytes) !== binding.adapterBundleSha256) throw new Error('Changed ASCII reflow evidence.');
     if (!adapterBytes.equals(Buffer.from(adaptReflowCollector(previous)))) throw new Error('Invalid ASCII reflow adapter derivation.');
     if (binding.file === 'reflow-unavailable.json') {
-        for (const file of ['rf-run.json', 'reflow-observations.json']) {
-            if (present(join(output, file)) && bytes(output, file, 64 * 1024).length) throw new Error('Unavailable ASCII reflow run retains completion artifacts.');
-        }
-        check(report.status === 'unavailable' && ['screenDetailsUnavailable', 'asciiReflowGeometryUnavailable'].includes(report.reason)
-            && report.fixtureStarted === false && report.plannedExperiments === 2 && frames.length === 0 && actions.length === 0
-            && marker.paneId === undefined && marker.originalGeometry === undefined
-            && binding.status === 'unavailable' && binding.reason === report.reason && same(binding.counts, {})
-            && binding.runFile === undefined && binding.runSha256 === undefined);
-        // Completion artifacts must be absent for an unavailable run: a directory
-        // holding both would finalize a run that was never rederived.
+        checkUnavailableReflow(output, { report, binding, marker, frames, actions });
         return;
     }
     const runBytes = bytes(output, 'rf-run.json');

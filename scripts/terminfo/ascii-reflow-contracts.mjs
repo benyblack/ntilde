@@ -148,10 +148,13 @@ export function makeReflowCases(rows, cols) {
     // the parked cursor's column right by exactly the removed columns, without displacing any row into history.
     const longLength = cols + Math.floor(cols / 2);
     const cursorOffset = cols + Math.floor(cols / 3);
-    const widthLines = Array.from({ length: 12 }, (_, index) => index % 2 === 0
-        ? line(longText(index / 2, longLength))
-        : line(shortText(Math.floor(index / 2)), index === 1 ? [0, 4] : null));
-    for (let index = 6; widthLines.length < rows - 12; index++) widthLines.push(line(shortText(index)));
+    const widthLine = index => {
+        if (index % 2 === 0) return line(longText(index / 2, longLength));
+        return line(shortText(Math.floor(index / 2)), index === 1 ? [0, 4] : null);
+    };
+    const widthLines = Array.from({ length: 12 }, (_, index) => widthLine(index));
+    const fillerCount = Math.max(0, rows - 12 - widthLines.length);
+    for (let index = 6; index < 6 + fillerCount; index++) widthLines.push(line(shortText(index)));
     const widthSpec = { id: 'reflow.width-roundtrip', lines: widthLines, cursorLine: 0, cursorOffset };
     // Experiment B: one full viewport of long hard lines; the smaller grid displaces complete ordered rows into history and
     // the cursor follows the last line's end.
@@ -201,7 +204,8 @@ export function reflowStageTarget(cases, caseId, stageId) {
 export function reflowStageState(cases, caseId, stageId) {
     const item = cases.find(entry => entry.id === caseId);
     if (!item || !reflowStageIds.includes(stageId)) throw new Error('Unknown ASCII reflow plan stage.');
-    return stageId === 'control' ? item.before : stageId === 'after' ? item.after : item.restored;
+    const byStage = { control: item.before, after: item.after, restored: item.restored };
+    return byStage[stageId];
 }
 
 /** Whether one stage's complete observation equals its independently derived model state: every stored cell (including the
@@ -272,11 +276,11 @@ export function briefReflowObservation(stages) {
 /** Independent effect grader entry: validates the stage record shape, then grades. */
 export function gradeReflowCase(stages, revision = asciiReflowContractsVersion) {
     if (revision !== 1) throw new Error(`Unknown ASCII reflow contracts revision ${revision}.`);
-    if (!stages || !stages.width || !stages.history) throw new Error('Missing extensions.reflow stage captures.');
+    if (!stages?.width || !stages?.history) throw new Error('Missing extensions.reflow stage captures.');
     for (const experiment of ['width', 'history']) {
         for (const stage of ['initial', 'shrunk', 'restored']) {
             const observed = stages[experiment][stage];
-            if (!observed || !observed.screen || !Array.isArray(observed.screen.cellDetails)) {
+            if (!Array.isArray(observed?.screen?.cellDetails)) {
                 throw new Error(`Missing ${experiment}.${stage} read captures.`);
             }
         }
