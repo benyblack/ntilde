@@ -144,9 +144,11 @@ function drawRender(screen, theme) {
     const pixels = Buffer.alloc(width * height * 4);
     const paint = (x, y, argb) => { const at = (y * width + x) * 4; pixels[at] = (argb >>> 16) & 255; pixels[at + 1] = (argb >>> 8) & 255; pixels[at + 2] = argb & 255; pixels[at + 3] = 255; };
     const fill = (left, top, right, bottom, argb) => { for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) paint(x, y, argb); };
-    const textRow = (row, fillArgb, inkArgb) => {
+    // `staleInkArgb`, when given, paints every glyph after the first in that colour: a renderer that applies the override to one glyph only.
+    const textRow = (row, fillArgb, inkArgb, staleInkArgb = null) => {
         fill(4 * cellWidth, row * cellHeight, width, (row + 1) * cellHeight, fillArgb);
-        for (let index = 0; index < 7; index++) fill((4 + index) * cellWidth + 1, row * cellHeight + 4, (4 + index) * cellWidth + 6, (row + 1) * cellHeight - 4, inkArgb);
+        for (let index = 0; index < 7; index++) fill((4 + index) * cellWidth + 1, row * cellHeight + 4, (4 + index) * cellWidth + 6, (row + 1) * cellHeight - 4,
+            index > 0 && staleInkArgb !== null ? staleInkArgb : inkArgb);
     };
     fill(0, 0, width, height, theme.backgroundArgb);
     for (let at = 0; at < key.length; at++) paint(at, 0, 0xff000000 | (key[at] << 16) | (key[at] << 8) | key[at]);
@@ -154,7 +156,7 @@ function drawRender(screen, theme) {
     const selectedInk = theme.selectionForegroundOverride ? theme.selectionForegroundArgb : theme.foregroundArgb;
     textRow(1, 0xff101010, 0xf0f0f0);
     fill(4 * cellWidth, 2 * cellHeight, width, 3 * cellHeight, selectionPaint);
-    textRow(3, selectionPaint, selectedInk);
+    textRow(3, selectionPaint, selectedInk, theme.partialInk ? theme.foregroundArgb : null);
     textRow(4, selectionPaint, theme.ansiPaletteArgb[33]);
     textRow(5, 0xff102030, 0xf0f0f0);
     return { width, height, pixels };
@@ -234,6 +236,8 @@ function stageFrameAndRead(ctx) {
         drawn = { ...renderTheme(baseline, colors, overrides, behavior), selectionForegroundOverride: true,
             selectionForegroundArgb: renderTheme(baseline, colors, overrides, behavior).selectionBackgroundArgb };
     }
+    // A renderer that applies the selection foreground to the first selected glyph only and leaves the rest in the default ink.
+    if (behavior.partialForegroundInk && overrides.selectionForeground !== null) drawn = { ...renderTheme(baseline, colors, overrides, behavior), partialInk: true };
     const view = { theme: renderTheme(baseline, colors, overrides, behavior), extra: { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries },
         repeat, drawn };
     frames.push(frame(frames.length, 'selc-read', screen, deviceAttribute, view, store));

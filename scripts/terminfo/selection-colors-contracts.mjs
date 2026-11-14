@@ -284,7 +284,9 @@ function renderMatches(render, effective, overrides) {
     // The selection fill and the selected ink are checked independently: a background override never excuses a missing foreground.
     if (overrides.selectionBackground !== null ? render.selectionBlank.solid !== opaqueArgb(overrides.selectionBackground) : !render.selectionBlank.matchesBaseline) return false;
     // The selected ink must carry whichever distinguishable value this stage set; any other color fails closed.
-    if (overrides.selectionForeground !== null) return inkCoverageOf(render, effective, overrides) > 10;
+    // Coverage alone would accept a handful of matching pixels among glyphs drawn in a stale colour, so the dominant non-fill ink (the
+    // colour most of the selected glyph pixels carry) must be the override's exact value as well.
+    if (overrides.selectionForeground !== null) return inkCoverageOf(render, effective, overrides) > 10 && render.selectedInk.dominant === effective.selectionForeground;
     // With no foreground override the ink follows the fill: an overridden fill moves it to the App's derived contrast ink, so the ink may
     // not carry either distinguishable override value (a stale foreground fails closed) and must still be visible against the fill (ink
     // absent, or the fill's own color, leaves no dominant non-fill ink); an untouched fill pins it to the baseline.
