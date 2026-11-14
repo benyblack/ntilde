@@ -99,6 +99,9 @@ namespace Ntilde.Controls
         /// (settings gate, focus policy) and how is the window's call — same split as
         /// <see cref="LongCommandCompleted"/>.</summary>
         public event Action<TerminalPane, string>? OscNotificationReceived;
+        /// <summary>An OSC 777 <c>notify</c> or OSC 99 notification arrived: (pane, title, body), already flattened and
+        /// capped, either possibly empty but not both. Same policy split as <see cref="OscNotificationReceived"/>.</summary>
+        public event Action<TerminalPane, string, string>? OscTitledNotificationReceived;
         /// <summary>An OSC 9;4 progress state arrived (issue #271); <see langword="null"/>
         /// withdraws the pane's indication. Where it renders (tab header, taskbar) is the
         /// window's call.</summary>

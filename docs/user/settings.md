@@ -28,7 +28,7 @@ Each table gives the setting's key in `settings.json` ([The settings file](#the-
 |---|---|---|---|
 | Automatic update checks | `AutomaticUpdateChecks` | on | Checks GitHub for a newer version about 10 seconds after launch and downloads it in the background. Nothing restarts until you say so. Installed builds only, not the portable zip ([Updates](install.md#updates)). Takes effect at the next launch. |
 | Long command notifications | `LongCommandNotificationsEnabled` | off | Shows a toast when a command that ran for at least 30 seconds finishes in a pane you are not looking at. Needs shell integration. |
-| Program notifications (OSC 9) | `Osc9NotificationsEnabled` | off | Shows a toast when a program asks for one with OSC 9 (an AI CLI saying a long task finished, say), unless you are looking at that pane. |
+| Program notifications (OSC 9, 99, 777) | `Osc9NotificationsEnabled` | off | Shows a toast when a program asks for one with OSC 9, kitty's OSC 99 (title and body payloads) or OSC 777 `notify` (an AI CLI saying a long task finished, say), unless you are looking at that pane. |
 | Progress reporting (OSC 9;4) | `Osc9ProgressReportingEnabled` | on | Shows progress a program reports with OSC 9;4 on its tab, and on the Windows taskbar button. |
 | Keep shells running when the window closes | `SessionPersistence` | *Keep running* (`"KeepOnClose"`) | *Keep running* or *Off* (`"Off"`). Runs shells in the background multiplexer so they survive closing the window, a crash or an update ([Persistent sessions](persistent-sessions.md)). Applies to new tabs. |
 

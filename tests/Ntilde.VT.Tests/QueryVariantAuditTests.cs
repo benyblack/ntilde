@@ -12,7 +12,6 @@ public sealed class QueryVariantAuditTests
         { "extensions.osc1337-cellsize", "\u001b]1337;ReportCellSize\u0007" },
         { "extensions.osc1337-capabilities", "\u001b]1337;RequestCapabilities\u0007" },
         { "extensions.osc5-special-color", "\u001b]5;0;?\u0007" },
-        { "extensions.osc99-kitty-notify", "\u001b]99;i=ntilde-query-audit:p=?;\u001b\\" },
         { "extensions.osc21-kitty-color", "\u001b]21;foreground=?\u001b\\" },
         { "extensions.osc7770-font-size", "\u001b]7770;?\u0007" },
         { "extensions.osc7777-font-window-size", "\u001b]7777;?\u0007" },

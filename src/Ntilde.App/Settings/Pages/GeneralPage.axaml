@@ -27,8 +27,8 @@
                     <CheckBox Name="LongCommandNotificationsToggle" Classes="Toggle" AutomationProperties.Name="Long command notifications"/>
                 </settings:SettingRow>
                 <settings:SettingRow RowId="osc9-notifications"
-                                     Title="Program notifications (OSC 9)"
-                                     Description="Show a toast when a program explicitly asks for one via OSC 9 (e.g. an AI CLI pinging that a long task finished)."
+                                     Title="Program notifications (OSC 9, 99, 777)"
+                                     Description="Show a toast when a program explicitly asks for one via OSC 9, kitty OSC 99 or OSC 777 notify (e.g. an AI CLI pinging that a long task finished)."
                                      Details="Suppressed while you're looking at the pane, like long command notifications."
                                      Keywords="toast alert osc">
                     <CheckBox Name="Osc9NotificationsToggle" Classes="Toggle" AutomationProperties.Name="Program notifications"/>
