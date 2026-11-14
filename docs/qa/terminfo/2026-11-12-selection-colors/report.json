@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-selection-colors-graded-v1",
   "contractsVersion": 1,
-  "runId": "4ce60d5005271dc4e7ade8fa92b78d1a",
+  "runId": "27ee602c4514a7467a1e60297968b38a",
   "adapter": {
     "id": "ntilde-owned-selection-colors-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-osc-title-grading-v1",
-    "bundleSha256": "9c8e1c61d945c8544e1a78d48331735833d3ba6f315a01f30572ccdbcaeac0a2",
+    "bundleSha256": "d9ce849188cb323aaf9b8bbf20129d5ac5c90629c790c2e07a7d6ff82a2abedb",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned selection-color termless paths over independently journaled fixtures, plus versioned effect contracts for exact fenced replies, app-resolved colors, stored cells and controlled renders with the established synthetic selection. Unset selection sources reply nothing behind the completed ordering barrier and are never substituted with an RGB value. No physical mouse selection, native desktop appearance, pointer color, clipboard behavior or stock-score inference",

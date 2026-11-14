@@ -53,6 +53,6 @@ test('the projection keeps the pinned verdicts, effect verdicts and stock grades
         assert.ok(!('score' in (item.conclusion ?? {})), 'no score promotion claim');
     }
     const summary = JSON.parse(read('summary.json'));
-    assert.deepEqual(summary.stockCollector.counts, { inconclusive: 167, supported: 87, unsupported: 1 });
+    assert.deepEqual(summary.stockCollector.counts, { inconclusive: 166, supported: 88, unsupported: 1 });
     assert.equal(summary.stockCollector.note, 'Stock terminal-path grades; owned effects do not change the stock score.');
 });

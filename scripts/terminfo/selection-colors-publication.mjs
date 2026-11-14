@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 
-export const measuredScriptsRevision = '79b9c0d00ce851ee1b56afc889c45fc092960b93';
-export const measuredAppRevision = '5a20054d70ff72b0953ea0b342381d93035b7571';
+export const measuredScriptsRevision = '85a4beac7cdade2c50be1d14402e7216516bad2f';
+export const measuredAppRevision = 'fe2ccbcac4dbe386c786127ccfed5cb55373d363';
 export function selectionColorsPublication(dir) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
     const measured = json(dir, 'selc-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json');
