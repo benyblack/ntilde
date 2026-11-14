@@ -346,5 +346,12 @@
     "asciiReflowCollectorSourceSha256": "ascii-reflow-collector.mjs",
     "asciiReflowGradingSourceSha256": "ascii-reflow-grading.mjs",
     "asciiReflowGradingCollectorSourceSha256": "ascii-reflow-grading-collector.mjs",
-    "asciiReflowReceiptSourceSha256": "ascii-reflow-receipt.mjs"
+    "asciiReflowReceiptSourceSha256": "ascii-reflow-receipt.mjs",
+    "selectionColorsContractsSourceSha256": "selection-colors-contracts.mjs",
+    "selectionColorsModelSourceSha256": "selection-colors-model.mjs",
+    "selectionColorsCollectorSourceSha256": "selection-colors-collector.mjs",
+    "selectionColorsCaptureSourceSha256": "selection-colors-capture.mjs",
+    "selectionColorsGradingSourceSha256": "selection-colors-grading.mjs",
+    "selectionColorsGradingCollectorSourceSha256": "selection-colors-grading-collector.mjs",
+    "selectionColorsReceiptSourceSha256": "selection-colors-receipt.mjs"
 }

@@ -70,6 +70,7 @@ import { collectReflowGrading } from './ascii-reflow-collector.mjs';
 import { collectHistory } from './history-cases.mjs';
 import { collectColors } from './color-cases.mjs';
 import { collectPixels } from './pixels-cases.mjs';
+import { collectSelectionColorsGrading } from './selection-colors-collector.mjs';
 
 /**
  * Format worker-owned failures, including falsy reasons and up to eight entries per
@@ -128,6 +129,14 @@ try {
         const gradingModule = await import(pathToFileURL(config.gradingBundle).href);
         const gradingRun = await collectAsciiSgrGrading({ config, fence, owner, gradingModule });
         writeFileSync(join(config.output, 'grading-run.json'), JSON.stringify(gradingRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered selection-color qualification follows on the same fence.
+        const selectionColorsSource = readFileSync(config.selectionColorsBundle);
+        if (createHash('sha256').update(selectionColorsSource).digest('hex') !== config.selectionColorsBundleSha256) {
+            throw new Error('Local selection-color adapter bundle changed.');
+        }
+        const selectionColorsModule = await import(pathToFileURL(config.selectionColorsBundle).href);
+        const selectionColorsRun = await collectSelectionColorsGrading({ config, fence, owner, gradingModule: selectionColorsModule });
+        writeFileSync(join(config.output, 'selc-run.json'), JSON.stringify(selectionColorsRun) + '\n', { flag: 'wx', mode: 0o600 });
         // The layered SGR reset/standard-color qualification follows the first
         // graded suite on the same exclusively owned fence.
         const sgrColorsSource = readFileSync(config.sgrColorsBundle);

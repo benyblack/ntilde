@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "02b3cb61c8a370fdd93eac8728ded7293827cdf97d91085dda427a85e235d37f",
+    "superseded/attempt-25.zip": "a834bc3d57b82ea5acea0c976a1451d6aa4f50285a9c993072c0f8a113751b9b",
+    "superseded/attempt-26.zip": "9a7aed51a18dd2da58e589d6b59f320a47487f091e0eaa9e0cc5295d519b65f6",
+    "superseded/attempt-27.zip": "5e6394f6edefe0d85d519f1e9ea025420c9ed7713a598f6395418859a08523bb",
+    "superseded/attempt-28.zip": "6270e2285097b78d1771a1cd5668b71d11eb689c31e0f760b4369614c1026006",
+    "superseded/attempt-29.zip": "c53b9c9902c9f2e0a0dd111fa7a0175530daccf8935e06a2e41987b5c4d71c81",
+    "superseded/attempt-32.zip": "cdca2ffdce64c405285abbe8f261fa9bc890abed383c546547ae7345a60782fc",
+    "superseded/attempt12-pre-v52-infrastructure.zip": "dbba67650840c110b453926acc2b577faf93d21755d5578b090bee9cb33c2211"
+  },
+  "appRevision": "5a20054d70ff72b0953ea0b342381d93035b7571",
+  "scriptsRevision": "08197ff46ab2f675d0c6c5aaeb6b26347066d6ad",
+  "appAssemblySha256": "c9c0119ce7a08e79d9c1b36b161fc9015e6a55ce6e482c588cbd509a06587f1a",
+  "measurement": {
+    "runId": "dc2c29f5106f2772757922e093d42458",
+    "receiptSchema": 59,
+    "sourcePolicy": "readonly-owned-source-graph-v53"
+  },
+  "attempts": [
+    {
+      "archive": "superseded/attempt-25.zip",
+      "runId": "4dbe97e8ff59c6659b4f21445a1530a0",
+      "reason": "Collected all suites (selection colors included) but the final receipt refused it: the rebase had reordered the captured v55-v58 source inventories, so the retained inventory did not equal the pinned v59 inventory (Invalid or incomplete v8 owned metadata-state receipt)."
+    },
+    {
+      "archive": "superseded/attempt-26.zip",
+      "runId": "6bf2084f85c6db05a339bf94cbfc8c78",
+      "reason": "Collected all suites but the runner never built or passed the selection-color evidence binding and identity into the receipt context (Invalid selection-color receipt identity)."
+    },
+    {
+      "archive": "superseded/attempt-27.zip",
+      "runId": "9222501a4a407da83896aec15c02efa4",
+      "reason": "Complete receipt, but all four effect contracts were inconclusive: the shared observer requested every capture with a null selection, so no render-only synthetic selection was drawn, the controlled renders were byte-identical across stages and every render control failed. Superseded by the observer fix."
+    },
+    {
+      "archive": "superseded/attempt-28.zip",
+      "runId": "9dfbaccd612098f3a9ed6b288c4ed9e6",
+      "reason": "Complete and supported on all four cases, superseded because Codex and CodeRabbit found that the render checks skipped the selected-ink check while a background override was active, and that the reset cases did not compare the pinned not-tested declaration; the measured contract and grading scripts changed."
+    },
+    {
+      "archive": "superseded/attempt-29.zip",
+      "runId": "698c89fd233a5c545916ca120e31c077",
+      "reason": "Complete and supported on all four cases, superseded because the Codex review of the final head found that, with only a background override active, the selected-ink check accepted absent ink or ink drawn in the fill color; the measured contract script changed with a regression fixture."
+    },
+    {
+      "archive": "superseded/attempt-32.zip",
+      "runId": "adb6d101c94859dc905269922f477405",
+      "reason": "Complete and supported on all four cases on the v52 source scope (receipt schema 58), superseded because the ASCII-reflow batch merged first and took policy v52, captured v59 and schema 58: the suite was restacked onto policy v53, captured v60 (reflow plus the seven selection-color scripts) and schema 59, which changes the bound source scope, so the measurement was repeated."
+    },
+    {
+      "archive": "superseded/attempt12-pre-v52-infrastructure.zip",
+      "runId": null,
+      "reason": "Earlier collection made before the suite was rewired onto the current main infrastructure (policy v52 scope); retained unchanged."
+    }
+  ]
+}
