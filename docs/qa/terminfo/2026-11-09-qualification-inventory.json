@@ -2760,23 +2760,23 @@
         "extensions.osc99-kitty-notify"
       ],
       "evidence": {
-        "files": 9,
-        "bytes": 42363306,
-        "sha256": "1cbb23517fb23c42090705de34985832075798a813e43809e4e517313f12b6e8"
+        "files": 10,
+        "bytes": 49410631,
+        "sha256": "106e7f009bbe9706171ece8f841ddb73880486cafe96ba0e6ac2716075935c7a"
       },
       "receipt": {
         "schemaVersion": 59,
-        "runId": "6f88d5d9bd97443925592b0353bfb1cf",
+        "runId": "4625c13d4a6fb4466397882957f6b3d2",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "9457dbed315d816128b2ee95137647ff962e99901a2640be43787a381e26370e"
+          "sha256": "2b78458fa1dffdb96f33d1bbaee1332e8681e31c795d4d48becc0e6444508129"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-notify-graded-v1",
           "file": "ntf-observations.json",
-          "sha256": "b743a393876d96170b7b170a838fc8961bba13a51b11f7ac8b1a4c020924a01a",
+          "sha256": "11d5251154d6436c71c0fba734776f623afc2a909809b37fde8a120c16f9e917",
           "runFile": "ntf-run.json",
-          "runSha256": "cffb1ba64f6e89d5809b569588d4254f7504de5023a321f95d7687d625bca3d4",
+          "runSha256": "afd45bee95b185a5f1213167ed810a94c34534c52a049f54881e9c3ff0cf34a9",
           "counts": {
             "inconclusive/supported": 1,
             "stock-and-query-witness/supported": 1
@@ -2785,23 +2785,23 @@
         }
       },
       "run": {
-        "ownedRunId": "6f88d5d9bd97443925592b0353bfb1cf",
-        "measuredAt": "2026-11-14T12:50:30.458Z",
-        "appRevision": "29c2a3f2b3309b5833d4ad98a7b7ddbe3dbd6832",
+        "ownedRunId": "4625c13d4a6fb4466397882957f6b3d2",
+        "measuredAt": "2026-11-14T13:08:15.200Z",
+        "appRevision": "d904c66390af9953ccf9b9f2d9741b9a7a0d28f3",
         "appVersion": "0.13.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "29c2a3f2b3309b5833d4ad98a7b7ddbe3dbd6832",
+        "scriptsRevision": "d904c66390af9953ccf9b9f2d9741b9a7a0d28f3",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "ac0088064f5eee3196bc2c55a2995730f8d3a0c71e2b090af62fa9b5b43cef42",
+        "collectorAdapterBundleSha256": "27ffbdca220cf33846b8f8f0feee5d3e012c1ebe5c3ee8cfc9d75d2f70fb14c5",
         "gradingAdapterId": "ntilde-owned-notify-grading-v1",
-        "gradingAdapterBundleSha256": "e24cd53026cc182e82825f57c8d33e8a73517e5f7e763f960d378f1d2a014f6d",
+        "gradingAdapterBundleSha256": "c9f3800bc2743c69448df8e2883295b0e4756bc0bca0c9bc511b2c532ab7889c",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v53",
-        "sourceSnapshotManifestSha256": "69e3a89e2d40e7c33a04e4b487b879a014908eb3a1fa14afe5d13cae8aba7a1c"
+        "sourceSnapshotManifestSha256": "0155386aa1b5bbbaf4eff976b19a0a0d37614fecc2aab622409c2cb440709886"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "454b566112188ce90c9160a7ec720afb",
+        "runId": "44271b951ce367edd16e6c1259999f92",
         "counts": {
           "inconclusive": 166,
           "supported": 88,
@@ -2809,14 +2809,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "17dd3a086df1de466c1da5802b44ea81ca7c3450839876a7cd4391512de563ac",
+        "rawSha256": "099369867dcb12422a343f1825ee4e26a6b1f144d2a764c72fda685484fea8ac",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades; owned effects do not change the stock score except where the unchanged stock probe itself now passes."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/notify-publication.test.mjs",
-        "testSha256": "deb727a4964e31da51e2dc6dba3a78b734e09fead912a1897b7fb5d2fe44e57a"
+        "testSha256": "cd1fac8295820304fa27e67fa53298a94d78a772c501eb3ce679b17e78f90435"
       }
     }
   ],
