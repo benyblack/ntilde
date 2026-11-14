@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OwnedReflowObserver } from './ascii-reflow-observer.mjs';
+import { OwnedResizeObserver } from './resize-capture.mjs';
 import { initialReflowScreen, reflowWire, reflowPaneId, reflowActionProof } from './fixtures/reflow-journal.mjs';
 const nonce = 'NTILDE_RF_' + 'a'.repeat(32), barrier = '\x1b[?1;2c';
 function fixture(rows = 40, cols = 140) {
@@ -102,4 +103,17 @@ test('unsupported initial geometry is a typed refusal before any mutation', asyn
     const f = fixture(12, 140);
     await assert.rejects(f.call('start'), error => error.code === 'asciiReflowGeometryUnavailable');
     assert.equal(f.observer.baseline, undefined); assert.equal(f.observer.frames.length, 0); assert.equal(f.actions.length, 0);
+});
+test('the reflow observer shares the resize protocol but keeps its own nonce, request kind and refusal label', async () => {
+    const options = { profileName: 'fixture', expectedPaneId: reflowPaneId, endpoint: () => 'private', rpc: async () => ({}), performResize: async () => ({}) };
+    assert.ok(new OwnedReflowObserver({ ...options, nonce }) instanceof OwnedResizeObserver);
+    assert.throws(() => new OwnedReflowObserver({ ...options, nonce: 'NTILDE_RZ_' + 'a'.repeat(32) }), /Invalid owned ASCII reflow plan/);
+    assert.throws(() => new OwnedResizeObserver({ ...options, nonce }), /Invalid owned resize plan/);
+    for (const bad of ['NTILDE_RF_' + 'a'.repeat(31), 'NTILDE_RF_' + 'A'.repeat(32), 'NTILDE_RF_' + 'a'.repeat(32) + '\n', undefined]) {
+        assert.throws(() => new OwnedReflowObserver({ ...options, nonce: bad }), /Invalid owned ASCII reflow plan/);
+    }
+    const f = fixture();
+    await assert.rejects(f.observer.handle({ kind: 'resize-start', barrier: null }, () => 1000), /Invalid owned ASCII reflow plan/);
+    assert.equal(f.reads.length, 0, 'a resize-kind request never reaches the pane');
+    assert.equal(f.observer.cases, undefined);
 });
