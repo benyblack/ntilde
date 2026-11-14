@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace Ntilde.VT.Tests;
 
 // OSC 777 notify and kitty OSC 99 desktop notifications. The parser decodes, sanitizes and caps; showing is the
@@ -217,16 +219,39 @@ public class Osc99Osc777NotificationTests
     }
 
     [Fact]
-    public void Importing_parser_state_discards_the_pending_osc99_notification_of_the_target()
+    public void Pending_osc99_notifications_survive_a_parser_state_transfer_and_replace_the_targets()
     {
+        var (source, _, _, _) = Create();
         var (target, notifications, _, _) = Create();
-        var source = new AnsiParser(new TerminalBuffer(cols: 10, rows: 2));
 
-        target.Process("\x1b]99;i=m:d=0;stale\x1b\\");
+        source.Process("\x1b]99;i=m:d=0;Held title\x1b\\\x1b]99;i=m:p=body:d=0;Held body\x1b\\");
+        target.Process("\x1b]99;i=stale:d=0;stale\x1b\\");
         target.ImportState(source.ExportState());
-        target.Process("\x1b]99;i=m;fresh\x1b\\");
+        target.Process("\x1b]99;i=stale;tail\x1b\\");
+        Assert.Equal(("tail", ""), Assert.Single(notifications));
 
-        Assert.Equal(("fresh", ""), Assert.Single(notifications));
+        target.Process("\x1b]99;i=m;!\x1b\\");
+        Assert.Equal(("Held title!", "Held body"), notifications[1]);
+    }
+
+    [Fact]
+    public void Pending_osc99_state_is_validated_on_import()
+    {
+        var state = new AnsiParser(new TerminalBuffer(cols: 10, rows: 2)).ExportState();
+        var parser = new AnsiParser(new TerminalBuffer(cols: 10, rows: 2));
+
+        foreach (var bad in new List<List<PendingNotificationState>>
+        {
+            new() { null! },
+            new() { new PendingNotificationState { Id = "a b" } },
+            new() { new PendingNotificationState { Id = new string('x', 65) } },
+            new() { new PendingNotificationState { Id = "d" }, new PendingNotificationState { Id = "d" } },
+            Enumerable.Range(0, 9).Select(i => new PendingNotificationState { Id = $"n{i}" }).ToList(),
+        })
+        {
+            state.PendingNotifications = bad;
+            Assert.ThrowsAny<Exception>(() => parser.ImportState(state));
+        }
     }
 
     [Fact]

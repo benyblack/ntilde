@@ -39,6 +39,7 @@ namespace Ntilde.VT
                 WindowTitle = _windowTitle,
                 IconName = _iconName,
                 TitleStack = ExportTitleStack(),
+                PendingNotifications = ExportPendingOsc99(),
                 PendingTextLength = _textBuffer.Length,
             };
 
@@ -61,9 +62,9 @@ namespace Ntilde.VT
             ArgumentNullException.ThrowIfNull(state);
             ValidateParserState(state);
 
-            // An unfinished OSC 99 notification is not part of the snapshot, and one this parser already holds belongs to the output the import replaces:
-            // neither may merge with later chunks of a notification that reuses its id.
-            ClearPendingOsc99();
+            // The snapshot's unfinished OSC 99 notifications replace any this parser already holds: they belong to the output the import replaces and
+            // must not merge with later chunks of a notification that reuses their id.
+            ImportPendingOsc99(state.PendingNotifications);
 
             _state = (State)state.State;
 
@@ -215,6 +216,7 @@ namespace Ntilde.VT
             }
 
             ValidateITerm2Multipart(state.ITerm2Multipart);
+            ValidatePendingOsc99(state.PendingNotifications);
             StateTransferValidation.RequirePresent(state.Charsets, "parser charset designations");
             if (state.TitleStack is { } titleStack)
             {

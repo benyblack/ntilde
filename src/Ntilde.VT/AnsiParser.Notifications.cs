@@ -220,6 +220,50 @@ namespace Ntilde.VT
             _osc99PendingOrder.Add(id);
         }
 
+        private List<PendingNotificationState>? ExportPendingOsc99()
+        {
+            if (_osc99PendingOrder.Count == 0) return null;
+            return _osc99PendingOrder.Select(id =>
+            {
+                var pending = _osc99Pending[id];
+                return new PendingNotificationState { Id = id, Title = pending.Title.ToString(), Body = pending.Body.ToString(), Overflowed = pending.Overflowed };
+            }).ToList();
+        }
+
+        /// <summary>A snapshot's entries come from this parser's own bounds: anything outside them is a state no stream could produce.</summary>
+        private static void ValidatePendingOsc99(List<PendingNotificationState>? entries)
+        {
+            if (entries is null) return;
+            if (entries.Count > Osc99MaxPendingNotifications) throw StateTransferValidation.Reject("parser pending notifications", "more unfinished notifications than the parser holds");
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (PendingNotificationState entry in entries)
+            {
+                StateTransferValidation.RequirePresent(entry, "parser pending notification");
+                StateTransferValidation.RequirePresent(entry.Id, "parser pending notification id");
+                StateTransferValidation.RequirePresent(entry.Title, "parser pending notification title");
+                StateTransferValidation.RequirePresent(entry.Body, "parser pending notification body");
+                if (entry.Id.Length > Osc99MaxEchoedIdChars || !IsOsc99Id(entry.Id) || !seen.Add(entry.Id)
+                    || entry.Title.Length + entry.Body.Length > Osc99MaxPendingChars + Osc99MaxChunkChars)
+                {
+                    throw StateTransferValidation.Reject("parser pending notifications", "ids, text or count exceed the parser's bounds");
+                }
+            }
+        }
+
+        private void ImportPendingOsc99(List<PendingNotificationState>? entries)
+        {
+            ClearPendingOsc99();
+            if (entries is null) return;
+            foreach (PendingNotificationState entry in entries)
+            {
+                var pending = new PendingOsc99Notification { Overflowed = entry.Overflowed };
+                pending.Title.Append(entry.Title);
+                pending.Body.Append(entry.Body);
+                _osc99Pending[entry.Id] = pending;
+                _osc99PendingOrder.Add(entry.Id);
+            }
+        }
+
         /// <summary>RIS discards any unfinished OSC 99 notification: a later one reusing its id must not inherit its text.</summary>
         private void ClearPendingOsc99()
         {
