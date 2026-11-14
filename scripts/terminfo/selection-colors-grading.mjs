@@ -99,6 +99,16 @@ const sampleAreas = Object.freeze({
 
 const rgba = argb => [(argb >>> 16) & 255, (argb >>> 8) & 255, argb & 255, argb >>> 24];
 
+/** The most frequent colour of a region: the paint under the text, since glyph ink covers the minority of a text row's pixels. */
+function mostFrequentColor(bytes) {
+    const counts = new Map();
+    for (let offset = 0; offset < bytes.length; offset += 4) {
+        const color = argbAt(bytes, offset);
+        counts.set(color, (counts.get(color) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
+}
+
 /** What one controlled render drew, against the baseline render: the untouched background cell, whether the unselected control region is
  * byte-identical to the baseline's, the selected blank region (its solid color, if any, and whether its bytes equal the baseline's) and
  * the selected text ink (its dominant non-fill color, whether that dominant ink equals the baseline's, and how many pixels carry each of
@@ -118,7 +128,7 @@ export function renderSamples(image, details, baselineImage) {
         background: solidColor(read(sampleAreas.background)),
         controlUnchanged: read(sampleAreas.control).equals(readBaseline(sampleAreas.control)),
         selectionBlank: { solid: fill, matchesBaseline: blank.equals(baselineBlank) },
-        selectedInk: { dominant, matchesBaseline: ink.equals(baselineInk), dominantMatchesBaseline: dominant !== null && dominant === baselineDominant,
+        selectedInk: { dominant, rowFill: mostFrequentColor(ink), matchesBaseline: ink.equals(baselineInk), dominantMatchesBaseline: dominant !== null && dominant === baselineDominant,
             firstValueCoverage: coverage(firstValue), secondValueCoverage: coverage(secondValue) },
     };
 }

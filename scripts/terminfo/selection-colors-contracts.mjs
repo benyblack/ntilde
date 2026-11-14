@@ -283,6 +283,8 @@ function renderMatches(render, effective, overrides) {
     if (!render || render.background !== effective.background || !render.controlUnchanged) return false;
     // The selection fill and the selected ink are checked independently: a background override never excuses a missing foreground.
     if (overrides.selectionBackground !== null ? render.selectionBlank.solid !== opaqueArgb(overrides.selectionBackground) : !render.selectionBlank.matchesBaseline) return false;
+    // The paint must also sit under the selected text, not only under the blank cells: the text row's own most frequent colour is that fill.
+    if (overrides.selectionBackground !== null && render.selectedInk.rowFill !== opaqueArgb(overrides.selectionBackground)) return false;
     // The selected ink must carry whichever distinguishable value this stage set; any other color fails closed.
     // Coverage alone would accept a handful of matching pixels among glyphs drawn in a stale colour, so the dominant non-fill ink (the
     // colour most of the selected glyph pixels carry) must be the override's exact value as well.
