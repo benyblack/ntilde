@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-notify-graded-v1",
   "contractsVersion": 1,
-  "runId": "e119dd03dc5370a0813aa3812cf1e02b",
+  "runId": "6f88d5d9bd97443925592b0353bfb1cf",
   "adapter": {
     "id": "ntilde-owned-notify-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "741ae429fc32249d58a5d97cbb4a91b1e44bf2e7bd845bf1daf61d87370a6faa",
+    "bundleSha256": "e24cd53026cc182e82825f57c8d33e8a73517e5f7e763f960d378f1d2a014f6d",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned OSC 777 terminal path (two writes and a cursor query, inconclusive by construction) replayed and preserved; pinned OSC 99 query decided by the unchanged stock probe in the same owned run and by the exact-query witness q07.extensions.osc99-kitty-notify (query policy v3), plus versioned effect contracts for the private in-window toast (title, message, visibility, auto-hide) with its window-focus and opt-in preconditions, over paired complete stored cells and pane metadata; no OS desktop notification delivery, no OSC 99 actions, close reports, icons, buttons, urgency, sounds or expiry, no real-program emission, no remote/mux, Windows/Linux, hidden-pane or unobserved focus-change claim",
@@ -14,8 +14,8 @@
     {
       "action": "refocus",
       "method": "osascript",
-      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 69636) to true",
-      "appPid": 69636,
+      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 91467) to true",
+      "appPid": 91467,
       "attempts": [
         {
           "exitCode": 0,
@@ -37,14 +37,14 @@
         }
       ],
       "budgetMs": 2000,
-      "startedAt": "2026-11-14T12:30:07.322Z",
-      "finishedAt": "2026-11-14T12:30:09.362Z"
+      "startedAt": "2026-11-14T12:47:42.353Z",
+      "finishedAt": "2026-11-14T12:47:44.308Z"
     },
     {
       "action": "defocus",
       "method": "osascript",
       "script": "tell application \"Finder\" to activate",
-      "appPid": 69636,
+      "appPid": 91467,
       "attempts": [
         {
           "exitCode": null,
@@ -60,14 +60,14 @@
         }
       ],
       "budgetMs": 2000,
-      "startedAt": "2026-11-14T12:30:25.429Z",
-      "finishedAt": "2026-11-14T12:30:27.894Z"
+      "startedAt": "2026-11-14T12:48:00.384Z",
+      "finishedAt": "2026-11-14T12:48:02.873Z"
     },
     {
       "action": "refocus",
       "method": "osascript",
-      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 69636) to true",
-      "appPid": 69636,
+      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 91467) to true",
+      "appPid": 91467,
       "attempts": [
         {
           "exitCode": 0,
@@ -89,8 +89,8 @@
         }
       ],
       "budgetMs": 2000,
-      "startedAt": "2026-11-14T12:32:36.741Z",
-      "finishedAt": "2026-11-14T12:32:38.785Z"
+      "startedAt": "2026-11-14T12:50:11.874Z",
+      "finishedAt": "2026-11-14T12:50:13.864Z"
     }
   ],
   "cases": [
@@ -211,8 +211,8 @@
               "snapshot": 3,
               "toast": {
                 "visible": true,
-                "title": "focused-e119dd03",
-                "message": "body-e119dd03"
+                "title": "focused-6f88d5d9",
+                "message": "body-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -231,11 +231,11 @@
               "action": "refocus",
               "response": {
                 "ok": true,
-                "ownerPid": 69636,
+                "ownerPid": 91467,
                 "action": "refocus",
                 "method": "osascript",
-                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 69636) to true",
-                "appPid": 69636,
+                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 91467) to true",
+                "appPid": 91467,
                 "attempts": [
                   {
                     "exitCode": 0,
@@ -257,8 +257,8 @@
                   }
                 ],
                 "budgetMs": 2000,
-                "startedAt": "2026-11-14T12:30:07.322Z",
-                "finishedAt": "2026-11-14T12:30:09.362Z"
+                "startedAt": "2026-11-14T12:47:42.353Z",
+                "finishedAt": "2026-11-14T12:47:44.308Z"
               }
             }
           ]
@@ -269,8 +269,8 @@
           "name": "delivered",
           "role": "protocol",
           "expected": {
-            "title": "NT-777-e119dd03",
-            "message": "body-e119dd03"
+            "title": "NT-777-6f88d5d9",
+            "message": "body-6f88d5d9"
           },
           "observations": [
             {
@@ -299,8 +299,8 @@
               "snapshot": 7,
               "toast": {
                 "visible": true,
-                "title": "NT-777-e119dd03",
-                "message": "body-e119dd03"
+                "title": "NT-777-6f88d5d9",
+                "message": "body-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -339,11 +339,11 @@
               "action": "defocus",
               "response": {
                 "ok": true,
-                "ownerPid": 69636,
+                "ownerPid": 91467,
                 "action": "defocus",
                 "method": "osascript",
                 "script": "tell application \"Finder\" to activate",
-                "appPid": 69636,
+                "appPid": 91467,
                 "attempts": [
                   {
                     "exitCode": null,
@@ -359,8 +359,8 @@
                   }
                 ],
                 "budgetMs": 2000,
-                "startedAt": "2026-11-14T12:30:25.429Z",
-                "finishedAt": "2026-11-14T12:30:27.894Z"
+                "startedAt": "2026-11-14T12:48:00.384Z",
+                "finishedAt": "2026-11-14T12:48:02.873Z"
               }
             }
           ]
@@ -371,8 +371,8 @@
           "name": "st-terminated",
           "role": "protocol",
           "expected": {
-            "title": "NT-777-st-e119dd03",
-            "message": "body-st-e119dd03"
+            "title": "NT-777-st-6f88d5d9",
+            "message": "body-st-6f88d5d9"
           },
           "observations": [
             {
@@ -401,8 +401,8 @@
               "snapshot": 10,
               "toast": {
                 "visible": true,
-                "title": "NT-777-st-e119dd03",
-                "message": "body-st-e119dd03"
+                "title": "NT-777-st-6f88d5d9",
+                "message": "body-st-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -475,7 +475,7 @@
           "name": "body-keeps-semicolons",
           "role": "protocol",
           "expected": {
-            "title": "T-e119dd03",
+            "title": "T-6f88d5d9",
             "message": "a;b;c"
           },
           "observations": [
@@ -505,7 +505,7 @@
               "snapshot": 14,
               "toast": {
                 "visible": true,
-                "title": "T-e119dd03",
+                "title": "T-6f88d5d9",
                 "message": "a;b;c"
               },
               "focus": {
@@ -527,8 +527,8 @@
           "name": "title-only",
           "role": "protocol",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-777-only-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-777-only-6f88d5d9"
           },
           "observations": [
             {
@@ -557,8 +557,8 @@
               "snapshot": 16,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "NT-777-only-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "NT-777-only-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -677,8 +677,8 @@
           "name": "policy-flatten-control",
           "role": "policy",
           "expected": {
-            "title": "one two-e119dd03",
-            "message": "x y-e119dd03"
+            "title": "one two-6f88d5d9",
+            "message": "x y-6f88d5d9"
           },
           "observations": [
             {
@@ -707,8 +707,8 @@
               "snapshot": 22,
               "toast": {
                 "visible": true,
-                "title": "one two-e119dd03",
-                "message": "x y-e119dd03"
+                "title": "one two-6f88d5d9",
+                "message": "x y-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -834,8 +834,8 @@
           "matchesDocumentedPolicy": false,
           "observed": {
             "visible": true,
-            "title": "focused-e119dd03",
-            "message": "body-e119dd03"
+            "title": "focused-6f88d5d9",
+            "message": "body-6f88d5d9"
           },
           "expected": null
         },
@@ -847,12 +847,12 @@
           "matchesDocumentedPolicy": true,
           "observed": {
             "visible": true,
-            "title": "one two-e119dd03",
-            "message": "x y-e119dd03"
+            "title": "one two-6f88d5d9",
+            "message": "x y-6f88d5d9"
           },
           "expected": {
-            "title": "one two-e119dd03",
-            "message": "x y-e119dd03"
+            "title": "one two-6f88d5d9",
+            "message": "x y-6f88d5d9"
           }
         },
         {
@@ -1063,8 +1063,8 @@
               "snapshot": 5,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "focused-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "focused-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1085,8 +1085,8 @@
           "name": "delivered-title",
           "role": "protocol",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-6f88d5d9"
           },
           "observations": [
             {
@@ -1115,8 +1115,8 @@
               "snapshot": 28,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "NT-99-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "NT-99-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1157,8 +1157,8 @@
           "name": "title-and-body",
           "role": "protocol",
           "expected": {
-            "title": "NT-99-t-e119dd03",
-            "message": "body-e119dd03"
+            "title": "NT-99-t-6f88d5d9",
+            "message": "body-6f88d5d9"
           },
           "observations": [
             {
@@ -1207,8 +1207,8 @@
               "snapshot": 32,
               "toast": {
                 "visible": true,
-                "title": "NT-99-t-e119dd03",
-                "message": "body-e119dd03"
+                "title": "NT-99-t-6f88d5d9",
+                "message": "body-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1229,8 +1229,8 @@
           "name": "chunks-concatenate",
           "role": "protocol",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-cat-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-cat-6f88d5d9"
           },
           "observations": [
             {
@@ -1259,8 +1259,8 @@
               "snapshot": 34,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "NT-99-cat-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "NT-99-cat-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1281,8 +1281,8 @@
           "name": "base64",
           "role": "protocol",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-b64-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-b64-6f88d5d9"
           },
           "observations": [
             {
@@ -1311,8 +1311,8 @@
               "snapshot": 36,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "NT-99-b64-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "NT-99-b64-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1333,8 +1333,8 @@
           "name": "body-only",
           "role": "protocol",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-body-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-body-6f88d5d9"
           },
           "observations": [
             {
@@ -1363,8 +1363,8 @@
               "snapshot": 38,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "NT-99-body-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "NT-99-body-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1385,8 +1385,8 @@
           "name": "bel-terminated",
           "role": "protocol",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-bel-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-bel-6f88d5d9"
           },
           "observations": [
             {
@@ -1415,8 +1415,8 @@
               "snapshot": 40,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "NT-99-bel-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "NT-99-bel-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1535,8 +1535,8 @@
           "name": "policy-unknown-keys",
           "role": "policy",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-keys-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-keys-6f88d5d9"
           },
           "observations": [
             {
@@ -1565,8 +1565,8 @@
               "snapshot": 46,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "NT-99-keys-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "NT-99-keys-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1685,8 +1685,8 @@
           "name": "policy-flatten-control",
           "role": "policy",
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "one two-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "one two-6f88d5d9"
           },
           "observations": [
             {
@@ -1715,8 +1715,8 @@
               "snapshot": 52,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
-                "message": "one two-e119dd03"
+                "title": "NF-base-6f88d5d9",
+                "message": "one two-6f88d5d9"
               },
               "focus": {
                 "windowActive": false,
@@ -1737,7 +1737,7 @@
           "name": "policy-title-cap",
           "role": "policy",
           "expected": {
-            "title": "NF-base-e119dd03",
+            "title": "NF-base-6f88d5d9",
             "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
           },
           "observations": [
@@ -1767,7 +1767,7 @@
               "snapshot": 54,
               "toast": {
                 "visible": true,
-                "title": "NF-base-e119dd03",
+                "title": "NF-base-6f88d5d9",
                 "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
               },
               "focus": {
@@ -1787,11 +1787,11 @@
               "action": "refocus",
               "response": {
                 "ok": true,
-                "ownerPid": 69636,
+                "ownerPid": 91467,
                 "action": "refocus",
                 "method": "osascript",
-                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 69636) to true",
-                "appPid": 69636,
+                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 91467) to true",
+                "appPid": 91467,
                 "attempts": [
                   {
                     "exitCode": 0,
@@ -1813,8 +1813,8 @@
                   }
                 ],
                 "budgetMs": 2000,
-                "startedAt": "2026-11-14T12:32:36.741Z",
-                "finishedAt": "2026-11-14T12:32:38.785Z"
+                "startedAt": "2026-11-14T12:50:11.874Z",
+                "finishedAt": "2026-11-14T12:50:13.864Z"
               }
             }
           ]
@@ -1829,8 +1829,8 @@
           "matchesDocumentedPolicy": false,
           "observed": {
             "visible": true,
-            "title": "NF-base-e119dd03",
-            "message": "focused-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "focused-6f88d5d9"
           },
           "expected": null
         },
@@ -1842,12 +1842,12 @@
           "matchesDocumentedPolicy": true,
           "observed": {
             "visible": true,
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-keys-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-keys-6f88d5d9"
           },
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "NT-99-keys-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "NT-99-keys-6f88d5d9"
           }
         },
         {
@@ -1884,12 +1884,12 @@
           "matchesDocumentedPolicy": true,
           "observed": {
             "visible": true,
-            "title": "NF-base-e119dd03",
-            "message": "one two-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "one two-6f88d5d9"
           },
           "expected": {
-            "title": "NF-base-e119dd03",
-            "message": "one two-e119dd03"
+            "title": "NF-base-6f88d5d9",
+            "message": "one two-6f88d5d9"
           }
         },
         {
@@ -1900,11 +1900,11 @@
           "matchesDocumentedPolicy": true,
           "observed": {
             "visible": true,
-            "title": "NF-base-e119dd03",
+            "title": "NF-base-6f88d5d9",
             "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
           },
           "expected": {
-            "title": "NF-base-e119dd03",
+            "title": "NF-base-6f88d5d9",
             "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
           }
         }

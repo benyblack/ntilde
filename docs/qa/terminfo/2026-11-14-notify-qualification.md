@@ -35,7 +35,7 @@ documented constant. The OSC 99 verdict is decided by the unchanged stock probe 
 | `extensions.osc777-notify` | **inconclusive** by design (terminal path only) | **supported** (`ntilde-osc777-notification-toast-effect-v1`) | inconclusive |
 | `extensions.osc99-kitty-notify` | **supported** (stock probe and `q07` witness, both unchanged code over the real reply) | **supported** (`ntilde-osc99-notification-toast-effect-v1`) | **supported** |
 
-The stock collector in the same owned run (stock collector run `f8afd791ad44f999d808792a2b4463ed`) grades 88 supported / 1 unsupported / 166 inconclusive (`suiteComplete=false`), one more
+The stock collector in the same owned run (stock collector run `454b566112188ce90c9160a7ec720afb`) grades 88 supported / 1 unsupported / 166 inconclusive (`suiteComplete=false`), one more
 supported than the pre-batch 87/1/167: that is the **only** stock change, and it comes from the App now answering the unchanged OSC 99 probe, not from the owned observations. The frozen
 stock baseline file keeps its original grade for this id. No Core point is added.
 
@@ -69,10 +69,10 @@ mismatches against their frozen original expectations, as the exact-query audit 
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `4a4aa633860c843e5debc75c69b24bfe2475ef1e` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
-`5b40e17c21cd481d5cb5ce0f4f05e1b68174549a8a9ea78668c77995a180b0c2`); measured scripts the same commit; source policy `readonly-owned-source-graph-v53` (353 files; manifest SHA-256
-`a93a162ec6b7c5672c7f45abeec096893c874a2553352d95946877cb5e27573a`); query policy `owned-exact-query-paired-raw-state-v3`; initial settings SHA-256
-`28ae7924f127b652586c912118b6b3c5ec0d53fd93ba13347b47f238c6e120f9`; receipt schema 59; Node v24.22.2; owned run `e119dd03dc5370a0813aa3812cf1e02b`; collected 2026-11-14T12:32Z on macOS. The
+App 0.13.0 (operator supplied) built from `29c2a3f2b3309b5833d4ad98a7b7ddbe3dbd6832` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
+`a337cd4ec92cbfa58fd94425bf02a12b704f8954b3673e6665ae1b45c761aa55`); measured scripts the same commit; source policy `readonly-owned-source-graph-v53` (353 files; manifest SHA-256
+`69e3a89e2d40e7c33a04e4b487b879a014908eb3a1fa14afe5d13cae8aba7a1c`); query policy `owned-exact-query-paired-raw-state-v3`; initial settings SHA-256
+`28dcfcca582410d3ffeb3aada74fad450ed093d8e63de1bafcda8d029acc6570`; receipt schema 59; Node v24.22.2; owned run `6f88d5d9bd97443925592b0353bfb1cf`; collected 2026-11-14T12:50Z on macOS. The
 build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-14-notify/superseded/))
@@ -87,6 +87,8 @@ build is not binary-to-source attestation. Predecessor suites ran in the same fu
 4. Completed with both effect contracts supported; superseded by two further local Codex findings (P2) on the pending-notification state: it did not survive a parser state export/import (a mux attach
    between two chunks lost the held text) and an import could leave the target's old pending text to merge with later chunks. The pending notifications are now part of the exported parser state, validated
    on import (at most 8 entries, ids within the alphabet and 64 characters, bounded text) and replace the target's. The local Codex review of that head reported no actionable issue.
+5. Completed with both effect contracts supported; superseded because main moved (#963 changed the measured reflow/resize scripts, so the source graph's bytes differ) and the branch was merged with
+   it, which requires the measured scripts to be the merged ones. No notification code changed after attempt 5 (this run only adds the merge).
 
-The final run is [owned-run.zip](2026-11-14-notify/owned-run.zip); `node --test scripts/terminfo/notify-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the
+The final run (measured at the merge commit) is [owned-run.zip](2026-11-14-notify/owned-run.zip); `node --test scripts/terminfo/notify-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the
 retained journal and compares the published projection.
