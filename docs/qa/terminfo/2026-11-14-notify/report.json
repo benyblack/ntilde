@@ -1,0 +1,1937 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-notify-graded-v1",
+  "contractsVersion": 1,
+  "runId": "5814a62ad624a7d08383503ee9cf7311",
+  "adapter": {
+    "id": "ntilde-owned-notify-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "4e6c9abcd61245d538a74e214ba963c1f49f4d5ce38a649bafc50505a5628492",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned OSC 777 terminal path (two writes and a cursor query, inconclusive by construction) replayed and preserved; pinned OSC 99 query decided by the unchanged stock probe in the same owned run and by the exact-query witness q07.extensions.osc99-kitty-notify (query policy v3), plus versioned effect contracts for the private in-window toast (title, message, visibility, auto-hide) with its window-focus and opt-in preconditions, over paired complete stored cells and pane metadata; no OS desktop notification delivery, no OSC 99 actions, close reports, icons, buttons, urgency, sounds or expiry, no real-program emission, no remote/mux, Windows/Linux, hidden-pane or unobserved focus-change claim",
+  "focusActions": [
+    {
+      "action": "refocus",
+      "method": "osascript",
+      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 13146) to true",
+      "appPid": 13146,
+      "attempts": [
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 39173
+        },
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 39173
+        },
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 39173
+        }
+      ],
+      "budgetMs": 2000,
+      "startedAt": "2026-11-14T11:43:04.008Z",
+      "finishedAt": "2026-11-14T11:43:06.204Z"
+    },
+    {
+      "action": "defocus",
+      "method": "osascript",
+      "script": "tell application \"Finder\" to activate",
+      "appPid": 13146,
+      "attempts": [
+        {
+          "exitCode": null,
+          "signal": "SIGTERM",
+          "stderr": "",
+          "frontmostPid": 39173
+        }
+      ],
+      "budgetMs": 2000,
+      "startedAt": "2026-11-14T11:43:22.300Z",
+      "finishedAt": "2026-11-14T11:43:23.576Z"
+    },
+    {
+      "action": "refocus",
+      "method": "osascript",
+      "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 13146) to true",
+      "appPid": 13146,
+      "attempts": [
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 39173
+        },
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 39173
+        },
+        {
+          "exitCode": 0,
+          "signal": null,
+          "stderr": "",
+          "frontmostPid": 39173
+        }
+      ],
+      "budgetMs": 2000,
+      "startedAt": "2026-11-14T11:45:32.434Z",
+      "finishedAt": "2026-11-14T11:45:34.592Z"
+    }
+  ],
+  "cases": [
+    {
+      "caseId": "extensions.osc777-notify",
+      "effectContract": {
+        "id": "ntilde-osc777-notification-toast-effect-v1",
+        "outcome": "supported",
+        "controlsHeld": true,
+        "preconditionsMet": true,
+        "reason": null,
+        "preconditions": [
+          {
+            "name": "delivered",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "st-terminated",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "pinned-fixture",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "body-keeps-semicolons",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "title-only",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "unmarked",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "other-subcommands",
+            "control": true,
+            "delivery": true
+          }
+        ],
+        "protocolExperiments": [
+          {
+            "name": "delivered",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "st-terminated",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "pinned-fixture",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "body-keeps-semicolons",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "title-only",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "unmarked",
+            "role": "control",
+            "passed": true
+          },
+          {
+            "name": "other-subcommands",
+            "role": "control",
+            "passed": true
+          }
+        ]
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.osc777-notify/focused-suppressed",
+          "owner": "extensions.osc777-notify",
+          "name": "focused-suppressed",
+          "role": "policy",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 2,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 3,
+              "toast": {
+                "visible": true,
+                "title": "focused-5814a62a",
+                "message": "body-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": false,
+              "preserved": true
+            }
+          ],
+          "actions": [
+            {
+              "action": "refocus",
+              "response": {
+                "ok": true,
+                "ownerPid": 13146,
+                "action": "refocus",
+                "method": "osascript",
+                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 13146) to true",
+                "appPid": 13146,
+                "attempts": [
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 39173
+                  },
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 39173
+                  },
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 39173
+                  }
+                ],
+                "budgetMs": 2000,
+                "startedAt": "2026-11-14T11:43:04.008Z",
+                "finishedAt": "2026-11-14T11:43:06.204Z"
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/delivered",
+          "owner": "extensions.osc777-notify",
+          "name": "delivered",
+          "role": "protocol",
+          "expected": {
+            "title": "NT-777-5814a62a",
+            "message": "body-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 6,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 7,
+              "toast": {
+                "visible": true,
+                "title": "NT-777-5814a62a",
+                "message": "body-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "hidden",
+              "kind": "hidden",
+              "snapshot": 8,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ],
+          "actions": [
+            {
+              "action": "defocus",
+              "response": {
+                "ok": true,
+                "ownerPid": 13146,
+                "action": "defocus",
+                "method": "osascript",
+                "script": "tell application \"Finder\" to activate",
+                "appPid": 13146,
+                "attempts": [
+                  {
+                    "exitCode": null,
+                    "signal": "SIGTERM",
+                    "stderr": "",
+                    "frontmostPid": 39173
+                  }
+                ],
+                "budgetMs": 2000,
+                "startedAt": "2026-11-14T11:43:22.300Z",
+                "finishedAt": "2026-11-14T11:43:23.576Z"
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/st-terminated",
+          "owner": "extensions.osc777-notify",
+          "name": "st-terminated",
+          "role": "protocol",
+          "expected": {
+            "title": "NT-777-st-5814a62a",
+            "message": "body-st-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 9,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 10,
+              "toast": {
+                "visible": true,
+                "title": "NT-777-st-5814a62a",
+                "message": "body-st-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/pinned-fixture",
+          "owner": "extensions.osc777-notify",
+          "name": "pinned-fixture",
+          "role": "protocol",
+          "expected": {
+            "title": "test",
+            "message": "body"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 11,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 12,
+              "toast": {
+                "visible": true,
+                "title": "test",
+                "message": "body"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/body-keeps-semicolons",
+          "owner": "extensions.osc777-notify",
+          "name": "body-keeps-semicolons",
+          "role": "protocol",
+          "expected": {
+            "title": "T-5814a62a",
+            "message": "a;b;c"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 13,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 14,
+              "toast": {
+                "visible": true,
+                "title": "T-5814a62a",
+                "message": "a;b;c"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/title-only",
+          "owner": "extensions.osc777-notify",
+          "name": "title-only",
+          "role": "protocol",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-777-only-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 15,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 16,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "NT-777-only-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/unmarked",
+          "owner": "extensions.osc777-notify",
+          "name": "unmarked",
+          "role": "control",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 17,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 18,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/other-subcommands",
+          "owner": "extensions.osc777-notify",
+          "name": "other-subcommands",
+          "role": "control",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 19,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 20,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/policy-flatten-control",
+          "owner": "extensions.osc777-notify",
+          "name": "policy-flatten-control",
+          "role": "policy",
+          "expected": {
+            "title": "one two-5814a62a",
+            "message": "x y-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 21,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 22,
+              "toast": {
+                "visible": true,
+                "title": "one two-5814a62a",
+                "message": "x y-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/policy-caps",
+          "owner": "extensions.osc777-notify",
+          "name": "policy-caps",
+          "role": "policy",
+          "expected": {
+            "title": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…",
+            "message": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 23,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 24,
+              "toast": {
+                "visible": true,
+                "title": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…",
+                "message": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc777-notify/policy-empty",
+          "owner": "extensions.osc777-notify",
+          "name": "policy-empty",
+          "role": "policy",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 25,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 26,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        }
+      ],
+      "policy": [
+        {
+          "name": "focused-suppressed",
+          "graded": false,
+          "applicable": false,
+          "held": true,
+          "matchesDocumentedPolicy": false,
+          "observed": {
+            "visible": true,
+            "title": "focused-5814a62a",
+            "message": "body-5814a62a"
+          },
+          "expected": null
+        },
+        {
+          "name": "policy-flatten-control",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "one two-5814a62a",
+            "message": "x y-5814a62a"
+          },
+          "expected": {
+            "title": "one two-5814a62a",
+            "message": "x y-5814a62a"
+          }
+        },
+        {
+          "name": "policy-caps",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…",
+            "message": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…"
+          },
+          "expected": {
+            "title": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…",
+            "message": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL…"
+          }
+        },
+        {
+          "name": "policy-empty",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": false,
+            "title": null,
+            "message": null
+          },
+          "expected": null
+        }
+      ],
+      "pinned": {
+        "termlessFunction": false,
+        "termless": null,
+        "terminal": {
+          "pass": false,
+          "response": "1;1",
+          "note": "Cursor response does not measure OSC 777 notification delivery",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query"
+          }
+        },
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        },
+        "verdictSource": "terminal (the registration has no termless function)",
+        "qualifiedOutcome": "inconclusive",
+        "note": "Cursor response does not measure OSC 777 notification delivery",
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]777;notify;test;body\u0007"
+        ],
+        "cursor": [
+          1,
+          1
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc777-notify",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc777-notify"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "stored-state and pane-metadata-and-session-status",
+        "grading": "pinned-preserved-over-owned-observations"
+      }
+    },
+    {
+      "caseId": "extensions.osc99-kitty-notify",
+      "effectContract": {
+        "id": "ntilde-osc99-notification-toast-effect-v1",
+        "outcome": "supported",
+        "controlsHeld": true,
+        "preconditionsMet": true,
+        "reason": null,
+        "preconditions": [
+          {
+            "name": "delivered-title",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "title-and-body",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "chunks-concatenate",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "base64",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "body-only",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "bel-terminated",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "unmarked",
+            "control": true,
+            "delivery": true
+          },
+          {
+            "name": "unsupported-payload-types",
+            "control": true,
+            "delivery": true
+          }
+        ],
+        "protocolExperiments": [
+          {
+            "name": "delivered-title",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "title-and-body",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "chunks-concatenate",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "base64",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "body-only",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "bel-terminated",
+            "role": "protocol",
+            "passed": true
+          },
+          {
+            "name": "unmarked",
+            "role": "control",
+            "passed": true
+          },
+          {
+            "name": "unsupported-payload-types",
+            "role": "control",
+            "passed": true
+          }
+        ]
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.osc99-kitty-notify/focused-suppressed",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "focused-suppressed",
+          "role": "policy",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 4,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 5,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "focused-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": false,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/delivered-title",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "delivered-title",
+          "role": "protocol",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 27,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 28,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "NT-99-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "hidden",
+              "kind": "hidden",
+              "snapshot": 29,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/title-and-body",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "title-and-body",
+          "role": "protocol",
+          "expected": {
+            "title": "NT-99-t-5814a62a",
+            "message": "body-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 30,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "held",
+              "kind": "held",
+              "snapshot": 31,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 32,
+              "toast": {
+                "visible": true,
+                "title": "NT-99-t-5814a62a",
+                "message": "body-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/chunks-concatenate",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "chunks-concatenate",
+          "role": "protocol",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-cat-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 33,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 34,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "NT-99-cat-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/base64",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "base64",
+          "role": "protocol",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-b64-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 35,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 36,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "NT-99-b64-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/body-only",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "body-only",
+          "role": "protocol",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-body-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 37,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 38,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "NT-99-body-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/bel-terminated",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "bel-terminated",
+          "role": "protocol",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-bel-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 39,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 40,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "NT-99-bel-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/unmarked",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "unmarked",
+          "role": "control",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 41,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 42,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/unsupported-payload-types",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "unsupported-payload-types",
+          "role": "control",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 43,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 44,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/policy-unknown-keys",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "policy-unknown-keys",
+          "role": "policy",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-keys-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 45,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 46,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "NT-99-keys-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/policy-bad-base64",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "policy-bad-base64",
+          "role": "policy",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 47,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 48,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/policy-oversize-chunk",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "policy-oversize-chunk",
+          "role": "policy",
+          "expected": null,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 49,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 50,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/policy-flatten-control",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "policy-flatten-control",
+          "role": "policy",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "one two-5814a62a"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 51,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 52,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "one two-5814a62a"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc99-kitty-notify/policy-title-cap",
+          "owner": "extensions.osc99-kitty-notify",
+          "name": "policy-title-cap",
+          "role": "policy",
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
+          },
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 53,
+              "toast": {
+                "visible": false,
+                "title": null,
+                "message": null
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 54,
+              "toast": {
+                "visible": true,
+                "title": "NF-base-5814a62a",
+                "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
+              },
+              "focus": {
+                "windowActive": false,
+                "windowVisible": true,
+                "paneActive": true,
+                "focusMode": false,
+                "notificationsEnabled": true,
+                "progressEnabled": true
+              },
+              "passed": true,
+              "preserved": true
+            }
+          ],
+          "actions": [
+            {
+              "action": "refocus",
+              "response": {
+                "ok": true,
+                "ownerPid": 13146,
+                "action": "refocus",
+                "method": "osascript",
+                "script": "tell application \"System Events\" to set frontmost of (first process whose unix id is 13146) to true",
+                "appPid": 13146,
+                "attempts": [
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 39173
+                  },
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 39173
+                  },
+                  {
+                    "exitCode": 0,
+                    "signal": null,
+                    "stderr": "",
+                    "frontmostPid": 39173
+                  }
+                ],
+                "budgetMs": 2000,
+                "startedAt": "2026-11-14T11:45:32.434Z",
+                "finishedAt": "2026-11-14T11:45:34.592Z"
+              }
+            }
+          ]
+        }
+      ],
+      "policy": [
+        {
+          "name": "focused-suppressed",
+          "graded": false,
+          "applicable": false,
+          "held": true,
+          "matchesDocumentedPolicy": false,
+          "observed": {
+            "visible": true,
+            "title": "NF-base-5814a62a",
+            "message": "focused-5814a62a"
+          },
+          "expected": null
+        },
+        {
+          "name": "policy-unknown-keys",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-keys-5814a62a"
+          },
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "NT-99-keys-5814a62a"
+          }
+        },
+        {
+          "name": "policy-bad-base64",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": false,
+            "title": null,
+            "message": null
+          },
+          "expected": null
+        },
+        {
+          "name": "policy-oversize-chunk",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": false,
+            "title": null,
+            "message": null
+          },
+          "expected": null
+        },
+        {
+          "name": "policy-flatten-control",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "NF-base-5814a62a",
+            "message": "one two-5814a62a"
+          },
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "one two-5814a62a"
+          }
+        },
+        {
+          "name": "policy-title-cap",
+          "graded": false,
+          "applicable": true,
+          "held": true,
+          "matchesDocumentedPolicy": true,
+          "observed": {
+            "visible": true,
+            "title": "NF-base-5814a62a",
+            "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
+          },
+          "expected": {
+            "title": "NF-base-5814a62a",
+            "message": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT…"
+          }
+        }
+      ],
+      "pinned": {
+        "termlessFunction": false,
+        "termless": null,
+        "terminal": null,
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Notification capabilities acknowledge title payloads; OS display, activation and close events were not tested"
+        },
+        "verdictSource": "stock collector (the unchanged pinned probe) against the App in this owned run, corroborated by the exact-query witness",
+        "qualifiedOutcome": "supported",
+        "note": "Notification capabilities acknowledge title payloads; OS display, activation and close events were not tested",
+        "queryWitness": {
+          "id": "q07.extensions.osc99-kitty-notify",
+          "expectedEvidence": "positive-reply",
+          "expectedHex": "1b5d39393b693d6e74696c64652d71756572792d61756469743a703d3f3b6f3d616c776179733a703d7469746c652c626f64791b5c",
+          "receivedHex": "1b5d39393b693d6e74696c64652d71756572792d61756469743a703d3f3b6f3d616c776179733a703d7469746c652c626f64791b5c",
+          "contractMatched": true
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc99-kitty-notify",
+        "outcome": "supported",
+        "evidence": "query",
+        "note": "Notification capabilities acknowledge title payloads; OS display, activation and close events were not tested",
+        "rawReplyRef": "extensions.osc99-kitty-notify"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "stored-state and pane-metadata-and-session-status (effect); stock query reply (pinned)",
+        "grading": "pinned-stock-collector-and-exact-query-witness"
+      }
+    }
+  ]
+}

@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { osc777CaseId, osc99CaseId } from './notify-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'PENDING';
-export const measuredAppRevision = 'PENDING';
+export const measuredScriptsRevision = '9a316468fc7538af529ab112cd106450467a0340';
+export const measuredAppRevision = '9a316468fc7538af529ab112cd106450467a0340';
 const scope = 'Pinned OSC 777 terminal path (two writes and a cursor query, inconclusive by construction) replayed and preserved; pinned OSC 99 query decided by the unchanged stock probe in the same owned run and by the exact-query witness q07.extensions.osc99-kitty-notify (query policy v3), plus versioned effect contracts for the private in-window toast (title, message, visibility, auto-hide) with its window-focus and opt-in preconditions, over paired complete stored cells and pane metadata; no OS desktop notification delivery, no OSC 99 actions, close reports, icons, buttons, urgency, sounds or expiry, no real-program emission, no remote/mux, Windows/Linux, hidden-pane or unobserved focus-change claim';
 const stockOf = (raw, caseId) => {
     const observation = raw.observations.find(entry => entry.featureId === caseId);
@@ -27,7 +27,7 @@ function pinnedOf(item, stock, witness) {
         return { termlessFunction, termless, terminal, observation: terminal.observation, verdictSource: 'terminal (the registration has no termless function)',
             qualifiedOutcome: item.pinned.qualifiedOutcome, note: terminal.note, writes: item.pinned.writes, cursor: item.pinned.cursor };
     }
-    return { termlessFunction: false, termless: null, terminal: null, observation: { outcome: stock.outcome, reason: stock.reason, evidence: stock.evidence, note: stock.note },
+    return { termlessFunction: false, termless: null, terminal: null, observation: { outcome: stock.outcome, ...(stock.reason === undefined ? {} : { reason: stock.reason }), evidence: stock.evidence, note: stock.note },
         verdictSource: 'stock collector (the unchanged pinned probe) against the App in this owned run, corroborated by the exact-query witness', qualifiedOutcome: stock.outcome, note: stock.note, queryWitness: witness };
 }
 
