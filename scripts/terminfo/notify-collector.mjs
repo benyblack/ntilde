@@ -1,11 +1,10 @@
 import { collectGradedPlans, planFeeds, planReads } from './graded-plan.mjs';
-import { exposeOsc9Facts } from './osc9-collector.mjs';
 import { notifyCaseIds, notifyExperiments, notifyFixture, notifyPrefix, osc777CaseId, osc777PinnedWrites, osc99CaseId } from './notify-contracts.mjs';
 
 const unavailableReasons = new Set(['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable']);
 
 /** The bounded facts the worker needs from one paired observation: the stored progress (a toast must not be progress), the actual tab text, the private toast and the focus/opt-in conditions. */
-export const exposeNotifyFacts = exposeOsc9Facts;
+export { exposeOsc9Facts as exposeNotifyFacts } from './osc9-collector.mjs';
 
 /** A prerequisite may be skipped only through its typed initial refusal; otherwise it must have restored. */
 export function notifyPrerequisiteReason(restored, unavailable, reason) {

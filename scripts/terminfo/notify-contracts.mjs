@@ -12,7 +12,10 @@
 // title then body) and from the stated Ntilde presentation: the opt-in in-window toast, suppressed while the user is looking at the pane, shown as a title and a message, a
 // lone title or body being the message under the pane's own tab title. Deliberate implementation choices (flattening, caps, empty payloads, unknown keys, a refused chunk)
 // are recorded as POLICY observations that never decide a verdict.
-const osc777 = (title, body, terminator = '\x07') => `\x1b]777;notify;${title}${body === undefined ? '' : `;${body}`}${terminator}`;
+const osc777 = (title, body, terminator = '\x07') => {
+    const rest = body === undefined ? '' : `;${body}`;
+    return `\x1b]777;notify;${title}${rest}${terminator}`;
+};
 const osc777Other = (rest, terminator = '\x07') => `\x1b]777;${rest}${terminator}`;
 const osc99 = (metadata, payload, terminator = '\x1b\\') => `\x1b]99;${metadata};${payload}${terminator}`;
 const other = (code, value, terminator = '\x07') => `\x1b]${code};${value}${terminator}`;
@@ -35,8 +38,6 @@ export const notifyTitleCap = 80;
 export const notifyBodyCap = 200;
 /** The pinned OSC 777 terminal path writes exactly these two strings, then asks for the cursor position. */
 export const osc777PinnedWrites = Object.freeze(['\x1b[1;1H\x1b[2K', '\x1b]777;notify;test;body\x07']);
-/** The pinned query the stock OSC 99 probe sends, apart from its random identifier. */
-export const osc99PinnedQueryPattern = /^\x1b\]99;i=[0-9a-f-]{36}:p=\?;\x1b\\$/;
 /** The capability reply the App owes the OSC 99 query (query policy v3): o=always, p=title,body, and no action, close, urgency, expiry or sound key. */
 export const osc99CapabilityPayload = 'o=always:p=title,body';
 
@@ -116,7 +117,7 @@ export function notifyExperiments(runId) {
         const body = extra.held
             ? [{ feed: feeds[0] }, { read: 'held', kind: 'held' }, { feed: feeds[1] }]
             : feeds.map(feed => ({ feed }));
-        return { caseId: `${owner}/${name}`, owner, name, role, kind: 'notification', focus, title: fixture.title, expected, held: extra.held === true,
+        return { caseId: [owner, name].join('/'), owner, name, role, kind: 'notification', focus, title: fixture.title, expected, held: extra.held === true,
             plan: [{ feed: fixture.stage }, ...(first ? [{ action: focus === 'inactive' ? 'defocus' : 'refocus' }] : []),
                 ...(extra.setup ? [{ feed: extra.setup }] : []), { read: 'before', kind: 'setup' }, ...body, { read: 'after', kind: 'effect' }, ...tail,
                 ...(last ? [{ action: 'refocus' }] : [])] };

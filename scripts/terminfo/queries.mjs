@@ -17,6 +17,11 @@ export const marginsQueryPolicy = 'owned-exact-query-paired-raw-state-v2';
  * implements the kitty notification title/body subset; every v1 and v2 run keeps the silence expectation. */
 export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v3';
 export const queryPolicies = Object.freeze([legacyQueryPolicy, marginsQueryPolicy, ownedQueryPolicy]);
+/** The policy a run's markers imply: v3 with the notice marker, v2 with the margins marker only, v1 otherwise. */
+export function queryPolicyFor(marginsReport, noticeReport) {
+    if (noticeReport) return ownedQueryPolicy;
+    return marginsReport ? marginsQueryPolicy : legacyQueryPolicy;
+}
 /** Earlier challenges a query suite owes: every raw input capture plus the 30 image captures. 110 is the frozen 39-event input plan (80 captures);
  * 152 is the 60-event benchmark plan (122 captures); 268 is the 118-event v3 plan (238 captures). Any other count is not a plan this suite follows. */
 export const queryPriorCounts = Object.freeze([110, 152, inputPriorCaptureCap + 30]);
@@ -148,7 +153,7 @@ export function buildQueryReport(input) {
         && status.lastAttempt?.completed === true && status.lastAttempt.fenceRequested === true && status.lastAttempt.error === null
         && status.lastAttempt.hex === final.hex + Buffer.from(final.barrier).toString('hex')
         && snapshotHash(status.lastAttempt.nonces) === snapshotHash(final.nonces));
-    return { schemaVersion: 1, suiteId: querySuiteId, policy: noticeReport ? ownedQueryPolicy : marginsReport ? marginsQueryPolicy : legacyQueryPolicy, runId: binding.runId, binding, priorChallenges: prior, readerCounts: counts,
+    return { schemaVersion: 1, suiteId: querySuiteId, policy: queryPolicyFor(marginsReport, noticeReport), runId: binding.runId, binding, priorChallenges: prior, readerCounts: counts,
         ...(checksumReport ? { checksumReport: 'AllowRectangleChecksumReport on in the initial settings: q07.editing.decrqcra owes the DECRQCRA reply' } : {}),
         ...(marginsReport ? { marginsReport: 'query policy v2: q12.decrqss.horizontal-margins owes the DECRQSS s reply, ESC P 1 $ r 1 ; cols s ESC \\' } : {}),
         ...(noticeReport ? { noticeReport: 'query policy v3: q07.extensions.osc99-kitty-notify owes the OSC 99 capability reply, ESC ] 99 ; i=ntilde-query-audit:p=? ; o=always:p=title,body ESC \\' } : {}),

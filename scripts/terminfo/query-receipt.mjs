@@ -28,6 +28,8 @@ export function includesQueryEvidence(output, evidence, context, proof) {
     return readdirSync(join(output, 'sources')).some(file => file === 'queries.mjs' || file.startsWith('query-') || (file.endsWith('.mjs')
         && /(?:\bfrom|\bimport\s*\()\s*['"]\.\/(?:terminfo\/)?quer(?:ies|y-[a-z-]+)\.mjs['"]/.test(read(output, join('sources', file), 2 * 1024 * 1024).toString())));
 }
+/** The witness markers an archived query policy implies: v2 and v3 owe the DECRQSS s reply, v3 alone the OSC 99 reply. */
+const policyMarkers = policy => ({ marginsReport: policy === marginsQueryPolicy || policy === ownedQueryPolicy, noticeReport: policy === ownedQueryPolicy });
 /** Full query rederivation binds both original journals, exact prefix challenges and process facts. */
 export function checkQueryEvidence(output, binding, runId, context, proof, prefixEvidence) {
     const original = proof.proofs?.[0], marker = original?.queries;
@@ -67,7 +69,7 @@ export function checkQueryEvidence(output, binding, runId, context, proof, prefi
     // A run whose retained initial settings turn the off-by-default DECRQCRA report on owes its reply to the witness request.
     const checksumReport = json(output, 'initial-settings.json').AllowRectangleChecksumReport === true;
     // The archived query policy is the version marker: v2 and v3 owe the DECRQSS s reply (v1, every earlier run, keeps the negative one) and v3 alone owes the OSC 99 capability reply.
-    const marginsReport = context.ownedQueryPolicy === marginsQueryPolicy || context.ownedQueryPolicy === ownedQueryPolicy, noticeReport = context.ownedQueryPolicy === ownedQueryPolicy;
+    const { marginsReport, noticeReport } = policyMarkers(context.ownedQueryPolicy);
     const derived = buildQueryReport({ binding: marker.binding, priorChallenges: prior, initial, actions, frames, seal: marker.seal,
         ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}), ...(noticeReport ? { noticeReport: true } : {}) });
     check(snapshotHash(report) === snapshotHash(derived) && snapshotHash(actions) === snapshotHash(marker.actions)
