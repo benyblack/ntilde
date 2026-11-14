@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "ef077f47e8a259e2c01e68abfb7191cb80d1437a411ee53590a18c357df91992",
+    "owned-run.zip": "5ff13c662c5df38eb90d98581807d067fac577de7ffb26cf7e0a2f07e225fbb3",
     "superseded/attempt-25.zip": "a834bc3d57b82ea5acea0c976a1451d6aa4f50285a9c993072c0f8a113751b9b",
     "superseded/attempt-26.zip": "9a7aed51a18dd2da58e589d6b59f320a47487f091e0eaa9e0cc5295d519b65f6",
     "superseded/attempt-27.zip": "5e6394f6edefe0d85d519f1e9ea025420c9ed7713a598f6395418859a08523bb",
@@ -10,13 +10,14 @@
     "superseded/attempt-32.zip": "cdca2ffdce64c405285abbe8f261fa9bc890abed383c546547ae7345a60782fc",
     "superseded/attempt-33.zip": "02b3cb61c8a370fdd93eac8728ded7293827cdf97d91085dda427a85e235d37f",
     "superseded/attempt-35.zip": "f9b572d4f7e7c49edbdb49f8e5bca7a53fe85abf11055001cf1755c087e7775b",
+    "superseded/attempt-36.zip": "ef077f47e8a259e2c01e68abfb7191cb80d1437a411ee53590a18c357df91992",
     "superseded/attempt12-pre-v52-infrastructure.zip": "dbba67650840c110b453926acc2b577faf93d21755d5578b090bee9cb33c2211"
   },
   "appRevision": "fe2ccbcac4dbe386c786127ccfed5cb55373d363",
-  "scriptsRevision": "85a4beac7cdade2c50be1d14402e7216516bad2f",
+  "scriptsRevision": "1c17f6523bf0927a81d142a6a53378d45214cc03",
   "appAssemblySha256": "a11a03dd9f96c565decb8e347489ab8969d722822173a78f7d40c0dd141cf902",
   "measurement": {
-    "runId": "27ee602c4514a7467a1e60297968b38a",
+    "runId": "a32a5b13d4c22eaa59c6f11b7ec19d2d",
     "receiptSchema": 60,
     "sourcePolicy": "readonly-owned-source-graph-v54"
   },
@@ -60,6 +61,11 @@
       "archive": "superseded/attempt-35.zip",
       "runId": "4ce60d5005271dc4e7ade8fa92b78d1a",
       "reason": "Complete and supported on all four cases on v54 / schema 60 with the stricter foreground-ink check, superseded because its disposable App was the sidecar mirror built before the OSC 777 / OSC 99 notification batch merged, so its stock run graded extensions.osc99-kitty-notify inconclusive (87 supported, 1 unsupported, 167 inconclusive) while every suite admitted after the notification suite is recorded against an App that answers the OSC 99 probe (88, 1, 166). The App was rebuilt from the merged tree and the suite re-measured; the effect verdicts were identical."
+    },
+    {
+      "archive": "superseded/attempt-36.zip",
+      "runId": "27ee602c4514a7467a1e60297968b38a",
+      "reason": "Complete and supported on all four cases on v54 / schema 60 with the rebuilt App (stock 88 supported, 1 unsupported, 166 inconclusive), superseded because the Codex review of its head found that the selection-background check sampled only the blank row, so a renderer that painted the blank selected cells but left the selected text on the ordinary background could still grade OSC 17 and 117 supported. The check now also requires the selected text row own most frequent paint to be the override fill, with a regression fixture (blankOnlyBackgroundFill); the measured grading and contract scripts changed, so the suite was re-measured."
     },
     {
       "archive": "superseded/attempt12-pre-v52-infrastructure.zip",
