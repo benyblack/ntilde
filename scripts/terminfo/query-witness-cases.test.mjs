@@ -115,6 +115,22 @@ test('a run that turns the off-by-default DECRQCRA report on owes the exact chec
     }
 });
 
+test('a run of the v3 query policy owes the exact OSC 99 capability reply; absent the marker the silence expectation is unchanged', () => {
+    const plain = queryWitnessPlan(context), marked = queryWitnessPlan({ ...context, marginsReport: true, noticeReport: true });
+    const witness = plan => plan.find(item => item.id === 'q07.extensions.osc99-kitty-notify');
+    assert.deepEqual({ ...witness(plain) }, { id: 'q07.extensions.osc99-kitty-notify', featureId: 'extensions.osc99-kitty-notify', request: '\x1b]99;i=ntilde-query-audit:p=?;\x1b\\',
+        expectedEvidence: 'silence', expectedReply: '' });
+    assert.deepEqual({ ...witness(marked) }, { ...witness(plain), expectedEvidence: 'positive-reply', expectedReply: '\x1b]99;i=ntilde-query-audit:p=?;o=always:p=title,body\x1b\\' });
+    const others = plan => plan.filter(item => item.id !== 'q07.extensions.osc99-kitty-notify' && item.id !== 'q12.decrqss.horizontal-margins').map(item => ({ ...item }));
+    assert.deepEqual(others(marked), others(plain), 'every other witness is unchanged');
+    assert.equal(marked.filter(item => item.expectedEvidence === 'silence').length, plain.filter(item => item.expectedEvidence === 'silence').length - 1);
+    assert.equal(queryWitnessContext({ ...context, noticeReport: true }).noticeReport, true);
+    assert.equal(Object.hasOwn(queryWitnessContext(context), 'noticeReport'), false);
+    for (const bad of [{ ...context, noticeReport: false }, { ...context, noticeReport: 'true' }, { ...context, noticeReport: true, extra: 1 }]) {
+        assert.throws(() => queryWitnessContext(bad), /bounded observed geometry/, JSON.stringify(bad));
+    }
+});
+
 test('a run of the v2 query policy owes the exact DECRQSS s reply; absent the marker the negative expectation is unchanged', () => {
     const plain = queryWitnessPlan(context), marked = queryWitnessPlan({ ...context, marginsReport: true });
     const witness = plan => plan.find(item => item.id === 'q12.decrqss.horizontal-margins');

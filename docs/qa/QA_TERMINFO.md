@@ -1183,3 +1183,14 @@ preconditions recorded at control time and at delivery. The parent performs and 
 bare-`4`, text-flattening, cap and focus-suppression behavior is recorded as policy and never graded. A notification case without a valid inactive-window positive control stays
 inconclusive with its reason. No OS taskbar or desktop notification delivery is claimed. No production code changed. Receipt schema 57 and source policy v51 (342 files) bind it;
 earlier policies stay frozen.
+
+### OSC 777 and OSC 99 notification qualification
+
+The [notification batch](terminfo/2026-11-14-notify-qualification.md) first **implements** OSC 777 `notify` and a stated subset of kitty's OSC 99 (title, body, `d=0` chunking, base64 and the
+`p=?` capability reply `o=always:p=title,body`) in the VT parser and routes both to the existing opt-in in-window toast, then qualifies exactly `extensions.osc777-notify` and
+`extensions.osc99-kitty-notify` through a layered collector extension (`ntilde-owned-notify-grading-v1`) over the left/right-margin one (a sibling of the OSC 9 layer). The pinned OSC 777
+probe can only return inconclusive and is replayed and preserved; the pinned OSC 99 query is decided by the unchanged stock probe in the same run and by the exact-query witness under query
+policy v3 (`...-v3`; v1 and v2 runs keep the silence expectation). Two effect contracts (`ntilde-osc777-notification-toast-effect-v1`, `ntilde-osc99-notification-toast-effect-v1`) are graded by
+an independent oracle over the pane-metadata observer with the inactive-window precondition recorded at control time and at delivery, including a held chunk that must not show early. No OS
+delivery, OSC 99 actions, icons, buttons, urgency, sounds or expiry are claimed. The stock grade of OSC 99 is now supported (88/1/166); OSC 777 stays inconclusive. Receipt schema 59 and
+source policy v53 (353 files) bind it; earlier policies stay frozen.

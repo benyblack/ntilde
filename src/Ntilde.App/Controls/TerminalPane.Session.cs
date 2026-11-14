@@ -279,6 +279,13 @@ namespace Ntilde.Controls
                     OscNotificationReceived?.Invoke(this, text);
                 });
             };
+            Parser.OnTitledDesktopNotification += (title, body) =>
+            {
+                this.Dispatcher.Post(() =>
+                {
+                    OscTitledNotificationReceived?.Invoke(this, title, body);
+                });
+            };
             Parser.OnProgressReported += (state, percent) =>
             {
                 // State 0 is the ONLY withdrawal edge (Codex review, PR #500). An

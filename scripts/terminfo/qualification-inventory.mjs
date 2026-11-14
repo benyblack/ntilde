@@ -66,6 +66,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('osc9', '2026-11-13-osc9', '2026-11-13-osc9-qualification.md'), module: 'osc9-contracts.mjs', exports: ['osc9SuiteId', 'osc9ContractsVersion', 'osc9CaseIds'], test: 'osc9-publication.test.mjs' },
     // The one benchmark id whose retained effect verdict is unsupported (the pinned verdict is inconclusive by design); admitted like any other suite.
     { ...directory('ascii-reflow', '2026-11-12-ascii-reflow', '2026-11-12-ascii-reflow-qualification.md'), module: 'ascii-reflow-contracts.mjs', exports: ['asciiReflowSuiteId', 'asciiReflowContractsVersion', 'asciiReflowCaseIds'], test: 'ascii-reflow-publication.test.mjs' },
+    { ...directory('notify', '2026-11-14-notify', '2026-11-14-notify-qualification.md'), module: 'notify-contracts.mjs', exports: ['notifySuiteId', 'notifyContractsVersion', 'notifyCaseIds'], test: 'notify-publication.test.mjs' },
 ]);
 
 /**
