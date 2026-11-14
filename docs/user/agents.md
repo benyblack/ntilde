@@ -74,7 +74,7 @@ server's `command`, with no arguments.
 | `list_sessions` | observe | Lists the window's sessions (and, with persistent sessions, the multiplexer's windowless ones) |
 | `read_screen`, `read_scrollback` | observe | Reads a session's text |
 | `get_session_status` | observe | Whether it is running, waiting for input, idle or exited, with the command in flight and its exit code. Precise with [shell integration](shell-integration.md), a guess without it. |
-| `wait_for_events` | observe | Waits for status changes, finished commands (with exit code and duration), bells, stalls, and sessions opening or closing |
+| `wait_for_events` | observe | Waits for status changes, finished commands (with exit code, duration, and the command text when shell integration reports it, credentials redacted), bells, stalls, and sessions opening or closing |
 | `capture_screen` | observe | A PNG of the pane |
 | `export_replay` | replay export | Saves recent output as a replay file |
 | `send_input`, `spawn_session`, `close_session` | act | Types into, opens and closes sessions |

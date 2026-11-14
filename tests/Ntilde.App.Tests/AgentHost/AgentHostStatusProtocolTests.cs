@@ -186,6 +186,44 @@ public class AgentHostStatusProtocolTests : IDisposable
         Assert.Equal(registration.PaneId, evt.PaneId);
     }
 
+    /// <summary>
+    /// A6 PR 1: a commandFinished event names the command it finishes, so an agent awaiting a check can pair the exit
+    /// code with what ran. Command text reaches the wire through the same secrets filter on both surfaces that carry it.
+    /// </summary>
+    [Fact]
+    public async Task CommandFinished_event_carries_the_redacted_command_and_status_redacts_it_too()
+    {
+        var registry = new AgentSessionRegistry();
+        using var service = NewRunningService(registry);
+        var registration = Register(registry);
+        var drained = ResultOf(
+            await HandleAsync(service, AgentHostProtocol.Methods.WaitForEvents, "{\"sinceSeq\":0,\"timeoutMs\":1000}"),
+            AgentHostJsonContext.Default.WaitForEventsResult);
+
+        registration.StatusMachine.NotifyCommandAccepted("deploy --password hunter2 | tee log");
+        registration.StatusMachine.NotifyCommandStarted();
+
+        var status = ResultOf(
+            await HandleAsync(service, AgentHostProtocol.Methods.GetSessionStatus, $"{{\"paneId\":\"{registration.PaneId}\"}}"),
+            AgentHostJsonContext.Default.SessionStatusDto);
+        Assert.Equal("deploy --password [REDACTED] | tee log", status.CurrentCommand);
+
+        registration.StatusMachine.NotifyCommandFinished(exitCode: 3);
+
+        var response = await HandleAsync(service, AgentHostProtocol.Methods.WaitForEvents,
+            $"{{\"sinceSeq\":{drained.NextSeq},\"timeoutMs\":1000}}");
+        Assert.DoesNotContain("hunter2", response.Result!.Value.GetRawText(), StringComparison.Ordinal);
+        var result = ResultOf(response, AgentHostJsonContext.Default.WaitForEventsResult);
+        var finished = Assert.Single(result.Events, e => e.Type == AgentHostProtocol.EventTypes.CommandFinished);
+        Assert.Equal(3, finished.ExitCode);
+        Assert.Equal("deploy --password [REDACTED] | tee log", finished.Command);
+
+        // Events with no command leave the field off the wire rather than sending null.
+        var statusChanged = response.Result!.Value.GetProperty("events").EnumerateArray()
+            .First(e => e.GetProperty("type").GetString() == AgentHostProtocol.EventTypes.StatusChanged);
+        Assert.False(statusChanged.TryGetProperty("command", out _));
+    }
+
     [Fact]
     public async Task Unregistering_emits_sessionClosed_and_stops_forwarding()
     {

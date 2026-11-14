@@ -94,5 +94,11 @@ namespace Ntilde.AgentHost
         /// <summary>On the exit of a session that stopped for the user: why (<see cref="AgentSessionStatusSnapshot.NeedsUser"/>).</summary>
         public AgentNeedsUserReason? NeedsUser { get; init; }
         public TimeSpan? Duration { get; init; }
+
+        /// <summary>
+        /// For <see cref="AgentSessionEventType.CommandFinished"/>: the command that finished, as shell integration
+        /// reported it at its <c>OSC 133;C</c> edge; null when the mark carried no text. Unredacted here.
+        /// </summary>
+        public string? Command { get; init; }
     }
 }

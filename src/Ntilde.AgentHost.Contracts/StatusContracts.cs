@@ -88,6 +88,13 @@ public sealed record AgentEventDto
     /// <summary>Command duration for <c>commandFinished</c> events.</summary>
     [JsonPropertyName("durationMs")]
     public long? DurationMs { get; init; }
+
+    /// <summary>
+    /// For <c>commandFinished</c> events: the command that finished, as shell integration reported it, with
+    /// credentials redacted. Absent when the shell reported no command text.
+    /// </summary>
+    [JsonPropertyName("command")]
+    public string? Command { get; init; }
 }
 
 /// <summary>Params for <c>waitForEvents</c>.</summary>
