@@ -217,6 +217,19 @@ public class Osc99Osc777NotificationTests
     }
 
     [Fact]
+    public void Importing_parser_state_discards_the_pending_osc99_notification_of_the_target()
+    {
+        var (target, notifications, _, _) = Create();
+        var source = new AnsiParser(new TerminalBuffer(cols: 10, rows: 2));
+
+        target.Process("\x1b]99;i=m:d=0;stale\x1b\\");
+        target.ImportState(source.ExportState());
+        target.Process("\x1b]99;i=m;fresh\x1b\\");
+
+        Assert.Equal(("fresh", ""), Assert.Single(notifications));
+    }
+
+    [Fact]
     public void Osc99_oversized_single_chunk_is_dropped()
     {
         var (parser, notifications, _, _) = Create();

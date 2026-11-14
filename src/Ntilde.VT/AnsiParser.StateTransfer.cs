@@ -61,6 +61,10 @@ namespace Ntilde.VT
             ArgumentNullException.ThrowIfNull(state);
             ValidateParserState(state);
 
+            // An unfinished OSC 99 notification is not part of the snapshot, and one this parser already holds belongs to the output the import replaces:
+            // neither may merge with later chunks of a notification that reuses its id.
+            ClearPendingOsc99();
+
             _state = (State)state.State;
 
             // The counts half of StateTransferValidation's rule: a parameter run longer than this
