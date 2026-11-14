@@ -27,13 +27,17 @@ const tcap = [['terminal-name', '544e'], ['color-count', '436f'], ['colors', '63
     ['unknown', '6e6f742d612d6361706162696c697479'], ['odd-hex', '5'],
     ['invalid-hex', 'zz'], ['empty', '']];
 
+/** The reply the kitty OSC 99 capability query owes under query policy v3: o=always (no other occasion honored), p=title,body, and no a/c/u/w/s key
+ * because actions, close reports, urgency, expiry and sounds are not implemented. The id is the witness request's own, already within the id alphabet. */
+const noticeReply = `${esc}]99;i=ntilde-query-audit:p=?;o=always:p=title,body${st}`;
+
 /** The reply DECRQCRA owes the 1x1 witness request while the run turns AllowRectangleChecksumReport on: the bound first line
  * always starts with the N of NTILDE_QRY_ (0x4E, plain), so the negated 16-bit checksum is FFB2. */
 const checksumReply = `${esc}P1!~FFB2${st}`;
 
 /** The optional context flags, each exactly `true` or absent: `checksumReport` (a run whose initial settings turn the off-by-default
- * DECRQCRA report on) and `marginsReport` (a run of the query policy that expects the DECRQSS s reply, which is unconditional). */
-const contextFlags = ['checksumReport', 'marginsReport'];
+ * DECRQCRA report on) and `marginsReport` (a run of the query policy that expects the DECRQSS s reply, which is unconditional) and `noticeReport` (query policy v3, which also expects the OSC 99 capability reply). */
+const contextFlags = ['checksumReport', 'marginsReport', 'noticeReport'];
 /** Observed geometry and absolute one-based margins plus the optional flags above. Without them (every run before they existed) the
  * context is exactly the four numbers. */
 export function queryWitnessContext(value) {
@@ -60,9 +64,11 @@ export function queryWitnessPlan(context) {
     return Object.freeze([
         entry('q07.device.tertiary-da', 'device.tertiary-da', `${esc}[=c`, 'positive-reply', `${esc}P!|00000000${st}`),
         entry('q07.device.xtwinops-18', 'device.xtwinops-18', `${esc}[18t`, 'positive-reply', `${esc}[8;${c.rows};${c.cols}t`),
-        ...silent.map(([id, request]) => (id === 'editing.decrqcra' && c.checksumReport
-            ? entry(`q07.${id}`, id, request, 'positive-reply', checksumReply)
-            : entry(`q07.${id}`, id, request, 'silence', ''))),
+        ...silent.map(([id, request]) => {
+            if (id === 'editing.decrqcra' && c.checksumReport) return entry(`q07.${id}`, id, request, 'positive-reply', checksumReply);
+            if (id === 'extensions.osc99-kitty-notify' && c.noticeReport) return entry(`q07.${id}`, id, request, 'positive-reply', noticeReply);
+            return entry(`q07.${id}`, id, request, 'silence', '');
+        }),
         entry('q12.decrqss.vertical-margins', 'device.decrqss', `${esc}P$qr${st}`, 'positive-reply', `${esc}P1$r${c.top};${c.bottom}r${st}`),
         // DECRQSS s is unconditional. The query suite runs on a reset full-width screen, so the left/right margins are 1 and cols.
         ...decrqss.map(([id, setting]) => (id === 'horizontal-margins' && c.marginsReport

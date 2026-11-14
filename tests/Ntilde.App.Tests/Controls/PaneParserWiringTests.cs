@@ -549,4 +549,26 @@ public class PaneParserWiringTests
         Assert.Equal(2, events.Count);
         Assert.Null(events[1]);
     }
+
+    /// <summary>
+    /// OSC 777 notify and OSC 99 reach the window through the pane's titled-notification event (posted
+    /// to the dispatcher), while OSC 9 text keeps its own event.
+    /// </summary>
+    [AvaloniaFact]
+    public void TitledNotifications_RaiseThePaneTitledEvent_AndOsc9KeepsItsOwn()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+
+        var titled = new List<(string Title, string Body)>();
+        var plain = new List<string>();
+        pane.OscTitledNotificationReceived += (_, title, body) => titled.Add((title, body));
+        pane.OscNotificationReceived += (_, text) => plain.Add(text);
+
+        pane.Parser!.Process("\x1b]777;notify;Build;Done\x07\x1b]99;;Kitty title\x1b\\\x1b]9;Plain text\x07");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(new[] { ("Build", "Done"), ("Kitty title", "") }, titled.ToArray());
+        Assert.Equal("Plain text", Assert.Single(plain));
+    }
 }

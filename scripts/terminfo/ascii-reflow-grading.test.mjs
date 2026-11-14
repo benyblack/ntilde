@@ -47,6 +47,16 @@ test('the recorded observation brief keeps actual geometries, cursors, history c
     assert.ok(Object.values(item.observed.width).concat(Object.values(item.observed.history)).every(stage => stage.matchesModel === true));
 });
 
+test('journal and action refusals shared with the resize validators keep the ASCII reflow label and request-kind prefix', () => {
+    const refusal = /Invalid or incomplete owned ASCII reflow evidence\./;
+    const wrongKind = journal(); wrongKind.frames[3].kind = wrongKind.frames[3].kind.replace('reflow-', 'resize-');
+    assert.throws(() => buildReflowReport(wrongKind.frames, wrongKind.actions, wrongKind.run, wrongKind.runId, wrongKind.adapter), refusal);
+    const failedAction = journal(); failedAction.actions[2].error = 'resize helper failed';
+    assert.throws(() => buildReflowReport(failedAction.frames, failedAction.actions, failedAction.run, failedAction.runId, failedAction.adapter), refusal);
+    const lateKind = journal(); lateKind.frames[8].kind = 'reflow-read';
+    assert.throws(() => buildReflowReport(lateKind.frames, lateKind.actions, lateKind.run, lateKind.runId, lateKind.adapter), refusal);
+});
+
 for (const [name, mutate] of [
     ['a changed run id', e => { e.runId = 'b'.repeat(32); }],
     ['a changed suite id', e => { e.run.suiteId = 'ntilde-owned-ascii-reflow-v2'; }],

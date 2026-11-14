@@ -231,7 +231,7 @@ For build steps, jump to [Build & test](#build--test) below.
   Shells & Profiles, Shortcuts, Command Assist, Agent Access, SSH, Backup & Restore) and a search
   box (`Ctrl+F`, `Cmd+F` on macOS) that jumps straight to the setting
 - Title-bar editor: put each action in the bar, in the … menu, or hide it, with a live preview
-- Program notifications (OSC 9) as toasts when you aren't looking at the pane (opt-in), and
+- Program notifications (OSC 9, 99, 777) as toasts when you aren't looking at the pane (opt-in), and
   progress (OSC 9;4) on the tab and the Windows taskbar button
 - Profiles (local & SSH)
 - Bundled themes (Dracula, Nord, Gruvbox, Tokyo Night, Catppuccin Mocha, Solarized, GitHub, Monokai, OneHalf, Cobalt2), custom themes, and font configuration

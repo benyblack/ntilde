@@ -104,6 +104,10 @@ namespace Ntilde.VT
         [JsonPropertyName("title_stack"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<SavedTitleEntry>? TitleStack { get; set; }
 
+        /// <summary>Unfinished OSC 99 notifications (held by <c>d=0</c> chunks), oldest first; null when none. Importing replaces any the target holds.</summary>
+        [JsonPropertyName("osc99_pending"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<PendingNotificationState>? PendingNotifications { get; set; }
+
         /// <summary>
         /// Length of the parser's text-batching buffer at export. Always 0 in practice - the
         /// buffer is flushed before every state-affecting branch - and exported purely so that
@@ -171,6 +175,12 @@ namespace Ntilde.VT
                 sb.Append('(').Append(Quote(entry?.Icon)).Append(',').Append(Quote(entry?.Title)).Append(')');
             }
 
+            sb.Append(" osc99_pending=");
+            foreach (PendingNotificationState entry in PendingNotifications ?? new List<PendingNotificationState>())
+            {
+                sb.Append('(').Append(Quote(entry?.Id)).Append(',').Append(Quote(entry?.Title)).Append(',').Append(Quote(entry?.Body)).Append(',').Append(entry?.Overflowed).Append(')');
+            }
+
             sb.Append(" sixel_cw=").Append(SixelCellWidthPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
             sb.Append(" sixel_ch=").Append(SixelCellHeightPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");
             return sb.ToString();
@@ -199,6 +209,15 @@ namespace Ntilde.VT
 
         /// <summary>The parts passed the payload limit, so <c>FileEnd</c> places nothing.</summary>
         [JsonPropertyName("overflow")] public bool Overflow { get; set; }
+    }
+
+    /// <summary>An unfinished OSC 99 notification: its id, the title and body chunks held so far, and whether it overflowed its bounds (then it shows nothing when done).</summary>
+    public sealed class PendingNotificationState
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = string.Empty;
+        [JsonPropertyName("title")] public string Title { get; set; } = string.Empty;
+        [JsonPropertyName("body")] public string Body { get; set; } = string.Empty;
+        [JsonPropertyName("overflow")] public bool Overflowed { get; set; }
     }
 
     /// <summary>One XTWINOPS title-stack entry. A null half was not saved and has nothing to restore.</summary>

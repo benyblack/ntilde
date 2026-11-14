@@ -3,9 +3,9 @@
 // requires the pinned probe's own result to agree with its replay over the journaled declared capability. The pinned verdict
 // is inconclusive by design and is preserved as the conclusion; the separately identified effect contract carries the graded
 // verdict from the independent reflow model.
-import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
+import { screenSnapshot } from './agent-observer.mjs';
+import { validateJournalFrames } from './resize.mjs';
 import { pristineEditing } from './editing-capture.mjs';
-import { validateOutputGeometry } from './terminal-output.mjs';
 import { requirePinnedAgreement, requireReplayAgreement } from './graded-plan.mjs';
 import { asciiReflowCaseIds, asciiReflowContractsVersion, asciiReflowEffectContractId, asciiReflowNoncePrefix, asciiReflowPinned, asciiReflowSuiteId,
     asciiReflowFinalRestore, gradeReflowCase, makeReflowCases, matchesReflowState, briefReflowObservation } from './ascii-reflow-contracts.mjs';
@@ -28,32 +28,11 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const check = value => { if (!value) throw new Error('Invalid or incomplete owned ASCII reflow evidence.'); };
 const geometry = screen => ({ rows: screen.rows, cols: screen.cols });
 
-/** Validate the independent App and kernel facts for one source-selected action. */
-function validateAction(action, expectedAction, stage, paneId, runId) {
-    const observed = action?.observed;
-    check(action?.index === expectedAction && !Object.hasOwn(action, 'error')
-        && action.caseId === stage.caseId && action.stageId === stage.stageId
-        && same(action.target, stage.target) && observed?.paneId === paneId && observed.runId === runId
-        && typeof observed.observedAt === 'string' && Number.isFinite(Date.parse(observed.observedAt))
-        && new Date(observed.observedAt).toISOString() === observed.observedAt
-        && observed.app?.exact === true && observed.app.layoutSettled === true
-        && same(geometry(observed.app), stage.target) && observed.terminalOutput?.tool === '/bin/stty'
-        && observed.terminalOutput.outputProcessing === false);
-    validateOutputGeometry(observed.terminalOutput.description, stage.target.rows, stage.target.cols);
-}
-
 /** The pinned parserStateResult-free result the probe always returns, key order included, over the undeclared capability. */
 export function replayReflowPinned() {
     const note = asciiReflowPinned.note;
     return { pass: false, response: '{"declaredReflow":false}', note,
         observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'legacy', note } };
-}
-
-/** The retained frame kind implied by a frame's position in the nine-frame journal. */
-function frameKind(index, count) {
-    if (index === 0) return 'start';
-    if (index === 1) return 'bind';
-    return index === count - 1 ? 'finish' : 'read';
 }
 
 /** Journal shape, run identity and adapter derivation. */
@@ -84,23 +63,7 @@ export function validateReflowEvidence(frames, actions, run, runId, adapter) {
     const plan = cases.flatMap(item => ['control', 'after', 'restored'].map(stageId => ({
         caseId: item.id, stageId, target: stageId === 'after' ? item.target : original,
     })));
-    let actionIndex = 0;
-    for (const [index, frame] of frames.entries()) {
-        const stage = plan[index - 2];
-        const kind = frameKind(index, frames.length);
-        const expectedAction = stage && stage.stageId !== 'control' ? actionIndex++ : null;
-        const screen = screenSnapshot(frame.screen, false, true, true, true, true);
-        const after = screenSnapshot(frame.afterScreen, false, true, true, true, true);
-        check(frame.index === index && frame.kind === 'reflow-' + kind && frame.paneId === first.paneId
-            && /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(frame.paneId ?? '')
-            && same(geometry(screen), stage?.target ?? original) && same(screen, after)
-            && frame.sha256 === snapshotHash(screen) && frame.afterSha256 === frame.sha256
-            && frame.caseId === (stage?.caseId ?? null) && frame.stageId === (stage?.stageId ?? null)
-            && frame.actionIndex === expectedAction
-            && (index === 0 ? frame.barrier === null : typeof frame.barrier === 'string'
-                && frame.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(frame.barrier)));
-        if (expectedAction !== null) validateAction(actions[expectedAction], expectedAction, stage, first.paneId, runId);
-    }
+    validateJournalFrames(frames, actions, { plan, original, runId, kindPrefix: 'reflow', ensure: check });
     check(pristineEditing(first.screen) && same(first.screen, last.screen));
     const bound = structuredClone(first.screen);
     bound.lines[0] = asciiReflowNoncePrefix + runId; bound.cursorCol = (asciiReflowNoncePrefix + runId).length;

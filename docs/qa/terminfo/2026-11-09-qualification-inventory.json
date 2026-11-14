@@ -40,14 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 112,
-    "suiteClaims": 114,
+    "uniqueBenchmarkIds": 111,
+    "suiteClaims": 113,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 112,
-    "pinnedAndEffectSupportedIds": 85,
+    "effectSupportedIds": 110,
+    "effectUnsupportedIds": 1,
+    "effectOtherIds": 0,
+    "pinnedAndEffectSupportedIds": 86,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "editing.deccara",
@@ -56,15 +58,12 @@
       "extensions.notifications",
       "extensions.osc0-icon-title",
       "extensions.osc1-icon",
-      "extensions.osc117-reset-highlight-bg",
-      "extensions.osc119-reset-highlight-fg",
       "extensions.osc133-a",
       "extensions.osc133-b",
       "extensions.osc133-c",
       "extensions.osc133-d",
-      "extensions.osc17-highlight-bg",
-      "extensions.osc19-highlight-fg",
       "extensions.osc7-cwd",
+      "extensions.osc777-notify",
       "extensions.osc9-progress",
       "input.button-event-mouse",
       "input.modify-other-keys",
@@ -77,12 +76,16 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectSupportedOfStockInconclusive": 111,
-    "pinnedSupportedOfStockInconclusive": 84,
+    "effectUnsupportedPinnedInconclusiveIds": [
+      "extensions.reflow"
+    ],
+    "effectSupportedOfStockInconclusive": 109,
+    "effectUnsupportedOfStockInconclusive": 1,
+    "pinnedSupportedOfStockInconclusive": 85,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 85,
+    "pinnedSupportedIds": 86,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -91,8 +94,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 57,
-      "notPinnedSupported": 84
+      "effectUnqualified": 59,
+      "effectMeasuredUnsupported": 1,
+      "effectMeasuredOther": 0,
+      "effectNotMeasured": 58,
+      "notPinnedSupported": 83
     }
   },
   "suites": [
@@ -2672,61 +2678,58 @@
       }
     },
     {
-      "suite": "selection-colors",
-      "suiteId": "ntilde-owned-selection-colors-graded-v1",
+      "suite": "ascii-reflow",
+      "suiteId": "ntilde-owned-ascii-reflow-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-12-selection-colors/",
-      "doc": "2026-11-12-selection-colors-qualification.md",
-      "caseCount": 4,
+      "publication": "2026-11-12-ascii-reflow/",
+      "doc": "2026-11-12-ascii-reflow-qualification.md",
+      "caseCount": 1,
       "caseIds": [
-        "extensions.osc17-highlight-bg",
-        "extensions.osc19-highlight-fg",
-        "extensions.osc117-reset-highlight-bg",
-        "extensions.osc119-reset-highlight-fg"
+        "extensions.reflow"
       ],
       "evidence": {
-        "files": 11,
-        "bytes": 57359381,
-        "sha256": "34665eec33747ff5e110e193714bdb8f62929e8323c99f46b2782cbf1c631c67"
+        "files": 19,
+        "bytes": 92261894,
+        "sha256": "889a48b87470eda4765bacff0dbd80a7d88fa6f1535881dffc08bfbe9d6504ff"
       },
       "receipt": {
-        "schemaVersion": 59,
-        "runId": "dc2c29f5106f2772757922e093d42458",
+        "schemaVersion": 58,
+        "runId": "e8d8ebdb956ba201d2924f76dcda48c7",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "1018e1cb38148d341b08190c78e74b5a905c7c2be505306e83d92e091bc7e1d1"
+          "sha256": "e7d72da3270b50df4206cc0dcc771b6f7e74ddf57023682a1b1d2525234de46f"
         },
         "suiteEvidence": {
-          "suiteId": "ntilde-owned-selection-colors-graded-v1",
-          "file": "selc-observations.json",
-          "sha256": "954ba8276027d3dfe43bb5af79fdb7879b790ae15bc9c177e282eed8a05e59af",
-          "runFile": "selc-run.json",
-          "runSha256": "3c78c3032e92c1ca39f5c532387210a6c0dccb96888d3e0a70ea7e898400ddb1",
+          "suiteId": "ntilde-owned-ascii-reflow-v1",
+          "file": "reflow-observations.json",
+          "sha256": "62e7d842390d8871e786782e1baa4f8f29721605d92a86a303c6125b27cb42af",
+          "runFile": "rf-run.json",
+          "runSha256": "13590caf0a9b1c4df89b02f645dc62a4d90e164843bcb46d2258504d69b82072",
           "counts": {
-            "supported": 4
+            "unsupported": 1
           },
           "contractsVersion": 1
         }
       },
       "run": {
-        "ownedRunId": "dc2c29f5106f2772757922e093d42458",
-        "measuredAt": "2026-11-14T10:54:37.455Z",
-        "appRevision": "5a20054d70ff72b0953ea0b342381d93035b7571",
-        "appVersion": "0.13.0",
+        "ownedRunId": "e8d8ebdb956ba201d2924f76dcda48c7",
+        "measuredAt": "2026-11-13T21:25:54.756Z",
+        "appRevision": "d8679e112ce919fd050c5a74f40693edfce13b1c",
+        "appVersion": "0.13.0+d8679e112ce919fd050c5a74f40693edfce13b1c",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "08197ff46ab2f675d0c6c5aaeb6b26347066d6ad",
+        "scriptsRevision": "d8679e112ce919fd050c5a74f40693edfce13b1c",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "8086e8c5dfcbca0aacb1215ec4a3b0f9a5e2dbfbf83af8057c8cb9128ff18555",
-        "gradingAdapterId": "ntilde-owned-selection-colors-grading-v1",
-        "gradingAdapterBundleSha256": "1e57d4c40f77e7861e4e83357d3a8b1939c6d9e98b635a3d19546b5f47e9edb8",
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v53",
-        "sourceSnapshotManifestSha256": "684ac070fe316273bc35c95b2af90ab89c54ae1569c6089922393082cb081b4e"
+        "collectorAdapterBundleSha256": "c8677ff6297d53821123458ccdbf47a4319a80ca9287a8638ceba3bf8f750a27",
+        "gradingAdapterId": "ntilde-owned-ascii-reflow-grading-v1",
+        "gradingAdapterBundleSha256": "f14ad1c2dff3c59d165949df218ab6780842215ba4c417d64f82a96678798836",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v52",
+        "sourceSnapshotManifestSha256": "d867dcc3347272232b85b7fd35242fa1521bc4f068c0a858a26817ba4c1b9c88"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "785787132006d89dd08adb134251aa5f",
+        "runId": "7dd243ac676330167aac8dff4d524bd0",
         "counts": {
           "inconclusive": 167,
           "supported": 87,
@@ -2734,14 +2737,86 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "2023667d44d456fe10427ab965ca147ebbefbeb0e2a2e22cbabd80a14502e5f0",
+        "rawSha256": "38a78ae8ce209e9aeab740d71d84fba986600df8cc349c92696fd348c1017618",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
-        "note": "Stock terminal-path grades; owned effects do not change the stock score."
+        "note": "Stock terminal-path grades collected in the same owned run; the owned effect verdict does not change the stock score."
       },
       "rederivation": {
         "status": "passed",
-        "command": "node --test scripts/terminfo/selection-colors-publication.test.mjs",
-        "testSha256": "1507f86d592fa2630ddfdd7b972c2ce9706c8cfd34c6e08e707cae0069b0ee39"
+        "command": "node --test scripts/terminfo/ascii-reflow-publication.test.mjs",
+        "testSha256": "9b10666fe13dfa87de0eb2d4a9451f7046477cd570b01ba51487b6c3205c9116"
+      }
+    },
+    {
+      "suite": "notify",
+      "suiteId": "ntilde-owned-notify-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-14-notify/",
+      "doc": "2026-11-14-notify-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "extensions.osc777-notify",
+        "extensions.osc99-kitty-notify"
+      ],
+      "evidence": {
+        "files": 10,
+        "bytes": 49410631,
+        "sha256": "106e7f009bbe9706171ece8f841ddb73880486cafe96ba0e6ac2716075935c7a"
+      },
+      "receipt": {
+        "schemaVersion": 59,
+        "runId": "4625c13d4a6fb4466397882957f6b3d2",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "2b78458fa1dffdb96f33d1bbaee1332e8681e31c795d4d48becc0e6444508129"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-notify-graded-v1",
+          "file": "ntf-observations.json",
+          "sha256": "11d5251154d6436c71c0fba734776f623afc2a909809b37fde8a120c16f9e917",
+          "runFile": "ntf-run.json",
+          "runSha256": "afd45bee95b185a5f1213167ed810a94c34534c52a049f54881e9c3ff0cf34a9",
+          "counts": {
+            "inconclusive/supported": 1,
+            "stock-and-query-witness/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "4625c13d4a6fb4466397882957f6b3d2",
+        "measuredAt": "2026-11-14T13:08:15.200Z",
+        "appRevision": "d904c66390af9953ccf9b9f2d9741b9a7a0d28f3",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "d904c66390af9953ccf9b9f2d9741b9a7a0d28f3",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "27ffbdca220cf33846b8f8f0feee5d3e012c1ebe5c3ee8cfc9d75d2f70fb14c5",
+        "gradingAdapterId": "ntilde-owned-notify-grading-v1",
+        "gradingAdapterBundleSha256": "c9f3800bc2743c69448df8e2883295b0e4756bc0bca0c9bc511b2c532ab7889c",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v53",
+        "sourceSnapshotManifestSha256": "0155386aa1b5bbbaf4eff976b19a0a0d37614fecc2aab622409c2cb440709886"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "44271b951ce367edd16e6c1259999f92",
+        "counts": {
+          "inconclusive": 166,
+          "supported": 88,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "099369867dcb12422a343f1825ee4e26a6b1f144d2a764c72fda685484fea8ac",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades; owned effects do not change the stock score except where the unchanged stock probe itself now passes."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/notify-publication.test.mjs",
+        "testSha256": "cd1fac8295820304fa27e67fa53298a94d78a772c501eb3ce679b17e78f90435"
       }
     }
   ],
@@ -4944,114 +5019,6 @@
       ]
     },
     {
-      "id": "extensions.osc117-reset-highlight-bg",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc117-reset-highlight-bg",
-          "suite": "selection-colors",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": "highlight background color"
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-inconclusive-by-design",
-            "pinned": "inconclusive",
-            "effect": "supported",
-            "reason": "highlight background color"
-          },
-          "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
-          ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc119-reset-highlight-fg",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc119-reset-highlight-fg",
-          "suite": "selection-colors",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": "highlight foreground color"
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-inconclusive-by-design",
-            "pinned": "inconclusive",
-            "effect": "supported",
-            "reason": "highlight foreground color"
-          },
-          "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
-          ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
-        }
-      ]
-    },
-    {
       "id": "extensions.osc133-a",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -5260,114 +5227,6 @@
       ]
     },
     {
-      "id": "extensions.osc17-highlight-bg",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc17-highlight-bg",
-          "suite": "selection-colors",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": null
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-query-only-unset-default",
-            "pinned": "inconclusive",
-            "effect": "supported",
-            "reason": null
-          },
-          "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
-          ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc19-highlight-fg",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "selection-colors",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc19-highlight-fg",
-          "suite": "selection-colors",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": null
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-plus-contract-v1"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-query-only-unset-default",
-            "pinned": "inconclusive",
-            "effect": "supported",
-            "reason": null
-          },
-          "measuredLayers": [
-            "stored-state",
-            "app-resolved-color",
-            "controlled-pixels"
-          ],
-          "evidenceTag": "owned-stored-cells-app-resolved-colors-exact-replies-and-controlled-pixels"
-        }
-      ]
-    },
-    {
       "id": "extensions.osc2-title",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -5463,6 +5322,59 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc777-notify",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc777-notify",
+          "suite": "notify",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor response does not measure OSC 777 notification delivery"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-preserved-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Cursor response does not measure OSC 777 notification delivery"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status"
         }
       ]
     },
@@ -5563,6 +5475,106 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "stored-state and pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc99-kitty-notify",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc99-kitty-notify",
+          "suite": "notify",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": "Notification capabilities acknowledge title payloads; OS display, activation and close events were not tested"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-stock-collector-and-exact-query-witness"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status (effect); stock query reply (pinned)"
+        }
+      ]
+    },
+    {
+      "id": "extensions.reflow",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "ascii-reflow",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "ascii-reflow",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.reflow",
+          "suite": "ascii-reflow",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No controlled resize and cell-content readback to measure reflow"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "No controlled resize and cell-content readback to measure reflow"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "actual-scrollback"
+          ],
+          "evidenceTag": "stored-state and actual-scrollback"
         }
       ]
     },

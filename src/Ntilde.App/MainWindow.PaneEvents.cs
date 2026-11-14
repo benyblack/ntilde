@@ -94,6 +94,7 @@ namespace Ntilde
             pane.MuxShareEnded -= OnPaneMuxShareEnded;
             pane.MuxAdoptionLost -= OnPaneMuxAdoptionLost;
             pane.OscNotificationReceived -= OnPaneOscNotification;
+            pane.OscTitledNotificationReceived -= OnPaneOscTitledNotification;
             pane.ProgressReported -= OnPaneProgressReported;
 
             pane.RequestRemoteFilesSidebarTransfer += OnPaneRequestRemoteFilesSidebarTransfer;
@@ -110,6 +111,7 @@ namespace Ntilde
             pane.MuxShareEnded += OnPaneMuxShareEnded;
             pane.MuxAdoptionLost += OnPaneMuxAdoptionLost;
             pane.OscNotificationReceived += OnPaneOscNotification;
+            pane.OscTitledNotificationReceived += OnPaneOscTitledNotification;
             pane.ProgressReported += OnPaneProgressReported;
         }
 
@@ -139,6 +141,7 @@ namespace Ntilde
             pane.MuxShareEnded -= OnPaneMuxShareEnded;
             pane.MuxAdoptionLost -= OnPaneMuxAdoptionLost;
             pane.OscNotificationReceived -= OnPaneOscNotification;
+            pane.OscTitledNotificationReceived -= OnPaneOscTitledNotification;
             pane.ProgressReported -= OnPaneProgressReported;
         }
 
@@ -325,6 +328,23 @@ namespace Ntilde
             }
 
             ShowUnpromptedToast(pane.GetBaseTabTitle(), text, $"focus:osc9:{pane.PaneId}");
+        }
+
+        // OSC 777 notify / OSC 99 (kitty): the same opt-in setting and focus gate as OSC 9, a different
+        // spelling of the same program-requested ping. A title and body show as given; a lone title or body is the
+        // message under the pane's title, as an OSC 9 text is.
+        private void OnPaneOscTitledNotification(TerminalPane pane, string title, string body)
+        {
+            if (!LongCommandNotificationPolicy.ShouldNotify(
+                    _settings.Osc9NotificationsEnabled,
+                    windowActive: IsActive,
+                    isCurrentPane: ReferenceEquals(pane, _currentPane)))
+            {
+                return;
+            }
+
+            var (toastTitle, message) = OscNotificationToast.Resolve(pane.GetBaseTabTitle(), title, body);
+            ShowUnpromptedToast(toastTitle, message, $"focus:osc9:{pane.PaneId}");
         }
 
         private void OnPaneProgressReported(TerminalPane pane, TerminalProgressReport? report)

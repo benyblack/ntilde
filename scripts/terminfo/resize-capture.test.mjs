@@ -92,3 +92,10 @@ test('abort can request only the original geometry and permanently prevents comp
     await f.call('abort'); assert.deepEqual(f.actions, [{ rows: 12, cols: 60 }]);
     assert.equal(f.observer.aborted, true); await assert.rejects(f.call('finish')); assert.equal(f.observer.restored, false);
 });
+test('the resize observer refuses a request kind or nonce belonging to another resize-driven suite', async () => {
+    const f = fixture();
+    await assert.rejects(f.observer.handle({ kind: 'reflow-start', barrier: null }, () => 1000), /Invalid owned resize plan/);
+    assert.equal(f.reads.length, 0);
+    const options = { profileName: 'fixture', expectedPaneId: resizePaneId, endpoint: () => 'private', rpc: async () => ({}), performResize: async () => ({}) };
+    assert.throws(() => new OwnedResizeObserver({ ...options, nonce: 'NTILDE_RF_' + 'a'.repeat(32) }), /Invalid owned resize plan/);
+});
