@@ -16,8 +16,9 @@ const contractIds = Object.freeze({ [osc777CaseId]: osc777ContractId, [osc99Case
 /** What the pinned OSC 777 terminal path returns, rebuilt from the documented pinned note and the journaled cursor alone: the verdict depends on no observation. */
 export function replayOsc777PinnedStatic(cursor) {
     const note = notifyPinned[osc777CaseId].terminalNote;
-    return { caseId: osc777CaseId, termlessFunction: false, termless: null, writes: [...osc777PinnedWrites], cursor: [cursor[0] + 1, cursor[1] + 1],
-        terminal: { pass: false, response: `${cursor[0] + 1};${cursor[1] + 1}`, note, observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'query' } } };
+    return { caseId: osc777CaseId, termlessFunction: false, termless: null,
+        terminal: { pass: false, response: `${cursor[0] + 1};${cursor[1] + 1}`, note, observation: { outcome: 'inconclusive', reason: 'insufficient-evidence', evidence: 'query' } },
+        writes: [...osc777PinnedWrites], cursor: [cursor[0] + 1, cursor[1] + 1] };
 }
 
 export function notifyObserverPlan(snapshot, runId) {
@@ -153,15 +154,14 @@ function policyRecords(experiments) {
 }
 
 /** The pinned record of one case: the replayed OSC 777 terminal path, or OSC 99's identification (its verdict belongs to the stock run and the exact-query witness). */
-function pinnedRecord(id, run, experiments) {
+function pinnedRecord(id, run) {
     const recorded = run.pinned.find(item => item.caseId === id);
     if (id === osc99CaseId) {
         check(same(recorded, { caseId: id, termlessFunction: false, termless: null, terminal: null, replay: notifyPinned[id].replay }), 'Pinned OSC 99 identification changed.');
         return { ...recorded, qualifiedOutcome: null };
     }
-    const cursor = experiments.find(item => item.name === 'pinned-fixture').observations.find(entry => entry.kind === 'effect');
     const journaled = run.experiments.find(item => item.caseId === `${id}/pinned-fixture`).reads.find(entry => entry.kind === 'after').cursor;
-    check(cursor !== undefined && same(recorded, replayOsc777PinnedStatic(journaled)), 'Pinned OSC 777 result differs from its replay.');
+    check(same(recorded, replayOsc777PinnedStatic(journaled)), 'Pinned OSC 777 result differs from its replay.');
     return { ...recorded, qualifiedOutcome: 'inconclusive' };
 }
 
@@ -187,7 +187,7 @@ export function buildNotifyReport(frames, run, runId, adapter) {
         && same(run.pinned?.map(item => item.caseId), notifyCaseIds), 'Invalid notification run identity.');
     const evaluations = evaluateExperiments(frames, run, runId, contracts);
     const cases = notifyCaseIds.map(id => {
-        const experiments = evaluations.filter(item => item.owner === id), pinned = pinnedRecord(id, run, experiments), effectContract = effectVerdict(id, experiments);
+        const experiments = evaluations.filter(item => item.owner === id), pinned = pinnedRecord(id, run), effectContract = effectVerdict(id, experiments);
         return { caseId: id, effectContract, experiments, policy: policyRecords(experiments), pinned, divergences: divergences(pinned, effectContract) };
     });
     return { schemaVersion: 1, suiteId: notifySuiteId, contractsVersion: notifyContractsVersion, runId, adapter, cases, snapshots: frames };
