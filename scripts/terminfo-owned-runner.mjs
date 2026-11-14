@@ -1331,6 +1331,38 @@ function retainOscTitleEvidence(output, runId, upstream, unavailable) {
         contractsVersion: oscTitleContractsVersion, counts: oscTitleCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** /** Derive and lock the ASCII reflow grading extension over the XTGETTCAP one. */
+function prepareReflowCollector(tool, previous, output) {
+    const adapted = adaptReflowCollector(readFileSync(previous));
+    const asciiReflowBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-rfl-${asciiReflowBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== asciiReflowBundleSha256) throw new Error('Derived ASCII reflow bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-rfl.mjs'), adapted, { flag: 'wx', mode: 0o600 });
+    return { bundle, asciiReflowBundleSha256 };
+}
+
+/** Re-derive the ASCII reflow report parent-side from the paired journals and the layered pinned replay. */
+async function retainReflowEvidence(output, runId, reflowBundle, upstream, unavailable) {
+    const adapterBytes = readFileSync(join(output, 'collector-rfl.mjs'));
+    if (unavailable) {
+        const bytes = readFileSync(join(output, 'reflow-unavailable.json')), marker = JSON.parse(bytes);
+        if (marker.reason !== unavailable.reason) throw new Error('ASCII reflow unavailable marker differs from its recorded refusal.');
+        return { runId, suiteId: asciiReflowSuiteId, file: 'reflow-unavailable.json', sha256: hash(bytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(adapterBytes), contractsVersion: asciiReflowContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    const runBytes = readFileSync(join(output, 'rf-run.json'));
+    const frames = readFileSync(join(output, 'reflow-snapshots.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const actions = readFileSync(join(output, 'reflow-actions.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapter = { id: asciiReflowAdapterId, derivedFromAdapterId: 'ntilde-owned-osc-title-grading-v1', bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(reflowBundle).href);
+    const report = buildReflowReport(frames, actions, JSON.parse(runBytes), runId, adapter, { replayModule });
+    writeJson(join(output, 'reflow-observations.json'), report);
+    return { runId, suiteId: asciiReflowSuiteId, file: 'reflow-observations.json', sha256: hash(readFileSync(join(output, 'reflow-observations.json'))),
+        runFile: 'rf-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: asciiReflowContractsVersion, counts: reflowCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the routed-input report parent-side from the owned input journal and the layered pinned replay. */
 async function retainRoutedInputEvidence(output, runId, routedInputBundle, upstream, inputBinding, seal, inputSuiteId) {
     if (inputBinding?.status === 'unavailable') {
@@ -1640,6 +1672,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let editingEvidence;
     let historyEvidence;
     let resizeEvidence;
+    let reflowEvidence;
     let savedEvidence;
     let metadataEvidence;
     let inputEvidence;
@@ -1702,6 +1735,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: xtgettcapBundle, xtgettcapBundleSha256 } = prepareXtgettcapCollector(privateTool, titleStackBundle, output);
         const { bundle: osc9Bundle, osc9BundleSha256 } = prepareOsc9Collector(privateTool, lrMarginsBundle, output);
         const { bundle: modifyOtherKeysBundle, modifyOtherKeysBundleSha256 } = prepareModifyOtherKeysCollector(privateTool, lrMarginsBundle, output);
+        const { bundle: reflowBundle, asciiReflowBundleSha256 } = prepareReflowCollector(privateTool, oscTitleBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const appData = join(scratch, 'appdata');
         mkdirSync(appData, { mode: 0o700 });
@@ -1713,7 +1747,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, oscTitleBundle, oscTitleBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, oscTitleBundle, oscTitleBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -1795,6 +1829,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             cursor: { previous: 'rendition', nonce: 'NTILDE_CS_', suiteId: cursorSuiteId, cases: cursorCases, report: buildCursorReport, includeCursorMode: true },
         };
         let resizeState;
+        let reflowState;
         let savedState;
         let metadataState;
         let inputState;
@@ -1867,8 +1902,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             oscTitleAdapterId, oscTitleSuiteId, oscTitleBundleSha256, oscTitleContractsVersion,
             titleStack: 'layered versioned collector extension; pinned device.xtwinops-22 and device.xtwinops-23 termless code (feed a title, CSI 22;0t, feed another title, CSI 23;0t, getTitle() after each stage; supported only when all three titles are as expected, never unsupported) and terminal code (the writes then a cursor query; inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells and the raw title, raw icon name, display title and tab text of the same observation by an independent title-stack oracle: each pinned fixture executed from a measured prepared baseline, plus combined, title-only, icon-only, nested (LIFO), mixed-selector, empty-pop, bounded-depth, alternate-screen, DECSTR and RIS experiments; raw icon-name state only, no host icon presentation, no title or icon report query, no direct-slot addressing, disposable direct-local App only, no stock grade',
             xtgettcapAdapterId, xtgettcapSuiteId, xtgettcapBundleSha256, xtgettcapContractsVersion,
+            asciiReflowAdapterId, asciiReflowSuiteId, asciiReflowBundleSha256, asciiReflowContractsVersion, ownedAsciiReflowPolicy,
             osc9AdapterId, osc9SuiteId, osc9BundleSha256, osc9ContractsVersion,
             xtgettcap: 'layered versioned collector extension; pinned device.xtgettcap termless and terminal code (DCS + q 544e ST; a 1+r544e=<even hex> value reply is supported, the bare 0+r refusal and silence stay inconclusive) replayed byte-exactly over the journaled raw replies of its own fenced exchange and preserved — TN is deliberately refused, so both pinned verdicts stay inconclusive — beside the separately identified effect contract ntilde-xtgettcap-capability-report-effect-v1 graded by an independent reply oracle over the same fence: the exact pinned request, the numeric Co/colors replies, the RGB/Tc flag replies, one string reply, multi-name reply order with per-name outcomes, documented unavailable and unknown names, case-sensitivity, the uppercase echo, malformed lists with exactly one refusal and verified recovery after each; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged; capability-report replies only — no rendering, color accuracy, control-string execution, Ms clipboard, X resource, remote-delivery or other-platform claim, no stock grade',
+            asciiReflow: 'layered versioned collector extension; pinned extensions.reflow code (no fixture, no resize request, no cell readback; both arms always inconclusive by design) replayed byte-exactly over the journaled declared capability and preserved, beside a separately identified effect contract graded from paired complete stored cells, cursor, modes, attributes and complete ordered history at three actual geometries per experiment, proven by parent-selected App resize actions with independent kernel geometry and output-processing proof: an independent character-slicing model must reproduce the width round trip and the history round trip with top-anchored restoration in a disposable main screen buffer; the alternate screen is observed once as the nonce-bind control; no Unicode, wide-cell, grapheme or history-attribute claim, no images, pixels or rendered appearance, no saved banks, remote delivery or other platforms, no stock grades',
             osc9: 'layered versioned collector extension; pinned extensions.osc9-progress (no termless function; terminal path unmeasuredStateEffect) and extensions.notifications (declared-capability report; no delivery readback) preserved as always inconclusive and replayed over the layered derivation, beside separately identified effect contracts graded by an independent OSC 9 oracle from paired complete stored cells, pane metadata and session status: OSC 9;4 stored progress kind, percent and owner and the actual horizontal tab suffix (states 1-4, withdrawal, percentage present/clamped, ST terminator, unmarked and withdrawal controls; absent-percentage, unknown/malformed-state and bare-4 behavior recorded as policy, never graded), and the private in-window toast title, message, visibility and auto-hide with the window-focus and opt-in preconditions recorded at control time and at delivery (the parent defocuses the App by activating Finder and records it); no OS taskbar or desktop notification delivery, no OSC 777/99 or other OSC 9 variants, no real-program emission, no remote/mux, Windows/Linux, hidden-pane or unobserved focus-change claim, no stock grade',
             osc133: 'layered versioned collector extension; pinned extensions.osc133-a, -b, -c and -d termless and terminal code (marker + X consumption, always inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, cwd, input window, raw command/output anchors) and session status by an independent lifecycle oracle: each pinned fixture executed from a measured prior state with an unmarked control and gating markers, plus canonical cycle, payload, boundary, terminator-variant and exit-payload observations; protocol handling in a disposable direct-local App only, no real-shell, remote, OSC 133 P, OSC 633 or stock-grade claim',
             rectChecksum: 'layered versioned collector extension; pinned termless criterion editing.decrqcra (ESC[1;1;1;1;1;5*y after ABCDE ESC[1;1H, a framed DCS 1 ! ~ hhhh ST) replayed byte-exactly on a disposable App whose initial settings turn on AllowRectangleChecksumReport (off by default), graded from raw replies bound to their DA barriers and parent-observed stored cells by an independent checksum model (character sum, bold/blink/reverse/underline weights, defaults, origin offset, page clipping, request id, non-admitted spellings, unchanged state); stored ASCII cells only, no stock grades',
@@ -1940,6 +1977,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'crst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'reflow-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'reflow-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'input-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'image-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -2118,6 +2157,56 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             } finally {
                 for (const action of state.observer.actions.slice(state.recordedActions)) {
                     appendFileSync(join(output, 'resize-actions.jsonl'), JSON.stringify(action) + '\n');
+                    state.recordedActions++;
+                }
+            }
+        };
+        /** Record only a source-known initial refusal, before binding or requesting any reflow resize. */
+        const recordReflowUnavailable = reason => {
+            const file = 'reflow-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: asciiReflowSuiteId,
+                status: 'unavailable', reason, fixtureStarted: false, plannedExperiments: 2 });
+            reflowState.unavailable = { runId, suiteId: asciiReflowSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason, counts: {}, provisionalUntil: 'cell-receipt.json' };
+        };
+        /** The ASCII reflow suite reuses the parent-owned resize action under its own prefix and plan; it runs after the resize suite restores. */
+        const observeReflow = async (request, budget) => {
+            const previous = editingStates.get('history');
+            if (!resizeState?.observer?.restored && !resizeState?.unavailable) throw new Error('Resize must restore before ASCII reflow observations.');
+            if (!previous?.observer?.restored && !previous?.unavailable) throw new Error('History must restore before ASCII reflow observations.');
+            if (!reflowState) {
+                reflowState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
+                reflowState.observer = new OwnedReflowObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: 'NTILDE_RF_' + runId, expectedPaneId: cellObserver.paneId,
+                    performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
+                        paneId: reflowState.observer.paneId, uid: process.getuid(),
+                        workerPid: reflowState.workerPid, tty: reflowState.tty }, rows, cols, actionBudget) });
+                proofs[0].asciiReflow.actions = reflowState.observer.actions;
+            }
+            const state = reflowState;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('ASCII reflow fixture ownership or availability changed.');
+            if (previous.unavailable && request.kind === 'reflow-start') {
+                recordReflowUnavailable('screenDetailsUnavailable');
+                throw Object.assign(new Error('ASCII reflow fixture requires complete screen details.'), { code: 'screenDetailsUnavailable' });
+            }
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === 'reflow-start') {
+                    proofs[0].asciiReflow.paneId = state.observer.paneId;
+                    proofs[0].asciiReflow.originalGeometry = state.observer.original;
+                }
+                for (const frame of state.observer.frames.slice(state.recordedFrames)) {
+                    appendFileSync(join(output, 'reflow-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+                    state.recordedFrames++;
+                }
+                return result;
+            } catch (error) {
+                if (request.kind === 'reflow-start' && ['screenDetailsUnavailable', 'asciiReflowGeometryUnavailable'].includes(error.code)
+                    && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length) recordReflowUnavailable(error.code);
+                throw error;
+            } finally {
+                for (const action of state.observer.actions.slice(state.recordedActions)) {
+                    appendFileSync(join(output, 'reflow-actions.jsonl'), JSON.stringify(action) + '\n');
                     state.recordedActions++;
                 }
             }
@@ -2578,6 +2667,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (prefix === 'resize') return observeResize(request, budget);
             if (prefix === 'saved') return observeSaved(request, budget);
             if (prefix === 'metadata') return observeMetadata(request, budget);
+            if (prefix === 'reflow') return observeReflow(request, budget);
             if (prefix === osc133Prefix) return observeOsc133(request, budget);
             if (prefix === osc78Prefix) return observeOsc78(request, budget);
             if (prefix === titleStackPrefix) return observeTitleStack(request, budget);
@@ -3029,7 +3119,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const retainFirstProof = (owner, worker, tty, budget) => {
             if (proofs.length !== 0) return;
             proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
-                workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
+                workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, asciiReflow: { policy: ownedAsciiReflowPolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -3063,7 +3153,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             }
             if (untranslatedCellKind(request.kind)
                 || coreWrapKinds.has(request.kind)
-                || /^resize-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
+                || /^(?:resize|reflow)-(?:start|bind|read|apply|finish|abort)$/.test(request.kind)
                 || osc9ActionKinds.has(request.kind)
                 || /^input-(?:start|bind|control|apply|read|finish|seal)$/.test(request.kind)) {
                 const result = await observeUntranslatedCells(request, queryTimeout);
@@ -3244,6 +3334,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             historyEvidence = retainEditing('history');
             resizeEvidence = resizeState?.unavailable ?? retainCellReport(output, resizeState?.observer, runId,
                 (frames, id) => buildResizeReport(frames, resizeState.observer.actions, id), 'resize-observations.json');
+            reflowEvidence = await retainReflowEvidence(output, runId, reflowBundle, upstreamBundleSha256, reflowState?.unavailable ?? null);
             savedEvidence = savedState?.unavailable ?? retainCellReport(output, savedState?.observer, runId, buildSavedReport, 'saved-observations.json');
             metadataEvidence = metadataState?.unavailable ?? retainCellReport(output, metadataState?.observer, runId, buildMetadataReport, 'metadata-observations.json');
             inputEvidence = inputState?.unavailable ?? retainCellReport(output, inputState?.observer, runId,
@@ -3285,6 +3376,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.metadataEvidence = metadataEvidence;
             summary.savedEvidence = savedEvidence;
             summary.resizeEvidence = resizeEvidence;
+            summary.reflowEvidence = reflowEvidence;
             summary.historyEvidence = historyEvidence;
             summary.eraseEvidence = eraseEvidence;
             summary.editingEvidence = editingEvidence;
@@ -3373,7 +3465,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
@@ -3384,3 +3476,7 @@ try {
     console.error(`[terminfo-owned] ${error.message}`);
     process.exitCode = 1;
 }
+import { adaptReflowCollector, asciiReflowAdapterId } from './terminfo/ascii-reflow-grading-collector.mjs';
+import { asciiReflowContractsVersion, asciiReflowSuiteId, ownedAsciiReflowPolicy } from './terminfo/ascii-reflow-contracts.mjs';
+import { buildReflowReport, reflowCounts } from './terminfo/ascii-reflow-grading.mjs';
+import { OwnedReflowObserver } from './terminfo/ascii-reflow-observer.mjs';

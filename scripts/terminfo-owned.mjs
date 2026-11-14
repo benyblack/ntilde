@@ -63,7 +63,7 @@ function pathFor(root, file) {
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
     return join(root, 'scripts', relative);
 }
-const policy = 'readonly-owned-source-graph-v51';
+const policy = 'readonly-owned-source-graph-v52';
 // The desktop lease helper is the second reviewed pure bootstrap dependency (BCL imports only). It lives outside the measured
 // source graph, so the policy above does not change for it; its exact bytes are pinned here and loaded only when the runner asks for the lease.
 const desktopLockSha256 = '96076ef3a4afb7cc5c1bef8c6ac6f22ee86745270637e40b4792d58ce34dd9cf';
