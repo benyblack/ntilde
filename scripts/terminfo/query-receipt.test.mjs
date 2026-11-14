@@ -100,11 +100,22 @@ test('a v2 query policy run owes the DECRQSS s reply; the receipt re-derives it 
     assert.equal(f.report.observations.find(x => x.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'positive-reply');
     assert.deepEqual(f.finish().queryEvidence.counts, { matched: 40 });
 }, { marginsReport: true }));
+test('a v3 query policy run also owes the OSC 99 capability reply; the receipt re-derives it from the archived policy alone', () => queryReceiptFixture(f => {
+    assert.equal(f.context.ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v3'); assert.equal(f.report.policy, f.context.ownedQueryPolicy);
+    const witness = f.report.observations.find(x => x.id === 'q07.extensions.osc99-kitty-notify');
+    assert.equal(witness.expectedEvidence, 'positive-reply'); assert.equal(witness.expectedHex, Buffer.from('\x1b]99;i=ntilde-query-audit:p=?;o=always:p=title,body\x1b\\').toString('hex'));
+    assert.equal(f.report.observations.find(x => x.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'positive-reply');
+    assert.deepEqual(f.finish().queryEvidence.counts, { matched: 40 });
+}, { marginsReport: true, noticeReport: true }));
+test('a v3 run whose OSC 99 query stayed silent is a recorded mismatch, not a refusal', () => queryReceiptFixture(f => {
+    assert.deepEqual(f.finish().queryEvidence.counts, { matched: 39, mismatched: 1 });
+}, { marginsReport: true, noticeReport: true, mutateReply: (id, value) => id === 'q07.extensions.osc99-kitty-notify' ? '' : value }));
 test('a v2 run whose switch reply stayed negative is a recorded mismatch, not a refusal', () => queryReceiptFixture(f => {
     assert.deepEqual(f.finish().queryEvidence.counts, { matched: 39, mismatched: 1 });
 }, { marginsReport: true, mutateReply: (id, value) => id === 'q12.decrqss.horizontal-margins' ? '\x1bP0$r\x1b\\' : value }));
 test('rewriting the archived query policy cannot move a run between the negative and positive expectation', async () => {
-    for (const [options, forged] of [[{}, 'owned-exact-query-paired-raw-state-v2'], [{ marginsReport: true }, 'owned-exact-query-paired-raw-state-v1']]) {
+    for (const [options, forged] of [[{}, 'owned-exact-query-paired-raw-state-v2'], [{ marginsReport: true }, 'owned-exact-query-paired-raw-state-v1'],
+        [{ marginsReport: true }, 'owned-exact-query-paired-raw-state-v3'], [{ marginsReport: true, noticeReport: true }, 'owned-exact-query-paired-raw-state-v2']]) {
         await queryReceiptFixture(f => {
             f.context.ownedQueryPolicy = forged; f.proof.proofs[0].queries.policy = forged;
             f.write('context.json', f.context); f.write('ownership-proof.json', f.proof);
@@ -112,7 +123,7 @@ test('rewriting the archived query policy cannot move a run between the negative
         }, options);
     }
     await queryReceiptFixture(f => {
-        f.context.ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v3'; f.proof.proofs[0].queries.policy = f.context.ownedQueryPolicy;
+        f.context.ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v4'; f.proof.proofs[0].queries.policy = f.context.ownedQueryPolicy;
         f.write('context.json', f.context); f.write('ownership-proof.json', f.proof);
         assert.throws(f.finish);
     });

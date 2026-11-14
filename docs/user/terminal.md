@@ -28,9 +28,10 @@ that off with `AllowOsc52ClipboardWrite`. Programs can never read your clipboard
 - **Long commands.** With *Long command notifications* on (Settings → General), a command that ran
   for 30 seconds or more shows a toast when it finishes, if you are not looking at its pane. Needs
   [shell integration](shell-integration.md).
-- **Program notifications.** With *Program notifications (OSC 9)* on, a program can show a toast,
-  for example an AI CLI saying a long task finished. It is not shown while you are looking at the
-  pane.
+- **Program notifications.** With *Program notifications (OSC 9, 99, 777)* on, a program can show a toast,
+  for example an AI CLI saying a long task finished. OSC 9 shows a message; OSC 777 `notify` and
+  kitty's OSC 99 can carry a title and a body (OSC 99 actions, icons, buttons and close reports are
+  not supported). It is not shown while you are looking at the pane.
 - **Progress.** A program that reports progress with OSC 9;4 shows it on its tab and, on Windows,
   on the taskbar button (*Progress reporting*, on by default).
 

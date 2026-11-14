@@ -48,6 +48,7 @@ import { collectColEditGrading } from './col-edit-collector.mjs';
 import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
 import { collectXtgettcapGrading } from './xtgettcap-collector.mjs';
 import { collectOsc9 } from './osc9-collector.mjs';
+import { collectNotify } from './notify-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -400,6 +401,11 @@ try {
         if (createHash('sha256').update(osc9Source).digest('hex') !== config.osc9BundleSha256) throw new Error('Local OSC 9 adapter bundle changed.');
         const osc9Result = await collectOsc9({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc9Bundle).href) });
         if (osc9Result.status === 'complete') writeFileSync(join(config.output, 'osn-run.json'), JSON.stringify(osc9Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered OSC 777 / OSC 99 notification qualification follows the OSC 9 suite on the same fence; a typed refusal of its first observation is retained by the parent.
+        const notifySource = readFileSync(config.notifyBundle);
+        if (createHash('sha256').update(notifySource).digest('hex') !== config.notifyBundleSha256) throw new Error('Local notification adapter bundle changed.');
+        const notifyResult = await collectNotify({ config, fence, owner, gradingModule: await import(pathToFileURL(config.notifyBundle).href) });
+        if (notifyResult.status === 'complete') writeFileSync(join(config.output, 'ntf-run.json'), JSON.stringify(notifyResult.run) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

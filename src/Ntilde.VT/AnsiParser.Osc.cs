@@ -94,6 +94,16 @@ namespace Ntilde.VT
                     HandleOscNotificationOrProgress(data);
                     break;
 
+                // OSC 99 (kitty) and OSC 777 (urxvt/VTE notify) desktop notifications. See
+                // AnsiParser.Notifications.cs for the exact subset.
+                case "99":
+                    HandleOsc99(data);
+                    break;
+
+                case "777":
+                    HandleOsc777(data);
+                    break;
+
                 // OSC 52: clipboard write (issue #268). See HandleOscClipboard for the format
                 // and the security posture (write-only, size-capped, read-denial-only).
                 case "52":
@@ -169,32 +179,11 @@ namespace Ntilde.VT
             }
             else if (!string.IsNullOrWhiteSpace(data))
             {
-                // One line, no stray controls. BEL/0x9C/ESC terminate the sequence,
-                // but anything else — TAB, NEL, other C0/C1 — reaches here and would
-                // land in the host's toast verbatim. Every surviving control becomes
-                // a space; CRLF collapses to one (the \r is dropped ahead of its \n).
-                var textBuilder = new StringBuilder(data.Length);
-                for (int i = 0; i < data.Length; i++)
-                {
-                    char ch = data[i];
-                    if (ch == '\r' && i + 1 < data.Length && data[i + 1] == '\n')
-                    {
-                        continue;
-                    }
-
-                    textBuilder.Append(char.IsControl(ch) ? ' ' : ch);
-                }
-
-                string text = textBuilder.ToString().Trim();
+                // One line, no stray controls (see SanitizeNotificationText); nothing left means nothing to say.
+                string text = SanitizeNotificationText(data, Osc9MaxNotificationChars);
                 if (text.Length == 0)
                 {
-                    // Controls-only payload: sanitization left nothing to say.
                     return;
-                }
-
-                if (text.Length > Osc9MaxNotificationChars)
-                {
-                    text = text[..(Osc9MaxNotificationChars - 1)] + "…";
                 }
 
                 OnDesktopNotification?.Invoke(text);

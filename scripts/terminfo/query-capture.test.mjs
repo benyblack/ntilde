@@ -237,6 +237,21 @@ test('under the v2 marker the DECRQSS s witness owes ESC P 1 $ r 1 ; cols s, a n
     assert.equal(mismatched.receivedHex, Buffer.from('\x1bP0$r\x1b\\').toString('hex'));
     for (const bad of ['yes', 1, null]) assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: bad }));
 });
+test('under the v3 marker the OSC 99 query owes the exact capability reply, silence is then a mismatch, and the marker is recorded and re-derived', async () => {
+    const world = queryWorld({ marginsReport: true, noticeReport: true }); await world.collect(); const report = world.observer.report;
+    const witness = item => item.id === 'q07.extensions.osc99-kitty-notify';
+    assert.ok(report.observations.every(item => item.contractMatched));
+    assert.equal(report.observations.find(witness).expectedEvidence, 'positive-reply');
+    assert.equal(report.observations.find(witness).expectedHex, Buffer.from('\x1b]99;i=ntilde-query-audit:p=?;o=always:p=title,body\x1b\\').toString('hex'));
+    assert.equal(report.policy, 'owned-exact-query-paired-raw-state-v3'); assert.match(report.noticeReport, /^query policy v3/);
+    assert.deepEqual(buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true }), report);
+    assert.notDeepEqual(buildQueryReport({ ...reportInput(report), marginsReport: true }), report, 'without the v3 marker the same journal derives a different report');
+    const silent = queryWorld({ marginsReport: true, noticeReport: true, mutateReply: (id, reply) => id === 'q07.extensions.osc99-kitty-notify' ? '' : reply });
+    await silent.collect(); const mismatched = silent.observer.report.observations.find(witness);
+    assert.equal(mismatched.contractMatched, false); assert.equal(mismatched.expectedEvidence, 'positive-reply'); assert.equal(mismatched.receivedHex, '');
+    for (const bad of ['yes', 1, null]) assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: bad }));
+    assert.throws(() => buildQueryReport({ ...reportInput(report), noticeReport: true }), 'the v3 marker requires the v2 marker');
+});
 test('without the marker (every earlier run) the negative expectation and the v1 policy are unchanged', async () => {
     const world = queryWorld(); await world.collect(); const report = world.observer.report;
     assert.equal(report.observations.find(item => item.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'negative-reply');

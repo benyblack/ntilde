@@ -346,5 +346,10 @@
     "asciiReflowCollectorSourceSha256": "ascii-reflow-collector.mjs",
     "asciiReflowGradingSourceSha256": "ascii-reflow-grading.mjs",
     "asciiReflowGradingCollectorSourceSha256": "ascii-reflow-grading-collector.mjs",
-    "asciiReflowReceiptSourceSha256": "ascii-reflow-receipt.mjs"
+    "asciiReflowReceiptSourceSha256": "ascii-reflow-receipt.mjs",
+    "notifyContractsSourceSha256": "notify-contracts.mjs",
+    "notifyCollectorSourceSha256": "notify-collector.mjs",
+    "notifyGradingSourceSha256": "notify-grading.mjs",
+    "notifyGradingCollectorSourceSha256": "notify-grading-collector.mjs",
+    "notifyReceiptSourceSha256": "notify-receipt.mjs"
 }
