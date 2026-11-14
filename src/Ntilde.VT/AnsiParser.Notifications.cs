@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Ntilde.VT
@@ -102,6 +103,8 @@ namespace Ntilde.VT
             return values;
         }
 
+        private static bool IsOsc99Id(string id) => id.All(c => Osc99IdAlphabet.Contains(c));
+
         private static string SanitizeOsc99Id(string? id)
         {
             if (string.IsNullOrEmpty(id)) return string.Empty;
@@ -130,10 +133,13 @@ namespace Ntilde.VT
 
             if (type != "title" && type != "body") return;
 
+            // A chunk's id is its identity: an id outside the protocol's alphabet or longer than the cap is refused, never trimmed into another notification's key.
             metadata.TryGetValue('i', out string? rawId);
+            rawId ??= string.Empty;
+            if (rawId.Length > Osc99MaxEchoedIdChars || !IsOsc99Id(rawId)) return;
             metadata.TryGetValue('e', out string? encoded);
             metadata.TryGetValue('d', out string? done);
-            AccumulateOsc99(SanitizeOsc99Id(rawId), type == "body", payload, encoded == "1", done != "0");
+            AccumulateOsc99(rawId, type == "body", payload, encoded == "1", done != "0");
         }
 
         private void AccumulateOsc99(string id, bool isBody, string payload, bool base64, bool done)

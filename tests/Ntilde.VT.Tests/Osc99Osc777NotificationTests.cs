@@ -186,6 +186,20 @@ public class Osc99Osc777NotificationTests
     }
 
     [Fact]
+    public void Osc99_ids_are_never_merged_by_trimming_or_sanitising()
+    {
+        var (parser, notifications, _, _) = Create();
+        string shared = new string('a', 64);
+
+        // Two ids sharing their first 64 characters are different notifications; an over-long or out-of-alphabet id is refused outright.
+        parser.Process($"\x1b]99;i={shared}1:d=0;one\x1b\\\x1b]99;i={shared}2:d=0;two\x1b\\");
+        parser.Process($"\x1b]99;i={shared}3;refused\x1b\\\x1b]99;i=a b;refused\x1b\\\x1b]99;i=a/b;refused\x1b\\");
+        Assert.Empty(notifications);
+        parser.Process($"\x1b]99;i={shared};x\x1b\\");
+        Assert.Equal(("x", ""), Assert.Single(notifications));
+    }
+
+    [Fact]
     public void Osc99_oversized_single_chunk_is_dropped()
     {
         var (parser, notifications, _, _) = Create();
