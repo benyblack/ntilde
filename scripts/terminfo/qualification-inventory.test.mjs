@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
     assertInventory, benchmarkSuites, buildInventory, defaultQaRoot, effectVerdictOf, findingSuites, inventoryFiles, loadPublication, measuredLayersOf,
-    pinnedVerdictOf, readText, receiptBinding, renderSummary, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
+    nonInventoryPublicationTests, pinnedVerdictOf, readText, receiptBinding, renderSummary, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
 } from './qualification-inventory.mjs';
 
 const read = name => JSON.parse(readText(join(defaultQaRoot, name)));
@@ -45,9 +45,18 @@ test('the totals are identities over the rows, not independent numbers', () => {
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
     assert.equal(totals.suiteClaims - totals.uniqueBenchmarkIds, totals.idsWithMultipleClaims.reduce((count, id) => count + row(stored, id).claims.length - 1, 0));
     assert.equal(totals.effectSupportedIds, totals.pinnedAndEffectSupportedIds + totals.effectSupportedPinnedInconclusiveIds.length);
+    // Every qualified id has exactly one effect state; an unsupported id is neither supported nor missing.
+    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + totals.effectUnsupportedIds + totals.effectOtherIds);
+    assert.equal(totals.effectUnsupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'unsupported').length);
+    assert.equal(totals.effectUnsupportedIds - totals.effectUnsupportedOfStockInconclusive, totals.ungradedStockIdsWithEvidence.filter(id => row(stored, id).effect.verdict === 'unsupported').length);
     assert.equal(totals.pinnedSupportedIds, totals.pinnedAndEffectSupportedIds, 'a pinned-supported id is also effect-supported here');
     const inconclusive = totals.baseline.stockInconclusive;
-    assert.equal(totals.remainingAgainstStockInconclusive.effectUnqualified, inconclusive - totals.effectSupportedOfStockInconclusive);
+    const remaining = totals.remainingAgainstStockInconclusive;
+    assert.equal(remaining.effectUnqualified, inconclusive - totals.effectSupportedOfStockInconclusive);
+    // `effectUnqualified` splits into three distinct states: measured-unsupported, measured-other and not measured at all.
+    assert.equal(remaining.effectUnqualified, remaining.effectMeasuredUnsupported + remaining.effectMeasuredOther + remaining.effectNotMeasured);
+    assert.equal(remaining.effectMeasuredUnsupported, totals.effectUnsupportedOfStockInconclusive);
+    assert.equal(remaining.effectNotMeasured, inconclusive - stored.benchmark.filter(item => item.stockOutcome === 'inconclusive').length);
     assert.equal(totals.remainingAgainstStockInconclusive.notPinnedSupported, inconclusive - totals.pinnedSupportedOfStockInconclusive);
     assert.equal(totals.effectSupportedIds - totals.effectSupportedOfStockInconclusive, totals.ungradedStockIdsWithEvidence.length, 'only ungraded stock ids can be effect-supported without being stock-inconclusive');
     assert.equal(totals.baseline.allCases, totals.baseline.stockSupported + totals.baseline.stockUnsupported + inconclusive);
@@ -251,6 +260,154 @@ test('guard: recorded totals must match the recomputed ones', () => {
     const pixels = committed();
     pixels.benchmark[0].claims[0].measuredLayers.push('pixels');
     assert.throws(() => check(pixels), /unknown measured layer pixels/);
+});
+
+test('extensions.reflow is admitted with an unsupported effect verdict kept distinct from its inconclusive pinned verdict', () => {
+    const stored = committed(), item = row(stored, 'extensions.reflow');
+    assert.ok(item, 'the reflow suite is registered, so its one benchmark id is in the inventory');
+    assert.equal(item.stockOutcome, 'inconclusive');
+    assert.equal(item.pinned.best, 'inconclusive');
+    assert.equal(item.effect.verdict, 'unsupported');
+    assert.deepEqual(item.claims.map(claim => [claim.suite, claim.status, claim.pinned.verdict, claim.effect.verdict]), [['ascii-reflow', 'qualified', 'inconclusive', 'unsupported']]);
+    const [claim] = item.claims;
+    assert.deepEqual(claim.divergence, { recordedInReport: true, kind: 'pinned-inconclusive-by-design', pinned: 'inconclusive', effect: 'unsupported', reason: claim.divergence.reason });
+    assert.deepEqual(claim.measuredLayers, ['stored-state', 'actual-scrollback']);
+    // The reported conclusion keeps the pinned verdict; the effect verdict is a separate field and never rewrites it.
+    assert.equal(claim.reportedConclusion.outcome, 'inconclusive');
+    assert.equal(claim.reportedConclusion.grading, 'pinned-termless-preserved-by-design');
+    const suite = stored.suites.find(entry => entry.suite === 'ascii-reflow');
+    assert.equal(suite.suiteId, 'ntilde-owned-ascii-reflow-v1');
+    assert.equal(suite.caseCount, 1);
+    assert.deepEqual(suite.caseIds, ['extensions.reflow']);
+    assert.equal(suite.publication, '2026-11-12-ascii-reflow/');
+    assert.equal(suite.rederivation.status, 'passed');
+    assert.equal(suite.rederivation.command, 'node --test scripts/terminfo/ascii-reflow-publication.test.mjs');
+    assert.equal(suite.run.ownedRunId, 'e8d8ebdb956ba201d2924f76dcda48c7');
+    assert.equal(suite.run.scriptsRevision, 'd8679e112ce919fd050c5a74f40693edfce13b1c');
+    assert.equal(suite.run.sourceSnapshotPolicy, 'readonly-owned-source-graph-v52');
+    assert.equal(suite.receipt.schemaVersion, 58);
+    assert.equal(suite.receipt.runId, suite.run.ownedRunId);
+    assert.ok(suite.evidence.files >= 4 + 15, 'the run archive, manifest, report, summary and every retained superseded attempt are in the evidence digest');
+    assert.equal(suite.stock.basis, 'collected-run-id-recorded');
+    assert.deepEqual(suite.stock.counts, { inconclusive: 167, supported: 87, unsupported: 1 });
+});
+
+test('an unsupported effect result is counted as qualified evidence but never as supported, pinned-supported or a score change', () => {
+    const stored = committed(), { totals } = stored;
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.reflow']);
+    assert.equal(totals.effectUnsupportedIds, 1);
+    assert.equal(totals.effectOtherIds, 0);
+    assert.ok(!totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
+    assert.ok(!totals.ungradedStockIdsWithEvidence.includes('extensions.reflow'));
+    assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
+    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + 1);
+    assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
+    // Supported-only measures are exactly what they were before reflow was admitted: the unsupported id adds to none of them.
+    assert.equal(totals.effectSupportedIds, 108);
+    assert.equal(totals.pinnedSupportedIds, 85);
+    assert.equal(totals.pinnedAndEffectSupportedIds, 85);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 23);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 107);
+    assert.equal(totals.pinnedSupportedOfStockInconclusive, 84);
+    // The reflow row lowers no stock grade and the baseline is untouched.
+    assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
+    assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
+    // The remaining counts keep "not supported" and "not measured" apart: reflow moves one id from not-measured to measured-unsupported
+    // without changing the not-effect-supported or not-pinned-supported counts it was already part of.
+    const remaining = totals.remainingAgainstStockInconclusive;
+    assert.deepEqual(remaining, { effectUnqualified: 61, effectMeasuredUnsupported: 1, effectMeasuredOther: 0, effectNotMeasured: 60, notPinnedSupported: 84 });
+});
+
+test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
+    const stored = committed(), base = baseline();
+    const without = stored.benchmark.filter(item => item.id !== 'extensions.reflow');
+    const before = totalsOf(without, base), after = totalsOf(stored.benchmark, base);
+    assert.equal(after.uniqueBenchmarkIds, before.uniqueBenchmarkIds + 1);
+    assert.equal(after.suiteClaims, before.suiteClaims + 1);
+    for (const key of ['effectSupportedIds', 'pinnedSupportedIds', 'pinnedAndEffectSupportedIds', 'effectSupportedOfStockInconclusive', 'pinnedSupportedOfStockInconclusive']) assert.equal(after[key], before[key], key);
+    assert.deepEqual(after.effectSupportedPinnedInconclusiveIds, before.effectSupportedPinnedInconclusiveIds);
+    assert.equal(after.effectUnsupportedIds, before.effectUnsupportedIds + 1);
+    assert.equal(after.remainingAgainstStockInconclusive.effectUnqualified, before.remainingAgainstStockInconclusive.effectUnqualified);
+    assert.equal(after.remainingAgainstStockInconclusive.effectNotMeasured, before.remainingAgainstStockInconclusive.effectNotMeasured - 1);
+    assert.equal(after.remainingAgainstStockInconclusive.effectMeasuredUnsupported, before.remainingAgainstStockInconclusive.effectMeasuredUnsupported + 1);
+    // Flipping an existing supported id to a retained unsupported effect verdict moves it only out of the supported measures.
+    const flipped = clone(stored.benchmark), target = flipped.find(item => item.id === 'text.basic');
+    target.claims[0].effect.verdict = 'unsupported'; target.effect = { verdict: 'unsupported', byClaim: [{ suite: target.claims[0].suite, verdict: 'unsupported' }] };
+    const moved = totalsOf(flipped, base);
+    assert.equal(moved.effectSupportedIds, after.effectSupportedIds - 1);
+    assert.equal(moved.effectUnsupportedIds, after.effectUnsupportedIds + 1);
+    assert.equal(moved.uniqueBenchmarkIds, after.uniqueBenchmarkIds);
+    assert.equal(moved.remainingAgainstStockInconclusive.effectUnqualified, after.remainingAgainstStockInconclusive.effectUnqualified + 1);
+    assert.equal(moved.remainingAgainstStockInconclusive.effectNotMeasured, after.remainingAgainstStockInconclusive.effectNotMeasured, 'a measured id is never "not measured"');
+    assert.ok(moved.effectSupportedPinnedInconclusiveIds.every(id => id !== 'text.basic'));
+});
+
+test('guard: an unsupported publication cannot be collapsed into its pinned verdict or promoted to supported', () => {
+    const collapsed = committed();
+    row(collapsed, 'extensions.reflow').claims[0].divergence = null;
+    assert.throws(() => check(collapsed), /differ but no divergence is recorded/);
+    const promoted = committed();
+    const item = row(promoted, 'extensions.reflow');
+    item.claims[0].effect.verdict = 'supported';
+    assert.throws(() => check(promoted), /roll-up differs|divergence does not match|totals differ/);
+    const rolled = committed();
+    row(rolled, 'extensions.reflow').effect.verdict = 'supported';
+    assert.throws(() => check(rolled), /roll-up differs/);
+    const pinnedPromoted = committed();
+    row(pinnedPromoted, 'extensions.reflow').pinned.best = 'supported';
+    assert.throws(() => check(pinnedPromoted), /roll-up differs/);
+    const unrederived = committed();
+    unrederived.suites.find(suite => suite.suite === 'ascii-reflow').rederivation.status = 'failed';
+    assert.throws(() => check(unrederived), /without a passed rederivation/);
+    const dropped = committed();
+    dropped.benchmark = dropped.benchmark.filter(entry => entry.id !== 'extensions.reflow');
+    assert.throws(() => check(dropped), /ascii-reflow: .*(?:claims|lost)/);
+    const inflated = committed();
+    inflated.totals.effectUnsupportedIds = 0;
+    assert.throws(() => check(inflated), /totals differ/);
+});
+
+test('an unsupported publication is re-derived from its retained evidence, not copied from a stored verdict', async () => {
+    const suite = benchmarkSuites.find(entry => entry.suite === 'ascii-reflow');
+    assert.ok(suite, 'registered');
+    const { report, summary } = loadPublication(defaultQaRoot, suite);
+    assert.deepEqual(report.cases.map(item => [item.caseId, pinnedVerdictOf(item), effectVerdictOf(item)]), [['extensions.reflow', 'inconclusive', 'unsupported']]);
+    assert.equal(summary.ownedRunId, 'e8d8ebdb956ba201d2924f76dcda48c7');
+    // A fresh derivation that trusts the recorded rederivation results reproduces the committed row byte for byte, and one whose
+    // publication test did not pass refuses to count the claim at all.
+    const stored = committed();
+    const rederivations = new Map([...stored.suites, ...stored.findings].map(entry => [entry.suite, entry.rederivation]));
+    const fresh = await buildInventory({ rederivation: entry => ({ ...rederivations.get(entry.suite), testSha256: testDigest(entry) }) });
+    assert.equal(JSON.stringify(row(fresh, 'extensions.reflow')), JSON.stringify(row(stored, 'extensions.reflow')));
+    const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'ascii-reflow' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
+    assert.equal(row(failing, 'extensions.reflow').claims[0].status, 'declared-not-rederived');
+    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 1);
+    assert.equal(failing.totals.effectUnsupportedIds, 0);
+    assert.equal(failing.totals.remainingAgainstStockInconclusive.effectNotMeasured, stored.totals.remainingAgainstStockInconclusive.effectNotMeasured + 1);
+});
+
+test('every publication test is a registered suite or finding, or is explicitly classified as outside the inventory', () => {
+    const registered = new Set([...benchmarkSuites, ...findingSuites].map(suite => suite.test));
+    const present = readdirSync(new URL('.', import.meta.url)).filter(name => /^[a-z0-9-]*publication[a-z0-9-]*\.test\.mjs$/.test(name));
+    const unclassified = present.filter(name => !registered.has(name) && !Object.hasOwn(nonInventoryPublicationTests, name));
+    assert.deepEqual(unclassified, [], 'a new graded publication must be registered in benchmarkSuites (or classified with a reason), never silently left out');
+    for (const name of registered) assert.ok(present.includes(name), `${name} is registered but missing`);
+    for (const [name, reason] of Object.entries(nonInventoryPublicationTests)) {
+        assert.ok(present.includes(name), `${name} is classified but missing`);
+        assert.ok(!registered.has(name), `${name} cannot be both registered and excluded`);
+        assert.ok(reason.length > 20, name);
+    }
+});
+
+test('the generated summary defines unsupported and not-measured separately and lists the unsupported id without counting it as supported', () => {
+    const text = renderSummary(committed());
+    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 1 \|/);
+    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.reflow`\./);
+    assert.match(text, /\| of which measured, effect unsupported \| 1 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 60 \|/);
+    assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
+    assert.doesNotMatch(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
+    assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| unsupported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
 });
 
 test('the generated summary states its baseline and keeps the diagnostic out of the counts', () => {

@@ -64,7 +64,29 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('xtgettcap', '2026-11-12-xtgettcap', '2026-11-12-xtgettcap-qualification.md'), module: 'xtgettcap-contracts.mjs', exports: ['xtgettcapSuiteId', 'xtgettcapContractsVersion', 'xtgettcapCaseIds'], test: 'xtgettcap-publication.test.mjs' },
     { ...directory('modify-other-keys', '2026-11-12-modify-other-keys', '2026-11-12-modify-other-keys-qualification.md'), module: 'modify-other-keys-contracts.mjs', exports: ['modifyOtherKeysGradedSuiteId', 'modifyOtherKeysContractsVersion', 'modifyOtherKeysCaseIds'], test: 'modify-other-keys-publication.test.mjs' },
     { ...directory('osc9', '2026-11-13-osc9', '2026-11-13-osc9-qualification.md'), module: 'osc9-contracts.mjs', exports: ['osc9SuiteId', 'osc9ContractsVersion', 'osc9CaseIds'], test: 'osc9-publication.test.mjs' },
+    // The one benchmark id whose retained effect verdict is unsupported (the pinned verdict is inconclusive by design); admitted like any other suite.
+    { ...directory('ascii-reflow', '2026-11-12-ascii-reflow', '2026-11-12-ascii-reflow-qualification.md'), module: 'ascii-reflow-contracts.mjs', exports: ['asciiReflowSuiteId', 'asciiReflowContractsVersion', 'asciiReflowCaseIds'], test: 'ascii-reflow-publication.test.mjs' },
 ]);
+
+/**
+ * Publication tests that are deliberately not benchmark-suite registrations. Every `*-publication*.test.mjs` under scripts/terminfo must be
+ * a registered suite or finding (above) or appear here with its reason, so a newly merged graded publication cannot be silently left out of
+ * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
+ */
+export const nonInventoryPublicationTests = Object.freeze({
+    'image-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
+    'input-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
+    'query-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
+    'reset-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
+    'insert-replace-publication-projection.test.mjs': 'unit test of the projection of the registered insert-replace suite',
+    'common-core-publication.test.mjs': 'common-harness comparison, a different evidence class from owned effect contracts',
+    'core-erase-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
+    'core-reverse-wide-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
+    'core-sgr-raster-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
+    'core-tab-stops-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
+    'core-text-cursor-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
+    'core-wrap-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
+});
 
 /** Ntilde-specific findings: separate evidence, separate claims, never part of the benchmark id totals. */
 export const findingSuites = Object.freeze([
@@ -310,20 +332,27 @@ export function totalsOf(rows, baseline) {
         .map(({ row, claims }) => ({ id: row.id, claims, ...rollup(claims) }));
     const qualified = counted;
     const effectSupported = qualified.filter(row => row.effect.verdict === 'supported');
+    // A decided unsupported effect verdict is a measured result with retained evidence, never "not measured" and never promoted to supported.
+    const effectUnsupported = qualified.filter(row => row.effect.verdict === 'unsupported');
     const pinnedSupported = qualified.filter(row => row.pinned.best === 'supported');
-    const pinnedInconclusive = qualified.filter(row => row.pinned.best !== 'supported');
+    const pinnedInconclusive = qualified.filter(row => row.pinned.best === 'inconclusive');
     const inconclusiveBaseline = Object.values(baseline.outcomes).filter(outcome => outcome === 'inconclusive').length;
     // The remaining counts are against the stock-inconclusive baseline: an id the stock collector never graded is neither in it nor remaining from it.
     const ofStockInconclusive = list => list.filter(row => baseline.outcomes[row.id] === 'inconclusive').length;
     const total = Object.keys(baseline.outcomes).length;
+    const effectOtherCount = qualified.length - effectSupported.length - effectUnsupported.length;
     return {
         uniqueBenchmarkIds: qualified.length,
         suiteClaims: qualified.reduce((count, row) => count + row.claims.length, 0),
         idsWithMultipleClaims: qualified.filter(row => row.claims.length > 1).map(row => row.id),
         effectSupportedIds: effectSupported.length,
+        effectUnsupportedIds: effectUnsupported.length,
+        effectOtherIds: effectOtherCount,
         pinnedAndEffectSupportedIds: effectSupported.filter(row => row.pinned.best === 'supported').length,
         effectSupportedPinnedInconclusiveIds: pinnedInconclusive.filter(row => row.effect.verdict === 'supported').map(row => row.id),
+        effectUnsupportedPinnedInconclusiveIds: pinnedInconclusive.filter(row => row.effect.verdict === 'unsupported').map(row => row.id),
         effectSupportedOfStockInconclusive: ofStockInconclusive(effectSupported),
+        effectUnsupportedOfStockInconclusive: ofStockInconclusive(effectUnsupported),
         pinnedSupportedOfStockInconclusive: ofStockInconclusive(pinnedSupported),
         ungradedStockIdsWithEvidence: qualified.filter(row => !(row.id in baseline.outcomes)).map(row => row.id),
         pinnedSupportedIds: pinnedSupported.length,
@@ -334,8 +363,13 @@ export function totalsOf(rows, baseline) {
             stockUnsupported: Object.values(baseline.outcomes).filter(outcome => outcome === 'unsupported').length,
             stockInconclusive: inconclusiveBaseline,
         },
+        // `effectUnqualified` keeps its original meaning: stock-inconclusive ids without a supported effect verdict. It is the sum of three
+        // distinct states: measured with an unsupported effect verdict, measured with another non-supported verdict, and not measured at all.
         remainingAgainstStockInconclusive: {
             effectUnqualified: inconclusiveBaseline - ofStockInconclusive(effectSupported),
+            effectMeasuredUnsupported: ofStockInconclusive(effectUnsupported),
+            effectMeasuredOther: ofStockInconclusive(qualified) - ofStockInconclusive(effectSupported) - ofStockInconclusive(effectUnsupported),
+            effectNotMeasured: inconclusiveBaseline - ofStockInconclusive(qualified),
             notPinnedSupported: inconclusiveBaseline - ofStockInconclusive(pinnedSupported),
         },
     };
@@ -491,19 +525,28 @@ function totalsSection(inventory) {
     const baselineLine = `Baseline: stock run ${code(stockBaseline.stockCollectorRunId)} (${stockBaseline.measuredAt}, ${freshness}), ${allBaseline.allCases} graded cases: ${allBaseline.stockSupported} supported, ${allBaseline.stockUnsupported} unsupported, ${allBaseline.stockInconclusive} inconclusive. Every qualified id that has a stock outcome is a stock-inconclusive case (an ungraded diagnostic has none), so the remaining counts are taken against the ${allBaseline.stockInconclusive} inconclusive ones.`;
     const outside = allBaseline.stockUnsupported + remaining.notPinnedSupported;
     const unsupportedLine = `The baseline's single stock-unsupported case (${codeList(stockBaseline.stockUnsupported)}) is graded and separate from both remaining counts. The ${allBaseline.stockUnsupported} unsupported plus the ${remaining.notPinnedSupported} not-pinned-supported inconclusive cases are the ${outside} cases outside the ${allBaseline.stockSupported} stock-supported plus ${totals.pinnedSupportedOfStockInconclusive} pinned-supported ones.`;
+    const unsupportedIds = totals.effectUnsupportedPinnedInconclusiveIds;
     return ['## Totals', '', '| Measure | Value |', '|---|---:|',
-        `| Unique benchmark ids with qualified effect evidence | ${totals.uniqueBenchmarkIds} |`,
+        `| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | ${totals.uniqueBenchmarkIds} |`,
         `| Suite claims (an id covered by two suites has two claims) | ${totals.suiteClaims} |`,
         `| Ids with more than one claim | ${multi} |`,
         `| Effect contract supported | ${totals.effectSupportedIds} |`,
+        `| Effect contract unsupported (measured, retained, not supported) | ${totals.effectUnsupportedIds} |`,
         `| Supported by both the pinned probe and the effect contract | ${totals.pinnedAndEffectSupportedIds} |`,
-        `| Effect supported, pinned verdict inconclusive | ${totals.effectSupportedPinnedInconclusiveIds.length} |`, '',
+        `| Effect supported, pinned verdict inconclusive | ${totals.effectSupportedPinnedInconclusiveIds.length} |`,
+        `| Effect unsupported, pinned verdict inconclusive | ${unsupportedIds.length} |`, '',
         'The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim\'s pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.', '',
+        'An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.', '',
         `Effect supported but pinned inconclusive: ${codeList(totals.effectSupportedPinnedInconclusiveIds)}.`, '',
+        `Effect unsupported, pinned inconclusive (by design): ${codeList(unsupportedIds)}.`, '',
         '## Remaining cases against an explicit baseline', '', baselineLine, '',
         '| Remaining | Count |', '|---|---:|',
-        `| Effect-unqualified (${allBaseline.stockInconclusive} − ${totals.effectSupportedOfStockInconclusive}) | ${remaining.effectUnqualified} |`,
+        `| Not effect-supported, \`effectUnqualified\` (${allBaseline.stockInconclusive} − ${totals.effectSupportedOfStockInconclusive}) | ${remaining.effectUnqualified} |`,
+        `| of which measured, effect unsupported | ${remaining.effectMeasuredUnsupported} |`,
+        `| of which measured, another non-supported verdict | ${remaining.effectMeasuredOther} |`,
+        `| of which not measured (no qualified effect evidence) | ${remaining.effectNotMeasured} |`,
         `| Not pinned-supported (${allBaseline.stockInconclusive} − ${totals.pinnedSupportedOfStockInconclusive}) | ${remaining.notPinnedSupported} |`, '',
+        '`effectUnqualified` is every stock-inconclusive id without a supported effect verdict. It splits into exactly three states that must not be conflated: *measured and unsupported* (retained evidence says the behavior is absent or diverges), *measured with another non-supported verdict*, and *not measured* (no qualified evidence at all). Only the last is "not yet qualified".', '',
         ...(totals.ungradedStockIdsWithEvidence.length ? [`Ungraded stock diagnostics with qualified repaired-probe and effect evidence: ${codeList(totals.ungradedStockIdsWithEvidence)}. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.`, ''] : []),
         unsupportedLine, '', '### Ungraded diagnostic', '',
         ...inventory.ungradedDiagnostics.map(diagnosticLine)];

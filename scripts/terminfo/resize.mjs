@@ -8,17 +8,20 @@ const same = (left, right) => snapshotHash(left) === snapshotHash(right);
 const check = value => { if (!value) throw new Error('Invalid or incomplete owned resize evidence.'); };
 const geometry = screen => ({ rows: screen.rows, cols: screen.cols });
 
-function frameKind(index, last) {
+export function frameKind(index, last) {
     if (index === 0) return 'start';
     if (index === 1) return 'bind';
     if (index === last) return 'finish';
     return 'read';
 }
 
-/** Validate the independent App and kernel facts for one source-selected action. */
-function validateAction(action, expectedAction, stage, paneId, runId) {
+/**
+ * Validate the independent App and kernel facts for one source-selected action. `ensure` names the caller's own refusal, so a
+ * resize-driven suite (ASCII reflow) shares this check without sharing, or changing, its error text.
+ */
+export function validateAction(action, expectedAction, stage, paneId, runId, ensure = check) {
     const observed = action?.observed;
-    check(action?.index === expectedAction && !Object.hasOwn(action, 'error')
+    ensure(action?.index === expectedAction && !Object.hasOwn(action, 'error')
         && action.caseId === stage.caseId && action.stageId === stage.stageId
         && same(action.target, stage.target) && observed?.paneId === paneId && observed.runId === runId
         && typeof observed.observedAt === 'string' && Number.isFinite(Date.parse(observed.observedAt))
@@ -27,6 +30,31 @@ function validateAction(action, expectedAction, stage, paneId, runId) {
         && same(geometry(observed.app), stage.target) && observed.terminalOutput?.tool === '/bin/stty'
         && observed.terminalOutput.outputProcessing === false);
     validateOutputGeometry(observed.terminalOutput.description, stage.target.rows, stage.target.cols);
+}
+
+/**
+ * Validate every journaled frame against the plan derived from the source, and the App/kernel action behind each source-selected stage.
+ * Shared by every resize-driven suite; `kindPrefix` is the suite's request-kind prefix and `ensure` its own refusal.
+ */
+export function validateJournalFrames(frames, actions, { plan, original, runId, kindPrefix, ensure = check }) {
+    const first = frames[0];
+    let actionIndex = 0;
+    for (const [index, frame] of frames.entries()) {
+        const stage = plan[index - 2];
+        const kind = frameKind(index, frames.length - 1);
+        const expectedAction = stage && stage.stageId !== 'control' ? actionIndex++ : null;
+        const screen = screenSnapshot(frame.screen, false, true, true, true, true);
+        const after = screenSnapshot(frame.afterScreen, false, true, true, true, true);
+        ensure(frame.index === index && frame.kind === `${kindPrefix}-${kind}` && frame.paneId === first.paneId
+            && /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(frame.paneId ?? '')
+            && same(geometry(screen), stage?.target ?? original) && same(screen, after)
+            && frame.sha256 === snapshotHash(screen) && frame.afterSha256 === frame.sha256
+            && frame.caseId === (stage?.caseId ?? null) && frame.stageId === (stage?.stageId ?? null)
+            && frame.actionIndex === expectedAction
+            && (index === 0 ? frame.barrier === null : typeof frame.barrier === 'string'
+                && frame.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(frame.barrier)));
+        if (expectedAction !== null) validateAction(actions[expectedAction], expectedAction, stage, first.paneId, runId, ensure);
+    }
 }
 
 /** Derive each geometry and complete state from the retained source plan, never worker-supplied expectations. */
@@ -38,23 +66,7 @@ export function validateResizeFrames(frames, actions, runId) {
     const plan = cases.flatMap(item => ['control', 'after', 'restored'].map(stageId => ({
         caseId: item.id, stageId, target: stageId === 'after' ? item.target : original,
     })));
-    let actionIndex = 0;
-    for (const [index, frame] of frames.entries()) {
-        const stage = plan[index - 2];
-        const kind = frameKind(index, frames.length - 1);
-        const expectedAction = stage && stage.stageId !== 'control' ? actionIndex++ : null;
-        const screen = screenSnapshot(frame.screen, false, true, true, true, true);
-        const after = screenSnapshot(frame.afterScreen, false, true, true, true, true);
-        check(frame.index === index && frame.kind === 'resize-' + kind && frame.paneId === first.paneId
-            && /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(frame.paneId ?? '')
-            && same(geometry(screen), stage?.target ?? original) && same(screen, after)
-            && frame.sha256 === snapshotHash(screen) && frame.afterSha256 === frame.sha256
-            && frame.caseId === (stage?.caseId ?? null) && frame.stageId === (stage?.stageId ?? null)
-            && frame.actionIndex === expectedAction
-            && (index === 0 ? frame.barrier === null : typeof frame.barrier === 'string'
-                && frame.barrier.length <= 128 && /^\x1b\[\?[\d;]+c$/.test(frame.barrier)));
-        if (expectedAction !== null) validateAction(actions[expectedAction], expectedAction, stage, first.paneId, runId);
-    }
+    validateJournalFrames(frames, actions, { plan, original, runId, kindPrefix: 'resize' });
     check(pristineEditing(first.screen) && same(first.screen, last.screen));
     const bound = structuredClone(first.screen);
     bound.lines[0] = 'NTILDE_RZ_' + runId; bound.cursorCol = 42; bound.bufferState.alternateScreen = true;
