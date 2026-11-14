@@ -9,16 +9,16 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified effect evidence | 108 |
-| Suite claims (an id covered by two suites has two claims) | 110 |
+| Unique benchmark ids with qualified effect evidence | 110 |
+| Suite claims (an id covered by two suites has two claims) | 112 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 108 |
-| Supported by both the pinned probe and the effect contract | 85 |
-| Effect supported, pinned verdict inconclusive | 23 |
+| Effect contract supported | 110 |
+| Supported by both the pinned probe and the effect contract | 86 |
+| Effect supported, pinned verdict inconclusive | 24 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
-Effect supported but pinned inconclusive: `device.xtgettcap`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc7-cwd`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 ## Remaining cases against an explicit baseline
 
@@ -26,12 +26,12 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Effect-unqualified (168 − 107) | 61 |
-| Not pinned-supported (168 − 84) | 84 |
+| Effect-unqualified (168 − 109) | 59 |
+| Not pinned-supported (168 − 85) | 83 |
 
 Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 84 not-pinned-supported inconclusive cases are the 85 cases outside the 86 stock-supported plus 84 pinned-supported ones.
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 83 not-pinned-supported inconclusive cases are the 84 cases outside the 86 stock-supported plus 85 pinned-supported ones.
 
 ### Ungraded diagnostic
 
@@ -77,6 +77,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `xtgettcap` | 1 | v1 | passed | 55 | `2d8433d9` | v49 | 37 | `f0caebd7` |
 | `modify-other-keys` | 1 | v1 | passed | 56 | `2091d3d6` | v50 | 122 | `f01ed9c2` |
 | `osc9` | 2 | v1 | passed | 57 | `1ac4476c` | v51 | 17 | `de13f6ad` |
+| `notify` | 2 | v1 | passed | 59 | `9a316468` | v53 | 5 | `ebc7968c` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -122,6 +123,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `xtgettcap` | collected-run-id-recorded | `db8145b1` | 167/87/1 | `cf7d8759` |
 | `modify-other-keys` | collected-run-id-recorded | `65f00779` | 167/87/1 | `cf7d8759` |
 | `osc9` | collected-run-id-recorded | `26c93f5a` | 167/87/1 | `cf7d8759` |
+| `notify` | collected-run-id-recorded | `a62db6aa` | 166/88/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -182,8 +184,10 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc133-d` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
 | `extensions.osc2-title` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc-title | - |
 | `extensions.osc7-cwd` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc78 | osc78: pinned-inconclusive-by-design |
+| `extensions.osc777-notify` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | notify | notify: pinned-inconclusive-by-design |
 | `extensions.osc8` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc78 | - |
 | `extensions.osc9-progress` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | osc9 | osc9: pinned-inconclusive-by-design |
+| `extensions.osc99-kitty-notify` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | notify | - |
 | `input.button-event-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `input.modify-other-keys` | inconclusive | inconclusive | supported | generated-input-child-bytes | modify-other-keys | modify-other-keys: pinned-inconclusive-by-design |
 | `input.x10-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |

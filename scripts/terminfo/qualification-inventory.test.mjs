@@ -133,8 +133,10 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         // settings, so their stock run answers editing.decrqcra: exactly that one case moves from inconclusive to supported. Every earlier
         // collected suite matches the baseline.
         const gated = stored.suites.findIndex(item => item.suite === 'rect-checksum');
-        const expected = gated >= 0 && stored.suites.indexOf(suite) >= gated
-            ? { ...base.counts, inconclusive: base.counts.inconclusive - 1, supported: base.counts.supported + 1 } : base.counts;
+        // The notification suite's App answers the unchanged OSC 99 probe (query policy v3), so its stock run also grades extensions.osc99-kitty-notify supported.
+        const notice = stored.suites.findIndex(item => item.suite === 'notify');
+        const moved = (gated >= 0 && stored.suites.indexOf(suite) >= gated ? 1 : 0) + (notice >= 0 && stored.suites.indexOf(suite) >= notice ? 1 : 0);
+        const expected = { ...base.counts, inconclusive: base.counts.inconclusive - moved, supported: base.counts.supported + moved };
         if (suite.stock.basis !== 'carried-forward') assert.deepEqual(suite.stock.counts, expected, suite.suite);
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
