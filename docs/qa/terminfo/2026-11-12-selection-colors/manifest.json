@@ -1,22 +1,23 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "02b3cb61c8a370fdd93eac8728ded7293827cdf97d91085dda427a85e235d37f",
+    "owned-run.zip": "f9b572d4f7e7c49edbdb49f8e5bca7a53fe85abf11055001cf1755c087e7775b",
     "superseded/attempt-25.zip": "a834bc3d57b82ea5acea0c976a1451d6aa4f50285a9c993072c0f8a113751b9b",
     "superseded/attempt-26.zip": "9a7aed51a18dd2da58e589d6b59f320a47487f091e0eaa9e0cc5295d519b65f6",
     "superseded/attempt-27.zip": "5e6394f6edefe0d85d519f1e9ea025420c9ed7713a598f6395418859a08523bb",
     "superseded/attempt-28.zip": "6270e2285097b78d1771a1cd5668b71d11eb689c31e0f760b4369614c1026006",
     "superseded/attempt-29.zip": "c53b9c9902c9f2e0a0dd111fa7a0175530daccf8935e06a2e41987b5c4d71c81",
     "superseded/attempt-32.zip": "cdca2ffdce64c405285abbe8f261fa9bc890abed383c546547ae7345a60782fc",
+    "superseded/attempt-33.zip": "02b3cb61c8a370fdd93eac8728ded7293827cdf97d91085dda427a85e235d37f",
     "superseded/attempt12-pre-v52-infrastructure.zip": "dbba67650840c110b453926acc2b577faf93d21755d5578b090bee9cb33c2211"
   },
   "appRevision": "5a20054d70ff72b0953ea0b342381d93035b7571",
-  "scriptsRevision": "08197ff46ab2f675d0c6c5aaeb6b26347066d6ad",
+  "scriptsRevision": "79b9c0d00ce851ee1b56afc889c45fc092960b93",
   "appAssemblySha256": "c9c0119ce7a08e79d9c1b36b161fc9015e6a55ce6e482c588cbd509a06587f1a",
   "measurement": {
-    "runId": "dc2c29f5106f2772757922e093d42458",
-    "receiptSchema": 59,
-    "sourcePolicy": "readonly-owned-source-graph-v53"
+    "runId": "4ce60d5005271dc4e7ade8fa92b78d1a",
+    "receiptSchema": 60,
+    "sourcePolicy": "readonly-owned-source-graph-v54"
   },
   "attempts": [
     {
@@ -48,6 +49,11 @@
       "archive": "superseded/attempt-32.zip",
       "runId": "adb6d101c94859dc905269922f477405",
       "reason": "Complete and supported on all four cases on the v52 source scope (receipt schema 58), superseded because the ASCII-reflow batch merged first and took policy v52, captured v59 and schema 58: the suite was restacked onto policy v53, captured v60 (reflow plus the seven selection-color scripts) and schema 59, which changes the bound source scope, so the measurement was repeated."
+    },
+    {
+      "archive": "superseded/attempt-33.zip",
+      "runId": "dc2c29f5106f2772757922e093d42458",
+      "reason": "Complete and supported on all four cases on v53 / schema 59, superseded because the Codex review of that head found the selection-foreground check accepted any render with more than ten matching pixels, so glyphs drawn mostly in a stale colour could still grade supported (the check now also requires the dominant selected ink to be the override), and because the OSC 777 / OSC 99 batch merged first and took policy v53: the suite was restacked onto v54 (captured v61, 360 files, receipt schema 60) and re-measured."
     },
     {
       "archive": "superseded/attempt12-pre-v52-infrastructure.zip",
