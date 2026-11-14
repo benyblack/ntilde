@@ -305,19 +305,19 @@ test('an unsupported effect result is counted as qualified evidence but never as
     assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + 1);
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
     // Supported-only measures are exactly what they were before reflow was admitted: the unsupported id adds to none of them.
-    assert.equal(totals.effectSupportedIds, 108);
-    assert.equal(totals.pinnedSupportedIds, 85);
-    assert.equal(totals.pinnedAndEffectSupportedIds, 85);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 23);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 107);
-    assert.equal(totals.pinnedSupportedOfStockInconclusive, 84);
+    assert.equal(totals.effectSupportedIds, 110);
+    assert.equal(totals.pinnedSupportedIds, 86);
+    assert.equal(totals.pinnedAndEffectSupportedIds, 86);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 24);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 109);
+    assert.equal(totals.pinnedSupportedOfStockInconclusive, 85);
     // The reflow row lowers no stock grade and the baseline is untouched.
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
     // The remaining counts keep "not supported" and "not measured" apart: reflow moves one id from not-measured to measured-unsupported
     // without changing the not-effect-supported or not-pinned-supported counts it was already part of.
     const remaining = totals.remainingAgainstStockInconclusive;
-    assert.deepEqual(remaining, { effectUnqualified: 61, effectMeasuredUnsupported: 1, effectMeasuredOther: 0, effectNotMeasured: 60, notPinnedSupported: 84 });
+    assert.deepEqual(remaining, { effectUnqualified: 59, effectMeasuredUnsupported: 1, effectMeasuredOther: 0, effectNotMeasured: 58, notPinnedSupported: 83 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -406,7 +406,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 1 \|/);
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.reflow`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 1 \|/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 60 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 58 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.doesNotMatch(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| unsupported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);

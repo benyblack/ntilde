@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 109,
-    "suiteClaims": 111,
+    "uniqueBenchmarkIds": 111,
+    "suiteClaims": 113,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 108,
+    "effectSupportedIds": 110,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
-    "pinnedAndEffectSupportedIds": 85,
+    "pinnedAndEffectSupportedIds": 86,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "editing.deccara",
@@ -63,6 +63,7 @@
       "extensions.osc133-c",
       "extensions.osc133-d",
       "extensions.osc7-cwd",
+      "extensions.osc777-notify",
       "extensions.osc9-progress",
       "input.button-event-mouse",
       "input.modify-other-keys",
@@ -78,13 +79,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 107,
+    "effectSupportedOfStockInconclusive": 109,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 84,
+    "pinnedSupportedOfStockInconclusive": 85,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 85,
+    "pinnedSupportedIds": 86,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -93,11 +94,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 61,
+      "effectUnqualified": 59,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 60,
-      "notPinnedSupported": 84
+      "effectNotMeasured": 58,
+      "notPinnedSupported": 83
     }
   },
   "suites": [
@@ -2745,6 +2746,78 @@
         "command": "node --test scripts/terminfo/ascii-reflow-publication.test.mjs",
         "testSha256": "9b10666fe13dfa87de0eb2d4a9451f7046477cd570b01ba51487b6c3205c9116"
       }
+    },
+    {
+      "suite": "notify",
+      "suiteId": "ntilde-owned-notify-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-14-notify/",
+      "doc": "2026-11-14-notify-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "extensions.osc777-notify",
+        "extensions.osc99-kitty-notify"
+      ],
+      "evidence": {
+        "files": 9,
+        "bytes": 42363306,
+        "sha256": "1cbb23517fb23c42090705de34985832075798a813e43809e4e517313f12b6e8"
+      },
+      "receipt": {
+        "schemaVersion": 59,
+        "runId": "6f88d5d9bd97443925592b0353bfb1cf",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "9457dbed315d816128b2ee95137647ff962e99901a2640be43787a381e26370e"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-notify-graded-v1",
+          "file": "ntf-observations.json",
+          "sha256": "b743a393876d96170b7b170a838fc8961bba13a51b11f7ac8b1a4c020924a01a",
+          "runFile": "ntf-run.json",
+          "runSha256": "cffb1ba64f6e89d5809b569588d4254f7504de5023a321f95d7687d625bca3d4",
+          "counts": {
+            "inconclusive/supported": 1,
+            "stock-and-query-witness/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "6f88d5d9bd97443925592b0353bfb1cf",
+        "measuredAt": "2026-11-14T12:50:30.458Z",
+        "appRevision": "29c2a3f2b3309b5833d4ad98a7b7ddbe3dbd6832",
+        "appVersion": "0.13.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "29c2a3f2b3309b5833d4ad98a7b7ddbe3dbd6832",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "ac0088064f5eee3196bc2c55a2995730f8d3a0c71e2b090af62fa9b5b43cef42",
+        "gradingAdapterId": "ntilde-owned-notify-grading-v1",
+        "gradingAdapterBundleSha256": "e24cd53026cc182e82825f57c8d33e8a73517e5f7e763f960d378f1d2a014f6d",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v53",
+        "sourceSnapshotManifestSha256": "69e3a89e2d40e7c33a04e4b487b879a014908eb3a1fa14afe5d13cae8aba7a1c"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "454b566112188ce90c9160a7ec720afb",
+        "counts": {
+          "inconclusive": 166,
+          "supported": 88,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "17dd3a086df1de466c1da5802b44ea81ca7c3450839876a7cd4391512de563ac",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades; owned effects do not change the stock score except where the unchanged stock probe itself now passes."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/notify-publication.test.mjs",
+        "testSha256": "deb727a4964e31da51e2dc6dba3a78b734e09fead912a1897b7fb5d2fe44e57a"
+      }
     }
   ],
   "benchmark": [
@@ -5253,6 +5326,59 @@
       ]
     },
     {
+      "id": "extensions.osc777-notify",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc777-notify",
+          "suite": "notify",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor response does not measure OSC 777 notification delivery"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-preserved-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Cursor response does not measure OSC 777 notification delivery"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
       "id": "extensions.osc8",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -5349,6 +5475,53 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "stored-state and pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc99-kitty-notify",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "notify",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc99-kitty-notify",
+          "suite": "notify",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": "Notification capabilities acknowledge title payloads; OS display, activation and close events were not tested"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-stock-collector-and-exact-query-witness"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "stored-state and pane-metadata-and-session-status (effect); stock query reply (pinned)"
         }
       ]
     },
