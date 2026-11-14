@@ -200,6 +200,23 @@ public class Osc99Osc777NotificationTests
     }
 
     [Fact]
+    public void Osc99_final_icon_or_buttons_packet_completes_the_held_notification_and_adds_nothing()
+    {
+        var (parser, notifications, _, _) = Create();
+
+        parser.Process("\x1b]99;i=ic:d=0;Held title\x1b\\\x1b]99;i=ic:d=0:p=icon;AAAA\x1b\\");
+        Assert.Empty(notifications);
+        parser.Process("\x1b]99;i=ic:p=icon;BBBB\x1b\\");
+        Assert.Equal(("Held title", ""), Assert.Single(notifications));
+
+        // The pending state is gone: a later notification reusing the id starts clean; a close or alive packet never completes one.
+        parser.Process("\x1b]99;i=ic:d=0;Second\x1b\\\x1b]99;i=ic:p=close;\x1b\\\x1b]99;i=ic:p=alive;\x1b\\");
+        Assert.Single(notifications);
+        parser.Process("\x1b]99;i=ic:p=buttons;x\x1b\\");
+        Assert.Equal(("Second", ""), notifications[1]);
+    }
+
+    [Fact]
     public void Osc99_oversized_single_chunk_is_dropped()
     {
         var (parser, notifications, _, _) = Create();

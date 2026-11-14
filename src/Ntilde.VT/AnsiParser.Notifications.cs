@@ -131,7 +131,12 @@ namespace Ntilde.VT
                 return;
             }
 
-            if (type != "title" && type != "body") return;
+            if (type != "title" && type != "body")
+            {
+                // An icon or buttons packet carries nothing shown here, but when it is the final packet of a notification it still completes the held title and body.
+                if (type is "icon" or "buttons") CompleteOsc99(metadata);
+                return;
+            }
 
             // A chunk's id is its identity: an id outside the protocol's alphabet or longer than the cap is refused, never trimmed into another notification's key.
             metadata.TryGetValue('i', out string? rawId);
@@ -140,6 +145,17 @@ namespace Ntilde.VT
             metadata.TryGetValue('e', out string? encoded);
             metadata.TryGetValue('d', out string? done);
             AccumulateOsc99(rawId, type == "body", payload, encoded == "1", done != "0");
+        }
+
+        private void CompleteOsc99(Dictionary<char, string> metadata)
+        {
+            metadata.TryGetValue('i', out string? rawId);
+            rawId ??= string.Empty;
+            metadata.TryGetValue('d', out string? done);
+            if (done == "0" || rawId.Length > Osc99MaxEchoedIdChars || !IsOsc99Id(rawId)) return;
+            if (!_osc99Pending.TryGetValue(rawId, out var pending)) return;
+            RemovePendingOsc99(rawId);
+            if (!pending.Overflowed) RaiseTitledNotification(pending.Title.ToString(), pending.Body.ToString());
         }
 
         private void AccumulateOsc99(string id, bool isBody, string payload, bool base64, bool done)
