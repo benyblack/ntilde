@@ -2600,7 +2600,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     queryState = { workerPid: worker.pid, tty: request.tty, recordedFrames: 0, recordedActions: 0 };
                     const binding = { runId, ownerPid: owner.pid, workerPid: worker.pid, uid: worker.uid,
                         appExecutable: owner.executable, workerExecutable: worker.executable, tty: request.tty, profileName, paneId: cellObserver.paneId };
-                    queryState.observer = new OwnedQueryObserver({ binding, appData, priorChallenges, checksumReport: settings.AllowRectangleChecksumReport === true, marginsReport: true, attest: remaining => attestQuery(queryState, remaining) });
+                    queryState.observer = new OwnedQueryObserver({ binding, appData, priorChallenges, checksumReport: settings.AllowRectangleChecksumReport === true, marginsReport: true, noticeReport: true, attest: remaining => attestQuery(queryState, remaining) });
                     proofs[0].queries.binding = binding;
                 }
                 if (queryState.workerPid !== request.workerPid || queryState.tty !== request.tty) throw new Error('Query fixture ownership changed.');

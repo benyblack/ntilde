@@ -2,7 +2,7 @@ import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { snapshotHash } from './agent-observer.mjs';
-import { querySuiteId, ownedQueryPolicy, queryPolicies, queryPriorCounts, buildQueryReport, checkQueries as check } from './queries.mjs';
+import { querySuiteId, ownedQueryPolicy, marginsQueryPolicy, queryPolicies, queryPriorCounts, buildQueryReport, checkQueries as check } from './queries.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const files = ['query-snapshots.jsonl', 'query-actions.jsonl', 'query-initial.json', 'query-observations.json', 'query-unavailable.json', 'query-failed-observation.json', 'query-raw-failure.json'];
 function present(path) {
@@ -66,10 +66,10 @@ export function checkQueryEvidence(output, binding, runId, context, proof, prefi
     check(Date.parse(initial.before.beforeOwnership.at) >= Date.parse(image.seal.ownership.at));
     // A run whose retained initial settings turn the off-by-default DECRQCRA report on owes its reply to the witness request.
     const checksumReport = json(output, 'initial-settings.json').AllowRectangleChecksumReport === true;
-    // The archived query policy is the version marker: v2 owes the DECRQSS s reply, v1 (every earlier run) keeps the negative one.
-    const marginsReport = context.ownedQueryPolicy === ownedQueryPolicy;
+    // The archived query policy is the version marker: v2 and v3 owe the DECRQSS s reply (v1, every earlier run, keeps the negative one) and v3 alone owes the OSC 99 capability reply.
+    const marginsReport = context.ownedQueryPolicy === marginsQueryPolicy || context.ownedQueryPolicy === ownedQueryPolicy, noticeReport = context.ownedQueryPolicy === ownedQueryPolicy;
     const derived = buildQueryReport({ binding: marker.binding, priorChallenges: prior, initial, actions, frames, seal: marker.seal,
-        ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}) });
+        ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}), ...(noticeReport ? { noticeReport: true } : {}) });
     check(snapshotHash(report) === snapshotHash(derived) && snapshotHash(actions) === snapshotHash(marker.actions)
         && Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt));
     const b = derived.binding, sameProcess = (actual, expected) => ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual[key] === expected?.[key]);
