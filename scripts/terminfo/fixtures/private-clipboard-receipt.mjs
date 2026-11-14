@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -920,7 +920,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -938,7 +938,11 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (osc9) {
             await addOsc9Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9) writerFor(output)('context.json', context);
+        // The notification suffix derives from the same left/right-margin bytes (a sibling of the OSC 9 one) and is equally opt-in.
+        if (notify) {
+            await addNotifyEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9 || notify) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -964,4 +968,26 @@ async function addOsc9Evidence({ output, write, context, evidence, lrMarginsByte
     evidence.osc9Evidence = { runId: context.runId, suiteId: osc9SuiteId, file: 'osn-observations.json', sha256: hash(readFileSync(join(output, 'osn-observations.json'))),
         runFile: 'osn-run.json', runSha256: hash(readFileSync(join(output, 'osn-run.json'))), focusFile: 'osn-focus.json', focusSha256: hash(readFileSync(join(output, 'osn-focus.json'))),
         adapterBundleSha256: hash(osc9Bytes), contractsVersion: osc9ContractsVersion, counts: osc9Counts(osc9Report), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in notification suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */
+async function addNotifyEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticNotifyEvidence } = await import('./notify-evidence.mjs');
+    const { buildNotifyReport } = await import('../notify-grading.mjs');
+    const { notifyCounts } = await import('../notify-receipt.mjs');
+    const { adaptNotifyCollector, notifyAdapterId } = await import('../notify-grading-collector.mjs');
+    const { notifySuiteId, notifyContractsVersion } = await import('../notify-contracts.mjs');
+    const notifyBytes = Buffer.from(adaptNotifyCollector(lrMarginsBytes.toString()));
+    const notify = syntheticNotifyEvidence({ runId: context.runId, bundleSha256: hash(notifyBytes) });
+    notify.adapter = { ...notify.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const notifyReport = buildNotifyReport(notify.frames, notify.run, context.runId, notify.adapter);
+    write('ntf-observations.json', notifyReport);
+    write('ntf-run.json', notify.run);
+    write('ntf-focus.json', notify.focus);
+    writeFileSync(join(output, 'ntf-snapshots.jsonl'), notify.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-ntf.mjs'), notifyBytes);
+    Object.assign(context, { notifyAdapterId, notifySuiteId, notifyBundleSha256: hash(notifyBytes), notifyContractsVersion });
+    evidence.notifyEvidence = { runId: context.runId, suiteId: notifySuiteId, file: 'ntf-observations.json', sha256: hash(readFileSync(join(output, 'ntf-observations.json'))),
+        runFile: 'ntf-run.json', runSha256: hash(readFileSync(join(output, 'ntf-run.json'))), focusFile: 'ntf-focus.json', focusSha256: hash(readFileSync(join(output, 'ntf-focus.json'))),
+        adapterBundleSha256: hash(notifyBytes), contractsVersion: notifyContractsVersion, counts: notifyCounts(notifyReport), provisionalUntil: 'cell-receipt.json' };
 }

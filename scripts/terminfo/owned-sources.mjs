@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v52';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v53';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -672,11 +672,21 @@ export const capturedV59SourceFiles = Object.freeze({
     asciiReflowReceiptSourceSha256: 'ascii-reflow-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v59 inventory and manifest environment pin before trusting any captured source. */
+// Frozen v60 OSC 777 / OSC 99 notification grading scope; future experiments must create a distinct policy and map.
+export const capturedV60SourceFiles = Object.freeze({
+    ...capturedV59SourceFiles,
+    notifyContractsSourceSha256: 'notify-contracts.mjs',
+    notifyCollectorSourceSha256: 'notify-collector.mjs',
+    notifyGradingSourceSha256: 'notify-grading.mjs',
+    notifyGradingCollectorSourceSha256: 'notify-grading-collector.mjs',
+    notifyReceiptSourceSha256: 'notify-receipt.mjs',
+});
+
+/** Bind the private temporary root, exact v60 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV59SourceFiles)) throw new Error('Invalid current v59 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV60SourceFiles)) throw new Error('Invalid current v60 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);
