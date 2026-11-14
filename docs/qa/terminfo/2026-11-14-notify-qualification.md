@@ -34,7 +34,7 @@ documented constant. The OSC 99 verdict is decided by the unchanged stock probe 
 | `extensions.osc777-notify` | **inconclusive** by design (terminal path only) | **supported** (`ntilde-osc777-notification-toast-effect-v1`) | inconclusive |
 | `extensions.osc99-kitty-notify` | **supported** (stock probe and `q07` witness, both unchanged code over the real reply) | **supported** (`ntilde-osc99-notification-toast-effect-v1`) | **supported** |
 
-The stock collector in the same owned run (stock collector run `fede60a7a1af1ebddafdccd25653142a`) grades 88 supported / 1 unsupported / 166 inconclusive (`suiteComplete=false`), one more
+The stock collector in the same owned run (stock collector run `8ada5afd11d8f6e8524c61450b371a90`) grades 88 supported / 1 unsupported / 166 inconclusive (`suiteComplete=false`), one more
 supported than the pre-batch 87/1/167: that is the **only** stock change, and it comes from the App now answering the unchanged OSC 99 probe, not from the owned observations. The frozen
 stock baseline file keeps its original grade for this id. No Core point is added.
 
@@ -52,9 +52,9 @@ parent defocuses the App by activating Finder and retains each focus action (`nt
   dropped, a 4097-character chunk dropped, flattening, the title cap, focus suppression.
 
 All protocol experiments matched and every control and delivery precondition held in the final run (the window was never active at delivery). Every policy record matched the documented
-policy except that the two **focus-suppression** records are not applicable: the App's own window state (`IsActive`) was never active at the control or the delivery read, even though
-the retained System Events answers show the App process frontmost after the parent's `refocus` (the `defocus` record also lists the App as frontmost: the process-level answer and the window
-state differ, and only the window state is graded). The inactive-window controls, which gate the verdict, held at control time and at delivery for every protocol experiment. Suppression while
+policy except that the two **focus-suppression** records are not applicable: the App's own window state (`IsActive`) was never active at the control or the delivery read, while the retained
+focus record has no usable System Events answer (every frontmost-process query in the final run returned nothing, so the parent's `refocus` and `defocus` are recorded but neither is verified; in the
+previous run the App process was reported frontmost while its window state stayed inactive, so the process-level answer and the window state differ, and only the window state is graded). The inactive-window controls, which gate the verdict, held at control time and at delivery for every protocol experiment. Suppression while
 looking at the pane is covered by the existing policy tests only, not measured here.
 
 **Decision rule.** Had the inactive-window delivery control not held at control time and at delivery, or a held chunk shown early, the case would have stayed inconclusive with the concrete
@@ -68,10 +68,10 @@ mismatches against their frozen original expectations, as the exact-query audit 
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `2eb47f2816a46967ea6bd6997ee876ebd01f8b56` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
-`a6a3c535c75dd60d6da065663b4cd5195aba67e3cf3c9b3a2ea77e8e7928e3ff`); measured scripts the same commit; source policy `readonly-owned-source-graph-v53` (353 files; manifest SHA-256
+App 0.13.0 (operator supplied) built from `9cc2cd243a4dbf6a766d088b4460a1edfb92d599` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
+`9c283c212ec8dec5b78451c251d42e48a59d6001a2690d0c38a1b1ab3447cfbb`); measured scripts the same commit; source policy `readonly-owned-source-graph-v53` (353 files; manifest SHA-256
 `a93a162ec6b7c5672c7f45abeec096893c874a2553352d95946877cb5e27573a`); query policy `owned-exact-query-paired-raw-state-v3`; initial settings SHA-256
-`84e131e90f92b8d85270b1ba93d7e07c8cbe5eee5bb3384229189c9c323a9d7d`; receipt schema 59; Node v24.22.2; owned run `f30a8ca8d2870622548524798624b669`; collected 2026-11-14T12:08Z on macOS. The
+`5652ca798364cf25a3ed00aa2e8ddbc4b2402afdb3c7ac6be2e63149a237ce90`; receipt schema 59; Node v24.22.2; owned run `fb40f8888b1642f40cfe6dc15d3a23a1`; collected 2026-11-14T12:20Z on macOS. The
 build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-14-notify/superseded/))
@@ -81,6 +81,8 @@ build is not binary-to-source attestation. Predecessor suites ran in the same fu
 2. Completed with both effect contracts supported and the OSC 99 stock grade supported; superseded by a local Codex finding (P2): two OSC 99 ids sharing their first 64 characters were trimmed into
    one pending-notification key, so interleaved chunks could merge or drop each other. The parser now refuses an id that is out of the protocol's alphabet or longer than 64 characters instead of
    trimming it, so the measured App changed and the run was repeated. (An earlier local finding, a pending OSC 99 notification surviving RIS, was fixed before attempt 2.)
+3. Completed with both effect contracts supported; superseded by a second local Codex finding (P2): a final `p=icon` or `p=buttons` packet of a held notification was ignored together with its
+   completion flag, so the held title and body were never shown and could merge into a later notification reusing the id. Such a final packet now completes the held notification and adds nothing.
 
 The final run is [owned-run.zip](2026-11-14-notify/owned-run.zip); `node --test scripts/terminfo/notify-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the
 retained journal and compares the published projection.
