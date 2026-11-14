@@ -175,6 +175,17 @@ public class Osc99Osc777NotificationTests
     }
 
     [Fact]
+    public void Ris_discards_an_unfinished_osc99_notification()
+    {
+        var (parser, notifications, _, _) = Create();
+
+        parser.Process("\x1b]99;i=r:d=0;stale\x1b\\\u001bc");
+        parser.Process("\x1b]99;i=r;fresh\x1b\\");
+
+        Assert.Equal(("fresh", ""), Assert.Single(notifications));
+    }
+
+    [Fact]
     public void Osc99_oversized_single_chunk_is_dropped()
     {
         var (parser, notifications, _, _) = Create();

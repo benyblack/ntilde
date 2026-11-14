@@ -198,6 +198,13 @@ namespace Ntilde.VT
             _osc99PendingOrder.Add(id);
         }
 
+        /// <summary>RIS discards any unfinished OSC 99 notification: a later one reusing its id must not inherit its text.</summary>
+        private void ClearPendingOsc99()
+        {
+            _osc99Pending.Clear();
+            _osc99PendingOrder.Clear();
+        }
+
         private void RemovePendingOsc99(string id)
         {
             if (_osc99Pending.Remove(id)) _osc99PendingOrder.Remove(id);
