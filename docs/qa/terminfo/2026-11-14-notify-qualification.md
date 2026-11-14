@@ -10,7 +10,7 @@ exact-query witness `q07.extensions.osc99-kitty-notify` recorded matched silence
 - **OSC 99** (kitty): metadata keys `i` (id), `d` (done, default 1), `p` (`title` by default, `body`, `?`) and `e` (`1` = base64). A notification is shown when its last chunk
   (`d` absent or `1`) arrives; chunks of one id concatenate; at most 8 unfinished ids, 8192 characters per notification and 4096 per chunk are held; a bad base64 or oversized
   chunk drops the notification; RIS discards unfinished ones. Every other key and the payload types `close`, `alive`, `icon` and `buttons` are ignored.
-- **Query**: `OSC 99;i=<id>:p=?;` is answered `OSC 99;i=<id>:p=?;o=always:p=title,body` with the id reduced to the protocol's alphabet (64 characters at most) and **no** `a`, `c`,
+- **Query**: `OSC 99;i=<id>:p=?;` is answered `OSC 99;i=<id>:p=?;o=always:p=title,body` with the id reduced to the protocol's alphabet (64 characters at most); a notification chunk with an invalid or longer id is refused and **no** `a`, `c`,
   `u`, `w` or `s` key: actions, close reports, urgency, expiry and sounds are not implemented and not claimed.
 - **Presentation**: both routes use the existing opt-in, focus-gated in-window toast (`Osc9NotificationsEnabled`, shown unless the user is looking at the pane). A title and a body
   show as given; a lone title or body is the message under the pane's own tab title, as an OSC 9 text is. Title and body are flattened to one line and capped (80 and 200
@@ -34,7 +34,7 @@ documented constant. The OSC 99 verdict is decided by the unchanged stock probe 
 | `extensions.osc777-notify` | **inconclusive** by design (terminal path only) | **supported** (`ntilde-osc777-notification-toast-effect-v1`) | inconclusive |
 | `extensions.osc99-kitty-notify` | **supported** (stock probe and `q07` witness, both unchanged code over the real reply) | **supported** (`ntilde-osc99-notification-toast-effect-v1`) | **supported** |
 
-The stock collector in the same owned run (stock collector run `a62db6aa0ee693dc4024712f6d4d907f`) grades 88 supported / 1 unsupported / 166 inconclusive (`suiteComplete=false`), one more
+The stock collector in the same owned run (stock collector run `fede60a7a1af1ebddafdccd25653142a`) grades 88 supported / 1 unsupported / 166 inconclusive (`suiteComplete=false`), one more
 supported than the pre-batch 87/1/167: that is the **only** stock change, and it comes from the App now answering the unchanged OSC 99 probe, not from the owned observations. The frozen
 stock baseline file keeps its original grade for this id. No Core point is added.
 
@@ -52,9 +52,10 @@ parent defocuses the App by activating Finder and retains each focus action (`nt
   dropped, a 4097-character chunk dropped, flattening, the title cap, focus suppression.
 
 All protocol experiments matched and every control and delivery precondition held in the final run (the window was never active at delivery). Every policy record matched the documented
-policy except that the two **focus-suppression** records are not applicable: the parent's `refocus` did not take in this run (System Events reported another process frontmost in all three
-attempts), so the window was never active and suppression could not be observed. The inactive-window controls, which gate the verdict, held. Suppression while looking at the pane is covered
-by the existing policy tests only, not measured here.
+policy except that the two **focus-suppression** records are not applicable: the App's own window state (`IsActive`) was never active at the control or the delivery read, even though
+the retained System Events answers show the App process frontmost after the parent's `refocus` (the `defocus` record also lists the App as frontmost: the process-level answer and the window
+state differ, and only the window state is graded). The inactive-window controls, which gate the verdict, held at control time and at delivery for every protocol experiment. Suppression while
+looking at the pane is covered by the existing policy tests only, not measured here.
 
 **Decision rule.** Had the inactive-window delivery control not held at control time and at delivery, or a held chunk shown early, the case would have stayed inconclusive with the concrete
 reason retained.
@@ -67,16 +68,19 @@ mismatches against their frozen original expectations, as the exact-query audit 
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `9a316468fc7538af529ab112cd106450467a0340` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
-`4c9e81b72391dcd4e40f49af0a92220547d1bfb4db2747d199003d026de9d69b`); measured scripts the same commit; source policy `readonly-owned-source-graph-v53` (353 files; manifest SHA-256
+App 0.13.0 (operator supplied) built from `2eb47f2816a46967ea6bd6997ee876ebd01f8b56` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
+`a6a3c535c75dd60d6da065663b4cd5195aba67e3cf3c9b3a2ea77e8e7928e3ff`); measured scripts the same commit; source policy `readonly-owned-source-graph-v53` (353 files; manifest SHA-256
 `a93a162ec6b7c5672c7f45abeec096893c874a2553352d95946877cb5e27573a`); query policy `owned-exact-query-paired-raw-state-v3`; initial settings SHA-256
-`ce67ef8b5835bf0a5a49766b3ad7b7a2dcaa487f00a83e5a55f00a7ffe5c80fb`; receipt schema 59; Node v24.22.2; owned run `5814a62ad624a7d08383503ee9cf7311`; collected 2026-11-14T11:45Z on macOS. The
+`84e131e90f92b8d85270b1ba93d7e07c8cbe5eee5bb3384229189c9c323a9d7d`; receipt schema 59; Node v24.22.2; owned run `f30a8ca8d2870622548524798624b669`; collected 2026-11-14T12:08Z on macOS. The
 build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-14-notify/superseded/))
 
 1. Completed every suite, then the parent-side rederivation refused it: the static OSC 777 replay listed its keys in a different order than the live replay (`Pinned OSC 777 result differs from
    its replay`). The notification effect contracts were already supported in that run. Fixed in the grader; kept as measured, not graded.
+2. Completed with both effect contracts supported and the OSC 99 stock grade supported; superseded by a local Codex finding (P2): two OSC 99 ids sharing their first 64 characters were trimmed into
+   one pending-notification key, so interleaved chunks could merge or drop each other. The parser now refuses an id that is out of the protocol's alphabet or longer than 64 characters instead of
+   trimming it, so the measured App changed and the run was repeated. (An earlier local finding, a pending OSC 99 notification surviving RIS, was fixed before attempt 2.)
 
 The final run is [owned-run.zip](2026-11-14-notify/owned-run.zip); `node --test scripts/terminfo/notify-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the
 retained journal and compares the published projection.
