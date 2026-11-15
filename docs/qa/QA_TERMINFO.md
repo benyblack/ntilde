@@ -1219,5 +1219,7 @@ The extended-mouse batch qualifies `modes.utf8-mouse-1005` (UTF-8 coordinates) a
 (`ntilde-owned-mouse-extended-grading-v1`) over the left/right-margin one (a sibling of the routed-input and modifyOtherKeys layers) and input plan v4, which keeps every v3 event verbatim and
 appends 46 declared Avalonia events. The pinned probes cannot decide (the 1005 termless code returns `notTestedResult`; the urxvt probe is the same `mouseInputProbe` as `input.x10-mouse`), so the unchanged
 pinned code is replayed over the child's own DECRQM replies beside effect contracts (`ntilde-utf8-mouse-1005-effect-v1`, `ntilde-urxvt-mouse-effect-v1`) graded by an independent oracle written from xterm's
-`button.c`. The stock terminal path of `modes.utf8-mouse-1005` is a DECRQM recognition check and is reported separately. Receipt schema 63 and source policy v57 (380 files) bind it; the measured run and
-publication follow. See [the qualification page](terminfo/2026-11-15-mouse-extended-qualification.md).
+`button.c`. Both effect contracts are **supported** (all 49 experiments matched their literal expectation and the oracle) and both pinned verdicts stay **inconclusive** (a recorded divergence). The stock grade of
+`modes.utf8-mouse-1005` moves to supported through the stock collector's DECRPM path because production now answers DECRPM 1/2: a stock effect of the production change (a recognition check), not an effect-contract
+upgrade; stock grades are now 92/1/162. Receipt schema 63 and source policy v57 (380 files) bind it; the run is measured at App `7578595b` and scripts `2a6e4b58` with one retained superseded attempt.
+See [the qualification page](terminfo/2026-11-15-mouse-extended-qualification.md).

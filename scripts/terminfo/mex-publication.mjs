@@ -1,12 +1,11 @@
 // A publication-only projection of the independently rederived retained owned run for the extended-mouse-encoding qualification.
-// DRAFT until a measurement exists: the revisions below are filled from the run's own identities when the publication is written.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { mexCaseIds } from './mex-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'PENDING';
-export const measuredAppRevision = 'PENDING';
+export const measuredScriptsRevision = '2a6e4b586d5841b9e625ce6096b0c6c820592e60';
+export const measuredAppRevision = '7578595b09d149b17bb23a9db4ab74d18b827e22';
 const stockOf = (raw, caseId) => {
     const observation = raw.observations.find(entry => entry.featureId === caseId);
     if (!observation) throw new Error(`Missing stock outcome: ${caseId}`);
@@ -24,6 +23,6 @@ export function mexPublication(dir) {
     const report = { ...header, cases };
     const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision: measuredAppRevision,
         scriptsRevision: measuredScriptsRevision, context, receipt, stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash,
-            sourceRevision: raw.sourceRevision, note: 'Stock terminal-path grades from the same owned run. input.urxvt-mouse stays inconclusive under the unchanged pinned code; modes.utf8-mouse-1005 is a DECRQM recognition check on the stock path, reported here as measured and never as an upgrade of the pinned termless verdict.' } };
+            sourceRevision: raw.sourceRevision, note: 'Stock terminal-path grades from the same owned run. input.urxvt-mouse stays inconclusive under the unchanged pinned code; modes.utf8-mouse-1005 is graded supported by the stock collector\'s DECRPM path (decrpmResult) because the production change answers DECRPM 1/2 for ?1005: a stock effect of the production change, a DECRQM recognition check that is neither an encoding measurement nor an upgrade of the pinned termless verdict or of the effect contract.' } };
     return { summary, report };
 }
