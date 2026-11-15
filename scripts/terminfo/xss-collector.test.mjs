@@ -61,3 +61,36 @@ test('the expected call count is the full script, or the early invalid-reply ret
     assert.equal(context.feedCapture('\x1b[#{'), '\x1b[?0;0#Q');
     assert.equal(context.callCount, xssExpectedCalls(push, 'termless', noisy));
 });
+
+test('the driver replays every plan through a fence, journals every read and runs both pinned paths over the journaled exchange', async () => {
+    const { collectXssGrading } = await import('./xss-collector.mjs');
+    const { xssContracts, xssCaseIds, replayXssPinned, xssPlanSeed } = await import('./xss-contracts.mjs');
+    const { parseXssFrame } = await import('./xss-report.mjs');
+    const { planFeeds } = await import('./graded-plan.mjs');
+    const runId = 'c'.repeat(32), feeds = [], kinds = [];
+    const fence = { write: async text => { feeds.push(text); return da; }, exchange: async (text, parse) => { feeds.push(text); return parse(da); } };
+    const owner = async kind => { kinds.push(kind); return { screen: { cursorRow: 7, cursorCol: 1 } }; };
+    // A stand-in for the derived bundle that makes exactly the pinned calls of each path over the context it is served.
+    const served = (path, caseId, context) => {
+        const contract = xssContracts.find(item => item.caseId === caseId);
+        const pending = [];
+        for (const [kind, text] of contract.pinnedScript[path]) pending.push(kind === 'cursor' ? context.queryCursorPosition() : context[kind](text));
+        return { pending, result: { probeId: caseId, ...replayXssPinned(caseId, path, { barrier: da, position: { row: 8, col: 2 } }) } };
+    };
+    const termless = (caseId, context) => served('termless', caseId, context).result;
+    const terminal = async (caseId, context) => { const { pending, result } = served('terminal', caseId, context); await Promise.all(pending); return result; };
+    const gradingModule = { ntildeXssAdapter: { id: 'stub', probeIds: [...xssCaseIds] }, ntildeRunXssTermless: termless, ntildeRunXssTerminal: terminal };
+    const result = await collectXssGrading({ config: { runId }, fence, owner, gradingModule });
+    assert.deepEqual(result.cases.map(item => item.caseId), [...xssCaseIds]);
+    assert.equal(kinds[0], 'xss-start');
+    assert.equal(kinds.at(-1), 'xss-finish');
+    assert.equal(kinds.filter(kind => kind === 'xss-read').length, xssContracts.reduce((sum, item) => sum + item.roles.length, 0));
+    for (const item of result.cases) {
+        const contract = xssContracts.find(entry => entry.caseId === item.caseId);
+        assert.deepEqual(item.feeds, planFeeds(contract));
+        assert.equal(item.reads.length, contract.roles.length);
+        assert.deepEqual(item.reads[contract.pinnedRead].report, parseXssFrame(da), 'the pinned read journals its own silent exchange');
+        assert.equal(item.pinned.termless.observation.outcome, 'inconclusive');
+    }
+    assert.ok(feeds[0].includes(xssPlanSeed(runId).slice(0, 8)) || feeds[0].startsWith('\x1b[?1049h'), 'the bind opens the alternate screen with the seed');
+});

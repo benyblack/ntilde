@@ -6,7 +6,8 @@ import { planFeeds, planReads } from './graded-plan.mjs';
 import { parseXssFrame } from './xss-report.mjs';
 
 /** Serving the journaled exchange to a pinned probe path and counting its calls are the color-stack suite's, reused unchanged: both read only the contract's `pinnedScript`, whose calls (kind, text and order) the pinned code must make exactly. */
-export { xcsRecordingContext as xssRecordingContext, xcsExpectedCalls as xssExpectedCalls } from './xcs-collector.mjs';
+import { xcsRecordingContext as xssRecordingContext, xcsExpectedCalls as xssExpectedCalls } from './xcs-collector.mjs';
+export { xssRecordingContext, xssExpectedCalls };
 
 /** One plan step of the case. A capture step is a fenced exchange whose replies the next read journals; any other feed clears them. */
 async function runStep(step, record, { fence, owner, caseId }) {
