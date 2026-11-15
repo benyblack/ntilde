@@ -573,6 +573,21 @@ public class ExplainEscapeSequenceTests
         Assert.DoesNotContain("PARTIALLY", result, StringComparison.Ordinal);
     }
 
+    /// <summary>XTREPORTCOLORS admits no parameter or a zero spelled with any number of digits, as the parser does; other values and lists are not the report.</summary>
+    [Theory]
+    [InlineData("CSI # R", true)]
+    [InlineData("CSI 0 # R", true)]
+    [InlineData("CSI 00 # R", true)]
+    [InlineData("CSI 1 # R", false)]
+    [InlineData("CSI 0;0 # R", false)]
+    [InlineData("CSI 0:0 # R", false)]
+    public void Xtermreportcolors_explanation_follows_the_parser_on_zero_spellings(string sequence, bool admitted)
+    {
+        string result = VtTools.ExplainEscapeSequence(sequence);
+        Assert.Equal(admitted, result.Contains("XTREPORTCOLORS", StringComparison.Ordinal) || result.Contains("palette stack", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(!admitted, result.Contains("ignores this form", StringComparison.Ordinal));
+    }
+
     /// <summary>The bare finals keep ICH and CUU.</summary>
     [Fact]
     public void Bare_at_and_A_stay_ich_and_cuu()

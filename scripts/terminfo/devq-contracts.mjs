@@ -58,7 +58,7 @@ const esc = '\x1b';
 const st = esc + '\\';
 const bel = '\x07';
 /** Build a regular expression from a source written with <ESC>, so no control character sits in a pattern literal. */
-const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.fromCharCode(27)), flags);
+const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.fromCodePoint(27)), flags);
 
 /** The documented session TERM the native PTY layer and the SSH options give every direct pane's child. */
 export const devqSessionTerm = 'xterm-256color';
@@ -71,23 +71,23 @@ export const termNameHex = '7465726d4e616d65';
 const specs = Object.freeze({
     'device.xtgetxres': Object.freeze({
         query: `${esc}P+Q${termNameHex}${st}`, setup: null,
-        valid: re(`<ESC>P1\\+R${termNameHex}=[0-9A-Fa-f]+<ESC>\\\\`, 'i'), refusal: re(`<ESC>P0\\+R${termNameHex}<ESC>\\\\`, 'i'), contradicts: null,
-        malformed: re('<ESC>P[01]\\+R'), expected: 'XTGETXRES returns a complete status-1 termName resource value',
+        valid: re(String.raw`<ESC>P1\+R${termNameHex}=[0-9A-Fa-f]+<ESC>\\`, 'i'), refusal: re(String.raw`<ESC>P0\+R${termNameHex}<ESC>\\`, 'i'), contradicts: null,
+        malformed: re(String.raw`<ESC>P[01]\+R`), expected: 'XTGETXRES returns a complete status-1 termName resource value',
     }),
     'device.xtreportcolors': Object.freeze({
         query: `${esc}[#R`, setup: null,
-        valid: re('<ESC>\\[[0-9;]*#Q'), refusal: null, contradicts: null,
-        malformed: re('<ESC>\\[[0-9;]*#|#Q'), expected: 'CSI # R returns a complete CSI Pm # Q frame',
+        valid: re(String.raw`<ESC>\[[0-9;]*#Q`), refusal: null, contradicts: null,
+        malformed: re(String.raw`<ESC>\[[0-9;]*#|#Q`), expected: 'CSI # R returns a complete CSI Pm # Q frame',
     }),
     'device.xtwinops-20': Object.freeze({
         query: `${esc}[20t`, setup: `${esc}]1;test-icon${bel}`,
-        valid: re('<ESC>\\]Ltest-icon(?:\\x07|<ESC>\\\\)'), refusal: null, contradicts: re('<ESC>\\]L[^\\x07<ESC>]*(?:\\x07|<ESC>\\\\)'),
-        malformed: re('<ESC>\\]L'), expected: 'OSC 1 + CSI 20 t round trip returns the exact icon label',
+        valid: re(String.raw`<ESC>\]Ltest-icon(?:\x07|<ESC>\\)`), refusal: null, contradicts: re(String.raw`<ESC>\]L[^\x07<ESC>]*(?:\x07|<ESC>\\)`),
+        malformed: re(String.raw`<ESC>\]L`), expected: 'OSC 1 + CSI 20 t round trip returns the exact icon label',
     }),
     'device.xtwinops-21': Object.freeze({
         query: `${esc}[21t`, setup: `${esc}]2;test-title${bel}`,
-        valid: re('<ESC>\\]ltest-title(?:\\x07|<ESC>\\\\)'), refusal: null, contradicts: null,
-        malformed: re('<ESC>\\]l'), expected: 'CSI 21 t returns the exact window title set by OSC 2',
+        valid: re(String.raw`<ESC>\]ltest-title(?:\x07|<ESC>\\)`), refusal: null, contradicts: null,
+        malformed: re(String.raw`<ESC>\]l`), expected: 'CSI 21 t returns the exact window title set by OSC 2',
     }),
 });
 /** The pinned refusal note, verbatim. */
@@ -100,7 +100,7 @@ export function replayDevqPinned(caseId, raw = '') {
     const response = raw;
     const sources = [spec.valid.source, spec.refusal?.source, spec.contradicts?.source].filter(source => source !== undefined);
     let matched = new RegExp(sources.join('|'), spec.valid.flags).exec(response)?.[0] ?? null;
-    const da1At = response.search(re('<ESC>\\[\\?[0-9;]*c'));
+    const da1At = response.search(re(String.raw`<ESC>\[\?[0-9;]*c`));
     if (matched && da1At !== -1 && response.indexOf(matched) > da1At) matched = null;
     const valid = matched ? spec.valid.exec(matched) : null;
     if (valid?.[0]) {
@@ -283,7 +283,7 @@ const colorGroups = [
 // ----- device.xtwinops-20 / 21 groups -----
 /** The title/icon groups for one report (20 icon, 21 title). */
 function titleGroups(report) {
-    const icon = report === 20, code = icon ? 'L' : 'l', setOwn = icon ? 1 : 2, other = icon ? 2 : 1, otherCode = icon ? 'l' : 'L';
+    const icon = report === 20, code = icon ? 'L' : 'l', setOwn = icon ? 1 : 2, otherCode = icon ? 'l' : 'L';
     const own = icon ? 'icon' : 'title', request = `${esc}[${report}t`, otherRequest = `${esc}[${icon ? 21 : 20}t`;
     const set = (osc, text) => `${esc}]${osc};${text}${bel}`;
     return [

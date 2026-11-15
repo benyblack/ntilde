@@ -550,7 +550,7 @@ public sealed class VtTools
     private static string ExplainXtermColorStack(char finalByte, string parameters)
     {
         bool plain = parameters.All(c => c is ';' || (c >= '0' && c <= '9'));
-        bool admitted = plain && (finalByte != 'R' || parameters is "" or "0");
+        bool admitted = plain && (finalByte != 'R' || parameters.All(c => c == '0')); // the parser reads any run of zeros (00, 000) as the single parameter 0
         return admitted
             ? $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable["CSI:#" + finalByte]
             : $"CSI palette-stack form, final byte '{finalByte}': only plain parameters are admitted (none or 0 for the report); Ntilde's parser ignores this form.";

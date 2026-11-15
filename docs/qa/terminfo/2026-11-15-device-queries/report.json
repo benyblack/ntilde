@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-device-queries-graded-v1",
   "contractsVersion": 1,
-  "runId": "62463fd73cc60f314b6462c60ddc821f",
+  "runId": "aad1ec6c3c949076162c385568a6e939",
   "adapter": {
     "id": "ntilde-owned-device-queries-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "b9ffdf39d39ff4cbfdd154a92e87dbc38c364b720c58fa8dfabba90fe32f6ff0",
+    "bundleSha256": "6cc44ba283746de56c47d6f35761edfe83dde03b21db1cc342c9f57702955188",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 criteria for device.xtgetxres (DCS + Q termName), device.xtreportcolors (CSI # R, whose pinned pattern has no ? marker and cannot match xterm's own CSI ? depth ; deepest # Q reply), device.xtwinops-20 and device.xtwinops-21 (OSC 1 / OSC 2 then CSI 20 t / 21 t, with the run's initial settings turning on AllowTitleReport) replayed byte-exactly over the journaled raw replies of their own fenced exchanges, beside separately identified effect contracts graded by an independent oracle written from xterm's text and source; raw terminal state, not host presentation; termName is the documented session TERM, not read from the child; the default-off title gate is unit-tested, not measured; the xterm stack's deepest counter stays at its measured value in the disposable App; no remote/mux, Windows/Linux or common-harness claim. device.term-features is documented only: its pinned probe reads process.env.TERM_FEATURES, emits no request and can never return supported.",
@@ -43,7 +43,7 @@
           "\\eP+Q7465726d4e616d65\\e\\"
         ],
         "seed": {
-          "nonce": "NTILDE_DQ_62463fd73cc60f314b6462c60ddc821f",
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
           "margins": [
             1,
             5
@@ -268,7 +268,7 @@
           "\\e[#R"
         ],
         "seed": {
-          "nonce": "NTILDE_DQ_62463fd73cc60f314b6462c60ddc821f",
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
           "margins": [
             1,
             5
@@ -614,7 +614,7 @@
           "\\e[20t"
         ],
         "seed": {
-          "nonce": "NTILDE_DQ_62463fd73cc60f314b6462c60ddc821f",
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
           "margins": [
             1,
             5
@@ -809,7 +809,7 @@
         "id": "q07.device.xtwinops-20",
         "expectedEvidence": "silence",
         "expectedHex": "",
-        "receivedHex": "1b5d4c44512d626173652d36323436336664371b5c",
+        "receivedHex": "1b5d4c44512d626173652d61616431656336631b5c",
         "contractMatched": false
       },
       "conclusion": {
@@ -845,7 +845,7 @@
           "\\e[21t"
         ],
         "seed": {
-          "nonce": "NTILDE_DQ_62463fd73cc60f314b6462c60ddc821f",
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
           "margins": [
             1,
             5
@@ -1040,7 +1040,7 @@
         "id": "q07.device.xtwinops-21",
         "expectedEvidence": "silence",
         "expectedHex": "",
-        "receivedHex": "1b5d6c44512d626173652d36323436336664371b5c",
+        "receivedHex": "1b5d6c44512d626173652d61616431656336631b5c",
         "contractMatched": false
       },
       "conclusion": {

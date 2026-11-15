@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { devqCaseIds } from './devq-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '906234df1d15dc63e36dd0b38d474ffe15c817a0';
-export const measuredAppRevision = 'fb6c7fd6b81b4e231afb86b500fbef26354100fd';
+export const measuredScriptsRevision = '8692e250b6199ba909dbf8f40c99bda906571c39';
+export const measuredAppRevision = '8692e250b6199ba909dbf8f40c99bda906571c39';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for device.xtgetxres (DCS + Q termName), device.xtreportcolors (CSI # R, whose pinned pattern has no ? marker and cannot match xterm\'s own CSI ? depth ; deepest # Q reply), '
     + 'device.xtwinops-20 and device.xtwinops-21 (OSC 1 / OSC 2 then CSI 20 t / 21 t, with the run\'s initial settings turning on AllowTitleReport) replayed byte-exactly over the journaled raw replies of their own fenced '
     + 'exchanges, beside separately identified effect contracts graded by an independent oracle written from xterm\'s text and source; raw terminal state, not host presentation; termName is the documented session TERM, not '

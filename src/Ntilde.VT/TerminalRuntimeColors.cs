@@ -87,14 +87,16 @@ public sealed class TerminalRuntimeColors
         ValidateFrame(state.Current);
         foreach (TerminalColorOverrides frame in state.Stack)
             ValidateFrame(StateTransferValidation.RequirePresent(frame, "color stack frame"));
+        ValidateXtermState(state);
+    }
+
+    private static void ValidateXtermState(TerminalRuntimeColors state)
+    {
         if (state.XtermSlots is { } slots)
         {
             if (slots.Length != MaxXtermSlots)
                 throw StateTransferValidation.Reject("xterm color stack", "must contain exactly 10 slots");
-            foreach (TerminalColorOverrides? frame in slots)
-            {
-                if (frame is not null) ValidateFrame(frame);
-            }
+            foreach (TerminalColorOverrides stored in slots.OfType<TerminalColorOverrides>()) ValidateFrame(stored);
         }
         if (state.XtermUsed is < 0 or > MaxXtermSlots || state.XtermLast is < 0 or > MaxXtermSlots)
             throw StateTransferValidation.Reject("xterm color stack", "depth is outside the ten slots");
