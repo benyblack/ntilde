@@ -80,6 +80,7 @@ export const benchmarkSuites = Object.freeze([
  * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
  */
 export const nonInventoryPublicationTests = Object.freeze({
+    'modern-publication.test.mjs': 'frozen Modern requirement reassessment; preserves separate stock and owned semantic results without adding benchmark-suite claims',
     'image-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
     'input-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
     'query-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
