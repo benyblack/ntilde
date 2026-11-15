@@ -96,16 +96,16 @@ export function replayColorResetPinned(contract, replies) {
 // The colors the controlled render drew, read from the original PNG.
 
 /** An opaque ARGB integer of the first pixel of a region's RGBA bytes. */
-const argbAt = (bytes, offset = 0) => (0xff000000 | (bytes[offset] << 16) | (bytes[offset + 1] << 8) | bytes[offset + 2]) >>> 0;
+export const argbAt = (bytes, offset = 0) => (0xff000000 | (bytes[offset] << 16) | (bytes[offset + 1] << 8) | bytes[offset + 2]) >>> 0;
 
 /** The one color a region is filled with, or null when it is not a single color. */
-function solidColor(bytes) {
+export function solidColor(bytes) {
     for (let offset = 4; offset < bytes.length; offset += 4) if (bytes.readUInt32LE(offset) !== bytes.readUInt32LE(0)) return null;
     return argbAt(bytes);
 }
 
 /** The most frequent color of a region other than `background`, or null when the region holds only the background. */
-function dominantInk(bytes, background) {
+export function dominantInk(bytes, background) {
     const counts = new Map();
     for (let offset = 0; offset < bytes.length; offset += 4) {
         const color = argbAt(bytes, offset);

@@ -55,6 +55,7 @@ code.set(new URL('modify-other-keys-collector.mjs', root).href, log + `export fu
 code.set(new URL('lr-margins-collector.mjs', root).href, log + `export async function collectLrMarginsGrading() { record('LrMargins'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('core-gaps.mjs', root).href, log + `export async function collectCoreGaps() { record('CoreGaps'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('osc133-collector.mjs', root).href, log + `export async function collectOsc133() { record('Osc133'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
+code.set(new URL('selection-colors-collector.mjs', root).href, log + `export async function collectSelectionColorsGrading() { record('SelectionColors'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('color-reset-collector.mjs', root).href, log + `export async function collectColorResetGrading() { record('ColorReset'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('core-text-cursor.mjs', root).href, log + `export async function collectTextCursor() { record('TextCursor'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('core-erase.mjs', root).href, log + `export async function collectErase() { record('CoreErase'); return { schemaVersion: 1, cases: [] }; }`);

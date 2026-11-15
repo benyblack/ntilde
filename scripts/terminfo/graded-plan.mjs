@@ -3,6 +3,7 @@
 // schedules over the owned fence and validate identical journal shapes; the
 // common logic lives here once so the layered suite adds no duplicated code.
 import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
+import { validateQueries } from './color-capture.mjs';
 
 /** One plan step: write exact bytes through the owned fence. */
 export const planFeed = bytes => ({ feed: bytes });
@@ -106,6 +107,27 @@ export function requireReplayAgreement(contract, replay, pinned) {
         || replay.observation.outcome !== pinned.observation.outcome
         || JSON.stringify(present(replay.assertions)) !== JSON.stringify(present(pinned.assertions))) {
         throw new Error(`Pinned ${contract.caseId} replay does not reproduce the live grading.`);
+    }
+}
+
+/** Each read frame's journaled replies must equal the worker's record, and each reply must sit at the barrier of the exchange that asked it. */
+export function checkFencedQueryReplies({ readPlan, label }, contract, recorded, readFrames) {
+    let feedIndex = 0, readIndex = 0, asked = 0;
+    for (const step of contract.plan) {
+        if (step.feed !== undefined) {
+            if (step.query) {
+                const item = recorded.reads[readIndex].queries[asked];
+                if (!item || item.barrier !== recorded.barriers[feedIndex] || snapshotHash(item.spec) !== snapshotHash(step.query)) throw new Error(`${label} ${contract.caseId} reply differs from its exchange.`);
+                asked++;
+            }
+            feedIndex++;
+        } else {
+            const frame = readFrames[readIndex], read = recorded.reads[readIndex], plan = readPlan.find(item => item.caseId === contract.caseId
+                && `${item.experimentId}/${item.stageId}` === contract.roles[readIndex]);
+            if (snapshotHash(frame.queries) !== snapshotHash(read.queries) || frame.queries.length !== asked) throw new Error(`${label} ${contract.caseId} replies differ from their read frame.`);
+            validateQueries(frame.queries, plan.queries);
+            readIndex++; asked = 0;
+        }
     }
 }
 

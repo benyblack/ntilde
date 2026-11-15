@@ -9,20 +9,20 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 111 |
-| Suite claims (an id covered by two suites has two claims) | 113 |
+| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 115 |
+| Suite claims (an id covered by two suites has two claims) | 117 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 110 |
+| Effect contract supported | 114 |
 | Effect contract unsupported (measured, retained, not supported) | 1 |
 | Supported by both the pinned probe and the effect contract | 86 |
-| Effect supported, pinned verdict inconclusive | 24 |
+| Effect supported, pinned verdict inconclusive | 28 |
 | Effect unsupported, pinned verdict inconclusive | 1 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
 An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.
 
-Effect supported but pinned inconclusive: `device.xtgettcap`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 Effect unsupported, pinned inconclusive (by design): `extensions.reflow`.
 
@@ -32,10 +32,10 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Not effect-supported, `effectUnqualified` (168 − 109) | 59 |
+| Not effect-supported, `effectUnqualified` (168 − 113) | 55 |
 | of which measured, effect unsupported | 1 |
 | of which measured, another non-supported verdict | 0 |
-| of which not measured (no qualified effect evidence) | 58 |
+| of which not measured (no qualified effect evidence) | 54 |
 | Not pinned-supported (168 − 85) | 83 |
 
 `effectUnqualified` is every stock-inconclusive id without a supported effect verdict. It splits into exactly three states that must not be conflated: *measured and unsupported* (retained evidence says the behavior is absent or diverges), *measured with another non-supported verdict*, and *not measured* (no qualified evidence at all). Only the last is "not yet qualified".
@@ -90,6 +90,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `osc9` | 2 | v1 | passed | 57 | `1ac4476c` | v51 | 17 | `de13f6ad` |
 | `ascii-reflow` | 1 | v1 | passed | 58 | `d8679e11` | v52 | 19 | `889a48b8` |
 | `notify` | 2 | v1 | passed | 59 | `d904c663` | v53 | 10 | `106e7f00` |
+| `selection-colors` | 4 | v1 | passed | 60 | `fe2ccbca` | v54 | 15 | `25ca76e5` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -137,6 +138,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `osc9` | collected-run-id-recorded | `26c93f5a` | 167/87/1 | `cf7d8759` |
 | `ascii-reflow` | collected-run-id-recorded | `7dd243ac` | 167/87/1 | `cf7d8759` |
 | `notify` | collected-run-id-recorded | `44271b95` | 166/88/1 | `cf7d8759` |
+| `selection-colors` | collected-run-id-recorded | `2940c076` | 166/88/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -191,10 +193,14 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc110-reset-fg` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |
 | `extensions.osc111-reset-bg` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |
 | `extensions.osc112-reset-cursor` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |
+| `extensions.osc117-reset-highlight-bg` | inconclusive | inconclusive | supported | stored-state + app-resolved-color + controlled-pixels | selection-colors | selection-colors: pinned-inconclusive-by-design |
+| `extensions.osc119-reset-highlight-fg` | inconclusive | inconclusive | supported | stored-state + app-resolved-color + controlled-pixels | selection-colors | selection-colors: pinned-inconclusive-by-design |
 | `extensions.osc133-a` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
 | `extensions.osc133-b` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
 | `extensions.osc133-c` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
 | `extensions.osc133-d` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc133 | osc133: pinned-inconclusive-by-design |
+| `extensions.osc17-highlight-bg` | inconclusive | inconclusive | supported | stored-state + app-resolved-color + controlled-pixels | selection-colors | selection-colors: pinned-query-only-unset-default |
+| `extensions.osc19-highlight-fg` | inconclusive | inconclusive | supported | stored-state + app-resolved-color + controlled-pixels | selection-colors | selection-colors: pinned-query-only-unset-default |
 | `extensions.osc2-title` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc-title | - |
 | `extensions.osc7-cwd` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc78 | osc78: pinned-inconclusive-by-design |
 | `extensions.osc777-notify` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | notify | notify: pinned-inconclusive-by-design |

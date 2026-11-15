@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "79837c866233ab9029dac38533cfabe4ab0bc5dc457a1f478eee6629c3182ea6",
+    "superseded/attempt-25.zip": "a834bc3d57b82ea5acea0c976a1451d6aa4f50285a9c993072c0f8a113751b9b",
+    "superseded/attempt-26.zip": "9a7aed51a18dd2da58e589d6b59f320a47487f091e0eaa9e0cc5295d519b65f6",
+    "superseded/attempt-27.zip": "5e6394f6edefe0d85d519f1e9ea025420c9ed7713a598f6395418859a08523bb",
+    "superseded/attempt-28.zip": "6270e2285097b78d1771a1cd5668b71d11eb689c31e0f760b4369614c1026006",
+    "superseded/attempt-29.zip": "c53b9c9902c9f2e0a0dd111fa7a0175530daccf8935e06a2e41987b5c4d71c81",
+    "superseded/attempt-32.zip": "cdca2ffdce64c405285abbe8f261fa9bc890abed383c546547ae7345a60782fc",
+    "superseded/attempt-33.zip": "02b3cb61c8a370fdd93eac8728ded7293827cdf97d91085dda427a85e235d37f",
+    "superseded/attempt-35.zip": "f9b572d4f7e7c49edbdb49f8e5bca7a53fe85abf11055001cf1755c087e7775b",
+    "superseded/attempt-36.zip": "ef077f47e8a259e2c01e68abfb7191cb80d1437a411ee53590a18c357df91992",
+    "superseded/attempt-37.zip": "5ff13c662c5df38eb90d98581807d067fac577de7ffb26cf7e0a2f07e225fbb3",
+    "superseded/attempt12-pre-v52-infrastructure.zip": "dbba67650840c110b453926acc2b577faf93d21755d5578b090bee9cb33c2211"
+  },
+  "appRevision": "fe2ccbcac4dbe386c786127ccfed5cb55373d363",
+  "scriptsRevision": "4b62beca135ebd209c507e914d7e8301230b4804",
+  "appAssemblySha256": "a11a03dd9f96c565decb8e347489ab8969d722822173a78f7d40c0dd141cf902",
+  "measurement": {
+    "runId": "e82f8d3b2589af58ad93bbd0b9a19ba8",
+    "receiptSchema": 60,
+    "sourcePolicy": "readonly-owned-source-graph-v54"
+  },
+  "attempts": [
+    {
+      "archive": "superseded/attempt-25.zip",
+      "runId": "4dbe97e8ff59c6659b4f21445a1530a0",
+      "reason": "Collected all suites (selection colors included) but the final receipt refused it: the rebase had reordered the captured v55-v58 source inventories, so the retained inventory did not equal the pinned v59 inventory (Invalid or incomplete v8 owned metadata-state receipt)."
+    },
+    {
+      "archive": "superseded/attempt-26.zip",
+      "runId": "6bf2084f85c6db05a339bf94cbfc8c78",
+      "reason": "Collected all suites but the runner never built or passed the selection-color evidence binding and identity into the receipt context (Invalid selection-color receipt identity)."
+    },
+    {
+      "archive": "superseded/attempt-27.zip",
+      "runId": "9222501a4a407da83896aec15c02efa4",
+      "reason": "Complete receipt, but all four effect contracts were inconclusive: the shared observer requested every capture with a null selection, so no render-only synthetic selection was drawn, the controlled renders were byte-identical across stages and every render control failed. Superseded by the observer fix."
+    },
+    {
+      "archive": "superseded/attempt-28.zip",
+      "runId": "9dfbaccd612098f3a9ed6b288c4ed9e6",
+      "reason": "Complete and supported on all four cases, superseded because Codex and CodeRabbit found that the render checks skipped the selected-ink check while a background override was active, and that the reset cases did not compare the pinned not-tested declaration; the measured contract and grading scripts changed."
+    },
+    {
+      "archive": "superseded/attempt-29.zip",
+      "runId": "698c89fd233a5c545916ca120e31c077",
+      "reason": "Complete and supported on all four cases, superseded because the Codex review of the final head found that, with only a background override active, the selected-ink check accepted absent ink or ink drawn in the fill color; the measured contract script changed with a regression fixture."
+    },
+    {
+      "archive": "superseded/attempt-32.zip",
+      "runId": "adb6d101c94859dc905269922f477405",
+      "reason": "Complete and supported on all four cases on the v52 source scope (receipt schema 58), superseded because the ASCII-reflow batch merged first and took policy v52, captured v59 and schema 58: the suite was restacked onto policy v53, captured v60 (reflow plus the seven selection-color scripts) and schema 59, which changes the bound source scope, so the measurement was repeated."
+    },
+    {
+      "archive": "superseded/attempt-33.zip",
+      "runId": "dc2c29f5106f2772757922e093d42458",
+      "reason": "Complete and supported on all four cases on v53 / schema 59, superseded because the Codex review of that head found the selection-foreground check accepted any render with more than ten matching pixels, so glyphs drawn mostly in a stale colour could still grade supported (the check now also requires the dominant selected ink to be the override), and because the OSC 777 / OSC 99 batch merged first and took policy v53: the suite was restacked onto v54 (captured v61, 360 files, receipt schema 60) and re-measured."
+    },
+    {
+      "archive": "superseded/attempt-35.zip",
+      "runId": "4ce60d5005271dc4e7ade8fa92b78d1a",
+      "reason": "Complete and supported on all four cases on v54 / schema 60 with the stricter foreground-ink check, superseded because its disposable App was the sidecar mirror built before the OSC 777 / OSC 99 notification batch merged, so its stock run graded extensions.osc99-kitty-notify inconclusive (87 supported, 1 unsupported, 167 inconclusive) while every suite admitted after the notification suite is recorded against an App that answers the OSC 99 probe (88, 1, 166). The App was rebuilt from the merged tree and the suite re-measured; the effect verdicts were identical."
+    },
+    {
+      "archive": "superseded/attempt-36.zip",
+      "runId": "27ee602c4514a7467a1e60297968b38a",
+      "reason": "Complete and supported on all four cases on v54 / schema 60 with the rebuilt App (stock 88 supported, 1 unsupported, 166 inconclusive), superseded because the Codex review of its head found that the selection-background check sampled only the blank row, so a renderer that painted the blank selected cells but left the selected text on the ordinary background could still grade OSC 17 and 117 supported. The check now also requires the selected text row own most frequent paint to be the override fill, with a regression fixture (blankOnlyBackgroundFill); the measured grading and contract scripts changed, so the suite was re-measured."
+    },
+    {
+      "archive": "superseded/attempt-37.zip",
+      "runId": "a32a5b13d4c22eaa59c6f11b7ec19d2d",
+      "reason": "Complete and supported on all four cases on v54 / schema 60 (stock 88 supported, 1 unsupported, 166 inconclusive), superseded because the Codex review of its head found two reset-stage render gaps: after an OSC 117 reset the fill under the selected text was not compared with the baseline while a foreground override remained, and after an OSC 119 reset any visible ink other than the two override colours was accepted. The checks now require the text-row fill to equal the baseline when no background override is active and the ink to equal the App-resolved derived selection foreground (the ordinary foreground when the App derives none), with regression fixtures (staleTextFillAfterReset, wrongDerivedInk); the measured grading and contract scripts changed, so the suite was re-measured."
+    },
+    {
+      "archive": "superseded/attempt12-pre-v52-infrastructure.zip",
+      "runId": null,
+      "reason": "Earlier collection made before the suite was rewired onto the current main infrastructure (policy v52 scope); retained unchanged."
+    }
+  ]
+}
