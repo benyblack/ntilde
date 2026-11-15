@@ -143,3 +143,32 @@ test('the first failure in execution order decides: a protocol mismatch is not m
     assert.equal(control.outcome, 'inconclusive', 'a control that fails before any protocol group makes the case inconclusive');
     assert.match(control.note, /set-A/);
 });
+
+test('no demand depends on where a numbered store or restore leaves the stack position', () => {
+    // xterm's text says numbered operations store/restore "without pushing/popping"; where they leave the top is not documented, so the contract decides only the colors read back after them. Run the
+    // contract's own numbered sequences through a model whose numbered operations leave the position alone and one that moves it to the slot (xterm's source, per the production): the replies agree.
+    class Stays extends XtermColorStackModel {
+        push(slot) { const used = this.used; super.push(slot); if (slot > 0) this.used = used; }
+        pop(slot) { const used = this.used; super.pop(slot); if (slot > 0) this.used = used; }
+    }
+    const sequences = [
+        // modes.xtpushcolors: store 2 (A), set B, store 1 (B), set C, restore 2, restore 1.
+        [['set', { fg: '#102030' }], ['push', 2], ['set', { fg: '#c0d0e0' }], ['push', 1], ['set', { fg: '#050607' }], ['pop', 2], ['pop', 1]],
+        // modes.xtpopcolors: store 1 (A), set B, restore 1.
+        [['set', { fg: '#102030' }], ['push', 1], ['set', { fg: '#c0d0e0' }], ['pop', 1]],
+    ];
+    for (const sequence of sequences) {
+        const moves = new XtermColorStackModel(), stays = new Stays(), seen = [];
+        for (const [op, value] of sequence) {
+            for (const model of [moves, stays]) model[op](value);
+            seen.push([moves.query(['fg']), stays.query(['fg'])]);
+        }
+        for (const [left, right] of seen) assert.deepEqual(left, right);
+    }
+    for (const contract of xcsContracts) {
+        const numbered = contract.groups.filter(group => /^(store|restore)-slot/.test(group.role));
+        assert.ok(numbered.length >= 2, `${contract.caseId} decides numbered slots only through the colors read back`);
+        for (const group of numbered) assert.match(group.request, /\x1b\[\d+#[PQ]/, `${group.role} uses a numbered spelling`);
+        for (const group of numbered) assert.deepEqual(group.request.match(/\x1b\[\d*#[PQ]/g)?.length, 1, 'a numbered group holds exactly one stack operation, and it is the numbered one');
+    }
+});

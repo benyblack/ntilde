@@ -49,7 +49,7 @@ explicit colour reset (`OSC 104/110/111/112`); the start and finish screens and 
 
 Only the foreground, background, cursor and ANSI palette entry 5 decide; no other dynamic color (pointer, highlight, Tek) and no rendering or painted-pixel claim. The `CSI # R` depth report is not an observer here and
 the kitty color stack (`OSC 30001/30101`) is a different spelling, not measured. The xterm slot contents and deepest counter cannot be reset without RIS: every sequence here is balanced (numbered stores use slots 1 and 2
-and are restored to depth 0), so they end at depth 0. xterm's behavior beyond its text (empty pop, extended palette entries, slot bookkeeping) is not asserted. No remote/mux, persistent-session, Windows/Linux or
+and are restored to depth 0), so they end at depth 0. xterm's behavior beyond its text (empty pop, extended palette entries, slot bookkeeping) is not asserted. In particular the text says numbered operations store or restore "without pushing" or "without popping" but not where they leave the top of the stack (the App moves it to the slot, following xterm's source); no group decides that, because the contract reads only the colors back after numbered operations and a unit test shows its demands are identical whether a numbered operation moves the top or not. A separate default-pop probe after a numbered operation would assert the undocumented position, so it is not part of this contract. No remote/mux, persistent-session, Windows/Linux or
 common-harness claim.
 
 ## Identities
