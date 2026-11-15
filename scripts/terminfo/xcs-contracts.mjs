@@ -222,7 +222,7 @@ function popGroups() {
     groups.push(ask('pop-lifo-1', 'protocol', 'the first pop is silent and restores colors B, the most recent push', b.run([], [{ pop: 0 }])));
     groups.push(ask('pop-lifo-2', 'protocol', 'the second pop restores colors A, the earlier push', b.run([], [{ pop: 0 }])));
     groups.push(ask('pop-empty', 'policy', 'a pop with nothing stored below changes no color (xterm\'s text does not describe this; Ntilde ignores it)', b.run([], [{ pop: 0 }])));
-    groups.push(ask('store-slot-1', 'control', 'colors A are stored in slot 1 by a numbered push, silently and without altering the current colors', b.run([], [{ push: 1 }])));
+    groups.push(ask('store-slot-1', 'control', 'colors A are set again (isolating this control from the policy probe before it) and stored in slot 1 by a numbered push, silently and without altering the current colors', b.run([{ set: sets.A }], [{ push: 1 }])));
     groups.push(ask('set-B', 'control', 'colors B are set and read back', b.run([{ set: sets.B }], [])));
     groups.push(ask('restore-slot-1', 'protocol', 'a numbered pop of slot 1 restores colors A without needing a prior unnumbered push', b.run([], [{ pop: 1 }])));
     groups.push(extendedGroup());

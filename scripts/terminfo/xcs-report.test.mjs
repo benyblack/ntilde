@@ -28,6 +28,9 @@ test('BEL-terminated and unterminated OSC strings are replies or retained chunks
     assert.deepEqual(parseXcsFrame(bel + reply + da), { barrier: da, replies: [bel, reply] });
     assert.deepEqual(parseXcsFrame('\x1b]11;rgb:11' + da), { barrier: da, replies: ['\x1b]11;rgb:11'] }, 'an unterminated OSC string before the barrier is retained as unexpected bytes');
     assert.equal(parseXcsFrame('\x1b]11;rgb:11'), null, 'without a barrier it still waits');
+    for (const split of ['\x1b]bad\x1b', '\x1b]bad\x1b[', '\x1b]bad\x1b[?', '\x1b]bad\x1b[?62;4']) assert.equal(parseXcsFrame(split), null, `a barrier split across reads waits: ${JSON.stringify(split)}`);
+    assert.deepEqual(parseXcsFrame('\x1b]bad' + da), { barrier: da, replies: ['\x1b]bad'] });
+    assert.throws(() => parseXcsFrame('\x1b]bad\x1bx'), /xterm-color-stack/, 'an embedded ESC that does not start a barrier is still refused');
 });
 
 test('unexpected output of a stack operation is retained byte for byte before the barrier, never refused', () => {

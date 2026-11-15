@@ -59,7 +59,8 @@ export function parseXcsFrame(bytes) {
         const length = rest.startsWith(esc + ']') ? replyEnd(rest) : -1;
         // An OSC string that never terminates before a DA barrier is not a reply: it falls through and is retained as an unexpected chunk.
         if (rest.startsWith(esc + ']') && length < 0 && !barrierAnywhere.test(rest)) {
-            if (!stringShape(rest, false)) throw new Error('Unexpected xterm-color-stack bytes.');
+            // A barrier may still be arriving: a trailing partial DA reply (ESC, ESC [, ESC [ ? and digits) is not part of the string.
+            if (!stringShape(rest.replace(/\x1b(?:\[(?:\?[\d;]*)?)?$/, ''), false)) throw new Error('Unexpected xterm-color-stack bytes.');
             return null;
         }
         if (length >= 0) {
