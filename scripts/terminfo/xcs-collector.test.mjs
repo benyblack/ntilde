@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { xcsRecordingContext } from './xcs-collector.mjs';
+import { xcsRecordingContext, xcsExpectedCalls } from './xcs-collector.mjs';
 import { xcsContracts } from './xcs-contracts.mjs';
 
 const da = '\x1b[?62;4;22c';
@@ -48,4 +48,16 @@ test('the terminal contexts serve the read cursor as a one-based position, in th
     const absent = xcsRecordingContext(pop, 'terminal', exchange, null);
     absent.write('\x1b[#P'); absent.write('\x1b[#Q');
     assert.equal(await absent.queryCursorPosition(), null, 'no cursor means no position');
+});
+
+test('the expected call count is the full script, or the early invalid-reply return of the termless path', () => {
+    const noisy = { barrier: da, replies: ['\x1b[?0;0#Q'] };
+    assert.equal(xcsExpectedCalls(push, 'termless', exchange), 3);
+    assert.equal(xcsExpectedCalls(push, 'termless', noisy), 1, 'the push probe stops at its first capture');
+    assert.equal(xcsExpectedCalls(pop, 'termless', noisy), 2, 'the pop probe stops at its capture after the push feed');
+    for (const contract of [push, pop]) assert.equal(xcsExpectedCalls(contract, 'terminal', noisy), 3, 'the terminal path makes every call whatever came back');
+    assert.equal(xcsExpectedCalls(pop, 'termless', null), 3);
+    const context = xcsRecordingContext(push, 'termless', noisy, [0, 0]);
+    assert.equal(context.feedCapture('\x1b[#P'), '\x1b[?0;0#Q');
+    assert.equal(context.callCount, xcsExpectedCalls(push, 'termless', noisy));
 });

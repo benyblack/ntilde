@@ -37,6 +37,14 @@ export function xcsRecordingContext(contract, path, exchange, cursor) {
     };
 }
 
+/** How many calls one pinned path makes over the journaled exchange. The terminal path always makes them all (its cursor query and closing write run whatever came back); the termless path returns
+ *  early with the pinned invalid-reply result at the first capture that carries output. */
+export function xcsExpectedCalls(contract, path, exchange) {
+    const script = contract.pinnedScript[path];
+    if (path === 'terminal' || exchange === null || exchange.replies.join('').length === 0) return script.length;
+    return script.findIndex(step => step[2] === 'replies') + 1;
+}
+
 /** One plan step of the case. A capture step is a fenced exchange whose replies the next read journals; any other feed clears them. */
 async function runStep(step, record, { fence, owner, caseId }) {
     if (step.feed) {
@@ -99,7 +107,7 @@ export async function collectXcsGrading({ config, fence, owner, gradingModule })
         const termless = gradingModule.ntildeRunXcsTermless(contract.caseId, termlessContext);
         const terminalContext = xcsRecordingContext(contract, 'terminal', pinnedExchange, read?.cursor ?? null);
         const terminal = await gradingModule.ntildeRunXcsTerminal(contract.caseId, terminalContext); // NOSONAR - serial by design: each pinned replay settles in case order
-        if (termlessContext.callCount !== contract.pinnedScript.termless.length || terminalContext.callCount !== contract.pinnedScript.terminal.length) throw new Error(`Pinned ${contract.caseId} replay made fewer calls than the contract.`);
+        if (termlessContext.callCount !== xcsExpectedCalls(contract, 'termless', pinnedExchange) || terminalContext.callCount !== xcsExpectedCalls(contract, 'terminal', pinnedExchange)) throw new Error(`Pinned ${contract.caseId} replay made fewer calls than the contract.`);
         run.cases.push({ caseId: item.caseId, feeds: item.feeds, barriers: item.barriers, reads: item.reads, pinned: { termless, terminal } });
     }
     return run;

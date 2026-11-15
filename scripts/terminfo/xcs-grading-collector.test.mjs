@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { existsSync } from 'node:fs';
 import { adaptXcsCollector, xcsAdapterId, xcsSeams } from './xcs-grading-collector.mjs';
 import { xcsCaseIds, xcsContracts, replayXcsPinned } from './xcs-contracts.mjs';
-import { xcsRecordingContext } from './xcs-collector.mjs';
+import { xcsRecordingContext, xcsExpectedCalls } from './xcs-collector.mjs';
 
 /** A verbatim source: seams appear exactly once each, as plain text. */
 const verbatim = () => xcsSeams.join('\n/* gap */\n') + '\n';
@@ -72,7 +72,9 @@ test('the real pinned bundle derives through every layer and the pinned code run
             assert.deepEqual(terminal, replayXcsPinned(caseId, 'terminal', { position: { row: 1, col: 1 } }), `${caseId} terminal matches the replay`);
             // Any output from the stack operation is the pinned invalid-reply, never support.
             const noisy = { barrier: da, replies: ['\x1b[?0;0#Q'] };
-            const { probeId: noisyId, ...invalid } = module.ntildeRunXcsTermless(caseId, xcsRecordingContext(contract, 'termless', noisy, [0, 0]));
+            const noisyContext = xcsRecordingContext(contract, 'termless', noisy, [0, 0]);
+            const { probeId: noisyId, ...invalid } = module.ntildeRunXcsTermless(caseId, noisyContext);
+            assert.equal(noisyContext.callCount, xcsExpectedCalls(contract, 'termless', noisy), `${caseId} returns early at the capture that carries output`);
             assert.equal(noisyId, caseId);
             assert.deepEqual(invalid, replayXcsPinned(caseId, 'termless', { replies: '\x1b[?0;0#Q', barrier: da }));
             assert.equal(invalid.observation.reason, 'invalid-reply');

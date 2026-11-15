@@ -27,13 +27,18 @@ function stringShape(text, closed) {
     return body.length <= bodyLimit && !body.includes(esc);
 }
 
-/** Refuse anything but one complete bounded OSC string. */
+/** The most bytes one retained reply (an OSC string, or an unexpected chunk of other bytes) may hold. */
+const replyLimit = 160;
+/** A DA reply anywhere in a string: the barrier that orders an exchange. */
+const barrierAnywhere = /\x1b\[\?[\d;]+c/;
+
+/** Refuse anything but one bounded reply: a complete OSC string, or an unexpected chunk of other bytes (a push or pop that answers with anything is evidence, not an error). Neither may hold a DA barrier. */
 export function parseXcsReply(raw) {
-    if (typeof raw !== 'string' || !stringShape(raw, true)) throw new Error('Unexpected xterm-color-stack reply.');
+    if (typeof raw !== 'string' || raw.length === 0 || raw.length > replyLimit || barrierAnywhere.test(raw)) throw new Error('Unexpected xterm-color-stack reply.');
     return { raw };
 }
 
-/** Where one OSC reply ends in `rest` (at its ST), or -1 while incomplete; throws on bytes no reply starts with. */
+/** Where one OSC reply ends in `rest` (at its ST), or -1 while incomplete; throws on an oversized string. */
 function replyEnd(rest) {
     const end = rest.indexOf(esc + '\\');
     if (end < 0) {
@@ -44,24 +49,39 @@ function replyEnd(rest) {
 }
 
 /**
- * Parse the accumulated bytes of one exchange: any number of complete bounded replies followed by the DA barrier. Null means incomplete. A complete DA without a reply is an explicitly absent
- * reply list, never a reply guessed from state.
+ * Parse the accumulated bytes of one exchange: any number of complete bounded replies followed by the DA barrier. A reply is a complete OSC string or, for bytes that are not an OSC string, one unexpected
+ * chunk up to the barrier (retained byte for byte: the pinned probe treats any output as an invalid reply and the contract as a mismatch). Null means incomplete. A complete DA without a reply is an
+ * explicitly absent reply list, never a reply guessed from state.
  */
 export function parseXcsFrame(bytes) {
     if (typeof bytes !== 'string' || bytes.length > exchangeLimit) throw new Error('Oversized xterm-color-stack barrier.');
     const replies = [];
     let rest = bytes;
-    while (rest.startsWith(esc + ']')) {
-        const length = replyEnd(rest);
-        if (length < 0) return null;
+    for (;;) {
+        if (rest.startsWith(esc + ']')) {
+            const length = replyEnd(rest);
+            if (length < 0) return null;
+            if (replies.length === xcsReplyLimit) throw new Error('Too many xterm-color-stack replies.');
+            replies.push(parseXcsReply(rest.slice(0, length)).raw);
+            rest = rest.slice(length);
+            continue;
+        }
+        if (!rest || (esc + '[?').startsWith(rest)) return null;
+        if (isBarrier(rest)) return { barrier: rest, replies };
+        const barrier = barrierAnywhere.exec(rest);
+        if (barrier === null) {
+            if (rest.length > replyLimit + 32) throw new Error('Oversized xterm-color-stack reply.');
+            return null;
+        }
+        if (barrier.index === 0) {
+            // A complete DA reply followed by more bytes is not a single barrier.
+            if (rest.length !== barrier[0].length) throw new Error('Unexpected xterm-color-stack barrier bytes.');
+            return { barrier: rest, replies };
+        }
         if (replies.length === xcsReplyLimit) throw new Error('Too many xterm-color-stack replies.');
-        replies.push(parseXcsReply(rest.slice(0, length)).raw);
-        rest = rest.slice(length);
+        replies.push(parseXcsReply(rest.slice(0, barrier.index)).raw);
+        rest = rest.slice(barrier.index);
     }
-    if (!rest || (esc + '[?').startsWith(rest)) return null;
-    if (isBarrier(rest)) return { barrier: rest, replies };
-    if (!rest.startsWith(esc) || !/^\[\?[\d;]*$/.test(rest.slice(1))) throw new Error('Unexpected xterm-color-stack barrier bytes.');
-    return null;
 }
 
 /** A retained exchange: its raw replies (or explicit absence) and DA barrier. */

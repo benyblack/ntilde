@@ -9,7 +9,7 @@ import { validateXcsExchange } from './xcs-report.mjs';
 import { xcsContracts, xcsCaseIds, xcsContractsVersion, xcsNoncePrefix, xcsPrefix, xcsSuiteId, xcsEffectContractId, gradeXcsCase, xcsObservation,
     validateXcsScreen, replayXcsPinned } from './xcs-contracts.mjs';
 import { xcsAdapterId } from './xcs-grading-collector.mjs';
-import { xcsRecordingContext } from './xcs-collector.mjs';
+import { xcsRecordingContext, xcsExpectedCalls } from './xcs-collector.mjs';
 
 const label = 'xterm-color-stack';
 const derivedFrom = 'ntilde-owned-left-right-margins-grading-v1';
@@ -84,7 +84,7 @@ function verifyPinnedReplays(contract, recorded, readFrames, replies, { replayMo
     if (replayModule) {
         const context = xcsRecordingContext(contract, 'termless', exchange, cursor);
         requireReplayAgreement(contract, replayModule.ntildeRunXcsTermless(contract.caseId, context), termless);
-        if (context.callCount !== contract.pinnedScript.termless.length) throw new Error(`Pinned ${contract.caseId} replay made a different number of calls.`);
+        if (context.callCount !== xcsExpectedCalls(contract, 'termless', exchange)) throw new Error(`Pinned ${contract.caseId} replay made a different number of calls.`);
     }
     return { termless, terminal };
 }

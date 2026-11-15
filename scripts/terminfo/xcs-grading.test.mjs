@@ -67,3 +67,17 @@ test('a pinned push that answered would be an invalid reply, still inconclusive,
     assert.equal(item.pinned.termless.observation.reason, 'invalid-reply');
     assert.equal(item.effectContract.outcome, 'unsupported');
 });
+
+test('a pinned push or pop that answers with a non-OSC reply is retained: invalid-reply, early return, unsupported effect', () => {
+    for (const caseId of ['modes.xtpushcolors', 'modes.xtpopcolors']) {
+        const noisy = (id, role, read) => (id === caseId && role === 'pinned' ? { ...read, replies: ['\x1b[?0;0#Q'] } : null);
+        const evidence = syntheticXcsEvidence({ mutate: noisy });
+        const report = buildXcsGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter);
+        const item = report.cases.find(entry => entry.caseId === caseId);
+        assert.equal(item.pinned.termless.observation.reason, 'invalid-reply', caseId);
+        assert.equal(item.pinned.termless.response, '\x1b[?0;0#Q');
+        assert.equal(item.effectContract.outcome, 'unsupported');
+        assert.equal(item.conclusion.outcome, 'inconclusive');
+        assert.deepEqual(item.observed.groups.pinned.received, ['\\e[?0;0#Q']);
+    }
+});
