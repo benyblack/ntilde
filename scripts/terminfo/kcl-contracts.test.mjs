@@ -180,3 +180,21 @@ test('the grader refuses a revision it does not know and missing captures', () =
     assert.throws(() => gradeKclCase(contract, {}, 2), /Unknown kitty color contracts revision/);
     assert.throws(() => gradeKclCase(contract, {}), /Missing extensions.osc21-kitty-color read captures/);
 });
+
+test('every deciding encoding group scales to whole bytes, so the unspecified rounding of a partial byte cannot decide a verdict', () => {
+    const floor = value => {
+        const wide = /^rgb:([0-9a-f]{1,4})\/([0-9a-f]{1,4})\/([0-9a-f]{1,4})$/i.exec(value), intensity = /^rgbi:([\d.]+)\/([\d.]+)\/([\d.]+)$/.exec(value);
+        const channels = wide ? wide.slice(1).map(part => Math.floor(Number.parseInt(part, 16) * 255 / (16 ** part.length - 1)))
+            : intensity?.slice(1).map(part => Math.floor(Math.min(1, Number(part)) * 255 + 1e-9));
+        return channels ? `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}` : null;
+    };
+    let checked = 0;
+    for (const group of contract.groups.filter(item => item.role.startsWith('encoding-') && item.kind === 'protocol')) {
+        const value = /^\x1b\]21;background=([^;]+);background=\?/.exec(group.request)?.[1];
+        assert.ok(value, group.role);
+        const truncated = floor(value);
+        if (truncated !== null) assert.equal(parseKittyColor(value), truncated, `${group.role}: ${value} must scale to whole bytes`);
+        checked++;
+    }
+    assert.ok(checked >= 6);
+});

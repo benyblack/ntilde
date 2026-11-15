@@ -114,7 +114,8 @@ const rgbiPart = String.raw`(\d(?:\.\d+)?)`;
 const rgbiForm = re(`^rgbi:${rgbiPart}/${rgbiPart}/${rgbiPart}$`);
 const hexTriple = (digits, convert) => `#${[0, 1, 2].map(i => hex2(convert(Number.parseInt(digits.slice(i * digits.length / 3, (i + 1) * digits.length / 3), 16)))).join('')}`;
 
-/** A numeric color as kitty's text defines it, as `#rrggbb`, or null for anything else (names, an alpha suffix and the empty value are policy: ignored). */
+/** A numeric color as kitty's text defines it, as `#rrggbb`, or null for anything else (names, an alpha suffix and the empty value are policy: ignored). Kitty's text does not say how a
+ *  scaled channel that is not a whole byte is rounded (Ntilde truncates, like its OSC 10 parser); every deciding group therefore uses values that scale exactly, so the choice cannot decide a verdict. */
 export function parseKittyColor(value) {
     if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
     if (/^#[0-9a-f]{3}$/i.test(value)) return hexTriple(value.slice(1), part => part * 16); // most significant bits: #3a7 is #3000a0007000
