@@ -30,15 +30,14 @@ export function includesXcsEvidence(output, evidence, context) {
 
 /** The outcome counts of the case conclusions (the pinned verdicts) and, separately, of the effect contract. */
 export function xcsCounts(report) {
-    const counts = {};
-    for (const item of report.cases) counts[item.conclusion.outcome] = (counts[item.conclusion.outcome] ?? 0) + 1;
-    return counts;
+    return report.cases.reduce((counts, item) => ({ ...counts, [item.conclusion.outcome]: (counts[item.conclusion.outcome] ?? 0) + 1 }), {});
 }
 
 /** A retained artifact must be a regular file: a symlink could point at valid evidence that later disappears. */
 function regularBytes(output, name) {
-    if (!lstatSync(join(output, name)).isFile()) fail(`xterm-color-stack artifact is not a regular file: ${name}`);
-    return readFileSync(join(output, name));
+    const path = join(output, name);
+    if (!lstatSync(path).isFile()) fail(`xterm-color-stack artifact is not a regular file: ${name}`);
+    return readFileSync(path);
 }
 
 /** The retained extension must be exactly the layered derivation of every predecessor over the retained first grading extension over the owned adapter. */

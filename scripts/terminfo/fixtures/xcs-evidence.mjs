@@ -1,14 +1,12 @@
 // Synthetic, fully valid xterm color-stack grading evidence for portable tests. Every frame, run-log entry and pinned result is produced through the same production validators used for real
 // measurements. The expected replies are hand-written literal bytes, a second oracle independent of the contract's model, so the fixture is a cross-check, not a mirror. The screens carry the
 // attributed seed (bold and indexed-red text, a curly-underlined cell, margins 2..6) that every exchange must leave untouched.
-import { snapshotHash } from '../agent-observer.mjs';
 import { planFeeds } from '../graded-plan.mjs';
 import { xcsContracts, xcsObservation, gradeXcsCase, replayXcsPinned } from '../xcs-contracts.mjs';
 import { xcsAdapterId } from '../xcs-grading-collector.mjs';
-import { syntheticColEditScreen, paletteBinding, colorCell } from './col-edit-evidence.mjs';
-import { paletteChannel } from './sgr-palette-evidence.mjs';
+import { syntheticColEditScreen, paletteBinding } from './col-edit-evidence.mjs';
+import { seedRows, frame, alternate } from './devq-evidence.mjs';
 
-const paneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
 const deviceAttribute = '\x1b[?62;4;22c';
 const st = '\x1b\\';
 const osc = (code, rgb) => `\x1b]${code};rgb:${rgb}${st}`;
@@ -31,27 +29,6 @@ const exchanges = Object.freeze({
         baseline: base, pinned: [], 'after-pinned': base, 'push-baseline': base, 'set-A': setA, 'pop-restores-default': base, 'push-A': setA, 'push-B': setB, 'set-C': setC,
         'pop-lifo-1': setB, 'pop-lifo-2': setA, 'pop-empty': setA, 'store-slot-1': setA, 'set-B': setB, 'restore-slot-1': setA, 'extended-palette': extendedX,
     },
-});
-
-/** The attributed seed rows of the measured screen. */
-const seedRows = () => [
-    [],
-    [colorCell('N', { attrs: ['bold'] }), colorCell('t', { attrs: ['bold'] }), colorCell('i', { attrs: ['bold'] }),
-        colorCell('l', { attrs: ['bold'] }), colorCell('d', { attrs: ['bold'] }), colorCell('e', { attrs: ['bold'] }),
-        colorCell('X', { attrs: ['bold'], fg: paletteChannel(1) }), colorCell('T', { attrs: ['bold'], fg: paletteChannel(1) })],
-    [],
-    [colorCell('U', { underlineStyle: 3 })],
-];
-
-/** One journaled frame with its digest. */
-const frame = (index, kind, screen, barrier, reportValue) => ({ index, kind, paneId, barrier, screen, sha256: snapshotHash(screen), ...(reportValue ? { report: reportValue } : {}) });
-/** A synthetic screen on the alternate screen the suite runs on, with the suite's margins (vertical and DECLRMM off/full-width). */
-const alternate = (screen, nonce) => ({
-    ...screen,
-    ...(nonce === undefined ? {} : { lines: [nonce, ...screen.lines.slice(1)] }),
-    bufferState: { ...screen.bufferState, scrollTop: 1, scrollBottom: 5, alternateScreen: true },
-    horizontalMargins: { leftRightMarginMode: false, leftMargin: 0, rightMargin: screen.cols - 1 },
-    cursorMode: { style: 0, blink: true, isDefault: true },
 });
 
 /** The screens and reply lists of every read of one case; `mutate(caseId, role, read)` may return a changed read to build negative evidence. */

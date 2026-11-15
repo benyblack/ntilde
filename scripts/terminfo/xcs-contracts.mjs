@@ -91,12 +91,14 @@ const channelHex = byte => byte.toString(16).padStart(2, '0').repeat(2);
 /** The X11 rgb: spelling of an 8-bit colour: each channel's two digits doubled (0x11 is 1111). */
 const rgbSpelling = hex => `rgb:${[1, 3, 5].map(at => channelHex(Number.parseInt(hex.slice(at, at + 2), 16))).join('/')}`;
 /** The color channels the contract reads: the three dynamic colors and ANSI palette entry 5 (decided), then extended palette entry 200 (policy). */
+/** A reply shape for one color query code: ESC ] code ; rgb:RRRR/GGGG/BBBB ST (built from a string so no control character sits in a pattern literal). */
+const colorShape = code => new RegExp(String.raw`^<ESC>\]${code};rgb:[0-9a-f]{4}/[0-9a-f]{4}/[0-9a-f]{4}<ESC>\\$`.replaceAll('<ESC>', String.fromCharCode(27)));
 const channels = Object.freeze({
-    fg: { set: hex => `${esc}]10;${hex}${st}`, ask: `${esc}]10;?${st}`, reply: hex => `${esc}]10;${rgbSpelling(hex)}${st}`, shape: /^\x1b\]10;rgb:[0-9a-f]{4}\/[0-9a-f]{4}\/[0-9a-f]{4}\x1b\\$/ },
-    bg: { set: hex => `${esc}]11;${hex}${st}`, ask: `${esc}]11;?${st}`, reply: hex => `${esc}]11;${rgbSpelling(hex)}${st}`, shape: /^\x1b\]11;rgb:[0-9a-f]{4}\/[0-9a-f]{4}\/[0-9a-f]{4}\x1b\\$/ },
-    cursor: { set: hex => `${esc}]12;${hex}${st}`, ask: `${esc}]12;?${st}`, reply: hex => `${esc}]12;${rgbSpelling(hex)}${st}`, shape: /^\x1b\]12;rgb:[0-9a-f]{4}\/[0-9a-f]{4}\/[0-9a-f]{4}\x1b\\$/ },
-    p5: { set: hex => `${esc}]4;5;${hex}${st}`, ask: `${esc}]4;5;?${st}`, reply: hex => `${esc}]4;5;${rgbSpelling(hex)}${st}`, shape: /^\x1b\]4;5;rgb:[0-9a-f]{4}\/[0-9a-f]{4}\/[0-9a-f]{4}\x1b\\$/ },
-    x200: { set: hex => `${esc}]4;200;${hex}${st}`, ask: `${esc}]4;200;?${st}`, reply: hex => `${esc}]4;200;${rgbSpelling(hex)}${st}`, shape: /^\x1b\]4;200;rgb:[0-9a-f]{4}\/[0-9a-f]{4}\/[0-9a-f]{4}\x1b\\$/ },
+    fg: { set: hex => `${esc}]10;${hex}${st}`, ask: `${esc}]10;?${st}`, reply: hex => `${esc}]10;${rgbSpelling(hex)}${st}`, shape: colorShape('10') },
+    bg: { set: hex => `${esc}]11;${hex}${st}`, ask: `${esc}]11;?${st}`, reply: hex => `${esc}]11;${rgbSpelling(hex)}${st}`, shape: colorShape('11') },
+    cursor: { set: hex => `${esc}]12;${hex}${st}`, ask: `${esc}]12;?${st}`, reply: hex => `${esc}]12;${rgbSpelling(hex)}${st}`, shape: colorShape('12') },
+    p5: { set: hex => `${esc}]4;5;${hex}${st}`, ask: `${esc}]4;5;?${st}`, reply: hex => `${esc}]4;5;${rgbSpelling(hex)}${st}`, shape: colorShape('4;5') },
+    x200: { set: hex => `${esc}]4;200;${hex}${st}`, ask: `${esc}]4;200;?${st}`, reply: hex => `${esc}]4;200;${rgbSpelling(hex)}${st}`, shape: colorShape('4;200') },
 });
 const coreChannels = Object.freeze(['fg', 'bg', 'cursor', 'p5']);
 /** Three distinguishable color sets over the four core channels, and two values for the extended entry. */
@@ -166,6 +168,8 @@ function builder() {
     };
     return {
         model, askQuery,
+        /** The pinned push/pop pair applied to the model (it returns the empty demand of the silent pinned exchange). */
+        cycle() { model.push(0); model.pop(0); return []; },
         /** A group: `pre` ops are written uncaptured first (each its own feed), `main` ops and then the query of `names` are the captured request, with the demand from the model. */
         run(pre, main, names = coreChannels) {
             const setup = pre.map(apply);
@@ -183,50 +187,49 @@ const extendedGroup = () => ask('extended-palette', 'policy', 'palette entry 200
 /** The groups of modes.xtpushcolors. */
 function pushGroups() {
     const b = builder();
-    const groups = [baselineGroup(b)];
-    // The exact pinned sequence: CSI # P captured (no reply), then CSI # Q. Nothing may change.
-    b.model.push(0); b.model.pop(0);
-    groups.push(ask('pinned', 'protocol', 'the exact pinned CSI # P is accepted silently (its fenced exchange holds no reply) and the pinned CSI # Q that follows leaves the screen unchanged',
-        { request: csiPush, demand: [], after: csiPop }));
-    groups.push(ask('after-pinned', 'protocol', 'after the pinned push/pop pair every channel reads back as the baseline', b.run([], [])));
-    groups.push(ask('set-A', 'control', 'colors A (foreground, background, cursor, palette 5) are set and read back', b.run([{ set: sets.A }], [])));
-    groups.push(ask('push-silent', 'protocol', 'a push is silent and changes no current color', b.run([], [{ push: 0 }])));
-    groups.push(ask('set-B', 'control', 'colors B are set and read back', b.run([{ set: sets.B }], [])));
-    groups.push(ask('pop-recovers-pushed', 'protocol', 'a pop returns every channel to colors A, the snapshot taken by the push', b.run([], [{ pop: 0 }])));
-    groups.push(ask('snapshot-is-copy', 'protocol', 'a pushed snapshot is a copy: two later color changes (B then C) do not alter it, and a pop returns colors A',
-        b.run([{ push: 0 }, { set: sets.B }, { set: sets.C }], [{ pop: 0 }])));
-    groups.push(ask('store-slot-2', 'protocol', 'a numbered push stores colors A in slot 2 silently and without altering the current colors', b.run([], [{ push: 2 }])));
-    groups.push(ask('set-B-again', 'control', 'colors B are set and read back', b.run([{ set: sets.B }], [])));
-    groups.push(ask('store-slot-1', 'protocol', 'a second numbered push stores colors B in slot 1 silently and without altering the current colors', b.run([], [{ push: 1 }])));
-    groups.push(ask('set-C', 'control', 'colors C are set and read back', b.run([{ set: sets.C }], [])));
-    groups.push(ask('restore-slot-2', 'protocol', 'a numbered pop of slot 2 restores colors A, the colors stored there (slots are independent of order)', b.run([], [{ pop: 2 }])));
-    groups.push(ask('restore-slot-1', 'protocol', 'a numbered pop of slot 1 restores colors B, the colors stored there', b.run([], [{ pop: 1 }])));
-    groups.push(extendedGroup());
-    return groups;
+    return [
+        baselineGroup(b),
+        ask('pinned', 'protocol', 'the exact pinned CSI # P is accepted silently (its fenced exchange holds no reply) and the pinned CSI # Q that follows leaves the screen unchanged',
+        { request: csiPush, demand: b.cycle(), after: csiPop }),
+        ask('after-pinned', 'protocol', 'after the pinned push/pop pair every channel reads back as the baseline', b.run([], [])),
+        ask('set-A', 'control', 'colors A (foreground, background, cursor, palette 5) are set and read back', b.run([{ set: sets.A }], [])),
+        ask('push-silent', 'protocol', 'a push is silent and changes no current color', b.run([], [{ push: 0 }])),
+        ask('set-B', 'control', 'colors B are set and read back', b.run([{ set: sets.B }], [])),
+        ask('pop-recovers-pushed', 'protocol', 'a pop returns every channel to colors A, the snapshot taken by the push', b.run([], [{ pop: 0 }])),
+        ask('snapshot-is-copy', 'protocol', 'a pushed snapshot is a copy: two later color changes (B then C) do not alter it, and a pop returns colors A',
+        b.run([{ push: 0 }, { set: sets.B }, { set: sets.C }], [{ pop: 0 }])),
+        ask('store-slot-2', 'protocol', 'a numbered push stores colors A in slot 2 silently and without altering the current colors', b.run([], [{ push: 2 }])),
+        ask('set-B-again', 'control', 'colors B are set and read back', b.run([{ set: sets.B }], [])),
+        ask('store-slot-1', 'protocol', 'a second numbered push stores colors B in slot 1 silently and without altering the current colors', b.run([], [{ push: 1 }])),
+        ask('set-C', 'control', 'colors C are set and read back', b.run([{ set: sets.C }], [])),
+        ask('restore-slot-2', 'protocol', 'a numbered pop of slot 2 restores colors A, the colors stored there (slots are independent of order)', b.run([], [{ pop: 2 }])),
+        ask('restore-slot-1', 'protocol', 'a numbered pop of slot 1 restores colors B, the colors stored there', b.run([], [{ pop: 1 }])),
+        extendedGroup(),
+    ];
 }
 
 /** The groups of modes.xtpopcolors. */
 function popGroups() {
     const b = builder();
-    const groups = [baselineGroup(b)];
-    b.model.push(0); b.model.pop(0);
-    groups.push(ask('pinned', 'protocol', 'the exact pinned CSI # Q after the pinned CSI # P is accepted silently (its fenced exchange holds no reply) and leaves the screen unchanged',
-        { setup: [csiPush], request: csiPop, demand: [] }));
-    groups.push(ask('after-pinned', 'protocol', 'after the pinned push/pop pair every channel reads back as the baseline', b.run([], [])));
-    groups.push(ask('push-baseline', 'control', 'a push of the untouched host default colors is silent and changes nothing', b.run([], [{ push: 0 }])));
-    groups.push(ask('set-A', 'control', 'colors A are set and read back', b.run([{ set: sets.A }], [])));
-    groups.push(ask('pop-restores-default', 'protocol', 'a pop restores the pushed host default colors (the baseline replies), not the colors in force or any set literal', b.run([], [{ pop: 0 }])));
-    groups.push(ask('push-A', 'control', 'colors A are set and pushed; the push is silent', b.run([{ set: sets.A }], [{ push: 0 }])));
-    groups.push(ask('push-B', 'control', 'colors B are set and pushed on top of A', b.run([{ set: sets.B }], [{ push: 0 }])));
-    groups.push(ask('set-C', 'control', 'colors C are set and read back', b.run([{ set: sets.C }], [])));
-    groups.push(ask('pop-lifo-1', 'protocol', 'the first pop is silent and restores colors B, the most recent push', b.run([], [{ pop: 0 }])));
-    groups.push(ask('pop-lifo-2', 'protocol', 'the second pop restores colors A, the earlier push', b.run([], [{ pop: 0 }])));
-    groups.push(ask('pop-empty', 'policy', 'a pop with nothing stored below changes no color (xterm\'s text does not describe this; Ntilde ignores it)', b.run([], [{ pop: 0 }])));
-    groups.push(ask('store-slot-1', 'control', 'colors A are set again (isolating this control from the policy probe before it) and stored in slot 1 by a numbered push, silently and without altering the current colors', b.run([{ set: sets.A }], [{ push: 1 }])));
-    groups.push(ask('set-B', 'control', 'colors B are set and read back', b.run([{ set: sets.B }], [])));
-    groups.push(ask('restore-slot-1', 'protocol', 'a numbered pop of slot 1 restores colors A without needing a prior unnumbered push', b.run([], [{ pop: 1 }])));
-    groups.push(extendedGroup());
-    return groups;
+    return [
+        baselineGroup(b),
+        ask('pinned', 'protocol', 'the exact pinned CSI # Q after the pinned CSI # P is accepted silently (its fenced exchange holds no reply) and leaves the screen unchanged',
+        { setup: [csiPush], request: csiPop, demand: b.cycle() }),
+        ask('after-pinned', 'protocol', 'after the pinned push/pop pair every channel reads back as the baseline', b.run([], [])),
+        ask('push-baseline', 'control', 'a push of the untouched host default colors is silent and changes nothing', b.run([], [{ push: 0 }])),
+        ask('set-A', 'control', 'colors A are set and read back', b.run([{ set: sets.A }], [])),
+        ask('pop-restores-default', 'protocol', 'a pop restores the pushed host default colors (the baseline replies), not the colors in force or any set literal', b.run([], [{ pop: 0 }])),
+        ask('push-A', 'control', 'colors A are set and pushed; the push is silent', b.run([{ set: sets.A }], [{ push: 0 }])),
+        ask('push-B', 'control', 'colors B are set and pushed on top of A', b.run([{ set: sets.B }], [{ push: 0 }])),
+        ask('set-C', 'control', 'colors C are set and read back', b.run([{ set: sets.C }], [])),
+        ask('pop-lifo-1', 'protocol', 'the first pop is silent and restores colors B, the most recent push', b.run([], [{ pop: 0 }])),
+        ask('pop-lifo-2', 'protocol', 'the second pop restores colors A, the earlier push', b.run([], [{ pop: 0 }])),
+        ask('pop-empty', 'policy', 'a pop with nothing stored below changes no color (xterm\'s text does not describe this; Ntilde ignores it)', b.run([], [{ pop: 0 }])),
+        ask('store-slot-1', 'control', 'colors A are set again (isolating this control from the policy probe before it) and stored in slot 1 by a numbered push, silently and without altering the current colors', b.run([{ set: sets.A }], [{ push: 1 }])),
+        ask('set-B', 'control', 'colors B are set and read back', b.run([{ set: sets.B }], [])),
+        ask('restore-slot-1', 'protocol', 'a numbered pop of slot 1 restores colors A without needing a prior unnumbered push', b.run([], [{ pop: 1 }])),
+        extendedGroup(),
+    ];
 }
 
 /** The plan of one case: the reseed, an initial cells read, then for each group its uncaptured setup feeds, the captured request, its report read and an optional uncaptured after-feed. The case
@@ -261,16 +264,18 @@ const printable = raw => (raw === null ? null : raw.replaceAll(esc, String.raw`\
 
 /** Whether the initial read holds the contracted seed: geometry, nonce at home, the attributed cells, margins and modes. */
 function seedOk(state, nonce) {
-    const boldCells = state.ink.filter(cell => cell.row === 1), underlineCells = state.ink.filter(cell => cell.row === 3);
-    return state.rows >= xcsMinimum.rows && state.cols >= xcsMinimum.cols
-        && state.screen.lines[0] === nonce && state.cursor[0] === 0 && state.cursor[1] === 0
-        && state.margins[0] === seedMargins[0] && state.margins[1] === seedMargins[1] && state.origin === false && state.alternate === true
-        && boldCells.length === seedCells.filter(cell => cell.row === 1).length && underlineCells.length === seedCells.filter(cell => cell.row === 3).length
-        && seedCells.every(spec => {
-            const cell = state.ink.find(item => item.row === spec.row && item.col === spec.col);
-            return cell !== undefined && cell.char === spec.char && cell.bold === (spec.bold ?? false)
-                && (spec.fgIndex === undefined || cell.fgIndex === spec.fgIndex) && (spec.underline === undefined || cell.underline === spec.underline);
-        });
+    const inRow = row => state.ink.filter(cell => cell.row === row).length, seeded = row => seedCells.filter(cell => cell.row === row).length;
+    const geometry = state.rows >= xcsMinimum.rows && state.cols >= xcsMinimum.cols;
+    const home = state.screen.lines[0] === nonce && state.cursor[0] === 0 && state.cursor[1] === 0;
+    const modes = state.margins[0] === seedMargins[0] && state.margins[1] === seedMargins[1] && state.origin === false && state.alternate === true;
+    return geometry && home && modes && inRow(1) === seeded(1) && inRow(3) === seeded(3) && seedCells.every(spec => seedCellOk(state.ink, spec));
+}
+
+/** Whether the stored cell at a seed spec's position holds its character, boldness and (when specified) indexed color and underline style. */
+function seedCellOk(ink, spec) {
+    const cell = ink.find(item => item.row === spec.row && item.col === spec.col);
+    if (cell === undefined || cell.char !== spec.char || cell.bold !== (spec.bold ?? false)) return false;
+    return (spec.fgIndex === undefined || cell.fgIndex === spec.fgIndex) && (spec.underline === undefined || cell.underline === spec.underline);
 }
 
 const inconclusive = note => ({ outcome: 'inconclusive', note });

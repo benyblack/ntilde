@@ -43,26 +43,27 @@ export function validateXcsEvidence(frames, run, runId, adapter) {
     // Every case recolors the pane (that is what it measures), so its reads legitimately carry another color binding; the palette, theme and render state is proven the same before the first
     // request, after the bind and after the finish (every color reset back to the host's).
     const binding = colorBindingHash(frames[0].screen.colorBinding);
-    if (colorBindingHash(frames[1].screen.colorBinding) !== binding || colorBindingHash(frames.at(-1).screen.colorBinding) !== binding) {
-        throw new Error(`${label} observation saw the palette or theme change.`);
+    for (const edge of [frames[1], frames.at(-1)]) {
+        if (colorBindingHash(edge.screen.colorBinding) !== binding) throw new Error(`${label} observation saw the palette or theme change.`);
     }
     // Only report reads carry a reply list; start, bind and finish never do.
-    if ([frames[0], frames[1], frames.at(-1)].some(frame => frame.report !== undefined)) throw new Error(`Unexpected ${label} report frame.`);
+    for (const edge of [frames[0], frames[1], frames.at(-1)]) {
+        if (edge.report !== undefined) throw new Error(`Unexpected ${label} report frame.`);
+    }
 }
 
-/** The reply lists of one case's reads: each report read's journaled replies must equal the worker's record and its own barrier. */
-function repliesOf(contract, recorded, readFrames) {
-    return contract.plan.filter(step => step.read).map((step, index) => {
-        const frame = readFrames[index], read = recorded.reads[index];
-        if (step.read !== 'report') {
-            if (frame.report !== undefined || read.report !== undefined) throw new Error(`Unexpected ${contract.caseId} report on a cells read.`);
-            return [];
-        }
-        const journaled = validateXcsExchange(frame.report), worker = validateXcsExchange(read.report);
-        if (JSON.stringify(journaled) !== JSON.stringify(worker) || journaled.barrier !== frame.barrier) throw new Error(`${label} ${contract.caseId} replies differ from their read frame.`);
-        return journaled.replies;
-    });
+/** The reply list of one read: a cells read carries no report; a report read's journaled replies must equal the worker's record and its own barrier. */
+function replyListOf(contract, kind, read, frame) {
+    if (kind !== 'report') {
+        if (frame.report !== undefined || read.report !== undefined) throw new Error(`Unexpected ${contract.caseId} report on a cells read.`);
+        return [];
+    }
+    const journaled = validateXcsExchange(frame.report), worker = validateXcsExchange(read.report);
+    if (JSON.stringify(journaled) !== JSON.stringify(worker) || journaled.barrier !== frame.barrier) throw new Error(`${label} ${contract.caseId} replies differ from their read frame.`);
+    return journaled.replies;
 }
+/** The reply lists of one case's reads, in plan order. */
+const repliesOf = (contract, recorded, readFrames) => contract.plan.filter(step => step.read).map((step, index) => replyListOf(contract, step.read, recorded.reads[index], readFrames[index]));
 /** The journaled exchange of one read (already validated against the worker record and its barrier). */
 const exchangeOf = (readFrames, index) => (readFrames[index].report === undefined ? null : validateXcsExchange(readFrames[index].report));
 

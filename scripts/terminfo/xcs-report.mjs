@@ -30,7 +30,9 @@ function stringShape(text, closed) {
 /** The most bytes one retained reply (an OSC string, or an unexpected chunk of other bytes) may hold. */
 const replyLimit = 160;
 /** A DA reply anywhere in a string: the barrier that orders an exchange. */
-const barrierAnywhere = /\x1b\[\?[\d;]+c/;
+const barrierAnywhere = new RegExp(`${esc}\\[\\?[\\d;]+c`);
+/** A trailing partial DA reply (ESC, ESC [, ESC [ ? and digits): a barrier that is still arriving. */
+const partialBarrier = new RegExp(`${esc}(?:\\[(?:\\?[\\d;]*)?)?$`);
 
 /** Refuse anything but one bounded reply: a complete OSC string, or an unexpected chunk of other bytes (a push or pop that answers with anything is evidence, not an error). Neither may hold a DA barrier. */
 export function parseXcsReply(raw) {
@@ -46,8 +48,31 @@ function replyEnd(rest) {
     return st + 2;
 }
 
+/** What to do with the bytes accumulated so far: wait for more, take `take` bytes as one reply, or finish at the barrier. Bytes that are not a complete OSC string are retained as an unexpected chunk up to the barrier. */
+function nextToken(rest) {
+    const osc = rest.startsWith(esc + ']');
+    const end = osc ? replyEnd(rest) : -1;
+    if (end >= 0) return { take: end };
+    if (!osc) {
+        if (!rest || (esc + '[?').startsWith(rest)) return { wait: true };
+        if (isBarrier(rest)) return { barrier: rest };
+    }
+    const found = barrierAnywhere.exec(rest);
+    if (found === null) return waitFor(rest, osc);
+    if (found.index > 0) return { take: found.index };
+    // A complete DA reply followed by more bytes is not a single barrier.
+    if (rest.length !== found[0].length) throw new Error('Unexpected xterm-color-stack barrier bytes.');
+    return { barrier: rest };
+}
+
+/** No barrier yet: an unterminated OSC string must stay within bounds (ignoring a barrier that may still be arriving), other bytes within the reply limit. */
+function waitFor(rest, osc) {
+    if (osc ? !stringShape(rest.replace(partialBarrier, ''), false) : rest.length > replyLimit + 32) throw new Error(osc ? 'Unexpected xterm-color-stack bytes.' : 'Oversized xterm-color-stack reply.');
+    return { wait: true };
+}
+
 /**
- * Parse the accumulated bytes of one exchange: any number of complete bounded replies followed by the DA barrier. A reply is a complete OSC string or, for bytes that are not an OSC string, one unexpected
+ * Parse the accumulated bytes of one exchange: any number of complete bounded replies followed by the DA barrier. A reply is a complete OSC string (ST or BEL terminated) or, for other bytes, one unexpected
  * chunk up to the barrier (retained byte for byte: the pinned probe treats any output as an invalid reply and the contract as a mismatch). Null means incomplete. A complete DA without a reply is an
  * explicitly absent reply list, never a reply guessed from state.
  */
@@ -56,34 +81,12 @@ export function parseXcsFrame(bytes) {
     const replies = [];
     let rest = bytes;
     for (;;) {
-        const length = rest.startsWith(esc + ']') ? replyEnd(rest) : -1;
-        // An OSC string that never terminates before a DA barrier is not a reply: it falls through and is retained as an unexpected chunk.
-        if (rest.startsWith(esc + ']') && length < 0 && !barrierAnywhere.test(rest)) {
-            // A barrier may still be arriving: a trailing partial DA reply (ESC, ESC [, ESC [ ? and digits) is not part of the string.
-            if (!stringShape(rest.replace(/\x1b(?:\[(?:\?[\d;]*)?)?$/, ''), false)) throw new Error('Unexpected xterm-color-stack bytes.');
-            return null;
-        }
-        if (length >= 0) {
-            if (replies.length === xcsReplyLimit) throw new Error('Too many xterm-color-stack replies.');
-            replies.push(parseXcsReply(rest.slice(0, length)).raw);
-            rest = rest.slice(length);
-            continue;
-        }
-        if (!rest || (esc + '[?').startsWith(rest)) return null;
-        if (isBarrier(rest)) return { barrier: rest, replies };
-        const barrier = barrierAnywhere.exec(rest);
-        if (barrier === null) {
-            if (rest.length > replyLimit + 32) throw new Error('Oversized xterm-color-stack reply.');
-            return null;
-        }
-        if (barrier.index === 0) {
-            // A complete DA reply followed by more bytes is not a single barrier.
-            if (rest.length !== barrier[0].length) throw new Error('Unexpected xterm-color-stack barrier bytes.');
-            return { barrier: rest, replies };
-        }
+        const token = nextToken(rest);
+        if (token.wait) return null;
+        if (token.barrier !== undefined) return { barrier: token.barrier, replies };
         if (replies.length === xcsReplyLimit) throw new Error('Too many xterm-color-stack replies.');
-        replies.push(parseXcsReply(rest.slice(0, barrier.index)).raw);
-        rest = rest.slice(barrier.index);
+        replies.push(parseXcsReply(rest.slice(0, token.take)).raw);
+        rest = rest.slice(token.take);
     }
 }
 
