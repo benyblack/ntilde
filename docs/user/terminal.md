@@ -21,7 +21,14 @@ These have palette commands; their settings are in `settings.json`
 See [Mouse](shortcuts.md#mouse) for selecting, links, dropping files and pasting images.
 
 Programs can **set your clipboard** with OSC 52, which is how `tmux` and `vim` copy over SSH. Turn
-that off with `AllowOsc52ClipboardWrite`. Programs can never read your clipboard.
+that off with `AllowOsc52ClipboardWrite`. OSC 52 can't read your clipboard.
+
+Programs that use kitty's clipboard protocol (OSC 5522) can also **ask to read it**. Ntilde asks you
+every time: *Deny* or *Allow once*, and, for a program that sends a name and a password with its
+request, *Allow this session*, which lets later reads with the same name and password through until
+the session is reset or closed. Nothing is saved to disk. On Linux X11 a program can ask for the
+primary selection the same way, with its own prompt. Writes with OSC 5522 follow
+`AllowOsc52ClipboardWrite` too. Persistent panes don't support OSC 5522.
 
 ## Notifications and progress
 
