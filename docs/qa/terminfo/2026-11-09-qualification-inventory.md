@@ -9,20 +9,20 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 115 |
-| Suite claims (an id covered by two suites has two claims) | 117 |
+| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 119 |
+| Suite claims (an id covered by two suites has two claims) | 121 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 114 |
+| Effect contract supported | 118 |
 | Effect contract unsupported (measured, retained, not supported) | 1 |
-| Supported by both the pinned probe and the effect contract | 86 |
-| Effect supported, pinned verdict inconclusive | 28 |
+| Supported by both the pinned probe and the effect contract | 89 |
+| Effect supported, pinned verdict inconclusive | 29 |
 | Effect unsupported, pinned verdict inconclusive | 1 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
 An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.
 
-Effect supported but pinned inconclusive: `device.xtgettcap`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 Effect unsupported, pinned inconclusive (by design): `extensions.reflow`.
 
@@ -32,17 +32,17 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Not effect-supported, `effectUnqualified` (168 − 113) | 55 |
+| Not effect-supported, `effectUnqualified` (168 − 117) | 51 |
 | of which measured, effect unsupported | 1 |
 | of which measured, another non-supported verdict | 0 |
-| of which not measured (no qualified effect evidence) | 54 |
-| Not pinned-supported (168 − 85) | 83 |
+| of which not measured (no qualified effect evidence) | 50 |
+| Not pinned-supported (168 − 88) | 80 |
 
 `effectUnqualified` is every stock-inconclusive id without a supported effect verdict. It splits into exactly three states that must not be conflated: *measured and unsupported* (retained evidence says the behavior is absent or diverges), *measured with another non-supported verdict*, and *not measured* (no qualified evidence at all). Only the last is "not yet qualified".
 
 Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 83 not-pinned-supported inconclusive cases are the 84 cases outside the 86 stock-supported plus 85 pinned-supported ones.
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 80 not-pinned-supported inconclusive cases are the 81 cases outside the 86 stock-supported plus 88 pinned-supported ones.
 
 ### Ungraded diagnostic
 
@@ -91,6 +91,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `ascii-reflow` | 1 | v1 | passed | 58 | `d8679e11` | v52 | 19 | `889a48b8` |
 | `notify` | 2 | v1 | passed | 59 | `d904c663` | v53 | 10 | `106e7f00` |
 | `selection-colors` | 4 | v1 | passed | 60 | `fe2ccbca` | v54 | 15 | `25ca76e5` |
+| `devq` | 4 | v1 | passed | 61 | `fb6c7fd6` | v55 | 9 | `7ade67c4` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -139,6 +140,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `ascii-reflow` | collected-run-id-recorded | `7dd243ac` | 167/87/1 | `cf7d8759` |
 | `notify` | collected-run-id-recorded | `44271b95` | 166/88/1 | `cf7d8759` |
 | `selection-colors` | collected-run-id-recorded | `2940c076` | 166/88/1 | `cf7d8759` |
+| `devq` | collected-run-id-recorded | `ce388516` | 163/91/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -156,6 +158,10 @@ The stock collector reports `suiteComplete=false` in every run.
 | `cursor.reverse-wrap` | ungraded | supported | supported | stored-state + cursor-position-report | cursor | - |
 | `cursor.shape` | inconclusive | supported | supported | stored-state + controlled-pixels | cursor | - |
 | `device.xtgettcap` | inconclusive | inconclusive | supported | stored-state | xtgettcap | xtgettcap: pinned-inconclusive-by-design |
+| `device.xtgetxres` | inconclusive | supported | supported | stored-state | devq | - |
+| `device.xtreportcolors` | inconclusive | inconclusive | supported | stored-state | devq | devq: pinned-inconclusive-effect-supported |
+| `device.xtwinops-20` | inconclusive | supported | supported | stored-state | devq | - |
+| `device.xtwinops-21` | inconclusive | supported | supported | stored-state | devq | - |
 | `device.xtwinops-22` | inconclusive | supported | supported | pane-metadata-and-session-status | title-stack | - |
 | `device.xtwinops-23` | inconclusive | supported | supported | pane-metadata-and-session-status | title-stack | - |
 | `editing.deccara` | inconclusive | inconclusive | supported | stored-state | attr-rect | attr-rect: pinned-fixture-assumes-rectangle-extent |
