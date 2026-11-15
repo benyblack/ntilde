@@ -93,6 +93,10 @@ namespace Ntilde.VT
         [JsonPropertyName("colors"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public TerminalRuntimeColors? Colors { get; set; }
 
+        /// <summary>XTPUSHSGR levels, oldest first; absent means an empty stack (every earlier payload).</summary>
+        [JsonPropertyName("sgr_stack"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalSgrStackEntry>? SgrStack { get; set; }
+
         [JsonPropertyName("sgr")] public TerminalSgrState Sgr { get; set; } = new();
         [JsonPropertyName("modes")] public TerminalModeState Modes { get; set; } = new();
         [JsonPropertyName("kitty_kbd")] public TerminalKittyKeyboardState KittyKeyboard { get; set; } = new();
@@ -311,6 +315,13 @@ namespace Ntilde.VT
         [JsonPropertyName("col")] public int Col { get; set; }
         [JsonPropertyName("sgr")] public TerminalSgrState Sgr { get; set; } = new();
         [JsonPropertyName("pw")] public bool IsPendingWrap { get; set; }
+    }
+
+    /// <summary>One XTPUSHSGR level: which attributes it saved (a bit per documented parameter) and the pen they were read from.</summary>
+    public sealed class TerminalSgrStackEntry
+    {
+        [JsonPropertyName("mask")] public int Mask { get; set; }
+        [JsonPropertyName("pen")] public TerminalSgrState Pen { get; set; } = new();
     }
 
     /// <summary>The SGR attribute set, shared by the live style and the saved cursors.</summary>

@@ -447,8 +447,9 @@ namespace Ntilde.VT
                 case 'z': // DECERA - Erase Rectangular Area
                     EraseRectangularArea(csi);
                     break;
-                case '{': // DECSERA - Selective Erase Rectangular Area (CSI Pt;Pl;Pb;Pr $ {)
-                    EraseRectangularArea(csi, selective: true);
+                case '{': // DECSERA - Selective Erase Rectangular Area (CSI Pt;Pl;Pb;Pr $ {); XTPUSHSGR is the exact CSI Pm # { identity
+                    if (intermediates.SequenceEqual("#")) HandleXtermSgrStack(csi);
+                    else EraseRectangularArea(csi, selective: true);
                     break;
                 case 'x': // DECSACE (CSI Ps * x), DECFRA (only the exact $ x identity); bare CSI x (DECREQTPARM) stays unhandled
                     if (intermediates.SequenceEqual("*")) SelectAttributeChangeExtent(csi);
@@ -460,8 +461,9 @@ namespace Ntilde.VT
                 case 'v': // DECCRA - Copy Rectangular Area (only the exact $ v identity)
                     CopyRectangularArea(csi);
                     break;
-                case '}': // DECIC - Insert Column (only the exact CSI Pn ' } identity)
-                    EditColumns(csi, "'", atCursor: true, insert: true);
+                case '}': // DECIC - Insert Column (only the exact CSI Pn ' } identity); XTPOPSGR is the exact CSI # } identity
+                    if (intermediates.SequenceEqual("#")) HandleXtermSgrStack(csi);
+                    else EditColumns(csi, "'", atCursor: true, insert: true);
                     break;
                 case '~': // DECDC - Delete Column (only the exact CSI Pn ' ~ identity)
                     EditColumns(csi, "'", atCursor: true, insert: false);

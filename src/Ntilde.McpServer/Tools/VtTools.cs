@@ -259,6 +259,11 @@ public sealed class VtTools
                 return ExplainRectangleChecksum(prefix[..^1]) + note;
             }
 
+            if (finalByte is '{' or '}' && qualifiers == "#" && prefix.EndsWith('#'))
+            {
+                return ExplainXtermSgrStack(finalByte, prefix[..^1]) + note;
+            }
+
             if (finalByte is 'P' or 'Q' or 'R' && qualifiers == "#" && prefix.EndsWith('#'))
             {
                 return ExplainXtermColorStack(finalByte, prefix[..^1]) + note;
@@ -554,6 +559,16 @@ public sealed class VtTools
         return admitted
             ? $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable["CSI:#" + finalByte]
             : $"CSI palette-stack form, final byte '{finalByte}': only plain parameters are admitted (none or 0 for the report); Ntilde's parser ignores this form.";
+    }
+
+    /// <summary>XTPUSHSGR takes plain parameters; XTPOPSGR takes none.</summary>
+    private static string ExplainXtermSgrStack(char finalByte, string parameters)
+    {
+        bool plain = parameters.All(c => c is ';' || (c >= '0' && c <= '9'));
+        bool admitted = plain && (finalByte == '{' || parameters.Length == 0);
+        return admitted
+            ? $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable["CSI:#" + finalByte]
+            : $"CSI video-attribute-stack form, final byte '{finalByte}': only plain parameters are admitted (none for the pop); Ntilde's parser ignores this form.";
     }
 
     /// <summary>DECIC, DECDC, SL and SR: at most one plain numeric parameter; anything else is ignored by the parser.</summary>

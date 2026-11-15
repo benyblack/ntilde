@@ -121,6 +121,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/AnsiParser.ColorScheme.cs",
             "src/Ntilde.VT/AnsiParser.Colors.cs",
             "src/Ntilde.VT/AnsiParser.Sgr.cs",
+            "src/Ntilde.VT/AnsiParser.SgrStack.cs",
             "src/Ntilde.VT/AnsiParser.Reset.cs",
             "src/Ntilde.VT/AnsiParser.Osc.cs",
             "src/Ntilde.VT/AnsiParser.TextSizing.cs",
