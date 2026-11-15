@@ -69,6 +69,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('notify', '2026-11-14-notify', '2026-11-14-notify-qualification.md'), module: 'notify-contracts.mjs', exports: ['notifySuiteId', 'notifyContractsVersion', 'notifyCaseIds'], test: 'notify-publication.test.mjs' },
     { ...directory('selection-colors', '2026-11-12-selection-colors', '2026-11-12-selection-colors-qualification.md'), module: 'selection-colors-contracts.mjs', exports: ['selectionColorsSuiteId', 'selectionColorsContractsVersion', 'selectionColorsCaseIds'], test: 'selection-colors-publication.test.mjs' },
     { ...directory('devq', '2026-11-15-device-queries', '2026-11-15-device-queries-qualification.md'), module: 'devq-contracts.mjs', exports: ['devqSuiteId', 'devqContractsVersion', 'devqCaseIds'], test: 'devq-publication.test.mjs' },
+    { ...directory('xcs', '2026-11-15-xterm-color-stack', '2026-11-15-xterm-color-stack-qualification.md'), module: 'xcs-contracts.mjs', exports: ['xcsSuiteId', 'xcsContractsVersion', 'xcsCaseIds'], test: 'xcs-publication.test.mjs' },
 ]);
 
 /**

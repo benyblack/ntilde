@@ -77,7 +77,7 @@ const exchanges = Object.freeze({
 });
 
 /** The attributed seed rows of the measured screen. */
-const seedRows = () => [
+export const seedRows = () => [
     [],
     [colorCell('N', { attrs: ['bold'] }), colorCell('t', { attrs: ['bold'] }), colorCell('i', { attrs: ['bold'] }),
         colorCell('l', { attrs: ['bold'] }), colorCell('d', { attrs: ['bold'] }), colorCell('e', { attrs: ['bold'] }),
@@ -87,9 +87,9 @@ const seedRows = () => [
 ];
 
 /** One journaled frame with its digest. */
-const frame = (index, kind, screen, barrier, reportValue) => ({ index, kind, paneId, barrier, screen, sha256: snapshotHash(screen), ...(reportValue ? { report: reportValue } : {}) });
+export const frame = (index, kind, screen, barrier, reportValue) => ({ index, kind, paneId, barrier, screen, sha256: snapshotHash(screen), ...(reportValue ? { report: reportValue } : {}) });
 /** A synthetic screen on the alternate screen the suite runs on, with the suite's margins (vertical and DECLRMM off/full-width). */
-const alternate = (screen, nonce) => ({
+export const alternate = (screen, nonce) => ({
     ...screen,
     ...(nonce === undefined ? {} : { lines: [nonce, ...screen.lines.slice(1)] }),
     bufferState: { ...screen.bufferState, scrollTop: 1, scrollBottom: 5, alternateScreen: true },

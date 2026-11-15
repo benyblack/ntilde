@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -920,7 +920,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -946,7 +946,11 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (devq) {
             await addDevqEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq) writerFor(output)('context.json', context);
+        // The xterm color-stack suffix derives from the same left/right-margin bytes (a sibling of the device-query one) and is equally opt-in; it needs no setting.
+        if (xcs) {
+            await addXcsEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1017,4 +1021,25 @@ async function addDevqEvidence({ output, write, context, evidence, lrMarginsByte
     evidence.devqEvidence = { runId: context.runId, suiteId: devqSuiteId, file: 'dvq-observations.json', sha256: hash(readFileSync(join(output, 'dvq-observations.json'))),
         runFile: 'dvq-run.json', runSha256: hash(readFileSync(join(output, 'dvq-run.json'))), adapterBundleSha256: hash(devqBytes),
         contractsVersion: devqContractsVersion, counts: devqCounts(devqReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in xterm color-stack suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */
+async function addXcsEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticXcsEvidence } = await import('./xcs-evidence.mjs');
+    const { buildXcsGradingReport } = await import('../xcs-grading.mjs');
+    const { xcsCounts } = await import('../xcs-receipt.mjs');
+    const { adaptXcsCollector, xcsAdapterId } = await import('../xcs-grading-collector.mjs');
+    const { xcsSuiteId, xcsContractsVersion } = await import('../xcs-contracts.mjs');
+    const xcsBytes = Buffer.from(adaptXcsCollector(lrMarginsBytes.toString()));
+    const xcs = syntheticXcsEvidence({ runId: context.runId, bundleSha256: hash(xcsBytes) });
+    xcs.adapter = { ...xcs.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const xcsReport = buildXcsGradingReport(xcs.frames, xcs.run, context.runId, xcs.adapter);
+    write('xcs-observations.json', xcsReport);
+    write('xcs-run.json', xcs.run);
+    writeFileSync(join(output, 'xcs-snapshots.jsonl'), xcs.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-xcs.mjs'), xcsBytes);
+    Object.assign(context, { xcsAdapterId, xcsSuiteId, xcsBundleSha256: hash(xcsBytes), xcsContractsVersion });
+    evidence.xcsEvidence = { runId: context.runId, suiteId: xcsSuiteId, file: 'xcs-observations.json', sha256: hash(readFileSync(join(output, 'xcs-observations.json'))),
+        runFile: 'xcs-run.json', runSha256: hash(readFileSync(join(output, 'xcs-run.json'))), adapterBundleSha256: hash(xcsBytes),
+        contractsVersion: xcsContractsVersion, counts: xcsCounts(xcsReport), provisionalUntil: 'cell-receipt.json' };
 }

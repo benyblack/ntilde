@@ -365,5 +365,12 @@
     "devqCollectorSourceSha256": "devq-collector.mjs",
     "devqGradingSourceSha256": "devq-grading.mjs",
     "devqGradingCollectorSourceSha256": "devq-grading-collector.mjs",
-    "devqReceiptSourceSha256": "devq-receipt.mjs"
+    "devqReceiptSourceSha256": "devq-receipt.mjs",
+    "xcsReportSourceSha256": "xcs-report.mjs",
+    "xcsContractsSourceSha256": "xcs-contracts.mjs",
+    "xcsCaptureSourceSha256": "xcs-capture.mjs",
+    "xcsCollectorSourceSha256": "xcs-collector.mjs",
+    "xcsGradingSourceSha256": "xcs-grading.mjs",
+    "xcsGradingCollectorSourceSha256": "xcs-grading-collector.mjs",
+    "xcsReceiptSourceSha256": "xcs-receipt.mjs"
 }
