@@ -21,8 +21,11 @@ export function inputModeReplyHex(modes) {
         + `\x1b[?${modes.kittyKeyboardFlags}u`).toString('hex');
     // v3 plans prove the negotiated modifyOtherKeys level through XTQMODKEYS; plans whose modes never carry the
     // level re-derive byte-for-byte as before.
-    return modes.modifyOtherKeysLevel === undefined ? base
+    const withLevel = modes.modifyOtherKeysLevel === undefined ? base
         : base + Buffer.from(`\x1b[>4;${modes.modifyOtherKeysLevel}m`).toString('hex');
+    // v4 plans also prove the extended coordinate encodings (DECRQM 1005 then 1015, after the XTQMODKEYS reply); older plans never carry the keys.
+    return modes.mouseUtf8 === undefined ? withLevel
+        : withLevel + Buffer.from(`\x1b[?1005;${modes.mouseUtf8 ? 1 : 2}$y\x1b[?1015;${modes.mouseUrxvt ? 1 : 2}$y`).toString('hex');
 }
 /** Raw hex is a copied child observation; challenge bytes are never event bytes. */
 export function validateInputBytes(value, expectedHex, used, exact = true) {
@@ -113,6 +116,6 @@ export function buildInputReport(frames, actions, seal, runId, plan = inputPlanV
         && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
         && seal.lastAttempt.hex === final.capture.hex + Buffer.from(final.capture.barrier).toString('hex')
         && sameInputFact(seal.lastAttempt.nonces, final.capture.nonces));
-    return { schemaVersion: plan.id === 'v1' ? 1 : plan.id === 'v2' ? 2 : 3, suiteId: plan.suiteId, runId, scope: plan.scope(count),
+    return { schemaVersion: { v1: 1, v2: 2, v3: 3, v4: 4 }[plan.id], suiteId: plan.suiteId, runId, scope: plan.scope(count),
         inputs: cases, initialSnapshot: 0, restoredSnapshot: frames.length - 1, snapshots: frames, actions, seal, observations };
 }

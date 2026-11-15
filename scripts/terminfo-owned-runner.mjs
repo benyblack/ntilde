@@ -164,6 +164,9 @@ import { adaptModifyOtherKeysCollector, modifyOtherKeysAdapterId } from './termi
 import { modifyOtherKeysCaseIds, modifyOtherKeysContractsVersion, modifyOtherKeysGradedSuiteId } from './terminfo/modify-other-keys-contracts.mjs';
 import { buildModifyOtherKeysGradingReport, modifyOtherKeysCounts } from './terminfo/modify-other-keys-grading.mjs';
 import { modifyOtherKeysFirstPolicy } from './terminfo/input-plan.mjs';
+import { adaptMexCollector, mexAdapterId } from './terminfo/mex-grading-collector.mjs';
+import { mexContractsVersion, mexGradedSuiteId } from './terminfo/mex-contracts.mjs';
+import { buildMexGradingReport, mexCounts } from './terminfo/mex-grading.mjs';
 import { ColorResetObserver } from './terminfo/color-reset-capture.mjs';
 import { SelectionColorsObserver } from './terminfo/color-reset-capture.mjs';
 import { adaptSelectionColorsCollector, selectionColorsAdapterId } from './terminfo/selection-colors-grading-collector.mjs';
@@ -1252,6 +1255,17 @@ function prepareModifyOtherKeysCollector(tool, lrMarginsBundle, output) {
     return { bundle, modifyOtherKeysBundleSha256 };
 }
 
+/** Derive and lock the layered extended-mouse-encoding grading extension over the left/right-margin one (a sibling of the routed-input and modifyOtherKeys layers). */
+function prepareMexCollector(tool, lrMarginsBundle, output) {
+    const adapted = adaptMexCollector(readFileSync(lrMarginsBundle));
+    const mexBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-mex-${mexBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== mexBundleSha256) throw new Error('Derived extended-mouse bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-mex.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, mexBundleSha256 };
+}
+
 /** Re-derive the title-stack report parent-side from the paired journal and the layered pinned replay. */
 async function retainTitleStackEvidence(output, runId, titleStackBundle, upstream, unavailable) {
     const adapterBytes = readFileSync(join(output, 'collector-tst.mjs'));
@@ -1523,6 +1537,31 @@ async function retainModifyOtherKeysEvidence(output, runId, modifyOtherKeysBundl
         contractsVersion: modifyOtherKeysContractsVersion, counts: modifyOtherKeysCounts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Re-derive the extended-mouse report parent-side from the owned input journal and the layered pinned replay. */
+async function retainMexEvidence(output, runId, mexBundle, upstream, inputBinding, seal, inputSuiteId) {
+    if (inputBinding?.status === 'unavailable') {
+        const markerBytes = readFileSync(join(output, 'mex-unavailable.json')), marker = JSON.parse(markerBytes);
+        if (marker.reason !== inputBinding.reason) throw new Error('Extended-mouse unavailable marker differs from the input suite.');
+        return { runId, suiteId: mexGradedSuiteId, file: 'mex-unavailable.json', sha256: hash(markerBytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(readFileSync(join(output, 'collector-mex.mjs'))), contractsVersion: mexContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    if (inputBinding?.file !== 'input-observations.json') throw new Error('Extended-mouse evidence requires the owned input suite.');
+    const runBytes = readFileSync(join(output, 'mex-run.json'));
+    const run = JSON.parse(runBytes);
+    const lines = file => readFileSync(join(output, file), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-mex.mjs'));
+    const adapter = { id: mexAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+        bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(mexBundle).href);
+    const report = buildMexGradingReport({ frames: lines('input-snapshots.jsonl'), actions: lines('input-actions.jsonl'), seal }, run, runId, adapter,
+        { replayModule, inputPlan: ownedInputPlanForSuiteId(inputSuiteId), inputReportSha256: inputBinding.sha256 });
+    writeJson(join(output, 'mex-observations.json'), report);
+    return { runId, suiteId: mexGradedSuiteId, file: 'mex-observations.json',
+        sha256: hash(readFileSync(join(output, 'mex-observations.json'))),
+        runFile: 'mex-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: mexContractsVersion, counts: mexCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Re-derive the SGR-underline-color report parent-side with the layered pinned replay. */
 async function retainSgrUnderlineColorEvidence(output, runId, sgrUnderlineColorBundle, upstream) {
     const runBytes = readFileSync(join(output, 'sguc-run.json'));
@@ -1781,6 +1820,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let reverseWideEvidence;
     let routedInputEvidence;
     let modifyOtherKeysEvidence;
+    let mexEvidence;
     let osc133Evidence;
     let osc78Evidence;
     let titleStackEvidence;
@@ -1867,6 +1907,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: devqBundle, devqBundleSha256 } = prepareDevqCollector(privateTool, lrMarginsBundle, output);
         const { bundle: xcsBundle, xcsBundleSha256 } = prepareXcsCollector(privateTool, lrMarginsBundle, output);
         const { bundle: modifyOtherKeysBundle, modifyOtherKeysBundleSha256 } = prepareModifyOtherKeysCollector(privateTool, lrMarginsBundle, output);
+        const { bundle: mexBundle, mexBundleSha256 } = prepareMexCollector(privateTool, lrMarginsBundle, output);
         const { bundle: reflowBundle, asciiReflowBundleSha256 } = prepareReflowCollector(privateTool, oscTitleBundle, output);
         const { bundle: colorResetBundle, colorResetBundleSha256 } = prepareColorResetCollector(privateTool, lrMarginsBundle, output);
         const { bundle: selectionColorsBundle, selectionColorsBundleSha256 } = prepareSelectionColorsCollector(privateTool, oscTitleBundle, output);
@@ -1880,7 +1921,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, notifyBundle, notifyBundleSha256, devqBundle, devqBundleSha256, xcsBundle, xcsBundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, notifyBundle, notifyBundleSha256, devqBundle, devqBundleSha256, xcsBundle, xcsBundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, mexBundle, mexBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -2030,7 +2071,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             lrMargins: 'layered versioned collector extension; pinned termless modes.left-right-margin code (ESC[?69h, the mode metadata, ESC[?69l; inconclusive by design) replayed byte-exactly and preserved, beside a separately identified effect contract graded from parent-observed stored cells, the cursor and the App-stored region, left/right margins, DECLRMM, origin and insert mode by an independent margins model over sixteen controls; stored ASCII cells only, no stock grades',
             routedInputAdapterId, routedInputSuiteId: routedInputGradedSuiteId, routedInputBundleSha256, routedInputContractsVersion,
             modifyOtherKeysAdapterId, modifyOtherKeysSuiteId: modifyOtherKeysGradedSuiteId, modifyOtherKeysBundleSha256, modifyOtherKeysContractsVersion, modifyOtherKeysFirstPolicy,
+            mexAdapterId, mexSuiteId: mexGradedSuiteId, mexBundleSha256, mexContractsVersion,
             modifyOtherKeys: 'layered versioned collector extension; pinned termless input.modify-other-keys code (always inconclusive by design) replayed over the declaration value the child itself answered by XTGETTCAP and preserved, beside a separately identified effect contract graded from the owned routed-input v3 plan: declared Avalonia events routed through the production App input path and the exact bytes the child received for the negotiated XTMODKEYS levels 1 and 2 (subcases of one benchmark id), every dispatch preceded by a child XTQMODKEYS proof of the level, literal protocol expectations cross-checked by an independent oracle, disabled/level-1/level-2 transitions, paired key-down/backend-text duplicate suppression, documented Shift-only-printable, Meta and AltGr policy limits, key-up and deliberately unhandled controls and a bounded kitty-precedence control; generated events, not physical keyboard input; no level 3, no formatOtherKeys, no Kitty expansion; direct-local only; no stock grades',
+            mex: 'layered versioned collector extension; pinned termless modes.utf8-mouse-1005 code (feeds ?1005h, captures the DECRQM reply, feeds ?1005l, then notTestedResult: always inconclusive by design) and input.urxvt-mouse code (mouseInputProbe: always inconclusive) replayed over the DECRQM reply and tracking state the child itself received and preserved, beside separately identified effect contracts graded from the owned routed-input v4 plan: declared Avalonia events routed through the production App input path and the exact bytes the child received for UTF-8 (1005) and urxvt (1015) coordinates under X10, normal, button-event and any-event tracking, every dispatch preceded by child DECRQM proofs of the encoding and tracking state, literal protocol expectations cross-checked by an independent oracle written from xterm button.c, legacy and SGR controls, the single-slot selection rules and their reset forms; generated events, not physical pointer input; the stock terminal path of modes.utf8-mouse-1005 is a separate stock-collector result; direct-local only; no stock grade change by this layer',
             routedInput: 'layered versioned collector extension; pinned termless input.x10-mouse, input.button-event-mouse and modes.application-keypad code (always inconclusive by design) replayed over mode values the child itself received as DECRQM replies and preserved, beside separately identified effect contracts graded from the owned routed-input suite: declared Avalonia events routed through the production App input path and the exact bytes the child received, literal protocol expectations cross-checked by an independent oracle; generated events, not physical input; direct-local only; no stock grades',
             osc133AdapterId, osc133SuiteId, osc133BundleSha256, osc133ContractsVersion,
             osc78AdapterId, osc78SuiteId, osc78BundleSha256, osc78ContractsVersion,
@@ -3557,6 +3600,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 () => inputState.observer.report, 'input-observations.json');
             routedInputEvidence = await retainRoutedInputEvidence(output, runId, routedInputBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
             modifyOtherKeysEvidence = await retainModifyOtherKeysEvidence(output, runId, modifyOtherKeysBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
+            mexEvidence = await retainMexEvidence(output, runId, mexBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
             osc133Evidence = await retainOsc133Evidence(output, runId, osc133Bundle, upstreamBundleSha256, osc133State?.unavailable === true);
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
@@ -3637,6 +3681,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.lrMarginsEvidence = lrMarginsEvidence;
             summary.routedInputEvidence = routedInputEvidence;
             summary.modifyOtherKeysEvidence = modifyOtherKeysEvidence;
+            summary.mexEvidence = mexEvidence;
             summary.osc133Evidence = osc133Evidence;
             summary.osc78Evidence = osc78Evidence;
             summary.titleStackEvidence = titleStackEvidence;
@@ -3688,7 +3733,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, xcsEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, mexEvidence, osc9Evidence, notifyEvidence, devqEvidence, xcsEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

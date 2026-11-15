@@ -40,7 +40,7 @@ export async function collectInput({ config, fence, owner, input = process.stdin
             const sample = await take(() => owner('input-apply', null, { caseId: item.id }));
             await tell('input-read', sample, { caseId: item.id });
         }), Promise.resolve());
-        const restored = await take(() => write(output, inputReset + inputFinalRestore + queries));
+        const restored = await take(() => write(output, (plan.reset ?? inputReset) + inputFinalRestore + queries));
         if (restored.hex !== inputModeReplyHex(plan.finalModes ?? defaultInputModes)) throw new Error('Input modes were not restored.');
         await tell('input-finish', restored);
         capture.dispose();
@@ -50,7 +50,7 @@ export async function collectInput({ config, fence, owner, input = process.stdin
     } catch (error) {
         writeFileSync(join(config.output, 'input-raw-failure.json'), JSON.stringify({ attempts, failed: capture.failed, lastAttempt: capture.lastAttempt,
             error: error instanceof Error ? error.message : String(error) }) + '\n', { flag: 'wx', mode: 0o600 });
-        try { await write(output, inputReset + inputFinalRestore); }
+        try { await write(output, (plan.reset ?? inputReset) + inputFinalRestore); }
         catch (error_) { throw new AggregateError([error, error_], 'Input collection and output cleanup failed.'); }
         throw error;
     } finally { capture.dispose(); }

@@ -25,7 +25,7 @@ test('the v3 plan keeps every routed-input event verbatim and appends the modify
     assert.equal(oracleDisagreements(all).length, 0);
     // Reader/capture budgets: 64 captures per phase reader include start/bind/finish; the query suite owes every input and image challenge.
     assert.ok(all.length + 3 <= 128 && inputAttemptCount(all.length) <= 256);
-    assert.equal(inputAttemptCount(all.length) + 30, queryPriorCounts.at(-1));
+    assert.ok(queryPriorCounts.includes(inputAttemptCount(all.length) + 30), 'the query suite owes the v3 plan\'s own count');
 });
 
 test('the declaration case proves the child XTGETTCAP refusal ahead of the mode replies', () => {

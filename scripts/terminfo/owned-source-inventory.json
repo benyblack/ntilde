@@ -372,5 +372,11 @@
     "xcsCollectorSourceSha256": "xcs-collector.mjs",
     "xcsGradingSourceSha256": "xcs-grading.mjs",
     "xcsGradingCollectorSourceSha256": "xcs-grading-collector.mjs",
-    "xcsReceiptSourceSha256": "xcs-receipt.mjs"
+    "xcsReceiptSourceSha256": "xcs-receipt.mjs",
+    "mexCasesSourceSha256": "mex-cases.mjs",
+    "mexContractsSourceSha256": "mex-contracts.mjs",
+    "mexCollectorSourceSha256": "mex-collector.mjs",
+    "mexGradingSourceSha256": "mex-grading.mjs",
+    "mexGradingCollectorSourceSha256": "mex-grading-collector.mjs",
+    "mexReceiptSourceSha256": "mex-receipt.mjs"
 }

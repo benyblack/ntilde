@@ -10,7 +10,6 @@ import { requirePinnedAgreement } from './graded-plan.mjs';
 import { buildInputReport, checkInput, sameInputFact } from './input-state.mjs';
 import { makeRoutedInputCases } from './routed-input-cases.mjs';
 import { experimentsOf, routedInputsDiverge } from './routed-input-grading.mjs';
-import { makeModifyOtherKeysCases } from './modify-other-keys-cases.mjs';
 import { modifyOtherKeysAdapterId } from './modify-other-keys-grading-collector.mjs';
 import { gradeModifyOtherKeys, modifyOtherKeysCaseIds, modifyOtherKeysContractsVersion, modifyOtherKeysEffectContracts,
     modifyOtherKeysGradedSuiteId, modifyOtherKeysPinned, modifyOtherKeysRecordingContext, oracleDisagreements, oracleHex,
@@ -91,7 +90,9 @@ export function buildModifyOtherKeysGradingReport({ frames, actions, seal }, run
     if (!inputPlan || typeof inputPlan.make !== 'function') throw new Error(`${label} requires the policy-selected input plan.`);
     validateModifyOtherKeysEvidence(run, adapter);
     const input = buildInputReport(frames, actions, seal, runId, inputPlan);
-    const plan = makeModifyOtherKeysCases(frames[0].screen.rows, frames[0].screen.cols);
+    // Later plan generations keep every v3 event verbatim and append their own: the journal must equal the policy-selected plan, and this
+    // benchmark's experiments are the events that carry its roles.
+    const plan = inputPlan.make(frames[0].screen.rows, frames[0].screen.cols);
     checkInput(sameInputFact(input.inputs, plan) && oracleDisagreements(plan).length === 0);
     const routedPlan = makeRoutedInputCases(frames[0].screen.rows, frames[0].screen.cols);
     const diverge = routedInputsDiverge(input.inputs, routedPlan);

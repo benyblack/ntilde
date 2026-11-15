@@ -1,6 +1,6 @@
 // Exact queries use independently retained bytes and exposed state; parent process proofs remain mandatory.
 import { createHash } from 'node:crypto';
-import { inputPriorCaptureCap } from './input-plan.mjs';
+import { inputPlanCaptureCounts } from './input-plan.mjs';
 import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
 import { pristineEditing } from './editing-capture.mjs';
 import { queryWitnessPlan } from './query-witness-cases.mjs';
@@ -27,8 +27,9 @@ export function queryPolicyFor(marginsReport, noticeReport, deviceReport = false
     return marginsReport ? marginsQueryPolicy : legacyQueryPolicy;
 }
 /** Earlier challenges a query suite owes: every raw input capture plus the 30 image captures. 110 is the frozen 39-event input plan (80 captures);
- * 152 is the 60-event benchmark plan (122 captures); 268 is the 118-event v3 plan (238 captures). Any other count is not a plan this suite follows. */
-export const queryPriorCounts = Object.freeze([110, 152, inputPriorCaptureCap + 30]);
+ * 152 is the 60-event benchmark plan (122 captures); 268 is the 118-event v3 plan (238 captures); 360 is the 164-event v4 plan (330 captures).
+ * One count per input plan generation (derived, never listed by hand); any other count is not a plan this suite follows. */
+export const queryPriorCounts = Object.freeze(inputPlanCaptureCounts.map(count => count + 30));
 export const pristineQuery = screen => typeof screen.cursorVisible === 'boolean' && pristineEditing({ ...screen, cursorVisible: true });
 export const checkQueries = value => { if (!value) throw new Error('Invalid or incomplete owned query evidence.'); };
 const check = checkQueries;

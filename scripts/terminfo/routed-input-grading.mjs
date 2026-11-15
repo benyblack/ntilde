@@ -94,10 +94,17 @@ function caseReport(caseId, recorded, context) {
             note: result.note ?? null, scope: 'declared Avalonia events in a disposable direct-local pane; child bytes captured independently of the App' } };
 }
 
+/** The routed events' modes with the keys later plan generations add removed while they hold their neutral value: the negotiated
+ * modifyOtherKeys level 0 (v3) and the UTF-8 and urxvt coordinate encodings false (v4). Any other value stays and is a divergence. */
+export function withoutPlanExtensions(modes) {
+    const neutral = { modifyOtherKeysLevel: 0, mouseUtf8: false, mouseUrxvt: false };
+    return Object.fromEntries(Object.entries(modes).filter(([key, value]) => !(Object.hasOwn(neutral, key) && neutral[key] === value)));
+}
+
 /**
  * The journal inputs of a plan generation that shares this benchmark plan (v3 keeps every routed event verbatim and adds the
  * modifyOtherKeys cases) must match the frozen v2 cases exactly: same order, setup, event, roles, literal, and modes extended
- * only by the negotiated level, which inputReset holds at 0. Returns the failure reason, or null.
+ * only by the keys later plan generations add, which their resets hold neutral. Returns the failure reason, or null.
  */
 export function routedInputsDiverge(inputs, routedPlan = makeRoutedInputCases(40, 140)) {
     const routed = inputs.filter(item => routedPlan.some(planItem => planItem.id === item.id));
@@ -109,11 +116,7 @@ export function routedInputsDiverge(inputs, routedPlan = makeRoutedInputCases(40
         if (JSON.stringify(journal.event) !== JSON.stringify(expected.event) || JSON.stringify(journal.roles) !== JSON.stringify(expected.roles)) {
             return `routed-input ${expected.id} changed its event or roles`;
         }
-        if (journal.modes.modifyOtherKeysLevel === 0) {
-            const without = { ...journal.modes, modifyOtherKeysLevel: undefined };
-            if (JSON.stringify(without) === JSON.stringify(expected.modes)) continue;
-        }
-        if (JSON.stringify(journal.modes) !== JSON.stringify(expected.modes)) return `routed-input ${expected.id} changed its modes`;
+        if (JSON.stringify(withoutPlanExtensions(journal.modes)) !== JSON.stringify(expected.modes)) return `routed-input ${expected.id} changed its modes`;
     }
     return null;
 }

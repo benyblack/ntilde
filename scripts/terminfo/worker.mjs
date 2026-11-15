@@ -56,6 +56,8 @@ import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
 import { collectModifyOtherKeysPinned } from './modify-other-keys-collector.mjs';
 import { modifyOtherKeysCaseIds, modifyOtherKeysGradedSuiteId } from './modify-other-keys-contracts.mjs';
+import { collectMexPinned } from './mex-collector.mjs';
+import { mexCaseIds, mexGradedSuiteId } from './mex-contracts.mjs';
 import { collectColorResetGrading } from './color-reset-collector.mjs';
 import { collectSgr } from './sgr.mjs';
 import { collectRgb } from './rgb.mjs';
@@ -440,6 +442,8 @@ try {
                 status: 'unavailable', reason: inputResult.reason, plannedCases: routedInputCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
             writeFileSync(join(config.output, 'mok-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: modifyOtherKeysGradedSuiteId,
                 status: 'unavailable', reason: inputResult.reason, plannedCases: modifyOtherKeysCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
+            writeFileSync(join(config.output, 'mex-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: mexGradedSuiteId,
+                status: 'unavailable', reason: inputResult.reason, plannedCases: mexCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
         } else {
             if (inputResult?.status !== 'complete') throw new Error('Routed-input qualification requires the owned input suite to complete or be unavailable.');
             const routedInputRun = collectRoutedInputPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
@@ -452,6 +456,13 @@ try {
             const modifyOtherKeysRun = collectModifyOtherKeysPinned({ geometry: inputResult.geometry, controls: inputResult.controls,
                 gradingModule: await import(pathToFileURL(config.modifyOtherKeysBundle).href) });
             writeFileSync(join(config.output, 'mok-run.json'), JSON.stringify(modifyOtherKeysRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered extended-mouse qualification replays the pinned probes over the child's own DECRQM replies from the same collection;
+            // the routed-input and modifyOtherKeys events stay verbatim in the v4 plan so those layers keep deciding.
+            const mexSource = readFileSync(config.mexBundle);
+            if (createHash('sha256').update(mexSource).digest('hex') !== config.mexBundleSha256) throw new Error('Local extended-mouse adapter bundle changed.');
+            const mexRun = collectMexPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
+                gradingModule: await import(pathToFileURL(config.mexBundle).href) });
+            writeFileSync(join(config.output, 'mex-run.json'), JSON.stringify(mexRun) + '\n', { flag: 'wx', mode: 0o600 });
         }
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });

@@ -1212,3 +1212,12 @@ so the unchanged pinned code is replayed over the journaled raw bytes of its own
 independent oracle written from xterm's control-sequence text: silence, restoration of the foreground, background, cursor and ANSI palette entry 5 read back through OSC 10/11/12 and OSC 4 replies, the untouched
 host default, LIFO order, snapshot copy semantics and numbered slots. Both effect contracts are **supported** and both pinned verdicts stay **inconclusive** (a recorded divergence); palette entry 200 and a pop with
 nothing stored are recorded policy groups that never decide. No production code, stock grade or query policy changed (stock stays 91/1/163). Receipt schema 62 and source policy v56 (374 files) bind it.
+
+### Extended mouse encoding qualification
+
+The extended-mouse batch qualifies `modes.utf8-mouse-1005` (UTF-8 coordinates) and `input.urxvt-mouse` (decimal coordinates, mode 1015) through a layered collector extension
+(`ntilde-owned-mouse-extended-grading-v1`) over the left/right-margin one (a sibling of the routed-input and modifyOtherKeys layers) and input plan v4, which keeps every v3 event verbatim and
+appends 46 declared Avalonia events. The pinned probes cannot decide (the 1005 termless code returns `notTestedResult`; the urxvt probe is the same `mouseInputProbe` as `input.x10-mouse`), so the unchanged
+pinned code is replayed over the child's own DECRQM replies beside effect contracts (`ntilde-utf8-mouse-1005-effect-v1`, `ntilde-urxvt-mouse-effect-v1`) graded by an independent oracle written from xterm's
+`button.c`. The stock terminal path of `modes.utf8-mouse-1005` is a DECRQM recognition check and is reported separately. Receipt schema 63 and source policy v57 (380 files) bind it; the measured run and
+publication follow. See [the qualification page](terminfo/2026-11-15-mouse-extended-qualification.md).

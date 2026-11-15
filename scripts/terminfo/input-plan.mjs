@@ -6,6 +6,7 @@
 import { inputSuiteId, makeInputCases, ownedInputPolicy } from './input-cases.mjs';
 import { makeRoutedInputCases, ownedRoutedInputPolicy, routedInputPlanId, routedInputSuiteId } from './routed-input-cases.mjs';
 import { makeModifyOtherKeysCases, modifyOtherKeysPlanId, ownedModifyOtherKeysPolicy, routedInputV3SuiteId, xtqmodkeysQuery } from './modify-other-keys-cases.mjs';
+import { makeMexCases, mexPlanId, mexQueries, mexReset, mexSuiteId, ownedMexPolicy } from './mex-cases.mjs';
 
 /** The mode-profile constants the plans share; input-state re-exports them so existing importers stay unchanged. */
 export const inputModeNumbers = Object.freeze([66, 9, 1000, 1002, 1003, 1006]);
@@ -20,9 +21,16 @@ export const inputPlanV3 = Object.freeze({ id: modifyOtherKeysPlanId, suiteId: r
     finalModes: Object.freeze({ ...defaultInputModes, modifyOtherKeysLevel: 0 }),
     captureBudget: 256, readerBudget: 128,
     scope: count => `${count} standalone declared Avalonia events in the benchmark plan (input.x10-mouse, input.button-event-mouse, modes.application-keypad, input.modify-other-keys levels 1 and 2); paired complete state, independent raw local-child bytes, source-selected mode and XTQMODKEYS queries and recorded (not asserted) event bytes. No native keyboard, remote/mux transport, Windows runtime or stock-grade claim.` });
+// v4 keeps every v3 event verbatim and appends the extended mouse coordinate encodings (modes.utf8-mouse-1005, input.urxvt-mouse); its
+// control captures additionally prove the DECRQM state of mode 1005 and 1015, and its resets clear both.
+export const inputPlanV4 = Object.freeze({ id: mexPlanId, suiteId: mexSuiteId, policy: ownedMexPolicy, make: makeMexCases, exactEvents: false,
+    queries: inputModeQueries + xtqmodkeysQuery + mexQueries, reset: mexReset,
+    finalModes: Object.freeze({ ...defaultInputModes, modifyOtherKeysLevel: 0, mouseUtf8: false, mouseUrxvt: false }),
+    captureBudget: 384, readerBudget: 192,
+    scope: count => `${count} standalone declared Avalonia events in the benchmark plan (input.x10-mouse, input.button-event-mouse, modes.application-keypad, input.modify-other-keys levels 1 and 2, modes.utf8-mouse-1005, input.urxvt-mouse); paired complete state, independent raw local-child bytes, source-selected mode, XTQMODKEYS and 1005/1015 DECRQM queries and recorded (not asserted) event bytes. No native keyboard or pointer, remote/mux transport, Windows runtime or stock-grade claim.` });
 /** The plan the current runner and worker execute; every older plan stays available for historical re-derivation. */
-export const currentInputPlan = inputPlanV3;
-export const inputPlans = Object.freeze([inputPlanV1, inputPlanV2, inputPlanV3]);
+export const currentInputPlan = inputPlanV4;
+export const inputPlans = Object.freeze([inputPlanV1, inputPlanV2, inputPlanV3, inputPlanV4]);
 /** Frames: start, bind, a control and a read per case, finish. Raw attempts: bind, two per case, the final restoration. */
 export const inputFrameCount = count => 2 * count + 3;
 export const inputAttemptCount = count => 2 * count + 2;
@@ -33,9 +41,12 @@ export const inputPriorCaptureCap = Math.max(...inputPlanCaptureCounts);
 /** First source policy whose runs execute the v2 benchmark plan; the v3 plan (modifyOtherKeys) follows the same rule. */
 export const routedInputFirstPolicy = 36;
 export const modifyOtherKeysFirstPolicy = 50;
+/** First source policy whose runs execute the v4 plan (the extended mouse coordinate encodings); set when the layer is plumbed. */
+export const mexFirstPolicy = 57;
 export function inputPlanForPolicy(policy) {
     const version = /^readonly-owned-source-graph-v(\d+)$/.exec(policy ?? '')?.[1];
     if (version === undefined) return inputPlanV1;
+    if (Number(version) >= mexFirstPolicy) return inputPlanV4;
     return Number(version) >= modifyOtherKeysFirstPolicy ? inputPlanV3 : Number(version) >= routedInputFirstPolicy ? inputPlanV2 : inputPlanV1;
 }
 /** The plan a run declared: receipts bind journals to the declared suite, so a plan generation is proved by its own

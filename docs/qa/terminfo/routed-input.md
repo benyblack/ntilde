@@ -84,3 +84,5 @@ Generated App events are not physical keyboard or pointer input; the host keyboa
 established. App admission (`handled`, `inputSubmitted`) is retained beside, never instead of, the bytes the child received. Direct-local delivery does
 not qualify SSH, mux or Windows. Source tests (`MainWindowGeneratedInputTests`, the ApplicationKeypad and X10 routing suites) do not replace the fresh
 live measurement.
+
+Later plan generations keep these events verbatim: plan v3 adds the [modifyOtherKeys layer](2026-11-12-modify-other-keys-qualification.md) and plan v4 the [UTF-8 / urxvt mouse encodings](2026-11-15-mouse-extended-qualification.md); their modes only gain neutral keys, which the routed-input divergence check strips (`withoutPlanExtensions`).

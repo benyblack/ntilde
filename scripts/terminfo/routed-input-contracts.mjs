@@ -35,14 +35,24 @@ const codeByKind = Object.freeze({
  * The generated-event bit mask is shift=1, ctrl=2, alt=4, meta=8.
  */
 export function xtermMouseReport(event) {
-    const { tracking, sgr, kind, modifiers = 0, column, row } = event;
-    const base = Object.hasOwn(codeByKind, kind) && [9, 1000, 1002, 1003].includes(tracking) ? codeByKind[kind](event) : null;
-    if (base === null) return '';
-    // X10 compatibility mode never carries modifier information; xterm's meta bit is alt's 8, so alt or meta adds 8 once.
-    const code = base + (tracking === 9 ? 0 : (modifiers & 1 ? 4 : 0) + (modifiers & 2 ? 16 : 0) + (modifiers & 12 ? 8 : 0));
+    const { sgr, kind, column, row } = event, code = xtermMouseCode(event);
+    if (code === null) return '';
     if (sgr) return `\x1b[<${code};${column};${row}${kind === 'mouseRelease' ? 'm' : 'M'}`;
     if (column > 223 || row > 223) throw new Error('Legacy mouse coordinates above 223 are not representable.');
     return '\x1b[M' + octet(code) + octet(column) + octet(row);
+}
+
+/**
+ * The button code (before the +32 printable offset) xterm reports for one event, or null when the tracking protocol does not report it.
+ * `sgr` only changes the release code (SGR keeps the released button, every other encoding reports 3). Shared by the extended-encoding
+ * oracle, which changes how the code and the coordinates are printed, never what they mean.
+ */
+export function xtermMouseCode(event) {
+    const { tracking, kind, modifiers = 0 } = event;
+    const base = Object.hasOwn(codeByKind, kind) && [9, 1000, 1002, 1003].includes(tracking) ? codeByKind[kind](event) : null;
+    if (base === null) return null;
+    // X10 compatibility mode never carries modifier information; xterm's meta bit is alt's 8, so alt or meta adds 8 once.
+    return base + (tracking === 9 ? 0 : (modifiers & 1 ? 4 : 0) + (modifiers & 2 ? 16 : 0) + (modifiers & 12 ? 8 : 0));
 }
 
 /** VT100 table 3-8 / xterm VT220-style keypad: application mode sends SS3 + final; numeric mode sends nothing on key-down except Enter (CR). */
