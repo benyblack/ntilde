@@ -55,6 +55,21 @@ function replyEnd(rest) {
     return -1;
 }
 
+/** The length of the complete reply at the start of `rest` (0 when none starts there), or -1 while an unfinished reply is still arriving. */
+function replyLengthAt(rest) {
+    if (rest.startsWith(esc + 'P') || rest.startsWith(esc + ']')) return replyEnd(rest);
+    const report = rest.startsWith(esc) ? paletteReportStart.exec(rest.slice(1)) : null;
+    return report === null ? 0 : report[0].length + 1;
+}
+
+/** What follows the last reply: the DA barrier that completes the exchange, a prefix of it (null: incomplete), or bytes that are neither (refused). */
+function finishFrame(rest, replies) {
+    if (!rest || (esc + '[?').startsWith(rest)) return null;
+    if (isBarrier(rest)) return { barrier: rest, replies };
+    if (!rest.startsWith(esc) || !/^\[\?[\d;]*#?$/.test(rest.slice(1))) throw new Error('Unexpected device-query barrier bytes.');
+    return null;
+}
+
 /**
  * Parse the accumulated bytes of one exchange: any number of complete bounded replies followed by the DA barrier. Null means incomplete. A complete DA without
  * a reply is an explicitly absent reply list, never a reply guessed from state.
@@ -63,28 +78,13 @@ export function parseDevqFrame(bytes) {
     if (typeof bytes !== 'string' || bytes.length > exchangeLimit) throw new Error('Oversized device-query barrier.');
     const replies = [];
     let rest = bytes;
-    for (;;) {
-        if (rest.startsWith(esc + 'P') || rest.startsWith(esc + ']')) {
-            const length = replyEnd(rest);
-            if (length < 0) return null;
-            if (replies.length === devqReplyLimit) throw new Error('Too many device-query replies.');
-            replies.push(parseDevqReply(rest.slice(0, length)).raw);
-            rest = rest.slice(length);
-            continue;
-        }
-        const report = rest.startsWith(esc) ? paletteReportStart.exec(rest.slice(1)) : null;
-        if (report !== null) {
-            if (replies.length === devqReplyLimit) throw new Error('Too many device-query replies.');
-            replies.push(parseDevqReply(esc + report[0]).raw);
-            rest = rest.slice(report[0].length + 1);
-            continue;
-        }
-        break;
+    for (let length = replyLengthAt(rest); length !== 0; length = replyLengthAt(rest)) {
+        if (length < 0) return null;
+        if (replies.length === devqReplyLimit) throw new Error('Too many device-query replies.');
+        replies.push(parseDevqReply(rest.slice(0, length)).raw);
+        rest = rest.slice(length);
     }
-    if (!rest || (esc + '[?').startsWith(rest)) return null;
-    if (isBarrier(rest)) return { barrier: rest, replies };
-    if (!rest.startsWith(esc) || !/^\[\?[\d;]*#?$/.test(rest.slice(1))) throw new Error('Unexpected device-query barrier bytes.');
-    return null;
+    return finishFrame(rest, replies);
 }
 
 /** A retained exchange: its raw replies (or explicit absence) and DA barrier. */

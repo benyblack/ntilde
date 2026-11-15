@@ -121,7 +121,7 @@ export function syntheticDevqEvidence({ runId = 'a'.repeat(32), bundleSha256 = '
     const frames = [frame(0, 'dvq-start', main, null), frame(1, 'dvq-bind', bound, deviceAttribute)];
     const cases = [];
     for (const contract of devqContracts) {
-        const reads = syntheticDevqScreens(contract, recolored?.caseId === contract.caseId ? recolored.binding : binding, mutate, runId);
+        const reads = syntheticDevqScreens(contract, recolored?.caseId === contract.caseId ? (recolored.binding ?? binding) : binding, mutate, runId);
         const records = reads.map((read, index) => {
             const isReport = contract.roles[index] !== 'initial';
             const exchange = isReport ? { barrier: deviceAttribute, replies: read.replies } : undefined;

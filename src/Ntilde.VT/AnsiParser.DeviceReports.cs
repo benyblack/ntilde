@@ -73,23 +73,24 @@ namespace Ntilde.VT
             List<(string Encoded, string Name)>? names = ParseXtgettcapNames(dcs.AsSpan(2));
             if (names is null || names.Count > XtgetxresMaxNames) return;
 
+            OnResponse(BuildXtgetxresReply(names));
+        }
+
+        /// <summary>The one DCS for a validated name list: the first name's status, then each name until the first unknown one.</summary>
+        private string BuildXtgetxresReply(List<(string Encoded, string Name)> names)
+        {
             var reply = new StringBuilder("\u001bP");
-            bool first = true;
             for (int i = 0; i < names.Count; i++)
             {
                 string? value = names[i].Name == XtgetxresTermNameResource ? TerminalTypeName : null;
-                if (first)
-                {
-                    reply.Append(value is null ? "0+R" : "1+R");
-                    first = false;
-                }
+                if (i == 0) reply.Append(value is null ? "0+R" : "1+R");
                 reply.Append(names[i].Encoded);
                 if (value is null) break;
                 reply.Append('=');
                 foreach (char ch in value) reply.Append(((int)ch).ToString("X2", CultureInfo.InvariantCulture));
                 if (i + 1 < names.Count) reply.Append(';');
             }
-            OnResponse(reply.Append("\u001b\\").ToString());
+            return reply.Append("\u001b\\").ToString();
         }
 
         /// <summary>
