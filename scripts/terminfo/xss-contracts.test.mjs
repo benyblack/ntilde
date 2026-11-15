@@ -27,6 +27,15 @@ test('the contracts cover exactly the two pinned cases with unique roles, bounde
     assert.ok(xssContracts.reduce((sum, contract) => sum + planReads(contract), 0) + 3 <= 64);
 });
 
+test('every case starts by erasing the probe row, so a later case never inherits an earlier case\'s probe cells', () => {
+    for (const contract of xssContracts) {
+        const [first] = contract.plan;
+        assert.ok(first.feed.includes(`${esc}[${xssProbeRow + 1};1H${esc}[2K`), `${contract.caseId} reseed erases row ${xssProbeRow + 1}`);
+        assert.ok(first.feed.indexOf(`${esc}[2K`) < first.feed.indexOf(`${esc}[2;6r`), 'the erase precedes the margins and the home');
+        assert.ok(first.feed.endsWith(`${esc}[1;1H`), 'the reseed homes the cursor');
+    }
+});
+
 test('the exact pinned sequences are the pinned bytes', () => {
     assert.deepEqual(xssPinnedScripts['modes.xtpushsgr'].termless, [['feedCapture', `${esc}[#{`, 'replies'], ['feedCapture', `${esc}[c`, 'barrier'], ['feed', `${esc}[#}`]]);
     assert.deepEqual(xssPinnedScripts['modes.xtpushsgr'].terminal, [['write', `${esc}[#{`], ['cursor'], ['write', `${esc}[#}`]]);
@@ -209,5 +218,14 @@ test('each numbered group saves one parameter and demands exactly that attribute
         assert.ok(item.setup.some(feed => feed === `${esc}[${value}#{`), `${item.role} pushes exactly parameter ${value}`);
         assert.equal(item.setup.filter(feed => feed.includes('#{')).length, 1);
         assert.ok(item.request.includes(`${esc}[#}`) && !item.request.includes('#{'), `${item.role} pops once in the request`);
+    }
+});
+
+test('probe cells an earlier case left on the probe row make the seed unproven, never a verdict', () => {
+    // The first attempt at this suite ran the push case before the pop case without erasing row 8: the pop case then judged against a dirty row.
+    for (const caseId of xssCaseIds) {
+        const grade = syntheticXssGrade(caseId, undefined, null, null, 'abc');
+        assert.equal(grade.outcome, 'inconclusive', caseId);
+        assert.match(grade.note, /attributed seed/);
     }
 });

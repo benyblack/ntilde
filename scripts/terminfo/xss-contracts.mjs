@@ -176,8 +176,8 @@ const cellText = cell => ({ char: cell.char, attributes: ['bold', 'dim', 'italic
 /** The measured reset the bind begins with: protection, SGR and origin off, margins cleared, screen cleared, cursor home, and a drained stack. */
 export const xssDrain = csiPop.repeat(stackLimit);
 export const xssReset = '\x1b[0"q' + sgrAttrsReset + '\x1b[?6l\x1b[r\x1b[2J\x1b[H' + xssDrain;
-/** The plan's static first feed re-establishes the attributed seed and homes the cursor without clearing the nonce row. */
-export const xssReseed = '\x1b[2;1H\x1b[1mNtilde\x1b[31mXT\x1b[0m\x1b[4;1H\x1b[4:3mU\x1b[0m\x1b[2;6r\x1b[1;1H';
+/** The plan's static first feed re-establishes the attributed seed, erases the probe row the previous case filled and homes the cursor, without clearing the nonce row. */
+export const xssReseed = `\x1b[2;1H\x1b[1mNtilde\x1b[31mXT\x1b[0m\x1b[4;1H\x1b[4:3mU\x1b[0m\x1b[${xssProbeRow + 1};1H\x1b[2K\x1b[2;6r\x1b[1;1H`;
 /** The attributed seed the bind writes, then the nonce at home. */
 export const xssSeed = nonce => xssReseed + '\x1b[1;1H' + nonce;
 const seedCells = Object.freeze([

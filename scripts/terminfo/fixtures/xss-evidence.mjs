@@ -38,9 +38,10 @@ const exchanges = Object.freeze(Object.fromEntries(Object.entries(probes).map(([
 
 /** The screens and reply lists of every read of one case. `mutate(caseId, role, read)` may return a changed read (a replaced screen or reply list) and `mutateCell(caseId, role, spec)` a changed probe
  *  cell spec (which persists in the later reads, as a wrong cell would). */
-export function syntheticXssScreens(contract, binding = paletteBinding(), mutate = null, runId = 'a'.repeat(32), mutateCell = null) {
+export function syntheticXssScreens(contract, binding = paletteBinding(), mutate = null, runId = 'a'.repeat(32), mutateCell = null, leftover = '') {
     const nonce = 'NTILDE_XSS_' + runId;
-    const cells = [];
+    // `leftover` is probe-row text an earlier case left behind: it is on every screen of this case, as a missing erase would leave it.
+    const cells = [...leftover].map(char => colorCell(char));
     let cursor = [0, 0];
     return contract.roles.map(role => {
         const group = contract.groups.find(item => item.role === role);
@@ -95,9 +96,9 @@ export function syntheticXssEvidence({ runId = 'a'.repeat(32), bundleSha256 = 'f
 }
 
 /** The independent contract verdict for one synthetic case. */
-export function syntheticXssGrade(caseId, binding = paletteBinding(), mutate = null, mutateCell = null) {
+export function syntheticXssGrade(caseId, binding = paletteBinding(), mutate = null, mutateCell = null, leftover = '') {
     const contract = xssContracts.find(item => item.caseId === caseId);
-    const reads = syntheticXssScreens(contract, binding, mutate, undefined, mutateCell);
+    const reads = syntheticXssScreens(contract, binding, mutate, undefined, mutateCell, leftover);
     return gradeXssCase(contract, xssObservation(contract, reads.map(read => read.screen), reads.map(read => read.replies), 'NTILDE_XSS_' + 'a'.repeat(32)));
 }
 
