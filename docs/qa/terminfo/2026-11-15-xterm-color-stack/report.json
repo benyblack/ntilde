@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-xterm-color-stack-graded-v1",
   "contractsVersion": 1,
-  "runId": "e9d9cfc12b3bb5e163128fe7f792cc95",
+  "runId": "e8e08c7e6d7c6262b177459bc71652d6",
   "adapter": {
     "id": "ntilde-owned-xterm-color-stack-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "b8023e4ee4e6fbdc7825b96f0e3c29db2f185c99b2ab7917c6891e590deb41a4",
+    "bundleSha256": "b69076919fcbf572bb637720c3205038732ec994132c8853c57089d59eaa0ceb",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 criteria for modes.xtpushcolors (CSI # P) and modes.xtpopcolors (CSI # Q), which can only return inconclusive (they measure DA1 and cursor responsiveness, not saved/restored stack state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an independent oracle written from xterm's control-sequence text: silence of both sequences, snapshot and restoration of the foreground, background and cursor colors and ANSI palette entry 5 read back through OSC 10/11/12 and OSC 4 replies, restoration of the untouched host default, LIFO order, snapshot copy semantics and numbered slots; palette entry 200 and a pop with nothing stored are policy groups that never decide; raw terminal state, not host presentation or painted pixels; no depth-report (XTREPORTCOLORS) claim, no kitty color-stack claim, no remote/mux, Windows/Linux or common-harness claim; the stock grades are unchanged by this suite.",
@@ -89,7 +89,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_XCS_e9d9cfc12b3bb5e163128fe7f792cc95",
+          "nonce": "NTILDE_XCS_e8e08c7e6d7c6262b177459bc71652d6",
           "margins": [
             1,
             5
@@ -518,7 +518,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_XCS_e9d9cfc12b3bb5e163128fe7f792cc95",
+          "nonce": "NTILDE_XCS_e8e08c7e6d7c6262b177459bc71652d6",
           "margins": [
             1,
             5

@@ -23,7 +23,7 @@ reply) and the cursor of its read. The graded conclusion belongs to a separately
 | `modes.xtpushcolors` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 | `modes.xtpopcolors` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 
-The stock collector in the same owned run (`8cb42b4de5030a9383471a6a9b5f11eb`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the device-query batch's counts: no stock grade
+The stock collector in the same owned run (`d25ae258a7005bb83c73a10aaada1915`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the device-query batch's counts: no stock grade
 moves. The frozen stock baseline keeps its original grades. No Core point is added. Inventory: two more IDs with a supported effect contract and an inconclusive pinned verdict; no pinned-supported ID is added.
 
 ## What the effect contract decides
@@ -56,9 +56,9 @@ common-harness claim.
 
 App 0.14.0 (operator supplied) built from `7ba6fff36c36c1e4b805ad252c805835cfb0c42e` (arm64 Release, main after PR 966; the last commit that changed the App sources; executable SHA-256
 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `3b1ccd56d690d9123a5a6b875788b6d48f0972fb0a26546f3e667537dcb72673`); measured scripts
-`74bf9d5e00b41a71a72bced25fe85952ea1fc5b4`; source policy `readonly-owned-source-graph-v56` (374 files; manifest SHA-256 `c60af4e766d1b1577b3a91133301de25139bc5f5c1e7992c869cbd65729e3e4a`); query policy
-`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `7c8bd312715f015215a3909fecbce74bfa8b943d3abb6cd0b4d5560439fb7fdb`; receipt schema 62; Node v24.22.2; owned run
-`e9d9cfc12b3bb5e163128fe7f792cc95`; collected 2026-11-15T13:37Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
+`684b99920428be3bed63dbfee1eb1dc3f4d66830`; source policy `readonly-owned-source-graph-v56` (374 files; manifest SHA-256 `c72212fefde9e29ad9cb2bef18541f6dabec08af375fb124542864460a449077`); query policy
+`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `ed05b80cceec83418d2708d5034ecfe8d1565aced4458b5ee1bf43602d92179b`; receipt schema 62; Node v24.22.2; owned run
+`e8e08c7e6d7c6262b177459bc71652d6`; collected 2026-11-15T14:09Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
 retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-15-xterm-color-stack/superseded/))
@@ -76,6 +76,9 @@ retained bytes.
    control assumed, letting a non-deciding group influence the verdict), and because main then moved: PR 966 merged with Sonar fixes that changed the App sources (the explicit-zero deviation for push/pop) and the device-query
    scripts, so the App was rebuilt and everything remeasured on the merged tree.
 5. Failed on the merged tree: `Unexpected input during cell collection.` (the collector's guard against input reaching the disposable App), before the xcs suite finished. No code changed; the same committed scripts and sidecar were run again.
+6. Completed on the merged tree with the same verdicts, measured at `74bf9d5e00b41a71a72bced25fe85952ea1fc5b4` (owned run `e9d9cfc12b3bb5e163128fe7f792cc95`); superseded because SonarCloud failed PR 967's quality gate on measured files
+   (control characters in regular-expression literals counted as reliability bugs, a parser function over the complexity limit, repeated `push` calls and four blocks duplicated from the device-query layer). They were reshaped
+   without changing any contracted bytes or verdict and the suite was remeasured.
 
 The final run is [owned-run.zip](2026-11-15-xterm-color-stack/owned-run.zip); `node --test scripts/terminfo/xcs-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the retained
 journal and compares the published projection.
