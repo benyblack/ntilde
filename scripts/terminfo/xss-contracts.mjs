@@ -21,7 +21,8 @@
 // Roles: `protocol` groups decide a mismatch (unsupported); `control` groups prove the setup took effect (a failed control is inconclusive, never a verdict); `policy` groups record a deliberate
 // Ntilde choice or an unspecified xterm behavior.
 //
-// Limits: Ntilde has one underline pen where xterm keeps a flag for the single and one for the double line, so the parameters 4 and 21 are exercised only with pens where the other is clear. Every
+// Limits: Ntilde has one underline pen where xterm keeps a flag for the single and one for the double line. The oracle models them as two attributes (parameters 4 and 21) restored on their own, and
+// decides only where the pen can show the xterm result (the other flag clear); both flags set at once, which the pen cannot hold, resolves to the double underline and is a `policy` group. Every
 // case drains the stack (ten pops) and resets the pen at its end. Stored cell attributes only: no rendering, painted-pixel or host-presentation claim; XTREPORTSGR (CSI # |) and the CSI Pm # p /
 // CSI # q aliases are different spellings and are not measured here.
 import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
@@ -94,10 +95,10 @@ export function replayXssPinned(caseId, path, { replies = '', barrier = '', posi
 // ---------- the independent oracle: a pen and a stack written from the control-sequence text ----------
 
 /** The attributes of the pen the stack can hold, in the documented order of its parameters. */
-const stackable = Object.freeze(['bold', 'faint', 'italic', 'underline', 'blink', 'inverse', 'hidden', 'strike', 'fg', 'bg']);
-/** The attribute each documented parameter selects (Ntilde has one underline pen, so 4 and 21 both select it). */
-const parameterAttributes = Object.freeze({ 1: ['bold'], 2: ['faint'], 3: ['italic'], 4: ['underline'], 5: ['blink'], 7: ['inverse'], 8: ['hidden'], 9: ['strike'],
-    21: ['underline'], 30: ['fg'], 31: ['bg'] });
+const stackable = Object.freeze(['bold', 'faint', 'italic', 'single', 'double', 'blink', 'inverse', 'hidden', 'strike', 'fg', 'bg']);
+/** The attribute each documented parameter selects: the underline (4) and the double underline (21) are two attributes, as xterm's two flags are. */
+const parameterAttributes = Object.freeze({ 1: ['bold'], 2: ['faint'], 3: ['italic'], 4: ['single'], 5: ['blink'], 7: ['inverse'], 8: ['hidden'], 9: ['strike'],
+    21: ['double'], 30: ['fg'], 31: ['bg'] });
 /** Ten levels, as the text states. */
 const stackLimit = 10;
 const defaultColor = Object.freeze({ kind: 'default' });
@@ -130,7 +131,10 @@ export class XtermSgrStackModel {
     pop() {
         const top = this.stack.pop();
         if (top === undefined) return;
-        this.pen = { ...this.pen, ...Object.fromEntries(top.attributes.map(name => [name, top.pen[name]])) };
+        const lines = ['single', 'double'], restored = Object.fromEntries(top.attributes.filter(name => !lines.includes(name)).map(name => [name, top.pen[name]]));
+        // Each underline flag takes its saved value when selected and keeps its current one otherwise; both set resolves to the double underline.
+        const [single, double] = lines.map(name => (top.attributes.includes(name) ? top.pen.underline === name : this.pen.underline === name));
+        this.pen = { ...this.pen, ...restored, underline: double ? 'double' : single ? 'single' : 'none' };
     }
 }
 
@@ -251,7 +255,16 @@ function pushGroups() {
         groups.push(b.probe(`numbered-${value}`, 'protocol', `a push of parameter ${value} alone saves only the ${attribute} of pen ${value === 21 ? 'A with a double underline' : 'A'}: after the pen is cleared a pop restores that attribute and leaves every other as it was`,
             [{ set: saved }, { push: [value] }, { set: penClear }], [{ pop: 1 }]));
     }
+    const line = underline => pen({ ...penClear, underline });
     groups.push(
+        b.probe('numbered-4-keeps-double', 'protocol', 'a push of parameter 4 alone saves the underline only: with no underline saved, a double underline set since is not selected and stays after the pop',
+            [{ set: penClear }, { push: [4] }, { set: line('double') }], [{ pop: 1 }]),
+        b.probe('numbered-21-keeps-single', 'protocol', 'a push of parameter 21 alone saves the double underline only: with none saved, a single underline set since stays after the pop',
+            [{ set: penClear }, { push: [21] }, { set: line('single') }], [{ pop: 1 }]),
+        b.probe('numbered-4-beside-double', 'policy', 'xterm would hold both flags after restoring a saved underline beside a double underline set since; the pen holds one style and Ntilde shows the double underline',
+            [{ set: line('single') }, { push: [4] }, { set: line('double') }], [{ pop: 1 }]),
+        b.probe('numbered-21-beside-single', 'policy', 'the mirror case: a saved double underline restored beside a single underline set since leaves both flags in xterm and the double underline in Ntilde',
+            [{ set: line('double') }, { push: [21] }, { set: line('single') }], [{ pop: 1 }]),
         b.probe('depth-top', 'protocol', 'ten pushes (palette foregrounds 41..50) all hold: the first pop restores the tenth level', Array.from({ length: 10 }, (_, n) => levelOps(n + 1)).concat([[{ set: neutralPen }]]), [{ pop: 1 }]),
         b.probe('depth-bottom', 'protocol', 'after eight more pops the next one restores the first level (foreground 41): the bottom of a ten-level stack survived', [[{ pop: 8 }]], [{ pop: 1 }]),
         b.probe('overflow-eleventh', 'policy', 'an eleventh push is ignored in Ntilde (the text only says the stack is limited to ten levels): ten pops after eleven pushes end at the first level',
@@ -300,7 +313,7 @@ function planOf(groups) {
 const appearanceScopes = Object.freeze({
     'modes.xtpushsgr': 'xterm XTPUSHSGR (CSI # {) only: silence, an unchanged screen, that the push changes no attribute of the current pen, the snapshot of the bold, faint, italic, underline, blink, inverse, '
         + 'hidden and strikethrough attributes and the foreground and background read back from the stored cell of a probe character after a pop, snapshot copy semantics, the selection of each documented '
-        + 'parameter alone (1, 2, 3, 4, 5, 7, 8, 9, 21, 30, 31) and ten levels holding; the eleventh push, an unlisted value and the overline and underline color are policy groups; stored cell attributes, no '
+        + 'parameter alone (1, 2, 3, 4, 5, 7, 8, 9, 21, 30, 31, the underline and the double underline restored independently) and ten levels holding; the eleventh push, an unlisted value and the overline and underline color are policy groups; stored cell attributes, no '
         + 'rendering or painted-pixel claim, no XTREPORTSGR claim, and the pinned probe measures only DA1 and cursor responsiveness',
     'modes.xtpopsgr': 'xterm XTPOPSGR (CSI # }) only: silence, an unchanged screen, restoration of the stored bold, faint, italic, underline, blink, inverse, hidden and strikethrough attributes and the '
         + 'foreground and background of a probe character\'s cell, restoration of the untouched baseline pen, LIFO order and that only the attributes a push saved are restored; a pop with nothing saved is a '

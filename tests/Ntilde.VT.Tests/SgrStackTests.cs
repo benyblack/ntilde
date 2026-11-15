@@ -144,6 +144,65 @@ public sealed class SgrStackTests
         parser.Process(Sgr("4:3"));
         parser.Process(Pop);
         Assert.False(buffer.IsUnderline);
+
+        parser.Process(Sgr("4:3"));
+        parser.Process(Push("4"));
+        parser.Process(Sgr("0"));
+        parser.Process(Pop);
+        Assert.True(buffer.IsUnderline);
+        Assert.Equal(UnderlineStyle.Curly, buffer.UnderlineStyle);
+    }
+
+    [Fact]
+    public void The_underline_and_the_double_underline_are_restored_independently()
+    {
+        var (parser, buffer, _) = Create();
+
+        // Only the underline was saved: a double underline set since stays, it was not selected.
+        parser.Process(Push("4") + Sgr("21") + Pop);
+        Assert.True(buffer.IsUnderline);
+        Assert.Equal(UnderlineStyle.Double, buffer.UnderlineStyle);
+
+        // Only the double underline was saved: a single underline set since stays.
+        parser.Process(Sgr("0") + Push("21") + Sgr("4") + Pop);
+        Assert.True(buffer.IsUnderline);
+        Assert.Equal(UnderlineStyle.Single, buffer.UnderlineStyle);
+
+        // A selected attribute takes its saved value: saved off, it is cleared.
+        parser.Process(Sgr("0") + Push("4") + Sgr("4") + Pop);
+        Assert.False(buffer.IsUnderline);
+        parser.Process(Sgr("0") + Push("21") + Sgr("21") + Pop);
+        Assert.False(buffer.IsUnderline);
+
+        // Both selected: the saved underline comes back whole.
+        parser.Process(Sgr("0;4") + Push("4;21") + Sgr("21") + Pop);
+        Assert.True(buffer.IsUnderline);
+        Assert.Equal(UnderlineStyle.Single, buffer.UnderlineStyle);
+        parser.Process(Sgr("0;21") + Push() + Sgr("4") + Pop);
+        Assert.Equal(UnderlineStyle.Double, buffer.UnderlineStyle);
+    }
+
+    [Fact]
+    public void Both_underline_flags_at_once_resolve_to_the_double_underline_Ntilde_policy()
+    {
+        // xterm holds the underline and the double underline together; the pen holds one style.
+        var (parser, buffer, _) = Create();
+        parser.Process(Sgr("4") + Push("4") + Sgr("0;21") + Pop);
+        Assert.Equal(UnderlineStyle.Double, buffer.UnderlineStyle);
+        Assert.True(buffer.IsUnderline);
+        parser.Process(Sgr("0;21") + Push("21") + Sgr("0;4") + Pop);
+        Assert.Equal(UnderlineStyle.Double, buffer.UnderlineStyle);
+    }
+
+    [Fact]
+    public void Every_parameter_selects_however_long_the_list()
+    {
+        var (parser, buffer, _) = Create();
+        string many = string.Join(';', Enumerable.Repeat("1", 40)) + ";30";
+        parser.Process(Sgr("1;31") + Push(many) + Sgr("0") + Pop);
+
+        Assert.True(buffer.IsBold);
+        Assert.Equal(1, buffer.CurrentFgIndex);
     }
 
     [Fact]

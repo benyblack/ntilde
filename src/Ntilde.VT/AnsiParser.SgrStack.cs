@@ -5,9 +5,6 @@ namespace Ntilde.VT
     /// </summary>
     public partial class AnsiParser
     {
-        /// <summary>Parameters beyond this many cannot add a bit (there are eleven documented values), so they are not read.</summary>
-        private const int XtermSgrStackMaxParameters = 32;
-
         /// <summary>
         /// Only the exact identity is admitted: no leader, the single <c>#</c> intermediate and plain parameters (a colon
         /// subparameter or any other spelling is ignored). A push selects the listed attributes (none listed: all of them;
@@ -27,7 +24,7 @@ namespace Ntilde.VT
             if (args.Length == 0) mask = TerminalBuffer.SgrStackAll;
             else
             {
-                for (int i = 0; i < Math.Min(args.Length, XtermSgrStackMaxParameters); i++) mask |= TerminalBuffer.SgrStackBitFor(args[i]);
+                foreach (int value in args) mask |= TerminalBuffer.SgrStackBitFor(value);
             }
 
             _buffer.PushSgr(mask);

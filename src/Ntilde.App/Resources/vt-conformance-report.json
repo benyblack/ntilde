@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "835a2c75bdab49242c322d89b3a3cd9503f7c79f159d1ccaa1e2d87022b73bbd",
+  "matrixSha256": "13af64ad87beb189b2df82c6a504f7496215430b936636f4c678ab905cd9acab",
   "summary": {
     "totalRows": 127,
     "supportedCount": 60,
@@ -1378,7 +1378,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "No parameter saves all eleven attributes; otherwise 1 bold, 2 faint, 3 italic, 4 underlined, 5 blink, 7 inverse, 8 invisible, 9 crossed-out, 21 doubly-underlined, 30 foreground and 31 background select them (ctlseqs). Choices the text does not make, taken here: a push onto a full stack is ignored; a parameter the text does not list selects nothing but still saves a level; the overline, the underline color and DECSCA protection are not part of the stack; the stack is shared by both screens, cleared by RIS (DECSTR leaves it) and carried by state transfer. The pen has one underline, so 4 and 21 each save and restore the whole underline (xterm keeps one flag for the single line and one for the double line). Only the exact spelling answers; the \u0060CSI Pm # p\u0060 alias is not implemented. Silent.",
+      "knownDeviations": "No parameter saves all eleven attributes; otherwise 1 bold, 2 faint, 3 italic, 4 underlined, 5 blink, 7 inverse, 8 invisible, 9 crossed-out, 21 doubly-underlined, 30 foreground and 31 background select them (ctlseqs). Choices the text does not make, taken here: a push onto a full stack is ignored; a parameter the text does not list selects nothing but still saves a level; the overline, the underline color and DECSCA protection are not part of the stack; the stack is shared by both screens, cleared by RIS (DECSTR leaves it) and carried by state transfer. The pen has one underline whose style tells the two apart, so 4 (any style but double) and 21 (double) are saved and restored independently, as xterm\u0027s two flags are; xterm holding both at once cannot be represented and resolves to the double underline. Only the exact spelling answers; the \u0060CSI Pm # p\u0060 alias is not implemented. Silent.",
       "sourceLine": 130
     },
     {

@@ -82,12 +82,7 @@ namespace Ntilde.VT
             if ((mask & SgrStackInverse) != 0) IsInverse = pen.IsInverse;
             if ((mask & SgrStackInvisible) != 0) IsHidden = pen.IsHidden;
             if ((mask & SgrStackCrossedOut) != 0) IsStrikethrough = pen.IsStrikethrough;
-            // One underline pen stands for both documented values (xterm keeps a flag each for the single and the double line).
-            if ((mask & (SgrStackUnderline | SgrStackDoubleUnderline)) != 0)
-            {
-                IsUnderline = pen.IsUnderline;
-                UnderlineStyle = (UnderlineStyle)pen.UnderlineStyle;
-            }
+            if ((mask & (SgrStackUnderline | SgrStackDoubleUnderline)) != 0) RestoreUnderline(mask, pen);
 
             if ((mask & SgrStackForeground) != 0)
             {
@@ -117,6 +112,42 @@ namespace Ntilde.VT
                     CurrentBgIndex = pen.BgIndex;
                     IsDefaultBackground = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Parameters 4 and 21 select two attributes xterm keeps as two flags: the underline and the double underline. The pen has one underline
+        /// whose style says which, so each is read from the style (the double style is the double flag, every other style is the underline flag) and
+        /// restored on its own: a selected attribute takes its saved value and an unselected one keeps its current value. Both flags set at once, which
+        /// xterm can hold and the pen cannot, resolves to the double underline.
+        /// </summary>
+        private void RestoreUnderline(int mask, TerminalSgrState pen)
+        {
+            var saved = (UnderlineStyle)pen.UnderlineStyle;
+            bool savedDouble = pen.IsUnderline && saved == UnderlineStyle.Double, savedSingle = pen.IsUnderline && !savedDouble;
+            bool currentDouble = IsUnderline && UnderlineStyle == UnderlineStyle.Double, currentSingle = IsUnderline && !currentDouble;
+            bool restoreSingle = (mask & SgrStackUnderline) != 0, restoreDouble = (mask & SgrStackDoubleUnderline) != 0;
+            bool wantDouble = restoreDouble ? savedDouble : currentDouble;
+            bool wantSingle = restoreSingle ? savedSingle : currentSingle;
+            if (restoreSingle && restoreDouble)
+            {
+                // Both selected: the saved pen's underline comes back whole, whatever its style.
+                IsUnderline = pen.IsUnderline;
+                UnderlineStyle = saved;
+            }
+            else if (wantDouble)
+            {
+                IsUnderline = true;
+                UnderlineStyle = UnderlineStyle.Double;
+            }
+            else if (wantSingle)
+            {
+                IsUnderline = true;
+                if (restoreSingle) UnderlineStyle = saved;
+            }
+            else
+            {
+                IsUnderline = false;
             }
         }
 

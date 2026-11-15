@@ -24,6 +24,8 @@ const probes = Object.freeze({
         'numbered-1': clearPlus(['bold']), 'numbered-2': clearPlus(['dim']), 'numbered-3': clearPlus(['italic']), 'numbered-4': { ...clear, underlineStyle: 1 },
         'numbered-5': clearPlus(['blink']), 'numbered-7': clearPlus(['inverse']), 'numbered-8': clearPlus(['hidden']), 'numbered-9': clearPlus(['strikethrough']),
         'numbered-21': { ...clear, underlineStyle: 2 }, 'numbered-30': { ...clear, fg: paletteChannel(196) }, 'numbered-31': { ...clear, bg: literalChannel(10, 20, 30) },
+        'numbered-4-keeps-double': { ...clear, underlineStyle: 2 }, 'numbered-21-keeps-single': { ...clear, underlineStyle: 1 }, 'numbered-4-beside-double': { ...clear, underlineStyle: 2 },
+        'numbered-21-beside-single': { ...clear, underlineStyle: 2 },
         'depth-top': { fg: paletteChannel(50) }, 'depth-bottom': { fg: paletteChannel(41) }, 'overflow-eleventh': { fg: paletteChannel(41) }, 'unlisted-value': clear,
         'unstacked-state': { attrs: ['overline'], underlineStyle: 1, underlineColorIndex: 99 },
     },
