@@ -1,0 +1,892 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-xterm-color-stack-graded-v1",
+  "contractsVersion": 1,
+  "runId": "fbfbd6e79aaf59c5178ebbf5c4a30bec",
+  "adapter": {
+    "id": "ntilde-owned-xterm-color-stack-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "2e764c9b9c11fc4bdee996d2a176571ed4eb3dd2eba76134b50df3f140b8c6eb",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criteria for modes.xtpushcolors (CSI # P) and modes.xtpopcolors (CSI # Q), which can only return inconclusive (they measure DA1 and cursor responsiveness, not saved/restored stack state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an independent oracle written from xterm's control-sequence text: silence of both sequences, snapshot and restoration of the foreground, background and cursor colors and ANSI palette entry 5 read back through OSC 10/11/12 and OSC 4 replies, restoration of the untouched host default, LIFO order, snapshot copy semantics and numbered slots; palette entry 200 and a pop with nothing stored are policy groups that never decide; raw terminal state, not host presentation or painted pixels; no depth-report (XTREPORTCOLORS) claim, no kitty color-stack claim, no remote/mux, Windows/Linux or common-harness claim; the stock grades are unchanged by this suite.",
+  "cases": [
+    {
+      "caseId": "modes.xtpushcolors",
+      "pinnedCriterion": "CSI # P produces no output (any output is invalid-reply); the probe then only checks DA1 / cursor responsiveness and is always inconclusive (insufficient-evidence)",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feedCapture",
+            "\\e[#P",
+            "replies"
+          ],
+          [
+            "feedCapture",
+            "\\e[c",
+            "barrier"
+          ],
+          [
+            "feed",
+            "\\e[#Q"
+          ]
+        ],
+        "terminal": [
+          [
+            "write",
+            "\\e[#P"
+          ],
+          [
+            "cursor"
+          ],
+          [
+            "write",
+            "\\e[#Q"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-xterm-color-stack-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-xterm-color-stack-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feedCapture",
+              "\\e[#P",
+              "replies"
+            ],
+            [
+              "feedCapture",
+              "\\e[c",
+              "barrier"
+            ],
+            [
+              "feed",
+              "\\e[#Q"
+            ]
+          ],
+          "terminal": [
+            [
+              "write",
+              "\\e[#P"
+            ],
+            [
+              "cursor"
+            ],
+            [
+              "write",
+              "\\e[#Q"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_XCS_fbfbd6e79aaf59c5178ebbf5c4a30bec",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "baseline": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "the host default colors are read back (one concrete reply per channel, in query order) and become the restoration oracle",
+            "demanded": null,
+            "received": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[#P",
+            "after": "\\e[#Q",
+            "demand": "the exact pinned CSI # P is accepted silently (its fenced exchange holds no reply) and the pinned CSI # Q that follows leaves the screen unchanged",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "after-pinned": {
+            "kind": "protocol",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "after the pinned push/pop pair every channel reads back as the baseline",
+            "demanded": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-A": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#102030\\e\\\\e]11;#112233\\e\\\\e]12;#a1b2c3\\e\\\\e]4;5;#445566\\e\\"
+            ],
+            "demand": "colors A (foreground, background, cursor, palette 5) are set and read back",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-silent": {
+            "kind": "protocol",
+            "request": "\\e[#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a push is silent and changes no current color",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-B": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#c0d0e0\\e\\\\e]11;#aabbcc\\e\\\\e]12;#3a2b1c\\e\\\\e]4;5;#ddeeff\\e\\"
+            ],
+            "demand": "colors B are set and read back",
+            "demanded": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-recovers-pushed": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a pop returns every channel to colors A, the snapshot taken by the push",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "snapshot-is-copy": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e[#P",
+              "\\e]10;#c0d0e0\\e\\\\e]11;#aabbcc\\e\\\\e]12;#3a2b1c\\e\\\\e]4;5;#ddeeff\\e\\",
+              "\\e]10;#050607\\e\\\\e]11;#010203\\e\\\\e]12;#f0e0d0\\e\\\\e]4;5;#0a0b0c\\e\\"
+            ],
+            "demand": "a pushed snapshot is a copy: two later color changes (B then C) do not alter it, and a pop returns colors A",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "store-slot-2": {
+            "kind": "protocol",
+            "request": "\\e[2#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a numbered push stores colors A in slot 2 silently and without altering the current colors",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-B-again": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#c0d0e0\\e\\\\e]11;#aabbcc\\e\\\\e]12;#3a2b1c\\e\\\\e]4;5;#ddeeff\\e\\"
+            ],
+            "demand": "colors B are set and read back",
+            "demanded": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "store-slot-1": {
+            "kind": "protocol",
+            "request": "\\e[1#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a second numbered push stores colors B in slot 1 silently and without altering the current colors",
+            "demanded": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-C": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#050607\\e\\\\e]11;#010203\\e\\\\e]12;#f0e0d0\\e\\\\e]4;5;#0a0b0c\\e\\"
+            ],
+            "demand": "colors C are set and read back",
+            "demanded": [
+              "\\e]10;rgb:0505/0606/0707\\e\\",
+              "\\e]11;rgb:0101/0202/0303\\e\\",
+              "\\e]12;rgb:f0f0/e0e0/d0d0\\e\\",
+              "\\e]4;5;rgb:0a0a/0b0b/0c0c\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:0505/0606/0707\\e\\",
+              "\\e]11;rgb:0101/0202/0303\\e\\",
+              "\\e]12;rgb:f0f0/e0e0/d0d0\\e\\",
+              "\\e]4;5;rgb:0a0a/0b0b/0c0c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-slot-2": {
+            "kind": "protocol",
+            "request": "\\e[2#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a numbered pop of slot 2 restores colors A, the colors stored there (slots are independent of order)",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-slot-1": {
+            "kind": "protocol",
+            "request": "\\e[1#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a numbered pop of slot 1 restores colors B, the colors stored there",
+            "demanded": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "extended-palette": {
+            "kind": "policy",
+            "request": "\\e]4;200;?\\e\\",
+            "setup": [
+              "\\e]4;200;#123456\\e\\",
+              "\\e[#P",
+              "\\e]4;200;#fedcba\\e\\",
+              "\\e[#Q"
+            ],
+            "demand": "palette entry 200 (outside the 16 ANSI colors the text names) is saved by a push and restored by a pop in Ntilde; xterm's text does not say",
+            "demanded": [
+              "\\e]4;200;rgb:1212/3434/5656\\e\\"
+            ],
+            "received": [
+              "\\e]4;200;rgb:1212/3434/5656\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "{\"row\":1,\"col\":1}",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "Cursor responsiveness does not measure saved/restored state"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "modes.xtpushcolors",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpushcolors"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": "DA1 responsiveness does not measure saved/restored stack state",
+        "reason": "insufficient-evidence",
+        "scope": "xterm XTPUSHCOLORS (CSI # P) only: silence, an unchanged screen, that the push changes no current color, the snapshot of the foreground, background, cursor and ANSI palette entry 5 read back through OSC 10/11/12 and OSC 4 replies after a pop, snapshot copy semantics and numbered store slots; not every dynamic color, no rendering or painted-pixel claim, no depth-report claim, and the pinned probe measures only DA1 and cursor responsiveness"
+      }
+    },
+    {
+      "caseId": "modes.xtpopcolors",
+      "pinnedCriterion": "CSI # P then CSI # Q produces no output (any output is invalid-reply); the probe then only checks DA1 / cursor responsiveness and is always inconclusive (insufficient-evidence)",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feed",
+            "\\e[#P"
+          ],
+          [
+            "feedCapture",
+            "\\e[#Q",
+            "replies"
+          ],
+          [
+            "feedCapture",
+            "\\e[c",
+            "barrier"
+          ]
+        ],
+        "terminal": [
+          [
+            "write",
+            "\\e[#P"
+          ],
+          [
+            "write",
+            "\\e[#Q"
+          ],
+          [
+            "cursor"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-xterm-color-stack-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-xterm-color-stack-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feed",
+              "\\e[#P"
+            ],
+            [
+              "feedCapture",
+              "\\e[#Q",
+              "replies"
+            ],
+            [
+              "feedCapture",
+              "\\e[c",
+              "barrier"
+            ]
+          ],
+          "terminal": [
+            [
+              "write",
+              "\\e[#P"
+            ],
+            [
+              "write",
+              "\\e[#Q"
+            ],
+            [
+              "cursor"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_XCS_fbfbd6e79aaf59c5178ebbf5c4a30bec",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "baseline": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "the host default colors are read back (one concrete reply per channel, in query order) and become the restoration oracle",
+            "demanded": null,
+            "received": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[#Q",
+            "setup": [
+              "\\e[#P"
+            ],
+            "demand": "the exact pinned CSI # Q after the pinned CSI # P is accepted silently (its fenced exchange holds no reply) and leaves the screen unchanged",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "after-pinned": {
+            "kind": "protocol",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "after the pinned push/pop pair every channel reads back as the baseline",
+            "demanded": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-baseline": {
+            "kind": "control",
+            "request": "\\e[#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a push of the untouched host default colors is silent and changes nothing",
+            "demanded": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-A": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#102030\\e\\\\e]11;#112233\\e\\\\e]12;#a1b2c3\\e\\\\e]4;5;#445566\\e\\"
+            ],
+            "demand": "colors A are set and read back",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a pop restores the pushed host default colors (the baseline replies), not the colors in force or any set literal",
+            "demanded": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\",
+              "\\e]11;rgb:0000/0000/0000\\e\\",
+              "\\e]12;rgb:ffff/ffff/ffff\\e\\",
+              "\\e]4;5;rgb:cdcd/0000/cdcd\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-A": {
+            "kind": "control",
+            "request": "\\e[#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#102030\\e\\\\e]11;#112233\\e\\\\e]12;#a1b2c3\\e\\\\e]4;5;#445566\\e\\"
+            ],
+            "demand": "colors A are set and pushed; the push is silent",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-B": {
+            "kind": "control",
+            "request": "\\e[#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#c0d0e0\\e\\\\e]11;#aabbcc\\e\\\\e]12;#3a2b1c\\e\\\\e]4;5;#ddeeff\\e\\"
+            ],
+            "demand": "colors B are set and pushed on top of A",
+            "demanded": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-C": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#050607\\e\\\\e]11;#010203\\e\\\\e]12;#f0e0d0\\e\\\\e]4;5;#0a0b0c\\e\\"
+            ],
+            "demand": "colors C are set and read back",
+            "demanded": [
+              "\\e]10;rgb:0505/0606/0707\\e\\",
+              "\\e]11;rgb:0101/0202/0303\\e\\",
+              "\\e]12;rgb:f0f0/e0e0/d0d0\\e\\",
+              "\\e]4;5;rgb:0a0a/0b0b/0c0c\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:0505/0606/0707\\e\\",
+              "\\e]11;rgb:0101/0202/0303\\e\\",
+              "\\e]12;rgb:f0f0/e0e0/d0d0\\e\\",
+              "\\e]4;5;rgb:0a0a/0b0b/0c0c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-lifo-1": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "the first pop is silent and restores colors B, the most recent push",
+            "demanded": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-lifo-2": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "the second pop restores colors A, the earlier push",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-empty": {
+            "kind": "policy",
+            "request": "\\e[#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a pop with nothing stored below changes no color (xterm's text does not describe this; Ntilde ignores it)",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "store-slot-1": {
+            "kind": "control",
+            "request": "\\e[1#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "colors A are stored in slot 1 by a numbered push, silently and without altering the current colors",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-B": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "setup": [
+              "\\e]10;#c0d0e0\\e\\\\e]11;#aabbcc\\e\\\\e]12;#3a2b1c\\e\\\\e]4;5;#ddeeff\\e\\"
+            ],
+            "demand": "colors B are set and read back",
+            "demanded": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:c0c0/d0d0/e0e0\\e\\",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]12;rgb:3a3a/2b2b/1c1c\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-slot-1": {
+            "kind": "protocol",
+            "request": "\\e[1#Q\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a numbered pop of slot 1 restores colors A without needing a prior unnumbered push",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "extended-palette": {
+            "kind": "policy",
+            "request": "\\e]4;200;?\\e\\",
+            "setup": [
+              "\\e]4;200;#123456\\e\\",
+              "\\e[#P",
+              "\\e]4;200;#fedcba\\e\\",
+              "\\e[#Q"
+            ],
+            "demand": "palette entry 200 (outside the 16 ANSI colors the text names) is saved by a push and restored by a pop in Ntilde; xterm's text does not say",
+            "demanded": [
+              "\\e]4;200;rgb:1212/3434/5656\\e\\"
+            ],
+            "received": [
+              "\\e]4;200;rgb:1212/3434/5656\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "{\"row\":1,\"col\":1}",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "Cursor responsiveness does not measure saved/restored state"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "modes.xtpopcolors",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpopcolors"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": "DA1 responsiveness does not measure saved/restored stack state",
+        "reason": "insufficient-evidence",
+        "scope": "xterm XTPOPCOLORS (CSI # Q) only: silence, an unchanged screen, restoration of the foreground, background, cursor and ANSI palette entry 5 read back through OSC 10/11/12 and OSC 4 replies, restoration of the untouched host default, LIFO order and a numbered restore; not every dynamic color, no rendering or painted-pixel claim, no depth-report claim, and the pinned probe measures only DA1 and cursor responsiveness"
+      }
+    }
+  ]
+}
