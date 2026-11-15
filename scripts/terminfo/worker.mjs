@@ -51,6 +51,7 @@ import { collectOsc9 } from './osc9-collector.mjs';
 import { collectNotify } from './notify-collector.mjs';
 import { collectDevqGrading } from './devq-collector.mjs';
 import { collectXcsGrading } from './xcs-collector.mjs';
+import { collectXssGrading } from './xss-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -430,6 +431,12 @@ try {
         const xcsModule = await import(pathToFileURL(config.xcsBundle).href);
         const xcsRun = await collectXcsGrading({ config, fence, owner, gradingModule: xcsModule });
         writeFileSync(join(config.output, 'xcs-run.json'), JSON.stringify(xcsRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered xterm SGR-stack qualification follows the color-stack suite on the same fence; it leaves the pen reset and the video-attribute stack drained.
+        const xssSource = readFileSync(config.xssBundle);
+        if (createHash('sha256').update(xssSource).digest('hex') !== config.xssBundleSha256) throw new Error('Local xterm SGR-stack adapter bundle changed.');
+        const xssModule = await import(pathToFileURL(config.xssBundle).href);
+        const xssRun = await collectXssGrading({ config, fence, owner, gradingModule: xssModule });
+        writeFileSync(join(config.output, 'xss-run.json'), JSON.stringify(xssRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

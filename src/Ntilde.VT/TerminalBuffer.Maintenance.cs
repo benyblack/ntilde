@@ -474,6 +474,7 @@ namespace Ntilde.VT
                 ResetSavedCursorStateToDefaultsNoLock(_screenCursorStates.Alt);
 
                 ImportRuntimeColors(null);
+                ImportSgrStack(null);
 
                 // Clear after returning to main and resetting the pen. Clearing only the
                 // formerly active alternate screen left main text visible; using the old

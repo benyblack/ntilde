@@ -1,0 +1,1735 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-xterm-sgr-stack-graded-v1",
+  "contractsVersion": 1,
+  "runId": "bc62a5b949d627a92dabeddee3708aee",
+  "adapter": {
+    "id": "ntilde-owned-xterm-sgr-stack-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "5882fe6b8178bae540f75a8313f71cafda156acd466d304db165900a8c53c6be",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criteria for modes.xtpushsgr (CSI # {) and modes.xtpopsgr (CSI # }), which can only return inconclusive (they measure DA1 and cursor responsiveness, not saved/restored stack state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an independent oracle written from xterm's control-sequence text: silence of both sequences, and the stored bold, faint, italic, underline, blink, inverse, hidden, strikethrough, foreground and background of a probe character's cell read back after pops, the selection of each documented push parameter alone (1, 2, 3, 4, 5, 7, 8, 9, 21, 30, 31), the argument-less push saving all of them, LIFO order, snapshot copy semantics, ten levels holding and the baseline pen restored; the eleventh push, a pop with nothing saved, a value the text does not list and the overline and underline color are policy groups that never decide; stored cell attributes, not host presentation or painted pixels; no XTREPORTSGR (CSI # |) claim, no CSI Pm # p or CSI # q alias claim, no remote/mux, Windows/Linux or common-harness claim; the stock grades are unchanged by this suite.",
+  "cases": [
+    {
+      "caseId": "modes.xtpushsgr",
+      "pinnedCriterion": "CSI # { produces no output (any output is invalid-reply); the probe then only checks DA1 / cursor responsiveness and is always inconclusive (insufficient-evidence)",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feedCapture",
+            "\\e[#{",
+            "replies"
+          ],
+          [
+            "feedCapture",
+            "\\e[c",
+            "barrier"
+          ],
+          [
+            "feed",
+            "\\e[#}"
+          ]
+        ],
+        "terminal": [
+          [
+            "write",
+            "\\e[#{"
+          ],
+          [
+            "cursor"
+          ],
+          [
+            "write",
+            "\\e[#}"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-xterm-sgr-stack-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-xterm-sgr-stack-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feedCapture",
+              "\\e[#{",
+              "replies"
+            ],
+            [
+              "feedCapture",
+              "\\e[c",
+              "barrier"
+            ],
+            [
+              "feed",
+              "\\e[#}"
+            ]
+          ],
+          "terminal": [
+            [
+              "write",
+              "\\e[#{"
+            ],
+            [
+              "cursor"
+            ],
+            [
+              "write",
+              "\\e[#}"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_XSS_bc62a5b949d627a92dabeddee3708aee",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "baseline": {
+            "kind": "control",
+            "request": "\\e[8;1Ha",
+            "demand": "a probe character written under the reset pen is stored with no attribute and default colors (the baseline every later demand is judged against)",
+            "demanded": {
+              "char": "a",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "received": {
+              "char": "a",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              1
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[#{",
+            "after": "\\e[#}",
+            "demand": "the exact pinned CSI # { is accepted silently (its fenced exchange holds no reply) and the pinned CSI # } that follows leaves the screen unchanged",
+            "demanded": null,
+            "received": null,
+            "replies": [],
+            "cursor": [
+              7,
+              1
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "after-pinned": {
+            "kind": "protocol",
+            "request": "\\e[8;2Hb",
+            "demand": "after the pinned push/pop pair a probe character is stored with the baseline attributes",
+            "demanded": {
+              "char": "b",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "received": {
+              "char": "b",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              2
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-A": {
+            "kind": "control",
+            "request": "\\e[8;3Hc",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m"
+            ],
+            "demand": "pen A (every stackable attribute, a palette foreground and a literal background) is set and read back from a probe cell",
+            "demanded": {
+              "char": "c",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "c",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              3
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-silent": {
+            "kind": "protocol",
+            "request": "\\e[8;4H\\e[#{d",
+            "demand": "a push is silent and changes no attribute of the current pen",
+            "demanded": {
+              "char": "d",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "d",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              4
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-B": {
+            "kind": "control",
+            "request": "\\e[8;5He",
+            "setup": [
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "pen B (every attribute clear, a literal foreground and a palette background) is set and read back",
+            "demanded": {
+              "char": "e",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "e",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              5
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-recovers-pushed": {
+            "kind": "protocol",
+            "request": "\\e[8;6H\\e[#}f",
+            "demand": "a pop returns all ten attributes and both colors to pen A, the snapshot taken by the argument-less push",
+            "demanded": {
+              "char": "f",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "f",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              6
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "snapshot-is-copy": {
+            "kind": "protocol",
+            "request": "\\e[8;7H\\e[#}g",
+            "setup": [
+              "\\e[#{\\e[0;1;3;38;5;5;48;5;6m",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a pushed snapshot is a copy: two later pen changes (C then B) do not alter it, and a pop returns pen A",
+            "demanded": {
+              "char": "g",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "g",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              7
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-1": {
+            "kind": "protocol",
+            "request": "\\e[8;8H\\e[#}h",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[1#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 1 alone saves only the bold of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "h",
+              "attributes": [
+                "bold"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "h",
+              "attributes": [
+                "bold"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              8
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-2": {
+            "kind": "protocol",
+            "request": "\\e[8;9H\\e[#}i",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[2#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 2 alone saves only the faint of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "i",
+              "attributes": [
+                "dim"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "i",
+              "attributes": [
+                "dim"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              9
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-3": {
+            "kind": "protocol",
+            "request": "\\e[8;10H\\e[#}j",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[3#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 3 alone saves only the italic of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "j",
+              "attributes": [
+                "italic"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "j",
+              "attributes": [
+                "italic"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              10
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-4": {
+            "kind": "protocol",
+            "request": "\\e[8;11H\\e[#}k",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[4#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 4 alone saves only the single of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "k",
+              "attributes": [],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "k",
+              "attributes": [],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              11
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-5": {
+            "kind": "protocol",
+            "request": "\\e[8;12H\\e[#}l",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[5#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 5 alone saves only the blink of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "l",
+              "attributes": [
+                "blink"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "l",
+              "attributes": [
+                "blink"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              12
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-7": {
+            "kind": "protocol",
+            "request": "\\e[8;13H\\e[#}m",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[7#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 7 alone saves only the inverse of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "m",
+              "attributes": [
+                "inverse"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "m",
+              "attributes": [
+                "inverse"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              13
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-8": {
+            "kind": "protocol",
+            "request": "\\e[8;14H\\e[#}n",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[8#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 8 alone saves only the hidden of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "n",
+              "attributes": [
+                "hidden"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "n",
+              "attributes": [
+                "hidden"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              14
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-9": {
+            "kind": "protocol",
+            "request": "\\e[8;15H\\e[#}o",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[9#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 9 alone saves only the strike of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "o",
+              "attributes": [
+                "strikethrough"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "o",
+              "attributes": [
+                "strikethrough"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              15
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-21": {
+            "kind": "protocol",
+            "request": "\\e[8;16H\\e[#}p",
+            "setup": [
+              "\\e[0;1;2;3;21;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[21#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 21 alone saves only the double of pen A with a double underline: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "p",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "p",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              16
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-30": {
+            "kind": "protocol",
+            "request": "\\e[8;17H\\e[#}q",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[30#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 30 alone saves only the fg of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "q",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "q",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              17
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-31": {
+            "kind": "protocol",
+            "request": "\\e[8;18H\\e[#}r",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[31#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 31 alone saves only the bg of pen A: after the pen is cleared a pop restores that attribute and leaves every other as it was",
+            "demanded": {
+              "char": "r",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "r",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              18
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-4-keeps-double": {
+            "kind": "protocol",
+            "request": "\\e[8;19H\\e[#}s",
+            "setup": [
+              "\\e[0;38;2;200;100;50;48;5;22m",
+              "\\e[4#{",
+              "\\e[0;21;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 4 alone saves the underline only: with no underline saved, a double underline set since is not selected and stays after the pop",
+            "demanded": {
+              "char": "s",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "s",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              19
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-21-keeps-single": {
+            "kind": "protocol",
+            "request": "\\e[8;20H\\e[#}t",
+            "setup": [
+              "\\e[0;38;2;200;100;50;48;5;22m",
+              "\\e[21#{",
+              "\\e[0;4;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a push of parameter 21 alone saves the double underline only: with none saved, a single underline set since stays after the pop",
+            "demanded": {
+              "char": "t",
+              "attributes": [],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "t",
+              "attributes": [],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              20
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-4-beside-double": {
+            "kind": "policy",
+            "request": "\\e[8;21H\\e[#}u",
+            "setup": [
+              "\\e[0;4;38;2;200;100;50;48;5;22m",
+              "\\e[4#{",
+              "\\e[0;21;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "xterm would hold both flags after restoring a saved underline beside a double underline set since; the pen holds one style and Ntilde shows the double underline",
+            "demanded": {
+              "char": "u",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "u",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              21
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "numbered-21-beside-single": {
+            "kind": "policy",
+            "request": "\\e[8;22H\\e[#}v",
+            "setup": [
+              "\\e[0;21;38;2;200;100;50;48;5;22m",
+              "\\e[21#{",
+              "\\e[0;4;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "the mirror case: a saved double underline restored beside a single underline set since leaves both flags in xterm and the double underline in Ntilde",
+            "demanded": {
+              "char": "v",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "v",
+              "attributes": [],
+              "underline": "double",
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              22
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "depth-top": {
+            "kind": "protocol",
+            "request": "\\e[8;23H\\e[#}w",
+            "setup": [
+              "\\e[0;38;5;41m\\e[30#{",
+              "\\e[0;38;5;42m\\e[30#{",
+              "\\e[0;38;5;43m\\e[30#{",
+              "\\e[0;38;5;44m\\e[30#{",
+              "\\e[0;38;5;45m\\e[30#{",
+              "\\e[0;38;5;46m\\e[30#{",
+              "\\e[0;38;5;47m\\e[30#{",
+              "\\e[0;38;5;48m\\e[30#{",
+              "\\e[0;38;5;49m\\e[30#{",
+              "\\e[0;38;5;50m\\e[30#{",
+              "\\e[0m"
+            ],
+            "demand": "ten pushes (palette foregrounds 41..50) all hold: the first pop restores the tenth level",
+            "demanded": {
+              "char": "w",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 50",
+              "bg": "default"
+            },
+            "received": {
+              "char": "w",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 50",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              23
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "depth-bottom": {
+            "kind": "protocol",
+            "request": "\\e[8;24H\\e[#}x",
+            "setup": [
+              "\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}"
+            ],
+            "demand": "after eight more pops the next one restores the first level (foreground 41): the bottom of a ten-level stack survived",
+            "demanded": {
+              "char": "x",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 41",
+              "bg": "default"
+            },
+            "received": {
+              "char": "x",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 41",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              24
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "overflow-eleventh": {
+            "kind": "policy",
+            "request": "\\e[8;25H\\e[#}y",
+            "setup": [
+              "\\e[0;38;5;41m\\e[30#{",
+              "\\e[0;38;5;42m\\e[30#{",
+              "\\e[0;38;5;43m\\e[30#{",
+              "\\e[0;38;5;44m\\e[30#{",
+              "\\e[0;38;5;45m\\e[30#{",
+              "\\e[0;38;5;46m\\e[30#{",
+              "\\e[0;38;5;47m\\e[30#{",
+              "\\e[0;38;5;48m\\e[30#{",
+              "\\e[0;38;5;49m\\e[30#{",
+              "\\e[0;38;5;50m\\e[30#{",
+              "\\e[0;38;5;51m\\e[30#{",
+              "\\e[0m",
+              "\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}"
+            ],
+            "after": "\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}\\e[#}",
+            "demand": "an eleventh push is ignored in Ntilde (the text only says the stack is limited to ten levels): ten pops after eleven pushes end at the first level",
+            "demanded": {
+              "char": "y",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 41",
+              "bg": "default"
+            },
+            "received": {
+              "char": "y",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 41",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              25
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unlisted-value": {
+            "kind": "policy",
+            "request": "\\e[8;26H\\e[#}z",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m",
+              "\\e[99#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a value the text does not list (99) saves a level that restores nothing in Ntilde",
+            "demanded": {
+              "char": "z",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "z",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              26
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unstacked-state": {
+            "kind": "policy",
+            "request": "\\e[8;27H\\e[#}{",
+            "setup": [
+              "\\e[0;4;53;58;5;77m",
+              "\\e[#{",
+              "\\e[0;4;53;58;5;99m"
+            ],
+            "demand": "the overline and the underline color are not listed by the text and are not part of the stack in Ntilde: a pop restores neither",
+            "demanded": {
+              "char": "{",
+              "attributes": [
+                "overline"
+              ],
+              "underline": "single",
+              "underlineColorIndex": 99,
+              "fg": "default",
+              "bg": "default"
+            },
+            "received": {
+              "char": "{",
+              "attributes": [
+                "overline"
+              ],
+              "underline": "single",
+              "underlineColorIndex": 99,
+              "fg": "default",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              27
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "{\"row\":8,\"col\":2}",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "Cursor responsiveness does not measure saved/restored state"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "modes.xtpushsgr",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpushsgr"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-and-stored-cells",
+        "grading": "pinned-termless-replayed",
+        "note": "DA1 responsiveness does not measure saved/restored stack state",
+        "reason": "insufficient-evidence",
+        "scope": "xterm XTPUSHSGR (CSI # {) only: silence, an unchanged screen, that the push changes no attribute of the current pen, the snapshot of the bold, faint, italic, underline, blink, inverse, hidden and strikethrough attributes and the foreground and background read back from the stored cell of a probe character after a pop, snapshot copy semantics, the selection of each documented parameter alone (1, 2, 3, 4, 5, 7, 8, 9, 21, 30, 31, the underline and the double underline restored independently) and ten levels holding; the eleventh push, an unlisted value and the overline and underline color are policy groups; stored cell attributes, no rendering or painted-pixel claim, no XTREPORTSGR claim, and the pinned probe measures only DA1 and cursor responsiveness"
+      }
+    },
+    {
+      "caseId": "modes.xtpopsgr",
+      "pinnedCriterion": "CSI # { then CSI # } produces no output (any output is invalid-reply); the probe then only checks DA1 / cursor responsiveness and is always inconclusive (insufficient-evidence)",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feed",
+            "\\e[#{"
+          ],
+          [
+            "feedCapture",
+            "\\e[#}",
+            "replies"
+          ],
+          [
+            "feedCapture",
+            "\\e[c",
+            "barrier"
+          ]
+        ],
+        "terminal": [
+          [
+            "write",
+            "\\e[#{"
+          ],
+          [
+            "write",
+            "\\e[#}"
+          ],
+          [
+            "cursor"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-xterm-sgr-stack-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-xterm-sgr-stack-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feed",
+              "\\e[#{"
+            ],
+            [
+              "feedCapture",
+              "\\e[#}",
+              "replies"
+            ],
+            [
+              "feedCapture",
+              "\\e[c",
+              "barrier"
+            ]
+          ],
+          "terminal": [
+            [
+              "write",
+              "\\e[#{"
+            ],
+            [
+              "write",
+              "\\e[#}"
+            ],
+            [
+              "cursor"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_XSS_bc62a5b949d627a92dabeddee3708aee",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "baseline": {
+            "kind": "control",
+            "request": "\\e[8;1Ha",
+            "demand": "a probe character written under the reset pen is stored with no attribute and default colors (the baseline every later demand is judged against)",
+            "demanded": {
+              "char": "a",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "received": {
+              "char": "a",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              1
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[#}",
+            "setup": [
+              "\\e[#{"
+            ],
+            "demand": "the exact pinned CSI # } after the pinned CSI # { is accepted silently (its fenced exchange holds no reply) and leaves the screen unchanged",
+            "demanded": null,
+            "received": null,
+            "replies": [],
+            "cursor": [
+              7,
+              1
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "after-pinned": {
+            "kind": "protocol",
+            "request": "\\e[8;2Hb",
+            "demand": "after the pinned push/pop pair a probe character is stored with the baseline attributes",
+            "demanded": {
+              "char": "b",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "received": {
+              "char": "b",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              2
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-baseline": {
+            "kind": "control",
+            "request": "\\e[8;3H\\e[#{c",
+            "demand": "a push of the untouched baseline pen is silent and changes nothing",
+            "demanded": {
+              "char": "c",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "received": {
+              "char": "c",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              3
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-A": {
+            "kind": "control",
+            "request": "\\e[8;4Hd",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m"
+            ],
+            "demand": "pen A is set and read back",
+            "demanded": {
+              "char": "d",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "d",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              4
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[8;5H\\e[#}e",
+            "demand": "a pop restores the pushed baseline (no attribute, default colors), not the pen in force or any set literal",
+            "demanded": {
+              "char": "e",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "received": {
+              "char": "e",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "default",
+              "bg": "default"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              5
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-A": {
+            "kind": "control",
+            "request": "\\e[8;6H\\e[#{f",
+            "setup": [
+              "\\e[0;1;2;3;4;5;7;8;9;38;5;196;48;2;10;20;30m"
+            ],
+            "demand": "pen A is set and pushed; the push is silent",
+            "demanded": {
+              "char": "f",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "f",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              6
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-B": {
+            "kind": "control",
+            "request": "\\e[8;7H\\e[#{g",
+            "setup": [
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "pen B is set and pushed on top of A",
+            "demanded": {
+              "char": "g",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "g",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              7
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-C": {
+            "kind": "control",
+            "request": "\\e[8;8Hh",
+            "setup": [
+              "\\e[0;1;3;38;5;5;48;5;6m"
+            ],
+            "demand": "pen C is set and read back",
+            "demanded": {
+              "char": "h",
+              "attributes": [
+                "bold",
+                "italic"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 5",
+              "bg": "index 6"
+            },
+            "received": {
+              "char": "h",
+              "attributes": [
+                "bold",
+                "italic"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "index 5",
+              "bg": "index 6"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              8
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-lifo-1": {
+            "kind": "protocol",
+            "request": "\\e[8;9H\\e[#}i",
+            "demand": "the first pop is silent and restores pen B, the most recent push",
+            "demanded": {
+              "char": "i",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "i",
+              "attributes": [],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              9
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-lifo-2": {
+            "kind": "protocol",
+            "request": "\\e[8;10H\\e[#}j",
+            "demand": "the second pop restores pen A, the earlier push",
+            "demanded": {
+              "char": "j",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "j",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              10
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-empty": {
+            "kind": "policy",
+            "request": "\\e[8;11H\\e[#}k",
+            "demand": "a pop with nothing saved changes no attribute (the text does not describe this; Ntilde ignores it)",
+            "demanded": {
+              "char": "k",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "received": {
+              "char": "k",
+              "attributes": [
+                "bold",
+                "dim",
+                "italic",
+                "blink",
+                "inverse",
+                "hidden",
+                "strikethrough"
+              ],
+              "underline": "single",
+              "underlineColorIndex": -1,
+              "fg": "index 196",
+              "bg": "rgb #0a141e"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              11
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-only-saved": {
+            "kind": "protocol",
+            "request": "\\e[8;12H\\e[#}l",
+            "setup": [
+              "\\e[0;1;3;38;5;5;48;5;6m",
+              "\\e[1#{",
+              "\\e[0;38;2;200;100;50;48;5;22m"
+            ],
+            "demand": "a pop restores only what the push saved: pen C is pushed with parameter 1, pen B is set, and the pop restores the bold of C and leaves italic and both colors as pen B has them",
+            "demanded": {
+              "char": "l",
+              "attributes": [
+                "bold"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "received": {
+              "char": "l",
+              "attributes": [
+                "bold"
+              ],
+              "underline": false,
+              "underlineColorIndex": -1,
+              "fg": "rgb #c86432",
+              "bg": "index 22"
+            },
+            "replies": [],
+            "cursor": [
+              7,
+              12
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "{\"row\":8,\"col\":2}",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "Cursor responsiveness does not measure saved/restored state"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "modes.xtpopsgr",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtpopsgr"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-and-stored-cells",
+        "grading": "pinned-termless-replayed",
+        "note": "DA1 responsiveness does not measure saved/restored stack state",
+        "reason": "insufficient-evidence",
+        "scope": "xterm XTPOPSGR (CSI # }) only: silence, an unchanged screen, restoration of the stored bold, faint, italic, underline, blink, inverse, hidden and strikethrough attributes and the foreground and background of a probe character's cell, restoration of the untouched baseline pen, LIFO order and that only the attributes a push saved are restored; a pop with nothing saved is a policy group; stored cell attributes, no rendering or painted-pixel claim, no XTREPORTSGR claim, and the pinned probe measures only DA1 and cursor responsiveness"
+      }
+    }
+  ]
+}

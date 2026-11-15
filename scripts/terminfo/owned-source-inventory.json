@@ -372,5 +372,12 @@
     "xcsCollectorSourceSha256": "xcs-collector.mjs",
     "xcsGradingSourceSha256": "xcs-grading.mjs",
     "xcsGradingCollectorSourceSha256": "xcs-grading-collector.mjs",
-    "xcsReceiptSourceSha256": "xcs-receipt.mjs"
+    "xcsReceiptSourceSha256": "xcs-receipt.mjs",
+    "xssReportSourceSha256": "xss-report.mjs",
+    "xssContractsSourceSha256": "xss-contracts.mjs",
+    "xssCaptureSourceSha256": "xss-capture.mjs",
+    "xssCollectorSourceSha256": "xss-collector.mjs",
+    "xssGradingSourceSha256": "xss-grading.mjs",
+    "xssGradingCollectorSourceSha256": "xss-grading-collector.mjs",
+    "xssReceiptSourceSha256": "xss-receipt.mjs"
 }

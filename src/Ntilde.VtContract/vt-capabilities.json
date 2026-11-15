@@ -359,6 +359,24 @@
       "contractCase": "xterm-color-stack-report"
     },
     {
+      "key": "CSI:#{",
+      "mnemonic": "XTPUSHSGR",
+      "support": "supported",
+      "description": "Save video attributes of the current pen onto xterm's ten-level stack: no parameter saves all of them, or the parameters 1 bold, 2 faint, 3 italic, 4 underlined, 5 blink, 7 inverse, 8 invisible, 9 crossed-out, 21 doubly-underlined, 30 foreground and 31 background select which. A push onto a full stack is ignored.",
+      "matrixFeature": "XTPUSHSGR (CSI Pm # {)",
+      "evidencePath": "tests/Ntilde.VT.Tests/SgrStackTests.cs",
+      "contractCase": "xterm-sgr-stack-push"
+    },
+    {
+      "key": "CSI:#}",
+      "mnemonic": "XTPOPSGR",
+      "support": "supported",
+      "description": "Restore the video attributes the top stack level saved, to their saved values, and remove the level. Attributes the level did not select keep their current value; a pop with nothing saved is ignored.",
+      "matrixFeature": "XTPOPSGR (CSI # })",
+      "evidencePath": "tests/Ntilde.VT.Tests/SgrStackTests.cs",
+      "contractCase": "xterm-sgr-stack-pop"
+    },
+    {
       "key": "CSI:'}",
       "mnemonic": "DECIC",
       "support": "partial",
