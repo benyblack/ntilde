@@ -19,7 +19,7 @@ export function mexPublication(dir) {
         pinned: item.pinned, effectContract: item.effectContract, contractResult: item.contractResult, experiments: item.experiments, stock: stockOf(raw, item.caseId),
         ...(item.divergence ? { divergence: item.divergence } : {}), conclusion: item.conclusion }));
     if (JSON.stringify(cases.map(item => item.caseId)) !== JSON.stringify([...mexCaseIds])) throw new Error('The published cases differ from the contracted cases.');
-    const { cases: ignored, ...header } = measured;
+    const header = Object.fromEntries(Object.entries(measured).filter(([key]) => key !== 'cases'));
     const report = { ...header, cases };
     const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision: measuredAppRevision,
         scriptsRevision: measuredScriptsRevision, context, receipt, stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash,
