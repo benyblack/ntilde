@@ -129,6 +129,10 @@ test('the grader refuses every injected defect with the right verdict class', ()
         'selected text drawn in the fill color under a background-only override is not accepted as the derived contrast ink');
     assert.deepEqual(grades({ partialForegroundInk: true }), ['supported', 'inconclusive', 'inconclusive', 'inconclusive'], 'foreground applied to one glyph only never supports the foreground cases');
     assert.deepEqual(grades({ blankOnlyBackgroundFill: true }), ['inconclusive', 'supported', 'inconclusive', 'inconclusive'], 'a background painted under blank cells only never supports the background cases');
+    assert.deepEqual(grades({ staleTextFillAfterReset: true }), ['supported', 'supported', 'unsupported', 'supported'],
+        'the previous selection background left under the selected text after an OSC 117 reset fails that case only');
+    assert.deepEqual(grades({ wrongDerivedInk: true }), ['inconclusive', 'supported', 'inconclusive', 'unsupported'],
+        'a third ink colour that is not the App-resolved derived ink under a background override, notably after an OSC 119 reset, is never accepted');
     assert.deepEqual(grades({ lostOther: true }), ['supported', 'supported', 'unsupported', 'unsupported'], 'losing the unaffected override fails');
     assert.deepEqual(grades({ staleReplies: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);
     assert.deepEqual(grades({ renderStale: true }), ['unsupported', 'unsupported', 'unsupported', 'unsupported']);

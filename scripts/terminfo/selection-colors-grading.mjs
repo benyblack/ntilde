@@ -128,7 +128,7 @@ export function renderSamples(image, details, baselineImage) {
         background: solidColor(read(sampleAreas.background)),
         controlUnchanged: read(sampleAreas.control).equals(readBaseline(sampleAreas.control)),
         selectionBlank: { solid: fill, matchesBaseline: blank.equals(baselineBlank) },
-        selectedInk: { dominant, rowFill: mostFrequentColor(ink), matchesBaseline: ink.equals(baselineInk), dominantMatchesBaseline: dominant !== null && dominant === baselineDominant,
+        selectedInk: { dominant, rowFill: mostFrequentColor(ink), rowFillMatchesBaseline: mostFrequentColor(ink) === mostFrequentColor(baselineInk), matchesBaseline: ink.equals(baselineInk), dominantMatchesBaseline: dominant !== null && dominant === baselineDominant,
             firstValueCoverage: coverage(firstValue), secondValueCoverage: coverage(secondValue) },
     };
 }

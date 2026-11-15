@@ -157,7 +157,7 @@ function drawRender(screen, theme) {
     textRow(1, 0xff101010, 0xf0f0f0);
     fill(4 * cellWidth, 2 * cellHeight, width, 3 * cellHeight, selectionPaint);
     // `blankOnlyFill`: a renderer that paints the selection background under blank cells but leaves the selected text on the ordinary background.
-    textRow(3, theme.blankOnlyFill ? theme.backgroundArgb : selectionPaint, selectedInk, theme.partialInk ? theme.foregroundArgb : null);
+    textRow(3, theme.blankOnlyFill ? theme.backgroundArgb : (theme.staleTextFillArgb ?? selectionPaint), selectedInk, theme.partialInk ? theme.foregroundArgb : null);
     textRow(4, selectionPaint, theme.ansiPaletteArgb[33]);
     textRow(5, 0xff102030, 0xf0f0f0);
     return { width, height, pixels };
@@ -239,6 +239,16 @@ function stageFrameAndRead(ctx) {
     }
     // A renderer that fills only the blank selected cells with an overridden selection background.
     if (behavior.blankOnlyBackgroundFill && overrides.selectionBackground !== null) drawn = { ...renderTheme(baseline, colors, overrides, behavior), blankOnlyFill: true };
+    // A renderer that keeps the previous selection background under the selected text after that background was reset (blank cells return).
+    if (behavior.staleTextFillAfterReset && step.kind === 'reset' && overrides.selectionBackground === null && overrides.selectionForeground !== null) {
+        const before = appOverrides(spec, index - 1, behavior);
+        drawn = { ...renderTheme(baseline, colors, overrides, behavior),
+            staleTextFillArgb: renderTheme(baseline, appColors(baseline, before, behavior), before, behavior).effectiveSelectionBackgroundArgb };
+    }
+    // A renderer that draws the selected text in a third colour instead of the derived ink while a background override is active.
+    if (behavior.wrongDerivedInk && overrides.selectionBackground !== null && overrides.selectionForeground === null) {
+        drawn = { ...renderTheme(baseline, colors, overrides, behavior), selectionForegroundOverride: true, selectionForegroundArgb: 0xff7a3c19 };
+    }
     // A renderer that applies the selection foreground to the first selected glyph only and leaves the rest in the default ink.
     if (behavior.partialForegroundInk && overrides.selectionForeground !== null) drawn = { ...renderTheme(baseline, colors, overrides, behavior), partialInk: true };
     const view = { theme: renderTheme(baseline, colors, overrides, behavior), extra: { caseId: contract.caseId, experimentId: spec.id, stageId: step.id, queries },

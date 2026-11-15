@@ -279,12 +279,14 @@ const inkCoverageOf = (render, effective, overrides) => {
     return 0;
 };
 
-function renderMatches(render, effective, overrides) {
+function renderMatches(render, effective, overrides, theme) {
     if (!render || render.background !== effective.background || !render.controlUnchanged) return false;
     // The selection fill and the selected ink are checked independently: a background override never excuses a missing foreground.
     if (overrides.selectionBackground !== null ? render.selectionBlank.solid !== opaqueArgb(overrides.selectionBackground) : !render.selectionBlank.matchesBaseline) return false;
     // The paint must also sit under the selected text, not only under the blank cells: the text row's own most frequent colour is that fill.
-    if (overrides.selectionBackground !== null && render.selectedInk.rowFill !== opaqueArgb(overrides.selectionBackground)) return false;
+    // With no fill override (including a reset one that leaves a foreground or palette override active) the fill under the text must be
+    // the baseline's, as the blank cells are.
+    if (overrides.selectionBackground !== null ? render.selectedInk.rowFill !== opaqueArgb(overrides.selectionBackground) : !render.selectedInk.rowFillMatchesBaseline) return false;
     // The selected ink must carry whichever distinguishable value this stage set; any other color fails closed.
     // Coverage alone would accept a handful of matching pixels among glyphs drawn in a stale colour, so the dominant non-fill ink (the
     // colour most of the selected glyph pixels carry) must be the override's exact value as well.
@@ -292,8 +294,12 @@ function renderMatches(render, effective, overrides) {
     // With no foreground override the ink follows the fill: an overridden fill moves it to the App's derived contrast ink, so the ink may
     // not carry either distinguishable override value (a stale foreground fails closed) and must still be visible against the fill (ink
     // absent, or the fill's own color, leaves no dominant non-fill ink); an untouched fill pins it to the baseline.
+    // The ink must also be exactly what the App itself resolved for this fill, not merely some third colour: its theme's derived selection
+    // foreground when it reports one, else (it derives none for that fill) the effective ordinary foreground.
     if (overrides.selectionBackground !== null) {
-        return render.selectedInk.dominant !== null && render.selectedInk.firstValueCoverage <= 10 && render.selectedInk.secondValueCoverage <= 10;
+        const derivedInk = theme.effectiveSelectionForegroundArgb === null ? effective.foreground : opaqueArgb(theme.effectiveSelectionForegroundArgb);
+        return render.selectedInk.dominant !== null && render.selectedInk.firstValueCoverage <= 10 && render.selectedInk.secondValueCoverage <= 10
+            && render.selectedInk.dominant === derivedInk;
     }
     return render.selectedInk.dominantMatchesBaseline;
 }
@@ -334,7 +340,7 @@ function stageChecks({ spec, base, observed, index, overrides, effective, cells,
         check(`${label}: the App's resolved colors and override metadata match`, bindingMatches(observed.screen.colorBinding, base.screen.colorBinding, effective, overrides)),
         check(`${label}: the render theme sources and override flags match`, themeMatches(observed.theme, base.theme, effective, overrides)),
         check(`${label}: default markers, palette-indexed and literal cells resolve to the model`, cellsMatchProxy(observed.screen, stepCells, effective)),
-        check(`${label}: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control`, renderMatches(observed.render, effective, overrides)),
+        check(`${label}: the controlled render draws the effective background, the selection paint the model demands, and an unchanged unselected control`, renderMatches(observed.render, effective, overrides, observed.theme)),
         check(`${label}: stored text, cursor position and visibility are as written`, sameJson(observed.screen.lines, expectedLines(observed.screen.rows, spec.stages, index))
             && cursorMatches(observed.screen, { presentation: observed.presentation }, wanted, spec.stages, index))];
     if (noneOverridden(overrides)) checks.push(check(`${label}: the complete theme, derived selection paints and cursor text included, equals the baseline`, snapshotHash(observed.theme) === snapshotHash(base.theme)));
