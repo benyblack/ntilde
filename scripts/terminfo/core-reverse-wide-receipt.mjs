@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error('Invalid Core reverse-video and wide-cell receipt: ' + message); };
 
 export function includesReverseWideEvidence(output, evidence, context) {
-    return ['readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51', 'readonly-owned-source-graph-v52', 'readonly-owned-source-graph-v53', 'readonly-owned-source-graph-v54', 'readonly-owned-source-graph-v55', 'readonly-owned-source-graph-v56'].includes(context.sourceSnapshotPolicy) || context.reverseWideSuiteId !== undefined || evidence.reverseWideEvidence !== undefined
+    return ['readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51', 'readonly-owned-source-graph-v52', 'readonly-owned-source-graph-v53', 'readonly-owned-source-graph-v54', 'readonly-owned-source-graph-v55', 'readonly-owned-source-graph-v56', 'readonly-owned-source-graph-v57'].includes(context.sourceSnapshotPolicy) || context.reverseWideSuiteId !== undefined || evidence.reverseWideEvidence !== undefined
         || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }));
 }
 
