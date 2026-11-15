@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 121,
-    "suiteClaims": 123,
+    "uniqueBenchmarkIds": 123,
+    "suiteClaims": 125,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 120,
+    "effectSupportedIds": 122,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
     "pinnedAndEffectSupportedIds": 89,
@@ -78,7 +78,9 @@
       "modes.application-keypad",
       "modes.left-right-margin",
       "modes.xtpopcolors",
+      "modes.xtpopsgr",
       "modes.xtpushcolors",
+      "modes.xtpushsgr",
       "scrollback.alt-screen",
       "scrollback.decstbm-reset",
       "scrollback.set-region"
@@ -86,7 +88,7 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 119,
+    "effectSupportedOfStockInconclusive": 121,
     "effectUnsupportedOfStockInconclusive": 1,
     "pinnedSupportedOfStockInconclusive": 88,
     "ungradedStockIdsWithEvidence": [
@@ -101,10 +103,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 49,
+      "effectUnqualified": 47,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 48,
+      "effectNotMeasured": 46,
       "notPinnedSupported": 80
     }
   },
@@ -3042,6 +3044,77 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/xcs-publication.test.mjs",
         "testSha256": "b5f165faa79fb1b193974420f59ccac07880426a0428ff70f97644a7fe9ba59a"
+      }
+    },
+    {
+      "suite": "xss",
+      "suiteId": "ntilde-owned-xterm-sgr-stack-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-15-xterm-sgr-stack/",
+      "doc": "2026-11-15-xterm-sgr-stack-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "modes.xtpushsgr",
+        "modes.xtpopsgr"
+      ],
+      "evidence": {
+        "files": 7,
+        "bytes": 29094347,
+        "sha256": "323619c90b989adab1a28a238284b73a7ff8591e3b83f7568baaa9388288ee30"
+      },
+      "receipt": {
+        "schemaVersion": 63,
+        "runId": "acc8d6b242fbf0c85a8083498888866b",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "92792959b1c7771ff0b9511131477def9f77155dfa22259c8b260cdf0302a465"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-xterm-sgr-stack-graded-v1",
+          "file": "xss-observations.json",
+          "sha256": "fb31407bccaa7409ad3c940fa0100ca7b009e1fd480a25fe5042a23c71b9314c",
+          "runFile": "xss-run.json",
+          "runSha256": "7da2b1c30f056f20601b0744165e60fafb2baf33984e24f3d9e634515fd2750d",
+          "counts": {
+            "inconclusive": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "acc8d6b242fbf0c85a8083498888866b",
+        "measuredAt": "2026-11-15T16:10:13.000Z",
+        "appRevision": "d02149e458f9a6dde0adac9211d4fa3984e9a2e8",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "52375795351698a609d13c71f173ecc11bab8dbf",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "748773996c8569dd13eed15faf0e937970f95ee2122cc53f379d39417f47dc51",
+        "gradingAdapterId": "ntilde-owned-xterm-sgr-stack-grading-v1",
+        "gradingAdapterBundleSha256": "96a341d8bc39ae4dc8a81b2a66136948d2297902ad74a1819054a41149788dde",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v57",
+        "sourceSnapshotManifestSha256": "cec0657a44cae3835fe34e62d8c86c410f1d570ef30042aa0ec0fd4d8953aa16"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "3878cad8139eca384f5e6d24eeb92559",
+        "counts": {
+          "inconclusive": 163,
+          "supported": 91,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "fd6e618e2ad673514b25c1b89e8ae7ce32c8f9f3b4369620ecf831926c63dc2c",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; both pinned probes stay inconclusive under the unchanged pinned code, so this suite moves no stock grade."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/xss-publication.test.mjs",
+        "testSha256": "0fd2eb965678066f2e0b03748290be5a0ae917a6a0b33c9530380a8eb35adbed"
       }
     }
   ],
@@ -6721,6 +6794,58 @@
       ]
     },
     {
+      "id": "modes.xtpopsgr",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "xss",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "xss",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.xtpopsgr",
+          "suite": "xss",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-effect-supported",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-stored-cells"
+        }
+      ]
+    },
+    {
       "id": "modes.xtpushcolors",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -6769,6 +6894,58 @@
             "stored-state"
           ],
           "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "modes.xtpushsgr",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "xss",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "xss",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.xtpushsgr",
+          "suite": "xss",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-effect-supported",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-stored-cells"
         }
       ]
     },

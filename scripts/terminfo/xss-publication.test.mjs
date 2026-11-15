@@ -16,9 +16,9 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), 'd25e320f1599042ed11cafe5b347831ec3bdb0a4c92b0f48a27703e7caa80a34');
+    assert.equal(hash(manifestBytes), '705a6accd2b5ea01cc2c8bb7ead682fe6ca6b57aa7ac444a803d92f30a232136');
     const manifest = JSON.parse(manifestBytes);
-    assert.equal(Object.keys(manifest.archives).length, 7, 'the final run and the retained superseded attempts');
+    assert.equal(Object.keys(manifest.archives).length, 4, 'the final run and the three retained superseded attempts');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-xss-publication-'));
     try {
@@ -37,7 +37,7 @@ test('retained run independently rederives the complete receipt and published pr
         projected.summary.receipt = original;
         assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
-        assert.equal(schemaVersion, 62); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 63); assert.equal(fixtureRemoved, true);
         assert.equal(JSON.parse(readFileSync(join(root, 'context.json'))).ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v4');
         // Both pinned verdicts are the unchanged pinned code's inconclusive over the journaled bytes; the effect contracts carry the graded conclusion and the divergence is recorded.
         assert.deepEqual(projected.report.cases.map(item => [item.caseId, item.pinned.termless.observation.outcome, item.pinned.terminal.observation.outcome, item.effectContract.outcome, item.stock.outcome]), [
@@ -50,12 +50,14 @@ test('retained run independently rederives the complete receipt and published pr
             assert.deepEqual(item.divergence, { pinnedOutcome: 'inconclusive', contractOutcome: 'supported', kind: 'pinned-inconclusive-effect-supported' });
             assert.equal(Object.values(item.observed.groups).every(group => group.matches && group.unchanged), true, item.caseId);
             assert.equal(item.observed.seed.cells, true);
-            // The pinned exchange is silent: a push or pop answers nothing.
-            assert.deepEqual(item.observed.groups.pinned.received, []);
+            // The pinned exchange is silent: a push or pop answers nothing, and the pinned group writes no probe character.
+            assert.deepEqual(item.observed.groups.pinned.replies, []);
+            assert.equal(item.observed.groups.pinned.received, null);
+            assert.equal(Object.values(item.observed.groups).every(group => group.replies.length === 0), true, 'every group is silent');
         }
         assert.deepEqual(projected.report.cases.map(item => Object.entries(item.observed.groups).filter(([, group]) => group.kind === 'policy').map(([role]) => role)), [
-            ['extended-palette'], ['pop-empty', 'extended-palette']]);
+            ['numbered-4-beside-double', 'numbered-21-beside-single', 'overflow-eleventh', 'unlisted-value', 'unstacked-state'], ['pop-empty']]);
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 163, supported: 91, unsupported: 1 });
-        assert.deepEqual(projected.report.cases.map(item => Object.keys(item.observed.groups).length), [15, 16]);
+        assert.deepEqual(projected.report.cases.map(item => Object.keys(item.observed.groups).length), [28, 13]);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
