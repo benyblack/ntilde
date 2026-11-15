@@ -24,6 +24,14 @@ public sealed class SgrStackTests
         return (parser, buffer, replies);
     }
 
+    /// <summary>The saved level count, read under the buffer's read lock as every read must be.</summary>
+    private static int Depth(TerminalBuffer buffer)
+    {
+        buffer.Lock.EnterReadLock();
+        try { return buffer.SgrStackDepth; }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     private static string Sgr(string parameters) => Esc + "[" + parameters + "m";
     private static string Push(string parameters = "") => Esc + "[" + parameters + "#{";
     private const string Pop = Esc + "[#}";
@@ -54,7 +62,7 @@ public sealed class SgrStackTests
         Assert.False(buffer.IsDefaultBackground);
         Assert.Equal(99, buffer.CurrentBgIndex);
         Assert.Empty(replies);
-        Assert.Equal(0, buffer.SgrStackDepth);
+        Assert.Equal(0, Depth(buffer));
     }
 
     [Theory]
@@ -210,14 +218,14 @@ public sealed class SgrStackTests
     {
         var (parser, buffer, _) = Create();
         for (int level = 0; level < 10; level++) parser.Process(Sgr((30 + level % 8).ToString(CultureInfo.InvariantCulture)) + Push("30"));
-        Assert.Equal(10, buffer.SgrStackDepth);
+        Assert.Equal(10, Depth(buffer));
 
         for (int level = 9; level >= 0; level--)
         {
             parser.Process(Sgr("39") + Pop);
             Assert.Equal(level % 8, buffer.CurrentFgIndex);
         }
-        Assert.Equal(0, buffer.SgrStackDepth);
+        Assert.Equal(0, Depth(buffer));
     }
 
     [Fact]
@@ -229,7 +237,7 @@ public sealed class SgrStackTests
         Assert.Equal(1, buffer.CurrentFgIndex);
 
         for (int i = 0; i < 12; i++) parser.Process(Push("1"));
-        Assert.Equal(10, buffer.SgrStackDepth);
+        Assert.Equal(10, Depth(buffer));
     }
 
     [Fact]
@@ -237,10 +245,10 @@ public sealed class SgrStackTests
     {
         var (parser, buffer, _) = Create();
         parser.Process(Push("99"));
-        Assert.Equal(1, buffer.SgrStackDepth);
+        Assert.Equal(1, Depth(buffer));
         parser.Process(Sgr("1;31") + Pop);
 
-        Assert.Equal(0, buffer.SgrStackDepth);
+        Assert.Equal(0, Depth(buffer));
         Assert.True(buffer.IsBold);
         Assert.Equal(1, buffer.CurrentFgIndex);
     }
@@ -272,10 +280,10 @@ public sealed class SgrStackTests
     {
         var (parser, buffer, replies) = Create();
         parser.Process(Push("1"));
-        int before = buffer.SgrStackDepth;
+        int before = Depth(buffer);
         parser.Process(Esc + "[" + parameters + tail);
 
-        Assert.Equal(before, buffer.SgrStackDepth);
+        Assert.Equal(before, Depth(buffer));
         Assert.Empty(replies);
     }
 
@@ -285,7 +293,7 @@ public sealed class SgrStackTests
         var (parser, buffer, _) = Create(10, 3);
         parser.Process("abcdefghij" + Esc + "[1;1H" + Esc + "[1;1;1;3$z" + Esc + "[2'}");
         parser.Process(Push("1") + Esc + "[1;1;1;5${");
-        Assert.Equal(1, buffer.SgrStackDepth);
+        Assert.Equal(1, Depth(buffer));
     }
 
     [Fact]
@@ -325,9 +333,9 @@ public sealed class SgrStackTests
 
         parser.Process(Push("1"));
         parser.Process(Esc + "[?1049l");
-        Assert.Equal(1, buffer.SgrStackDepth);
+        Assert.Equal(1, Depth(buffer));
         parser.Process(Esc + "c");
-        Assert.Equal(0, buffer.SgrStackDepth);
+        Assert.Equal(0, Depth(buffer));
     }
 
     [Fact]
@@ -343,7 +351,7 @@ public sealed class SgrStackTests
         var targetParser = new AnsiParser(target, forceConPtyFiltering: false);
         TerminalStateTransfer.Restore(target, targetParser, state);
 
-        Assert.Equal(2, target.SgrStackDepth);
+        Assert.Equal(2, Depth(target));
         targetParser.Process(Sgr("31") + Pop);
         Assert.False(target.IsBold);
         targetParser.Process(Pop);
@@ -383,6 +391,6 @@ public sealed class SgrStackTests
 
         Assert.Throws<InvalidOperationException>(() => TerminalStateTransfer.Restore(target, parser, state));
         Assert.Equal((10, 3), (target.Cols, target.Rows));
-        Assert.Equal(1, target.SgrStackDepth);
+        Assert.Equal(1, Depth(target));
     }
 }

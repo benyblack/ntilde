@@ -134,11 +134,17 @@ export class XtermSgrStackModel {
         const lines = ['single', 'double'], restored = Object.fromEntries(top.attributes.filter(name => !lines.includes(name)).map(name => [name, top.pen[name]]));
         // Each underline flag takes its saved value when selected and keeps its current one otherwise; both set resolves to the double underline.
         const [single, double] = lines.map(name => (top.attributes.includes(name) ? top.pen.underline === name : this.pen.underline === name));
-        this.pen = { ...this.pen, ...restored, underline: double ? 'double' : single ? 'single' : 'none' };
+        let underline = 'none';
+        if (single) underline = 'single';
+        if (double) underline = 'double';
+        this.pen = { ...this.pen, ...restored, underline };
     }
 }
 
-const colorParams = (selector, color) => (color.kind === 'index' ? `${selector};5;${color.index}` : color.kind === 'rgb' ? `${selector};2;${color.r};${color.g};${color.b}` : null);
+function colorParams(selector, color) {
+    if (color.kind === 'index') return `${selector};5;${color.index}`;
+    return color.kind === 'rgb' ? `${selector};2;${color.r};${color.g};${color.b}` : null;
+}
 /** The SGR that establishes exactly this pen from any other: SGR 0 first, then each attribute. */
 function penBytes(value) {
     const parts = ['0'];
@@ -159,8 +165,11 @@ function penBytes(value) {
 const pushBytes = parameters => `${esc}[${parameters.join(';')}#{`;
 
 /** The stored cell the pen demands for a probe character. */
-const colorDemand = color => (color.kind === 'default' ? { index: -1, argb: null } : color.kind === 'index' ? { index: color.index, argb: null }
-    : { index: -1, argb: 0xff000000 + color.r * 65536 + color.g * 256 + color.b });
+function colorDemand(color) {
+    if (color.kind === 'index') return { index: color.index, argb: null };
+    if (color.kind === 'rgb') return { index: -1, argb: 0xff000000 + color.r * 65536 + color.g * 256 + color.b };
+    return { index: -1, argb: null };
+}
 function demandedCell(value, char) {
     return { char, bold: value.bold, dim: value.faint, italic: value.italic, underline: value.underline === 'none' ? false : value.underline, blink: value.blink, inverse: value.inverse,
         hidden: value.hidden, strikethrough: value.strike, overline: value.overline, underlineColorIndex: value.underlineColor, fg: colorDemand(value.fg), bg: colorDemand(value.bg) };
@@ -173,13 +182,16 @@ const fieldNames = Object.freeze(['char', 'bold', 'dim', 'italic', 'underline', 
 /** The fields in which an observed cell differs from the demanded one. */
 const cellDifferences = (observed, demanded) => fieldNames.filter(name => JSON.stringify(observed[name]) !== JSON.stringify(demanded[name]));
 /** A cell as published: the demand and the observation in the same compact spelling. */
-const colorText = color => (color.argb !== null ? `rgb #${(color.argb & 0xffffff).toString(16).padStart(6, '0')}` : color.index >= 0 ? `index ${color.index}` : 'default');
+function colorText(color) {
+    if (color.argb !== null) return `rgb #${(color.argb & 0xffffff).toString(16).padStart(6, '0')}`;
+    return color.index >= 0 ? `index ${color.index}` : 'default';
+}
 const cellText = cell => ({ char: cell.char, attributes: ['bold', 'dim', 'italic', 'blink', 'inverse', 'hidden', 'strikethrough', 'overline'].filter(name => cell[name]),
     underline: cell.underline, underlineColorIndex: cell.underlineColorIndex, fg: colorText(cell.fg), bg: colorText(cell.bg) });
 
-/** The measured reset the bind begins with: protection, SGR and origin off, margins cleared, screen cleared, cursor home, and a drained stack. */
+/** The measured reset the bind begins with: the stack drained first (a pop restores pens), then protection, SGR and origin off, margins cleared, screen cleared, cursor home. */
 export const xssDrain = csiPop.repeat(stackLimit);
-export const xssReset = '\x1b[0"q' + sgrAttrsReset + '\x1b[?6l\x1b[r\x1b[2J\x1b[H' + xssDrain;
+export const xssReset = '\x1b[0"q' + xssDrain + sgrAttrsReset + '\x1b[?6l\x1b[r\x1b[2J\x1b[H';
 /** The plan's static first feed re-establishes the attributed seed, erases the probe row the previous case filled and homes the cursor, without clearing the nonce row. */
 export const xssReseed = `\x1b[2;1H\x1b[1mNtilde\x1b[31mXT\x1b[0m\x1b[4;1H\x1b[4:3mU\x1b[0m\x1b[${xssProbeRow + 1};1H\x1b[2K\x1b[2;6r\x1b[1;1H`;
 /** The attributed seed the bind writes, then the nonce at home. */
@@ -212,7 +224,10 @@ function builder() {
     const apply = op => {
         if (op.set !== undefined) { model.set(op.set); return penBytes(op.set); }
         if (op.push !== undefined) { model.push(op.push); return op.push.length === 0 ? csiPush : pushBytes(op.push); }
-        if (op.pop !== undefined) { for (let at = 0; at < op.pop; at++) model.pop(); return csiPop.repeat(op.pop); }
+        if (op.pop !== undefined) {
+            for (let at = 0; at < op.pop; at++) model.pop();
+            return csiPop.repeat(op.pop);
+        }
         throw new Error('Unknown xterm SGR-stack op.');
     };
     const feed = ops => ops.map(apply).join('');
@@ -223,7 +238,7 @@ function builder() {
         /** A probe group: each `pre` item is one uncaptured feed of ops, `main` ops and then the probe character are the captured request. */
         probe(role, kind, note, pre, main, { drain = false } = {}) {
             const setup = pre.map(item => feed(Array.isArray(item) ? item : [item]));
-            const col = probes++, char = String.fromCharCode(97 + col);
+            const col = probes++, char = String.fromCodePoint(97 + col);
             const request = `${esc}[${xssProbeRow + 1};${col + 1}H` + feed(main) + char;
             cursor = [xssProbeRow, col + 1];
             const probe = { col, char, pen: model.pen };

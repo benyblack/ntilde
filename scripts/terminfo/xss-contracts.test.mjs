@@ -164,15 +164,13 @@ test('the one policy group whose outcome depends on the stack bound drains the s
 });
 
 test('policy groups never decide a verdict', () => {
-    const policies = [['modes.xtpushsgr', 'overflow-eleventh'], ['modes.xtpushsgr', 'unlisted-value'], ['modes.xtpushsgr', 'unstacked-state'], ['modes.xtpopsgr', 'pop-empty']];
+    const policies = [['modes.xtpushsgr', 'numbered-4-beside-double'], ['modes.xtpushsgr', 'numbered-21-beside-single'], ['modes.xtpushsgr', 'overflow-eleventh'],
+        ['modes.xtpushsgr', 'unlisted-value'], ['modes.xtpushsgr', 'unstacked-state'], ['modes.xtpopsgr', 'pop-empty']];
     for (const [caseId, role] of policies) {
         assert.equal(group(caseId, role).kind, 'policy');
-        const wrong = (id, at, spec) => (id === caseId && at === role ? { fg: paletteChannel(77), attrs: ['faint'] } : null);
-        // The later groups stack on the changed probe row, so only the policy group itself is wrong here; the verdict is unchanged because it is the LAST group of its case or a recorded one.
-        const grade = syntheticXssGrade(caseId, undefined, null, wrong);
-        const later = byId[caseId].groups.slice(byId[caseId].groups.findIndex(item => item.role === role) + 1).filter(item => item.probe !== null);
-        assert.deepEqual(grade.outcome, later.length === 0 ? 'supported' : grade.outcome, `${caseId}/${role}`);
-        if (later.length === 0) assert.deepEqual(grade, { outcome: 'supported' });
+        // A probe cell that differs from Ntilde's choice in this one group only: the later cells are unchanged specs, so the grader judges them against the model.
+        const wrong = (id, at) => (id === caseId && at === role ? { fg: paletteChannel(77), attrs: ['faint'] } : null);
+        assert.deepEqual(syntheticXssGrade(caseId, undefined, null, wrong), { outcome: 'supported' }, `${caseId}/${role}`);
     }
 });
 

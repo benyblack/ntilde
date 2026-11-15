@@ -42,8 +42,15 @@ namespace Ntilde.VT
             _ => 0,
         };
 
-        /// <summary>The number of saved levels (0..10).</summary>
-        internal int SgrStackDepth => Volatile.Read(ref _sgrStack).Length;
+        /// <summary>The number of saved levels (0..10); a read, so the buffer lock must be held.</summary>
+        internal int SgrStackDepth
+        {
+            get
+            {
+                AssertLockHeld();
+                return Volatile.Read(ref _sgrStack).Length;
+            }
+        }
 
         /// <summary>
         /// XTPUSHSGR: saves the selected video attributes of the live pen as one more level. A push onto a full stack is
@@ -83,36 +90,37 @@ namespace Ntilde.VT
             if ((mask & SgrStackInvisible) != 0) IsHidden = pen.IsHidden;
             if ((mask & SgrStackCrossedOut) != 0) IsStrikethrough = pen.IsStrikethrough;
             if ((mask & (SgrStackUnderline | SgrStackDoubleUnderline)) != 0) RestoreUnderline(mask, pen);
+            if ((mask & SgrStackForeground) != 0) RestoreForeground(pen);
+            if ((mask & SgrStackBackground) != 0) RestoreBackground(pen);
+        }
 
-            if ((mask & SgrStackForeground) != 0)
+        /// <summary>A saved default color comes back as the default, so it follows the theme; any other comes back as the stored color.</summary>
+        private void RestoreForeground(TerminalSgrState pen)
+        {
+            if (pen.IsDefaultForeground)
             {
-                if (pen.IsDefaultForeground)
-                {
-                    SyncDefaultForegroundToTheme();
-                    CurrentFgIndex = -1;
-                }
-                else
-                {
-                    CurrentForeground = TermColor.FromUint(pen.Foreground);
-                    CurrentFgIndex = pen.FgIndex;
-                    IsDefaultForeground = false;
-                }
+                SyncDefaultForegroundToTheme();
+                CurrentFgIndex = -1;
+                return;
             }
 
-            if ((mask & SgrStackBackground) != 0)
+            CurrentForeground = TermColor.FromUint(pen.Foreground);
+            CurrentFgIndex = pen.FgIndex;
+            IsDefaultForeground = false;
+        }
+
+        private void RestoreBackground(TerminalSgrState pen)
+        {
+            if (pen.IsDefaultBackground)
             {
-                if (pen.IsDefaultBackground)
-                {
-                    SyncDefaultBackgroundToTheme();
-                    CurrentBgIndex = -1;
-                }
-                else
-                {
-                    CurrentBackground = TermColor.FromUint(pen.Background);
-                    CurrentBgIndex = pen.BgIndex;
-                    IsDefaultBackground = false;
-                }
+                SyncDefaultBackgroundToTheme();
+                CurrentBgIndex = -1;
+                return;
             }
+
+            CurrentBackground = TermColor.FromUint(pen.Background);
+            CurrentBgIndex = pen.BgIndex;
+            IsDefaultBackground = false;
         }
 
         /// <summary>
