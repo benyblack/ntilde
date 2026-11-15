@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { xsvCaseIds } from './xsv-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'pending';
-export const measuredAppRevision = 'pending';
+export const measuredScriptsRevision = 'c243beeb43161aa2ec860917d1a6ca252ecda739';
+export const measuredAppRevision = '27babfa614373b6fb47f5528824e5be8742a140b';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for modes.xtsave (CSI ? 7 s) and modes.xtrestore (CSI ? 7 r), which can only return inconclusive (they measure DA1 and cursor responsiveness, not '
     + 'saved/restored mode state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an '
     + 'independent oracle written from xterm\'s control-sequence text: silence of both sequences, and the stored DECAWM (?7, also as a pending wrap after a character in the last column), DECOM (?6), DECLRMM (?69) '

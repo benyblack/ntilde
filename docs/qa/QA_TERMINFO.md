@@ -1234,3 +1234,15 @@ pinned code is replayed over the child's own DECRQM replies beside effect contra
 `modes.utf8-mouse-1005` moves to supported through the stock collector's DECRPM path because production now answers DECRPM 1/2: a stock effect of the production change (a recognition check), not an effect-contract
 upgrade; stock grades are now 92/1/162. Receipt schema 64 and source policy v58 (387 files) bind it; the run is measured at App and scripts `aaaece99` with one retained superseded attempt (an environmental App startup abort).
 See [the qualification page](terminfo/2026-11-15-mouse-extended-qualification.md).
+
+### Xterm saved-mode qualification
+
+The [xterm saved-mode batch](terminfo/2026-11-16-xterm-saved-modes-qualification.md) qualifies `modes.xtsave` (`CSI ? 7 s`) and `modes.xtrestore` (`CSI ? 7 r`). The parser used to ignore both (so they could not be taken for SCOSC and
+DECSTBM), so this batch also adds the production feature: xterm's one-level cache of DEC private mode values (`CSI ? Pm s` keeps each listed mode's live value in its slot, `CSI ? Pm r` applies it again through the
+DECSET/DECRST path; `?1048` is the cursor save). Both pinned probes can only return inconclusive (they measure DA1 and cursor responsiveness), so the unchanged pinned code is replayed over the journaled raw bytes of its
+own fenced exchange and the cursor of its read through a layered collector extension (`ntilde-owned-xterm-saved-modes-grading-v1`) over the left/right-margin one, beside an effect contract
+(`ntilde-xterm-saved-modes-effect-v1`) graded by an independent oracle written from xterm's control-sequence text. The contract reads the *stored* DECAWM (also as a pending wrap after a character in the last column), DECOM,
+DECLRMM and DECTCEM state after restores: each mode returns to its saved value in both polarities, only the listed modes are restored, a list restores together, a second save replaces the first, and the sequences are
+neither SCOSC/SCORC nor DECSTBM. Both effect contracts are **supported** and both pinned verdicts stay **inconclusive** (a recorded divergence); values the text does not list, a repeated restore, `?1048` and the cursor
+move of a restored `?6` are recorded policy groups that never decide. The input-side, mouse, alternate-screen and reverse-wrap modes and a restore with nothing saved are not measured. No stock grade or query policy
+changes (stock stays 92/1/162). Receipt schema 65 and source policy v59 (394 files) bind it.

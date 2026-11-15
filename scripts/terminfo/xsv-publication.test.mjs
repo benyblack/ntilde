@@ -10,15 +10,15 @@ import { xsvPublication } from './xsv-publication.mjs';
 import { buildXsvGradingReport } from './xsv-grading.mjs';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 
-const dir = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-15-xterm-saved-modes/', import.meta.url));
+const dir = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-16-xterm-saved-modes/', import.meta.url));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '819fed1236edbc588c3d62af41daab5c7062e44e9aa210fa00044ebb24ff876d');
+    assert.equal(hash(manifestBytes), 'be936c501c9f625bea9f2070f7ea3fa78c5af52b5a6d7adbf0e2aafd8e3fd93b');
     const manifest = JSON.parse(manifestBytes);
-    assert.equal(Object.keys(manifest.archives).length, 5, 'the final run and the four retained superseded attempts');
+    assert.equal(Object.keys(manifest.archives).length, 3, 'the final run and the two retained superseded attempts (both over the five-minute collection budget)');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-xsv-publication-'));
     try {
@@ -37,7 +37,7 @@ test('retained run independently rederives the complete receipt and published pr
         projected.summary.receipt = original;
         assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
-        assert.equal(schemaVersion, 63); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 65); assert.equal(fixtureRemoved, true);
         assert.equal(JSON.parse(readFileSync(join(root, 'context.json'))).ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v4');
         // Both pinned verdicts are the unchanged pinned code's inconclusive over the journaled bytes; the effect contracts carry the graded conclusion and the divergence is recorded.
         assert.deepEqual(projected.report.cases.map(item => [item.caseId, item.pinned.termless.observation.outcome, item.pinned.terminal.observation.outcome, item.effectContract.outcome, item.stock.outcome]), [
@@ -50,14 +50,14 @@ test('retained run independently rederives the complete receipt and published pr
             assert.deepEqual(item.divergence, { pinnedOutcome: 'inconclusive', contractOutcome: 'supported', kind: 'pinned-inconclusive-effect-supported' });
             assert.equal(Object.values(item.observed.groups).every(group => group.matches && group.unchanged), true, item.caseId);
             assert.equal(item.observed.seed.cells, true);
-            // The pinned exchange is silent: a push or pop answers nothing, and the pinned group writes no probe character.
+            // The pinned exchange is silent: a save or restore answers nothing and moves no mode.
             assert.deepEqual(item.observed.groups.pinned.replies, []);
-            assert.equal(item.observed.groups.pinned.received, null);
+            assert.deepEqual(item.observed.groups.pinned.received.modes, item.observed.groups.pinned.demanded.modes);
             assert.equal(Object.values(item.observed.groups).every(group => group.replies.length === 0), true, 'every group is silent');
         }
         assert.deepEqual(projected.report.cases.map(item => Object.entries(item.observed.groups).filter(([, group]) => group.kind === 'policy').map(([role]) => role)), [
-            ['numbered-4-beside-double', 'numbered-21-beside-single', 'overflow-eleventh', 'unlisted-value', 'unstacked-state'], ['pop-empty']]);
-        assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 163, supported: 91, unsupported: 1 });
-        assert.deepEqual(projected.report.cases.map(item => Object.keys(item.observed.groups).length), [28, 13]);
+            ['unlisted-values', 'restore-twice', 'cursor-1048', 'origin-restore-homes'], ['unlisted-values', 'restore-twice', 'cursor-1048', 'origin-restore-homes']]);
+        assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 162, supported: 92, unsupported: 1 });
+        assert.deepEqual(projected.report.cases.map(item => Object.keys(item.observed.groups).length), [22, 21]);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });

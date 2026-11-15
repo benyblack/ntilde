@@ -1,0 +1,1933 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-xterm-saved-modes-graded-v1",
+  "contractsVersion": 1,
+  "runId": "0d11d710ddef058e0b262a70a5ad4ff3",
+  "adapter": {
+    "id": "ntilde-owned-xterm-saved-modes-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "2ecc931a5ddf8542b0437284b8483d6e1071caf333142f9a3465326d758b3f96",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criteria for modes.xtsave (CSI ? 7 s) and modes.xtrestore (CSI ? 7 r), which can only return inconclusive (they measure DA1 and cursor responsiveness, not saved/restored mode state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an independent oracle written from xterm's control-sequence text: silence of both sequences, and the stored DECAWM (?7, also as a pending wrap after a character in the last column), DECOM (?6), DECLRMM (?69) and DECTCEM (?25) state read back after restores, each mode returning to its saved value in both polarities, only the listed modes being restored, a list restoring together, a second save replacing the first, and neither sequence being SCOSC, SCORC or DECSTBM; values the text does not list, a repeated restore, xterm's ?1048 cursor save and the cursor move of a restored ?6 are policy groups that never decide; stored state, not host presentation or painted pixels; the input-side, mouse, alternate-screen, reverse-wrap and sixel modes, and a restore with nothing saved, are not measured; no remote/mux, Windows/Linux or common-harness claim; the stock grades are unchanged by this suite.",
+  "cases": [
+    {
+      "caseId": "modes.xtsave",
+      "pinnedCriterion": "CSI ? 7 s produces no output (any output is invalid-reply); the probe then only checks DA1 / cursor responsiveness and is always inconclusive (insufficient-evidence)",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feedCapture",
+            "\\e[?7s",
+            "replies"
+          ],
+          [
+            "feedCapture",
+            "\\e[c",
+            "barrier"
+          ],
+          [
+            "feed",
+            "\\e[?7r"
+          ]
+        ],
+        "terminal": [
+          [
+            "write",
+            "\\e[?7s"
+          ],
+          [
+            "cursor"
+          ],
+          [
+            "write",
+            "\\e[?7r"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-xterm-saved-modes-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-xterm-saved-modes-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feedCapture",
+              "\\e[?7s",
+              "replies"
+            ],
+            [
+              "feedCapture",
+              "\\e[c",
+              "barrier"
+            ],
+            [
+              "feed",
+              "\\e[?7r"
+            ]
+          ],
+          "terminal": [
+            [
+              "write",
+              "\\e[?7s"
+            ],
+            [
+              "cursor"
+            ],
+            [
+              "write",
+              "\\e[?7r"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_XSV_0d11d710ddef058e0b262a70a5ad4ff3",
+          "margins": [
+            1,
+            5
+          ],
+          "modes": {
+            "origin": "reset",
+            "wrap": "set",
+            "cursor": "set",
+            "margin-mode": "reset"
+          },
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "baseline": {
+            "kind": "control",
+            "request": "\\e[1;1H",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "the baseline modes (auto-wrap on, origin mode off, DECLRMM off, cursor visible) are the stored state before any mode is changed",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "modes-change": {
+            "kind": "control",
+            "request": "\\e[?7l\\e[?6h\\e[?69h\\e[?25l",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "the four read-back modes can be changed and read back: auto-wrap off, origin mode on, DECLRMM on and the cursor hidden",
+            "demanded": {
+              "modes": {
+                "origin": "set",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "set"
+              },
+              "cursor": null,
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "set",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "set"
+              },
+              "cursor": [
+                1,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[?7s",
+            "after": "\\e[?7r\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "the exact pinned CSI ? 7 s is accepted silently (its fenced exchange holds no reply) and the pinned CSI ? 7 r that follows leaves the screen unchanged",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "after-pinned": {
+            "kind": "protocol",
+            "request": "\\e[1;1H",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "after the pinned save/restore pair the modes are as they were",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "origin-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?6s\\e[?6h\\e[?6r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "origin (?6) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": null,
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "origin-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?6s\\e[?6l\\e[?6r",
+            "setup": [
+              "\\e[?6h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "origin (?6) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "set",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": null,
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "set",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                1,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?7s\\e[?7l\\e[?7r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "wrap (?7) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?7s\\e[?7h\\e[?7r",
+            "setup": [
+              "\\e[?7l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "wrap (?7) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "cursor-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?25s\\e[?25l\\e[?25r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "cursor (?25) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "cursor-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?25s\\e[?25h\\e[?25r",
+            "setup": [
+              "\\e[?25l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "cursor (?25) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "margin-mode-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?69s\\e[?69h\\e[?69r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "margin-mode (?69) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "margin-mode-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?69s\\e[?69l\\e[?69r",
+            "setup": [
+              "\\e[?69h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "margin-mode (?69) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "set"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "set"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "only-listed-modes": {
+            "kind": "protocol",
+            "request": "\\e[?7s\\e[?7;25l\\e[?7r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "only the listed mode is restored: ?7 saved, ?7 and ?25 changed, ?7 restored leaves ?25 as it was set",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "several-modes": {
+            "kind": "protocol",
+            "request": "\\e[?7;25s\\e[?7;25h\\e[?7;25r",
+            "setup": [
+              "\\e[?7;25l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a list of modes is saved and restored together: ?7;25 saved changed, set back and restored by one pair of sequences are changed again",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "second-save-replaces": {
+            "kind": "protocol",
+            "request": "\\e[?7s\\e[?7h\\e[?7s\\e[?7l\\e[?7r",
+            "setup": [
+              "\\e[?7l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a second save replaces the first (a one-level cache): saved off, set, saved on, reset and restored is on",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "not-scosc": {
+            "kind": "protocol",
+            "request": "\\e[3;3H\\e[s\\e[5;5H\\e[?7s\\e[1;1H\\e[u",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "CSI ? 7 s is not SCOSC: it does not replace the cursor saved by CSI s, which CSI u restores",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                2,
+                2
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                2,
+                2
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-effect-on": {
+            "kind": "protocol",
+            "request": "\\e[8;1H\\e[999C\\e[?7s\\e[?7l\\e[?7rz",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a restored auto-wrap on leaves a pending wrap after a character is written in the last column",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": "last column of the probe row",
+              "probeCharacter": true
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                7,
+                139
+              ],
+              "pendingWrap": true,
+              "probeRow": [
+                {
+                  "col": 139,
+                  "char": "z"
+                }
+              ]
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-effect-off": {
+            "kind": "protocol",
+            "request": "\\e[8;1H\\e[999C\\e[?7s\\e[?7h\\e[?7rz",
+            "setup": [
+              "\\e[?7l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a restored auto-wrap off leaves no pending wrap after a character is written in the last column",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": "last column of the probe row",
+              "probeCharacter": true
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                7,
+                139
+              ],
+              "pendingWrap": false,
+              "probeRow": [
+                {
+                  "col": 139,
+                  "char": "z"
+                }
+              ]
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "unlisted-values": {
+            "kind": "policy",
+            "request": "\\e[?9999s\\e[?9999r\\e[?s\\e[?r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a value that names no saved mode (9999) and a list with none are silent and change nothing in Ntilde",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-twice": {
+            "kind": "policy",
+            "request": "\\e[?7s\\e[?7l\\e[?7r\\e[?7l\\e[?7r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a restore leaves the cache filled in Ntilde: restored, changed and restored again is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "cursor-1048": {
+            "kind": "policy",
+            "request": "\\e[3;3H\\e[?1048s\\e[1;1H\\e[?1048r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "xterm's ?1048 is the cursor save: saved at 3;3, moved, restored is back at 3;3",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                2,
+                2
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                2,
+                2
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "origin-restore-homes": {
+            "kind": "policy",
+            "request": "\\e[3;3H\\e[?6s\\e[?6r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "xterm's restore of ?6 moves the cursor to the home position: saved at 3;3 it is home after the restore",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "{\"row\":1,\"col\":1}",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "Cursor responsiveness does not measure saved/restored state"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "modes.xtsave",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtsave"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-and-stored-cells",
+        "grading": "pinned-termless-replayed",
+        "note": "DA1 responsiveness does not measure saved/restored stack state",
+        "reason": "insufficient-evidence",
+        "scope": "xterm XTSAVE (CSI ? Pm s) only: silence, an unchanged screen, and the stored DECAWM (?7, also as a pending wrap after a character in the last column), DECOM (?6), DECLRMM (?69) and DECTCEM (?25) state read back after restores: each mode returns to its saved value in both polarities, only the listed modes are restored, a list restores together, a second save replaces the first, and the sequence is not SCOSC; values the text does not list, a repeated restore, xterm's ?1048 cursor save and the cursor move of a restored ?6 are policy groups; stored state, no rendering claim, no claim for the input-side, mouse, alternate-screen or reverse-wrap modes, and the pinned probe measures only DA1 and cursor responsiveness"
+      }
+    },
+    {
+      "caseId": "modes.xtrestore",
+      "pinnedCriterion": "CSI ? 7 s then CSI ? 7 r produces no output (any output is invalid-reply); the probe then only checks DA1 / cursor responsiveness and is always inconclusive (insufficient-evidence)",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feed",
+            "\\e[?7s"
+          ],
+          [
+            "feedCapture",
+            "\\e[?7r",
+            "replies"
+          ],
+          [
+            "feedCapture",
+            "\\e[c",
+            "barrier"
+          ]
+        ],
+        "terminal": [
+          [
+            "write",
+            "\\e[?7s"
+          ],
+          [
+            "write",
+            "\\e[?7r"
+          ],
+          [
+            "cursor"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-xterm-saved-modes-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-xterm-saved-modes-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feed",
+              "\\e[?7s"
+            ],
+            [
+              "feedCapture",
+              "\\e[?7r",
+              "replies"
+            ],
+            [
+              "feedCapture",
+              "\\e[c",
+              "barrier"
+            ]
+          ],
+          "terminal": [
+            [
+              "write",
+              "\\e[?7s"
+            ],
+            [
+              "write",
+              "\\e[?7r"
+            ],
+            [
+              "cursor"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_XSV_0d11d710ddef058e0b262a70a5ad4ff3",
+          "margins": [
+            1,
+            5
+          ],
+          "modes": {
+            "origin": "reset",
+            "wrap": "set",
+            "cursor": "set",
+            "margin-mode": "reset"
+          },
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "baseline": {
+            "kind": "control",
+            "request": "\\e[1;1H",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "the baseline modes (auto-wrap on, origin mode off, DECLRMM off, cursor visible) are the stored state before any mode is changed",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "modes-change": {
+            "kind": "control",
+            "request": "\\e[?7l\\e[?6h\\e[?69h\\e[?25l",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "the four read-back modes can be changed and read back: auto-wrap off, origin mode on, DECLRMM on and the cursor hidden",
+            "demanded": {
+              "modes": {
+                "origin": "set",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "set"
+              },
+              "cursor": null,
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "set",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "set"
+              },
+              "cursor": [
+                1,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[?7r",
+            "setup": [
+              "\\e[?7s"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "the exact pinned CSI ? 7 r after the pinned CSI ? 7 s is accepted silently (its fenced exchange holds no reply) and leaves the screen unchanged",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "after-pinned": {
+            "kind": "protocol",
+            "request": "\\e[1;1H",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "after the pinned save/restore pair the modes are as they were",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "origin-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?6r",
+            "setup": [
+              "\\e[?6s",
+              "\\e[?6h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "origin (?6) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": null,
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "origin-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?6r",
+            "setup": [
+              "\\e[?6h",
+              "\\e[?6s",
+              "\\e[?6l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "origin (?6) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "set",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": null,
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "set",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                1,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?7r",
+            "setup": [
+              "\\e[?7s",
+              "\\e[?7l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "wrap (?7) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?7r",
+            "setup": [
+              "\\e[?7l",
+              "\\e[?7s",
+              "\\e[?7h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "wrap (?7) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "cursor-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?25r",
+            "setup": [
+              "\\e[?25s",
+              "\\e[?25l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "cursor (?25) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "cursor-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?25r",
+            "setup": [
+              "\\e[?25l",
+              "\\e[?25s",
+              "\\e[?25h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "cursor (?25) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "margin-mode-restores-default": {
+            "kind": "protocol",
+            "request": "\\e[?69r",
+            "setup": [
+              "\\e[?69s",
+              "\\e[?69h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "margin-mode (?69) saved at its default, changed and restored is back at its default: the stored state is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "margin-mode-restores-changed": {
+            "kind": "protocol",
+            "request": "\\e[?69r",
+            "setup": [
+              "\\e[?69h",
+              "\\e[?69s",
+              "\\e[?69l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "margin-mode (?69) saved changed, set back to its default and restored is changed again: the restore applies the saved value, not the default",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "set"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "set"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "only-listed-modes": {
+            "kind": "protocol",
+            "request": "\\e[?7r",
+            "setup": [
+              "\\e[?7s",
+              "\\e[?7;25l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "only the listed mode is restored: ?7 saved, ?7 and ?25 changed, ?7 restored leaves ?25 as it was set",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "several-modes": {
+            "kind": "protocol",
+            "request": "\\e[?7;25r",
+            "setup": [
+              "\\e[?7;25l",
+              "\\e[?7;25s",
+              "\\e[?7;25h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a list of modes is restored together: ?7;25 saved changed, set back and restored by one sequence are changed again",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "reset",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "not-decstbm-or-scorc": {
+            "kind": "protocol",
+            "request": "\\e[?7r",
+            "setup": [
+              "\\e[3;3H\\e[s\\e[5;5H\\e[?7s"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "CSI ? 7 r is neither DECSTBM nor SCORC: the scroll region and the cursor (saved by CSI s at 3;3, moved to 5;5) stay",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                4,
+                4
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                4,
+                4
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-effect-on": {
+            "kind": "protocol",
+            "request": "\\e[?7rz",
+            "setup": [
+              "\\e[8;1H\\e[999C\\e[?7s\\e[?7l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a restored auto-wrap on leaves a pending wrap after a character is written in the last column",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": "last column of the probe row",
+              "probeCharacter": true
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                7,
+                139
+              ],
+              "pendingWrap": true,
+              "probeRow": [
+                {
+                  "col": 139,
+                  "char": "z"
+                }
+              ]
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "wrap-effect-off": {
+            "kind": "protocol",
+            "request": "\\e[?7rz",
+            "setup": [
+              "\\e[?7l",
+              "\\e[8;1H\\e[999C\\e[?7s\\e[?7h"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a restored auto-wrap off leaves no pending wrap after a character is written in the last column",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": "last column of the probe row",
+              "probeCharacter": true
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "reset",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                7,
+                139
+              ],
+              "pendingWrap": false,
+              "probeRow": [
+                {
+                  "col": 139,
+                  "char": "z"
+                }
+              ]
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "unlisted-values": {
+            "kind": "policy",
+            "request": "\\e[?9999r\\e[?r",
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a value that names no saved mode (9999) and a list with none are silent and change nothing in Ntilde",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-twice": {
+            "kind": "policy",
+            "request": "\\e[?7r\\e[?7l\\e[?7r",
+            "setup": [
+              "\\e[?7s\\e[?7l"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "a restore leaves the cache filled in Ntilde: restored, changed and restored again is the saved value",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "cursor-1048": {
+            "kind": "policy",
+            "request": "\\e[?1048r",
+            "setup": [
+              "\\e[3;3H\\e[?1048s\\e[1;1H"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "xterm's ?1048 is the cursor restore: saved at 3;3, moved, restored is back at 3;3",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                2,
+                2
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                2,
+                2
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "origin-restore-homes": {
+            "kind": "policy",
+            "request": "\\e[?6r",
+            "setup": [
+              "\\e[3;3H\\e[?6s"
+            ],
+            "after": "\\e[?6l\\e[?69l\\e[?7h\\e[?25h\\e[8;1H\\e[2K\\e[1;1H",
+            "demand": "xterm's restore of ?6 moves the cursor to the home position: saved at 3;3 it is home after the restore",
+            "demanded": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "probeCharacter": false
+            },
+            "received": {
+              "modes": {
+                "origin": "reset",
+                "wrap": "set",
+                "cursor": "set",
+                "margin-mode": "reset"
+              },
+              "cursor": [
+                0,
+                0
+              ],
+              "pendingWrap": false,
+              "probeRow": []
+            },
+            "replies": [],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "DA1 responsiveness does not measure saved/restored stack state"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "{\"row\":1,\"col\":1}",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "Cursor responsiveness does not measure saved/restored state"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "modes.xtrestore",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor responsiveness does not measure saved/restored state",
+        "rawReplyRef": "modes.xtrestore"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-and-stored-cells",
+        "grading": "pinned-termless-replayed",
+        "note": "DA1 responsiveness does not measure saved/restored stack state",
+        "reason": "insufficient-evidence",
+        "scope": "xterm XTRESTORE (CSI ? Pm r) only: silence, an unchanged screen, and the stored DECAWM (?7, also as a pending wrap after a character in the last column), DECOM (?6), DECLRMM (?69) and DECTCEM (?25) state read back after restores: each mode returns to its saved value in both polarities, only the listed modes are restored, a list restores together, and the sequence is neither DECSTBM nor SCORC; values the text does not list, a repeated restore, xterm's ?1048 cursor restore and the cursor move of a restored ?6 are policy groups; stored state, no rendering claim, no claim for the input-side, mouse, alternate-screen or reverse-wrap modes, and the pinned probe measures only DA1 and cursor responsiveness"
+      }
+    }
+  ]
+}
