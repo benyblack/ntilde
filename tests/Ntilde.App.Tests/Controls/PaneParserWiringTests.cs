@@ -540,7 +540,7 @@ public class PaneParserWiringTests
         string expected = TerminalPane.ChildTerminalType;
         Assert.Equal(1, CountOccurrences(native, "env_map.insert(\"TERM\".to_string(), \"" + expected + "\".to_string());"));
         Assert.Equal(1, CountOccurrences(native, "cmd_builder.env(\"TERM\", \"" + expected + "\");"));
-        Assert.Equal(expected, new Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions().Term);
+        Assert.Equal(expected, new Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions { Host = "example.test", User = "qa" }.Term);
     }
 
     /// <summary>
