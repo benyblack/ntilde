@@ -23,7 +23,7 @@ reply) and the cursor of its read. The graded conclusion belongs to a separately
 | `modes.xtpushcolors` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 | `modes.xtpopcolors` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 
-The stock collector in the same owned run (`08eb79bfd90d964a2a0f99b696dd3082`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the device-query batch's counts: no stock grade
+The stock collector in the same owned run (`0587b5fe7c99bcaf97ec2157b4bff5e5`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the device-query batch's counts: no stock grade
 moves. The frozen stock baseline keeps its original grades. No Core point is added. Inventory: two more IDs with a supported effect contract and an inconclusive pinned verdict; no pinned-supported ID is added.
 
 ## What the effect contract decides
@@ -56,9 +56,9 @@ common-harness claim.
 
 App 0.14.0 (operator supplied) built from `fb6c7fd6b81b4e231afb86b500fbef26354100fd` (arm64 Release; the App sources equal the device-query batch's, executable SHA-256
 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `265bedc5075b4a56b39fe7d2a4b9ed3e35e527d4f9b207c86a240047bf0f589f`); measured scripts
-`c03aab163b042abefb25abaf399282785eed2117`; source policy `readonly-owned-source-graph-v56` (374 files; manifest SHA-256 `5f2d0eb42a76f307763ded296bbd1cc0392278abd0621ae5cf7983be181f4b30`); query policy
-`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `aeee6fe94555eea7e4eb90cfad035b46bec7854f01932715d3ad3e3c8d8bdb50`; receipt schema 62; Node v24.22.2; owned run
-`f2b775acf7b7faaed7c3b9e20c8ce4fc`; collected 2026-11-15T13:14Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
+`fe332981a1b69000eac4d597d99bcafeef00fb59`; source policy `readonly-owned-source-graph-v56` (374 files; manifest SHA-256 `f03cc9879a0dd15b64b7a6b6239ced526eadd6fb40ae088c68435b5f657cdbee`); query policy
+`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `349c6696e3366beeae9727064ac8d4b2e54002c3265177d87dfdf44b0a4ee958`; receipt schema 62; Node v24.22.2; owned run
+`1a46bb891009fc5ea451569741d08afa`; collected 2026-11-15T13:25Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
 retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-15-xterm-color-stack/superseded/))
@@ -67,7 +67,10 @@ retained bytes.
    routed-input suite) before the later stages finished. The same committed scripts and sidecar were run again unchanged.
 2. Completed with both effect contracts supported and the same pinned verdicts, measured at `da8b8dccd02ce975fc140d66ec89e2e8806aa6e3` (owned run `fbfbd6e79aaf59c5178ebbf5c4a30bec`); superseded because the local Codex
    review of that head found two defects in measured files: the pinned-replay call-count check refused the pinned termless probe's valid early `invalid-reply` return, and the exchange parser threw on unexpected non-OSC
-   output of a stack operation instead of retaining it. Both are fixed (and unit-tested, the early return also against the real pinned bundle) and the suite was remeasured.
+   output of a stack operation instead of retaining it. Both were fixed (unit-tested, the early return also against the real pinned bundle).
+3. Completed with the same verdicts, measured at `c03aab163b042abefb25abaf399282785eed2117` (owned run `f2b775acf7b7faaed7c3b9e20c8ce4fc`); superseded because the next Codex review found two more defects in measured files:
+   a BEL-terminated (or never terminated) OSC string before the barrier aborted the parser instead of being retained, and the grader scanned every control before any protocol group, so a protocol failure could be masked
+   as a failed setup control by a later control it had damaged. It now accepts BEL, retains an unterminated string as unexpected bytes, and grades the first failure in execution order.
 
 The final run is [owned-run.zip](2026-11-15-xterm-color-stack/owned-run.zip); `node --test scripts/terminfo/xcs-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the retained
 journal and compares the published projection.
