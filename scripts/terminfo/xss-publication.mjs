@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { xssCaseIds } from './xss-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '52375795351698a609d13c71f173ecc11bab8dbf';
-export const measuredAppRevision = 'd02149e458f9a6dde0adac9211d4fa3984e9a2e8';
+export const measuredScriptsRevision = '876d97865e0e696c13d6cd820c1a94c4fb4553e4';
+export const measuredAppRevision = '876d97865e0e696c13d6cd820c1a94c4fb4553e4';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for modes.xtpushsgr (CSI # {) and modes.xtpopsgr (CSI # }), which can only return inconclusive (they measure DA1 and cursor responsiveness, not '
     + 'saved/restored stack state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an '
     + 'independent oracle written from xterm\'s control-sequence text: silence of both sequences, and the stored bold, faint, italic, underline, blink, inverse, hidden, strikethrough, foreground and background '

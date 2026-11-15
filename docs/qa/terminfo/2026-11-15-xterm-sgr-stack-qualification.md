@@ -23,7 +23,7 @@ reply) and the cursor of its read. The graded conclusion belongs to a separately
 | `modes.xtpushsgr` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 | `modes.xtpopsgr` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 
-The stock collector in the same owned run (`3878cad8139eca384f5e6d24eeb92559`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the color-stack batch's counts: no stock
+The stock collector in the same owned run (`0f8b3ff8f72ebd7f0abfd38aa1167415`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the color-stack batch's counts: no stock
 grade moves. The frozen stock baseline keeps its original grades. No Core point is added. Inventory: two more IDs with a supported effect contract and an inconclusive pinned verdict; no pinned-supported ID is added.
 
 ## Production
@@ -73,11 +73,11 @@ its text (the eleventh push, an empty pop, an unlisted value, RIS or DECSTR) is 
 
 ## Identities
 
-App 0.14.0 (operator supplied) built from `d02149e458f9a6dde0adac9211d4fa3984e9a2e8` (arm64 Release; the last commit that changed the App sources; executable SHA-256
-`f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `8b3e0cf49c071a57b889e69881fc8ab4453c156dd9535800bceb708925b3ad63`); measured scripts
-`52375795351698a609d13c71f173ecc11bab8dbf`; source policy `readonly-owned-source-graph-v57` (381 files; manifest SHA-256 `cec0657a44cae3835fe34e62d8c86c410f1d570ef30042aa0ec0fd4d8953aa16`); query policy
-`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `cdbcf980fa9822ff3ea5016b5b007be0054c2e6d2e3490ae35a3a296f3f56fd6`; receipt schema 63; Node v24.22.2; owned run
-`acc8d6b242fbf0c85a8083498888866b`; collected 2026-11-15T16:10Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
+App 0.14.0 (operator supplied) built from `876d97865e0e696c13d6cd820c1a94c4fb4553e4` (arm64 Release; the last commit that changed the App sources; executable SHA-256
+`f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `da761af97e5987ea3b7db20e99283af7488b3cc5de20ed418f983dc12742a60c`); measured scripts
+`876d97865e0e696c13d6cd820c1a94c4fb4553e4`; source policy `readonly-owned-source-graph-v57` (381 files; manifest SHA-256 `39bde30ba02ce931f78a5a9e01fb7f7142e41afe545e24de6138ffc1c8ce4b09`); query policy
+`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `80e6065a3f396ec11543beff875a71fa23a6b731d0392f7120e341cc9bc1b13f`; receipt schema 63; Node v24.22.2; owned run
+`bc62a5b949d627a92dabeddee3708aee`; collected 2026-11-15T16:47Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
 retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-15-xterm-sgr-stack/superseded/))
@@ -90,7 +90,13 @@ retained bytes.
    erases the probe row, a unit test pins that, and a second test shows stale probe cells leave the seed unproven. Before the next measurement a local Codex review found the two production defects above (and
    nothing in the scripts), the oracle gained four underline groups, and the eleventh-push policy group now drains the stack afterwards so no later demand depends on it.
 
-A fourth start was refused before any App launched because another session held the shared desktop lock; it waited for the release and no lock was touched.
+4. Completed with the same verdicts (owned run `acc8d6b242fbf0c85a8083498888866b`, scripts `52375795351698a609d13c71f173ecc11bab8dbf`, App `d02149e4`) and was the published run of the first PR head; superseded
+   because the review of that head (SonarCloud, CodeRabbit) found minor defects in measured files: the bind's reset restored saved pens after clearing the SGR (the stack is now drained first), a production
+   method over the cognitive-complexity limit (split), the stack-depth read without the buffer lock (now asserted), nested ternaries and a one-line loop in the contract, and re-exports not written as `export … from`.
+   No contracted group, byte of any request or verdict changed apart from that reset order. CodeRabbit's comment that single and double underline should be two stored logical attributes was declined: the pen
+   holds one style and the both-flags case is a recorded policy group.
+
+A start between attempts 3 and 4 was refused before any App launched because another session held the shared desktop lock; it waited for the release and no lock was touched.
 
 The final run is [owned-run.zip](2026-11-15-xterm-sgr-stack/owned-run.zip); `node --test scripts/terminfo/xss-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the retained
 journal and compares the published projection.
