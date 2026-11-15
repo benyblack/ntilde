@@ -374,8 +374,10 @@ This enables deterministic replay, cross-platform parity testing, and safe refac
 `TerminalBuffer` owns stream color overrides separately from its host `Theme`. Numeric
 OSC 4, 10/11/12/17/19 mutations update effective render snapshots and queries; explicit
 truecolor cells stay literal, while default and indexed cells follow current overrides.
-OSC 104 and 110/111/112/117/119 reset overrides to current host defaults. X11 named colors,
-other dynamic slots and the separate OSC 21 protocol are outside this implementation.
+OSC 104 and 110/111/112/117/119 reset overrides to current host defaults. X11 named colors
+and other dynamic slots are outside this implementation. The separate kitty color-control
+protocol (OSC 21) queries, sets and resets the same foreground, background, selection, cursor
+and palette state by key name, and reports a selection color with no concrete value as empty.
 
 OSC 30001/30101 save/restore overrides for the five dynamic colors and 256 palette slots.
 The stack is session-wide, with the newest 16 frames retained and silent empty pops.
