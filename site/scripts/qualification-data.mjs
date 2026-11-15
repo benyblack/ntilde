@@ -467,6 +467,7 @@ export function assertPublishable(data) {
 
 function looksLikeCoreReport(report) {
   return (
+    (report?.baseline === undefined || report.baseline === 'core') &&
     Array.isArray(report?.rows) &&
     report.rows.length > 0 &&
     report.rows.every((row) => typeof row?.id === 'string' && OUTCOMES.has(row.conclusion)) &&
@@ -480,7 +481,8 @@ function looksLikeCoreReport(report) {
  * self-test fails while one exists and the pin has not moved. A publication is recognised by the
  * shape of a Core qualification report (per-requirement pass/fail/inconclusive conclusions, totals and
  * a measurement time), not by its policy or row count, so a later one that changes either is still
- * found; other kinds of report are ignored.
+ * found. Explicitly named non-Core baselines are ignored; legacy Core reports
+ * without a baseline field remain discoverable.
  */
 export function findNewerCorePublications({ base = repoRoot, pin = loadPin() } = {}) {
   const { value: pinned } = readJson(base, `${pin.publication}/report.json`, 'the pinned report');

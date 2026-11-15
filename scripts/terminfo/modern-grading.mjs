@@ -13,7 +13,7 @@ function da1Index(raw) {
     return -1;
 }
 const csiPayload = reply => reply.startsWith(ESC + '[') ? reply.slice(2) : null;
-const oscPayload = reply => reply.startsWith(ESC + ']') && reply.endsWith(ESC + String.fromCharCode(92)) ? reply.slice(2, -2) : null;
+const oscPayload = reply => reply.startsWith(ESC + ']') && reply.endsWith(ESC + String.fromCodePoint(92)) ? reply.slice(2, -2) : null;
 
 /** A callback's complete events, query bytes and base64 copy must agree. */
 export function checkedTrace(raw, id) {
