@@ -52,6 +52,7 @@ import { collectNotify } from './notify-collector.mjs';
 import { collectDevqGrading } from './devq-collector.mjs';
 import { collectXcsGrading } from './xcs-collector.mjs';
 import { collectXssGrading } from './xss-collector.mjs';
+import { collectKclGrading } from './kcl-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -439,6 +440,12 @@ try {
         const xssModule = await import(pathToFileURL(config.xssBundle).href);
         const xssRun = await collectXssGrading({ config, fence, owner, gradingModule: xssModule });
         writeFileSync(join(config.output, 'xss-run.json'), JSON.stringify(xssRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered kitty color-control (OSC 21) qualification follows the xterm SGR-stack suite on the same fence; it leaves every runtime color override reset.
+        const kclSource = readFileSync(config.kclBundle);
+        if (createHash('sha256').update(kclSource).digest('hex') !== config.kclBundleSha256) throw new Error('Local kitty color-control adapter bundle changed.');
+        const kclModule = await import(pathToFileURL(config.kclBundle).href);
+        const kclRun = await collectKclGrading({ config, fence, owner, gradingModule: kclModule });
+        writeFileSync(join(config.output, 'kcl-run.json'), JSON.stringify(kclRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
