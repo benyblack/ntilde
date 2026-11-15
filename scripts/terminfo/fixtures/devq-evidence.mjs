@@ -112,6 +112,7 @@ export function syntheticDevqScreens(contract, binding = paletteBinding(), mutat
 /** A complete, valid synthetic run: frames, worker run log and adapter facts. `mutate(caseId, role, read)` may return a changed read. */
 export function syntheticDevqEvidence({ runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), binding = paletteBinding(), mutate = null, recolored = null, finishBinding = null } = {}) {
     const nonce = 'NTILDE_DQ_' + runId;
+    const recolor = recolored ?? { caseId: null, binding };
     const bare = syntheticColEditScreen([], [0, 0], undefined, [], binding);
     // The main screen carries DECLRMM off with full-width margins, like every observed screen.
     const main = { ...bare, horizontalMargins: { leftRightMarginMode: false, leftMargin: 0, rightMargin: bare.cols - 1 }, cursorMode: { style: 0, blink: true, isDefault: true } };
@@ -121,7 +122,7 @@ export function syntheticDevqEvidence({ runId = 'a'.repeat(32), bundleSha256 = '
     const frames = [frame(0, 'dvq-start', main, null), frame(1, 'dvq-bind', bound, deviceAttribute)];
     const cases = [];
     for (const contract of devqContracts) {
-        const reads = syntheticDevqScreens(contract, recolored?.caseId === contract.caseId ? (recolored.binding ?? binding) : binding, mutate, runId);
+        const reads = syntheticDevqScreens(contract, recolor.caseId === contract.caseId ? recolor.binding : binding, mutate, runId);
         const records = reads.map((read, index) => {
             const isReport = contract.roles[index] !== 'initial';
             const exchange = isReport ? { barrier: deviceAttribute, replies: read.replies } : undefined;

@@ -12,7 +12,7 @@ listed them as unavailable and the witnesses `q07.device.*` recorded matched sil
   (mux) sessions answer `DCS 0 + R` (the daemon's parser is not told a TERM). XTGETTCAP `TN` stays refused.
 - **xterm palette stack**: `CSI Pm # P` / `CSI Pm # Q` / `CSI # R`, ten slots over the dynamic colors and the 256-color palette, independent of the kitty stack (`OSC 30001/30101`), carried by state
   transfer and cleared by RIS. No parameter or 0 pushes onto / pops from the top; 1..10 stores into / restores from that slot (xterm moves the depth to the slot on a push and to the slot below on a pop; the
-  ctlseqs text says "without popping", the source decides). The report is `CSI ? depth ; deepest # Q`.
+  ctlseqs text says "without popping", the source decides). An explicit `0` is treated as an omitted parameter (push/pop the top), following the documented "default 0"; xterm's code treats an explicit `0` as a store that sets the depth to 0, a deliberate deviation recorded in the coverage matrix. The report is `CSI ? depth ; deepest # Q`.
 - **CSI 20 t / CSI 21 t**: `OSC L icon ST` / `OSC l title ST` with the raw OSC 0/1/2 state, **off by default** behind the new `AllowTitleReport` setting (xterm ships both disallowed: the reply is typed into the
   foreground program's input). A label with a control character, or too long to retain, is answered empty. Direct panes only.
 

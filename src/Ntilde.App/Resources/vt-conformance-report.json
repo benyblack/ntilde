@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "abcea3321fbc1c4efa998585f745e14c2d7cf4455035df8dd37d7b61cd6d693b",
+  "matrixSha256": "156818d8da55c8ab7ab6a942e5113d5bc70c0f17ee607babe6ce080825b76530",
   "summary": {
     "totalRows": 125,
     "supportedCount": 58,
@@ -1303,7 +1303,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "No parameter or 0 pushes onto the top; 1..10 stores into that slot and moves the depth to it (xterm\u0027s \u0060xtermPushColors\u0060). A push with the ten slots full, a slot past 10, and a non-exact spelling do nothing. Independent of the kitty stack (OSC 30001/30101). RIS clears it; state transfer carries it.",
+      "knownDeviations": "No parameter or 0 pushes onto the top; 1..10 stores into that slot and moves the depth to it (xterm\u0027s \u0060xtermPushColors\u0060). A push with the ten slots full, a slot past 10, and a non-exact spelling do nothing. Independent of the kitty stack (OSC 30001/30101). RIS clears it; state transfer carries it. **Deliberate deviation:** an explicit \u00600\u0060 is the same as an omitted parameter (push/pop the top), as the ctlseqs text says (\u0022the default 0 will push\u0022); xterm\u0027s own code treats only an absent parameter as the default and an explicit \u00600\u0060 as a numbered store that sets the depth to 0, which contradicts that text, and the VT\u0027s CSI parameters do not distinguish the two spellings for any final byte.",
       "sourceLine": 127
     },
     {
