@@ -358,5 +358,12 @@
     "selectionColorsCaptureSourceSha256": "selection-colors-capture.mjs",
     "selectionColorsGradingSourceSha256": "selection-colors-grading.mjs",
     "selectionColorsGradingCollectorSourceSha256": "selection-colors-grading-collector.mjs",
-    "selectionColorsReceiptSourceSha256": "selection-colors-receipt.mjs"
+    "selectionColorsReceiptSourceSha256": "selection-colors-receipt.mjs",
+    "devqReportSourceSha256": "devq-report.mjs",
+    "devqContractsSourceSha256": "devq-contracts.mjs",
+    "devqCaptureSourceSha256": "devq-capture.mjs",
+    "devqCollectorSourceSha256": "devq-collector.mjs",
+    "devqGradingSourceSha256": "devq-grading.mjs",
+    "devqGradingCollectorSourceSha256": "devq-grading-collector.mjs",
+    "devqReceiptSourceSha256": "devq-receipt.mjs"
 }

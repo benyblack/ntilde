@@ -49,6 +49,7 @@ import { collectRectChecksumGrading } from './rect-checksum-collector.mjs';
 import { collectXtgettcapGrading } from './xtgettcap-collector.mjs';
 import { collectOsc9 } from './osc9-collector.mjs';
 import { collectNotify } from './notify-collector.mjs';
+import { collectDevqGrading } from './devq-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -415,6 +416,13 @@ try {
         if (createHash('sha256').update(notifySource).digest('hex') !== config.notifyBundleSha256) throw new Error('Local notification adapter bundle changed.');
         const notifyResult = await collectNotify({ config, fence, owner, gradingModule: await import(pathToFileURL(config.notifyBundle).href) });
         if (notifyResult.status === 'complete') writeFileSync(join(config.output, 'ntf-run.json'), JSON.stringify(notifyResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered device-query qualification follows the notification suite on the same exclusively owned fence: every request is one fenced exchange whose raw replies the
+        // parent journals beside the unchanged state.
+        const devqSource = readFileSync(config.devqBundle);
+        if (createHash('sha256').update(devqSource).digest('hex') !== config.devqBundleSha256) throw new Error('Local device-query adapter bundle changed.');
+        const devqModule = await import(pathToFileURL(config.devqBundle).href);
+        const devqRun = await collectDevqGrading({ config, fence, owner, gradingModule: devqModule });
+        writeFileSync(join(config.output, 'dvq-run.json'), JSON.stringify(devqRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

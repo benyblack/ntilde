@@ -14,7 +14,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'dvq-observations.json', run: 'dvq-run.json', journal: 'dvq-snapshots.jsonl', adapter: 'collector-dvq.mjs' });
 /** The first source policy whose worker always runs this suite. */
-export const devqFirstPolicy = 54;
+export const devqFirstPolicy = 55;
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const fail = message => { throw new Error(message); };

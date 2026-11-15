@@ -131,6 +131,24 @@ test('a run of the v3 query policy owes the exact OSC 99 capability reply; absen
     }
 });
 
+test('a run of the v4 query policy owes the exact XTGETXRES and XTREPORTCOLORS replies; absent the marker the silence expectation is unchanged', () => {
+    const v3 = queryWitnessPlan({ ...context, marginsReport: true, noticeReport: true }), v4 = queryWitnessPlan({ ...context, marginsReport: true, noticeReport: true, deviceReport: true });
+    const witness = (plan, id) => plan.find(item => item.id === id);
+    for (const id of ['q07.device.xtgetxres', 'q07.device.xtreportcolors']) assert.deepEqual({ ...witness(v3, id) }, { ...witness(v3, id), expectedEvidence: 'silence', expectedReply: '' });
+    assert.equal(witness(v4, 'q07.device.xtgetxres').expectedEvidence, 'positive-reply');
+    assert.equal(witness(v4, 'q07.device.xtgetxres').expectedReply, '\x1bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\x1b\\');
+    assert.equal(witness(v4, 'q07.device.xtreportcolors').expectedEvidence, 'positive-reply');
+    assert.equal(witness(v4, 'q07.device.xtreportcolors').expectedReply, '\x1b[?0;0#Q');
+    for (const id of ['q07.device.xtwinops-20', 'q07.device.xtwinops-21']) assert.deepEqual({ ...witness(v4, id) }, { ...witness(v3, id) }, 'the title reports have no deterministic label here and stay silent-expected');
+    const others = plan => plan.filter(item => item.id !== 'q07.device.xtgetxres' && item.id !== 'q07.device.xtreportcolors').map(item => ({ ...item }));
+    assert.deepEqual(others(v4), others(v3), 'every other witness is unchanged');
+    assert.equal(queryWitnessContext({ ...context, deviceReport: true }).deviceReport, true);
+    assert.equal(Object.hasOwn(queryWitnessContext(context), 'deviceReport'), false);
+    for (const bad of [{ ...context, deviceReport: false }, { ...context, deviceReport: 'true' }, { ...context, deviceReport: true, extra: 1 }]) {
+        assert.throws(() => queryWitnessContext(bad), /bounded observed geometry/, JSON.stringify(bad));
+    }
+});
+
 test('a run of the v2 query policy owes the exact DECRQSS s reply; absent the marker the negative expectation is unchanged', () => {
     const plain = queryWitnessPlan(context), marked = queryWitnessPlan({ ...context, marginsReport: true });
     const witness = plan => plan.find(item => item.id === 'q12.decrqss.horizontal-margins');
