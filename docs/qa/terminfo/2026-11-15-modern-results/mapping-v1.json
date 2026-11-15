@@ -1,0 +1,490 @@
+{
+  "schemaVersion": 1,
+  "scope": "Owned application evidence mapped to the frozen catalogue. Where a stored-cell semantic predicate is selected it is observed through the private App projection, not an upstream headless-library or native capture run. Explicit application-only physical input, raster and OS clipboard requirements are never inferred from generated events, flags or private fixtures.",
+  "rows": [
+    {
+      "kind": "underline",
+      "file": "sgus-observations.json",
+      "style": 2,
+      "id": "sgr.underline.double",
+      "criterionSha256": "3adac5f49cfff16dd9afe240a73bbbba8d8c878218143c5a1847ee8c5023850b",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "underline",
+      "file": "sgus-observations.json",
+      "style": 3,
+      "id": "sgr.underline.curly",
+      "criterionSha256": "933d7a766042c049b5c98abc8e4c61f6bb55267fe33033b4bb972ef21504e637",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "underline",
+      "file": "sgus-observations.json",
+      "style": 4,
+      "id": "sgr.underline.dotted",
+      "criterionSha256": "e3296318053da2a72dbc9ae7f21061dba28fea43a64caf811182c70358b93213",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "underline",
+      "file": "sgus-observations.json",
+      "style": 5,
+      "id": "sgr.underline.dashed",
+      "criterionSha256": "66cb6b9c121130057106dabccb3a5de72df80e899cfa1735b42e20e83d9ea0b2",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "underline-color",
+      "id": "sgr.underline.color",
+      "criterionSha256": "f68e3a90d4835af9db903c7123960d83adcf3892837338a017828271a6e492ca",
+      "criterionPath": "owned stored-cell semantic predicate",
+      "file": "sgcl-observations.json"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Only stored blink and synthetic presentation phases are retained. The current criterion requires a real elapsed-time capture series with a stationary control; no such series is retained.",
+      "id": "sgr.blink",
+      "criterionSha256": "07daa7963c6d215451ddb044c239295bc9a3340a06a08c0c30e59f877ace94ee",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "overline",
+      "file": "sgcl-observations.json",
+      "id": "sgr.overline",
+      "criterionSha256": "7b7a86127979f44ba65d3a5775fccfc67b35738363ceb7f8e53586398db328d0",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "bright",
+      "file": "sgpal-observations.json",
+      "channel": "fg",
+      "id": "sgr.fg.bright",
+      "criterionSha256": "a6298f05f011f0f8506e1e68596ab82cadc4120a789e89c3c0175ba6cdc6f803",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "bright",
+      "file": "sgpal-observations.json",
+      "channel": "bg",
+      "id": "sgr.bg.bright",
+      "criterionSha256": "eeef7af76289829d8dcac4498cc804dc66b2c729c3e800537e3a291c89b0d12b",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "indexed",
+      "file": "sgpal-observations.json",
+      "channel": "fg",
+      "id": "sgr.fg.256",
+      "criterionSha256": "670540c358184cfc6049d83d7bf4d64e46cb30608cbc3d1454568fe575fbc441",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "indexed",
+      "file": "sgpal-observations.json",
+      "channel": "bg",
+      "id": "sgr.bg.256",
+      "criterionSha256": "b5f80e06dce27b49761d1534bee05cebe5eaa6dd4b0f15f141ad98cb67e8fd78",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "truecolor",
+      "file": "sgtc-observations.json",
+      "channel": "fg",
+      "id": "sgr.fg.truecolor",
+      "criterionSha256": "20e43dd730743f45af2c9d243127f857ee291e1dc3c4af554026b1a9f571a9d3",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "truecolor",
+      "file": "sgtc-observations.json",
+      "channel": "bg",
+      "id": "sgr.bg.truecolor",
+      "criterionSha256": "f58294861a14dc3a022bb4f00b65122ffc0b92eed27488f39055d1507db5dc30",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "cursor-shape",
+      "id": "cursor.shape",
+      "criterionSha256": "2191180ab928775e616724f8af860e5d6d1a46cb3d04e3d6da633d081d3b64dd",
+      "criterionPath": "owned stored-cell semantic predicate",
+      "file": "curq-observations.json"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The stock trace uses CSI 15G; the current requirement is ABCDE then CSI 3G. Related CHA evidence does not retain this exact specimen.",
+      "id": "cursor.horizontal-absolute",
+      "criterionSha256": "895f5872842c6add7e1c1742a9dade9ba6866ba4f95b2154c6504e868d04ac3c",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The stock trace uses CNL 1 from row 3. The current requirement is ABC then CSI 2E from home; that exact specimen is not retained.",
+      "id": "cursor.next-line",
+      "criterionSha256": "6033f349476556e0fee5139eecf77e0861d8d448141f6a2d265ab62c5ff6af8d",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "cursor-report",
+      "sourceId": "cursor.vpa",
+      "id": "cursor.position-report",
+      "criterionSha256": "4022981b0670f1a9e1926daedc83fbf2a2002e5f484247d532fec6ae26c695de",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The stock specimen moves to (10,15), not the frozen (10,10) intermediate position. The exact stated specimen is not retained.",
+      "id": "cursor.ansi-save",
+      "criterionSha256": "4d7774df3f50239a957cdce19e6928c46e439de9be8869d6f03419716c5da566",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The stock specimen saves (4,6) and moves to (12,18). It does not retain the frozen (3,5) to (10,10) specimen.",
+      "id": "cursor.ansi-restore",
+      "criterionSha256": "8f5fec5957ac9a6518da46a3f90f22856228ef4447edce36db430f4bb01c095c",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "contract",
+      "file": "ched-observations.json",
+      "id": "editing.insert-chars",
+      "criterionSha256": "9b66c48972896eda11490c6ab770e3f3458cb8634d6dd10304f5110ec6590e88",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "ched-observations.json",
+      "id": "editing.delete-chars",
+      "criterionSha256": "6785e9fd6be98bff874a8cbd68e3073f7adeb1c6a85d7910faeefadf56241b42",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "ledt-observations.json",
+      "id": "editing.insert-lines",
+      "criterionSha256": "d9129dab1a24f7aa1ab368fc923667574148c1c6298b261f6a55157503e73686",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "ledt-observations.json",
+      "id": "editing.delete-lines",
+      "criterionSha256": "a1948403d21c80cf6d4c6e3c0256fd59e5eb1a708bbb801ea1da033f34a539bb",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "ched-observations.json",
+      "id": "editing.repeat-char",
+      "criterionSha256": "190e1756c68eb43d6d2a7f8ddb76806e91ca6a7d906354a146d761942370d52a",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Generated App key events prove encoder delivery, but the current application criterion requires an OS XTEST plain-a delivery control and injected Ctrl+I under level 2.",
+      "id": "input.modify-other-keys",
+      "criterionSha256": "82a5e34a64c3744af1a7206ce6d70a209e0a9fb0621d4d9a4dc494445e26a560",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "keyboard-query",
+      "id": "input.csi-u",
+      "criterionSha256": "f84e0cd91edaa17925d0bf9180d089810271f9ddb5f863af1f13df05928a7c70",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Generated App mouse events are retained; the current application criterion requires the external click delivery control and click under mode 9. That physical/OS injection path was not measured.",
+      "id": "input.x10-mouse",
+      "criterionSha256": "d56308b4d02629905fc6f8be951b43fd27009efd1651d16040245c4e05f2bbcd",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Generated App button-motion bytes are retained, but the current application criterion requires an externally delivered click/drag/release experiment.",
+      "id": "input.button-event-mouse",
+      "criterionSha256": "1532d2ee68aefc5f657e1c306c3d72ad69e13cdc3fbbce54966f81ac7e362ab7",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "mode-query",
+      "mode": 2004,
+      "id": "modes.bracketed-paste",
+      "criterionSha256": "6ce18c05016098b2478f4c97336921974e664253a6c810e68f8eed4b8b5be0ea",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Stock DECRPM reports reset. The current criterion then requires DECSET, a second query proving set and restoration; the stock recognition-only trace does not perform it.",
+      "id": "modes.synchronized-output",
+      "criterionSha256": "70ac46fd566ad5ef7e168037c63ad8561afefd863e879fb2ee3bda684b6b3058",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "mode-query",
+      "mode": 1000,
+      "id": "modes.mouse-tracking",
+      "criterionSha256": "34ba1e7da2c27bc9665da9a3921efae0cb2ab24d342a37433193059ddcc23155",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "mode-query",
+      "mode": 1006,
+      "id": "modes.mouse-sgr",
+      "criterionSha256": "2e0ef5665e133662b3fc6f4fc6be777ed12bc4bb32423528a8201223529eaf3d",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "mode-query",
+      "mode": 1003,
+      "id": "modes.mouse-all",
+      "criterionSha256": "b7cbeaea5a1785fc3fa9e82e981b69f521fab2061d7a39cfd8f27db43ba93003",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The stock trace proves only DECRPM recognition. The current criterion requires an actual focus-out/focus-in round trip with the input reader armed, delivery key and mode-off control.",
+      "id": "modes.focus-tracking",
+      "criterionSha256": "046859f6d5b20aa13527e0a5008477da632d3a0efd37a8e8989594fd53f9977f",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "mode-query",
+      "mode": 6,
+      "id": "modes.origin",
+      "criterionSha256": "96ec9b4fb70e99f688cfca5893e7b274767b466ca206f7cc41a9f5b87645a451",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "insert-replace",
+      "file": "irm-observations.json",
+      "id": "modes.insert-replace",
+      "criterionSha256": "a804a0696ebaf69f78b090dc7c11497ef333ae3d51b87094a914723a3ce58c74",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "mode-query",
+      "mode": 1,
+      "id": "modes.application-cursor",
+      "criterionSha256": "c27c3d37f61db1737268c0fb1b2ee6aab5624dcbe9c0afaa44e425bd6a273de3",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Generated keypad events are retained, but the current application criterion requires externally injected KP_Add in both DECKPAM and DECKPNM with a delivery control.",
+      "id": "modes.application-keypad",
+      "criterionSha256": "fb806a22a93e926e26ff1e5c9616ab9856bfd23d59329d13918c1b408575e8a1",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "contract",
+      "file": "svrs-observations.json",
+      "id": "modes.altscreen-47",
+      "criterionSha256": "9328682f3b0e0ea293ee9be1476729e287095621ad07d02226aa09dacffe74fd",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "svrs-observations.json",
+      "id": "modes.altscreen-1047",
+      "criterionSha256": "61c518b0e0a85ebca2c5333dfc17bc44395680453b43069cf0e0ac97ddfc8184",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "cursor-roundtrip",
+      "id": "modes.altscreen-1048",
+      "criterionSha256": "44b00dc280e489506566ba657d76a84e0b30da4db55bdf36958aab16e67e203c",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Only mode recognition is retained. The current application criterion requires a delivered wheel-up in the alternate screen and actual cursor-key bytes.",
+      "id": "modes.alt-scroll-1007",
+      "criterionSha256": "6c2355af63988dd895196e814b3c3d26118339bf00e59337d97b88b4c9229f8b",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The required qualified inward viewport action and old-anchor hold through fresh output, including the independent synchronized-output repeat, are not retained for this criterion.",
+      "id": "scrollback.viewport-hold-output",
+      "criterionSha256": "b39d030c7fb9c7fe57d5617fb1f857d577e5bb64af3616c75a1b4280e3256103",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Owned raw/display title evidence exists. The current application criterion additionally requires two distinct reader controls, a made-up OSC negative, and incoming-title restoration in the same attempt. The older prepared-baseline contract does not establish all of these.",
+      "id": "extensions.osc2-title",
+      "criterionSha256": "e25978542e8966ea9c3645b0a3b2f7c6693e2fd767817d655cf35af8d26096c7",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Raw title and icon writes are supported by the owned contract. The current criterion additionally requires the qualified same-attempt OSC2 title control and restoration of every incoming observable label; the older prepared baseline is not equivalent.",
+      "id": "extensions.osc0-icon-title",
+      "criterionSha256": "1b28b0fac150294d922f1107919fe644ca0e62c094fcc7b419784f2a532b6bb2",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The current application criterion requires both directions through a verified disposable Linux clipboard, with independent readback/seeding and verified restoration. The retained private fixture does not establish that OS clipboard path.",
+      "id": "extensions.osc52-clipboard",
+      "criterionSha256": "f670914558fac01e4ef7a815bc2b499e0357e448f8cd9adbb06a208b305cce4c",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "query",
+      "id": "extensions.osc10-fg-color",
+      "criterionSha256": "a2551f3009bada8fbcfc7af36a9e73892bbfda258804ad7d7f29d8a7a47c482e",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "query",
+      "id": "extensions.osc11-bg-color",
+      "criterionSha256": "6b6ab81f781a7085299249490485fa2795ff5143fbdce7000c06a4cd8d4b01bc",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Owned pane metadata exposes decoded paths. The current criterion requires serialized URI/control readback or a qualified public application surface and restoration of the incoming URI; those are not interchangeable.",
+      "id": "extensions.osc7-cwd",
+      "criterionSha256": "4e754b43c1c20fe5b5012ac5472461339a777f62851a92f7f2fb031dd5a4407b",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "truecolor",
+      "file": "sgtc-observations.json",
+      "sourceId": "sgr.fg.truecolor",
+      "channel": "fg",
+      "id": "extensions.truecolor",
+      "criterionSha256": "20e43dd730743f45af2c9d243127f857ee291e1dc3c4af554026b1a9f571a9d3",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "svrs-observations.json",
+      "id": "reset.decaln",
+      "criterionSha256": "987633a59149d5bb62851212e5c030daa5f90e961089bf3a9b2457b09b3ad871",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "query",
+      "id": "device.primary-da",
+      "criterionSha256": "07177b8c329ba359ef6476b9052b11ad47c332e8d0a1c7c3d5db8d32cd74cd1d",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "query",
+      "id": "device.status-report",
+      "criterionSha256": "9f7cf9488baed0ef36f80153d90c6c27216a3894ddd7a0167323dd0012fd8f09",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "query",
+      "id": "device.secondary-da",
+      "criterionSha256": "d5f684e709f049d9f4c2b9385c7cbf4b35256416363232f326ed2464a7d97e68",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "query",
+      "id": "device.decrpm",
+      "criterionSha256": "44ed794722c49be27de0d8f2c950ce288abbf0914a53a21b6cce558f215c5e37",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "query",
+      "id": "device.xtwinops-18",
+      "criterionSha256": "e1dd65532efcb9e3cd4af8190117c366a8fd9b9111503ac55ea1c20e0ef92f7a",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Manual environment criterion. No retained independent child observation establishes the applicable value and inheritance policy for this requirement.",
+      "id": "device.env-colorterm",
+      "criterionSha256": "e48d44e88175d05493965f90e1046b0fcdf637a23f2abd22c9a689ea36c25ec6",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Manual environment criterion. An App version label is not the child TERM_PROGRAM variable; no applicable child observation is retained.",
+      "id": "device.env-term-program",
+      "criterionSha256": "e48d44e88175d05493965f90e1046b0fcdf637a23f2abd22c9a689ea36c25ec6",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Manual terminal-family criterion. Ntilde is not established as VTE-based; no VTE_VERSION presence or claimed VTE identity is inferred.",
+      "id": "device.env-vte-version",
+      "criterionSha256": "e48d44e88175d05493965f90e1046b0fcdf637a23f2abd22c9a689ea36c25ec6",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "Manual environment/policy criterion. No retained child inheritance observation or user-policy experiment establishes this row.",
+      "id": "device.env-no-color",
+      "criterionSha256": "e48d44e88175d05493965f90e1046b0fcdf637a23f2abd22c9a689ea36c25ec6",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The stock query reports mode 2031 reset. The current application criterion requires enabling it, observing set, and restoring reset; recognition alone does not meet it.",
+      "id": "modes.color-scheme-reporting",
+      "criterionSha256": "61240b9816a7b80f133606c2d996e1af6afb396c1b6b0fb87048300d26afee88",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "The owned clipboard fixture does not establish the current application criterion: a real key event, independent X11 clipboard readback and verified restoration on a disposable Linux display.",
+      "id": "extensions.osc52-write",
+      "criterionSha256": "f8da38dda3400b796ec83a9d44d423641086197ea7a18e8066baeb1c556525db",
+      "criterionPath": "unmeasured current criterion"
+    },
+    {
+      "kind": "query",
+      "id": "extensions.osc4-palette",
+      "criterionSha256": "68375dd056120a66ad4ce10ef2e84774b2b5c3bc47d74b1257083777204573da",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "query",
+      "id": "extensions.osc12-cursor-color",
+      "criterionSha256": "ffe48635b8a89c9a844feeacbe346655c8c6ddb59dc559eafead2692fe9badad",
+      "criterionPath": "application protocol reply"
+    },
+    {
+      "kind": "contract",
+      "file": "crst-observations.json",
+      "id": "extensions.osc104-reset-palette",
+      "criterionSha256": "7ca65e0847ca8d43585d5449dfc0333bd955aae03f551092109cc393e2051d40",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "crst-observations.json",
+      "id": "extensions.osc110-reset-fg",
+      "criterionSha256": "89d13e69e8cada213dad8e2a43dcbe9fce12d5877f0759edb45569e62f312b80",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "crst-observations.json",
+      "id": "extensions.osc111-reset-bg",
+      "criterionSha256": "7b12af17442b8785e1525c2b909de7a8d713b52423d1f5ac9b54dfb2de07dbd1",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "contract",
+      "file": "crst-observations.json",
+      "id": "extensions.osc112-reset-cursor",
+      "criterionSha256": "466e89be2eab023349747fffbb282b16d38f2c06f210e417e3cafbdbc490ec5d",
+      "criterionPath": "owned stored-cell semantic predicate"
+    },
+    {
+      "kind": "blocked",
+      "blocker": "No retained default OS paste action with an independently seeded owned selection, delivery control and off/on/off byte comparisons satisfies this current application criterion.",
+      "id": "extensions.clipboard-paste",
+      "criterionSha256": "91c8673a0e859273df505c9e592fe1f7ef750ee6c82a5038eaab2fbf410fd37e",
+      "criterionPath": "unmeasured current criterion"
+    }
+  ]
+}

@@ -113,6 +113,13 @@ test('a newer Core publication is detected, and unrelated reports are ignored', 
         const reshaped = structuredClone(later); reshaped.policy = 'a-later-policy'; reshaped.rows.pop(); reshaped.measurement.startedAt = '2098-01-01T00:00:00.000Z';
         mkdirSync(join(root, '2098-core-results'), { recursive: true }); writeFileSync(join(root, '2098-core-results/report.json'), JSON.stringify(reshaped));
         mkdirSync(join(root, 'other-kind'), { recursive: true }); writeFileSync(join(root, 'other-kind/report.json'), JSON.stringify({ policy: 'x', rows: [{ id: 'a', supported: true }], measurement: { startedAt: '2099-01-01' } }));
+        for (const baseline of ['modern', 'rich', 'unicode', 'legacy']) {
+            const directory = join(root, `2099-${baseline}-results`);
+            mkdirSync(directory, { recursive: true });
+            // Even an identical result shape and a newer measurement belong to
+            // another baseline; they cannot replace the frozen Core source.
+            writeFileSync(join(directory, 'report.json'), JSON.stringify({ ...later, baseline }));
+        }
         mkdirSync(join(root, 'broken'), { recursive: true }); writeFileSync(join(root, 'broken/report.json'), '{nope');
         mkdirSync(join(root, 'empty'), { recursive: true });
         assert.deepEqual(findNewerCorePublications({ base, pin }).map(p => p.publication), ['docs/qa/terminfo/2098-core-results', 'docs/qa/terminfo/2099-core-results']);

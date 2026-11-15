@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [2026-11-15 Modern assessment](terminfo/2026-11-15-modern-results/report.md)
+freezes all 69 Modern requirements and re-assesses one retained owned run. It gives
+a separate semantic conclusion and exact evidence blocker per requirement; it is
+not an upstream application score or a percentage comparable with the public
+leaderboard. Reproduce offline with `node scripts/terminfo-modern-results.mjs --check`.
+
 The [insert/replace qualification](terminfo/2026-11-12-insert-replace-qualification.md) separately preserves the pinned termless,
 terminal-path, stock and stored-cell effect outcomes for `modes.insert-replace`. Its ASCII transition, edge, attribute and restoration
 controls were collected on a disposable macOS sidecar under source policy v48 and receipt schema 54; this adds no automatic Core score.
