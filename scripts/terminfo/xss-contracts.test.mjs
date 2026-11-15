@@ -158,6 +158,11 @@ test('a failed control is inconclusive, never a verdict', () => {
     }
 });
 
+test('the one policy group whose outcome depends on the stack bound drains the stack, so no later demand depends on it', () => {
+    assert.equal(group('modes.xtpushsgr', 'overflow-eleventh').after, xssDrain);
+    assert.equal(group('modes.xtpushsgr', 'depth-bottom').after, null);
+});
+
 test('policy groups never decide a verdict', () => {
     const policies = [['modes.xtpushsgr', 'overflow-eleventh'], ['modes.xtpushsgr', 'unlisted-value'], ['modes.xtpushsgr', 'unstacked-state'], ['modes.xtpopsgr', 'pop-empty']];
     for (const [caseId, role] of policies) {

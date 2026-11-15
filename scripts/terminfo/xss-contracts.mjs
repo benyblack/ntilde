@@ -221,12 +221,15 @@ function builder() {
         /** The pinned push/pop pair applied to the model (the exchange is silent and moves nothing). */
         cycle() { model.push([]); model.pop(); },
         /** A probe group: each `pre` item is one uncaptured feed of ops, `main` ops and then the probe character are the captured request. */
-        probe(role, kind, note, pre, main) {
+        probe(role, kind, note, pre, main, { drain = false } = {}) {
             const setup = pre.map(item => feed(Array.isArray(item) ? item : [item]));
             const col = probes++, char = String.fromCharCode(97 + col);
             const request = `${esc}[${xssProbeRow + 1};${col + 1}H` + feed(main) + char;
             cursor = [xssProbeRow, col + 1];
-            return ask(role, kind, note, { request, setup, probe: { col, char, pen: model.pen }, cursor });
+            const probe = { col, char, pen: model.pen };
+            // A policy group may leave the stack in a state the model did not predict, so it drains the stack afterwards and no later demand depends on it.
+            if (drain) model.stack.length = 0;
+            return ask(role, kind, note, { request, setup, probe, cursor, after: drain ? xssDrain : null });
         },
         /** A group without a probe: the pinned request exactly, the cursor where it was. */
         plain(role, kind, note, request, { setup = [], after = null } = {}) { return ask(role, kind, note, { request, setup, after, cursor }); },
@@ -268,7 +271,7 @@ function pushGroups() {
         b.probe('depth-top', 'protocol', 'ten pushes (palette foregrounds 41..50) all hold: the first pop restores the tenth level', Array.from({ length: 10 }, (_, n) => levelOps(n + 1)).concat([[{ set: neutralPen }]]), [{ pop: 1 }]),
         b.probe('depth-bottom', 'protocol', 'after eight more pops the next one restores the first level (foreground 41): the bottom of a ten-level stack survived', [[{ pop: 8 }]], [{ pop: 1 }]),
         b.probe('overflow-eleventh', 'policy', 'an eleventh push is ignored in Ntilde (the text only says the stack is limited to ten levels): ten pops after eleven pushes end at the first level',
-            Array.from({ length: 11 }, (_, n) => levelOps(n + 1)).concat([[{ set: neutralPen }], [{ pop: 9 }]]), [{ pop: 1 }]),
+            Array.from({ length: 11 }, (_, n) => levelOps(n + 1)).concat([[{ set: neutralPen }], [{ pop: 9 }]]), [{ pop: 1 }], { drain: true }),
         b.probe('unlisted-value', 'policy', 'a value the text does not list (99) saves a level that restores nothing in Ntilde', [{ set: penAll }, { push: [99] }, { set: penClear }], [{ pop: 1 }]),
         b.probe('unstacked-state', 'policy', 'the overline and the underline color are not listed by the text and are not part of the stack in Ntilde: a pop restores neither',
             [{ set: pen({ underline: 'single', overline: true, underlineColor: 77 }) }, { push: [] }, { set: pen({ underline: 'single', overline: true, underlineColor: 99 }) }], [{ pop: 1 }]),
