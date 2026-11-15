@@ -90,7 +90,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `osc9` | 2 | v1 | passed | 57 | `1ac4476c` | v51 | 17 | `de13f6ad` |
 | `ascii-reflow` | 1 | v1 | passed | 58 | `d8679e11` | v52 | 19 | `889a48b8` |
 | `notify` | 2 | v1 | passed | 59 | `d904c663` | v53 | 10 | `106e7f00` |
-| `selection-colors` | 4 | v1 | passed | 60 | `fe2ccbca` | v54 | 14 | `ef9aeabc` |
+| `selection-colors` | 4 | v1 | passed | 60 | `fe2ccbca` | v54 | 15 | `25ca76e5` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -138,7 +138,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `osc9` | collected-run-id-recorded | `26c93f5a` | 167/87/1 | `cf7d8759` |
 | `ascii-reflow` | collected-run-id-recorded | `7dd243ac` | 167/87/1 | `cf7d8759` |
 | `notify` | collected-run-id-recorded | `44271b95` | 166/88/1 | `cf7d8759` |
-| `selection-colors` | collected-run-id-recorded | `44b8288b` | 166/88/1 | `cf7d8759` |
+| `selection-colors` | collected-run-id-recorded | `2940c076` | 166/88/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
