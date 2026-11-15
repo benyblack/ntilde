@@ -448,6 +448,8 @@ namespace Ntilde.VT
                 Modes.MouseModeButtonEvent = false;
                 Modes.MouseModeAnyEvent = false;
                 Modes.MouseModeSGR = false;
+                Modes.MouseModeUtf8 = false;
+                Modes.MouseModeUrxvt = false;
 
                 // ?1007 returns to the host's configured default, as xterm's RIS restores the
                 // alternateScroll resource. DECSTR leaves it alone (xterm's soft reset list).

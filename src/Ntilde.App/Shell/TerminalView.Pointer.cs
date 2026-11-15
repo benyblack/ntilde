@@ -300,16 +300,18 @@ namespace Ntilde.Shell
         {
             if (_session == null || _buffer == null) return false;
 
-            string? sequence = TerminalInputModeEncoder.EncodeMouseEvent(_buffer.Modes, mouseEvent);
-            return sequence != null && SendEncodedMouseReport(sequence);
+            string? sequence = TerminalInputModeEncoder.EncodeMouseEvent(_buffer.Modes, mouseEvent, out bool legacyBytes);
+            return sequence != null && SendEncodedMouseReport(sequence, legacyBytes);
         }
 
         // The encoder and transport selection are separate stages; mode changes between
         // them must not change the format of the already encoded frame.
-        internal bool SendEncodedMouseReport(string sequence)
+        // legacyBytes: the frame is the plain X10 form, whose characters are octets. A ?1005 frame also starts with
+        // CSI M but is text (its code points above U+007F are sent UTF-8-encoded), so it takes the ordinary path.
+        internal bool SendEncodedMouseReport(string sequence, bool legacyBytes = true)
         {
             if (_session == null || _buffer == null) return false;
-            if (sequence.StartsWith("\u001b[M", StringComparison.Ordinal))
+            if (legacyBytes && sequence.StartsWith("\u001b[M", StringComparison.Ordinal))
             {
                 if (_session is ITerminalByteInput { SupportsByteInput: true } bytes)
                 {

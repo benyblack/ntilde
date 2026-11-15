@@ -262,6 +262,8 @@ public partial class MainWindow
                 Modifiers = input.Modifiers,
                 ApplicationKeypad = modes.IsApplicationKeypad,
                 MouseSgr = modes.MouseModeSGR,
+                MouseUtf8 = modes.MouseModeUtf8,
+                MouseUrxvt = modes.MouseModeUrxvt,
                 MouseTracking = ObservedMouseTracking(modes),
                 KittyKeyboardFlags = modes.KittyKeyboard.Flags,
                 ModifyOtherKeysLevel = modes.ModifyOtherKeys.Level,

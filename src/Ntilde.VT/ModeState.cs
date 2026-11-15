@@ -11,6 +11,8 @@ namespace Ntilde.VT
         public bool MouseModeButtonEvent { get; set; }  // ?1002 - Button event tracking
         public bool MouseModeAnyEvent { get; set; }     // ?1003 - Any event tracking
         public bool MouseModeSGR { get; set; }          // ?1006 - SGR extended mode
+        public bool MouseModeUtf8 { get; set; }         // ?1005 - UTF-8 coordinate encoding
+        public bool MouseModeUrxvt { get; set; }        // ?1015 - urxvt decimal coordinate encoding
 
         /// <summary>DECSDM (?80): xterm polarity, set = page-origin graphics without SIXEL-driven scrolling.</summary>
         public bool IsSixelDisplayMode { get; set; }
@@ -120,6 +122,8 @@ namespace Ntilde.VT
             MouseModeButtonEvent = false;
             MouseModeAnyEvent = false;
             MouseModeSGR = false;
+            MouseModeUtf8 = false;
+            MouseModeUrxvt = false;
             IsFocusEventReporting = false;
             IsClipboardPasteMode = false;
             KittyKeyboard.Reset();
@@ -138,6 +142,26 @@ namespace Ntilde.VT
             MouseModeAnyEvent = enabled && mode == 1003;
         }
 
+        // Coordinate encodings are one selection, as in xterm's extend_coords: setting any of ?1005, ?1006
+        // or ?1015 replaces the others, and a reset is only effective against the encoding that is active.
+        internal void SetMouseCoordinateEncoding(int mode, bool enabled)
+        {
+            if (enabled)
+            {
+                MouseModeUtf8 = mode == 1005;
+                MouseModeSGR = mode == 1006;
+                MouseModeUrxvt = mode == 1015;
+                return;
+            }
+
+            switch (mode)
+            {
+                case 1005: MouseModeUtf8 = false; break;
+                case 1006: MouseModeSGR = false; break;
+                case 1015: MouseModeUrxvt = false; break;
+            }
+        }
+
         public ModeState Clone()
         {
             return new ModeState
@@ -147,6 +171,8 @@ namespace Ntilde.VT
                 MouseModeButtonEvent = this.MouseModeButtonEvent,
                 MouseModeAnyEvent = this.MouseModeAnyEvent,
                 MouseModeSGR = this.MouseModeSGR,
+                MouseModeUtf8 = this.MouseModeUtf8,
+                MouseModeUrxvt = this.MouseModeUrxvt,
                 IsApplicationCursorKeys = this.IsApplicationCursorKeys,
                 IsApplicationKeypad = this.IsApplicationKeypad,
                 IsAutoWrapMode = this.IsAutoWrapMode,

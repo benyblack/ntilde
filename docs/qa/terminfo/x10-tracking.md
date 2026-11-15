@@ -9,8 +9,10 @@ meaning; the new `MouseModeX10PressOnly` / `m_9` fields represent mode 9.
 The parser selects one tracking protocol at a time. Setting another replaces it;
 resetting any recognized tracking selector disables tracking, matching xterm's
 `really_set_mousemode` behavior. Coordinate encoding is independent: 1006 selects
-SGR coordinates without selecting a tracking protocol. Unsupported highlight,
-UTF-8, urxvt and pixel-coordinate modes remain outside this slice.
+SGR coordinates without selecting a tracking protocol. Highlight and
+pixel-coordinate modes remain outside this slice; the UTF-8 (1005) and urxvt
+(1015) coordinate encodings are implemented separately (see
+`remaining-protocol-variants.md`) and are not part of this slice's evidence.
 
 X10 suppresses releases, wheel events and motion, even while a button is held.
 Presses use the existing production coordinate conversion and byte-preserving

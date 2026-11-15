@@ -90,5 +90,5 @@ test('the modifyOtherKeys receipt refuses a changed observation report that no l
 
 test('the modifyOtherKeys receipt refuses a run whose declared input suite is not the v3 plan', () => privateClipboardReceiptFixture(f => {
     f.context.inputSuiteId = 'ntilde-owned-routed-input-v2'; f.write('context.json', f.context);
-    assert.throws(own(f), /requires the owned routed-input v3 suite plan/);
+    assert.throws(own(f), /requires the owned routed-input v3 or later suite plan/);
 }));

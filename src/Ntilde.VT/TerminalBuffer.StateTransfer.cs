@@ -855,6 +855,8 @@ namespace Ntilde.VT
             MouseModeButtonEvent = modes.MouseModeButtonEvent,
             MouseModeAnyEvent = modes.MouseModeAnyEvent,
             MouseModeSGR = modes.MouseModeSGR,
+            MouseModeUtf8 = modes.MouseModeUtf8 ? true : null,
+            MouseModeUrxvt = modes.MouseModeUrxvt ? true : null,
             IsApplicationCursorKeys = modes.IsApplicationCursorKeys,
             IsApplicationKeypad = modes.IsApplicationKeypad,
             IsAutoWrapMode = modes.IsAutoWrapMode,
@@ -886,6 +888,8 @@ namespace Ntilde.VT
             target.MouseModeButtonEvent = source.MouseModeButtonEvent;
             target.MouseModeAnyEvent = source.MouseModeAnyEvent;
             target.MouseModeSGR = source.MouseModeSGR;
+            target.MouseModeUtf8 = source.MouseModeUtf8 ?? false;
+            target.MouseModeUrxvt = source.MouseModeUrxvt ?? false;
             target.IsApplicationCursorKeys = source.IsApplicationCursorKeys;
             target.IsApplicationKeypad = source.IsApplicationKeypad;
             target.IsAutoWrapMode = source.IsAutoWrapMode;

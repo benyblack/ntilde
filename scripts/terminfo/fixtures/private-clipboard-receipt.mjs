@@ -8,7 +8,7 @@ import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
 import { capturedV41SourceFiles, capturedV44SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
-import { defaultInputModes, inputPlanForPolicy, inputPlanV3 } from '../input-plan.mjs';
+import { inputPlanForPolicy, inputPlanV3, inputPlanV4 } from '../input-plan.mjs';
 import { inputCounts } from '../input-receipt.mjs';
 import { boundInputScreen, buildInputReport, inputModeReplyHex } from '../input-state.mjs';
 import { syntheticInputJournal } from './input-journal.mjs';
@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|mex)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|mex)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -92,12 +92,15 @@ async function addXtgettcapEvidence({ output, write, context, evidence, titleSta
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
-async function buildFixture(output, { routed = false, modifyOtherKeys = false } = {}) {
+async function buildFixture(output, { routed = false, modifyOtherKeys = false, mex = false } = {}) {
     const write = writerFor(output);
-    const sourceSnapshotPolicy = routed || modifyOtherKeys ? 'readonly-owned-source-graph-v37' : legacyPolicy;
-    const scope = routed || modifyOtherKeys ? capturedV44SourceFiles : capturedV41SourceFiles;
-    /** The modifyOtherKeys variant executes the v3 benchmark plan; every other variant keeps its policy-mapped plan. */
-    const executedInputPlan = modifyOtherKeys ? inputPlanV3 : inputPlanForPolicy(sourceSnapshotPolicy);
+    const routedPlans = routed || modifyOtherKeys || mex;
+    const sourceSnapshotPolicy = routedPlans ? 'readonly-owned-source-graph-v37' : legacyPolicy;
+    const scope = routedPlans ? capturedV44SourceFiles : capturedV41SourceFiles;
+    /** The extended-mouse variant executes the v4 plan and the modifyOtherKeys variant the v3 one; every other variant keeps its policy-mapped plan. */
+    let executedInputPlan = inputPlanForPolicy(sourceSnapshotPolicy);
+    if (modifyOtherKeys) executedInputPlan = inputPlanV3;
+    if (mex) executedInputPlan = inputPlanV4;
     {
         const archive = historicalArchive('2026-11-05-query-observations');
         for (const [file, bytes] of archive) { const path = join(output, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
@@ -121,13 +124,13 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false } 
         // real screens and process facts with the plan's own events (synthetic child bytes, never collected ones), and the image suite's
         // report over the new challenges.
         let inputPrior = null;
-        if (routed || modifyOtherKeys) {
+        if (routedPlans) {
             const inputPlan = executedInputPlan;
             const frames0 = journalOf('input-snapshots.jsonl'), actions0 = journalOf('input-actions.jsonl'), template = actions0[0].observed;
             const synthetic = syntheticInputJournal(context.runId, { paneId: frames0[0].paneId, initial: frames0[0].screen, plan: inputPlan,
-                ...(modifyOtherKeys ? {
+                ...(modifyOtherKeys || mex ? {
                     controlHex: item => (item.controlPrefixHex ?? '') + inputModeReplyHex(item.modes),
-                    finalHex: () => inputModeReplyHex({ ...defaultInputModes, modifyOtherKeysLevel: 0 }),
+                    finalHex: () => inputModeReplyHex(inputPlan.finalModes),
                 } : {}) });
             for (const action of synthetic.actions) {
                 action.observed.before = structuredClone(template.before); action.observed.after = structuredClone(template.after);
@@ -153,8 +156,8 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false } 
         evidence.queryEvidence = { ...evidence.queryEvidence, sha256: hash(readFileSync(join(output, 'query-observations.json'))) };
         for (const [key, file] of Object.entries(scope)) {
             let data = readFileSync(ownedSourcePath(fileURLToPath(new URL('../../../', import.meta.url)), file));
-            if (!routed && !modifyOtherKeys && file.endsWith('.mjs')) data = legacyPrefixSource(data);
-            if ((routed || modifyOtherKeys) && file.endsWith('.mjs')) data = routedPrefixSource(data);
+            if (!routedPlans && file.endsWith('.mjs')) data = legacyPrefixSource(data);
+            if (routedPlans && file.endsWith('.mjs')) data = routedPrefixSource(data);
             if (file === 'owned-source-inventory.json') data = Buffer.from(JSON.stringify(scope, null, 2) + '\n');
             writeFileSync(join(output, 'sources', file), data); context[key] = hash(data);
         }
@@ -758,7 +761,7 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false } 
                 adapterBundleSha256: hash(lrMarginsBytes), contractsVersion: lrMarginsContractsVersion,
                 counts: lrMarginsCounts(lrMarginsReport), provisionalUntil: 'cell-receipt.json' };
             // The current policy always carries the layered routed-input suffix over the owned input suite as well.
-            if (routed || modifyOtherKeys) {
+            if (routedPlans) {
                 const { fakeGradingModule } = await import('./routed-input-evidence.mjs');
                 const { buildRoutedInputGradingReport, routedInputCounts } = await import('../routed-input-grading.mjs');
                 const { adaptRoutedInputCollector, routedInputAdapterId } = await import('../routed-input-grading-collector.mjs');
@@ -784,8 +787,8 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false } 
                     adapterBundleSha256: hash(routedInputBytes), contractsVersion: routedInputContractsVersion,
                     counts: routedInputCounts(routedInputReport), provisionalUntil: 'cell-receipt.json' };
             }
-            // The modifyOtherKeys suffix rides the same v3 journal: the pinned probe replays over the child's XTGETTCAP declaration capture.
-            if (modifyOtherKeys) {
+            // The modifyOtherKeys suffix rides the same v3 (or v4) journal: the pinned probe replays over the child's XTGETTCAP declaration capture.
+            if (modifyOtherKeys || mex) {
                 const { fakeModifyOtherKeysGradingModule } = await import('./modify-other-keys-evidence.mjs');
                 const { buildModifyOtherKeysGradingReport, modifyOtherKeysCounts } = await import('../modify-other-keys-grading.mjs');
                 const { adaptModifyOtherKeysCollector, modifyOtherKeysAdapterId } = await import('../modify-other-keys-grading-collector.mjs');
@@ -812,6 +815,33 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false } 
                     runFile: 'mok-run.json', runSha256: hash(readFileSync(join(output, 'mok-run.json'))),
                     adapterBundleSha256: hash(modifyOtherKeysBytes), contractsVersion: modifyOtherKeysContractsVersion,
                     counts: modifyOtherKeysCounts(modifyOtherKeysReport), provisionalUntil: 'cell-receipt.json' };
+            }
+            // The extended-mouse suffix rides the v4 journal: both pinned probes replay over the child's own DECRQM replies.
+            if (mex) {
+                const { fakeMexGradingModule } = await import('./mex-evidence.mjs');
+                const { buildMexGradingReport, mexCounts } = await import('../mex-grading.mjs');
+                const { adaptMexCollector, mexAdapterId } = await import('../mex-grading-collector.mjs');
+                const { mexGradedSuiteId, mexContractsVersion } = await import('../mex-contracts.mjs');
+                const { collectMexPinned } = await import('../mex-collector.mjs');
+                const mexBytes = Buffer.from(adaptMexCollector(lrMarginsBytes.toString()));
+                const lines = file => readFileSync(join(output, file), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+                const inputFrames = lines('input-snapshots.jsonl'), inputActions = lines('input-actions.jsonl'), mexControls = {};
+                for (const frame of inputFrames) if (frame.kind === 'input-control') mexControls[frame.caseId] = frame.capture.hex;
+                const mexRun = collectMexPinned({ geometry: { rows: inputFrames[0].screen.rows, cols: inputFrames[0].screen.cols },
+                    controls: mexControls, restored: inputFrames.at(-1).capture.hex, gradingModule: fakeMexGradingModule });
+                const mexAdapter = { id: mexAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+                    bundleSha256: hash(mexBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+                const mexReport = buildMexGradingReport({ frames: inputFrames, actions: inputActions, seal: process.input.seal },
+                    mexRun, context.runId, mexAdapter, { inputPlan: executedInputPlan, inputReportSha256: evidence.inputEvidence.sha256 });
+                write('mex-observations.json', mexReport);
+                write('mex-run.json', mexRun);
+                writeFileSync(join(output, 'collector-mex.mjs'), mexBytes);
+                Object.assign(context, { mexAdapterId, mexSuiteId: mexGradedSuiteId, mexBundleSha256: hash(mexBytes), mexContractsVersion });
+                evidence.mexEvidence = { runId: context.runId, suiteId: mexGradedSuiteId,
+                    file: 'mex-observations.json', sha256: hash(readFileSync(join(output, 'mex-observations.json'))),
+                    runFile: 'mex-run.json', runSha256: hash(readFileSync(join(output, 'mex-run.json'))),
+                    adapterBundleSha256: hash(mexBytes), contractsVersion: mexContractsVersion,
+                    counts: mexCounts(mexReport), provisionalUntil: 'cell-receipt.json' };
             }
             // Policy v35 always carries the layered runtime-color reset suffix as well.
             const { syntheticColorResetEvidence, writeColorResetPngs } = await import('./color-reset-evidence.mjs');
@@ -920,8 +950,8 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false } = {}) {
-    const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys });
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, mex = false } = {}) {
+    const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
         cpSync(source, output, { recursive: true, verbatimSymlinks: true });

@@ -277,6 +277,12 @@ internal static class ParityCorpus
             "\u001b[?1h\u001b[?7l\u001b[?6h\u001b[?25l\u001b[?2004h\u001b[?1000h\u001b[?1006h" +
             "\u001b[4h\u001b[20h" +
             "text under all of those"));
+
+        yield return ("extended-mouse-encodings", Utf8(
+            // ?1005, ?1015 and ?1006 are one selection: each set replaces the last, a reset of an inactive one is a
+            // no-op, DECSTR keeps the choice and RIS clears it. The snapshot is taken with ?1015 selected.
+            "\u001b[?1000h\u001b[?1005h\u001b[?1006h\u001b[?1005l\u001b[?1015h\u001b[?1005l\u001b[!p" +
+            "\u001bc\u001b[?1002h\u001b[?1005h\u001b[?1015h"));
     }
 
     private static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s);

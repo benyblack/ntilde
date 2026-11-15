@@ -379,5 +379,11 @@
     "xssCollectorSourceSha256": "xss-collector.mjs",
     "xssGradingSourceSha256": "xss-grading.mjs",
     "xssGradingCollectorSourceSha256": "xss-grading-collector.mjs",
-    "xssReceiptSourceSha256": "xss-receipt.mjs"
+    "xssReceiptSourceSha256": "xss-receipt.mjs",
+    "mexCasesSourceSha256": "mex-cases.mjs",
+    "mexContractsSourceSha256": "mex-contracts.mjs",
+    "mexCollectorSourceSha256": "mex-collector.mjs",
+    "mexGradingSourceSha256": "mex-grading.mjs",
+    "mexGradingCollectorSourceSha256": "mex-grading-collector.mjs",
+    "mexReceiptSourceSha256": "mex-receipt.mjs"
 }

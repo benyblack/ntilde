@@ -1049,7 +1049,9 @@ namespace Ntilde.VT
                 case 1002: return _buffer.Modes.MouseModeButtonEvent ? 1 : 2;
                 case 1003: return _buffer.Modes.MouseModeAnyEvent ? 1 : 2;
                 case 1004: return _buffer.Modes.IsFocusEventReporting ? 1 : 2;
+                case 1005: return _buffer.Modes.MouseModeUtf8 ? 1 : 2;
                 case 1006: return _buffer.Modes.MouseModeSGR ? 1 : 2;
+                case 1015: return _buffer.Modes.MouseModeUrxvt ? 1 : 2;
                 case 1007: return _buffer.Modes.IsAlternateScroll ? 1 : 2;      // Alternate scroll (effective)
                 case 1047: return _buffer.IsAltScreenActive ? 1 : 2;             // Alt screen
                 case 1049: return _buffer.IsAltScreenActive ? 1 : 2;             // Alt screen + save cursor
@@ -1127,8 +1129,10 @@ namespace Ntilde.VT
                     case 1003: // Any-event tracking
                         _buffer.Modes.SetMouseTrackingMode(mode, enable);
                         break;
+                    case 1005: // UTF-8 coordinate encoding
                     case 1006: // SGR extended mouse mode
-                        _buffer.Modes.MouseModeSGR = enable;
+                    case 1015: // urxvt decimal coordinate encoding
+                        _buffer.Modes.SetMouseCoordinateEncoding(mode, enable);
                         break;
                     case 1007: // Alternate scroll: wheel sends cursor keys on the alt screen
                         _buffer.Modes.AlternateScrollOverride = enable;

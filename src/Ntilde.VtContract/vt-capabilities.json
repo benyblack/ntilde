@@ -56,6 +56,24 @@
       "contractCase": "alternate-scroll"
     },
     {
+      "key": "DEC:1005",
+      "mnemonic": "UTF-8 mouse coordinates",
+      "support": "supported",
+      "description": "Selects the UTF-8 coordinate encoding for mouse reports: Cb, Cx and Cy are each sent as the value plus 32 encoded as UTF-8 (one byte through position 95, two bytes up to position 2015). DECSET replaces ?1006/?1015, DECRST only clears this encoding, and DECRQM reports its state.",
+      "matrixFeature": "UTF-8 mouse coordinates",
+      "evidencePath": "tests/Ntilde.VT.Tests/ExtendedMouseCoordinateModeTests.cs",
+      "contractCase": "utf8-mouse-coordinates"
+    },
+    {
+      "key": "DEC:1015",
+      "mnemonic": "urxvt mouse coordinates",
+      "support": "supported",
+      "description": "Selects the urxvt coordinate encoding for mouse reports: CSI Cb ; Cx ; Cy M with the legacy event code (including its 32 offset) and both positions as decimal numbers. DECSET replaces ?1005/?1006, DECRST only clears this encoding, and DECRQM reports its state.",
+      "matrixFeature": "urxvt mouse coordinates",
+      "evidencePath": "tests/Ntilde.VT.Tests/ExtendedMouseCoordinateModeTests.cs",
+      "contractCase": "urxvt-mouse-coordinates"
+    },
+    {
       "key": "DEC:69",
       "mnemonic": "DECLRMM",
       "support": "partial",

@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 123,
-    "suiteClaims": 125,
+    "uniqueBenchmarkIds": 125,
+    "suiteClaims": 127,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 122,
+    "effectSupportedIds": 124,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
     "pinnedAndEffectSupportedIds": 89,
@@ -72,11 +72,13 @@
       "extensions.osc9-progress",
       "input.button-event-mouse",
       "input.modify-other-keys",
+      "input.urxvt-mouse",
       "input.x10-mouse",
       "modes.altscreen-1047",
       "modes.altscreen-47",
       "modes.application-keypad",
       "modes.left-right-margin",
+      "modes.utf8-mouse-1005",
       "modes.xtpopcolors",
       "modes.xtpopsgr",
       "modes.xtpushcolors",
@@ -88,7 +90,7 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 121,
+    "effectSupportedOfStockInconclusive": 123,
     "effectUnsupportedOfStockInconclusive": 1,
     "pinnedSupportedOfStockInconclusive": 88,
     "ungradedStockIdsWithEvidence": [
@@ -103,10 +105,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 47,
+      "effectUnqualified": 45,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 46,
+      "effectNotMeasured": 44,
       "notPinnedSupported": 80
     }
   },
@@ -3115,6 +3117,77 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/xss-publication.test.mjs",
         "testSha256": "a3ee3bf4188dff77e923f7816d0f13ae25e8a5f845326880377c8b107fee6766"
+      }
+    },
+    {
+      "suite": "mex",
+      "suiteId": "ntilde-owned-mouse-extended-benchmark-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-15-mouse-extended/",
+      "doc": "2026-11-15-mouse-extended-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "modes.utf8-mouse-1005",
+        "input.urxvt-mouse"
+      ],
+      "evidence": {
+        "files": 5,
+        "bytes": 13449390,
+        "sha256": "b351423350de0f659ec975ce6158000d1551867dcdac916500de153f02b17055"
+      },
+      "receipt": {
+        "schemaVersion": 64,
+        "runId": "59b3fbe52f6062679e5233e0b62fb9d2",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "a02329d897215ace86862a4030c43976244d8d14d3001162b311adcdd9b6487f"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-mouse-extended-benchmark-graded-v1",
+          "file": "mex-observations.json",
+          "sha256": "fc830682555b3d9eac909726aaeb7372a1b4dbe920c6c77a4899b6b6e3e17365",
+          "runFile": "mex-run.json",
+          "runSha256": "23bcef16ed4655e0835f166c7d378f0183a2de1260e5f8896e35d5a65b946beb",
+          "counts": {
+            "inconclusive/supported": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "59b3fbe52f6062679e5233e0b62fb9d2",
+        "measuredAt": "2026-11-15T20:57:38.308Z",
+        "appRevision": "aaaece9966cd62ae3e0cbf9afe1c87a52fb120db",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "aaaece9966cd62ae3e0cbf9afe1c87a52fb120db",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "c830385e29c8af876864fef86e4af02debd2fa1a8c8bcd8ba7002d66380018c1",
+        "gradingAdapterId": "ntilde-owned-mouse-extended-grading-v1",
+        "gradingAdapterBundleSha256": "ffd5cb22ebc31c5b38109e937523fe793c129cc95ce199bf48084ecbcbeef91f",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v58",
+        "sourceSnapshotManifestSha256": "be4ba9463b7607816117025269525d6ef06c651320171247d8222616669ea78c"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "29a8f5ad03abca8748199bd253a72924",
+        "counts": {
+          "inconclusive": 162,
+          "supported": 92,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "2faa5789539201e0eef30ac90c5d34645d07766f26038d5aff92dcaa9a6a8593",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run. input.urxvt-mouse stays inconclusive under the unchanged pinned code; modes.utf8-mouse-1005 is graded supported by the stock collector's DECRPM path (decrpmResult) because the production change answers DECRPM 1/2 for ?1005: a stock effect of the production change, a DECRQM recognition check that is neither an encoding measurement nor an upgrade of the pinned termless verdict or of the effect contract."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/mex-publication.test.mjs",
+        "testSha256": "92c5edd5122cbaedc434e086ca01fff12176b8aa71f01a69ca95cd1542af0587"
       }
     }
   ],
@@ -6387,6 +6460,58 @@
       ]
     },
     {
+      "id": "input.urxvt-mouse",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "mex",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "mex",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.urxvt-mouse",
+          "suite": "mex",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
       "id": "input.x10-mouse",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -6738,6 +6863,58 @@
             "stored-state"
           ],
           "evidenceTag": "owned-stored-cells-and-margins"
+        }
+      ]
+    },
+    {
+      "id": "modes.utf8-mouse-1005",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "mex",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "mex",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.utf8-mouse-1005",
+          "suite": "mex",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "encoded UTF-8 mouse events"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "encoded UTF-8 mouse events"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
         }
       ]
     },

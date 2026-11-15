@@ -55,6 +55,32 @@ public sealed class LegacyMouseByteInputTests
         Assert.Single(text); Assert.Empty(bytes);
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(null)]
+    public void UTF8_coordinates_are_sent_as_text_so_every_transport_carries_the_two_byte_forms(bool? supportsBytes)
+    {
+        var (view, buffer, _, text, bytes) = Create(supportsBytes);
+        buffer.Modes.MouseModeUtf8 = true;
+        view.HandleMousePressAt(At(96, 223), TerminalMouseButton.Left, KeyModifiers.None);
+        // Text, not Latin-1 octets: the session's UTF-8 encoding of U+0080 and U+00FF is C2 80 / C3 BF.
+        Assert.Equal("\u001b[M \u0080\u00ff", Assert.Single(text));
+        Assert.Empty(bytes);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Urxvt_coordinates_stay_on_the_ASCII_text_path_without_clamping(bool supportsBytes)
+    {
+        var (view, buffer, _, text, bytes) = Create(supportsBytes);
+        buffer.Modes.MouseModeUrxvt = true;
+        view.HandleMousePressAt(At(300, 250), TerminalMouseButton.Left, KeyModifiers.None);
+        Assert.Equal("\u001b[32;300;250M", Assert.Single(text));
+        Assert.Empty(bytes);
+    }
+
     [AvaloniaFact]
     public void SGR_stays_on_the_existing_ASCII_text_path_without_legacy_clamping()
     {

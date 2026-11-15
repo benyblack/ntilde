@@ -56,7 +56,7 @@ export function checkModifyOtherKeysEvidence(output, evidence, runId, context, p
     if (context.modifyOtherKeysAdapterId !== modifyOtherKeysAdapterId || context.modifyOtherKeysSuiteId !== modifyOtherKeysGradedSuiteId) {
         throw new Error('Missing or changed modifyOtherKeys adapter declaration.');
     }
-    if (plan === undefined || plan.id !== 'v3') throw new Error('modifyOtherKeys evidence requires the owned routed-input v3 suite plan.');
+    if (plan === undefined || !['v3', 'v4'].includes(plan.id)) throw new Error('modifyOtherKeys evidence requires the owned routed-input v3 or later suite plan.');
     if (layerChain.some(([name]) => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
         throw new Error(`modifyOtherKeys evidence requires ${predecessorList}.`);
     }
@@ -64,7 +64,7 @@ export function checkModifyOtherKeysEvidence(output, evidence, runId, context, p
         throw new Error('modifyOtherKeys evidence requires the routed-input qualification of the same journal.');
     }
     if (evidence.inputEvidence?.suiteId !== plan.suiteId || context.inputSuiteId !== plan.suiteId) {
-        throw new Error('modifyOtherKeys evidence requires the owned routed-input v3 suite.');
+        throw new Error('modifyOtherKeys evidence requires the owned routed-input suite of the run plan.');
     }
     if (evidence.inputEvidence.status === 'unavailable') return checkUnavailable(output, evidence, runId, context);
     if (evidence.inputEvidence.file !== 'input-observations.json') throw new Error('modifyOtherKeys evidence requires the completed owned input suite.');

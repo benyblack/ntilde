@@ -36,6 +36,8 @@ public sealed class AgentHostGeneratedInputProtocolTests
         ApplicationKeypad = true,
         MouseTracking = 0,
         MouseSgr = false,
+        MouseUtf8 = false,
+        MouseUrxvt = false,
         KittyKeyboardFlags = 0,
     };
 
@@ -126,6 +128,20 @@ public sealed class AgentHostGeneratedInputProtocolTests
         var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.GeneratePaneInputResult)!;
         Assert.True(result.TextHandled);
         Assert.Contains("\"textHandled\":true", response.Result!.Value.GetRawText(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_coordinate_encoding_samples_round_trip_through_the_protocol_result()
+    {
+        var s = Setup(); using var service = s.Service;
+        s.Executor.OnGenerateInput = (_, _, _, _) => Task.FromResult<GeneratePaneInputResult?>(Observed() with { MouseUtf8 = true, MouseUrxvt = false });
+        var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId, "\"kind\":\"mousePress\",\"button\":\"left\",\"column\":3,\"row\":2"), TestContext.Current.CancellationToken);
+        Assert.Null(response.Error);
+        var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.GeneratePaneInputResult)!;
+        Assert.Equal((false, true, false), (result.MouseSgr, result.MouseUtf8, result.MouseUrxvt));
+        string raw = response.Result!.Value.GetRawText();
+        Assert.Contains("\"mouseUtf8\":true", raw, StringComparison.Ordinal);
+        Assert.Contains("\"mouseUrxvt\":false", raw, StringComparison.Ordinal);
     }
 
     [Theory]

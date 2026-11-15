@@ -62,7 +62,8 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.Equal(submitted, result.InputSubmitted);
         Assert.False(result.ObservationAvailable); Assert.Null(result.Rows); Assert.Null(result.Cols);
         Assert.Null(result.ViewRows); Assert.Null(result.ViewCols); Assert.Null(result.ApplicationKeypad);
-        Assert.Null(result.MouseTracking); Assert.Null(result.MouseSgr); Assert.Null(result.KittyKeyboardFlags);
+        Assert.Null(result.MouseTracking); Assert.Null(result.MouseSgr); Assert.Null(result.MouseUtf8); Assert.Null(result.MouseUrxvt);
+        Assert.Null(result.KittyKeyboardFlags);
         Assert.Null(result.ModifyOtherKeysLevel);
     }
 
@@ -298,6 +299,23 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         Assert.Equal((3, 2, 1003, true), (result.Column, result.Row, result.MouseTracking, result.MouseSgr));
         Assert.Equal(2.5 * pane.TermView.Metrics.CellWidth, result.X);
         Assert.Equal(1.5 * pane.TermView.Metrics.CellHeight, result.Y);
+        Assert.Equal(expected, Assert.Single(session.SentInput));
+    }
+
+    [AvaloniaTheory]
+    [InlineData("\u001b[?1005h", "\u001b[M #\"", true, false)]
+    [InlineData("\u001b[?1015h", "\u001b[32;3;2M", false, true)]
+    [InlineData("\u001b[?1005h\u001b[?1006h", "\u001b[<0;3;2M", false, false)]
+    public async Task Extended_coordinate_encodings_are_sampled_and_used_by_the_routed_press(
+        string setup, string expected, bool utf8, bool urxvt)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[?1000h" + setup);
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", Column = 3, Row = 2 });
+        Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.True(result.InputSubmitted);
+        // The third case ends on ?1006: the SGR selection replaced ?1005, so neither of the others is sampled as set.
+        Assert.Equal((utf8, urxvt), (result.MouseUtf8, result.MouseUrxvt));
+        Assert.Equal(setup.EndsWith("1006h", StringComparison.Ordinal), result.MouseSgr);
         Assert.Equal(expected, Assert.Single(session.SentInput));
     }
 
