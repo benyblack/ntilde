@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-xterm-color-stack-graded-v1",
   "contractsVersion": 1,
-  "runId": "1a46bb891009fc5ea451569741d08afa",
+  "runId": "e9d9cfc12b3bb5e163128fe7f792cc95",
   "adapter": {
     "id": "ntilde-owned-xterm-color-stack-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "a416f5b19cc3bd919782ecec4fe723f5066f651d28e775bf3f64be83691cd535",
+    "bundleSha256": "b8023e4ee4e6fbdc7825b96f0e3c29db2f185c99b2ab7917c6891e590deb41a4",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 criteria for modes.xtpushcolors (CSI # P) and modes.xtpopcolors (CSI # Q), which can only return inconclusive (they measure DA1 and cursor responsiveness, not saved/restored stack state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an independent oracle written from xterm's control-sequence text: silence of both sequences, snapshot and restoration of the foreground, background and cursor colors and ANSI palette entry 5 read back through OSC 10/11/12 and OSC 4 replies, restoration of the untouched host default, LIFO order, snapshot copy semantics and numbered slots; palette entry 200 and a pop with nothing stored are policy groups that never decide; raw terminal state, not host presentation or painted pixels; no depth-report (XTREPORTCOLORS) claim, no kitty color-stack claim, no remote/mux, Windows/Linux or common-harness claim; the stock grades are unchanged by this suite.",
@@ -89,7 +89,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_XCS_1a46bb891009fc5ea451569741d08afa",
+          "nonce": "NTILDE_XCS_e9d9cfc12b3bb5e163128fe7f792cc95",
           "margins": [
             1,
             5
@@ -518,7 +518,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_XCS_1a46bb891009fc5ea451569741d08afa",
+          "nonce": "NTILDE_XCS_e9d9cfc12b3bb5e163128fe7f792cc95",
           "margins": [
             1,
             5
@@ -759,7 +759,10 @@
           "store-slot-1": {
             "kind": "control",
             "request": "\\e[1#P\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\\\e]4;5;?\\e\\",
-            "demand": "colors A are stored in slot 1 by a numbered push, silently and without altering the current colors",
+            "setup": [
+              "\\e]10;#102030\\e\\\\e]11;#112233\\e\\\\e]12;#a1b2c3\\e\\\\e]4;5;#445566\\e\\"
+            ],
+            "demand": "colors A are set again (isolating this control from the policy probe before it) and stored in slot 1 by a numbered push, silently and without altering the current colors",
             "demanded": [
               "\\e]10;rgb:1010/2020/3030\\e\\",
               "\\e]11;rgb:1111/2222/3333\\e\\",

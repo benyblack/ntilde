@@ -2986,23 +2986,23 @@
         "modes.xtpopcolors"
       ],
       "evidence": {
-        "files": 7,
-        "bytes": 29995223,
-        "sha256": "f68319cb631919cafdc428bedfba01d190c07f2898d2018ab1e0fe9cb65a9afa"
+        "files": 9,
+        "bytes": 42785874,
+        "sha256": "d4ef964b160b15d2d0d1d5694144cb084aba1227caaafdff357da84cc4ff789e"
       },
       "receipt": {
         "schemaVersion": 62,
-        "runId": "1a46bb891009fc5ea451569741d08afa",
+        "runId": "e9d9cfc12b3bb5e163128fe7f792cc95",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "2a988343f6e223b20ffb1ac073df2eab329572922cca35c08b6e6d6f83a7991d"
+          "sha256": "9c3ac1f4434a87579a9f9d86c06dff3cdd6a800be4fabee9354e7f4c4c527d13"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-xterm-color-stack-graded-v1",
           "file": "xcs-observations.json",
-          "sha256": "815d43fdea1e7170ad4d9d9b377f6aba5ce8404bbd0c937578a33c24e06ba075",
+          "sha256": "ff2a1c43aa1d16e6fc1aa420891e3251beb1ac6a901c832039f518280e6efba5",
           "runFile": "xcs-run.json",
-          "runSha256": "dd646584fd8afabb804182fc4351b88cf9f82808d3f1f228649f4477c2215ba3",
+          "runSha256": "6233ddca17aeb1fbf87891f8779d4898d4037380616da011983c9ff2cdf20c0b",
           "counts": {
             "inconclusive": 2
           },
@@ -3010,23 +3010,23 @@
         }
       },
       "run": {
-        "ownedRunId": "1a46bb891009fc5ea451569741d08afa",
-        "measuredAt": "2026-11-15T13:30:01.760Z",
-        "appRevision": "fb6c7fd6b81b4e231afb86b500fbef26354100fd",
+        "ownedRunId": "e9d9cfc12b3bb5e163128fe7f792cc95",
+        "measuredAt": "2026-11-15T13:41:54.086Z",
+        "appRevision": "7ba6fff36c36c1e4b805ad252c805835cfb0c42e",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "fe332981a1b69000eac4d597d99bcafeef00fb59",
+        "scriptsRevision": "74bf9d5e00b41a71a72bced25fe85952ea1fc5b4",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "f9c1213c1aa3a5c6b5003978f91759728534a128ec66962798bce44fcec426dc",
+        "collectorAdapterBundleSha256": "8829ab28949b0ad80ae833271b60a1c1214ff78892cfa3c28a0abb1338640e47",
         "gradingAdapterId": "ntilde-owned-xterm-color-stack-grading-v1",
-        "gradingAdapterBundleSha256": "a416f5b19cc3bd919782ecec4fe723f5066f651d28e775bf3f64be83691cd535",
+        "gradingAdapterBundleSha256": "b8023e4ee4e6fbdc7825b96f0e3c29db2f185c99b2ab7917c6891e590deb41a4",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v56",
-        "sourceSnapshotManifestSha256": "f03cc9879a0dd15b64b7a6b6239ced526eadd6fb40ae088c68435b5f657cdbee"
+        "sourceSnapshotManifestSha256": "c60af4e766d1b1577b3a91133301de25139bc5f5c1e7992c869cbd65729e3e4a"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "0587b5fe7c99bcaf97ec2157b4bff5e5",
+        "runId": "8cb42b4de5030a9383471a6a9b5f11eb",
         "counts": {
           "inconclusive": 163,
           "supported": 91,
@@ -3034,14 +3034,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "a7a6635ee169f3590081a14c77d3413853945e1f36e1e5e79c948e3ef6080421",
+        "rawSha256": "8f3a0bbb8c96d0b6d729a8449dae8f1ab53a4453874c8137774ba05a4452c697",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades from the same owned run; both pinned probes stay inconclusive under the unchanged pinned code, so this suite moves no stock grade."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/xcs-publication.test.mjs",
-        "testSha256": "c54e80c17d6125a092cc6a75d94d5abfeb2eb5c015eee69d901439335c73fa52"
+        "testSha256": "937e00ad357695936afc247763961f703f27a1d0308ef6ed3e337cb5b978e224"
       }
     }
   ],

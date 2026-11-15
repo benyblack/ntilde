@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { xcsCaseIds } from './xcs-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'fe332981a1b69000eac4d597d99bcafeef00fb59';
-export const measuredAppRevision = 'fb6c7fd6b81b4e231afb86b500fbef26354100fd';
+export const measuredScriptsRevision = '74bf9d5e00b41a71a72bced25fe85952ea1fc5b4';
+export const measuredAppRevision = '7ba6fff36c36c1e4b805ad252c805835cfb0c42e';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for modes.xtpushcolors (CSI # P) and modes.xtpopcolors (CSI # Q), which can only return inconclusive (they measure DA1 and cursor responsiveness, not '
     + 'saved/restored stack state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read, beside a separately identified effect contract graded by an '
     + 'independent oracle written from xterm\'s control-sequence text: silence of both sequences, snapshot and restoration of the foreground, background and cursor colors and ANSI palette entry 5 read '
