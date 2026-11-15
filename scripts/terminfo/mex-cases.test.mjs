@@ -62,13 +62,13 @@ test('every new event resets the encodings, selects exactly one encoding and its
     }
 });
 
-test('the pinned probe feeds are exactly two consecutive plan cases that start from a proved all-off state and report nothing without a tracking selector', () => {
+test('the pinned probe feeds are exactly two consecutive plan cases that start from a proved all-off state and carry a key-up (the App refuses a pointer event while no tracking selector is active)', () => {
     const set = cases.find(item => item.id === utf8PinnedCases.set), reset = cases.find(item => item.id === utf8PinnedCases.reset);
     assert.equal(set.setup, '\x1b[?1005h'); assert.equal(reset.setup, '\x1b[?1005l');
     assert.equal(cases.indexOf(reset), cases.indexOf(set) + 1);
     const before = cases[cases.indexOf(set) - 1];
     assert.deepEqual([before.modes.mouseTracking, before.modes.mouseSgr, before.modes.mouseUtf8, before.modes.mouseUrxvt], [0, false, false, false]);
-    for (const item of [set, reset]) { assert.equal(item.expectedHex, ''); assert.equal(item.event.kind, 'mousePress'); assert.equal(item.roles['modes.utf8-mouse-1005'], 'required'); }
+    for (const item of [set, reset]) { assert.equal(item.expectedHex, ''); assert.equal(item.event.kind, 'keyUp'); assert.equal(item.roles['modes.utf8-mouse-1005'], 'required'); }
     assert.equal(set.modes.mouseUtf8, true); assert.equal(reset.modes.mouseUtf8, false);
 });
 

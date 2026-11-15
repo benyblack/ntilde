@@ -48,7 +48,7 @@ for (const [label, id, hex, caseId] of [
     ['1005 not replacing 1006', 'u.slot.utf8.replaces', text('\x1b[<0;96;3M'), U],
     ['a reset of the inactive 1005 clearing SGR', 'u.slot.reset.inactive', text('\x1b[M \x80#'), U],
     ['1005 staying active after its reset', 'u.slot.reset.active', text('\x1b[M \xc2\x80#'), U],
-    ['the encoding alone reporting an event without a tracking selector', 'u.pinned.set', text('\x1b[M \xc2\x80#'), U],
+    ['the encoding state carrier reporting bytes', 'u.pinned.set', text('\x1b[M \xc2\x80#'), U],
     ['urxvt without the +32 button offset', 'r.press.left', text('\x1b[0;96;3M'), R],
     ['urxvt release finished with m', 'r.release.left', text('\x1b[35;96;3m'), R],
     ['urxvt reporting SGR coordinates', 'r.press.right', text('\x1b[<2;96;3M'), R],
@@ -60,7 +60,7 @@ for (const [label, id, hex, caseId] of [
     ['1015 not replacing 1006', 'r.slot.urxvt.replaces', text('\x1b[<0;96;3M'), R],
     ['1006 not replacing 1015', 'r.slot.sgr.replaces', text('\x1b[32;96;3M'), R],
     ['1015 staying active after its reset', 'r.slot.reset.active', text('\x1b[32;96;3M'), R],
-    ['urxvt reporting without a tracking selector', 'r.nobytes.without.tracking', text('\x1b[32;96;3M'), R],
+    ['urxvt state carrier reporting bytes', 'r.alone.set', text('\x1b[32;96;3M'), R],
     ['a duplicated urxvt report', 'r.press.middle', text('\x1b[33;96;3M\x1b[33;96;3M'), R],
 ]) test('a required mismatch (' + label + ') is unsupported with valid controls, and the other benchmark is unaffected', () => {
     const report = build(withActual(id, hex)), cases = byCase(report);

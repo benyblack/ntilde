@@ -54,10 +54,11 @@ export function makeMexCases(rows, cols) {
     // --- the proved all-off baseline, then the pinned probe's own feeds, then the shared controls -----------------------------------------
     // The first case carries no tracking selector at all, so the pinned feeds that follow it start from a verified all-off state.
     add('baseline.reset', '', { kind: 'keyUp', key: 'a' }, '', profile(0, ''), both);
-    // The pinned probe feeds ?1005h, asks DECRQM, then feeds ?1005l: the next two cases are exactly those feeds (no tracking selector, so
-    // a press carries no report, which is itself the contract: the coordinate encoding alone never reports an event).
-    add('u.pinned.set', pinnedFeeds[0], { column: 96, row: 3, kind: 'mousePress', button: 'left' }, '', profile(0, 'utf8'), u, false);
-    add('u.pinned.reset', pinnedFeeds[1], { column: 96, row: 3, kind: 'mousePress', button: 'left' }, '', profile(0, ''), u, false);
+    // The pinned probe feeds ?1005h, asks DECRQM, then feeds ?1005l: the next two cases are exactly those feeds. The App refuses a generated
+    // pointer event while no tracking selector is active, so each case carries a key-up (which reports nothing); the mode profile proved
+    // by the control capture is the observation, and the coordinate encoding alone never reports an event.
+    add('u.pinned.set', pinnedFeeds[0], { kind: 'keyUp', key: 'a' }, '', profile(0, 'utf8'), u, false);
+    add('u.pinned.reset', pinnedFeeds[1], { kind: 'keyUp', key: 'a' }, '', profile(0, ''), u, false);
     // Shared controls: the same press without an extended encoding and under SGR.
     add('control.legacy.press', '\x1b[?1000h', { column: 96, row: 3, kind: 'mousePress', button: 'left' }, '\x1b[M \x80#', profile(1000, ''), both);
     press('control.sgr.press', 'left', '\x1b[<0;96;3M', both, { encoding: 1006 });
@@ -92,7 +93,7 @@ export function makeMexCases(rows, cols) {
 
     // --- input.urxvt-mouse -----------------------------------------------------------------------------------------------------------------
     const urxvt = { encoding: 1015 };
-    add('r.nobytes.without.tracking', '\x1b[?1015h', { column: 96, row: 3, kind: 'mousePress', button: 'left' }, '', profile(0, 'urxvt'), r);
+    add('r.alone.set', '\x1b[?1015h', { kind: 'keyUp', key: 'a' }, '', profile(0, 'urxvt'), r);
     press('r.press.left', 'left', '\x1b[32;96;3M', r, urxvt);
     press('r.press.middle', 'middle', '\x1b[33;96;3M', r, urxvt);
     press('r.press.right', 'right', '\x1b[34;96;3M', r, urxvt);
