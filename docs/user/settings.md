@@ -163,7 +163,7 @@ These keys are read from `settings.json`. Some have palette commands.
 | `EnableLinkDetection` | `true` | Underline and open URLs found in the text ([Links](shortcuts.md#mouse)). |
 | `EnableKittyKeyboardProtocol` | `true` | Lets programs ask for the kitty keyboard protocol. Turn it off if a program's keys come out wrong. |
 | `AllowNativeKittyGraphics` | `true` | Kitty graphics protocol images ([Inline images](terminal.md#inline-images)). |
-| `AllowOsc52ClipboardWrite` | `true` | Lets programs (`tmux`, `vim` over SSH) set your clipboard with OSC 52. Programs can never *read* the clipboard. |
+| `AllowOsc52ClipboardWrite` | `true` | Lets programs (`tmux`, `vim` over SSH) set your clipboard with OSC 52 or kitty's OSC 5522. OSC 52 can't *read* the clipboard; an OSC 5522 read asks you first ([Copy, paste and links](terminal.md#copy-paste-and-links)). |
 | `AllowRectangleChecksumReport` | `false` | Lets programs ask for a checksum of part of the screen (DECRQCRA), which some terminal test suites use. Off by default: a program can use it to read back anything on the screen, including earlier commands' output. Persistent sessions never answer it. |
 | `PaneClosePolicy` | `Confirm` | Closing a pane with a running program: `Confirm` asks, `Graceful` sends `Ctrl+C` and `exit` first, `Force` closes. |
 | `ShellExitPolicy` | `Graceful` | When a shell exits: `Graceful` closes the pane if it exited with 0 and keeps it open with the exit status otherwise; `Always` closes it; `Never` keeps it. SSH panes always stay open with their banner. |

@@ -3,6 +3,101 @@
 User-facing changes, newest release first. This file starts with 0.12.0: the notes for earlier
 releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
+## 0.14.0
+
+0.14.0 shows Kitty and iTerm2 images in persistent sessions, makes plain `imgcat` work, shows
+notifications sent with OSC 777 and OSC 99, and adds the xterm features that Vim, tmux, `less` and
+ncurses programs expect: modifyOtherKeys, wheel scrolling in pagers, the title stack, the visual
+bell, left and right margins, and rectangle editing.
+
+### Images
+
+- **Persistent sessions show Kitty and iTerm2 images**, as other panes do, and keep them when you
+  reattach. Before this, only Sixel worked there. A session started by an earlier version keeps
+  showing only Sixel until it ends, so open a new tab. Kitty file transfer (`t=f`) is not
+  available in persistent panes, and programs fall back to sending the image itself. See
+  [Inline images](docs/user/terminal.md#inline-images).
+- **Plain `imgcat` works.** iTerm2 3.7's `imgcat` sends images in parts by default, and Ntilde drew
+  nothing for them, so you had to run `imgcat -l`.
+- **Images keep their shape.** Kitty images, and iTerm2 images that don't ask to be stretched
+  (`preserveAspectRatio=0`), fit inside their cells instead of being stretched to fill them.
+- **Sixel images are the right size on HiDPI displays.** `CSI 14 t` and `CSI 16 t` now report
+  device pixels, as Sixel placement uses, so notcurses and chafa no longer draw images at half size
+  on a scaled display. Sixel programs also get answers to XTSMGRAPHICS, which they ask at startup.
+- **Kitty graphics:** numbered images (`I=`) get their acknowledgements, transmit-only (`a=t`) no
+  longer shows the image, basic deletion works, and payloads whose base64 starts with `G` load.
+
+### Keyboard, mouse and notifications
+
+- **More programs can show notifications.** With *Program notifications (OSC 9, 99, 777)* on, OSC
+  777 `notify` and kitty's OSC 99 show a toast with a title and a body, as OSC 9 already did with a
+  message. OSC 99 actions, icons, buttons and close reports are not supported. See
+  [Notifications and progress](docs/user/terminal.md#notifications-and-progress).
+- **modifyOtherKeys** (`CSI > 4 ; Pv m`, levels 1 and 2). Vim 9, tmux's `extended-keys` and
+  Emacs now get Ctrl+Shift+letter and can tell Ctrl+I from Tab, Ctrl+M from Enter and Ctrl+[ from
+  Esc. A program that also asks for the Kitty keyboard protocol gets that instead.
+- **The wheel scrolls `less`, `man` and `git log`.** In a full-screen program without mouse
+  reporting, each notch sends one Up or Down key (alternate scroll, `CSI ? 1007 h`). It is on by
+  default: set `AlternateScroll` to `false` in
+  [the settings file](docs/user/settings.md#settings-with-no-page) to keep the wheel inert there.
+- **Application keypad** (`ESC =`): keypad keys send their application sequences, and keypad Enter
+  sends `SS3 M` while the main Enter key still sends CR.
+- **Mouse:** X10 press-only tracking (mode 9) is supported, and legacy mouse reports past column 95
+  reach the program intact, locally, over SSH and in persistent sessions.
+
+### Terminal compatibility
+
+- **Vim restores the tab title when it exits** (the XTWINOPS title stack, `CSI 22 t` / `CSI 23 t`).
+  Titles are kept exactly as the program sent them, and an empty OSC 0 or 2 clears the title.
+- **Visual bell.** Reverse-video mode (DECSCNM, `CSI ? 5 h`) makes ncurses `flash()` work: Vim's
+  `set vb`, readline's `bell-style visible`, Emacs's `visible-bell`.
+- **Left and right margins** (DECLRMM `CSI ? 69 h` and DECSLRM `CSI Pl ; Pr s`), reported by
+  DECRQSS. With the `xterm-ntilde` entry, tmux turns on its `margins` feature.
+- **Rectangle and column editing.** Fill, copy and erase rectangles (DECFRA, DECCRA, DECERA), change
+  their attributes (DECCARA, DECRARA, DECSACE), and insert, delete and shift columns (DECIC, DECDC,
+  SL, SR). Protected characters (DECSCA) survive selective erase (DECSED, DECSERA). The rectangle
+  checksum report (DECRQCRA), which terminal test suites use, is off by default because a program
+  could use it to read back anything on the screen. `AllowRectangleChecksumReport` in the settings
+  file turns it on; persistent sessions never answer it.
+- **Reverse-wraparound** (`CSI ? 45 h`). With auto-wrap also on, Backspace and cursor-backward
+  (`CSI Ps D`) at the left edge now return to the last column of the previous row when that row
+  ended by a soft wrap, as in xterm. It is off by default, never crosses a hard line break, the top
+  of the screen or a scrolling region's top margin, and is cleared by RIS and DECSTR.
+- **Blinking, overlined and bold text.** Blinking text (`SGR 5`) blinks, overline (`SGR 53`/`55`)
+  is drawn, and bold text is drawn bold when it has an explicit RGB color too.
+- **Programs can ask more.** XTGETTCAP answers for what Ntilde adds to `xterm-256color` (truecolor,
+  underline styles and colors, synchronized output, cursor shapes, margins), as Neovim asks;
+  DECRQSS reports the current SGR, cursor style and margins; `CSI 0 SP q` returns to your
+  configured cursor; `CSI 18 t` reports the text area size; and tertiary DA (`CSI = c`) is answered.
+- **An optional `xterm-ntilde` terminfo entry** tells programs that only read terminfo about the
+  same extras. Ntilde still sets `TERM=xterm-256color`; install the entry and switch `TERM` where
+  you want it. See
+  [TERM and the `xterm-ntilde` entry](docs/user/terminal.md#term-and-the-xterm-ntilde-entry).
+- **Clipboard requests from programs** (kitty's clipboard protocol, OSC 5522): a read from a program
+  that names itself with a password can be allowed for the rest of the session, not just once; on
+  Linux X11, programs can use the primary selection, which asks separately; on Windows, HTML and PNG
+  reach other apps in their usual clipboard formats.
+
+### Fixes
+
+- **macOS: shells that couldn't find your user.** When the multiplexer outlived the macOS login it
+  started in, its shells could fail to look up the current user (`whoami` printed `501` and `ssh`
+  said `No user exists for uid 501`), and relaunching Ntilde didn't help. Ntilde now notices and
+  offers to restart the multiplexer.
+- **Exact RGB colors stay exact.** Five particular truecolor values were silently turned into
+  palette colors and followed the theme.
+- **The SSH connection editor's Port Forwards tab** is a labelled form (*Listen on*, *Forward to*)
+  with a hint for each forward type, and Dynamic forwards no longer show a destination.
+- Widening a pane no longer pushes padded columns (a `printf` table, say) to the right edge as if
+  they were a right prompt, and a pane that grows keeps its cursor on the prompt row.
+- Nerd Font glyphs show in tab titles and the vertical tab preview instead of boxes.
+- RIS shows the cursor again and clears both screens; mode 1047 clears the alternate screen when a
+  program leaves it, not when it enters; `CSI ? 3 J` no longer deletes scrollback; and `CSI 0 X`,
+  `CSI 0 L` and `CSI 0 M` act on one character or line, as in xterm.
+- A native SSH port forward no longer leaves a channel open when its connection closes.
+
+The other changes in 0.14.0 are listed in its GitHub release notes.
+
 ## 0.13.0
 
 0.13.0 puts the theme on every part of the app, ships the MCP server in every bundle, lets native
@@ -86,10 +181,6 @@ and dark/light reporting.
 - **XTVERSION** (`CSI > q`) answers `Ntilde <version>`; **DECSTR** (`CSI ! p`) soft-resets the
   terminal; mode 1048 saves and restores the cursor; and a program's blinking or steady cursor
   is honored whatever the *Cursor blink* setting.
-- **Reverse-wraparound** (`CSI ? 45 h`). With auto-wrap also on, Backspace and cursor-backward (`CSI Ps D`) at the left edge now return
-  to the last column of the previous row when that row ended by a soft wrap, as in xterm. It is off
-  by default, never crosses a hard line break, the top of the screen or a scrolling region's top
-  margin, and is cleared by RIS and DECSTR.
 - **fish 4** commands are no longer marked twice, which had doubled long-command notifications,
   Fix mode runs and agents' `CommandFinished` events.
 
@@ -108,7 +199,6 @@ and dark/light reporting.
   spawn with no profile named always picks a local one and checks the SSH allowlist.
 - Legacy SCP transfers keep remote paths with spaces and special characters literal.
 
-The other changes in 0.13.0 are listed in its GitHub release notes.
 - **An agent's SSH session no longer opens a dialog over your shell.** When an agent opens a
   native SSH session and the server asks for something only you can give (a host key you have not
   trusted, a password Ntilde has none saved for, a key passphrase, a one-time code), the session ends
@@ -120,6 +210,8 @@ The other changes in 0.13.0 are listed in its GitHub release notes.
   host key and save its password.
 - **A pane whose shell exited comes back for agents.** After Enter restarts or reconnects it, an
   agent's session status starts over instead of staying `exited`.
+
+The other changes in 0.13.0 are listed in its GitHub release notes.
 
 ## 0.12.0
 
