@@ -6,11 +6,11 @@ printf '  \033[38;5;207m██ ██  ██ \033[38;5;171m   ██    \033[38
 printf '  \033[38;5;207m██  ██ ██ \033[38;5;171m   ██    \033[38;5;141m██ \033[38;5;111m██      \033[38;5;81m██   ██ \033[38;5;51m██\033[0m\n'
 printf '  \033[38;5;207m██   ████ \033[38;5;171m   ██    \033[38;5;141m██ \033[38;5;111m███████ \033[38;5;81m██████  \033[38;5;51m███████\033[0m\n'
 printf '\n'
-# Version mirrors Directory.Build.props's <Version> (currently 0.13.0). This is a static string,
+# Version mirrors Directory.Build.props's <Version> (currently 0.14.0). This is a static string,
 # not read from the repo at capture time - the demo shell has no repo to read. It drifted from
 # 0.5.0 to 0.7.0 unnoticed across two releases before anyone looked, so BannerAssetTests now
 # pins it to Directory.Build.props rather than relying on this comment being obeyed.
-printf '  \033[1mterminal\033[0m   Ntilde 0.13.0 (cross-platform)\n'
+printf '  \033[1mterminal\033[0m   Ntilde 0.14.0 (cross-platform)\n'
 # "partial" is the honest summary of src/Ntilde.App/Resources/vt-conformance-report.json's
 # own numbers (23 of 60 rows fully supported, 31 partial) - re-check that file if this banner is
 # ever revisited, rather than restoring a flat percentage that overclaims.
