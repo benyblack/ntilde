@@ -243,6 +243,36 @@ public sealed class TextClientRendererTests
         Assert.Contains("\x1b[?1006l", clipped, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(1005)]
+    [InlineData(1006)]
+    [InlineData(1015)]
+    public void Coordinate_encoding_is_mirrored_as_one_selection_and_only_while_unclipped(int encoding)
+    {
+        var inner = new Session(80, 24); var outer = new Session(80, 24);
+        inner.Feed($"\x1b[?1000h\x1b[?{encoding}h");
+        var renderer = new TextClientRenderer(inner.Buffer);
+
+        outer.Feed(renderer.Render(80, 24));
+        Assert.Equal(encoding == 1005, outer.Buffer.Modes.MouseModeUtf8);
+        Assert.Equal(encoding == 1006, outer.Buffer.Modes.MouseModeSGR);
+        Assert.Equal(encoding == 1015, outer.Buffer.Modes.MouseModeUrxvt);
+
+        outer.Feed(renderer.Render(60, 20));
+        Assert.False(outer.Buffer.Modes.MouseModeUtf8 || outer.Buffer.Modes.MouseModeSGR || outer.Buffer.Modes.MouseModeUrxvt);
+
+        // A change of the selection is restated after resets of all three, so the outer terminal ends on the new one.
+        int next = encoding == 1015 ? 1005 : encoding + (encoding == 1005 ? 1 : 9);
+        inner.Feed($"\x1b[?{next}h");
+        outer.Feed(renderer.Render(80, 24));
+        Assert.Equal(next == 1005, outer.Buffer.Modes.MouseModeUtf8);
+        Assert.Equal(next == 1006, outer.Buffer.Modes.MouseModeSGR);
+        Assert.Equal(next == 1015, outer.Buffer.Modes.MouseModeUrxvt);
+
+        outer.Feed(TextClientRenderer.LeaveSequence);
+        Assert.False(outer.Buffer.Modes.MouseModeUtf8 || outer.Buffer.Modes.MouseModeSGR || outer.Buffer.Modes.MouseModeUrxvt);
+    }
+
     [Fact]
     public void Tracking_restatements_reset_before_enabling_and_survive_real_outer_parser_transitions()
     {

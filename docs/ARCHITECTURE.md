@@ -333,6 +333,16 @@ screen/cursor switches preserve it. The mux text renderer emits tracking resets
 before enabling its target mode, so an outer terminal keeps the intended choice.
 See `docs/qa/terminfo/x10-tracking.md` for runtime/evidence limits.
 
+Mouse coordinate encoding is a second, independent selection. `?1005` (UTF-8),
+`?1006` (SGR) and `?1015` (urxvt) are one choice, as in xterm's `extend_coords`:
+setting one replaces the others and a reset only clears the encoding it names.
+The App encoder prefers SGR, then urxvt, then UTF-8 if an imported state ever
+carries several. UTF-8 and urxvt reports are ordinary text (the UTF-8 form's code
+points are sent UTF-8-encoded); only the plain X10 form takes the byte-preserving
+input path. Clone, complete mux/replay state (absent fields mean off) and the mux
+outer-terminal mirror carry the selection; full reset and prompt policy clear it
+and soft reset keeps it.
+
 **Key invariants**
 - Alternate screen is fully isolated from main screen
 - Scrollback is immutable once flushed

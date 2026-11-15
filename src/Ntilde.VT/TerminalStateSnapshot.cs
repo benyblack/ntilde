@@ -356,6 +356,10 @@ namespace Ntilde.VT
         [JsonPropertyName("m_btn")] public bool MouseModeButtonEvent { get; set; }
         [JsonPropertyName("m_any")] public bool MouseModeAnyEvent { get; set; }
         [JsonPropertyName("m_sgr")] public bool MouseModeSGR { get; set; }
+        /// <summary>UTF-8 coordinate encoding (?1005). Absent in older payloads, which reads as off.</summary>
+        [JsonPropertyName("m_utf8"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? MouseModeUtf8 { get; set; }
+        /// <summary>urxvt coordinate encoding (?1015). Absent in older payloads, which reads as off.</summary>
+        [JsonPropertyName("m_urxvt"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? MouseModeUrxvt { get; set; }
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;

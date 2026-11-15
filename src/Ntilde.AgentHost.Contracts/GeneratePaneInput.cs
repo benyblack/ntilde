@@ -87,6 +87,12 @@ public sealed record GeneratePaneInputResult
     public int? MouseTracking { get; init; }
     [JsonPropertyName("mouseSgr")]
     public bool? MouseSgr { get; init; }
+    /// <summary>Post-dispatch UTF-8 (?1005) coordinate-encoding sample; null when modes were not observed.</summary>
+    [JsonPropertyName("mouseUtf8")]
+    public bool? MouseUtf8 { get; init; }
+    /// <summary>Post-dispatch urxvt (?1015) coordinate-encoding sample; null when modes were not observed.</summary>
+    [JsonPropertyName("mouseUrxvt")]
+    public bool? MouseUrxvt { get; init; }
     [JsonPropertyName("kittyKeyboardFlags")]
     public int? KittyKeyboardFlags { get; init; }
 }

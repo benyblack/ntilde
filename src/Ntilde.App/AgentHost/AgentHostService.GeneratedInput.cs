@@ -84,6 +84,8 @@ public sealed partial class AgentHostService
         ApplicationKeypad = null,
         MouseTracking = null,
         MouseSgr = null,
+        MouseUtf8 = null,
+        MouseUrxvt = null,
         KittyKeyboardFlags = null,
         ModifyOtherKeysLevel = null,
     };

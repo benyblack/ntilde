@@ -69,6 +69,8 @@ public sealed class VtCapabilityContractTests
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
             ["alternate-scroll"] = AssertAlternateScroll,
+            ["utf8-mouse-coordinates"] = () => AssertMouseEncodingSelection(1005),
+            ["urxvt-mouse-coordinates"] = () => AssertMouseEncodingSelection(1015),
             ["mime-clipboard-paste"] = AssertMimeClipboardPaste,
             ["sgr-overline-on"] = AssertOverline,
             ["sgr-overline-off"] = AssertOverline,
@@ -115,6 +117,8 @@ public sealed class VtCapabilityContractTests
             ["color-scheme-query"] = "\x1b[?996n",
             ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
             ["alternate-scroll"] = "\x1b[?1007l\x1b[?1007$p",
+            ["utf8-mouse-coordinates"] = "\x1b[?1005h\x1b[?1005$p",
+            ["urxvt-mouse-coordinates"] = "\x1b[?1015h\x1b[?1015$p",
             ["mime-clipboard-paste"] = "\x1b[?5522h\x1b[?5522$p",
             ["sgr-overline-on"] = "\x1b[53mA",
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
@@ -617,6 +621,21 @@ public sealed class VtCapabilityContractTests
         buffer.Modes.AlternateScrollDefault = false;
         parser.Process("\x1b[?1007h\x1b[?1007$p\u001bc\x1b[?1007$p");
         Assert.Equal(new[] { "\x1b[?1007;1$y", "\x1b[?1007;2$y", "\x1b[?1007;1$y", "\x1b[?1007;2$y" }, replies);
+    }
+
+    private static void AssertMouseEncodingSelection(int mode)
+    {
+        var buffer = new TerminalBuffer(12, 8);
+        var parser = new AnsiParser(buffer);
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        int other = mode == 1005 ? 1015 : 1005;
+        // Reset, set, replaced by ?1006 (single selection), set again, then a reset of a different encoding changes nothing.
+        parser.Process($"\x1b[?{mode}$p\x1b[?{mode}h\x1b[?{mode}$p\x1b[?1006h\x1b[?{mode}$p\x1b[?{mode}h\x1b[?{other}l\x1b[?{mode}$p");
+        Assert.Equal(new[]
+        {
+            $"\x1b[?{mode};2$y", $"\x1b[?{mode};1$y", $"\x1b[?{mode};2$y", $"\x1b[?{mode};1$y",
+        }, replies);
     }
 
     private static void AssertPosition(string sequence, int expectedRow, int expectedCol)

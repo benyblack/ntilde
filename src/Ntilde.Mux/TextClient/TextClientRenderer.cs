@@ -29,7 +29,7 @@ public sealed class TextClientRenderer
     public const string EnterSequence = "\x1b[?1049h\x1b[?7l\x1b>\x1b[H\x1b[2J";
 
     /// <summary>Written on every exit path: plain SGR, cursor shown, modes off, autowrap back on, back to the outer main screen.</summary>
-    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b>\x1b[?7h\x1b[?1049l";
+    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b>\x1b[?7h\x1b[?1049l";
 
     private const string DetachHint = "Ctrl+\\ d to detach";
 
@@ -39,8 +39,8 @@ public sealed class TextClientRenderer
     private bool _lastAltScreen;
     private string? _lastStatus;
     private (int Row, int Col) _lastCursor = (-1, -1);
-    private bool? _appCursor, _bracketed, _cursorVisible, _mouse1006;
-    private int? _mouseTrackingMode;
+    private bool? _appCursor, _bracketed, _cursorVisible;
+    private int? _mouseTrackingMode, _mouseEncodingMode;
 
     public TextClientRenderer(TerminalBuffer buffer) => _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
 
@@ -52,8 +52,8 @@ public sealed class TextClientRenderer
     public void Invalidate()
     {
         _haveFrame = false;
-        _appCursor = _bracketed = _cursorVisible = _mouse1006 = null;
-        _mouseTrackingMode = null;
+        _appCursor = _bracketed = _cursorVisible = null;
+        _mouseTrackingMode = _mouseEncodingMode = null;
         _lastCursor = (-1, -1);
     }
 
@@ -192,7 +192,24 @@ public sealed class TextClientRenderer
             if (tracking != 0) sb.Append("\x1b[?").Append(tracking.ToString(CultureInfo.InvariantCulture)).Append('h');
             _mouseTrackingMode = tracking;
         }
-        Toggle(sb, ref _mouse1006, unclipped && m.MouseModeSGR, 1006);
+        // The coordinate encodings (?1005/?1006/?1015) are one selection in the outer terminal too, and a reset only
+        // clears the encoding it names, so every reset is emitted before the desired one is set.
+        int encoding = DesiredMouseEncoding(m, unclipped);
+        if (_mouseEncodingMode != encoding)
+        {
+            sb.Append("\x1b[?1005l\x1b[?1006l\x1b[?1015l");
+            if (encoding != 0) sb.Append("\x1b[?").Append(encoding.ToString(CultureInfo.InvariantCulture)).Append('h');
+            _mouseEncodingMode = encoding;
+        }
+    }
+
+    /// <summary>Snapshots may carry several flags; the encoder's priority is SGR, then urxvt, then UTF-8.</summary>
+    private static int DesiredMouseEncoding(ModeState modes, bool unclipped)
+    {
+        if (!unclipped) return 0;
+        if (modes.MouseModeSGR) return 1006;
+        if (modes.MouseModeUrxvt) return 1015;
+        return modes.MouseModeUtf8 ? 1005 : 0;
     }
 
     private static int DesiredMouseTracking(ModeState modes, bool unclipped)

@@ -500,8 +500,24 @@ namespace Ntilde.Shell
         /// </summary>
         private const int MaxLegacyCoordinate = 223;
 
+        /// <summary>
+        /// Highest position the UTF-8 encoding (?1005) carries: each coordinate is sent as the code point
+        /// position+32, a two-byte sequence at most, so U+07FF - 32 = 2015. Larger positions are clamped
+        /// to it. xterm's own limit logic emits NUL at its boundary; that quirk is not reproduced.
+        /// </summary>
+        private const int MaxUtf8Coordinate = 2015;
+
         public static string? EncodeMouseEvent(ModeState modes, TerminalMouseEvent mouseEvent)
+            => EncodeMouseEvent(modes, mouseEvent, out _);
+
+        /// <param name="legacyBytes">
+        /// True only for the plain X10 form (<c>CSI M Cb Cx Cy</c>), whose characters are single octets and must
+        /// be sent byte-for-byte. Every other form (SGR, urxvt, UTF-8) is ordinary text; the UTF-8 form's code
+        /// points above U+007F are sent UTF-8-encoded, which is exactly what ?1005 specifies.
+        /// </param>
+        public static string? EncodeMouseEvent(ModeState modes, TerminalMouseEvent mouseEvent, out bool legacyBytes)
         {
+            legacyBytes = false;
             bool pressOnly = modes.MouseModeX10PressOnly;
             if (!ShouldReportMouseEvent(modes, mouseEvent, pressOnly))
             {
@@ -528,6 +544,22 @@ namespace Ntilde.Shell
                 buttonCode = 3 + GetModifierBits(mouseEvent.Modifiers);
             }
 
+            // urxvt (?1015): the X10 event code with its +32 offset, then both positions, as decimal
+            // numbers; a release is still button 3 with the same final byte, never SGR's 'm'.
+            if (modes.MouseModeUrxvt)
+            {
+                return $"\x1b[{32 + buttonCode};{x};{y}M";
+            }
+
+            // UTF-8 (?1005): the same three values as the legacy form, each sent as a UTF-8 code point, so
+            // anything from position 96 on becomes a two-byte sequence instead of one byte.
+            if (modes.MouseModeUtf8)
+            {
+                return "\x1b[M" + (char)(32 + buttonCode)
+                    + (char)(32 + Math.Clamp(x, 1, MaxUtf8Coordinate))
+                    + (char)(32 + Math.Clamp(y, 1, MaxUtf8Coordinate));
+            }
+
             // Legacy X10 coordinate encoding (`CSI M Cb Cx Cy`) transmits each coordinate as a
             // single byte holding value+32, so the largest representable coordinate is 223
             // (32+223 = 255, the highest byte value). Coordinates past that are CLAMPED to 223
@@ -535,6 +567,7 @@ namespace Ntilde.Shell
             // `?1006` has no parser for `ESC [ <` and would render it as text or desync, so
             // xterm clamps (or drops) out-of-range coordinates instead of silently switching
             // protocols. Applications that need coordinates beyond 223 must enable `?1006`.
+            legacyBytes = true;
             char buttonChar = (char)(32 + buttonCode);
             char xChar = (char)(32 + Math.Clamp(x, 1, MaxLegacyCoordinate));
             char yChar = (char)(32 + Math.Clamp(y, 1, MaxLegacyCoordinate));

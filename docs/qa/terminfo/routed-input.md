@@ -39,7 +39,7 @@ legacy coordinates are single octets `32 + value`: column 96 is `0x80`, and a UT
 (shift 4, alt 8, ctrl 16) follow xterm's control-sequence documentation; wheel events are not ordinary buttons for DECSET 9.
 
 The primary encoding is the legacy `CSI M` form (the default); SGR frames are required only where they show that encoding is independent of the
-tracking selection, and are labeled observations for button-event tracking. Pixel (1016), UTF-8 (1005) and urxvt (1015) coordinates are out of scope.
+tracking selection, and are labeled observations for button-event tracking. Pixel (1016) coordinates are out of scope, and this plan does not exercise UTF-8 (1005) or urxvt (1015) coordinates; those encodings are implemented and covered by unit tests only (see `remaining-protocol-variants.md`).
 
 ## Plan v2
 
