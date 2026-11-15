@@ -49,8 +49,8 @@ Budgets: 164 events, 330 raw captures (budget 384), per-reader snapshots 167 (bu
 | `modes.utf8-mouse-1005` | **inconclusive** by design (termless: `notTestedResult`, reason `no-semantic-observable`) | `ntilde-utf8-mouse-1005-effect-v1`: **supported** (divergence `pinned-inconclusive-by-design`) | **supported** (`decrpmResult`, evidence `query`; see below) |
 | `input.urxvt-mouse` | **inconclusive** (`insufficient-evidence`, evidence `legacy`) | `ntilde-urxvt-mouse-effect-v1`: **supported** (divergence `pinned-inconclusive-by-design`) | inconclusive |
 
-The stock collector in the same owned run (`6fe436ab09e4e2dd5d1e16bde51ab193`) grades **92 supported / 1 unsupported / 162 inconclusive** (`suiteComplete=false`), up from 91/1/163 in the
-xterm color-stack batch. The one stock grade that moved is `modes.utf8-mouse-1005`, and it moved for a reason that is **not** an effect-contract upgrade: the pinned *terminal* path of that probe is
+The stock collector in the same owned run (`29a8f5ad03abca8748199bd253a72924`) grades **92 supported / 1 unsupported / 162 inconclusive** (`suiteComplete=false`), up from 91/1/163 in the
+xterm SGR-stack batch. The one stock grade that moved is `modes.utf8-mouse-1005`, and it moved for a reason that is **not** an effect-contract upgrade: the pinned *terminal* path of that probe is
 `decrpmResult(queryMode(1005))`, which grades supported as soon as the child's DECRQM query is answered with a recognised state, and the production commit now answers `CSI ? 1005 $ p` with `1`
 (set) or `2` (reset) instead of `0`. That is a stock effect of the production change, a DECRQM recognition check; it measures no encoded event, and the pinned termless verdict and the effect contract
 are separate results that it does not change. `input.urxvt-mouse` has no such path (`mouseInputProbe` validates no generated event on either path), so its stock grade stays inconclusive. The frozen
@@ -99,24 +99,27 @@ least 97 columns and the run did not vary the geometry); no Windows/Linux, no re
 
 ## Identities
 
-App 0.14.0 (operator supplied) built from `7578595b09d149b17bb23a9db4ab74d18b827e22` (arm64 Release on macOS 27.0.1, the last commit that changed the App sources; sidecar `artifacts/sidecar-mex`; executable SHA-256
-`f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `baf44bef14b761ec33097989dadc545854df8fe731f3198c0761932a2d66a7a7`); measured scripts
-`2a6e4b586d5841b9e625ce6096b0c6c820592e60`; source policy `readonly-owned-source-graph-v57` (380 files; manifest SHA-256 `31ba8ef01264502ca2f85310bb2ad2cefa30930d1065fc546d78b7cd926169ff`); query policy
-`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `f7afe1bec7b6d310ec334ddcb3ff74d49fa87f2e3fb872ab88475b49a1b4fd64`; receipt schema 63; Node v24.22.2; owned run
-`a25f8db7d77fc3d00295ab5daa52ba2d`; collected 2026-11-15T16:11Z to 16:16Z. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
+App 0.14.0 (operator supplied) built from `aaaece9966cd62ae3e0cbf9afe1c87a52fb120db` (arm64 Release on macOS 27.0.1; its `src/` tree is identical to the production commit `8c8b1504`; sidecar `artifacts/sidecar-mex`;
+executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `e8f5dfca461ab4e46b4ba066c81772362be9aac53ced2ebb29fdf098f4149fca`); measured scripts
+`aaaece9966cd62ae3e0cbf9afe1c87a52fb120db`; source policy `readonly-owned-source-graph-v58` (387 files; manifest SHA-256 `be4ba9463b7607816117025269525d6ef06c651320171247d8222616669ea78c`); query policy
+`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `5a2e0efef436d0ceda6de0f616654b7d27caed8551377ef0eb8184bd6b3ff421`; receipt schema 64; Node v24.22.2; owned run
+`59b3fbe52f6062679e5233e0b62fb9d2`; collected 2026-11-15T20:53Z to 20:58Z. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
 retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-15-mouse-extended/superseded/))
 
-1. Failed at the owned input suite with `Owned generated-input action failed.` (`failure.json` and `input-failed-observation.json` name the plan event `input.mex.u.pinned.set`), run
-   `b54d70a870db2929e199d5ce469bb41f`, collected on the scripts of `93231919758b95d7b553ee88b4ef37955991b173` (the same App build and sidecar). The App refuses a generated pointer event while no
-   tracking selector is active, and that plan carried the no-tracking state cases (the pinned `?1005h`/`?1005l` events and the lone `?1015h` event) as pointer events. Commit `2a6e4b58` moved those events
-   to key-ups (the measured scripts of the final run); the same sidecar was run again.
+1. Run `9edc28e35c905573efa70f3b2350999e`, started 2026-11-15T20:52Z on the final scripts and sidecar, aborted before collection: the disposable App died at startup with
+   `SIGABRT` (`Avalonia.Native was not able to start the RenderTimer`, native error -6661; the display was asleep) and `failure.json` records `Owned app exited before collection (SIGABRT).` Nothing was collected, so
+   it grades nothing; it is retained because it is the one failed attempt on the measured scripts. The display was woken (`caffeinate -u`) and the same sidecar and scripts were run again.
+
+Two earlier measurements on the pre-restack branch (source policy v57, scripts `2a6e4b58`, before the batch was restacked onto the xterm SGR-stack batch, which took policy v57 and receipt schema 63) are
+not retained: they measured scripts and source policy that no longer exist on this head. They found one real defect that is fixed in the measured scripts (the App refuses a generated pointer event while no tracking
+selector is active, and an early plan carried the no-tracking state cases as pointer events, so the run failed with `Owned generated-input action failed.`; those events are key-ups).
 
 The final run is [owned-run.zip](2026-11-15-mouse-extended/owned-run.zip); `node --test scripts/terminfo/mex-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the retained
 input journal, action log, ownership seal and worker run log, and compares the published projection.
 
 ## Reproduce
 
-Source policy v57 (380 captured files), receipt schema 63. The collection is `node scripts/terminfo-owned.mjs --executable <sidecar>/Ntilde --app-version <version>` under the shared desktop lock
+Source policy v58 (387 captured files), receipt schema 64. The collection is `node scripts/terminfo-owned.mjs --executable <sidecar>/Ntilde --app-version <version>` under the shared desktop lock
 (see [QA_TERMINFO.md](../QA_TERMINFO.md)); rederive with `completeOwnedReceipt` over a copy of the retained run minus `cell-receipt.json`.

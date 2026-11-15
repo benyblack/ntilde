@@ -42,7 +42,7 @@ export const inputPriorCaptureCap = Math.max(...inputPlanCaptureCounts);
 export const routedInputFirstPolicy = 36;
 export const modifyOtherKeysFirstPolicy = 50;
 /** First source policy whose runs execute the v4 plan (the extended mouse coordinate encodings); set when the layer is plumbed. */
-export const mexFirstPolicy = 57;
+export const mexFirstPolicy = 58;
 export function inputPlanForPolicy(policy) {
     const version = /^readonly-owned-source-graph-v(\d+)$/.exec(policy ?? '')?.[1];
     if (version === undefined) return inputPlanV1;

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-mouse-extended-benchmark-graded-v1",
-  "runId": "a25f8db7d77fc3d00295ab5daa52ba2d",
+  "runId": "59b3fbe52f6062679e5233e0b62fb9d2",
   "contractsVersion": 1,
   "adapter": {
     "id": "ntilde-owned-mouse-extended-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "3b99bab7e92a496fb439e4d0177842546d2f425b5656a7e5ec31acc734908749",
+    "bundleSha256": "ffd5cb22ebc31c5b38109e937523fe793c129cc95ce199bf48084ecbcbeef91f",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 modes.utf8-mouse-1005 and input.urxvt-mouse termless code (always inconclusive by design: the 1005 probe feeds ?1005h, captures the DECRQM reply, feeds ?1005l and returns notTestedResult; mouseInputProbe validates no generated event or report) replayed over the DECRQM reply and tracking state the child itself received, preserved beside separately identified effect contracts graded from 46 declared Avalonia events routed through the production App input path in a disposable direct-local pane: negotiation proved by the child DECRQM replies for 1005, 1006, 1015 and the tracking selectors before every dispatch, exact child-received bytes from an independent raw stdin reader, literal protocol expectations cross-checked by an independent oracle written from xterm button.c, legacy and SGR controls, UTF-8 and decimal reports for presses, releases, wheel, held-button and any-event motion, modifiers and X10 press-only tracking, the single-slot selection rules between 1005, 1006 and 1015, ordered FIFO capture barriers, and restoration. Generated App events are not physical pointer input, App admission is not child receipt, direct-local delivery does not qualify SSH, mux or Windows, the stock terminal path of modes.utf8-mouse-1005 (a DECRQM recognition check) is a separate stock-collector result, and no stock grade is changed by this layer.",
   "inputSuiteId": "ntilde-owned-routed-input-v4",
-  "inputReportSha256": "2c56cd129c02a2b6af5381bd07ad51e347f377c3e2933df21f0e819da0ed5c99",
+  "inputReportSha256": "1a6a7b8bf31871a0fb70806072d5deae90c792279e3fefedef8eba6b01f12c8a",
   "initialSnapshot": 0,
   "restoredSnapshot": 330,
   "cases": [

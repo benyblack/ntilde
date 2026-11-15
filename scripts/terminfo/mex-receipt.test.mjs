@@ -22,7 +22,7 @@ const predecessors = ['sgrColors', 'sgrRgb', 'sgrAttrs', 'sgrPalette', 'sgrTruec
 
 test('a complete run carries the extended-mouse suffix: counts, adapter identity, the v4 input suite, the routed-input layer and the layered derivation rederive without the collector', () => privateClipboardReceiptFixture(f => {
     assert.doesNotThrow(own(f), 'the layer check accepts the untouched fixture, so every refusal below is caused by its mutation');
-    assert.equal(f.finish().schemaVersion, 63);
+    assert.equal(f.finish().schemaVersion, 64);
     assert.deepEqual(f.evidence.mexEvidence.counts, { 'inconclusive/supported': 2 });
     assert.equal(f.context.mexAdapterId, mexAdapterId);
     assert.equal(f.context.mexSuiteId, mexGradedSuiteId);

@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|mex)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|mex)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|mex)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|mex)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -98,7 +98,9 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false, m
     const sourceSnapshotPolicy = routedPlans ? 'readonly-owned-source-graph-v37' : legacyPolicy;
     const scope = routedPlans ? capturedV44SourceFiles : capturedV41SourceFiles;
     /** The extended-mouse variant executes the v4 plan and the modifyOtherKeys variant the v3 one; every other variant keeps its policy-mapped plan. */
-    const executedInputPlan = mex ? inputPlanV4 : modifyOtherKeys ? inputPlanV3 : inputPlanForPolicy(sourceSnapshotPolicy);
+    let executedInputPlan = inputPlanForPolicy(sourceSnapshotPolicy);
+    if (modifyOtherKeys) executedInputPlan = inputPlanV3;
+    if (mex) executedInputPlan = inputPlanV4;
     {
         const archive = historicalArchive('2026-11-05-query-observations');
         for (const [file, bytes] of archive) { const path = join(output, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
@@ -948,7 +950,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, mex = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, mex = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -978,7 +980,11 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (xcs) {
             await addXcsEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs) writerFor(output)('context.json', context);
+        // The xterm SGR-stack suffix is the next sibling off the same left/right-margin bytes and is equally opt-in; it needs no setting.
+        if (xss) {
+            await addXssEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1070,4 +1076,25 @@ async function addXcsEvidence({ output, write, context, evidence, lrMarginsBytes
     evidence.xcsEvidence = { runId: context.runId, suiteId: xcsSuiteId, file: 'xcs-observations.json', sha256: hash(readFileSync(join(output, 'xcs-observations.json'))),
         runFile: 'xcs-run.json', runSha256: hash(readFileSync(join(output, 'xcs-run.json'))), adapterBundleSha256: hash(xcsBytes),
         contractsVersion: xcsContractsVersion, counts: xcsCounts(xcsReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in xterm SGR-stack suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */
+async function addXssEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticXssEvidence } = await import('./xss-evidence.mjs');
+    const { buildXssGradingReport } = await import('../xss-grading.mjs');
+    const { xssCounts } = await import('../xss-receipt.mjs');
+    const { adaptXssCollector, xssAdapterId } = await import('../xss-grading-collector.mjs');
+    const { xssSuiteId, xssContractsVersion } = await import('../xss-contracts.mjs');
+    const xssBytes = Buffer.from(adaptXssCollector(lrMarginsBytes.toString()));
+    const xss = syntheticXssEvidence({ runId: context.runId, bundleSha256: hash(xssBytes) });
+    xss.adapter = { ...xss.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const xssReport = buildXssGradingReport(xss.frames, xss.run, context.runId, xss.adapter);
+    write('xss-observations.json', xssReport);
+    write('xss-run.json', xss.run);
+    writeFileSync(join(output, 'xss-snapshots.jsonl'), xss.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-xss.mjs'), xssBytes);
+    Object.assign(context, { xssAdapterId, xssSuiteId, xssBundleSha256: hash(xssBytes), xssContractsVersion });
+    evidence.xssEvidence = { runId: context.runId, suiteId: xssSuiteId, file: 'xss-observations.json', sha256: hash(readFileSync(join(output, 'xss-observations.json'))),
+        runFile: 'xss-run.json', runSha256: hash(readFileSync(join(output, 'xss-run.json'))), adapterBundleSha256: hash(xssBytes),
+        contractsVersion: xssContractsVersion, counts: xssCounts(xssReport), provisionalUntil: 'cell-receipt.json' };
 }

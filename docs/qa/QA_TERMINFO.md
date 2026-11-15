@@ -1213,6 +1213,17 @@ independent oracle written from xterm's control-sequence text: silence, restorat
 host default, LIFO order, snapshot copy semantics and numbered slots. Both effect contracts are **supported** and both pinned verdicts stay **inconclusive** (a recorded divergence); palette entry 200 and a pop with
 nothing stored are recorded policy groups that never decide. No production code, stock grade or query policy changed (stock stays 91/1/163). Receipt schema 62 and source policy v56 (374 files) bind it.
 
+### Xterm SGR-stack qualification
+
+The [xterm SGR-stack batch](terminfo/2026-11-15-xterm-sgr-stack-qualification.md) qualifies `modes.xtpushsgr` (`CSI # {`) and `modes.xtpopsgr` (`CSI # }`). Main answered neither, so this batch also adds
+the production feature: xterm's ten-level video-attribute stack (`CSI Pm # {` saves the listed attributes of the pen, none listed saves all eleven; `CSI # }` restores exactly those). Both pinned probes can only
+return inconclusive (they measure DA1 and cursor responsiveness), so the unchanged pinned code is replayed over the journaled raw bytes of its own fenced exchange and the cursor of its read through a layered
+collector extension (`ntilde-owned-xterm-sgr-stack-grading-v1`) over the left/right-margin one, beside an effect contract (`ntilde-xterm-sgr-stack-effect-v1`) graded by an independent oracle written from xterm's
+control-sequence text. After every stack operation a probe character is written and the *stored* attributes of its cell are read back: silence, the snapshot of bold, faint, italic, underline, blink, inverse,
+hidden, strikethrough and both colors after pops, each documented parameter alone, the underline and the double underline restored independently, LIFO order, snapshot copy semantics and ten levels holding. Both
+effect contracts are **supported** and both pinned verdicts stay **inconclusive** (a recorded divergence); the eleventh push, a pop with nothing saved, an unlisted value and the overline and underline color are
+recorded policy groups that never decide. No stock grade or query policy changes (stock stays 91/1/163). Receipt schema 63 and source policy v57 (381 files) bind it.
+
 ### Extended mouse encoding qualification
 
 The extended-mouse batch qualifies `modes.utf8-mouse-1005` (UTF-8 coordinates) and `input.urxvt-mouse` (decimal coordinates, mode 1015) through a layered collector extension
@@ -1221,5 +1232,5 @@ appends 46 declared Avalonia events. The pinned probes cannot decide (the 1005 t
 pinned code is replayed over the child's own DECRQM replies beside effect contracts (`ntilde-utf8-mouse-1005-effect-v1`, `ntilde-urxvt-mouse-effect-v1`) graded by an independent oracle written from xterm's
 `button.c`. Both effect contracts are **supported** (all 49 experiments matched their literal expectation and the oracle) and both pinned verdicts stay **inconclusive** (a recorded divergence). The stock grade of
 `modes.utf8-mouse-1005` moves to supported through the stock collector's DECRPM path because production now answers DECRPM 1/2: a stock effect of the production change (a recognition check), not an effect-contract
-upgrade; stock grades are now 92/1/162. Receipt schema 63 and source policy v57 (380 files) bind it; the run is measured at App `7578595b` and scripts `2a6e4b58` with one retained superseded attempt.
+upgrade; stock grades are now 92/1/162. Receipt schema 64 and source policy v58 (387 files) bind it; the run is measured at App and scripts `aaaece99` with one retained superseded attempt (an environmental App startup abort).
 See [the qualification page](terminfo/2026-11-15-mouse-extended-qualification.md).

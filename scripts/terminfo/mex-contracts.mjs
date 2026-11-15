@@ -115,7 +115,7 @@ export function gradeMexCase(caseId, experiments, version = mexContractsVersion)
 /** The child's own reply to the pinned DECRQM request in one control capture: the exact `ESC [ ? 1005 ; Ps $ y` bytes, or undefined. */
 export function utf8ReplyOf(controlHex) {
     const text = Buffer.from(controlHex ?? '', 'hex').toString('latin1');
-    return new RegExp(String.raw`\x1b\[\?1005;[0-4]\$y`).exec(text)?.[0];
+    return /\x1b\[\?1005;[0-4]\$y/.exec(text)?.[0];
 }
 
 /**

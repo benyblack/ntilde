@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { mexCaseIds } from './mex-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '2a6e4b586d5841b9e625ce6096b0c6c820592e60';
-export const measuredAppRevision = '7578595b09d149b17bb23a9db4ab74d18b827e22';
+export const measuredScriptsRevision = 'aaaece9966cd62ae3e0cbf9afe1c87a52fb120db';
+export const measuredAppRevision = 'aaaece9966cd62ae3e0cbf9afe1c87a52fb120db';
 const stockOf = (raw, caseId) => {
     const observation = raw.observations.find(entry => entry.featureId === caseId);
     if (!observation) throw new Error(`Missing stock outcome: ${caseId}`);

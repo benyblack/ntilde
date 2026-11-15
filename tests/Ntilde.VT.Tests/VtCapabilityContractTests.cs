@@ -62,6 +62,8 @@ public sealed class VtCapabilityContractTests
             ["xterm-color-stack-push"] = AssertXtermColorStack,
             ["xterm-color-stack-pop"] = AssertXtermColorStack,
             ["xterm-color-stack-report"] = AssertXtermColorStack,
+            ["xterm-sgr-stack-push"] = AssertXtermSgrStack,
+            ["xterm-sgr-stack-pop"] = AssertXtermSgrStack,
             ["left-right-margin-mode"] = AssertLeftRightMarginMode,
             ["set-left-right-margins"] = AssertSetLeftRightMargins,
             ["color-stack-push"] = AssertRuntimeColorStack,
@@ -110,6 +112,8 @@ public sealed class VtCapabilityContractTests
             ["xterm-color-stack-push"] = "\u001b]10;#123456\a\u001b[#P",
             ["xterm-color-stack-pop"] = "\u001b[#P\u001b]10;#abcdef\a\u001b[#Q",
             ["xterm-color-stack-report"] = "\u001b[#P\u001b[#R",
+            ["xterm-sgr-stack-push"] = "\u001b[1m\u001b[#{",
+            ["xterm-sgr-stack-pop"] = "\u001b[#{\u001b[1m\u001b[#}",
             ["left-right-margin-mode"] = "\u001b[?69h\u001b[?69$p",
             ["set-left-right-margins"] = "\u001b[?69h\u001b[3;5s\u001b[1;4H12345",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
@@ -243,6 +247,20 @@ public sealed class VtCapabilityContractTests
             .Process("\u001bP+Q7465726d4e616d65\u001b\\");
         new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = responses.Add }.Process("\u001bP+Q7465726d4e616d65\u001b\\");
         Assert.Equal(new[] { "\u001bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\u001b\\", "\u001bP0+R7465726d4e616d65\u001b\\" }, responses);
+    }
+
+    /// <summary>Push saves the pen's attributes silently; pop restores them.</summary>
+    private static void AssertXtermSgrStack()
+    {
+        var buffer = new TerminalBuffer(8, 2);
+        var responses = new List<string>();
+        var parser = new AnsiParser(buffer) { OnResponse = responses.Add };
+        parser.Process("\u001b[1;31m\u001b[#{\u001b[0m");
+        Assert.False(buffer.IsBold);
+        parser.Process("\u001b[#}");
+        Assert.True(buffer.IsBold);
+        Assert.Equal(1, buffer.CurrentFgIndex);
+        Assert.Empty(responses);
     }
 
     /// <summary>Push, change, pop restores; the report is xterm's CSI ? depth ; deepest # Q.</summary>

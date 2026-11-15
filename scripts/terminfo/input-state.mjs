@@ -21,11 +21,14 @@ export function inputModeReplyHex(modes) {
         + `\x1b[?${modes.kittyKeyboardFlags}u`).toString('hex');
     // v3 plans prove the negotiated modifyOtherKeys level through XTQMODKEYS; plans whose modes never carry the
     // level re-derive byte-for-byte as before.
-    const withLevel = modes.modifyOtherKeysLevel === undefined ? base
-        : base + Buffer.from(`\x1b[>4;${modes.modifyOtherKeysLevel}m`).toString('hex');
+    let reply = base;
+    if (modes.modifyOtherKeysLevel !== undefined) reply += Buffer.from(`\x1b[>4;${modes.modifyOtherKeysLevel}m`).toString('hex');
     // v4 plans also prove the extended coordinate encodings (DECRQM 1005 then 1015, after the XTQMODKEYS reply); older plans never carry the keys.
-    return modes.mouseUtf8 === undefined ? withLevel
-        : withLevel + Buffer.from(`\x1b[?1005;${modes.mouseUtf8 ? 1 : 2}$y\x1b[?1015;${modes.mouseUrxvt ? 1 : 2}$y`).toString('hex');
+    if (modes.mouseUtf8 !== undefined) {
+        const state = flag => (flag ? 1 : 2);
+        reply += Buffer.from(`\x1b[?1005;${state(modes.mouseUtf8)}$y\x1b[?1015;${state(modes.mouseUrxvt)}$y`).toString('hex');
+    }
+    return reply;
 }
 /** Raw hex is a copied child observation; challenge bytes are never event bytes. */
 export function validateInputBytes(value, expectedHex, used, exact = true) {

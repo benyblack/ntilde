@@ -30,18 +30,18 @@ function withRetainedRun(body) {
 
 test('the manifest binds the final run and the one retained superseded attempt', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), 'd07b49523ec79d081785aab21eb4ff930219ebdec37e8a1105b927bd2cb5601e');
+    assert.equal(hash(manifestBytes), '090807277ee8fe957364345bf9ca73852b6dfa47a66ab46d2dc9b2bcd70110cc');
     const manifest = JSON.parse(manifestBytes);
     assert.deepEqual(Object.keys(manifest.archives), ['owned-run.zip', 'superseded/attempt-1.zip']);
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
-    assert.equal(manifest.archives['owned-run.zip'], '1371720651955a76d984352f4cc3ac944bf51b5bba8f4e19f596b0b8ab585bcc');
-    assert.equal(manifest.archives['superseded/attempt-1.zip'], 'f4a29e534973762e2709fd8cc2d4102ff9a10012c18e616476ff5d2a66d6c0f4');
-    // The retained failed attempt keeps its own failure record: the App refused a generated pointer event while no tracking selector was active.
+    assert.equal(manifest.archives['owned-run.zip'], 'fa0704e372ae41946af6b4b9197a9b474e573b9e2f03afc8bbf82f15c9bac13d');
+    assert.equal(manifest.archives['superseded/attempt-1.zip'], 'dac6cb1b75f48bb696a2f1b4e80b0a2dbb2da0cdbc99d7087ff5cb4b4f92d86f');
+    // The retained failed attempt keeps its own failure record: the disposable App aborted at startup (Avalonia render timer, display asleep) before any collection.
     const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
     const script = 'import zipfile,sys\nz=zipfile.ZipFile(sys.argv[1])\nsys.stdout.write(z.read("failure.json").decode())';
     const result = spawnSync(python, ['-I', '-c', script, join(dir, 'superseded/attempt-1.zip')], { encoding: 'utf8', windowsHide: true });
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout).error, 'Owned generated-input action failed.');
+    assert.equal(JSON.parse(result.stdout).error, 'Owned app exited before collection (SIGABRT).');
 });
 
 test('retained run independently rederives the complete receipt and published projection', () => withRetainedRun(root => {
@@ -63,12 +63,12 @@ test('retained run independently rederives the complete receipt and published pr
     projected.summary.receipt = original;
     assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
     assert.deepEqual(projected.report, JSON.parse(read('report.json')));
-    assert.equal(schemaVersion, 63); assert.equal(fixtureRemoved, true);
+    assert.equal(schemaVersion, 64); assert.equal(fixtureRemoved, true);
     assert.equal(context.ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v4');
-    assert.equal(context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v57');
+    assert.equal(context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v58');
     assert.equal(projected.summary.appRevision, measuredAppRevision);
     assert.equal(projected.summary.scriptsRevision, measuredScriptsRevision);
-    assert.equal(projected.summary.ownedRunId, 'a25f8db7d77fc3d00295ab5daa52ba2d');
+    assert.equal(projected.summary.ownedRunId, '59b3fbe52f6062679e5233e0b62fb9d2');
     assert.equal(projected.report.inputSuiteId, 'ntilde-owned-routed-input-v4');
     assert.equal(projected.report.restoredSnapshot, input.frames.length - 1);
 }));
