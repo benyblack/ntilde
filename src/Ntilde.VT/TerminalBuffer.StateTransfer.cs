@@ -58,6 +58,7 @@ namespace Ntilde.VT
                     Sgr = ExportLiveSgrNoLock(),
                     Colors = ExportRuntimeColors(),
                     SgrStack = ExportSgrStack(),
+                    SavedModes = ExportSavedModes(),
                     Modes = ExportModes(Modes),
                     KittyKeyboard = new TerminalKittyKeyboardState
                     {
@@ -221,6 +222,7 @@ namespace Ntilde.VT
                 if (wasReverseVideo != Modes.IsReverseVideo) MarkRenderThemeChangedNoLock();
                 ImportRuntimeColors(snapshot.Colors);
                 ImportSgrStack(snapshot.SgrStack);
+                ImportSavedModes(snapshot.SavedModes);
                 Modes.KittyKeyboard.ImportStacksForState(
                     snapshot.KittyKeyboard.MainStack,
                     snapshot.KittyKeyboard.AltStack,
@@ -979,6 +981,7 @@ namespace Ntilde.VT
             ValidateImageState(snapshot);
             TerminalRuntimeColors.Validate(snapshot.Colors);
             ValidateSgrStack(snapshot.SgrStack);
+            ValidateSavedModes(snapshot.SavedModes);
 
             // Ordered after the structure pass on purpose: the three CellsBase64 reads below
             // dereference Main/Alt/Scrollback, which the pass has just proven present.

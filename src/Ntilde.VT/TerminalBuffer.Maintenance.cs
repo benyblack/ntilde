@@ -477,6 +477,7 @@ namespace Ntilde.VT
 
                 ImportRuntimeColors(null);
                 ImportSgrStack(null);
+                ImportSavedModes(null);
 
                 // Clear after returning to main and resetting the pen. Clearing only the
                 // formerly active alternate screen left main text visible; using the old
