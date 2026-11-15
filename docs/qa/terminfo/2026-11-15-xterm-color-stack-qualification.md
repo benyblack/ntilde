@@ -23,7 +23,7 @@ reply) and the cursor of its read. The graded conclusion belongs to a separately
 | `modes.xtpushcolors` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 | `modes.xtpopcolors` | **inconclusive** (`insufficient-evidence`) | **supported** (divergence `pinned-inconclusive-effect-supported`) | inconclusive |
 
-The stock collector in the same owned run (`b98dd71e975f1709741b61dce5ef54e9`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the device-query batch's counts: no stock grade
+The stock collector in the same owned run (`08eb79bfd90d964a2a0f99b696dd3082`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), exactly the device-query batch's counts: no stock grade
 moves. The frozen stock baseline keeps its original grades. No Core point is added. Inventory: two more IDs with a supported effect contract and an inconclusive pinned verdict; no pinned-supported ID is added.
 
 ## What the effect contract decides
@@ -56,15 +56,18 @@ common-harness claim.
 
 App 0.14.0 (operator supplied) built from `fb6c7fd6b81b4e231afb86b500fbef26354100fd` (arm64 Release; the App sources equal the device-query batch's, executable SHA-256
 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `265bedc5075b4a56b39fe7d2a4b9ed3e35e527d4f9b207c86a240047bf0f589f`); measured scripts
-`da8b8dccd02ce975fc140d66ec89e2e8806aa6e3`; source policy `readonly-owned-source-graph-v56` (374 files; manifest SHA-256 `84704e414e10c2704326e6a2d49881a5346489a7a9179a350b578d2500b74ff4`); query policy
-`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `b997c585e6b26c8d0aa29d429a524d7705c88c1aa857680bb3ae043209ff731a`; receipt schema 62; Node v24.22.2; owned run
-`fbfbd6e79aaf59c5178ebbf5c4a30bec`; collected 2026-11-15T12:59Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
+`c03aab163b042abefb25abaf399282785eed2117`; source policy `readonly-owned-source-graph-v56` (374 files; manifest SHA-256 `5f2d0eb42a76f307763ded296bbd1cc0392278abd0621ae5cf7983be181f4b30`); query policy
+`owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `aeee6fe94555eea7e4eb90cfad035b46bec7854f01932715d3ad3e3c8d8bdb50`; receipt schema 62; Node v24.22.2; owned run
+`f2b775acf7b7faaed7c3b9e20c8ce4fc`; collected 2026-11-15T13:14Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
 retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-15-xterm-color-stack/superseded/))
 
 1. Collected every suite including this one (the xcs suite itself took about a second), then the whole collection hit the runner's fixed 5-minute budget (`Owned collection exceeded 5 minutes.`, at 5:00 after the
-   routed-input suite) before the later stages finished. The same committed scripts and sidecar were run again unchanged and completed.
+   routed-input suite) before the later stages finished. The same committed scripts and sidecar were run again unchanged.
+2. Completed with both effect contracts supported and the same pinned verdicts, measured at `da8b8dccd02ce975fc140d66ec89e2e8806aa6e3` (owned run `fbfbd6e79aaf59c5178ebbf5c4a30bec`); superseded because the local Codex
+   review of that head found two defects in measured files: the pinned-replay call-count check refused the pinned termless probe's valid early `invalid-reply` return, and the exchange parser threw on unexpected non-OSC
+   output of a stack operation instead of retaining it. Both are fixed (and unit-tested, the early return also against the real pinned bundle) and the suite was remeasured.
 
 The final run is [owned-run.zip](2026-11-15-xterm-color-stack/owned-run.zip); `node --test scripts/terminfo/xcs-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the retained
 journal and compares the published projection.
