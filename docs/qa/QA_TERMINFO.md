@@ -1194,3 +1194,12 @@ policy v3 (`...-v3`; v1 and v2 runs keep the silence expectation). Two effect co
 an independent oracle over the pane-metadata observer with the inactive-window precondition recorded at control time and at delivery, including a held chunk that must not show early. No OS
 delivery, OSC 99 actions, icons, buttons, urgency, sounds or expiry are claimed. The stock grade of OSC 99 is now supported (88/1/166); OSC 777 stays inconclusive. Receipt schema 59 and
 source policy v53 (353 files) bind it; earlier policies stay frozen.
+
+### Device query qualification
+
+The [device-query batch](terminfo/2026-11-15-device-queries-qualification.md) first **implements** XTGETXRES `termName`, xterm's palette stack (`CSI Pm # P`, `CSI Pm # Q`, `CSI # R`, reply
+`CSI ? depth ; deepest # Q`) and the `CSI 20 t` / `CSI 21 t` title reports (off by default behind `AllowTitleReport`), then qualifies `device.xtgetxres`, `device.xtreportcolors`, `device.xtwinops-20` and
+`device.xtwinops-21` through a layered collector extension (`ntilde-owned-device-queries-grading-v1`) over the left/right-margin one, replaying the unchanged pinned code over the journaled raw replies of
+fenced exchanges beside an effect contract (`ntilde-device-query-report-effect-v1`) graded by an independent oracle written from xterm's text and source. Three pinned verdicts are supported; the
+XTREPORTCOLORS pinned pattern has no `?` marker and cannot match xterm's reply, so that verdict stays inconclusive beside a supported effect contract. `device.term-features` is documented only. Stock
+grades are now 91/1/163. Query policy v4, receipt schema 61 and source policy v55 (367 files) bind it; earlier policies stay frozen.

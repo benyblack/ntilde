@@ -16,9 +16,9 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '03089768aa747048f3081acd3e9495032803e60bb97f0478644cce2b3d4d1fff');
+    assert.equal(hash(manifestBytes), '730dd5e32588e4e51264fb5955d5ca24d92c93fc37acbaf741a1b319e762c12c');
     const manifest = JSON.parse(manifestBytes);
-    assert.equal(Object.keys(manifest.archives).length, 4, 'the final run and the retained superseded attempts');
+    assert.equal(Object.keys(manifest.archives).length, 6, 'the final run and the retained superseded attempts');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-devq-publication-'));
     try {
@@ -37,7 +37,7 @@ test('retained run independently rederives the complete receipt and published pr
         projected.summary.receipt = original;
         assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
-        assert.equal(schemaVersion, 60); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 61); assert.equal(fixtureRemoved, true);
         const settings = JSON.parse(readFileSync(join(root, 'initial-settings.json')));
         assert.equal(settings.AllowTitleReport, true, 'the measured run turned the off-by-default title reports on');
         assert.equal(JSON.parse(readFileSync(join(root, 'context.json'))).ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v4');

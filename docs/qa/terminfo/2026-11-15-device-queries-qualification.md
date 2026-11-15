@@ -39,7 +39,7 @@ verdict stays inconclusive (`invalid-reply`) and is recorded as a divergence bes
 | `device.xtwinops-20` | **supported** | **supported** | **supported** |
 | `device.xtwinops-21` | **supported** | **supported** | **supported** |
 
-The stock collector in the same owned run (`1962565804195dff298c78394d3773cd`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), three more supported than 88/1/166: the three
+The stock collector in the same owned run (`ce388516353fd8ae119e441d40e0eaaa`) grades 91 supported / 1 unsupported / 163 inconclusive (`suiteComplete=false`), three more supported than 88/1/166: the three
 stock changes come from the App now answering the unchanged pinned probes (the title reports because this run turns `AllowTitleReport` on). The frozen stock baseline keeps its original grades. No Core point is added.
 
 ## What was measured (disposable direct-local pane, alternate screen)
@@ -72,10 +72,10 @@ remote/mux, persistent-session, Windows/Linux or common-harness claim. Seven old
 
 ## Identities
 
-App 0.13.0 (operator supplied) built from `c14938d8c88891f2d57c1f08a6aa47adfe1048ae` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
-`aa42bbac46d23faa01c0194fb99d2482c7c375b0e27c6eab4006ce9a148ac01d`); measured scripts `dac43ac596700afe005332b43b2bfb1a9b2b81d8`; source policy `readonly-owned-source-graph-v54` (360 files; manifest SHA-256
-`d1d5406ecd749e976eba3018cb6f43274055865b369daa50fd14ce0201fc2afd`); query policy `owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `76d8531b0d035e9273f160ef3cb88d32aede56ec115549f542eb06a9ef0d1c18`;
-receipt schema 60; Node v24.22.2; owned run `660d77535b3e4e619d8783760939666a`; collected 2026-11-15T11:48Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their
+App 0.14.0 (operator supplied) built from `fb6c7fd6b81b4e231afb86b500fbef26354100fd` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256
+`f7c17ddf6ba81af41596e0a0ba5c2abb5efa5c488c6cb2c2c40926d042820cdf`); measured scripts `906234df1d15dc63e36dd0b38d474ffe15c817a0`; source policy `readonly-owned-source-graph-v55` (367 files; manifest SHA-256
+`641b8b6ea0cb518078fe1b111ad879806f2a45e14833870de244807de6ab8074`); query policy `owned-exact-query-paired-raw-state-v4`; initial settings SHA-256 `ac537677cbed264ebd1a0227249dae1699d0cfb4ff5c2f14bc1fdbca015deff2`;
+receipt schema 61; Node v24.22.2; owned run `62463fd73cc60f314b6462c60ddc821f`; collected 2026-11-15T12:21Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their
 receipt suffixes rederive from the retained bytes.
 
 ## Retained attempts ([superseded/](2026-11-15-device-queries/superseded/))
@@ -84,6 +84,9 @@ receipt suffixes rederive from the retained bytes.
 2. Collected every suite, then the parent-side rederivation refused it: popping the xterm palette stack restores the saved colours, not the host's, so cases after the colour-stack case saw another colour binding. The case now
    ends with an explicit colour reset.
 3. Completed with all four effect contracts supported and the same pinned verdicts; superseded because the `q07.device.xtreportcolors` witness had been written to owe `0;10` while the query suite's RIS yields `0;0`, a measured-script change.
+4. Completed with all four effect contracts supported, measured at `dac43ac5` on source policy v54 / receipt schema 60 / App 0.13.0; superseded because main moved (PR 962, selection colors, took policy v54, and the 0.14.0 release changed the App), so the layer was restacked
+   onto policy v55 and remeasured.
+5. First run on the restacked tree: failed at start because the restack merge had dropped the device-query bundle keys from the runner's config and the `devqEvidence` argument of the receipt completion. Restored, and covered by a comparison of every device-query reference per file between the old and restacked branches.
 
 The final run is [owned-run.zip](2026-11-15-device-queries/owned-run.zip); `node --test scripts/terminfo/devq-publication.test.mjs` extracts it, re-issues the receipt, rebuilds the report from the retained journal and
 compares the published projection.
