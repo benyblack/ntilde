@@ -72,6 +72,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('xcs', '2026-11-15-xterm-color-stack', '2026-11-15-xterm-color-stack-qualification.md'), module: 'xcs-contracts.mjs', exports: ['xcsSuiteId', 'xcsContractsVersion', 'xcsCaseIds'], test: 'xcs-publication.test.mjs' },
     { ...directory('xss', '2026-11-15-xterm-sgr-stack', '2026-11-15-xterm-sgr-stack-qualification.md'), module: 'xss-contracts.mjs', exports: ['xssSuiteId', 'xssContractsVersion', 'xssCaseIds'], test: 'xss-publication.test.mjs' },
     { ...directory('mex', '2026-11-15-mouse-extended', '2026-11-15-mouse-extended-qualification.md'), module: 'mex-contracts.mjs', exports: ['mexGradedSuiteId', 'mexContractsVersion', 'mexCaseIds'], test: 'mex-publication.test.mjs' },
+    { ...directory('kcl', '2026-11-15-kitty-color-control', '2026-11-15-kitty-color-control-qualification.md'), module: 'kcl-contracts.mjs', exports: ['kclSuiteId', 'kclContractsVersion', 'kclCaseIds'], test: 'kcl-publication.test.mjs' },
 ]);
 
 /**

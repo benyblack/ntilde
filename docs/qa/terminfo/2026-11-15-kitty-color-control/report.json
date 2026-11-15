@@ -1,0 +1,849 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-kitty-color-graded-v1",
+  "contractsVersion": 1,
+  "runId": "59863c5da6e5a5cdb2f0483d633655b3",
+  "adapter": {
+    "id": "ntilde-owned-kitty-color-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "e83ac5d5e134db14b779695a8a83a4573d6737a87e2aff2cd1d5e82ce76cac7b",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criterion for extensions.osc21-kitty-color (OSC 21;foreground=? ST: one framed OSC 21 whose single foreground field is empty or rgb:h/h/h with one to four hex digits; a query-only probe that can never return unsupported), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v5) and replayed byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent oracle written from kitty's color-control protocol text: exact 8-bit rgb replies for foreground, background, cursor, the selection colors and palette entries 5 and 200 that other sequences (OSC 4, 10, 11, 12, 17, 19) set, each key alone and together in request order, ST-terminated replies to BEL requests, set-then-query and the numeric encodings read back through OSC 21 and through the legacy OSC replies, a bare key restoring the baseline reply, the legacy resets restoring the baseline, unknown keys as Base64 unknown fields, every exchange leaving the complete screen, cursor, margins, modes and active screen unchanged; color names, alpha, the empty (dynamic) value, cursor_text, visual_bell, transparent_background_color keys, key case, the oversize cap and the field cap are policy groups that never decide, and the #RGB and out-of-range rgbi spellings differ from kitty's text and are recorded as policy divergences; raw replies and stored state, not rendering or painted pixels; no setting of dynamic or named colors, no alpha or opacity, no remote/mux, Windows/Linux or common-harness claim.",
+  "cases": [
+    {
+      "caseId": "extensions.osc21-kitty-color",
+      "pinnedCriterion": "OSC 21;foreground=? ST returns an OSC 21 frame holding exactly one foreground field whose value is empty or rgb:h{1,4}/h{1,4}/h{1,4}; no frame is inconclusive (no-response) and no frame can be unsupported",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feedCapture",
+            "\\e]21;foreground=?\\e\\",
+            "replies"
+          ]
+        ],
+        "terminal": [
+          [
+            "queryWithSentinelOutcome",
+            "\\e]21;foreground=?\\e\\",
+            "\\x1b\\]21;([^\\x07\\x1b]*)(?:\\x07|\\x1b\\\\)"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-kitty-color-control-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-kitty-color-control-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feedCapture",
+              "\\e]21;foreground=?\\e\\",
+              "replies"
+            ]
+          ],
+          "terminal": [
+            [
+              "queryWithSentinelOutcome",
+              "\\e]21;foreground=?\\e\\",
+              "\\x1b\\]21;([^\\x07\\x1b]*)(?:\\x07|\\x1b\\\\)"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_KC_59863c5da6e5a5cdb2f0483d633655b3",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "baseline": {
+          "5": "rgb:cd/00/cd",
+          "200": "rgb:ff/00/d7",
+          "foreground": "rgb:d3/d3/d3",
+          "background": "rgb:00/00/00",
+          "cursor": "rgb:ff/ff/ff",
+          "selection_background": "",
+          "selection_foreground": ""
+        },
+        "groups": {
+          "baseline-main": {
+            "kind": "control",
+            "request": "\\e]21;foreground=?;background=?;cursor=?\\e\\",
+            "demand": "the host default of foreground, background, cursor is read back (one OSC 21, one complete rgb value per key in order; a selection color may be undefined) and becomes the restoration oracle",
+            "demanded": null,
+            "received": [
+              "\\e]21;foreground=rgb:d3/d3/d3;background=rgb:00/00/00;cursor=rgb:ff/ff/ff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "baseline-selection": {
+            "kind": "control",
+            "request": "\\e]21;selection_background=?;selection_foreground=?\\e\\",
+            "demand": "the host default of selection_background, selection_foreground is read back (one OSC 21, one complete rgb value per key in order; a selection color may be undefined) and becomes the restoration oracle",
+            "demanded": null,
+            "received": [
+              "\\e]21;selection_background=;selection_foreground=\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "baseline-palette": {
+            "kind": "control",
+            "request": "\\e]21;5=?;200=?\\e\\",
+            "demand": "the host default of 5, 200 is read back (one OSC 21, one complete rgb value per key in order; a selection color may be undefined) and becomes the restoration oracle",
+            "demanded": null,
+            "received": [
+              "\\e]21;5=rgb:cd/00/cd;200=rgb:ff/00/d7\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e]21;foreground=?\\e\\",
+            "demand": "the exact pinned request on the untouched host default reports the foreground as one OSC 21 field ended by ST",
+            "demanded": [
+              "\\e]21;foreground=rgb:d3/d3/d3\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:d3/d3/d3\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "setup-A-main": {
+            "kind": "control",
+            "request": "\\e]10;?\\e\\\\e]11;?\\e\\\\e]12;?\\e\\",
+            "setup": [
+              "\\e]10;#102030\\e\\",
+              "\\e]11;#112233\\e\\",
+              "\\e]12;#a1b2c3\\e\\",
+              "\\e]17;#0f1e2d\\e\\",
+              "\\e]19;#d2e3f4\\e\\",
+              "\\e]4;5;#445566\\e\\",
+              "\\e]4;200;#123456\\e\\"
+            ],
+            "demand": "color set A is written through the legacy OSC 10/11/12/17/19/4 sequences and the foreground, background and cursor read back through OSC 10/11/12 replies",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]12;rgb:a1a1/b2b2/c3c3\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "setup-A-rest": {
+            "kind": "control",
+            "request": "\\e]17;?\\e\\\\e]19;?\\e\\\\e]4;5;?\\e\\\\e]4;200;?\\e\\",
+            "demand": "the selection colors and palette entries 5 and 200 of set A read back through OSC 17/19 and OSC 4 replies",
+            "demanded": [
+              "\\e]17;rgb:0f0f/1e1e/2d2d\\e\\",
+              "\\e]19;rgb:d2d2/e3e3/f4f4\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\",
+              "\\e]4;200;rgb:1212/3434/5656\\e\\"
+            ],
+            "received": [
+              "\\e]17;rgb:0f0f/1e1e/2d2d\\e\\",
+              "\\e]19;rgb:d2d2/e3e3/f4f4\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\",
+              "\\e]4;200;rgb:1212/3434/5656\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-foreground": {
+            "kind": "protocol",
+            "request": "\\e]21;foreground=?\\e\\",
+            "demand": "OSC 21 foreground=? reports the color the legacy OSC 10 set, as rgb:rr/gg/bb",
+            "demanded": [
+              "\\e]21;foreground=rgb:10/20/30\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:10/20/30\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-background": {
+            "kind": "protocol",
+            "request": "\\e]21;background=?\\e\\",
+            "demand": "OSC 21 background=? reports the color the legacy OSC 11 set, as rgb:rr/gg/bb",
+            "demanded": [
+              "\\e]21;background=rgb:11/22/33\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:11/22/33\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-cursor": {
+            "kind": "protocol",
+            "request": "\\e]21;cursor=?\\e\\",
+            "demand": "OSC 21 cursor=? reports the color the legacy OSC 12 set, as rgb:rr/gg/bb",
+            "demanded": [
+              "\\e]21;cursor=rgb:a1/b2/c3\\e\\"
+            ],
+            "received": [
+              "\\e]21;cursor=rgb:a1/b2/c3\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-selection_background": {
+            "kind": "protocol",
+            "request": "\\e]21;selection_background=?\\e\\",
+            "demand": "OSC 21 selection_background=? reports the color the legacy OSC 17 set, as rgb:rr/gg/bb",
+            "demanded": [
+              "\\e]21;selection_background=rgb:0f/1e/2d\\e\\"
+            ],
+            "received": [
+              "\\e]21;selection_background=rgb:0f/1e/2d\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-selection_foreground": {
+            "kind": "protocol",
+            "request": "\\e]21;selection_foreground=?\\e\\",
+            "demand": "OSC 21 selection_foreground=? reports the color the legacy OSC 19 set, as rgb:rr/gg/bb",
+            "demanded": [
+              "\\e]21;selection_foreground=rgb:d2/e3/f4\\e\\"
+            ],
+            "received": [
+              "\\e]21;selection_foreground=rgb:d2/e3/f4\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-5": {
+            "kind": "protocol",
+            "request": "\\e]21;5=?\\e\\",
+            "demand": "OSC 21 5=? reports the color the legacy OSC 4;5 set, as rgb:rr/gg/bb",
+            "demanded": [
+              "\\e]21;5=rgb:44/55/66\\e\\"
+            ],
+            "received": [
+              "\\e]21;5=rgb:44/55/66\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-200": {
+            "kind": "protocol",
+            "request": "\\e]21;200=?\\e\\",
+            "demand": "OSC 21 200=? reports the color the legacy OSC 4;200 set, as rgb:rr/gg/bb",
+            "demanded": [
+              "\\e]21;200=rgb:12/34/56\\e\\"
+            ],
+            "received": [
+              "\\e]21;200=rgb:12/34/56\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "combined-order": {
+            "kind": "protocol",
+            "request": "\\e]21;cursor=?;5=?;foreground=?;200=?;background=?\\e\\",
+            "demand": "five keys asked in one OSC 21 are answered in one OSC 21 whose fields follow the request order",
+            "demanded": [
+              "\\e]21;cursor=rgb:a1/b2/c3;5=rgb:44/55/66;foreground=rgb:10/20/30;200=rgb:12/34/56;background=rgb:11/22/33\\e\\"
+            ],
+            "received": [
+              "\\e]21;cursor=rgb:a1/b2/c3;5=rgb:44/55/66;foreground=rgb:10/20/30;200=rgb:12/34/56;background=rgb:11/22/33\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "bel-terminated": {
+            "kind": "protocol",
+            "request": "\\e]21;background=?\\a",
+            "demand": "a request ended by BEL is answered by a reply ended by ST",
+            "demanded": [
+              "\\e]21;background=rgb:11/22/33\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:11/22/33\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "two-sequences": {
+            "kind": "protocol",
+            "request": "\\e]21;foreground=?\\e\\\\e]21;cursor=?\\e\\",
+            "demand": "two OSC 21 queries in one request are answered by two replies in request order",
+            "demanded": [
+              "\\e]21;foreground=rgb:10/20/30\\e\\",
+              "\\e]21;cursor=rgb:a1/b2/c3\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:10/20/30\\e\\",
+              "\\e]21;cursor=rgb:a1/b2/c3\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-then-query": {
+            "kind": "protocol",
+            "request": "\\e]21;foreground=#0a1b2c;foreground=?\\e\\",
+            "demand": "a set and a query in one OSC 21 are answered with the new color",
+            "demanded": [
+              "\\e]21;foreground=rgb:0a/1b/2c\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:0a/1b/2c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-readback-legacy": {
+            "kind": "protocol",
+            "request": "\\e]10;?\\e\\",
+            "demand": "the color OSC 21 set is the color the legacy OSC 10 reports (one shared state, sixteen-bit reply)",
+            "demanded": [
+              "\\e]10;rgb:0a0a/1b1b/2c2c\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:0a0a/1b1b/2c2c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "encoding-rrggbb": {
+            "kind": "protocol",
+            "request": "\\e]21;background=#223344;background=?\\e\\",
+            "demand": "#RRGGBB sets the background to its eight-bit channels",
+            "demanded": [
+              "\\e]21;background=rgb:22/33/44\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:22/33/44\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "encoding-rgb-1": {
+            "kind": "protocol",
+            "request": "\\e]21;background=rgb:f/0/8;background=?\\e\\",
+            "demand": "rgb:h/h/h scales four-bit channels to eight bits (f is ff, 8 is 88)",
+            "demanded": [
+              "\\e]21;background=rgb:ff/00/88\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:ff/00/88\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "encoding-rgb-2": {
+            "kind": "protocol",
+            "request": "\\e]21;background=rgb:12/ab/ef;background=?\\e\\",
+            "demand": "rgb:hh/hh/hh sets the eight-bit channels",
+            "demanded": [
+              "\\e]21;background=rgb:12/ab/ef\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:12/ab/ef\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "encoding-rgb-4": {
+            "kind": "protocol",
+            "request": "\\e]21;background=rgb:1234/5678/9abc;background=?\\e\\",
+            "demand": "rgb:hhhh/hhhh/hhhh scales sixteen-bit channels to eight bits",
+            "demanded": [
+              "\\e]21;background=rgb:12/56/9a\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:12/56/9a\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "encoding-rgbi": {
+            "kind": "protocol",
+            "request": "\\e]21;background=rgbi:1/0/0.2;background=?\\e\\",
+            "demand": "rgbi:r/g/b scales intensities in [0,1] to eight bits",
+            "demanded": [
+              "\\e]21;background=rgb:ff/00/33\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:ff/00/33\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "encoding-sharp-12": {
+            "kind": "protocol",
+            "request": "\\e]21;background=#123456789;background=?\\e\\",
+            "demand": "#RRRGGGBBB keeps the most significant eight bits of each twelve-bit channel",
+            "demanded": [
+              "\\e]21;background=rgb:12/45/78\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:12/45/78\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "palette-set": {
+            "kind": "protocol",
+            "request": "\\e]21;5=#667788;5=?\\e\\",
+            "demand": "a palette index set through OSC 21 is reported by OSC 21",
+            "demanded": [
+              "\\e]21;5=rgb:66/77/88\\e\\"
+            ],
+            "received": [
+              "\\e]21;5=rgb:66/77/88\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "palette-readback-legacy": {
+            "kind": "protocol",
+            "request": "\\e]4;5;?\\e\\",
+            "demand": "the palette color OSC 21 set is the color the legacy OSC 4 reports",
+            "demanded": [
+              "\\e]4;5;rgb:6666/7777/8888\\e\\"
+            ],
+            "received": [
+              "\\e]4;5;rgb:6666/7777/8888\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "selection-set": {
+            "kind": "control",
+            "request": "\\e]21;selection_background=?;selection_foreground=?\\e\\",
+            "setup": [
+              "\\e]21;selection_background=#1f2e3d;selection_foreground=#4c5b6a\\e\\"
+            ],
+            "demand": "the selection colors set through OSC 21 are reported by OSC 21",
+            "demanded": [
+              "\\e]21;selection_background=rgb:1f/2e/3d;selection_foreground=rgb:4c/5b/6a\\e\\"
+            ],
+            "received": [
+              "\\e]21;selection_background=rgb:1f/2e/3d;selection_foreground=rgb:4c/5b/6a\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "selection-readback-legacy": {
+            "kind": "protocol",
+            "request": "\\e]17;?\\e\\\\e]19;?\\e\\",
+            "demand": "the selection colors OSC 21 set are the colors the legacy OSC 17 and OSC 19 report",
+            "demanded": [
+              "\\e]17;rgb:1f1f/2e2e/3d3d\\e\\",
+              "\\e]19;rgb:4c4c/5b5b/6a6a\\e\\"
+            ],
+            "received": [
+              "\\e]17;rgb:1f1f/2e2e/3d3d\\e\\",
+              "\\e]19;rgb:4c4c/5b5b/6a6a\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "reset-bare-key": {
+            "kind": "protocol",
+            "request": "\\e]21;foreground;background\\e\\\\e]21;foreground=?;background=?\\e\\",
+            "setup": [
+              "\\e]21;foreground=#aa0011;background=#00aa11\\e\\"
+            ],
+            "demand": "a bare key resets the color to the host default: after resets the queries report the baseline",
+            "demanded": [
+              "\\e]21;foreground=rgb:d3/d3/d3;background=rgb:00/00/00\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:d3/d3/d3;background=rgb:00/00/00\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "reset-palette": {
+            "kind": "protocol",
+            "request": "\\e]21;5;200\\e\\\\e]21;5=?;200=?\\e\\",
+            "setup": [
+              "\\e]21;5=#010203;200=#030201\\e\\"
+            ],
+            "demand": "a bare palette index resets the entry to the host default",
+            "demanded": [
+              "\\e]21;5=rgb:cd/00/cd;200=rgb:ff/00/d7\\e\\"
+            ],
+            "received": [
+              "\\e]21;5=rgb:cd/00/cd;200=rgb:ff/00/d7\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-main": {
+            "kind": "protocol",
+            "request": "\\e]21;foreground=?;background=?;cursor=?\\e\\",
+            "setup": [
+              "\\e]21;foreground=#010101;background=#020202;cursor=#030303;selection_background=#040404;selection_foreground=#050505;5=#060606;200=#070707\\e\\",
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "after the legacy resets (OSC 104/110/111/112/117/119) a set color reads back as the baseline: the foreground, background and cursor",
+            "demanded": [
+              "\\e]21;foreground=rgb:d3/d3/d3;background=rgb:00/00/00;cursor=rgb:ff/ff/ff\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:d3/d3/d3;background=rgb:00/00/00;cursor=rgb:ff/ff/ff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-selection": {
+            "kind": "protocol",
+            "request": "\\e]21;selection_background=?;selection_foreground=?\\e\\",
+            "demand": "the legacy resets restore the selection colors to the baseline",
+            "demanded": [
+              "\\e]21;selection_background=;selection_foreground=\\e\\"
+            ],
+            "received": [
+              "\\e]21;selection_background=;selection_foreground=\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "restore-palette": {
+            "kind": "protocol",
+            "request": "\\e]21;5=?;200=?\\e\\",
+            "demand": "the legacy resets restore palette entries 5 and 200 to the baseline",
+            "demanded": [
+              "\\e]21;5=rgb:cd/00/cd;200=rgb:ff/00/d7\\e\\"
+            ],
+            "received": [
+              "\\e]21;5=rgb:cd/00/cd;200=rgb:ff/00/d7\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unknown-key": {
+            "kind": "protocol",
+            "request": "\\e]21;nonsense=?\\e\\",
+            "demand": "a key the terminal has no color for is answered by unknown=<Base64 of the key>",
+            "demanded": [
+              "\\e]21;unknown=bm9uc2Vuc2U\\e\\"
+            ],
+            "received": [
+              "\\e]21;unknown=bm9uc2Vuc2U\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unknown-index": {
+            "kind": "protocol",
+            "request": "\\e]21;256=?\\e\\",
+            "demand": "a palette index past 255 is not a color key and is answered as unknown",
+            "demanded": [
+              "\\e]21;unknown=MjU2\\e\\"
+            ],
+            "received": [
+              "\\e]21;unknown=MjU2\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unknown-padding": {
+            "kind": "protocol",
+            "request": "\\e]21;a=?;ab=?;abc=?\\e\\",
+            "demand": "the Base64 of an unknown key carries no padding",
+            "demanded": [
+              "\\e]21;unknown=YQ;unknown=YWI;unknown=YWJj\\e\\"
+            ],
+            "received": [
+              "\\e]21;unknown=YQ;unknown=YWI;unknown=YWJj\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unknown-order": {
+            "kind": "protocol",
+            "request": "\\e]21;zeta=?;alpha=?\\e\\",
+            "demand": "every unknown key gets one unknown field, in the order received",
+            "demanded": [
+              "\\e]21;unknown=emV0YQ;unknown=YWxwaGE\\e\\"
+            ],
+            "received": [
+              "\\e]21;unknown=emV0YQ;unknown=YWxwaGE\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "interleaved-unknown": {
+            "kind": "policy",
+            "request": "\\e]21;foreground=?;nonsense=?;background=?\\e\\",
+            "demand": "a known, an unknown and a known key keep the request order in one reply (kitty's text orders only the unknown fields among themselves)",
+            "demanded": [
+              "\\e]21;foreground=rgb:d3/d3/d3;unknown=bm9uc2Vuc2U;background=rgb:00/00/00\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:d3/d3/d3;unknown=bm9uc2Vuc2U;background=rgb:00/00/00\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unmodeled-keys": {
+            "kind": "policy",
+            "request": "\\e]21;cursor_text=?;visual_bell=?\\e\\",
+            "demand": "cursor_text and visual_bell are kitty keys Ntilde does not model and answers as unknown",
+            "demanded": [
+              "\\e]21;unknown=Y3Vyc29yX3RleHQ;unknown=dmlzdWFsX2JlbGw\\e\\"
+            ],
+            "received": [
+              "\\e]21;unknown=Y3Vyc29yX3RleHQ;unknown=dmlzdWFsX2JlbGw\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unmodeled-transparent": {
+            "kind": "policy",
+            "request": "\\e]21;transparent_background_color1=?\\e\\",
+            "demand": "transparent_background_color1 is a kitty key Ntilde does not model and answers as unknown",
+            "demanded": [
+              "\\e]21;unknown=dHJhbnNwYXJlbnRfYmFja2dyb3VuZF9jb2xvcjE\\e\\"
+            ],
+            "received": [
+              "\\e]21;unknown=dHJhbnNwYXJlbnRfYmFja2dyb3VuZF9jb2xvcjE\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "key-case": {
+            "kind": "policy",
+            "request": "\\e]21;Foreground=?\\e\\",
+            "demand": "keys are case-sensitive: Foreground is not foreground (kitty's text does not say)",
+            "demanded": [
+              "\\e]21;unknown=Rm9yZWdyb3VuZA\\e\\"
+            ],
+            "received": [
+              "\\e]21;unknown=Rm9yZWdyb3VuZA\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "encoding-sharp-4": {
+            "kind": "policy",
+            "request": "\\e]21;background=#3a7;background=?\\e\\",
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "kitty's text reads #RGB as most significant bits (#3a7 is #3000a0007000, eight-bit 30/a0/70); Ntilde scales short forms like its OSC 10 parser",
+            "demanded": [
+              "\\e]21;background=rgb:30/a0/70\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:33/aa/77\\e\\"
+            ],
+            "matches": false,
+            "unchanged": true
+          },
+          "encoding-rgbi-range": {
+            "kind": "policy",
+            "request": "\\e]21;background=rgbi:2/0/0;background=?\\e\\",
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "kitty's text clips rgbi intensities to 0..1 (2 is 1, ff0000); Ntilde refuses an out-of-range intensity and keeps the color in force",
+            "demanded": [
+              "\\e]21;background=rgb:ff/00/00\\e\\"
+            ],
+            "received": [
+              "\\e]21;background=rgb:00/00/00\\e\\"
+            ],
+            "matches": false,
+            "unchanged": true
+          },
+          "empty-value": {
+            "kind": "policy",
+            "request": "\\e]21;foreground=;foreground=?\\e\\",
+            "setup": [
+              "\\e]10;#0a0b0c\\e\\"
+            ],
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "an empty value (kitty's \"dynamic\" color) is ignored: the color in force stays",
+            "demanded": [
+              "\\e]21;foreground=rgb:0a/0b/0c\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:0a/0b/0c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "color-name": {
+            "kind": "policy",
+            "request": "\\e]21;foreground=red;foreground=?\\e\\",
+            "setup": [
+              "\\e]10;#0a0b0c\\e\\"
+            ],
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "a color name is not modeled and is ignored: the color in force stays",
+            "demanded": [
+              "\\e]21;foreground=rgb:0a/0b/0c\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:0a/0b/0c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "alpha-suffix": {
+            "kind": "policy",
+            "request": "\\e]21;foreground=#102030@0.5;foreground=?\\e\\",
+            "setup": [
+              "\\e]10;#0a0b0c\\e\\"
+            ],
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "an @alpha suffix is not modeled and the field is ignored: the color in force stays",
+            "demanded": [
+              "\\e]21;foreground=rgb:0a/0b/0c\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:0a/0b/0c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-only-silent": {
+            "kind": "policy",
+            "request": "\\e]21;foreground=#010203;background\\e\\",
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "an OSC 21 without a query is not answered",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "oversize-dropped": {
+            "kind": "policy",
+            "request": "\\e]21;foreground=?;5=?\\e\\",
+            "setup": [
+              "\\e]10;#0d0e0f\\e\\",
+              "\\e]21;foreground=#999999;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000;5=#000000\\e\\"
+            ],
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "an OSC 21 over 4096 characters is dropped whole: neither its foreground nor its palette set takes effect",
+            "demanded": [
+              "\\e]21;foreground=rgb:0d/0e/0f;5=rgb:cd/00/cd\\e\\"
+            ],
+            "received": [
+              "\\e]21;foreground=rgb:0d/0e/0f;5=rgb:cd/00/cd\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "field-cap": {
+            "kind": "policy",
+            "request": "\\e]21;5=?\\e\\",
+            "setup": [
+              "\\e]21;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000001;5=#000002\\e\\"
+            ],
+            "after": [
+              "\\e]104\\e\\\\e]110\\e\\\\e]111\\e\\\\e]112\\e\\\\e]117\\e\\\\e]119\\e\\"
+            ],
+            "demand": "only the first 256 fields of an OSC 21 are processed: the 257th palette set is ignored",
+            "demanded": [
+              "\\e]21;5=rgb:00/00/01\\e\\"
+            ],
+            "received": [
+              "\\e]21;5=rgb:00/00/01\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": true,
+          "response": "\u001b]21;foreground=rgb:d3/d3/d3\u001b\\",
+          "note": "Foreground query recognized; setting colors and visible rendering were not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Foreground query recognized; setting colors and visible rendering were not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "OSC 21 foreground query returns RGB or an explicitly undefined value",
+              "observed": "\u001b]21;foreground=rgb:d3/d3/d3\u001b\\"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": true,
+          "response": "\u001b]21;foreground=rgb:d3/d3/d3\u001b\\",
+          "note": "Foreground query recognized; setting colors and visible rendering were not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Foreground query recognized; setting colors and visible rendering were not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "OSC 21 foreground query returns RGB or an explicitly undefined value",
+              "observed": "\u001b]21;foreground=rgb:d3/d3/d3\u001b\\"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc21-kitty-color",
+        "outcome": "supported",
+        "evidence": "query",
+        "note": "Foreground query recognized; setting colors and visible rendering were not tested",
+        "rawReplyRef": "extensions.osc21-kitty-color"
+      },
+      "queryWitness": {
+        "id": "q07.extensions.osc21-kitty-color",
+        "expectedEvidence": "positive-reply",
+        "expectedPattern": "^\u001b\\]21;foreground=rgb:[0-9a-f]{2}\\/[0-9a-f]{2}\\/[0-9a-f]{2}\u001b\\\\$",
+        "receivedHex": "1b5d32313b666f726567726f756e643d7267623a64332f64332f64331b5c",
+        "contractMatched": true
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": "Foreground query recognized; setting colors and visible rendering were not tested",
+        "reason": null,
+        "scope": "kitty color-control (OSC 21) queries only, plus the sets and resets that feed them: the pinned foreground request, every modeled key (foreground, background, cursor, selection colors and palette entries 5 and 200) read back through OSC 21 and the legacy OSC 4/10/11/12/17/19 replies, one shared state, reply order and the ST terminator, the numeric encodings, bare-key resets and restoration of the host default, unknown-key replies with unpadded Base64; the modeled key set, ignored empty/named/alpha values, the sequence caps and kitty's short #RGB reading are recorded policy; raw terminal state, no rendering or painted-pixel claim, and the pinned probe tests only the foreground query"
+      }
+    }
+  ]
+}

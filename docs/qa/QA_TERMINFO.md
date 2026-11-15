@@ -1234,3 +1234,15 @@ pinned code is replayed over the child's own DECRQM replies beside effect contra
 `modes.utf8-mouse-1005` moves to supported through the stock collector's DECRPM path because production now answers DECRPM 1/2: a stock effect of the production change (a recognition check), not an effect-contract
 upgrade; stock grades are now 92/1/162. Receipt schema 64 and source policy v58 (387 files) bind it; the run is measured at App and scripts `aaaece99` with one retained superseded attempt (an environmental App startup abort).
 See [the qualification page](terminfo/2026-11-15-mouse-extended-qualification.md).
+
+### Kitty color-control qualification
+
+The [kitty color-control batch](terminfo/2026-11-15-kitty-color-control-qualification.md) qualifies `extensions.osc21-kitty-color` (`OSC 21;foreground=? ST`). Main did not answer it, so this batch also adds the
+production feature: a documented subset of kitty's color-control protocol over the runtime colors (query `?`, numeric set and bare-key reset of foreground, background, selection colors, cursor and palette 0-255;
+one ST-terminated reply with a field per query, an empty value for an undefined color and `unknown=<Base64 key>` for any other key). The pinned probe is query-only: the unchanged stock collector grades it against the
+App in the same owned run, and both pinned paths are replayed over the journaled raw reply of the case's own fenced exchange through a layered collector extension
+(`ntilde-owned-kitty-color-grading-v1`), beside an effect contract (`ntilde-kitty-color-control-effect-v1`) graded by an independent oracle written from kitty's protocol text (colors set through OSC 4/10/11/12/17/19
+and read back through OSC 21 and the legacy replies, each key alone and in request order, encodings, bare-key resets, unknown keys, unchanged screen state). Both pinned paths, the stock grade and the effect contract are
+**supported**; the stock counts move from 92/1/162 to 93/1/161. Names, alpha, the dynamic value, `cursor_text`, `visual_bell` and the transparent colors are not modeled (recorded policy), and `#RGB` scaling and an
+out-of-range `rgbi` differ from kitty's text (recorded policy divergences). Query policy v5 owes the exact-query witness a framed `rgb:rr/gg/bb` reply (a pattern entry: the host foreground is not a constant); every
+earlier run keeps the silence expectation. Receipt schema 65 and source policy v59 (394 files) bind it.

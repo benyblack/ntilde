@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 125,
-    "suiteClaims": 127,
+    "uniqueBenchmarkIds": 126,
+    "suiteClaims": 128,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 124,
+    "effectSupportedIds": 125,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
-    "pinnedAndEffectSupportedIds": 89,
+    "pinnedAndEffectSupportedIds": 90,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -90,13 +90,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 123,
+    "effectSupportedOfStockInconclusive": 124,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 88,
+    "pinnedSupportedOfStockInconclusive": 89,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 89,
+    "pinnedSupportedIds": 90,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -105,11 +105,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 45,
+      "effectUnqualified": 44,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 44,
-      "notPinnedSupported": 80
+      "effectNotMeasured": 43,
+      "notPinnedSupported": 79
     }
   },
   "suites": [
@@ -3189,6 +3189,76 @@
         "command": "node --test scripts/terminfo/mex-publication.test.mjs",
         "testSha256": "92c5edd5122cbaedc434e086ca01fff12176b8aa71f01a69ca95cd1542af0587"
       }
+    },
+    {
+      "suite": "kcl",
+      "suiteId": "ntilde-owned-kitty-color-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-15-kitty-color-control/",
+      "doc": "2026-11-15-kitty-color-control-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc21-kitty-color"
+      ],
+      "evidence": {
+        "files": 4,
+        "bytes": 8320225,
+        "sha256": "93e736dc0b7cff69e67560e9e52aa0d7fb3fc9d3f6ab8e370f6f093091621c9e"
+      },
+      "receipt": {
+        "schemaVersion": 65,
+        "runId": "59863c5da6e5a5cdb2f0483d633655b3",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "a3dbc8b8ffa5da6b1fcba4ddbcda196ab0c20ef6057414ca8cb6cddaffdffdcc"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-kitty-color-graded-v1",
+          "file": "kcl-observations.json",
+          "sha256": "9c8e5db3dd444f89c3178864d99f45b4bf5a38c2e00aecdd6d6d2f650e82d39e",
+          "runFile": "kcl-run.json",
+          "runSha256": "c09693c9a4887038b51672fd7aaa3b73d89cf351c2a8c6492268b0a392fd040d",
+          "counts": {
+            "supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "59863c5da6e5a5cdb2f0483d633655b3",
+        "measuredAt": "2026-11-15T23:10:29.107Z",
+        "appRevision": "2b5b70e81c57377e34eddb818a82febc95c5a290",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "6ace1f35c74dc9e6b46e2a2c8a1dfa68c45f012f",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "7490fea74bcbc7b3ed8d3186c2e590f143488677715e673385f104b6361ba581",
+        "gradingAdapterId": "ntilde-owned-kitty-color-grading-v1",
+        "gradingAdapterBundleSha256": "e83ac5d5e134db14b779695a8a83a4573d6737a87e2aff2cd1d5e82ce76cac7b",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v59",
+        "sourceSnapshotManifestSha256": "93f7bc7c02b8e8473c5a8020d3e706271619c404fc8bdd463ee56824dbe2c108"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "931f609fadd7bd95cedb3d9c5ac91c8e",
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "2bddf8d7de00901c5fc4eae520e94b2d2597581c6ac8011a75d54f04832b7490",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc21-kitty-color from inconclusive to supported."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/kcl-publication.test.mjs",
+        "testSha256": "b771a90c88c79b6158c7a3f396715bbf383428a055efc4c31b34fccdf634c4b3"
+      }
     }
   ],
   "benchmark": [
@@ -6047,6 +6117,52 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "stored-state and pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc21-kitty-color",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "kcl",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "kcl",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc21-kitty-color",
+          "suite": "kcl",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
         }
       ]
     },
