@@ -271,6 +271,25 @@ test('under the v4 marker XTGETXRES and XTREPORTCOLORS owe their exact replies, 
     for (const bad of ['yes', 1, null]) assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true, deviceReport: bad }));
     assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, deviceReport: true }), 'the v4 marker requires the v3 marker');
 });
+test('under the v5 marker the OSC 21 foreground query owes a framed rgb reply, silence or another shape is a mismatch, and the marker is recorded and re-derived', async () => {
+    const world = queryWorld({ marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true }); await world.collect(); const report = world.observer.report;
+    const kitty = item => item.id === 'q07.extensions.osc21-kitty-color';
+    assert.ok(report.observations.every(item => item.contractMatched));
+    assert.equal(report.observations.find(kitty).expectedEvidence, 'positive-reply');
+    assert.equal(report.observations.find(kitty).expectedHex, '');
+    assert.match(report.observations.find(kitty).expectedPattern, /foreground=rgb:/);
+    assert.equal(report.observations.find(kitty).receivedHex, Buffer.from('\x1b]21;foreground=rgb:c0/c0/c0\x1b\\').toString('hex'));
+    assert.equal(report.policy, 'owned-exact-query-paired-raw-state-v5'); assert.match(report.colorReport, /^query policy v5/);
+    assert.deepEqual(buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true }), report);
+    assert.notDeepEqual(buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true, deviceReport: true }), report, 'without the v5 marker the same journal derives a different report');
+    for (const mutated of ['', '\x1b]21;foreground=\x1b\\', '\x1b]21;foreground=rgb:12/34/56\x07', '\x1b]21;foreground=rgb:1234/5678/9abc\x1b\\']) {
+        const other = queryWorld({ marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true, mutateReply: (id, reply) => kitty({ id }) ? mutated : reply });
+        await other.collect(); const observation = other.observer.report.observations.find(kitty);
+        assert.equal(observation.contractMatched, false, JSON.stringify(mutated)); assert.equal(observation.receivedHex, Buffer.from(mutated).toString('hex'));
+    }
+    for (const bad of ['yes', 1, null]) assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true, deviceReport: true, colorReport: bad }));
+    assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true, colorReport: true }), 'the v5 marker requires the v4 marker');
+});
 test('without the marker (every earlier run) the negative expectation and the v1 policy are unchanged', async () => {
     const world = queryWorld(); await world.collect(); const report = world.observer.report;
     assert.equal(report.observations.find(item => item.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'negative-reply');

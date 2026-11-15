@@ -26,12 +26,13 @@ export function inspectQueryWitness(context, id, capture) {
         throw new Error('Invalid bounded raw-query capture or ordering-fence fact.');
     }
     const expectedHex = Buffer.from(spec.expectedReply, 'ascii').toString('hex');
-    const contractMatched = hex === expectedHex;
+    // A pattern entry (query policy v5) decides the exact framing and shape of a non-empty reply; every other entry is an exact byte match.
+    const contractMatched = spec.expectedPattern === undefined ? hex === expectedHex : byteLength > 0 && spec.expectedPattern.test(Buffer.from(hex, 'hex').toString('latin1'));
     let observedEvidence = 'unexpected-bytes';
     if (contractMatched) observedEvidence = spec.expectedEvidence;
     else if (byteLength === 0) observedEvidence = 'silence';
     return Object.freeze({ id: spec.id, featureId: spec.featureId, expectedEvidence: spec.expectedEvidence, observedEvidence,
         contractMatched, expectedHex, receivedHex: hex,
-        byteLength, orderingNonces: nonces,
+        byteLength, orderingNonces: nonces, ...(spec.expectedPattern === undefined ? {} : { expectedPattern: spec.expectedPattern.source }),
     });
 }

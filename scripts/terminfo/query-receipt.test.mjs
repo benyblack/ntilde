@@ -120,13 +120,24 @@ test('a v4 query policy run also owes the XTGETXRES and XTREPORTCOLORS replies; 
 test('a v4 run whose XTGETXRES query stayed silent is a recorded mismatch, not a refusal', () => queryReceiptFixture(f => {
     assert.deepEqual(f.finish().queryEvidence.counts, { matched: 39, mismatched: 1 });
 }, { marginsReport: true, noticeReport: true, deviceReport: true, mutateReply: (id, value) => id === 'q07.device.xtgetxres' ? '' : value }));
+test('a v5 query policy run also owes the OSC 21 foreground reply; the receipt re-derives it from the archived policy alone', () => queryReceiptFixture(f => {
+    assert.equal(f.context.ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v5'); assert.equal(f.report.policy, f.context.ownedQueryPolicy);
+    const witness = f.report.observations.find(x => x.id === 'q07.extensions.osc21-kitty-color');
+    assert.equal(witness.expectedEvidence, 'positive-reply'); assert.equal(witness.contractMatched, true);
+    assert.equal(f.report.observations.find(x => x.id === 'q07.device.xtgetxres').expectedEvidence, 'positive-reply');
+    assert.deepEqual(f.finish().queryEvidence.counts, { matched: 40 });
+}, { marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true }));
+test('a v5 run whose OSC 21 query stayed silent is a recorded mismatch, not a refusal', () => queryReceiptFixture(f => {
+    assert.deepEqual(f.finish().queryEvidence.counts, { matched: 39, mismatched: 1 });
+}, { marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true, mutateReply: (id, value) => id === 'q07.extensions.osc21-kitty-color' ? '' : value }));
 test('a v2 run whose switch reply stayed negative is a recorded mismatch, not a refusal', () => queryReceiptFixture(f => {
     assert.deepEqual(f.finish().queryEvidence.counts, { matched: 39, mismatched: 1 });
 }, { marginsReport: true, mutateReply: (id, value) => id === 'q12.decrqss.horizontal-margins' ? '\x1bP0$r\x1b\\' : value }));
 test('rewriting the archived query policy cannot move a run between the negative and positive expectation', async () => {
     for (const [options, forged] of [[{}, 'owned-exact-query-paired-raw-state-v2'], [{ marginsReport: true }, 'owned-exact-query-paired-raw-state-v1'],
         [{ marginsReport: true }, 'owned-exact-query-paired-raw-state-v3'], [{ marginsReport: true, noticeReport: true }, 'owned-exact-query-paired-raw-state-v2'],
-        [{ marginsReport: true, noticeReport: true }, 'owned-exact-query-paired-raw-state-v4'], [{ marginsReport: true, noticeReport: true, deviceReport: true }, 'owned-exact-query-paired-raw-state-v3']]) {
+        [{ marginsReport: true, noticeReport: true }, 'owned-exact-query-paired-raw-state-v4'], [{ marginsReport: true, noticeReport: true, deviceReport: true }, 'owned-exact-query-paired-raw-state-v3'],
+        [{ marginsReport: true, noticeReport: true, deviceReport: true }, 'owned-exact-query-paired-raw-state-v5'], [{ marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true }, 'owned-exact-query-paired-raw-state-v4']]) {
         await queryReceiptFixture(f => {
             f.context.ownedQueryPolicy = forged; f.proof.proofs[0].queries.policy = forged;
             f.write('context.json', f.context); f.write('ownership-proof.json', f.proof);

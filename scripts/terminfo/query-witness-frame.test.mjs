@@ -23,6 +23,22 @@ for (const [id, reply] of positives) {
         }
     });
 }
+test('under the v5 marker the OSC 21 witness accepts only one framed rgb foreground reply of any host color, and silence stays silence', () => {
+    const v5 = { ...context, marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true }, id = 'q07.extensions.osc21-kitty-color';
+    for (const reply of ['\x1b]21;foreground=rgb:12/34/56\x1b\\', '\x1b]21;foreground=rgb:00/ff/a0\x1b\\']) {
+        const good = inspectQueryWitness(v5, id, capture(reply));
+        assert.equal(good.contractMatched, true); assert.equal(good.observedEvidence, 'positive-reply'); assert.equal(good.expectedHex, ''); assert.match(good.expectedPattern, /foreground=rgb:/);
+    }
+    for (const bad of ['\x1b]21;foreground=rgb:12/34/56\x1b\\\x1b]21;foreground=rgb:12/34/56\x1b\\', '\x1b]21;foreground=\x1b\\', '\x1b]21;foreground=rgb:12/34/56\x07', '\x1b]21;foreground=rgb:1/2/3\x1b\\',
+        '\x1b]21;foreground=RGB:12/34/56\x1b\\', '\x1b]21;foreground=rgb:12/34/56\x1b\\x', 'x\x1b]21;foreground=rgb:12/34/56\x1b\\', '\x1b[?62;4;22c']) {
+        assert.equal(inspectQueryWitness(v5, id, capture(bad)).contractMatched, false, JSON.stringify(bad));
+    }
+    const silent = inspectQueryWitness(v5, id, capture(''));
+    assert.equal(silent.contractMatched, false); assert.equal(silent.observedEvidence, 'silence');
+    const legacy = inspectQueryWitness(context, id, capture(''));
+    assert.equal(legacy.contractMatched, true); assert.equal(legacy.expectedEvidence, 'silence'); assert.equal(Object.hasOwn(legacy, 'expectedPattern'), false);
+    assert.equal(inspectQueryWitness(context, id, capture('\x1b]21;foreground=rgb:12/34/56\x1b\\')).contractMatched, false);
+});
 test('actual geometry and absolute margins must match, including a one-row terminal', () => {
     assert.equal(inspectQueryWitness(context, 'q07.device.xtwinops-18', capture('\x1b[8;90;42t')).contractMatched, false);
     assert.equal(inspectQueryWitness(context, 'q12.decrqss.vertical-margins', capture('\x1bP1$r1;28r\x1b\\')).contractMatched, false);

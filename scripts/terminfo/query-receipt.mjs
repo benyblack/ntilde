@@ -2,7 +2,7 @@ import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { snapshotHash } from './agent-observer.mjs';
-import { querySuiteId, ownedQueryPolicy, noticeQueryPolicy, marginsQueryPolicy, queryPolicies, queryPriorCounts, buildQueryReport, checkQueries as check } from './queries.mjs';
+import { querySuiteId, ownedQueryPolicy, deviceQueryPolicy, noticeQueryPolicy, marginsQueryPolicy, queryPolicies, queryPriorCounts, buildQueryReport, checkQueries as check } from './queries.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const files = ['query-snapshots.jsonl', 'query-actions.jsonl', 'query-initial.json', 'query-observations.json', 'query-unavailable.json', 'query-failed-observation.json', 'query-raw-failure.json'];
 function present(path) {
@@ -28,9 +28,10 @@ export function includesQueryEvidence(output, evidence, context, proof) {
     return readdirSync(join(output, 'sources')).some(file => file === 'queries.mjs' || file.startsWith('query-') || (file.endsWith('.mjs')
         && /(?:\bfrom|\bimport\s*\()\s*['"]\.\/(?:terminfo\/)?quer(?:ies|y-[a-z-]+)\.mjs['"]/.test(read(output, join('sources', file), 2 * 1024 * 1024).toString())));
 }
-/** The witness markers an archived query policy implies: v2, v3 and v4 owe the DECRQSS s reply, v3 and v4 the OSC 99 reply, v4 alone the XTGETXRES and XTREPORTCOLORS replies. */
-const policyMarkers = policy => ({ marginsReport: policy === marginsQueryPolicy || policy === noticeQueryPolicy || policy === ownedQueryPolicy,
-    noticeReport: policy === noticeQueryPolicy || policy === ownedQueryPolicy, deviceReport: policy === ownedQueryPolicy });
+/** The witness markers an archived query policy implies: v2 to v5 owe the DECRQSS s reply, v3 to v5 the OSC 99 reply, v4 and v5 the XTGETXRES and XTREPORTCOLORS replies, v5 alone the OSC 21 reply. */
+const policyMarkers = policy => ({ marginsReport: policy === marginsQueryPolicy || policy === noticeQueryPolicy || policy === deviceQueryPolicy || policy === ownedQueryPolicy,
+    noticeReport: policy === noticeQueryPolicy || policy === deviceQueryPolicy || policy === ownedQueryPolicy, deviceReport: policy === deviceQueryPolicy || policy === ownedQueryPolicy,
+    colorReport: policy === ownedQueryPolicy });
 /** Full query rederivation binds both original journals, exact prefix challenges and process facts. */
 export function checkQueryEvidence(output, binding, runId, context, proof, prefixEvidence) {
     const original = proof.proofs?.[0], marker = original?.queries;
@@ -70,9 +71,9 @@ export function checkQueryEvidence(output, binding, runId, context, proof, prefi
     // A run whose retained initial settings turn the off-by-default DECRQCRA report on owes its reply to the witness request.
     const checksumReport = json(output, 'initial-settings.json').AllowRectangleChecksumReport === true;
     // The archived query policy is the version marker: v2 and v3 owe the DECRQSS s reply (v1, every earlier run, keeps the negative one) and v3 alone owes the OSC 99 capability reply.
-    const { marginsReport, noticeReport, deviceReport } = policyMarkers(context.ownedQueryPolicy);
+    const { marginsReport, noticeReport, deviceReport, colorReport } = policyMarkers(context.ownedQueryPolicy);
     const derived = buildQueryReport({ binding: marker.binding, priorChallenges: prior, initial, actions, frames, seal: marker.seal,
-        ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}), ...(noticeReport ? { noticeReport: true } : {}), ...(deviceReport ? { deviceReport: true } : {}) });
+        ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}), ...(noticeReport ? { noticeReport: true } : {}), ...(deviceReport ? { deviceReport: true } : {}), ...(colorReport ? { colorReport: true } : {}) });
     check(snapshotHash(report) === snapshotHash(derived) && snapshotHash(actions) === snapshotHash(marker.actions)
         && Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt));
     const b = derived.binding, sameProcess = (actual, expected) => ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual[key] === expected?.[key]);
