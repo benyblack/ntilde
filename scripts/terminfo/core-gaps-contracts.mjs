@@ -3,9 +3,8 @@
 // The suite itself (collector, journal, grading, receipt binding) is core-gaps.mjs and has been part of every owned collection since the
 // Core requirement run. It also measures `device.env-term` (not in this reconciliation's scope) and `extensions.osc1-icon` (already claimed,
 // with its own stronger fixtures, by the osc-title suite). Only the two ids below are admitted here.
-import { coreGapsSuiteId } from './core-gaps.mjs';
+export { coreGapsSuiteId as coreGapsQualSuiteId } from './core-gaps.mjs';
 
-export const coreGapsQualSuiteId = coreGapsSuiteId;
 export const coreGapsQualContractsVersion = 1;
 export const coreGapsQualCaseIds = Object.freeze(['text.reverse-index-scroll', 'reset.method']);
 
