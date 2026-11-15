@@ -94,6 +94,10 @@ namespace Ntilde.Shell
         // one-cell rectangle names the character in it, so a program answered cell by cell can read back the whole screen,
         // including earlier commands' output. Direct panes only; persistent (mux) sessions stay silent.
         public bool AllowRectangleChecksumReport { get; set; }
+        // Window and icon title reports (CSI 20 t / CSI 21 t). Default off, as xterm ships them (disallowedWindowOps lists
+        // both): the reply carries whatever title any program set, typed into the foreground program's input, which turns a
+        // hostile title into keystrokes. Direct panes only; persistent (mux) sessions stay silent.
+        public bool AllowTitleReport { get; set; }
         // Scroll units forwarded per wheel notch. For own-buffer scrolling this is lines
         // per notch; for a mouse-reporting TUI it is wheel clicks per notch. Higher =
         // smoother/finer (more steps per notch), lower = coarser. Matters most for

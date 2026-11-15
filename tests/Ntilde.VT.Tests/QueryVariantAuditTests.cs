@@ -1,9 +1,11 @@
 namespace Ntilde.VT.Tests;
 
 /// <summary>
-/// Exact spellings unanswered with default settings, not an assertion that their feature families are absent. DECRQCRA is
-/// implemented behind the off-by-default <see cref="AnsiParser.AllowRectangleChecksumReport"/> gate, so with the default
-/// parser this row is the witness that the gate starts off.
+/// Exact spellings unanswered with default settings, not an assertion that their feature families are absent. DECRQCRA and the
+/// <c>CSI 20 t</c> / <c>CSI 21 t</c> title reports are implemented behind the off-by-default
+/// <see cref="AnsiParser.AllowRectangleChecksumReport"/> and <see cref="AnsiParser.AllowTitleReport"/> gates, so with the default
+/// parser those rows are the witnesses that the gates start off. XTREPORTCOLORS and XTGETXRES are answered
+/// (<c>DeviceReportTests</c>) and no longer belong here.
 /// </summary>
 public sealed class QueryVariantAuditTests
 {
@@ -21,8 +23,6 @@ public sealed class QueryVariantAuditTests
         { "editing.decrqcra", "\u001b[1;1;1;1;1;1*y" },
         { "device.xtwinops-20", "\u001b[20t" },
         { "device.xtwinops-21", "\u001b[21t" },
-        { "device.xtreportcolors", "\u001b[#R" },
-        { "device.xtgetxres", "\u001bP+Q7465726d4e616d65\u001b\\" },
     };
 
     [Theory]

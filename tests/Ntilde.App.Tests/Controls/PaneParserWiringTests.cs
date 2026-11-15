@@ -489,6 +489,61 @@ public class PaneParserWiringTests
     }
 
     /// <summary>
+    /// <c>CSI 20 t</c> / <c>CSI 21 t</c> hand a program's own title back as input, so a direct pane's parser answers them only
+    /// while <c>TerminalSettings.AllowTitleReport</c> is on: off by default, live-synced on every settings change, and never on a
+    /// mux-backed parser. XTGETXRES <c>termName</c> carries the TERM Ntilde gave a direct pane's child, none for a mux-backed one.
+    /// </summary>
+    [AvaloniaFact]
+    public void TitleReport_gate_is_off_by_default_follows_the_setting_live_and_termName_is_the_direct_pane_term()
+    {
+        Assert.False(new TerminalSettings().AllowTitleReport);
+
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        Assert.False(pane.Parser!.AllowTitleReport);
+        Assert.Equal("xterm-256color", pane.Parser.TerminalTypeName);
+
+        pane.ApplySettings(new TerminalSettings { AllowTitleReport = true });
+        pane.CreateAndWireParser();
+        AnsiParser parser = pane.Parser!;
+        Assert.True(parser.AllowTitleReport);
+
+        pane.ApplySettings(new TerminalSettings { AllowTitleReport = false });
+        Assert.Same(parser, pane.Parser);
+        Assert.False(parser.AllowTitleReport);
+        pane.ApplySettings(new TerminalSettings { AllowTitleReport = true });
+        Assert.True(parser.AllowTitleReport);
+
+        pane.CreateAndWireParser(muxBacked: true);
+        Assert.False(pane.Parser!.AllowTitleReport);
+        Assert.Null(pane.Parser.TerminalTypeName);
+    }
+
+    private static int CountOccurrences(string text, string needle)
+    {
+        int count = 0;
+        for (int at = text.IndexOf(needle, StringComparison.Ordinal); at >= 0; at = text.IndexOf(needle, at + needle.Length, StringComparison.Ordinal)) count++;
+        return count;
+    }
+
+    /// <summary>
+    /// The TERM the VT reports for XTGETXRES <c>termName</c> is what the native layer gives the child: both PTY spawn paths
+    /// and the SSH options pin the same value, so the constant cannot drift from them unnoticed.
+    /// </summary>
+    [Fact]
+    public void ChildTerminalType_matches_what_the_native_layer_and_ssh_options_give_the_child()
+    {
+        string root = AppContext.BaseDirectory;
+        while (root is not null && !File.Exists(Path.Combine(root, "Ntilde.sln"))) root = Path.GetDirectoryName(root)!;
+        Assert.NotNull(root);
+        string native = File.ReadAllText(Path.Combine(root, "src", "Ntilde.App", "native", "src", "lib.rs"));
+        string expected = TerminalPane.ChildTerminalType;
+        Assert.Equal(1, CountOccurrences(native, "env_map.insert(\"TERM\".to_string(), \"" + expected + "\".to_string());"));
+        Assert.Equal(1, CountOccurrences(native, "cmd_builder.env(\"TERM\", \"" + expected + "\");"));
+        Assert.Equal(expected, new Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions().Term);
+    }
+
+    /// <summary>
     /// DECRQCRA reads the screen back, so a direct pane's parser answers it only while
     /// <c>TerminalSettings.AllowRectangleChecksumReport</c> is on: off by default, live-synced on every
     /// settings change, and never on a mux-backed parser (the daemon's parser owns that pane's replies).

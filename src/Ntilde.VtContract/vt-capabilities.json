@@ -305,6 +305,60 @@
       "contractCase": "rectangle-checksum"
     },
     {
+      "key": "CSI:20t",
+      "mnemonic": "XTWINOPS icon label report",
+      "support": "partial",
+      "description": "Off by default: answered only when the host turns on the AllowTitleReport setting (the reply is typed into the foreground program's input, so a hostile title becomes keystrokes); otherwise silent. When on, CSI 20 t replies OSC L label ST with the raw icon name the stream last set with OSC 0/1, empty when unset, too long to retain or holding a control character. Exact spelling only. Direct panes only.",
+      "matrixFeature": "XTWINOPS icon label report (CSI 20 t)",
+      "evidencePath": "tests/Ntilde.VT.Tests/DeviceReportTests.cs",
+      "contractCase": "icon-label-report"
+    },
+    {
+      "key": "CSI:21t",
+      "mnemonic": "XTWINOPS window title report",
+      "support": "partial",
+      "description": "Off by default behind the AllowTitleReport setting, like CSI 20 t. When on, CSI 21 t replies OSC l title ST with the raw window title the stream last set with OSC 0/2; the same empty-label rule applies. The presented host caption and xterm's title modes are not claimed.",
+      "matrixFeature": "XTWINOPS window title report (CSI 21 t)",
+      "evidencePath": "tests/Ntilde.VT.Tests/DeviceReportTests.cs",
+      "contractCase": "window-title-report"
+    },
+    {
+      "key": "DCS:+Q",
+      "mnemonic": "XTGETXRES resource query",
+      "support": "partial",
+      "description": "DCS + Q hex-name ST: only the termName resource exists, answered with the TERM the host gave the pane (DCS 1 + R name=value ST, the value uppercase hex) or DCS 0 + R name ST when it is not known. One DCS per request, status of the first name, stopping after the first unknown name. Malformed, truncated, BEL-terminated or oversized requests are not answered.",
+      "matrixFeature": "XTGETXRES resource query",
+      "evidencePath": "tests/Ntilde.VT.Tests/DeviceReportTests.cs",
+      "contractCase": "xtgetxres"
+    },
+    {
+      "key": "CSI:#P",
+      "mnemonic": "XTPUSHCOLORS",
+      "support": "supported",
+      "description": "Save the dynamic colors and 256-color palette into xterm's ten-slot palette stack: no parameter or 0 pushes onto the top, 1..10 stores into that slot. Independent of the kitty color stack.",
+      "matrixFeature": "XTPUSHCOLORS (CSI Pm # P)",
+      "evidencePath": "tests/Ntilde.VT.Tests/DeviceReportTests.cs",
+      "contractCase": "xterm-color-stack-push"
+    },
+    {
+      "key": "CSI:#Q",
+      "mnemonic": "XTPOPCOLORS",
+      "support": "supported",
+      "description": "Restore the dynamic colors and 256-color palette from the palette stack: no parameter or 0 pops, 1..10 restores that slot. An empty or never-stored slot changes nothing.",
+      "matrixFeature": "XTPOPCOLORS (CSI Pm # Q)",
+      "evidencePath": "tests/Ntilde.VT.Tests/DeviceReportTests.cs",
+      "contractCase": "xterm-color-stack-pop"
+    },
+    {
+      "key": "CSI:#R",
+      "mnemonic": "XTREPORTCOLORS",
+      "support": "supported",
+      "description": "Report the palette stack as CSI ? depth ; deepest # Q, the current depth and the deepest depth reached, as xterm sends it.",
+      "matrixFeature": "XTREPORTCOLORS (CSI # R)",
+      "evidencePath": "tests/Ntilde.VT.Tests/DeviceReportTests.cs",
+      "contractCase": "xterm-color-stack-report"
+    },
+    {
       "key": "CSI:'}",
       "mnemonic": "DECIC",
       "support": "partial",

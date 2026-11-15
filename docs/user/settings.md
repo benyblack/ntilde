@@ -165,6 +165,7 @@ These keys are read from `settings.json`. Some have palette commands.
 | `AllowNativeKittyGraphics` | `true` | Kitty graphics protocol images ([Inline images](terminal.md#inline-images)). |
 | `AllowOsc52ClipboardWrite` | `true` | Lets programs (`tmux`, `vim` over SSH) set your clipboard with OSC 52 or kitty's OSC 5522. OSC 52 can't *read* the clipboard; an OSC 5522 read asks you first ([Copy, paste and links](terminal.md#copy-paste-and-links)). |
 | `AllowRectangleChecksumReport` | `false` | Lets programs ask for a checksum of part of the screen (DECRQCRA), which some terminal test suites use. Off by default: a program can use it to read back anything on the screen, including earlier commands' output. Persistent sessions never answer it. |
+| `AllowTitleReport` | `false` | Lets programs ask for the window and icon title (`CSI 21 t`, `CSI 20 t`). Off by default, as in xterm: the answer is typed into the running program's input, so a malicious title can become keystrokes. |
 | `PaneClosePolicy` | `Confirm` | Closing a pane with a running program: `Confirm` asks, `Graceful` sends `Ctrl+C` and `exit` first, `Force` closes. |
 | `ShellExitPolicy` | `Graceful` | When a shell exits: `Graceful` closes the pane if it exited with 0 and keeps it open with the exit status otherwise; `Always` closes it; `Never` keeps it. SSH panes always stay open with their banner. |
 | `VerticalTabStripWidth` | `220` | Width of the vertical tab sidebar, 140 to 600. Set by dragging its edge. |

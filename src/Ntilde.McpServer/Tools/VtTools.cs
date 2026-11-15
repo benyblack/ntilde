@@ -259,6 +259,11 @@ public sealed class VtTools
                 return ExplainRectangleChecksum(prefix[..^1]) + note;
             }
 
+            if (finalByte is 'P' or 'Q' or 'R' && qualifiers == "#" && prefix.EndsWith('#'))
+            {
+                return ExplainXtermColorStack(finalByte, prefix[..^1]) + note;
+            }
+
             if (finalByte is 'x' or 'v' && qualifiers == "$")
             {
                 return ExplainRectangleCopyFill(finalByte, prefix[..^1]) + note;
@@ -436,6 +441,9 @@ public sealed class VtTools
             // catalogue entry describes the reply rules rather than one name.
             else if (payload.StartsWith("+q", StringComparison.Ordinal))
                 description = ContractSequenceTable["DCS:+q"];
+            // XTGETXRES: only the termName resource exists; the entry describes the reply rules.
+            else if (payload.StartsWith("+Q", StringComparison.Ordinal))
+                description = ContractSequenceTable["DCS:+Q"];
         }
         return "DCS: " + description;
     }
@@ -536,6 +544,16 @@ public sealed class VtTools
             || parameters.Any(c => c != ';' && (c < '0' || c > '9')))
             return "CSI rectangular checksum form: only up to six plain parameters are admitted; Ntilde's parser ignores this form.";
         return "CSI sequence, final byte 'y': " + ContractSequenceTable["CSI:*y"];
+    }
+
+    /// <summary>XTPUSHCOLORS and XTPOPCOLORS take plain parameters; XTREPORTCOLORS takes none or a single 0.</summary>
+    private static string ExplainXtermColorStack(char finalByte, string parameters)
+    {
+        bool plain = parameters.All(c => c is ';' || (c >= '0' && c <= '9'));
+        bool admitted = plain && (finalByte != 'R' || parameters is "" or "0");
+        return admitted
+            ? $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable["CSI:#" + finalByte]
+            : $"CSI palette-stack form, final byte '{finalByte}': only plain parameters are admitted (none or 0 for the report); Ntilde's parser ignores this form.";
     }
 
     /// <summary>DECIC, DECDC, SL and SR: at most one plain numeric parameter; anything else is ignored by the parser.</summary>
