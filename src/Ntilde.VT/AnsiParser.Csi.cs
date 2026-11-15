@@ -288,6 +288,14 @@ namespace Ntilde.VT
                         int dchCount = Math.Max(1, arg0);
                         _buffer.DeleteCharacters(dchCount);
                     }
+                    else if (leader == '\0' && intermediates.SequenceEqual("#"))
+                    {
+                        HandleXtermColorStack(csi); // XTPUSHCOLORS is CSI Pm # P
+                    }
+                    break;
+                case 'Q': // XTPOPCOLORS (CSI Pm # Q) is the only form; a bare CSI Q has no handler
+                case 'R': // XTREPORTCOLORS (CSI # R); a bare CSI R is a cursor position report, never a request
+                    HandleXtermColorStack(csi);
                     break;
                 case 'S': // SU - Scroll Up
                           // CSI ? Pi ; Pa ; Pv S is XTSMGRAPHICS, not SU. This one is live
@@ -635,6 +643,10 @@ namespace Ntilde.VT
                     else if (leader == '\0' && intermediates.Length == 0 && (arg0 == 14 || arg0 == 16))
                     {
                         ReportWindowGeometry(arg0);
+                    }
+                    else if (bare && argCount == 1 && (arg0 == 20 || arg0 == 21))
+                    {
+                        ReportWindowLabel(icon: arg0 == 20); // off unless AllowTitleReport
                     }
                     break;
                 case 'p':

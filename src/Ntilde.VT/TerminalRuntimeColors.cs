@@ -34,13 +34,47 @@ public sealed class TerminalColorOverrides
 public sealed class TerminalRuntimeColors
 {
     public const int MaxStackDepth = 16;
+
+    /// <summary>xterm's palette stack has ten slots (<c>MAX_SAVED_SGR</c>).</summary>
+    public const int MaxXtermSlots = 10;
+
     [JsonPropertyName("current")] public TerminalColorOverrides Current { get; set; } = new();
     [JsonPropertyName("stack")] public TerminalColorOverrides[] Stack { get; set; } = [];
+
+    /// <summary>
+    /// The xterm palette stack slots (XTPUSHCOLORS / XTPOPCOLORS), independent of <see cref="Stack"/>: null before the
+    /// first push, otherwise exactly <see cref="MaxXtermSlots"/> entries, a null one never stored.
+    /// </summary>
+    [JsonPropertyName("xt_slots"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TerminalColorOverrides?[]? XtermSlots { get; set; }
+
+    /// <summary>xterm's <c>used</c>: the current depth XTREPORTCOLORS reports first.</summary>
+    [JsonPropertyName("xt_used"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int XtermUsed { get; set; }
+
+    /// <summary>xterm's <c>last</c>: the deepest the stack has been pushed, reported second.</summary>
+    [JsonPropertyName("xt_last"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int XtermLast { get; set; }
+
+    internal bool HasXtermState => XtermSlots is not null || XtermUsed != 0 || XtermLast != 0;
 
     internal TerminalRuntimeColors Clone() => new()
     {
         Current = Current.Clone(),
-        Stack = Stack.Select(frame => frame.Clone()).ToArray()
+        Stack = Stack.Select(frame => frame.Clone()).ToArray(),
+        XtermSlots = XtermSlots?.Select(frame => frame?.Clone()).ToArray(),
+        XtermUsed = XtermUsed,
+        XtermLast = XtermLast
+    };
+
+    /// <summary>A published copy with another current frame and kitty stack, keeping the xterm palette stack.</summary>
+    internal TerminalRuntimeColors WithColors(TerminalColorOverrides current, TerminalColorOverrides[] stack) => new()
+    {
+        Current = current,
+        Stack = stack,
+        XtermSlots = XtermSlots,
+        XtermUsed = XtermUsed,
+        XtermLast = XtermLast
     };
 
     internal static void Validate(TerminalRuntimeColors? state)
@@ -53,6 +87,21 @@ public sealed class TerminalRuntimeColors
         ValidateFrame(state.Current);
         foreach (TerminalColorOverrides frame in state.Stack)
             ValidateFrame(StateTransferValidation.RequirePresent(frame, "color stack frame"));
+        ValidateXtermState(state);
+    }
+
+    private static void ValidateXtermState(TerminalRuntimeColors state)
+    {
+        if (state.XtermSlots is { } slots)
+        {
+            if (slots.Length != MaxXtermSlots)
+                throw StateTransferValidation.Reject("xterm color stack", "must contain exactly 10 slots");
+            foreach (TerminalColorOverrides stored in slots.OfType<TerminalColorOverrides>()) ValidateFrame(stored);
+        }
+        if (state.XtermUsed is < 0 or > MaxXtermSlots || state.XtermLast is < 0 or > MaxXtermSlots)
+            throw StateTransferValidation.Reject("xterm color stack", "depth is outside the ten slots");
+        if (state.XtermSlots is null && state.HasXtermState)
+            throw StateTransferValidation.Reject("xterm color stack", "has a depth without its slots");
     }
 
     private static void ValidateFrame(TerminalColorOverrides frame)

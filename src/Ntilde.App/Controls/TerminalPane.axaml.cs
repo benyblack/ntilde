@@ -1109,6 +1109,7 @@ namespace Ntilde.Controls
                 AllowNativeKittyGraphics = settings.AllowNativeKittyGraphics,
                 AllowOsc52ClipboardWrite = settings.AllowOsc52ClipboardWrite,
                 AllowRectangleChecksumReport = settings.AllowRectangleChecksumReport,
+                AllowTitleReport = settings.AllowTitleReport,
                 CommandAssistEnabled = settings.CommandAssistEnabled,
                 CommandAssistHistoryEnabled = settings.CommandAssistHistoryEnabled,
                 CommandAssistMaxHistoryEntries = settings.CommandAssistMaxHistoryEntries,
@@ -1168,6 +1169,8 @@ namespace Ntilde.Controls
                 // DECRQCRA (off by default): live-synced like the gates above; a mux-backed pane's replies come from the
                 // daemon's parser, which never answers it.
                 Parser.AllowRectangleChecksumReport = Session is not MuxClientSession && effectiveSettings.AllowRectangleChecksumReport;
+                // CSI 20 t / 21 t (off by default): live-synced, direct panes only.
+                Parser.AllowTitleReport = Session is not MuxClientSession && effectiveSettings.AllowTitleReport;
             }
 
             // Theme colours, cell metrics and the kitty-keyboard gate live in the daemon's parser too.

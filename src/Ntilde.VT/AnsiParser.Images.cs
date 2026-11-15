@@ -42,6 +42,10 @@ namespace Ntilde.VT
             {
                 HandleXtgettcap(dcs, standardTerminator);
             }
+            else if (dcs.StartsWith("+Q", StringComparison.Ordinal))
+            {
+                HandleXtgetxres(dcs, standardTerminator);
+            }
             else if (IsSixel(dcs))
             {
                 HandleSixel(dcs);

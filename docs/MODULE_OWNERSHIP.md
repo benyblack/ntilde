@@ -57,6 +57,14 @@ invariant changes.
   for full state or claims direct inactive-bank inspection. Explicit fixture
   clearing is independent of RIS under test; v7 binds every preceding suite and
   retains a coherent reset negative rather than grading a method call as support.
+- **Device reports belong to VT; the App supplies policy and facts only.** The XTGETXRES
+  `termName` reply, the xterm palette stack (`CSI Pm # P` / `CSI Pm # Q` / `CSI # R`, ten slots,
+  separate from the kitty stack, carried by state transfer and cleared by RIS) and the
+  `CSI 20 t` / `CSI 21 t` title reports are VT behaviour. The App only turns the title reports on
+  (`AllowTitleReport`, off by default, direct panes only) and passes the `TERM` it gave the pane's
+  child (`TerminalPane.ChildTerminalType`, kept equal to the native PTY layer and SSH options by a
+  test); VT never reads the process environment. `device.term-features` is an unverified
+  environment hint, not a query, and has no VT behaviour.
 - **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
   reset precede the existing full clear under one write cut. Main and retained
   alternate screens return to visible DECTCEM cursor presentation in that cut;

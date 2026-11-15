@@ -1,0 +1,1056 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-device-queries-graded-v1",
+  "contractsVersion": 1,
+  "runId": "aad1ec6c3c949076162c385568a6e939",
+  "adapter": {
+    "id": "ntilde-owned-device-queries-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "6cc44ba283746de56c47d6f35761edfe83dde03b21db1cc342c9f57702955188",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criteria for device.xtgetxres (DCS + Q termName), device.xtreportcolors (CSI # R, whose pinned pattern has no ? marker and cannot match xterm's own CSI ? depth ; deepest # Q reply), device.xtwinops-20 and device.xtwinops-21 (OSC 1 / OSC 2 then CSI 20 t / 21 t, with the run's initial settings turning on AllowTitleReport) replayed byte-exactly over the journaled raw replies of their own fenced exchanges, beside separately identified effect contracts graded by an independent oracle written from xterm's text and source; raw terminal state, not host presentation; termName is the documented session TERM, not read from the child; the default-off title gate is unit-tested, not measured; the xterm stack's deepest counter stays at its measured value in the disposable App; no remote/mux, Windows/Linux or common-harness claim. device.term-features is documented only: its pinned probe reads process.env.TERM_FEATURES, emits no request and can never return supported.",
+  "termFeatures": {
+    "caseId": "device.term-features",
+    "disposition": "documented-only",
+    "stock": {
+      "featureId": "device.term-features",
+      "outcome": "inconclusive",
+      "reason": "insufficient-evidence",
+      "evidence": "legacy"
+    }
+  },
+  "cases": [
+    {
+      "caseId": "device.xtgetxres",
+      "pinnedCriterion": "XTGETXRES (DCS + Q 7465726d4e616d65 ST) returns a framed DCS 1 + R 7465726d4e616d65 = <hex> ST (status 1, case-insensitive); the DCS 0 + R refusal is inconclusive",
+      "pinnedFeeds": [
+        "\u001bP+Q7465726d4e616d65\u001b\\"
+      ],
+      "effectContract": {
+        "id": "ntilde-device-query-report-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-device-query-report-effect-v1",
+        "pinnedFeeds": [
+          "\\eP+Q7465726d4e616d65\\e\\"
+        ],
+        "seed": {
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\eP+Q7465726d4e616d65\\e\\",
+            "demand": "the exact pinned request returns the status-1 termName value (uppercase hex of the session TERM)",
+            "demanded": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "received": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "echo-upper": {
+            "kind": "protocol",
+            "request": "\\eP+Q7465726D4E616D65\\e\\",
+            "demand": "the name is echoed as the request spelled it",
+            "demanded": [
+              "\\eP1+R7465726D4E616D65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "received": [
+              "\\eP1+R7465726D4E616D65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "unknown": {
+            "kind": "protocol",
+            "request": "\\eP+Q666f6f\\e\\",
+            "demand": "an unknown resource is DCS 0 + R with the name echoed",
+            "demanded": [
+              "\\eP0+R666f6f\\e\\"
+            ],
+            "received": [
+              "\\eP0+R666f6f\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "case-and-class": {
+            "kind": "protocol",
+            "request": "\\eP+Q7465726d6e616d65\\e\\\\eP+Q5465726d4e616d65\\e\\",
+            "demand": "resource names are case-sensitive: termname and the class name TermName are not resources",
+            "demanded": [
+              "\\eP0+R7465726d6e616d65\\e\\",
+              "\\eP0+R5465726d4e616d65\\e\\"
+            ],
+            "received": [
+              "\\eP0+R7465726d6e616d65\\e\\",
+              "\\eP0+R5465726d4e616d65\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "list-known": {
+            "kind": "protocol",
+            "request": "\\eP+Q7465726d4e616d65;7465726d4e616d65\\e\\",
+            "demand": "two known names make one DCS with both entries separated by ;",
+            "demanded": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72;7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "received": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72;7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "list-stop": {
+            "kind": "protocol",
+            "request": "\\eP+Q7465726d4e616d65;666f6f;7465726d4e616d65\\e\\",
+            "demand": "the status is the first name's and the reply stops after the first unknown name",
+            "demanded": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72;666f6f\\e\\"
+            ],
+            "received": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72;666f6f\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "list-first-unknown": {
+            "kind": "protocol",
+            "request": "\\eP+Q666f6f;7465726d4e616d65\\e\\",
+            "demand": "an unknown first name makes the whole reply status 0 and stops there",
+            "demanded": [
+              "\\eP0+R666f6f\\e\\"
+            ],
+            "received": [
+              "\\eP0+R666f6f\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "malformed-odd": {
+            "kind": "protocol",
+            "request": "\\eP+Q5\\e\\\\eP+Q7465726d4e616d65\\e\\",
+            "demand": "an odd-length name is not answered and the parser then answers normally",
+            "demanded": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "received": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "malformed-hex": {
+            "kind": "protocol",
+            "request": "\\eP+Qzz\\e\\\\eP+Q7465726d4e616d65\\e\\",
+            "demand": "a non-hex name is not answered and the parser then answers normally",
+            "demanded": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "received": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "malformed-empty": {
+            "kind": "protocol",
+            "request": "\\eP+Q\\e\\\\eP+Q7465726d4e616d65\\e\\",
+            "demand": "an empty name list is not answered and the parser then answers normally",
+            "demanded": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "received": [
+              "\\eP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": true,
+          "response": "\u001bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\u001b\\",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "XTGETXRES returns a complete status-1 termName resource value",
+              "observed": "\u001bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\u001b\\"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": true,
+          "response": "\u001bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\u001b\\\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "XTGETXRES returns a complete status-1 termName resource value",
+              "observed": "\u001bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\u001b\\"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "device.xtgetxres",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "device.xtgetxres"
+      },
+      "queryWitness": {
+        "id": "q07.device.xtgetxres",
+        "expectedEvidence": "positive-reply",
+        "expectedHex": "1b50312b52373436353732366434653631366436353d373837343635373236443244333233353336363336463643364637321b5c",
+        "receivedHex": "1b50312b52373436353732366434653631366436353d373837343635373236443244333233353336363336463643364637321b5c",
+        "contractMatched": true
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": null,
+        "reason": null,
+        "scope": "exact XTGETXRES termName replies only: the pinned request, the uppercase-hex value of the documented session TERM, the echoed spelling, the case-sensitive unknown names, multi-name reply shape and stop rule, and unanswered malformed requests with verified recovery; no other resource, X resource database, TERM read back out of the child, remote-delivery or other-platform claim"
+      }
+    },
+    {
+      "caseId": "device.xtreportcolors",
+      "pinnedCriterion": "CSI # R returns a framed CSI <digits and ;> # Q (no ? marker); a frame that only matches # Q is an invalid reply",
+      "pinnedFeeds": [
+        "\u001b[#R"
+      ],
+      "effectContract": {
+        "id": "ntilde-device-query-report-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-device-query-report-effect-v1",
+        "pinnedFeeds": [
+          "\\e[#R"
+        ],
+        "seed": {
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[#R",
+            "demand": "the exact pinned request on an empty stack reports depth 0 and deepest 0 with the ? marker",
+            "demanded": [
+              "\\e[?0;0#Q"
+            ],
+            "received": [
+              "\\e[?0;0#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-base": {
+            "kind": "control",
+            "request": "\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "setup": "\\e]11;#112233\\e\\\\e]4;5;#445566\\e\\",
+            "demand": "the base colours (background and palette 5) are set and read back",
+            "demanded": [
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-1": {
+            "kind": "protocol",
+            "request": "\\e[#P\\e[#R",
+            "demand": "a push is silent and the report is depth 1, deepest 1",
+            "demanded": [
+              "\\e[?1;1#Q"
+            ],
+            "received": [
+              "\\e[?1;1#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-second": {
+            "kind": "control",
+            "request": "\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "setup": "\\e]11;#aabbcc\\e\\\\e]4;5;#ddeeff\\e\\",
+            "demand": "a different pair of colours is set and read back",
+            "demanded": [
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "push-2": {
+            "kind": "protocol",
+            "request": "\\e[#P\\e[#R",
+            "demand": "the second push reports depth 2, deepest 2",
+            "demanded": [
+              "\\e[?2;2#Q"
+            ],
+            "received": [
+              "\\e[?2;2#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-third": {
+            "kind": "control",
+            "request": "\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "setup": "\\e]11;#010203\\e\\\\e]4;5;#0a0b0c\\e\\",
+            "demand": "a third pair of colours is set and read back",
+            "demanded": [
+              "\\e]11;rgb:0101/0202/0303\\e\\",
+              "\\e]4;5;rgb:0a0a/0b0b/0c0c\\e\\"
+            ],
+            "received": [
+              "\\e]11;rgb:0101/0202/0303\\e\\",
+              "\\e]4;5;rgb:0a0a/0b0b/0c0c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-1": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e[#R\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a pop restores the second pair and reports depth 1, deepest 2",
+            "demanded": [
+              "\\e[?1;2#Q",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "received": [
+              "\\e[?1;2#Q",
+              "\\e]11;rgb:aaaa/bbbb/cccc\\e\\",
+              "\\e]4;5;rgb:dddd/eeee/ffff\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-2": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e[#R\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "the next pop restores the base pair and reports depth 0, deepest 2",
+            "demanded": [
+              "\\e[?0;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e[?0;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "pop-empty": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e[#R\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a pop with nothing stored changes neither the colours nor the report",
+            "demanded": [
+              "\\e[?0;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e[?0;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "slot-store": {
+            "kind": "protocol",
+            "request": "\\e[4#P\\e[#R",
+            "demand": "a numbered push stores the current colours in that slot and moves the depth to it, leaving the deepest alone",
+            "demanded": [
+              "\\e[?4;2#Q"
+            ],
+            "received": [
+              "\\e[?4;2#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "set-loud": {
+            "kind": "control",
+            "request": "\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "setup": "\\e]11;#ff0000\\e\\\\e]4;5;#00ff00\\e\\",
+            "demand": "a loud pair of colours is set and read back",
+            "demanded": [
+              "\\e]11;rgb:ffff/0000/0000\\e\\",
+              "\\e]4;5;rgb:0000/ffff/0000\\e\\"
+            ],
+            "received": [
+              "\\e]11;rgb:ffff/0000/0000\\e\\",
+              "\\e]4;5;rgb:0000/ffff/0000\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "slot-restore": {
+            "kind": "protocol",
+            "request": "\\e[4#Q\\e[#R\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "a numbered pop restores that slot and sets the depth to the slot below it",
+            "demanded": [
+              "\\e[?3;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e[?3;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "kitty-independent": {
+            "kind": "protocol",
+            "request": "\\e[#R\\e]30001\\e\\\\e]11;#0f0f0f\\e\\\\e]30101\\e\\\\e[#R\\e]11;?\\e\\\\e]4;5;?\\e\\",
+            "demand": "the kitty colour stack (OSC 30001/30101) neither moves the xterm depth nor shares its slots",
+            "demanded": [
+              "\\e[?3;2#Q",
+              "\\e[?3;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "received": [
+              "\\e[?3;2#Q",
+              "\\e[?3;2#Q",
+              "\\e]11;rgb:1111/2222/3333\\e\\",
+              "\\e]4;5;rgb:4444/5555/6666\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "out-of-range": {
+            "kind": "protocol",
+            "request": "\\e[11#P\\e[99#Q\\e[#R",
+            "demand": "slots past ten are ignored by both push and pop",
+            "demanded": [
+              "\\e[?3;2#Q"
+            ],
+            "received": [
+              "\\e[?3;2#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "fill": {
+            "kind": "protocol",
+            "request": "\\e[3#P\\e[#P\\e[#P\\e[#P\\e[#P\\e[#P\\e[#P\\e[#P\\e[#P\\e[#R",
+            "demand": "slot 3 is stored, then ten slots hold ten entries and a push past the tenth does nothing",
+            "demanded": [
+              "\\e[?10;10#Q"
+            ],
+            "received": [
+              "\\e[?10;10#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "spellings": {
+            "kind": "policy",
+            "request": "\\e[?#R\\e[>#R\\e[1#R\\e[#R",
+            "demand": "a report spelled with a leader or a parameter is not answered (xterm ignores the parameters; Ntilde admits only the bare spelling)",
+            "demanded": [
+              "\\e[?10;10#Q"
+            ],
+            "received": [
+              "\\e[?10;10#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "drain": {
+            "kind": "protocol",
+            "request": "\\e[#Q\\e[#Q\\e[#Q\\e[#Q\\e[#Q\\e[#Q\\e[#Q\\e[#Q\\e[#Q\\e[#Q\\e[#R",
+            "demand": "ten pops return the depth to 0 and the deepest stays at 10",
+            "demanded": [
+              "\\e[?0;10#Q"
+            ],
+            "received": [
+              "\\e[?0;10#Q"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "\u001b[?0;0#Q",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "invalid-reply",
+            "evidence": "query"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "\u001b[?0;0#Q\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "invalid-reply",
+            "evidence": "query"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "device.xtreportcolors",
+        "outcome": "inconclusive",
+        "reason": "invalid-reply",
+        "evidence": "query",
+        "rawReplyRef": "device.xtreportcolors"
+      },
+      "queryWitness": {
+        "id": "q07.device.xtreportcolors",
+        "expectedEvidence": "positive-reply",
+        "expectedHex": "1b5b3f303b302351",
+        "receivedHex": "1b5b3f303b302351",
+        "contractMatched": true
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": null,
+        "reason": "invalid-reply",
+        "scope": "xterm palette-stack XTPUSHCOLORS / XTPOPCOLORS / XTREPORTCOLORS only: depth and deepest reports with the ? marker, push and pop of the background and one ANSI palette entry read back through OSC 11 and OSC 4 replies, numbered slots, empty pops, out-of-range slots, the ten-slot bound and independence from the kitty stack; not every dynamic colour, no rendering or painted-pixel claim, and the pinned probe's no-? pattern is not satisfied by the xterm reply"
+      }
+    },
+    {
+      "caseId": "device.xtwinops-20",
+      "pinnedCriterion": "after OSC 1;test-icon BEL, CSI 20 t returns exactly OSC L test-icon (BEL or ST); any other OSC L label contradicts",
+      "pinnedFeeds": [
+        "\u001b]1;test-icon\u0007",
+        "\u001b[20t"
+      ],
+      "effectContract": {
+        "id": "ntilde-device-query-report-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-device-query-report-effect-v1",
+        "pinnedFeeds": [
+          "\\e]1;test-icon\\a",
+          "\\e[20t"
+        ],
+        "seed": {
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[20t",
+            "setup": "\\e]1;test-icon\\a",
+            "demand": "the exact pinned round trip returns the icon label as OSC L",
+            "demanded": [
+              "\\e]Ltest-icon\\e\\"
+            ],
+            "received": [
+              "\\e]Ltest-icon\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "distinct": {
+            "kind": "protocol",
+            "request": "\\e[20t\\e[21t",
+            "setup": "\\e]1;icon-a1\\a\\e]2;title-b2\\a",
+            "demand": "the icon label and the window title are separate state and are reported by their own request, in request order",
+            "demanded": [
+              "\\e]Licon-a1\\e\\",
+              "\\e]ltitle-b2\\e\\"
+            ],
+            "received": [
+              "\\e]Licon-a1\\e\\",
+              "\\e]ltitle-b2\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "osc0-both": {
+            "kind": "protocol",
+            "request": "\\e[20t\\e[21t",
+            "setup": "\\e]0;both-c3\\a",
+            "demand": "OSC 0 sets both and both are reported",
+            "demanded": [
+              "\\e]Lboth-c3\\e\\",
+              "\\e]lboth-c3\\e\\"
+            ],
+            "received": [
+              "\\e]Lboth-c3\\e\\",
+              "\\e]lboth-c3\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "empty": {
+            "kind": "protocol",
+            "request": "\\e[20t",
+            "setup": "\\e]1;\\a",
+            "demand": "an emptied label is reported as an empty label",
+            "demanded": [
+              "\\e]L\\e\\"
+            ],
+            "received": [
+              "\\e]L\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "semicolons": {
+            "kind": "protocol",
+            "request": "\\e[20t",
+            "setup": "\\e]1;a;b c\\a",
+            "demand": "the label keeps later semicolons and spaces",
+            "demanded": [
+              "\\e]La;b c\\e\\"
+            ],
+            "received": [
+              "\\e]La;b c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "stack": {
+            "kind": "protocol",
+            "request": "\\e[20t\\e[22;1t\\e]1;stk-2\\a\\e[20t\\e[23;1t\\e[20t",
+            "setup": "\\e]1;stk-1\\a",
+            "demand": "a title-stack push, a new label and a pop are each reported as the label then in force",
+            "demanded": [
+              "\\e]Lstk-1\\e\\",
+              "\\e]Lstk-2\\e\\",
+              "\\e]Lstk-1\\e\\"
+            ],
+            "received": [
+              "\\e]Lstk-1\\e\\",
+              "\\e]Lstk-2\\e\\",
+              "\\e]Lstk-1\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "stable": {
+            "kind": "protocol",
+            "request": "\\e[20t\\e[20t",
+            "setup": "\\e]1;same-d4\\a",
+            "demand": "a report is not a set: asking twice gives the same label",
+            "demanded": [
+              "\\e]Lsame-d4\\e\\",
+              "\\e]Lsame-d4\\e\\"
+            ],
+            "received": [
+              "\\e]Lsame-d4\\e\\",
+              "\\e]Lsame-d4\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "control-character": {
+            "kind": "policy",
+            "request": "\\e[20t",
+            "setup": "\\e]1;a\\tb\\a",
+            "demand": "a label holding a control character is answered as an empty label so the reply can carry no control (an Ntilde safety choice; xterm sends the bytes)",
+            "demanded": [
+              "\\e]L\\e\\"
+            ],
+            "received": [
+              "\\e]L\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "spellings": {
+            "kind": "policy",
+            "request": "\\e[20;1t\\e[?20t\\e[>20t\\e[20t",
+            "setup": "\\e]1;test-icon\\a",
+            "demand": "a report with an extra parameter or a leader is not answered (an Ntilde bound; xterm ignores extra parameters)",
+            "demanded": [
+              "\\e]Ltest-icon\\e\\"
+            ],
+            "received": [
+              "\\e]Ltest-icon\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": true,
+          "response": "\u001b]Ltest-icon\u001b\\",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "OSC 1 + CSI 20 t round trip returns the exact icon label",
+              "observed": "\u001b]Ltest-icon\u001b\\"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": true,
+          "response": "\u001b]Ltest-icon\u001b\\\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "OSC 1 + CSI 20 t round trip returns the exact icon label",
+              "observed": "\u001b]Ltest-icon\u001b\\"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "device.xtwinops-20",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "device.xtwinops-20"
+      },
+      "queryWitness": {
+        "id": "q07.device.xtwinops-20",
+        "expectedEvidence": "silence",
+        "expectedHex": "",
+        "receivedHex": "1b5d4c44512d626173652d61616431656336631b5c",
+        "contractMatched": false
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": null,
+        "reason": null,
+        "scope": "CSI 20 t icon-label reports only, with AllowTitleReport on: the exact pinned round trip, distinct icon and title state, OSC 0, empty and semicolon labels, title-stack interplay and stability; the raw OSC 1 state, not a host icon presentation; the default-off gate is unit-tested, not measured here"
+      }
+    },
+    {
+      "caseId": "device.xtwinops-21",
+      "pinnedCriterion": "after OSC 2;test-title BEL, CSI 21 t returns exactly OSC l test-title (BEL or ST)",
+      "pinnedFeeds": [
+        "\u001b]2;test-title\u0007",
+        "\u001b[21t"
+      ],
+      "effectContract": {
+        "id": "ntilde-device-query-report-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-device-query-report-effect-v1",
+        "pinnedFeeds": [
+          "\\e]2;test-title\\a",
+          "\\e[21t"
+        ],
+        "seed": {
+          "nonce": "NTILDE_DQ_aad1ec6c3c949076162c385568a6e939",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[21t",
+            "setup": "\\e]2;test-title\\a",
+            "demand": "the exact pinned round trip returns the title label as OSC l",
+            "demanded": [
+              "\\e]ltest-title\\e\\"
+            ],
+            "received": [
+              "\\e]ltest-title\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "distinct": {
+            "kind": "protocol",
+            "request": "\\e[21t\\e[20t",
+            "setup": "\\e]1;icon-a1\\a\\e]2;title-b2\\a",
+            "demand": "the icon label and the window title are separate state and are reported by their own request, in request order",
+            "demanded": [
+              "\\e]ltitle-b2\\e\\",
+              "\\e]Licon-a1\\e\\"
+            ],
+            "received": [
+              "\\e]ltitle-b2\\e\\",
+              "\\e]Licon-a1\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "osc0-both": {
+            "kind": "protocol",
+            "request": "\\e[21t\\e[20t",
+            "setup": "\\e]0;both-c3\\a",
+            "demand": "OSC 0 sets both and both are reported",
+            "demanded": [
+              "\\e]lboth-c3\\e\\",
+              "\\e]Lboth-c3\\e\\"
+            ],
+            "received": [
+              "\\e]lboth-c3\\e\\",
+              "\\e]Lboth-c3\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "empty": {
+            "kind": "protocol",
+            "request": "\\e[21t",
+            "setup": "\\e]2;\\a",
+            "demand": "an emptied label is reported as an empty label",
+            "demanded": [
+              "\\e]l\\e\\"
+            ],
+            "received": [
+              "\\e]l\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "semicolons": {
+            "kind": "protocol",
+            "request": "\\e[21t",
+            "setup": "\\e]2;a;b c\\a",
+            "demand": "the label keeps later semicolons and spaces",
+            "demanded": [
+              "\\e]la;b c\\e\\"
+            ],
+            "received": [
+              "\\e]la;b c\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "stack": {
+            "kind": "protocol",
+            "request": "\\e[21t\\e[22;2t\\e]2;stk-2\\a\\e[21t\\e[23;2t\\e[21t",
+            "setup": "\\e]2;stk-1\\a",
+            "demand": "a title-stack push, a new label and a pop are each reported as the label then in force",
+            "demanded": [
+              "\\e]lstk-1\\e\\",
+              "\\e]lstk-2\\e\\",
+              "\\e]lstk-1\\e\\"
+            ],
+            "received": [
+              "\\e]lstk-1\\e\\",
+              "\\e]lstk-2\\e\\",
+              "\\e]lstk-1\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "stable": {
+            "kind": "protocol",
+            "request": "\\e[21t\\e[21t",
+            "setup": "\\e]2;same-d4\\a",
+            "demand": "a report is not a set: asking twice gives the same label",
+            "demanded": [
+              "\\e]lsame-d4\\e\\",
+              "\\e]lsame-d4\\e\\"
+            ],
+            "received": [
+              "\\e]lsame-d4\\e\\",
+              "\\e]lsame-d4\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "control-character": {
+            "kind": "policy",
+            "request": "\\e[21t",
+            "setup": "\\e]2;a\\tb\\a",
+            "demand": "a label holding a control character is answered as an empty label so the reply can carry no control (an Ntilde safety choice; xterm sends the bytes)",
+            "demanded": [
+              "\\e]l\\e\\"
+            ],
+            "received": [
+              "\\e]l\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "spellings": {
+            "kind": "policy",
+            "request": "\\e[21;1t\\e[?21t\\e[>21t\\e[21t",
+            "setup": "\\e]2;test-title\\a",
+            "demand": "a report with an extra parameter or a leader is not answered (an Ntilde bound; xterm ignores extra parameters)",
+            "demanded": [
+              "\\e]ltest-title\\e\\"
+            ],
+            "received": [
+              "\\e]ltest-title\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": true,
+          "response": "\u001b]ltest-title\u001b\\",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "CSI 21 t returns the exact window title set by OSC 2",
+              "observed": "\u001b]ltest-title\u001b\\"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": true,
+          "response": "\u001b]ltest-title\u001b\\\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "CSI 21 t returns the exact window title set by OSC 2",
+              "observed": "\u001b]ltest-title\u001b\\"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "device.xtwinops-21",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "device.xtwinops-21"
+      },
+      "queryWitness": {
+        "id": "q07.device.xtwinops-21",
+        "expectedEvidence": "silence",
+        "expectedHex": "",
+        "receivedHex": "1b5d6c44512d626173652d61616431656336631b5c",
+        "contractMatched": false
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": null,
+        "reason": null,
+        "scope": "CSI 21 t window-title reports only, with AllowTitleReport on: the exact pinned round trip, distinct icon and title state, OSC 0, empty and semicolon labels, title-stack interplay and stability; the raw OSC 0/2 state, not the presented host caption; the default-off gate is unit-tested, not measured here"
+      }
+    }
+  ]
+}

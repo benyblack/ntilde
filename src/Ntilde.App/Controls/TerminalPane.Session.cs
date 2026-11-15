@@ -118,6 +118,12 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
+        /// The <c>TERM</c> every direct pane's child is started with (the native PTY layer and the SSH options both pin it, and
+        /// a test keeps them equal). A shell profile that changes TERM later is not reflected: this is what Ntilde gave the pane.
+        /// </summary>
+        internal const string ChildTerminalType = "xterm-256color";
+
+        /// <summary>
         /// Replaces <see cref="Parser"/> with a fresh <see cref="AnsiParser"/> and attaches this
         /// pane's handlers to it.
         /// </summary>
@@ -191,6 +197,10 @@ namespace Ntilde.Controls
             Parser.AllowNativeKittyGraphics = AllowsNativeKittyGraphics(muxBacked);
             // DECRQCRA reads the screen back, so it starts off unless the setting turns it on (direct panes only).
             Parser.AllowRectangleChecksumReport = !muxBacked && (_settings?.AllowRectangleChecksumReport ?? false);
+            // The title reports hand a program's own title back as input, so they start off too (direct panes only), and
+            // XTGETXRES termName answers with the TERM the pane's child was given (direct panes: local PTY and SSH).
+            Parser.AllowTitleReport = !muxBacked && (_settings?.AllowTitleReport ?? false);
+            Parser.TerminalTypeName = muxBacked ? null : ChildTerminalType;
             if (muxBacked) PersistentImagePolicy.Apply(Parser, imagePolicy); // every parser of the session decides alike
 
             // Kitty t=f (file transport) reads happen through this delegate so the VT layer

@@ -31,13 +31,20 @@ const tcap = [['terminal-name', '544e'], ['color-count', '436f'], ['colors', '63
  * because actions, close reports, urgency, expiry and sounds are not implemented. The id is the witness request's own, already within the id alphabet. */
 const noticeReply = `${esc}]99;i=ntilde-query-audit:p=?;o=always:p=title,body${st}`;
 
+/** The replies query policy v4 owes: XTGETXRES termName answers the TERM the App gives a direct pane's child (xterm-256color, uppercase hex), and XTREPORTCOLORS the
+ * xterm palette stack with the ? marker. This suite begins with RIS, which clears the stack, so the depth and the deepest depth are both 0 when it asks. CSI 20 t and
+ * CSI 21 t keep the silence expectation: the title and icon are the device-query suite's run baseline label, which this witness model cannot name, so a run with the title
+ * reports on records a mismatch whose retained actual reply is that label. */
+const xtgetxresReply = `${esc}P1+R7465726d4e616d65=787465726D2D323536636F6C6F72${st}`;
+const xtreportcolorsReply = `${esc}[?0;0#Q`;
+
 /** The reply DECRQCRA owes the 1x1 witness request while the run turns AllowRectangleChecksumReport on: the bound first line
  * always starts with the N of NTILDE_QRY_ (0x4E, plain), so the negated 16-bit checksum is FFB2. */
 const checksumReply = `${esc}P1!~FFB2${st}`;
 
 /** The optional context flags, each exactly `true` or absent: `checksumReport` (a run whose initial settings turn the off-by-default
  * DECRQCRA report on) and `marginsReport` (a run of the query policy that expects the DECRQSS s reply, which is unconditional) and `noticeReport` (query policy v3, which also expects the OSC 99 capability reply). */
-const contextFlags = ['checksumReport', 'marginsReport', 'noticeReport'];
+const contextFlags = ['checksumReport', 'marginsReport', 'noticeReport', 'deviceReport'];
 /** Observed geometry and absolute one-based margins plus the optional flags above. Without them (every run before they existed) the
  * context is exactly the four numbers. */
 export function queryWitnessContext(value) {
@@ -67,6 +74,8 @@ export function queryWitnessPlan(context) {
         ...silent.map(([id, request]) => {
             if (id === 'editing.decrqcra' && c.checksumReport) return entry(`q07.${id}`, id, request, 'positive-reply', checksumReply);
             if (id === 'extensions.osc99-kitty-notify' && c.noticeReport) return entry(`q07.${id}`, id, request, 'positive-reply', noticeReply);
+            if (id === 'device.xtgetxres' && c.deviceReport) return entry(`q07.${id}`, id, request, 'positive-reply', xtgetxresReply);
+            if (id === 'device.xtreportcolors' && c.deviceReport) return entry(`q07.${id}`, id, request, 'positive-reply', xtreportcolorsReply);
             return entry(`q07.${id}`, id, request, 'silence', '');
         }),
         entry('q12.decrqss.vertical-margins', 'device.decrqss', `${esc}P$qr${st}`, 'positive-reply', `${esc}P1$r${c.top};${c.bottom}r${st}`),

@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -920,7 +920,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -942,7 +942,11 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (notify) {
             await addNotifyEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify) writerFor(output)('context.json', context);
+        // The device-query suffix derives from the same left/right-margin bytes (a sibling of the notification one) and is equally opt-in; its run turns on AllowTitleReport.
+        if (devq) {
+            await addDevqEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9 || notify || devq) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -990,4 +994,27 @@ async function addNotifyEvidence({ output, write, context, evidence, lrMarginsBy
     evidence.notifyEvidence = { runId: context.runId, suiteId: notifySuiteId, file: 'ntf-observations.json', sha256: hash(readFileSync(join(output, 'ntf-observations.json'))),
         runFile: 'ntf-run.json', runSha256: hash(readFileSync(join(output, 'ntf-run.json'))), focusFile: 'ntf-focus.json', focusSha256: hash(readFileSync(join(output, 'ntf-focus.json'))),
         adapterBundleSha256: hash(notifyBytes), contractsVersion: notifyContractsVersion, counts: notifyCounts(notifyReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in device-query suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes, with the initial settings that turn the title reports on. */
+async function addDevqEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticDevqEvidence } = await import('./devq-evidence.mjs');
+    const { buildDevqGradingReport } = await import('../devq-grading.mjs');
+    const { devqCounts } = await import('../devq-receipt.mjs');
+    const { adaptDevqCollector, devqAdapterId } = await import('../devq-grading-collector.mjs');
+    const { devqSuiteId, devqContractsVersion } = await import('../devq-contracts.mjs');
+    const devqBytes = Buffer.from(adaptDevqCollector(lrMarginsBytes.toString()));
+    const devq = syntheticDevqEvidence({ runId: context.runId, bundleSha256: hash(devqBytes) });
+    devq.adapter = { ...devq.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const devqReport = buildDevqGradingReport(devq.frames, devq.run, context.runId, devq.adapter);
+    write('dvq-observations.json', devqReport);
+    write('dvq-run.json', devq.run);
+    writeFileSync(join(output, 'dvq-snapshots.jsonl'), devq.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-dvq.mjs'), devqBytes);
+    // The run's retained initial settings turn the off-by-default title reports on, and the context declares their digest.
+    write('initial-settings.json', { ...JSON.parse(readFileSync(join(output, 'initial-settings.json'))), AllowTitleReport: true });
+    Object.assign(context, { devqAdapterId, devqSuiteId, devqBundleSha256: hash(devqBytes), devqContractsVersion, initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))) });
+    evidence.devqEvidence = { runId: context.runId, suiteId: devqSuiteId, file: 'dvq-observations.json', sha256: hash(readFileSync(join(output, 'dvq-observations.json'))),
+        runFile: 'dvq-run.json', runSha256: hash(readFileSync(join(output, 'dvq-run.json'))), adapterBundleSha256: hash(devqBytes),
+        contractsVersion: devqContractsVersion, counts: devqCounts(devqReport), provisionalUntil: 'cell-receipt.json' };
 }

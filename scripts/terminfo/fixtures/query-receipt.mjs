@@ -10,8 +10,8 @@ import { querySuiteId, queryPolicyFor } from '../queries.mjs';
 import { completeOwnedReceipt } from '../receipt.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export async function queryReceiptFixture(action, worldOptions = {}) {
-    // The archived query policy is the version marker: the legacy v1 (every published run), v2 (`marginsReport`, DECRQSS s owed) or v3 (`noticeReport`, the OSC 99 reply owed as well).
-    const ownedQueryPolicy = queryPolicyFor(worldOptions.marginsReport, worldOptions.noticeReport);
+    // The archived query policy is the version marker: the legacy v1 (every published run), v2 (`marginsReport`, DECRQSS s owed) v3 (`noticeReport`, the OSC 99 reply owed as well) or v4 (`deviceReport`, the XTGETXRES and XTREPORTCOLORS replies owed too).
+    const ownedQueryPolicy = queryPolicyFor(worldOptions.marginsReport, worldOptions.noticeReport, worldOptions.deviceReport);
     const output = mkdtempSync(join(tmpdir(), 'nt-query-receipt-'));
     const write = (file, value) => writeFileSync(join(output, file), JSON.stringify(value, null, 2) + '\n');
     try {

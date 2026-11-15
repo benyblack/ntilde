@@ -252,6 +252,24 @@ test('under the v3 marker the OSC 99 query owes the exact capability reply, sile
     for (const bad of ['yes', 1, null]) assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: bad }));
     assert.throws(() => buildQueryReport({ ...reportInput(report), noticeReport: true }), 'the v3 marker requires the v2 marker');
 });
+test('under the v4 marker XTGETXRES and XTREPORTCOLORS owe their exact replies, silence is then a mismatch, and the marker is recorded and re-derived', async () => {
+    const world = queryWorld({ marginsReport: true, noticeReport: true, deviceReport: true }); await world.collect(); const report = world.observer.report;
+    const resource = item => item.id === 'q07.device.xtgetxres', colors = item => item.id === 'q07.device.xtreportcolors';
+    assert.ok(report.observations.every(item => item.contractMatched));
+    assert.equal(report.observations.find(resource).expectedEvidence, 'positive-reply');
+    assert.equal(report.observations.find(resource).expectedHex, Buffer.from('\x1bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\x1b\\').toString('hex'));
+    assert.equal(report.observations.find(colors).expectedHex, Buffer.from('\x1b[?0;0#Q').toString('hex'));
+    // The title reports have no deterministic label in this suite, so their witnesses keep the silence expectation under v4 too.
+    for (const id of ['q07.device.xtwinops-20', 'q07.device.xtwinops-21']) assert.equal(report.observations.find(item => item.id === id).expectedEvidence, 'silence');
+    assert.equal(report.policy, 'owned-exact-query-paired-raw-state-v4'); assert.match(report.deviceReport, /^query policy v4/);
+    assert.deepEqual(buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true, deviceReport: true }), report);
+    assert.notDeepEqual(buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true }), report, 'without the v4 marker the same journal derives a different report');
+    const silent = queryWorld({ marginsReport: true, noticeReport: true, deviceReport: true, mutateReply: (id, reply) => id === 'q07.device.xtgetxres' || id === 'q07.device.xtreportcolors' ? '' : reply });
+    await silent.collect(); const mismatched = silent.observer.report.observations.filter(item => resource(item) || colors(item));
+    assert.deepEqual(mismatched.map(item => item.contractMatched), [false, false]); assert.ok(mismatched.every(item => item.receivedHex === ''));
+    for (const bad of ['yes', 1, null]) assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, noticeReport: true, deviceReport: bad }));
+    assert.throws(() => buildQueryReport({ ...reportInput(report), marginsReport: true, deviceReport: true }), 'the v4 marker requires the v3 marker');
+});
 test('without the marker (every earlier run) the negative expectation and the v1 policy are unchanged', async () => {
     const world = queryWorld(); await world.collect(); const report = world.observer.report;
     assert.equal(report.observations.find(item => item.id === 'q12.decrqss.horizontal-margins').expectedEvidence, 'negative-reply');

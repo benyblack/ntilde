@@ -20,7 +20,7 @@ public partial class TerminalBuffer
     {
         var state = _runtimeColors;
         var current = state.Current;
-        bool empty = state.Stack.Length == 0 && current.Foreground is null && current.Background is null &&
+        bool empty = state.Stack.Length == 0 && !state.HasXtermState && current.Foreground is null && current.Background is null &&
             current.Cursor is null && current.SelectionBackground is null && current.SelectionForeground is null &&
             current.Palette.All(color => color is null);
         return empty ? null : state.Clone();
@@ -53,7 +53,7 @@ public partial class TerminalBuffer
     internal void ApplyColorOverrides(TerminalColorOverrides colors)
     {
         if (_runtimeColors.Current.HasSameColors(colors)) return;
-        PublishRuntimeColors(new TerminalRuntimeColors { Current = colors, Stack = _runtimeColors.Stack });
+        PublishRuntimeColors(_runtimeColors.WithColors(colors, _runtimeColors.Stack));
     }
 
     internal TermColor? GetDynamicColor(int code, TerminalColorOverrides overrides) => code switch
@@ -71,11 +71,9 @@ public partial class TerminalBuffer
         var state = _runtimeColors;
         // Internal published frames are immutable. Only exports/imports need deep copies;
         // later mutations always clone Current before changing it.
-        var next = new TerminalRuntimeColors
-        {
-            Current = state.Current,
-            Stack = state.Stack.TakeLast(TerminalRuntimeColors.MaxStackDepth - 1).Append(state.Current).ToArray()
-        };
+        var next = state.WithColors(
+            state.Current,
+            state.Stack.TakeLast(TerminalRuntimeColors.MaxStackDepth - 1).Append(state.Current).ToArray());
         Volatile.Write(ref _runtimeColors, next);
     }
 
@@ -83,7 +81,51 @@ public partial class TerminalBuffer
     {
         var state = _runtimeColors;
         if (state.Stack.Length == 0) return;
-        PublishRuntimeColors(new TerminalRuntimeColors { Current = state.Stack[^1], Stack = state.Stack[..^1] });
+        PublishRuntimeColors(state.WithColors(state.Stack[^1], state.Stack[..^1]));
+    }
+
+    /// <summary>
+    /// XTPUSHCOLORS. <paramref name="slot"/> 0 saves the current colors one above the depth and deepens it; 1..10 saves
+    /// into that slot and sets the depth to it; anything else changes nothing. The deepest depth only grows on a deepening push.
+    /// </summary>
+    internal void XtermPushColors(int slot)
+    {
+        var state = _runtimeColors;
+        int target = slot <= 0 ? state.XtermUsed : slot - 1;
+        if (target is < 0 or >= TerminalRuntimeColors.MaxXtermSlots) return;
+        int used = slot <= 0 ? state.XtermUsed + 1 : slot;
+        var slots = state.XtermSlots is { } existing
+            ? (TerminalColorOverrides?[])existing.Clone()
+            : new TerminalColorOverrides?[TerminalRuntimeColors.MaxXtermSlots];
+        slots[target] = state.Current; // published frames are immutable, so the slot may share it
+        var next = state.WithColors(state.Current, state.Stack);
+        next.XtermSlots = slots;
+        next.XtermUsed = used;
+        next.XtermLast = slot <= 0 ? Math.Max(state.XtermLast, used) : state.XtermLast;
+        Volatile.Write(ref _runtimeColors, next);
+    }
+
+    /// <summary>
+    /// XTPOPCOLORS. <paramref name="slot"/> 0 restores the slot below the depth; 1..10 restores that slot; either sets the
+    /// depth to the restored slot. An empty or never-stored slot changes nothing.
+    /// </summary>
+    internal void XtermPopColors(int slot)
+    {
+        var state = _runtimeColors;
+        int target = slot <= 0 ? state.XtermUsed - 1 : slot - 1;
+        if (target is < 0 or >= TerminalRuntimeColors.MaxXtermSlots || state.XtermSlots?[target] is not { } frame) return;
+        var next = state.WithColors(frame, state.Stack);
+        next.XtermSlots = state.XtermSlots;
+        next.XtermUsed = target;
+        next.XtermLast = state.XtermLast;
+        PublishRuntimeColors(next);
+    }
+
+    /// <summary>XTREPORTCOLORS: the current depth and the deepest depth reached.</summary>
+    internal (int Depth, int Deepest) XtermColorStackDepths()
+    {
+        var state = Volatile.Read(ref _runtimeColors);
+        return (state.XtermUsed, state.XtermLast);
     }
 
     private void PublishRuntimeColors(TerminalRuntimeColors next)

@@ -40,18 +40,19 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 115,
-    "suiteClaims": 117,
+    "uniqueBenchmarkIds": 119,
+    "suiteClaims": 121,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 114,
+    "effectSupportedIds": 118,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
-    "pinnedAndEffectSupportedIds": 86,
+    "pinnedAndEffectSupportedIds": 89,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
+      "device.xtreportcolors",
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
@@ -83,13 +84,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 113,
+    "effectSupportedOfStockInconclusive": 117,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 85,
+    "pinnedSupportedOfStockInconclusive": 88,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 86,
+    "pinnedSupportedIds": 89,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -98,11 +99,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 55,
+      "effectUnqualified": 51,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 54,
-      "notPinnedSupported": 83
+      "effectNotMeasured": 50,
+      "notPinnedSupported": 80
     }
   },
   "suites": [
@@ -2895,6 +2896,80 @@
         "command": "node --test scripts/terminfo/selection-colors-publication.test.mjs",
         "testSha256": "395fb7b16e33db99a6231b1aa869d957cc53d81d090b0c461421d38cab519490"
       }
+    },
+    {
+      "suite": "devq",
+      "suiteId": "ntilde-owned-device-queries-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-15-device-queries/",
+      "doc": "2026-11-15-device-queries-qualification.md",
+      "caseCount": 4,
+      "caseIds": [
+        "device.xtgetxres",
+        "device.xtreportcolors",
+        "device.xtwinops-20",
+        "device.xtwinops-21"
+      ],
+      "evidence": {
+        "files": 10,
+        "bytes": 48744940,
+        "sha256": "08590e348b49cb8911f1d0f432291e2b2ceb253dec9a4d9d3d77de3d9dd0fdaf"
+      },
+      "receipt": {
+        "schemaVersion": 61,
+        "runId": "aad1ec6c3c949076162c385568a6e939",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "3425d44fb1849a7c3ae040c0d26b8b01fc76ed6619ac0316659de2205582911d"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-device-queries-graded-v1",
+          "file": "dvq-observations.json",
+          "sha256": "7ff1d170c489f016970eed3709da32390cadc9337deac9dbe11e6954650fdc27",
+          "runFile": "dvq-run.json",
+          "runSha256": "16466a77d5696e74072595f1f094f383e985cd28a293c46e384bd76264fc4335",
+          "counts": {
+            "supported": 3,
+            "inconclusive": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "aad1ec6c3c949076162c385568a6e939",
+        "measuredAt": "2026-11-15T12:47:29.517Z",
+        "appRevision": "8692e250b6199ba909dbf8f40c99bda906571c39",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "8692e250b6199ba909dbf8f40c99bda906571c39",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "9dbb07161fdb7ce035afeae58c1690c196884ec12ef81e589c43d216e427fc7c",
+        "gradingAdapterId": "ntilde-owned-device-queries-grading-v1",
+        "gradingAdapterBundleSha256": "6cc44ba283746de56c47d6f35761edfe83dde03b21db1cc342c9f57702955188",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v55",
+        "sourceSnapshotManifestSha256": "f6d2f04ad851529c4c5555f7c9b6d3cac1b26da6eb2d9453dd4c4f4623f0590c"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "ece4f56d710f9cc36e15115dc2abed23",
+        "counts": {
+          "inconclusive": 163,
+          "supported": 91,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "f19c4e3348015e72ee524395af0d02cb4b08e55b5a626a827cb3dbe452228a98",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; the run turns on AllowTitleReport, so the stock probes for the title reports and XTGETXRES now pass against the unchanged pinned code."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/devq-publication.test.mjs",
+        "testSha256": "0813c39e728d4b74c673da72afc1e53942fec68f56db1a460dfd729063d52d48"
+      }
     }
   ],
   "benchmark": [
@@ -3316,6 +3391,196 @@
             "effect": "supported",
             "reason": "Requested setting or name refused; other settings or names unmeasured"
           },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "device.xtgetxres",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "device.xtgetxres",
+          "suite": "devq",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "device.xtreportcolors",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "device.xtreportcolors",
+          "suite": "devq",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-effect-supported",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": null
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "device.xtwinops-20",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "device.xtwinops-20",
+          "suite": "devq",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "device.xtwinops-21",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "devq",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "device.xtwinops-21",
+          "suite": "devq",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": null,
           "measuredLayers": [
             "stored-state"
           ],

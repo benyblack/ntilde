@@ -56,6 +56,12 @@ public sealed class VtCapabilityContractTests
             ["scroll-left"] = () => AssertColumnEdit("\u001b[2 @", "CDEF  ", "IJKL  "),
             ["scroll-right"] = () => AssertColumnEdit("\u001b[2 A", "  ABCD", "  GHIJ"),
             ["rectangle-checksum"] = AssertRectangleChecksum,
+            ["icon-label-report"] = AssertIconLabelReport,
+            ["window-title-report"] = AssertWindowTitleReport,
+            ["xtgetxres"] = AssertXtgetxres,
+            ["xterm-color-stack-push"] = AssertXtermColorStack,
+            ["xterm-color-stack-pop"] = AssertXtermColorStack,
+            ["xterm-color-stack-report"] = AssertXtermColorStack,
             ["left-right-margin-mode"] = AssertLeftRightMarginMode,
             ["set-left-right-margins"] = AssertSetLeftRightMargins,
             ["color-stack-push"] = AssertRuntimeColorStack,
@@ -96,6 +102,12 @@ public sealed class VtCapabilityContractTests
             ["scroll-left"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 @",
             ["scroll-right"] = "ABCDEF\r\nGHIJKL\u001b[1;3H\u001b[2 A",
             ["rectangle-checksum"] = "ABCDE\u001b[1;1H\u001b[1;1;1;1;1;5*y",
+            ["icon-label-report"] = "\u001b]1;test-icon\a\u001b[20t",
+            ["window-title-report"] = "\u001b]2;test-title\a\u001b[21t",
+            ["xtgetxres"] = "\u001bP+Q7465726d4e616d65\u001b\\",
+            ["xterm-color-stack-push"] = "\u001b]10;#123456\a\u001b[#P",
+            ["xterm-color-stack-pop"] = "\u001b[#P\u001b]10;#abcdef\a\u001b[#Q",
+            ["xterm-color-stack-report"] = "\u001b[#P\u001b[#R",
             ["left-right-margin-mode"] = "\u001b[?69h\u001b[?69$p",
             ["set-left-right-margins"] = "\u001b[?69h\u001b[3;5s\u001b[1;4H12345",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
@@ -195,6 +207,49 @@ public sealed class VtCapabilityContractTests
         new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = responses.Add, AllowRectangleChecksumReport = true }
             .Process("ABCDE\u001b[1;1H\u001b[1;1;1;1;1;5*y");
         Assert.Equal("\u001bP1!~FEB1\u001b\\", Assert.Single(responses));
+    }
+
+    /// <summary>CSI 20 t: silent by default; with the gate on, the icon name OSC 1 set in xterm's OSC L form.</summary>
+    private static void AssertIconLabelReport()
+    {
+        var silent = new List<string>();
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = silent.Add }.Process("\u001b]1;test-icon\a\u001b[20t");
+        Assert.Empty(silent);
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = responses.Add, AllowTitleReport = true }.Process("\u001b]1;test-icon\a\u001b[20t");
+        Assert.Equal("\u001b]Ltest-icon\u001b\\", Assert.Single(responses));
+    }
+
+    /// <summary>CSI 21 t: silent by default; with the gate on, the window title OSC 2 set in xterm's OSC l form.</summary>
+    private static void AssertWindowTitleReport()
+    {
+        var silent = new List<string>();
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = silent.Add }.Process("\u001b]2;test-title\a\u001b[21t");
+        Assert.Empty(silent);
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = responses.Add, AllowTitleReport = true }.Process("\u001b]2;test-title\a\u001b[21t");
+        Assert.Equal("\u001b]ltest-title\u001b\\", Assert.Single(responses));
+    }
+
+    /// <summary>termName answers with the host-supplied TERM; without one it is DCS 0 + R.</summary>
+    private static void AssertXtgetxres()
+    {
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = responses.Add, TerminalTypeName = "xterm-256color" }
+            .Process("\u001bP+Q7465726d4e616d65\u001b\\");
+        new AnsiParser(new TerminalBuffer(8, 2)) { OnResponse = responses.Add }.Process("\u001bP+Q7465726d4e616d65\u001b\\");
+        Assert.Equal(new[] { "\u001bP1+R7465726d4e616d65=787465726D2D323536636F6C6F72\u001b\\", "\u001bP0+R7465726d4e616d65\u001b\\" }, responses);
+    }
+
+    /// <summary>Push, change, pop restores; the report is xterm's CSI ? depth ; deepest # Q.</summary>
+    private static void AssertXtermColorStack()
+    {
+        var buffer = new TerminalBuffer(8, 2);
+        var responses = new List<string>();
+        var parser = new AnsiParser(buffer) { OnResponse = responses.Add };
+        parser.Process("\u001b]10;#123456\a\u001b[#P\u001b[#R\u001b]10;#abcdef\a\u001b[#Q\u001b[#R");
+        Assert.Equal(new[] { "\u001b[?1;1#Q", "\u001b[?0;1#Q" }, responses);
+        Assert.Equal(0xff123456u, buffer.ExportState(0).Colors!.Current.Foreground);
     }
 
     /// <summary>Two seeded rows, the cursor at row 1 column 3: both rows of the default region move and the cursor stays put.</summary>
