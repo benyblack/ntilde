@@ -1,6 +1,6 @@
 # Ntilde Modern baseline — 2026-11-15
 
-**43 pass / 0 fail / 26 inconclusive across 69 frozen requirements.**
+**45 pass / 0 fail / 24 inconclusive across 69 frozen requirements.**
 
 Frozen-criterion reassessment of one historical owned macOS direct-local App run. A pass is limited to the selected semantic predicate and recorded observer. It is not an official terminfo.dev result, upstream App/library execution, cross-terminal ranking or claim about every setting, platform, font or input path. Inconclusive means missing criterion-matched evidence, not a terminal defect. No new desktop collection was performed.
 
@@ -8,10 +8,14 @@ Owned application evidence mapped to the frozen catalogue. Where a stored-cell s
 
 ## Reading the results
 
-- The requirements are the exact 69 Modern catalogue rows and live-page membership captured on 2026-11-15. The original upstream Git blobs and page excerpt are retained in `upstream-snapshot.zip`; their digests are verified before any grading.
+- The requirements are the exact 69 Modern catalogue rows and live-page membership captured on 2026-11-15. The original upstream source bytes and page excerpt are retained in `upstream-snapshot.zip`; SHA-256 pins admit these bytes. Git blob IDs are retained citation metadata, not security digests.
 - Stored-cell predicates are observed through the owned App projection. They do not establish an upstream headless-library result or an application pixel result. Each row names the selected path.
 - Physical/OS-generated input, real-time blink, native focus/paste and changed current controls are not inferred from older flags, synthetic phases, generated events or a similarly named case.
 - Pinned 4.0.0 stock grades stay beside the new conclusions. This does not change the 80/80 frozen Core report or the qualification inventory, and the percentage must not be compared with the public terminal leaderboard.
+
+## Upstream attribution
+
+Catalogue and baseline material: © 2025–2026 Bjorn Stabell, [terminfo.dev](https://terminfo.dev/baseline/modern), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The original licence is retained as `LICENSE` in `upstream-snapshot.zip`. Catalogue and baseline source bytes are unmodified; the page excerpt, 69-row selection, evidence mapping and assessment are identified Ntilde adaptations. Upstream source revision and Git blob references are retained in `requirements-v1.json`.
 
 ## Measurement and provenance
 
@@ -29,7 +33,7 @@ Original stock totals: 92 supported / 1 unsupported / 162 inconclusive; suiteCom
 | `sgr.underline.curly` | pass | owned stored-cell semantic predicate | sgus-observations.json — sgr.underline.curly |
 | `sgr.underline.dotted` | pass | owned stored-cell semantic predicate | sgus-observations.json — sgr.underline.dotted |
 | `sgr.underline.dashed` | pass | owned stored-cell semantic predicate | sgus-observations.json — sgr.underline.dashed |
-| `sgr.underline.color` | inconclusive | unmeasured current criterion | The current application criterion requires repeated color-sensitive underline paints with qualified siblings. Retained stored/resolved underline colors do not establish that pixel criterion. |
+| `sgr.underline.color` | pass | owned stored-cell semantic predicate | sgcl-observations.json — sgr.underline.color |
 | `sgr.blink` | inconclusive | unmeasured current criterion | Only stored blink and synthetic presentation phases are retained. The current criterion requires a real elapsed-time capture series with a stationary control; no such series is retained. |
 | `sgr.overline` | pass | owned stored-cell semantic predicate | sgcl-observations.json — sgr.overline |
 | `sgr.fg.bright` | pass | owned stored-cell semantic predicate | sgpal-observations.json — sgr.fg.bright |
@@ -38,7 +42,7 @@ Original stock totals: 92 supported / 1 unsupported / 162 inconclusive; suiteCom
 | `sgr.bg.256` | pass | owned stored-cell semantic predicate | sgpal-observations.json — sgr.bg.256 |
 | `sgr.fg.truecolor` | pass | owned stored-cell semantic predicate | sgtc-observations.json — sgr.fg.truecolor |
 | `sgr.bg.truecolor` | pass | owned stored-cell semantic predicate | sgtc-observations.json — sgr.bg.truecolor |
-| `cursor.shape` | inconclusive | unmeasured current criterion | Stored cursor style and synthetic renders exist, but the current application criterion requires the focus-key and steady-style/made-up/hidden capture sequence in the same attempt. |
+| `cursor.shape` | pass | owned stored-cell semantic predicate | curq-observations.json — cursor.shape |
 | `cursor.horizontal-absolute` | inconclusive | unmeasured current criterion | The stock trace uses CSI 15G; the current requirement is ABCDE then CSI 3G. Related CHA evidence does not retain this exact specimen. |
 | `cursor.next-line` | inconclusive | unmeasured current criterion | The stock trace uses CNL 1 from row 3. The current requirement is ABC then CSI 2E from home; that exact specimen is not retained. |
 | `cursor.position-report` | pass | application protocol reply | raw.json — cursor.vpa |

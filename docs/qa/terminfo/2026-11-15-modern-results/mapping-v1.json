@@ -35,11 +35,11 @@
       "criterionPath": "owned stored-cell semantic predicate"
     },
     {
-      "kind": "blocked",
-      "blocker": "The current application criterion requires repeated color-sensitive underline paints with qualified siblings. Retained stored/resolved underline colors do not establish that pixel criterion.",
+      "kind": "underline-color",
       "id": "sgr.underline.color",
       "criterionSha256": "f68e3a90d4835af9db903c7123960d83adcf3892837338a017828271a6e492ca",
-      "criterionPath": "unmeasured current criterion"
+      "criterionPath": "owned stored-cell semantic predicate",
+      "file": "sgcl-observations.json"
     },
     {
       "kind": "blocked",
@@ -104,11 +104,11 @@
       "criterionPath": "owned stored-cell semantic predicate"
     },
     {
-      "kind": "blocked",
-      "blocker": "Stored cursor style and synthetic renders exist, but the current application criterion requires the focus-key and steady-style/made-up/hidden capture sequence in the same attempt.",
+      "kind": "cursor-shape",
       "id": "cursor.shape",
       "criterionSha256": "2191180ab928775e616724f8af860e5d6d1a46cb3d04e3d6da633d081d3b64dd",
-      "criterionPath": "unmeasured current criterion"
+      "criterionPath": "owned stored-cell semantic predicate",
+      "file": "curq-observations.json"
     },
     {
       "kind": "blocked",

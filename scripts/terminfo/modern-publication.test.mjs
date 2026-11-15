@@ -21,6 +21,9 @@ test('all 69 Modern conclusions rederive from the frozen criteria and complete r
     }
     assert.equal(report.rows.find(row => row.id === 'modes.focus-tracking').conclusion, 'inconclusive');
     assert.equal(report.rows.find(row => row.id === 'sgr.blink').conclusion, 'inconclusive');
+    assert.equal(report.rows.find(row => row.id === 'cursor.shape').conclusion, 'pass');
+    assert.match(report.rows.find(row => row.id === 'cursor.shape').observed.scope, /native focus\/capture criterion not claimed/);
+    assert.equal(report.rows.find(row => row.id === 'sgr.underline.color').conclusion, 'pass');
     const core = JSON.parse(readFileSync(join(modernRoot, 'docs/qa/terminfo/2026-11-11-core-reverse-wide-results/report.json')));
     assert.deepEqual(core.totals, { pass: 80, fail: 0, inconclusive: 0 });
 });

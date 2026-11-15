@@ -1,4 +1,4 @@
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -112,16 +112,21 @@ export function readableModern(report) {
         `**${t.pass} pass / ${t.fail} fail / ${t.inconclusive} inconclusive across 69 frozen requirements.**`, '',
         report.evidencePolicy, '', report.scope, '',
         '## Reading the results', '',
-        '- The requirements are the exact 69 Modern catalogue rows and live-page membership captured on 2026-11-15. The original upstream Git blobs and page excerpt are retained in `upstream-snapshot.zip`; their digests are verified before any grading.',
+        '- The requirements are the exact 69 Modern catalogue rows and live-page membership captured on 2026-11-15. The original upstream source bytes and page excerpt are retained in `upstream-snapshot.zip`; SHA-256 pins admit these bytes. Git blob IDs are retained citation metadata, not security digests.',
         '- Stored-cell predicates are observed through the owned App projection. They do not establish an upstream headless-library result or an application pixel result. Each row names the selected path.',
         '- Physical/OS-generated input, real-time blink, native focus/paste and changed current controls are not inferred from older flags, synthetic phases, generated events or a similarly named case.',
         '- Pinned 4.0.0 stock grades stay beside the new conclusions. This does not change the 80/80 frozen Core report or the qualification inventory, and the percentage must not be compared with the public terminal leaderboard.', '',
+        '## Upstream attribution', '',
+        'Catalogue and baseline material: © 2025–2026 Bjorn Stabell, [terminfo.dev](https://terminfo.dev/baseline/modern), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The original licence is retained as `LICENSE` in `upstream-snapshot.zip`. Catalogue and baseline source bytes are unmodified; the page excerpt, 69-row selection, evidence mapping and assessment are identified Ntilde adaptations. Upstream source revision and Git blob references are retained in `requirements-v1.json`.', '',
         '## Measurement and provenance', '',
         `Reused owned run \`${m.runId}\`, started ${m.startedAt}. App source \`${m.appRevision}\`; measured scripts \`${m.scriptsRevision}\`; App version \`${m.appVersion}\` (${m.appVersionSource}). Geometry ${m.geometry.rows}×${m.geometry.cols}; source policy \`${m.sourcePolicy}\`; receipt ${m.receiptSchema}, completed ${m.receiptCompletedAt}.`, '',
         `The archive is [the existing mouse-extended publication](../2026-11-15-mouse-extended/owned-run.zip), SHA-256 \`${m.archiveSha256}\`. The complete receipt, source graph, observations and cleanup are rederived in an isolated temporary directory. No archived source is executed and no raw artifact is modified. This report is a later evidence reassessment, not a fresh measurement or a source-to-binary attestation.`, '',
         `Original stock totals: ${report.stock.counts.supported} supported / ${report.stock.counts.unsupported} unsupported / ${report.stock.counts.inconclusive} inconclusive; suiteComplete=${report.stock.suiteComplete}. Those are whole-suite results under the recorded settings, not a Modern score.`, '',
         '## Per-requirement assessment', '', '| ID | Result | Selected observation path | Evidence / blocker |', '| --- | --- | --- | --- |'];
-    for (const row of report.rows) lines.push(`| \`${row.id}\` | ${row.conclusion} | ${tableText(row.criterionPath)} | ${tableText(row.blocker ?? `${row.evidence.file} — ${row.evidence.sourceId}`)} |`);
+    for (const row of report.rows) {
+        const detail = row.blocker ?? [row.evidence.file, row.evidence.sourceId].join(' — ');
+        lines.push(`| \`${row.id}\` | ${row.conclusion} | ${tableText(row.criterionPath)} | ${tableText(detail)} |`);
+    }
     lines.push('', '## Reproduce', '', 'Requires Node 24+ and Python 3; runs entirely offline without a desktop lease.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check', '```', '',
         '`report.json` retains the full frozen criterion, evidence references, selected observations, original stock verdict and exact per-row blocker. `requirements-v1.json` and `mapping-v1.json` are versioned inputs; future criteria need a new version/publication rather than silently changing this result.', '');

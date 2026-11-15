@@ -70,6 +70,29 @@ test('truecolor needs both exact samples rather than one matching cell or only p
     assert.equal(grade(id, caseEvidence(id, { observed: { fixture: [{ ...x, fg: y.fg }, y] } })).conclusion, 'inconclusive');
 });
 
+test('stored cursor shape admits the exact steady-beam predicate without claiming native captures', () => {
+    const id = 'cursor.shape';
+    const specimen = cursorMode => ({ pinnedFeeds: ['\x1b[6 q'], observed: { groups: [{ id: 'termless', reads: [{ role: 'measured', cursorMode }] }] } });
+    assert.equal(grade(id, caseEvidence(id, specimen({ style: 1, blink: false, isDefault: false }))).conclusion, 'pass');
+    assert.equal(grade(id, caseEvidence(id, specimen({ style: 0, blink: false, isDefault: false }))).conclusion, 'inconclusive');
+    const wrong = specimen({ style: 1, blink: false, isDefault: false });
+    wrong.pinnedFeeds = ['\x1b[5 q'];
+    assert.throws(() => grade(id, caseEvidence(id, wrong)), /wrong stored cursor fixture/);
+});
+
+test('underline RGB requires the exact colon spelling and exposed target/default/sibling values', () => {
+    const id = 'sgr.underline.color';
+    const specimen = { feeds: ['\x1b[4m\x1b[58:2::255:0:128mC'], observed: {
+        control: [{ char: 'C', underlineColor: { r: 255, g: 0, b: 128 }, underlineSource: 'literal', underlineStyle: 1 },
+            { char: 'P', underlineColor: { r: 95, g: 135, b: 175 } }],
+        fixture: [{ char: 'B', underlineSource: 'default', underlineColor: null }],
+    } };
+    assert.equal(grade(id, caseEvidence(id, specimen)).conclusion, 'pass');
+    const wrongColor = structuredClone(specimen); wrongColor.observed.control[0].underlineColor.r = 254;
+    assert.equal(grade(id, caseEvidence(id, wrongColor)).conclusion, 'inconclusive');
+    assert.throws(() => grade(id, caseEvidence(id, { ...specimen, feeds: ['\x1b[58;2;255;0;128mC'] })), /colon fixture/);
+});
+
 test('the aggregate truecolor alias explicitly identifies its measured foreground source', () => {
     const evidence = caseEvidence('sgr.fg.truecolor', { observed: { fixture: [{ char: 'X', fg: { r: 255, g: 128, b: 0 } }, { char: 'Y', fg: { r: 17, g: 97, b: 201 } }] } });
     assert.equal(ruleOf('extensions.truecolor').sourceId, 'sgr.fg.truecolor');

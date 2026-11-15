@@ -9,11 +9,20 @@
     "featuresGitBlob": "25b1687327a4040417882b04f977c593c16fd30e",
     "baselinesGitBlob": "d8af80eff1d622e15508eb084a8db5dd1f6a1a37",
     "snapshot": "upstream-snapshot.zip",
-    "snapshotSha256": "35efae586dd2e9d2819164970e5d3edb8a76452cfd6ebba0833df0fd7da295f1",
+    "snapshotSha256": "1eda08a977546832b740b9b7606412e69a062f0e3915011994e18ae01ddfd5a8",
     "files": {
+      "LICENSE": "3e51459cb752ab5442b26167761b48284ad6c0dc343f71e3e63a6f0509404caf",
       "baselines.json": "95f57431d99cb76d04de76dcf068ce5310de0386843723a2a6a285cddf68e779",
       "features.json": "a152d3615638c9502c6b742f20b0d5e10360e2a608a10e66aeddf8e4d204e3a9",
       "modern-page-excerpt.md": "e5a7beb349c82539d0d0c0abd900421df6906441a19d5639d77f3ebe89f5bc7d"
+    },
+    "license": {
+      "author": "Bjorn Stabell",
+      "copyright": "2025-2026",
+      "name": "Creative Commons Attribution 4.0 International",
+      "url": "https://creativecommons.org/licenses/by/4.0/",
+      "file": "LICENSE",
+      "changes": "Original catalogue and baseline source bytes are unchanged. The page is an explicitly identified excerpt; requirement selection, evidence mapping, grading and report are Ntilde adaptations."
     }
   },
   "definition": {

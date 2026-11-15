@@ -6,8 +6,8 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 export const modernPublication = 'docs/qa/terminfo/2026-11-15-modern-results';
-export const requirementsSha256 = '2c084f73ac62224fca784b9ab262aa2591acaad98cee9e474e571cf420243de4';
-export const mappingSha256 = '7ff7ec4a5d03bfc0112b3eb4bfac2dce623be1eb4e482f9eb9b41db1f5d34413';
+export const requirementsSha256 = '50a9bf1d77cdd0226b5113393e405c3a9dd93348063c0be89754a63dc3da50ff';
+export const mappingSha256 = 'a133dd7cbf4e4b580e423778f449ec4d501f21d3980a867258f2695c5a33c810';
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export const requireModern = (condition, reason) => { if (!condition) throw new Error('Modern results: ' + reason); };
 export const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -20,13 +20,13 @@ export function pinnedJson(path, sha) {
     return JSON.parse(bytes);
 }
 
-/** Only the three named bounded regular data members are admitted. */
+/** Only the four named bounded regular data members are admitted. */
 export function snapshotFiles(path) {
     const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
-    const script = String.raw`import zipfile,sys,json,base64,stat
+    const script = `import zipfile,sys,json,base64,stat
 with zipfile.ZipFile(sys.argv[1]) as z:
  names=z.namelist()
- assert sorted(names)==['baselines.json','features.json','modern-page-excerpt.md']
+ assert sorted(names)==['LICENSE','baselines.json','features.json','modern-page-excerpt.md']
  for i in z.infolist():
   assert i.file_size<2000000 and stat.S_ISREG(i.external_attr>>16)
  print(json.dumps({n:base64.b64encode(z.read(n)).decode('ascii') for n in names}))
@@ -36,22 +36,19 @@ with zipfile.ZipFile(sys.argv[1]) as z:
     return Object.fromEntries(Object.entries(JSON.parse(run.stdout)).map(([name, value]) => [name, Buffer.from(value, 'base64')]));
 }
 
-/** Verify membership, every criterion, the original Git blobs and the live-page list. */
+/** Verify exact source bytes, membership, every criterion and the live-page list.
+ * Git SHA-1 blob IDs are retained citation metadata; SHA-256 pins admit bytes. */
 export function validateModernInputs(requirements, mapping, files) {
     requireModern(requirements.schemaVersion === 1 && requirements.baseline === 'modern' && mapping.schemaVersion === 1, 'input schema');
     for (const [name, bytes] of Object.entries(files)) requireModern(digest(bytes) === requirements.upstream.files[name], 'upstream member changed: ' + name);
-    for (const [name, expected] of [['features.json', requirements.upstream.featuresGitBlob], ['baselines.json', requirements.upstream.baselinesGitBlob]]) {
-        const bytes = files[name];
-        const blob = createHash('sha1').update(Buffer.from(`blob ${bytes.length}\0`)).update(bytes).digest('hex');
-        requireModern(blob === expected, 'upstream Git blob mismatch: ' + name);
-    }
     const features = JSON.parse(files['features.json']), baselines = JSON.parse(files['baselines.json']);
     const ids = Object.entries(features).filter(([, item]) => item?.baseline === 'modern').map(([id]) => id);
     requireModern(ids.length === 69 && same(requirements.rows.map(row => row.id), ids), 'expected the exact 69 catalogue IDs in order');
     requireModern(same(requirements.definition, baselines.modern), 'baseline definition changed');
     const page = files['modern-page-excerpt.md'].toString('utf8');
     const urls = [...page.matchAll(/^\| \[[^\]]+\]\(([^)]+)\)/gm)].map(match => match[1]);
-    requireModern(same(urls.toSorted(), requirements.rows.map(row => row.page).toSorted()), 'live-page membership differs');
+    const byText = (a, b) => a.localeCompare(b, 'en');
+    requireModern(same(urls.toSorted(byText), requirements.rows.map(row => row.page).toSorted(byText)), 'live-page membership differs');
     requireModern(mapping.rows.length === 69 && same(mapping.rows.map(row => row.id), ids), 'missing/duplicate/out-of-order mapping');
     for (const [index, row] of requirements.rows.entries()) {
         const feature = features[row.id], rule = mapping.rows[index];
