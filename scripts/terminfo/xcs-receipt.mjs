@@ -14,7 +14,6 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'xcs-observations.json', run: 'xcs-run.json', journal: 'xcs-snapshots.jsonl', adapter: 'collector-xcs.mjs' });
 /** The first source policy whose worker always runs this suite. */
-// PENDING: set to the source-policy number this batch takes once the device-query batch has merged and main's current policy is read.
 export const xcsFirstPolicy = 56;
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);

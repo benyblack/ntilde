@@ -50,6 +50,7 @@ import { collectXtgettcapGrading } from './xtgettcap-collector.mjs';
 import { collectOsc9 } from './osc9-collector.mjs';
 import { collectNotify } from './notify-collector.mjs';
 import { collectDevqGrading } from './devq-collector.mjs';
+import { collectXcsGrading } from './xcs-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -423,6 +424,12 @@ try {
         const devqModule = await import(pathToFileURL(config.devqBundle).href);
         const devqRun = await collectDevqGrading({ config, fence, owner, gradingModule: devqModule });
         writeFileSync(join(config.output, 'dvq-run.json'), JSON.stringify(devqRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered xterm color-stack qualification follows the device-query suite on the same fence; it leaves every color reset and the xterm palette stack balanced.
+        const xcsSource = readFileSync(config.xcsBundle);
+        if (createHash('sha256').update(xcsSource).digest('hex') !== config.xcsBundleSha256) throw new Error('Local xterm color-stack adapter bundle changed.');
+        const xcsModule = await import(pathToFileURL(config.xcsBundle).href);
+        const xcsRun = await collectXcsGrading({ config, fence, owner, gradingModule: xcsModule });
+        writeFileSync(join(config.output, 'xcs-run.json'), JSON.stringify(xcsRun) + '\n', { flag: 'wx', mode: 0o600 });
         const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
         // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
         // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

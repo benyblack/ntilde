@@ -1203,3 +1203,12 @@ The [device-query batch](terminfo/2026-11-15-device-queries-qualification.md) fi
 fenced exchanges beside an effect contract (`ntilde-device-query-report-effect-v1`) graded by an independent oracle written from xterm's text and source. Three pinned verdicts are supported; the
 XTREPORTCOLORS pinned pattern has no `?` marker and cannot match xterm's reply, so that verdict stays inconclusive beside a supported effect contract. `device.term-features` is documented only. Stock
 grades are now 91/1/163. Query policy v4, receipt schema 61 and source policy v55 (367 files) bind it; earlier policies stay frozen.
+
+### Xterm color-stack qualification
+
+The xterm color-stack batch qualifies `modes.xtpushcolors` (`CSI # P`) and `modes.xtpopcolors` (`CSI # Q`) through a layered collector extension (`ntilde-owned-xterm-color-stack-grading-v1`)
+over the left/right-margin one (a sibling of the device-query layer). Both pinned probes can only return inconclusive (they measure DA1 and cursor responsiveness), so the unchanged pinned code is replayed
+over the journaled raw bytes of its own fenced exchange and the cursor of its read, beside an effect contract (`ntilde-xterm-color-stack-effect-v1`) graded by an independent oracle written from xterm's
+control-sequence text: silence, restoration of the foreground, background, cursor and ANSI palette entry 5 read back through OSC 10/11/12 and OSC 4 replies, the untouched host default, LIFO order, snapshot
+copy semantics and numbered slots. Palette entry 200 and a pop with nothing stored are recorded policy groups that never decide. No stock grade moves and no query policy changes. Receipt schema 62 and source
+policy v56 (374 files) bind it; the measured run and publication follow.
