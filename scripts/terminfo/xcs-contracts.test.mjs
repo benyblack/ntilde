@@ -126,3 +126,20 @@ test('the seed, finish and feed validation are exact', () => {
     assert.throws(() => validateXcsFeeds(contract, planFeeds(contract).slice(1)), /do not match/);
     assert.equal(xcsFixture.minimum.rows, 8);
 });
+
+test('the first failure in execution order decides: a protocol mismatch is not masked by a later control it damaged', () => {
+    // A push that moves the cursor (a protocol mismatch) leaves the cursor moved in every later read, so the next control also differs from the seed state.
+    const damaged = (caseId, from) => {
+        const order = byId[caseId].roles;
+        return (id, role, read) => {
+            if (id === caseId && order.indexOf(role) >= order.indexOf(from)) read.screen.cursorCol = 4;
+            return id === caseId && order.indexOf(role) >= order.indexOf(from) ? read : null;
+        };
+    };
+    const protocol = syntheticXcsGrade('modes.xtpushcolors', undefined, damaged('modes.xtpushcolors', 'push-silent'));
+    assert.equal(protocol.outcome, 'unsupported', 'the push-silent protocol group failed first, before the later set-B control');
+    assert.match(protocol.note, /push-silent/);
+    const control = syntheticXcsGrade('modes.xtpushcolors', undefined, damaged('modes.xtpushcolors', 'set-A'));
+    assert.equal(control.outcome, 'inconclusive', 'a control that fails before any protocol group makes the case inconclusive');
+    assert.match(control.note, /set-A/);
+});

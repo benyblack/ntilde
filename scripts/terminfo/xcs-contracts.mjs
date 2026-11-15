@@ -306,18 +306,16 @@ function groupMismatch(group, state, initial, baselineReplies) {
     return `The ${group.role} reply differs from the reply oracle: a restored or stored color was wrong`;
 }
 
-/** The case's grade: the seed, then every control (a failed control is inconclusive), then every protocol group (a mismatch is unsupported); policy groups never decide. */
+/** The case's grade, evaluated in execution order so an earlier failure is never overridden by a later group it damaged: the seed first, then each group as the plan ran it. The first control that fails
+ *  makes the case inconclusive (the setup did not take, so nothing after it can be judged); the first protocol group that mismatches makes it unsupported; policy groups never decide. */
 function gradeCase(item, observation) {
     if (!seedOk(observation.initial, observation.nonce)) return inconclusive('The attributed seed (nonce, cells, margins and modes) was not measured before any request');
-    const reads = item.groups.map(group => [group, observation[group.role]]);
     const baselineReplies = observation.baseline.replies;
-    for (const [group, state] of reads.filter(([group]) => group.kind === 'control')) {
-        const mismatch = groupMismatch(group, state, observation.initial, baselineReplies);
-        if (mismatch !== null) return inconclusive(`Setup control failed before the effect could be judged: ${mismatch}`);
-    }
-    for (const [group, state] of reads.filter(([group]) => group.kind === 'protocol')) {
-        const mismatch = groupMismatch(group, state, observation.initial, baselineReplies);
-        if (mismatch !== null) return unsupported(mismatch);
+    for (const group of item.groups) {
+        if (group.kind === 'policy') continue;
+        const mismatch = groupMismatch(group, observation[group.role], observation.initial, baselineReplies);
+        if (mismatch === null) continue;
+        return group.kind === 'control' ? inconclusive(`Setup control failed before the effect could be judged: ${mismatch}`) : unsupported(mismatch);
     }
     return { outcome: 'supported' };
 }

@@ -38,14 +38,12 @@ export function parseXcsReply(raw) {
     return { raw };
 }
 
-/** Where one OSC reply ends in `rest` (at its ST), or -1 while incomplete; throws on an oversized string. */
+/** Where one OSC reply ends in `rest` (at its ST or its BEL, whichever comes first), or -1 while incomplete. */
 function replyEnd(rest) {
-    const end = rest.indexOf(esc + '\\');
-    if (end < 0) {
-        if (!stringShape(rest, false)) throw new Error('Unexpected xterm-color-stack bytes.');
-        return -1;
-    }
-    return end + 2;
+    const st = rest.indexOf(esc + '\\'), bel = rest.indexOf('\x07');
+    if (st < 0 && bel < 0) return -1;
+    if (bel >= 0 && (st < 0 || bel < st)) return bel + 1;
+    return st + 2;
 }
 
 /**
@@ -58,9 +56,13 @@ export function parseXcsFrame(bytes) {
     const replies = [];
     let rest = bytes;
     for (;;) {
-        if (rest.startsWith(esc + ']')) {
-            const length = replyEnd(rest);
-            if (length < 0) return null;
+        const length = rest.startsWith(esc + ']') ? replyEnd(rest) : -1;
+        // An OSC string that never terminates before a DA barrier is not a reply: it falls through and is retained as an unexpected chunk.
+        if (rest.startsWith(esc + ']') && length < 0 && !barrierAnywhere.test(rest)) {
+            if (!stringShape(rest, false)) throw new Error('Unexpected xterm-color-stack bytes.');
+            return null;
+        }
+        if (length >= 0) {
             if (replies.length === xcsReplyLimit) throw new Error('Too many xterm-color-stack replies.');
             replies.push(parseXcsReply(rest.slice(0, length)).raw);
             rest = rest.slice(length);

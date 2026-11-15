@@ -22,6 +22,14 @@ test('incomplete frames wait and malformed bytes are refused', () => {
     assert.throws(() => parseXcsFrame(reply.repeat(xcsReplyLimit + 1) + da), /Too many/);
 });
 
+test('BEL-terminated and unterminated OSC strings are replies or retained chunks, never an abort', () => {
+    const bel = '\x1b]11;rgb:1111/2222/3333\x07';
+    assert.deepEqual(parseXcsFrame(bel + da), { barrier: da, replies: [bel] }, 'a BEL-terminated reply is complete');
+    assert.deepEqual(parseXcsFrame(bel + reply + da), { barrier: da, replies: [bel, reply] });
+    assert.deepEqual(parseXcsFrame('\x1b]11;rgb:11' + da), { barrier: da, replies: ['\x1b]11;rgb:11'] }, 'an unterminated OSC string before the barrier is retained as unexpected bytes');
+    assert.equal(parseXcsFrame('\x1b]11;rgb:11'), null, 'without a barrier it still waits');
+});
+
 test('unexpected output of a stack operation is retained byte for byte before the barrier, never refused', () => {
     assert.deepEqual(parseXcsFrame('\x1b[?0;0#Q' + da), { barrier: da, replies: ['\x1b[?0;0#Q'] }, 'a CSI report');
     assert.deepEqual(parseXcsFrame('\x1bP1+R41' + st + da), { barrier: da, replies: ['\x1bP1+R41' + st] }, 'a DCS reply');
