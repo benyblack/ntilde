@@ -118,8 +118,10 @@ export const readText = path => readFileSync(path, 'utf8').replaceAll('\r\n', '\
 const readJson = path => JSON.parse(readFileSync(path));
 const posix = path => path.split(sep).join('/');
 
-/** Stable digest over every retained file of one publication: `<relative path> <sha256>` lines, sorted. */
-function evidenceDigest(root, suite) {
+/** Stable digest over every retained file of one publication: `<relative path> <sha256>` lines, sorted.
+ * Gzip is binary; normalizing its CRLF byte pairs would conceal corruption. Historical
+ * archive formats retain their existing digest convention for publication compatibility. */
+export function evidenceDigest(root, suite) {
     const files = [];
     const walk = dir => {
         for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => byText(a.name, b.name))) {
@@ -130,8 +132,12 @@ function evidenceDigest(root, suite) {
     };
     if (suite.layout === 'single') files.push(join(root, suite.file));
     else walk(join(root, suite.dir));
-    const lines = files.map(path => `${posix(relative(root, path))} ${sha256(lf(readFileSync(path)))}`);
-    return { files: files.length, bytes: files.reduce((total, path) => total + lf(readFileSync(path)).length, 0), sha256: sha256(lines.join('\n')) };
+    const entries = files.map(path => {
+        const contents = readFileSync(path);
+        return { path, bytes: path.endsWith('.gz') ? contents : lf(contents) };
+    });
+    const lines = entries.map(({ path, bytes }) => `${posix(relative(root, path))} ${sha256(bytes)}`);
+    return { files: entries.length, bytes: entries.reduce((total, entry) => total + entry.bytes.length, 0), sha256: sha256(lines.join('\n')) };
 }
 
 /** Load one publication into `{ summary, report }` (cases fully materialized) whatever its retained layout. */

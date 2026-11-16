@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-    assertInventory, benchmarkSuites, buildInventory, defaultQaRoot, effectVerdictOf, findingSuites, inventoryFiles, loadPublication, measuredLayersOf,
+    assertInventory, benchmarkSuites, buildInventory, defaultQaRoot, effectVerdictOf, evidenceDigest, findingSuites, inventoryFiles, loadPublication, measuredLayersOf,
     nonInventoryPublicationTests, pinnedVerdictOf, readText, receiptBinding, renderSummary, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
 } from './qualification-inventory.mjs';
 
@@ -478,4 +479,22 @@ test('extensions.truecolor projection has its own suite identity and cites its c
     assert.equal(suite.suiteId, 'ntilde-owned-extensions-truecolor-projection-v1');
     assert.equal(suite.receipt.suiteEvidence.suiteId, 'ntilde-owned-sgr-truecolor-graded-v1');
     assert.equal(suite.receipt.runId, suite.run.ownedRunId);
+});
+
+
+test('inventory hashes compressed evidence as raw bytes, including CRLF byte pairs', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-inventory-gzip-'));
+    try {
+        const original = readFileSync(join(defaultQaRoot, '2026-11-16-extensions-truecolor/terminfo-dev-4.0.0.bundle.mjs.gz'));
+        const index = original.indexOf(Buffer.from([13, 10]));
+        assert.ok(index >= 0, 'the retained binary contains the tested byte pair');
+        const path = join(root, 'bundle.gz'), suite = { layout: 'single', file: 'bundle.gz' };
+        writeFileSync(path, original);
+        const before = evidenceDigest(root, suite);
+        writeFileSync(path, Buffer.concat([original.subarray(0, index), original.subarray(index + 1)]));
+        const after = evidenceDigest(root, suite);
+        assert.equal(before.bytes, original.length);
+        assert.equal(after.bytes, original.length - 1);
+        assert.notEqual(after.sha256, before.sha256);
+    } finally { rmSync(root, { recursive: true, force: true }); }
 });

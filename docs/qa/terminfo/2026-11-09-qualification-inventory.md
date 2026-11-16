@@ -98,7 +98,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `core-gaps` | 2 | v1 | passed | 64 | `aaaece99` | v58 | 2 | `65fe1755` |
 | `xsv` | 2 | v1 | passed | 65 | `27babfa6` | v59 | 6 | `a605f038` |
 | `kcl` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 4 | `084f98f9` |
-| `extensions-truecolor` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 3 | `1df2c158` |
+| `extensions-truecolor` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 3 | `5e017718` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
