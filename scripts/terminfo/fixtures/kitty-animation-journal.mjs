@@ -1,0 +1,104 @@
+// Synthetic protocols/state/PNGs only. These are never runtime evidence.
+import { crc32, deflateSync } from 'node:zlib';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { initialInputScreen, inputPaneId, inputRunId, inputCapture } from './input-journal.mjs';
+import { pixelCapture } from './pixel-capture.mjs';
+import { imageOwnership } from './static-images-journal.mjs';
+import { animationCases, animationExpectedReplies } from '../kitty-animation-cases.mjs';
+import { animationFrameColor } from '../kitty-animation-inputs.mjs';
+import { animationPlan, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix, animationActionCount } from '../kitty-animation.mjs';
+import { imageModeReplyHex, imageBackgroundReply } from '../static-images.mjs';
+import { snapshotHash } from '../agent-observer.mjs';
+import { pngHash } from '../pixels-capture.mjs';
+
+const chunk = (type, data) => { const b = Buffer.alloc(data.length + 12); b.writeUInt32BE(data.length); b.write(type, 4); data.copy(b, 8); b.writeUInt32BE(crc32(b.subarray(4, -4)), b.length - 4); return b; };
+export const animationEpoch = Date.parse('2026-11-04T14:00:00.000Z');
+const iso = ms => new Date(animationEpoch + ms).toISOString();
+
+/** A 32x32 aspect-fit square of one frame color at the controlled anchor, or blank; optional bleed outside it. */
+export function syntheticAnimationCapture(screen, appearance, { bleed = false } = {}) {
+    const capture = pixelCapture(screen), width = screen.cols * 8, height = screen.rows * 18;
+    const rgba = Buffer.alloc(width * height * 4), background = screen.bufferState.alternateScreen ? 16 : 0;
+    for (let i = 0; i < rgba.length; i += 4) rgba.set([background, background, background, 255], i);
+    if (appearance && appearance !== 'absent') {
+        const color = animationFrameColor(appearance);
+        for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) rgba.set(color, ((72 + y) * width + 24 + x) * 4);
+    }
+    if (bleed) rgba.set([255, 0, 0, 255], 0);
+    const raw = Buffer.alloc(height * (width * 4 + 1));
+    for (let row = 0; row < height; row++) rgba.copy(raw, row * (width * 4 + 1) + 1, row * width * 4, (row + 1) * width * 4);
+    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
+    const bytes = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+    Object.assign(capture, { width, height, byteCount: bytes.length, pngBase64: bytes.toString('base64') });
+    Object.assign(capture.renderDetails.theme, { backgroundOverride: screen.bufferState.alternateScreen,
+        backgroundArgb: screen.bufferState.alternateScreen ? 0xff101010 : 0xff000000,
+        cursorTextArgb: screen.bufferState.alternateScreen ? 0xff101010 : 0xff000000,
+        cursorOverride: false, selectionBackgroundOverride: false, selectionForegroundOverride: false,
+        selectionBackgroundArgb: null, selectionForegroundArgb: null, effectiveSelectionBackgroundArgb: 0xff123456,
+        effectiveSelectionForegroundArgb: null, paletteOverrideIndices: [] });
+    Object.assign(capture.renderDetails.grid, { renderWidthPx: width, renderHeightPx: height, cellWidthDip: 8, cellHeightDip: 18,
+        cellWidthPx: 8, cellHeightPx: 18, baselineDip: 14, baselineOffsetPx: 14, underlineOffsetPx: 16, strikeOffsetPx: 9 });
+    capture.imageDetails = appearance && appearance !== 'absent'
+        ? { schemaVersion: 1, complete: true, totalPlacements: 1, placements: [{ index: 0, placementId: '11111111-2222-3333-4444-555555555555', col: 3,
+            viewportRow: 4, widthCells: 4, heightCells: 2, clipTopRows: 0, clipBottomRows: 0, clipRightColumns: 0, preserveAspectRatio: true,
+            bitmapWidthPx: 16, bitmapHeightPx: 16, sixelPlacement: null }] }
+        : { schemaVersion: 1, complete: true, totalPlacements: 0, placements: [] };
+    return capture;
+}
+
+/**
+ * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
+ * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry) -> boolean.
+ */
+export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed } = {}) {
+    const bound = animationBoundScreen(initial, runId), frames = [], actions = [], states = new Map();
+    mkdirSync(join(output, animationPixelPrefix)); mkdirSync(join(output, 'animation-inputs'));
+    for (const input of animationInputs()) writeFileSync(join(output, input.file), input.bytes);
+    const baseOwnership = imageOwnership(initial.rows, initial.cols, runId);
+    const stamp = at => ({ ...structuredClone(baseOwnership), at: iso(at) });
+    const add = (entry, screen, sample, action, appearance, readAt, span) => {
+        const capture = syntheticAnimationCapture(screen, appearance, { bleed: bleed?.(entry) === true });
+        const bytes = Buffer.from(capture.pngBase64, 'base64'), { pngBase64, ...facts } = capture;
+        const pixels = [0, 1].map(side => {
+            const file = `${animationPixelPrefix}/frame-${String(frames.length).padStart(3, '0')}-${side}.png`;
+            writeFileSync(join(output, file), bytes); return { ...structuredClone(facts), file, sha256: pngHash(bytes) };
+        });
+        frames.push({ index: frames.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
+            paneId, screen: structuredClone(screen), afterScreen: structuredClone(screen), sha256: snapshotHash(screen),
+            afterSha256: snapshotHash(screen), pixels, pairSpan: { startMs: animationEpoch + span[0], endMs: animationEpoch + span[1] },
+            ownership: stamp(readAt), actionIndex: action?.index ?? null, capture: sample });
+    };
+    add({ kind: 'start' }, initial, null, null, 'absent', 0, [100, 900]);
+    let clock = 1000; const startedAt = new Map();
+    for (const entry of animationPlan) {
+        if (entry.kind === 'read' && !states.has(entry.caseId)) states.set(entry.caseId, { imageId: 4000 + states.size });
+        const state = states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, runId, initial.cursorVisible);
+        const item = animationCases.find(value => value.id === entry.caseId), stage = item?.stages.find(value => value.id === entry.stageId);
+        let plan;
+        if (stage?.clock === 'running' && stage.targetMs !== undefined && startedAt.has(entry.caseId)) {
+            const centre = startedAt.get(entry.caseId) + stage.targetMs, span = [centre - 600, centre + 600];
+            plan = { actionAt: span[0] - 1000, readAt: span[0] - 200, span };
+        } else {
+            const actionAt = clock + (stage?.waitMs ?? 100);
+            plan = { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
+        }
+        plan = timing?.(entry, plan) ?? plan;
+        if (stage?.reply === 'start') startedAt.set(entry.caseId, plan.actionAt);
+        const action = { index: actions.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
+            imageId: state.imageId ?? null, commandHex: Buffer.from(expected.command).toString('hex'),
+            commandSha256: pngHash(Buffer.from(expected.command)), skipReason: expected.skipReason, ownership: stamp(plan.actionAt) };
+        actions.push(action);
+        let raw = stage ? animationExpectedReplies(stage.id, state.imageId).join('') : '';
+        raw = reply?.(entry, raw) ?? raw;
+        const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
+        const sample = inputCapture(Buffer.from(raw + background).toString('hex') + imageModeReplyHex, 100 + action.index);
+        const appearance = paint?.(entry, stage?.appearance ?? 'absent') ?? stage?.appearance ?? 'absent';
+        add(entry, entry.kind === 'finish' ? initial : bound, sample, action, entry.kind === 'read' ? appearance : 'absent', plan.readAt, plan.span);
+        clock = plan.span[1];
+    }
+    const final = frames.at(-1).capture;
+    const seal = { failed: false, disposed: true, attempts: animationActionCount, ownership: stamp(clock + 50), lastAttempt: { completed: true, fenceRequested: true,
+        hex: final.hex + Buffer.from(final.barrier).toString('hex'), nonces: final.nonces, error: null } };
+    return { frames, actions, seal, runId };
+}

@@ -75,6 +75,7 @@ import { collectInput } from './input-collector.mjs';
 import { currentInputPlan } from './input-plan.mjs';
 import { collectQueries } from './query-collector.mjs';
 import { collectStaticImages } from './static-images-collector.mjs';
+import { collectAnimation } from './kitty-animation-collector.mjs';
 import { collectMetadata } from './metadata-cases.mjs';
 import { collectSaved } from './saved-cases.mjs';
 import { collectResize } from './resize-cases.mjs';
@@ -507,6 +508,7 @@ try {
             writeFileSync(join(config.output, 'pxm-run.json'), JSON.stringify(pxmRun) + '\n', { flag: 'wx', mode: 0o600 });
         }
         await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
+        await collectAnimation({ config, fence, owner });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
         if (config.privateClipboard === true) fence.retireInput();
         else restore();

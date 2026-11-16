@@ -28,7 +28,7 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, historicOsc633Scope);
 export const isLegacyScope = value => same(value, legacyScope) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
-const policyForScope = scope => isHistoricOsc633Scope(scope) ? 'readonly-owned-source-graph-v61' : 'readonly-owned-source-graph-v62';
+const policyForScope = scope => isHistoricOsc633Scope(scope) ? 'readonly-owned-source-graph-v61' : 'readonly-owned-source-graph-v63';
 const omittedArtifacts = Object.freeze([
     'osn-observations.json', 'osn-run.json', 'osn-snapshots.jsonl', 'osn-unavailable.json', 'osn-focus.json', 'osn-failed-observation.json',
     'ntf-observations.json', 'ntf-run.json', 'ntf-snapshots.jsonl', 'ntf-unavailable.json', 'ntf-focus.json', 'ntf-failed-observation.json',
