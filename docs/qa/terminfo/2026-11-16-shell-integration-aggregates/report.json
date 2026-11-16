@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-shell-integration-aggregates-projection-v1",
+  "contractsVersion": 1,
+  "carriers": {
+    "osc133": "ntilde-owned-osc133-graded-v1",
+    "osc633": "ntilde-owned-osc633-graded-v1"
+  },
+  "adapter": {
+    "id": "ntilde-owned-osc633-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-osc133-grading-v1",
+    "bundleSha256": "b4431b661572bd1616040c2e221266f29d0ebf1de8b5e8eeae8a47f82c9ba0c7",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 aggregate replay: extensions.osc-633-vscode and extensions.semantic-prompts read only the declared semanticPrompts capability and perform no readback, so both pinned paths are inconclusive by design; the exact pinned registrations are replayed from the retained bundle beside two admitted, separately receipted lifecycle publications (OSC 133 A-D, ntilde-owned-osc133-graded-v1; OSC 633 A-D, ntilde-owned-osc633-graded-v1). The aggregate effect contracts are separately identified and never attributed to the pinned probes or to each other: ntilde-semantic-prompts-aggregate-effect-v1 is supported over the four admitted OSC 133 lifecycle claims, and ntilde-osc633-vscode-aggregate-effect-v1 stays inconclusive until the OSC 633 E command-line and P property publications (#983) exist. No new collection and no production change; no real shell, remote delivery, command exit status or commandFinished readback; no stock, Core, Modern or common-harness claim; the sum of the marker publications is never an upstream supported verdict.",
+  "cases": [
+    {
+      "caseId": "extensions.osc-633-vscode",
+      "kind": "aggregate-projection",
+      "aggregateOf": {
+        "protocol": "VS Code shell integration (OSC 633)",
+        "authoritativeContract": "https://code.visualstudio.com/docs/terminal/shell-integration#_supported-escape-sequences",
+        "carrier": "ntilde-owned-osc633-graded-v1"
+      },
+      "pinnedCriterion": "A declared-capability report (termless) and the absence of integration readback (terminal); both inconclusive by design",
+      "pinned": {
+        "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration",
+        "fixtureBytes": false,
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":false}",
+          "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No VS Code shell integration metadata or behavior readback for OSC 633",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No VS Code shell integration metadata or behavior readback for OSC 633"
+          }
+        },
+        "replay": {
+          "bundle": "terminfo-dev-4.0.0.bundle.mjs.gz",
+          "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+          "registrationSha256": "d8205e6e992759cfe820b96b1d63300cefb938c21415fc6c42d56af4f4108a5c",
+          "declaredVariants": [
+            {
+              "declared": false,
+              "response": "{\"declared\":false}"
+            },
+            {
+              "declared": true,
+              "response": "{\"declared\":true}"
+            }
+          ],
+          "observation": "the declared capability value never decides a verdict: both variants resolve to the same inconclusive observation, and the terminal path read nothing"
+        }
+      },
+      "carrier": {
+        "suite": "osc633",
+        "suiteId": "ntilde-owned-osc633-graded-v1",
+        "publication": "docs/qa/terminfo/2026-11-16-osc633-implementation/",
+        "summarySha256": "6c09c3888342e0a43fb8aa0a506491b25229714c430ee045e4ae017e26fda236",
+        "archiveSha256": "009129be83a1560af7bb11870399cc19e643f486900bae4886a57231aa7c6217",
+        "effectContractId": "ntilde-osc633-shell-lifecycle-effect-v1",
+        "ownedRunId": "323882a7d7b0e3c86ce4152fa54e6aa3",
+        "appRevision": "9c814b13215b6abf9186b0c4c784e7702b3e1828",
+        "measuredAt": "2026-11-16T14:03:54.135Z",
+        "receiptSchemaVersion": 69,
+        "admitted": [
+          {
+            "caseId": "extensions.osc633-a",
+            "outcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-b",
+            "outcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-c",
+            "outcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-d",
+            "outcome": "supported"
+          }
+        ]
+      },
+      "evidenceContract": {
+        "id": "ntilde-osc633-vscode-aggregate-effect-v1",
+        "version": 1,
+        "required": [
+          {
+            "caseId": "extensions.osc633-a",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-b",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-c",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-d",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-e",
+            "requiredOutcome": "supported",
+            "admittedOutcome": null
+          },
+          {
+            "caseId": "extensions.osc633-p",
+            "requiredOutcome": "supported",
+            "admittedOutcome": null
+          }
+        ],
+        "pending": [
+          {
+            "caseId": "extensions.osc633-e",
+            "owner": "#983",
+            "reason": "the E command-line record has no implemented, qualified publication yet"
+          },
+          {
+            "caseId": "extensions.osc633-p",
+            "owner": "#983",
+            "reason": "the P property/cwd record has no implemented, qualified publication yet"
+          }
+        ],
+        "excluded": [
+          {
+            "scope": "OSC 633 F-I continuation-prompt records",
+            "reason": "terminfo.dev registers no atomic case for them; recorded as an observation-only boundary of the authoritative contract, not evidence"
+          }
+        ],
+        "attribution": "separately identified aggregate effect contract over admitted publications; not the pinned probe, not a marker claim, not an upstream or common-harness verdict"
+      },
+      "contractResult": {
+        "outcome": "inconclusive",
+        "attribution": "separately identified aggregate effect contract over admitted publications; not the pinned probe, not a marker claim, not an upstream or common-harness verdict",
+        "reason": "the required extensions.osc633-e and extensions.osc633-p publications (#983) do not exist yet; the admitted lifecycle evidence is necessary but not sufficient"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "aggregate-pinned-replay-preserved-by-design",
+        "evidence": "admitted-stored-cells-and-pane-metadata-lifecycle-publications",
+        "note": "The declared capability was replayed over the admitted OSC 633 A-D publication; the E command-line and P property records remain pending (#983), so the aggregate effect stays inconclusive."
+      }
+    },
+    {
+      "caseId": "extensions.semantic-prompts",
+      "kind": "aggregate-projection",
+      "aggregateOf": {
+        "protocol": "OSC 133 shell-integration semantic prompts",
+        "carrier": "ntilde-owned-osc133-graded-v1"
+      },
+      "pinnedCriterion": "A declared-capability report (termless) and the absence of integration readback (terminal); both inconclusive by design",
+      "pinned": {
+        "note": "Declared semantic-prompt capability does not establish shell prompt integration",
+        "fixtureBytes": false,
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":false}",
+          "note": "Declared semantic-prompt capability does not establish shell prompt integration",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared semantic-prompt capability does not establish shell prompt integration"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No shell prompt integration metadata or behavior readback for OSC 133",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No shell prompt integration metadata or behavior readback for OSC 133"
+          }
+        },
+        "replay": {
+          "bundle": "terminfo-dev-4.0.0.bundle.mjs.gz",
+          "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+          "registrationSha256": "05dade3dbbc81d32508b3cfda8dc68876019267765852b7d360655d2e3855fb8",
+          "declaredVariants": [
+            {
+              "declared": false,
+              "response": "{\"declared\":false}"
+            },
+            {
+              "declared": true,
+              "response": "{\"declared\":true}"
+            }
+          ],
+          "observation": "the declared capability value never decides a verdict: both variants resolve to the same inconclusive observation, and the terminal path read nothing"
+        }
+      },
+      "carrier": {
+        "suite": "osc133",
+        "suiteId": "ntilde-owned-osc133-graded-v1",
+        "publication": "docs/qa/terminfo/2026-11-11-osc133/",
+        "summarySha256": "33e1031fe0ea254befd1295012884c47382a7edcb13cadd0a6cca5376b522f7a",
+        "effectContractId": "ntilde-osc133-shell-lifecycle-effect-v1",
+        "ownedRunId": "650b9b8230a59a84b0e506f087594395",
+        "appRevision": "45f0e09c316f4a87ffcefb944d45974a9ed0c070",
+        "measuredAt": "2026-11-11T12:01:31.405Z",
+        "receiptSchemaVersion": 45,
+        "admitted": [
+          {
+            "caseId": "extensions.osc133-a",
+            "outcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc133-b",
+            "outcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc133-c",
+            "outcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc133-d",
+            "outcome": "supported"
+          }
+        ]
+      },
+      "evidenceContract": {
+        "id": "ntilde-semantic-prompts-aggregate-effect-v1",
+        "version": 1,
+        "required": [
+          {
+            "caseId": "extensions.osc133-a",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc133-b",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc133-c",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc133-d",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          }
+        ],
+        "pending": [],
+        "excluded": [
+          {
+            "scope": "extensions.osc133-p",
+            "reason": "separately owned OSC 133 P prompt-metadata audit (#985); not part of this aggregate evidence set"
+          }
+        ],
+        "attribution": "separately identified aggregate effect contract over admitted publications; not the pinned probe, not a marker claim, not an upstream or common-harness verdict"
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "attribution": "separately identified aggregate effect contract over admitted publications; not the pinned probe, not a marker claim, not an upstream or common-harness verdict"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "aggregate-pinned-replay-preserved-by-design",
+        "evidence": "admitted-stored-cells-and-pane-metadata-lifecycle-publications",
+        "note": "The declared capability was replayed over the admitted OSC 133 lifecycle publication; the aggregate effect is separately identified and not an upstream verdict."
+      }
+    }
+  ]
+}

@@ -153,7 +153,12 @@ jobs:
   script_self_tests:
     name: Script self-tests (${{ matrix.os }}, ${{ matrix.shard }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    # The Windows timing artifacts (node-tests-durations.json) measure about 2070 s per balanced shard;
+    # a windows shard's wall time is about that divided by 2.5 plus checkout overhead, which left the old
+    # 15-minute ceiling with seconds of headroom and cancelled whichever shard drew the slowest runner.
+    # Ubuntu passes the same shards in well under half of this, so the content is not slower - the total
+    # grew past four 15-minute shards when the static-image suite landed.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
