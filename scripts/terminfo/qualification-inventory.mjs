@@ -79,6 +79,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('pxm', '2026-11-16-sgr-pixel-mouse', '2026-11-16-sgr-pixel-mouse-qualification.md'), module: 'pxm-contracts.mjs', exports: ['pxmGradedSuiteId', 'pxmContractsVersion', 'pxmCaseIds'], test: 'pxm-publication.test.mjs' },
     // Retrospective replay over the already-receipted SGR-truecolor foreground fixture.
     { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], receiptSuiteId: 'ntilde-owned-sgr-truecolor-graded-v1', test: 'extensions-truecolor-publication.test.mjs' },
+    { ...directory('osc633', '2026-11-16-osc633', '2026-11-16-osc633-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-publication.test.mjs' },
 ]);
 
 /**

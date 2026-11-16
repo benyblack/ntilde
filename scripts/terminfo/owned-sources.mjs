@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v61';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v62';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
@@ -765,6 +765,17 @@ export const capturedV67SourceFiles = Object.freeze({
     kclReceiptSourceSha256: 'kcl-receipt.mjs',
 });
 
+// Frozen v68 OSC 633 lifecycle qualification source scope.
+export const capturedOsc633ForkV61Files = Object.freeze({
+    ...capturedV67SourceFiles,
+    osc633ContractsSourceSha256: 'osc633-contracts.mjs',
+    osc633CollectorSourceSha256: 'osc633-collector.mjs',
+    osc633GradingSourceSha256: 'osc633-grading.mjs',
+    osc633GradingCollectorSourceSha256: 'osc633-grading-collector.mjs',
+    osc633ReceiptSourceSha256: 'osc633-receipt.mjs',
+    collectionScopeSourceSha256: 'collection-scope.mjs',
+});
+
 // Frozen v68 SGR pixel-coordinate mouse (input.pixel-mouse; input plan v5) grading scope; future experiments must create a distinct policy and map.
 export const capturedV68SourceFiles = Object.freeze({
     ...capturedV67SourceFiles,
@@ -776,11 +787,22 @@ export const capturedV68SourceFiles = Object.freeze({
     pxmReceiptSourceSha256: 'pxm-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v68 inventory and manifest environment pin before trusting any captured source. */
+// Integrated v62 contains the frozen SGR-pixel source scope and the OSC 633 additions.
+export const capturedV69SourceFiles = Object.freeze({
+    ...capturedV68SourceFiles,
+    osc633ContractsSourceSha256: 'osc633-contracts.mjs',
+    osc633CollectorSourceSha256: 'osc633-collector.mjs',
+    osc633GradingSourceSha256: 'osc633-grading.mjs',
+    osc633GradingCollectorSourceSha256: 'osc633-grading-collector.mjs',
+    osc633ReceiptSourceSha256: 'osc633-receipt.mjs',
+    collectionScopeSourceSha256: 'collection-scope.mjs',
+});
+
+/** Bind the private temporary root, exact v69 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV68SourceFiles)) throw new Error('Invalid current v68 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV69SourceFiles)) throw new Error('Invalid current v69 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

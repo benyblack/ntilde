@@ -14,11 +14,11 @@ const barrier = '\x1b[?1;2c';
 const rows = colEditRows, cols = colEditCols;
 
 /** A valid pristine initial main screen with the given theme binding, in the shape the metadata observer retains (cell details, cursor mode, buffer state, colors). */
-function blankScreen(binding) {
+export function blankScreen(binding) {
     const { attributeRuns, ...screen } = syntheticColEditScreen([], [0, 0], undefined, [], binding);
     return screenSnapshot({ ...screen, cursorMode: { style: 2, blink: true, isDefault: true } }, false, true, true, true, true, true);
 }
-const withOverride = binding => ({ ...binding, paletteOverrideIndices: [7] });
+export const withOverride = binding => ({ ...binding, paletteOverrideIndices: [7] });
 
 const mark = (value, generation) => value === null ? null : { row: value[0], col: value[1], absoluteRow: value[0], generation, alternateScreen: false };
 
@@ -37,7 +37,7 @@ function statusOf(state, { initial = false } = {}) {
 }
 
 /** A paired frame of `screen` and the oracle `state`. */
-function frameOf(runId, index, kind, screen, state, options = {}) {
+export function frameOf(runId, index, kind, screen, state, options = {}) {
     const metadata = copyPaneMetadata(wire(runId, screen, state, options)), rawStatus = statusOf(state, options), status = copyMetadataStatus(rawStatus, osc133PaneId);
     const before = { screen, metadata, status, rawStatus }, sha256 = snapshotHash(metadataProjection(before));
     return { index, kind, paneId: osc133PaneId, barrier: index === 0 ? null : barrier, before, sha256, after: structuredClone(before), afterSha256: sha256, caseId: null, stageId: null };
