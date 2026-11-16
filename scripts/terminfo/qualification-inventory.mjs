@@ -76,6 +76,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('core-gaps', '2026-11-15-core-gaps', '2026-11-15-core-gaps-qualification.md'), module: 'core-gaps-contracts.mjs', exports: ['coreGapsQualSuiteId', 'coreGapsQualContractsVersion', 'coreGapsQualCaseIds'], test: 'core-gaps-publication.test.mjs' },
     { ...directory('xsv', '2026-11-16-xterm-saved-modes', '2026-11-16-xterm-saved-modes-qualification.md'), module: 'xsv-contracts.mjs', exports: ['xsvSuiteId', 'xsvContractsVersion', 'xsvCaseIds'], test: 'xsv-publication.test.mjs' },
     { ...directory('kcl', '2026-11-15-kitty-color-control', '2026-11-15-kitty-color-control-qualification.md'), module: 'kcl-contracts.mjs', exports: ['kclSuiteId', 'kclContractsVersion', 'kclCaseIds'], test: 'kcl-publication.test.mjs' },
+    // Retrospective replay over the already-receipted SGR-truecolor foreground fixture.
+    { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], receiptSuiteId: 'ntilde-owned-sgr-truecolor-graded-v1', test: 'extensions-truecolor-publication.test.mjs' },
 ]);
 
 /**
@@ -116,8 +118,10 @@ export const readText = path => readFileSync(path, 'utf8').replaceAll('\r\n', '\
 const readJson = path => JSON.parse(readFileSync(path));
 const posix = path => path.split(sep).join('/');
 
-/** Stable digest over every retained file of one publication: `<relative path> <sha256>` lines, sorted. */
-function evidenceDigest(root, suite) {
+/** Stable digest over every retained file of one publication: `<relative path> <sha256>` lines, sorted.
+ * Gzip is binary; normalizing its CRLF byte pairs would conceal corruption. Historical
+ * archive formats retain their existing digest convention for publication compatibility. */
+export function evidenceDigest(root, suite) {
     const files = [];
     const walk = dir => {
         for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => byText(a.name, b.name))) {
@@ -128,8 +132,12 @@ function evidenceDigest(root, suite) {
     };
     if (suite.layout === 'single') files.push(join(root, suite.file));
     else walk(join(root, suite.dir));
-    const lines = files.map(path => `${posix(relative(root, path))} ${sha256(lf(readFileSync(path)))}`);
-    return { files: files.length, bytes: files.reduce((total, path) => total + lf(readFileSync(path)).length, 0), sha256: sha256(lines.join('\n')) };
+    const entries = files.map(path => {
+        const contents = readFileSync(path);
+        return { path, bytes: path.endsWith('.gz') ? contents : lf(contents) };
+    });
+    const lines = entries.map(({ path, bytes }) => `${posix(relative(root, path))} ${sha256(bytes)}`);
+    return { files: entries.length, bytes: entries.reduce((total, entry) => total + entry.bytes.length, 0), sha256: sha256(lines.join('\n')) };
 }
 
 /** Load one publication into `{ summary, report }` (cases fully materialized) whatever its retained layout. */
@@ -305,7 +313,7 @@ async function suiteRecord(root, suite, options) {
             caseCount: ids.length,
             caseIds: contract.caseIds,
             evidence: evidenceDigest(root, suite),
-            receipt: receiptBinding(summary.receipt, report.suiteId ?? contract.suiteId),
+            receipt: receiptBinding(summary.receipt, suite.receiptSuiteId ?? report.suiteId ?? contract.suiteId),
             run: runIdentity(summary, report),
             stock: stockProvenance(summary),
             rederivation: rederivationOf(suite, options),

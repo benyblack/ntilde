@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 130,
-    "suiteClaims": 132,
+    "uniqueBenchmarkIds": 131,
+    "suiteClaims": 133,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 129,
+    "effectSupportedIds": 130,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
-    "pinnedAndEffectSupportedIds": 92,
+    "pinnedAndEffectSupportedIds": 93,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -92,13 +92,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 128,
+    "effectSupportedOfStockInconclusive": 129,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 91,
+    "pinnedSupportedOfStockInconclusive": 92,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 92,
+    "pinnedSupportedIds": 93,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -107,11 +107,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 40,
+      "effectUnqualified": 39,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 39,
-      "notPinnedSupported": 77
+      "effectNotMeasured": 38,
+      "notPinnedSupported": 76
     }
   },
   "suites": [
@@ -3399,6 +3399,76 @@
         "command": "node --test scripts/terminfo/kcl-publication.test.mjs",
         "testSha256": "356e9d53c4bbb1dfd9fd4e4ca33ae4a21d0e1f114f380277487bc1ec87297bae"
       }
+    },
+    {
+      "suite": "extensions-truecolor",
+      "suiteId": "ntilde-owned-extensions-truecolor-projection-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-16-extensions-truecolor/",
+      "doc": "2026-11-16-extensions-truecolor-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.truecolor"
+      ],
+      "evidence": {
+        "files": 3,
+        "bytes": 222870,
+        "sha256": "5e01771871593650c12a7634920267ed199e13572c02d76984199410ed4ee3f6"
+      },
+      "receipt": {
+        "schemaVersion": 66,
+        "runId": "55f0ba462cd3cc6fbc315a0e5fad5126",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "bf4a798bc3a6d5be3d258e023961b39a2edcce99bf748e586e861a047edf82dc"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+          "file": "sgtc-observations.json",
+          "sha256": "ff13cc42b0acdf4603058df9837cb6af33964a8e98d6966a360b8d94ab1128d7",
+          "runFile": "sgtc-run.json",
+          "runSha256": "75627075fc17286f1bcbcef3dc025e080c6c96384068bb75f2ee29ff7b348299",
+          "counts": {
+            "supported": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "55f0ba462cd3cc6fbc315a0e5fad5126",
+        "measuredAt": "2026-11-16T09:15:04.524Z",
+        "appRevision": "d82374aa8e22e7b4e1115344908e3c2bb975c7c6",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "ec6c5b99431af6d8fcee5083f196a585e66f2d13",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "9f61ba5cff436bf276291bea70da2bb7596db7bec03d0d63992f3d047f9940bc",
+        "gradingAdapterId": "ntilde-owned-sgr-truecolor-grading-v1",
+        "gradingAdapterBundleSha256": "bb7d612fb5dd11d484b39e023a9e604f4c48a6d978ee1430dff8922f882f95ec",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v60",
+        "sourceSnapshotManifestSha256": "677391b6832d0d77fff8126908c326700d27af225078a7584e60056047e9de11"
+      },
+      "stock": {
+        "basis": "collected-raw-digest-recorded",
+        "runId": null,
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "d7da4d74e0b4b9a2c586d159477a6b6e65be46bed1e8b2e12b25707ace62a970",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock collector results from the carrying run; the retrospective replay does not alter them."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/extensions-truecolor-publication.test.mjs",
+        "testSha256": "a7383b756e5957fa167f0e32b873fb33bab19093511dadfbc191bab7e6d07ce5"
+      }
     }
   ],
   "benchmark": [
@@ -6608,6 +6678,53 @@
             "actual-scrollback"
           ],
           "evidenceTag": "stored-state and actual-scrollback"
+        }
+      ]
+    },
+    {
+      "id": "extensions.truecolor",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "extensions-truecolor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "extensions-truecolor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.truecolor",
+          "suite": "extensions-truecolor",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "retrospective-pinned-callback-plus-existing-effect-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
         }
       ]
     },

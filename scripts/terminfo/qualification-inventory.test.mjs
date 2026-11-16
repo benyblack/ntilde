@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-    assertInventory, benchmarkSuites, buildInventory, defaultQaRoot, effectVerdictOf, findingSuites, inventoryFiles, loadPublication, measuredLayersOf,
+    assertInventory, benchmarkSuites, buildInventory, defaultQaRoot, effectVerdictOf, evidenceDigest, findingSuites, inventoryFiles, loadPublication, measuredLayersOf,
     nonInventoryPublicationTests, pinnedVerdictOf, readText, receiptBinding, renderSummary, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
 } from './qualification-inventory.mjs';
 
@@ -315,20 +316,21 @@ test('an unsupported effect result is counted as qualified evidence but never as
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
     // Supported-only measures: the unsupported reflow id adds to none of them. The Core-gaps reconciliation added two ids supported by the replayed pinned
     // callbacks and by the effect contract (effect-supported 124 -> 126, pinned-supported 89 -> 91), and the saved-mode batch added two ids supported by the
-    // effect contract only (effect-supported 126 -> 128; their pinned verdicts stay inconclusive: 35 -> 37), and the kitty color-control batch added one id that its pinned probe and effect contract both support (-> 129 and 92).
-    assert.equal(totals.effectSupportedIds, 129);
-    assert.equal(totals.pinnedSupportedIds, 92);
-    assert.equal(totals.pinnedAndEffectSupportedIds, 92);
+    // effect contract only (effect-supported 126 -> 128; their pinned verdicts stay inconclusive: 35 -> 37). Kitty color control and the retrospective
+    // extensions.truecolor replay each add one id supported by the pinned probe and the effect contract (-> 130 and 93).
+    assert.equal(totals.effectSupportedIds, 130);
+    assert.equal(totals.pinnedSupportedIds, 93);
+    assert.equal(totals.pinnedAndEffectSupportedIds, 93);
     assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 37);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 128);
-    assert.equal(totals.pinnedSupportedOfStockInconclusive, 91);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 129);
+    assert.equal(totals.pinnedSupportedOfStockInconclusive, 92);
     // The reflow row lowers no stock grade and the baseline is untouched.
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
     // The remaining counts keep "not supported" and "not measured" apart: reflow moves one id from not-measured to measured-unsupported
     // without changing the not-effect-supported or not-pinned-supported counts it was already part of.
     const remaining = totals.remainingAgainstStockInconclusive;
-    assert.deepEqual(remaining, { effectUnqualified: 40, effectMeasuredUnsupported: 1, effectMeasuredOther: 0, effectNotMeasured: 39, notPinnedSupported: 77 });
+    assert.deepEqual(remaining, { effectUnqualified: 39, effectMeasuredUnsupported: 1, effectMeasuredOther: 0, effectNotMeasured: 38, notPinnedSupported: 76 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -417,7 +419,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 1 \|/);
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.reflow`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 1 \|/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 39 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 38 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.doesNotMatch(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| unsupported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -432,7 +434,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     const lfLength = bytes => Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1').length;
     // 240 KiB: the modifyOtherKeys suite entry (receipt schema 56, its receipt and run bindings) joins the merged inventory.
     // 288 KiB: the selection-colors suite entry (receipt schema 60, four effect-supported ids) joins the merged inventory.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 304 * 1024, 'the generated files stay reviewable');
+    // 312 KiB: the retrospective extensions.truecolor entry adds its source and receipt bindings.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 312 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {
@@ -468,4 +471,30 @@ test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and 
     // extensions.osc1-icon keeps its own (osc-title) claim.
     assert.equal(row(stored, 'device.env-term') ?? null, null);
     assert.deepEqual(row(stored, 'extensions.osc1-icon').claims.map(claim => claim.suite), ['osc-title']);
+});
+
+
+test('extensions.truecolor projection has its own suite identity and cites its carrying receipt', () => {
+    const suite = committed().suites.find(item => item.suite === 'extensions-truecolor');
+    assert.equal(suite.suiteId, 'ntilde-owned-extensions-truecolor-projection-v1');
+    assert.equal(suite.receipt.suiteEvidence.suiteId, 'ntilde-owned-sgr-truecolor-graded-v1');
+    assert.equal(suite.receipt.runId, suite.run.ownedRunId);
+});
+
+
+test('inventory hashes compressed evidence as raw bytes, including CRLF byte pairs', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-inventory-gzip-'));
+    try {
+        const original = readFileSync(join(defaultQaRoot, '2026-11-16-extensions-truecolor/terminfo-dev-4.0.0.bundle.mjs.gz'));
+        const index = original.indexOf(Buffer.from([13, 10]));
+        assert.ok(index >= 0, 'the retained binary contains the tested byte pair');
+        const path = join(root, 'bundle.gz'), suite = { layout: 'single', file: 'bundle.gz' };
+        writeFileSync(path, original);
+        const before = evidenceDigest(root, suite);
+        writeFileSync(path, Buffer.concat([original.subarray(0, index), original.subarray(index + 1)]));
+        const after = evidenceDigest(root, suite);
+        assert.equal(before.bytes, original.length);
+        assert.equal(after.bytes, original.length - 1);
+        assert.notEqual(after.sha256, before.sha256);
+    } finally { rmSync(root, { recursive: true, force: true }); }
 });
