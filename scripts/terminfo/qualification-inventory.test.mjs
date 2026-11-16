@@ -317,12 +317,12 @@ test('an unsupported effect result is counted as qualified evidence but never as
     // Supported-only measures: the unsupported reflow id adds to none of them. The Core-gaps reconciliation added two ids supported by the replayed pinned
     // callbacks and by the effect contract (effect-supported 124 -> 126, pinned-supported 89 -> 91), and the saved-mode batch added two ids supported by the
     // effect contract only (effect-supported 126 -> 128; their pinned verdicts stay inconclusive: 35 -> 37). Kitty color control and the retrospective
-    // extensions.truecolor replay each add one id supported by the pinned probe and the effect contract (-> 130 and 93).
-    assert.equal(totals.effectSupportedIds, 130);
+    // extensions.truecolor replay each add one id supported by the pinned probe and the effect contract (-> 130 and 93); the SGR-pixel batch adds one id supported by the effect contract only (effect-supported 131, pinned-supported stays 93).
+    assert.equal(totals.effectSupportedIds, 131);
     assert.equal(totals.pinnedSupportedIds, 93);
     assert.equal(totals.pinnedAndEffectSupportedIds, 93);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 37);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 129);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 38);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 130);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 92);
     // The reflow row lowers no stock grade and the baseline is untouched.
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
@@ -330,7 +330,7 @@ test('an unsupported effect result is counted as qualified evidence but never as
     // The remaining counts keep "not supported" and "not measured" apart: reflow and four OSC 633 ids have measured unsupported effects.
     // They do not change the not-effect-supported or not-pinned-supported counts they were already part of.
     const remaining = totals.remainingAgainstStockInconclusive;
-    assert.deepEqual(remaining, { effectUnqualified: 39, effectMeasuredUnsupported: 5, effectMeasuredOther: 0, effectNotMeasured: 34, notPinnedSupported: 76 });
+    assert.deepEqual(remaining, { effectUnqualified: 38, effectMeasuredUnsupported: 5, effectMeasuredOther: 0, effectNotMeasured: 33, notPinnedSupported: 76 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -419,7 +419,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 5 \|/);
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): .*`extensions\.osc633-a`.*`extensions\.osc633-d`.*`extensions\.reflow`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 5 \|/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 34 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 33 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.doesNotMatch(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| unsupported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -434,8 +434,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     const lfLength = bytes => Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1').length;
     // 240 KiB: the modifyOtherKeys suite entry (receipt schema 56, its receipt and run bindings) joins the merged inventory.
     // 288 KiB: the selection-colors suite entry (receipt schema 60, four effect-supported ids) joins the merged inventory.
-    // 328 KiB: the truecolor projection and four OSC 633 cases add their receipt bindings.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 328 * 1024, 'the generated files stay reviewable');
+    // 336 KiB: the truecolor projection and four OSC 633 cases add their receipt bindings.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 336 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {

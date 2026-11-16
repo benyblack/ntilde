@@ -3,12 +3,12 @@ import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
 test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v61', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
     const proof = { collectionScope: structuredClone(osc633Scope) };
     const evidence = { osc633Evidence: {} };
     try {
@@ -17,7 +17,7 @@ test('only the fixed scope is admitted by matching context, parent proof, policy
         for (const alter of [
             () => [{ ...context, collectionScope: undefined }, proof, evidence],
             () => [context, {}, evidence],
-            () => [{ ...context, sourceSnapshotPolicy: 'readonly-owned-source-graph-v60' }, proof, evidence],
+            () => [{ ...context, sourceSnapshotPolicy: 'readonly-owned-source-graph-v61' }, proof, evidence],
             () => [{ ...context, collectionScope: { ...osc633Scope, omittedSuites: ['notify'] } }, proof, evidence],
             () => [context, proof, {}],
             () => [context, proof, { ...evidence, osc9Evidence: {} }],
@@ -37,7 +37,7 @@ test('only the fixed scope is admitted by matching context, parent proof, policy
 
 test('the default selection preserves all prior suites and explicitly excludes only OSC 633', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v61', collectionScope: structuredClone(legacyScope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62', collectionScope: structuredClone(legacyScope) };
     const proof = { collectionScope: structuredClone(legacyScope) };
     try {
         assert.equal(isLegacyScope(context.collectionScope), true);
@@ -50,11 +50,23 @@ test('the default selection preserves all prior suites and explicitly excludes o
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('historical v61 scope refuses SGR-pixel evidence that belongs to the other v61 graph', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-historical-scope-'));
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v61', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: historicOsc633Scope };
+    const proof = { collectionScope: historicOsc633Scope }, evidence = { osc633Evidence: {} };
+    try {
+        assert.equal(validateCollectionScope(root, evidence, context, proof), true);
+        assert.throws(() => validateCollectionScope(root, { ...evidence, pxmEvidence: {} }, context, proof), /scoped collection/);
+        writeFileSync(join(root, 'pxm-run.json'), '');
+        assert.throws(() => validateCollectionScope(root, evidence, context, proof), /scoped collection/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the pinned full predecessor reissues its actual receipt; modified archive bytes are refused', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-scope-predecessor-test-'));
     try {
         const archive = join(root, osc633Scope.predecessor.file);
-        copyFileSync(new URL('../../docs/qa/terminfo/2026-11-15-kitty-color-control/owned-run.zip', import.meta.url), archive);
+        copyFileSync(new URL('../../docs/qa/terminfo/2026-11-16-sgr-pixel-mouse/owned-run.zip', import.meta.url), archive);
         assert.doesNotThrow(() => verifyScopePredecessor(root, completeOwnedReceipt));
         writeFileSync(archive, 'changed');
         assert.throws(() => verifyScopePredecessor(root, completeOwnedReceipt), /archive changed/);

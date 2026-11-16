@@ -29,7 +29,7 @@ public sealed class TextClientRenderer
     public const string EnterSequence = "\x1b[?1049h\x1b[?7l\x1b>\x1b[H\x1b[2J";
 
     /// <summary>Written on every exit path: plain SGR, cursor shown, modes off, autowrap back on, back to the outer main screen.</summary>
-    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b>\x1b[?7h\x1b[?1049l";
+    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b[?1016l\x1b>\x1b[?7h\x1b[?1049l";
 
     private const string DetachHint = "Ctrl+\\ d to detach";
 
@@ -192,21 +192,25 @@ public sealed class TextClientRenderer
             if (tracking != 0) sb.Append("\x1b[?").Append(tracking.ToString(CultureInfo.InvariantCulture)).Append('h');
             _mouseTrackingMode = tracking;
         }
-        // The coordinate encodings (?1005/?1006/?1015) are one selection in the outer terminal too, and a reset only
+        // The coordinate encodings (?1005/?1006/?1015/?1016) are one selection in the outer terminal too, and a reset only
         // clears the encoding it names, so every reset is emitted before the desired one is set.
         int encoding = DesiredMouseEncoding(m, unclipped);
         if (_mouseEncodingMode != encoding)
         {
-            sb.Append("\x1b[?1005l\x1b[?1006l\x1b[?1015l");
+            sb.Append("\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b[?1016l");
             if (encoding != 0) sb.Append("\x1b[?").Append(encoding.ToString(CultureInfo.InvariantCulture)).Append('h');
             _mouseEncodingMode = encoding;
         }
     }
 
-    /// <summary>Snapshots may carry several flags; the encoder's priority is SGR, then urxvt, then UTF-8.</summary>
+    /// <summary>
+    /// Snapshots may carry several flags; the encoder's priority is SGR-Pixels, then SGR, then urxvt, then UTF-8. SGR-Pixels is never
+    /// mirrored: the child's CSI 14 t / CSI 16 t replies use the session's own cell metrics, which a text client does not supply, so the
+    /// outer terminal's pixels would not be the unit the child converts with. Mouse reporting stays off while that encoding is selected.
+    /// </summary>
     private static int DesiredMouseEncoding(ModeState modes, bool unclipped)
     {
-        if (!unclipped) return 0;
+        if (!unclipped || modes.MouseModePixel) return 0;
         if (modes.MouseModeSGR) return 1006;
         if (modes.MouseModeUrxvt) return 1015;
         return modes.MouseModeUtf8 ? 1005 : 0;
@@ -214,7 +218,7 @@ public sealed class TextClientRenderer
 
     private static int DesiredMouseTracking(ModeState modes, bool unclipped)
     {
-        if (!unclipped) return 0;
+        if (!unclipped || modes.MouseModePixel) return 0;
         if (modes.MouseModeX10PressOnly) return 9;
         if (modes.MouseModeAnyEvent) return 1003;
         if (modes.MouseModeButtonEvent) return 1002;

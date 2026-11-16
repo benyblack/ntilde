@@ -215,11 +215,11 @@ invariant changes.
   App ignores its modifiers and suppresses nonpress inputs. Mux's outer text
   renderer emits every tracking reset before enabling the selected protocol.
 - **Mouse coordinate encoding is one VT-owned selection; the report bytes belong to App.**
-  `?1005`, `?1006` and `?1015` replace each other and a reset only clears the matching
-  encoding (xterm's `extend_coords`). The App encoder emits SGR, then urxvt, then UTF-8
-  frames; only the plain X10 form is sent as octets. Complete snapshots and clones carry
+  `?1005`, `?1006`, `?1015` and `?1016` replace each other and a reset only clears the matching
+  encoding (xterm's `extend_coords`). The App encoder emits SGR-Pixels, then SGR, then urxvt, then UTF-8
+  frames (the pixel position comes from `TerminalView`, in device pixels); only the plain X10 form is sent as octets. Complete snapshots and clones carry
   the selection (old absent fields mean off), RIS and prompt policy clear it, DECSTR keeps it,
-  and Mux's outer text renderer resets all three before enabling the selected one.
+  and Mux's outer text renderer resets all four before enabling the selected one.
 - **Application-keypad state belongs to VT; key encoding belongs to App.** ESC =/>
   and DECNKM (?66) share a session-wide boolean, copied through clone, complete
   mux/replay snapshots and legacy replay fields (absent means numeric). DECSTR/RIS

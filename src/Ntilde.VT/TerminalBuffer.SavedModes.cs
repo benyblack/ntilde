@@ -8,7 +8,7 @@ namespace Ntilde.VT
         /// <summary>The slot ?1000, ?1002 and ?1003 share: the mouse tracking selector (xterm's send_mouse_pos).</summary>
         internal const int SavedModeMouseTrackingSlot = 1000;
 
-        /// <summary>The slot ?1005, ?1006 and ?1015 share: the mouse coordinate encoding selector (xterm's extend_coords).</summary>
+        /// <summary>The slot ?1005, ?1006, ?1015 and ?1016 share: the mouse coordinate encoding selector (xterm's extend_coords).</summary>
         internal const int SavedModeMouseEncodingSlot = 1005;
 
         // The slots, one per saved value. A boolean slot is named by its own mode and holds 0 or 1.
@@ -23,7 +23,7 @@ namespace Ntilde.VT
         internal static int SavedModeSlotFor(int mode) => mode switch
         {
             1002 or 1003 => SavedModeMouseTrackingSlot,
-            1006 or 1015 => SavedModeMouseEncodingSlot,
+            1006 or 1015 or 1016 => SavedModeMouseEncodingSlot,
             _ => Array.IndexOf(SavedModeSlots, mode) >= 0 ? mode : 0,
         };
 
@@ -82,7 +82,7 @@ namespace Ntilde.VT
         private static bool SavedModeValueAllowed(int slot, int value) => slot switch
         {
             SavedModeX10Slot or SavedModeMouseTrackingSlot => value is 0 or 9 or 1000 or 1002 or 1003,
-            SavedModeMouseEncodingSlot => value is 0 or 1005 or 1006 or 1015,
+            SavedModeMouseEncodingSlot => value is 0 or 1005 or 1006 or 1015 or 1016,
             _ => value is 0 or 1,
         };
     }

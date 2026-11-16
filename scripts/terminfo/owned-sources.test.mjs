@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV68SourceFiles, capturedV67SourceFiles, capturedV66SourceFiles, capturedV65SourceFiles, capturedV64SourceFiles, capturedV63SourceFiles, capturedV62SourceFiles, capturedV61SourceFiles, capturedV60SourceFiles, capturedV59SourceFiles, capturedV57SourceFiles, capturedV58SourceFiles, capturedV55SourceFiles, capturedV54SourceFiles, capturedV53SourceFiles, capturedV56SourceFiles, capturedV52SourceFiles, capturedV51SourceFiles, capturedV50SourceFiles, capturedV49SourceFiles, capturedV48SourceFiles, capturedV47SourceFiles, capturedV46SourceFiles, capturedV45SourceFiles, capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, oscTitleReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV69SourceFiles, capturedV68SourceFiles, capturedV67SourceFiles, capturedV66SourceFiles, capturedV65SourceFiles, capturedV64SourceFiles, capturedV63SourceFiles, capturedV62SourceFiles, capturedV61SourceFiles, capturedV60SourceFiles, capturedV59SourceFiles, capturedV57SourceFiles, capturedV58SourceFiles, capturedV55SourceFiles, capturedV54SourceFiles, capturedV53SourceFiles, capturedV56SourceFiles, capturedV52SourceFiles, capturedV51SourceFiles, capturedV50SourceFiles, capturedV49SourceFiles, capturedV48SourceFiles, capturedV47SourceFiles, capturedV46SourceFiles, capturedV45SourceFiles, capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, oscTitleReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 407 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 407); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 413 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 413); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -85,15 +85,16 @@ test('private v61 fixed360 source scope adds the seven selection-colors scripts 
     assert.deepEqual(Object.values(capturedV61SourceFiles).slice(353), ['selection-colors-contracts.mjs', 'selection-colors-model.mjs', 'selection-colors-collector.mjs', 'selection-colors-capture.mjs', 'selection-colors-grading.mjs', 'selection-colors-grading-collector.mjs', 'selection-colors-receipt.mjs']);
 });
 
-test('private v68 fixed407 source scope adds OSC 633 to the frozen v67 scope', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV68SourceFiles);
+test('private v68 fixed407 source scope adds the six SGR-pixel scripts to v67 fixed401 (previous newest layer)', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV69SourceFiles);
+    assert.equal(Object.keys(capturedV69SourceFiles).length, 413);
+    assert.deepEqual(Object.keys(capturedV69SourceFiles).slice(0, 407), Object.keys(capturedV68SourceFiles));
     assert.equal(Object.keys(capturedV68SourceFiles).length, 407);
     assert.deepEqual(Object.keys(capturedV68SourceFiles).slice(0, 401), Object.keys(capturedV67SourceFiles));
-    assert.deepEqual(Object.values(capturedV68SourceFiles).slice(401), ['osc633-contracts.mjs', 'osc633-collector.mjs', 'osc633-grading.mjs', 'osc633-grading-collector.mjs', 'osc633-receipt.mjs', 'collection-scope.mjs']);
+    assert.deepEqual(Object.values(capturedV68SourceFiles).slice(401), ['pxm-cases.mjs', 'pxm-contracts.mjs', 'pxm-collector.mjs', 'pxm-grading.mjs', 'pxm-grading-collector.mjs', 'pxm-receipt.mjs']);
 });
 
 test('private v67 fixed401 source scope adds the seven kitty color-control scripts to v66 fixed394 (xterm saved modes)', () => {
-
     assert.equal(Object.keys(capturedV67SourceFiles).length, 401);
     assert.deepEqual(Object.keys(capturedV67SourceFiles).slice(0, 394), Object.keys(capturedV66SourceFiles));
     assert.deepEqual(Object.values(capturedV67SourceFiles).slice(394), ['kcl-report.mjs', 'kcl-contracts.mjs', 'kcl-capture.mjs', 'kcl-collector.mjs', 'kcl-grading.mjs', 'kcl-grading-collector.mjs', 'kcl-receipt.mjs']);

@@ -13,6 +13,7 @@ namespace Ntilde.VT
         public bool MouseModeSGR { get; set; }          // ?1006 - SGR extended mode
         public bool MouseModeUtf8 { get; set; }         // ?1005 - UTF-8 coordinate encoding
         public bool MouseModeUrxvt { get; set; }        // ?1015 - urxvt decimal coordinate encoding
+        public bool MouseModePixel { get; set; }        // ?1016 - SGR format with pixel positions
 
         /// <summary>DECSDM (?80): xterm polarity, set = page-origin graphics without SIXEL-driven scrolling.</summary>
         public bool IsSixelDisplayMode { get; set; }
@@ -124,6 +125,7 @@ namespace Ntilde.VT
             MouseModeSGR = false;
             MouseModeUtf8 = false;
             MouseModeUrxvt = false;
+            MouseModePixel = false;
             IsFocusEventReporting = false;
             IsClipboardPasteMode = false;
             KittyKeyboard.Reset();
@@ -145,8 +147,8 @@ namespace Ntilde.VT
         /// <summary>The active tracking selector: 0 for none, otherwise the mode that selects it (9, 1000, 1002 or 1003).</summary>
         internal int MouseTrackingSelector => MouseModeX10PressOnly ? 9 : MouseModeX10 ? 1000 : MouseModeButtonEvent ? 1002 : MouseModeAnyEvent ? 1003 : 0;
 
-        /// <summary>The active coordinate encoding selector: 0 for the default, otherwise 1005, 1006 or 1015.</summary>
-        internal int MouseEncodingSelector => MouseModeUtf8 ? 1005 : MouseModeSGR ? 1006 : MouseModeUrxvt ? 1015 : 0;
+        /// <summary>The active coordinate encoding selector: 0 for the default, otherwise 1005, 1006, 1015 or 1016.</summary>
+        internal int MouseEncodingSelector => MouseModeUtf8 ? 1005 : MouseModeSGR ? 1006 : MouseModeUrxvt ? 1015 : MouseModePixel ? 1016 : 0;
 
         internal void SetMouseTrackingSelector(int selector) => SetMouseTrackingMode(selector == 0 ? 1000 : selector, selector != 0);
 
@@ -155,10 +157,11 @@ namespace Ntilde.VT
             MouseModeUtf8 = selector == 1005;
             MouseModeSGR = selector == 1006;
             MouseModeUrxvt = selector == 1015;
+            MouseModePixel = selector == 1016;
         }
 
-        // Coordinate encodings are one selection, as in xterm's extend_coords: setting any of ?1005, ?1006
-        // or ?1015 replaces the others, and a reset is only effective against the encoding that is active.
+        // Coordinate encodings are one selection, as in xterm's extend_coords: setting any of ?1005, ?1006,
+        // ?1015 or ?1016 replaces the others, and a reset is only effective against the encoding that is active.
         internal void SetMouseCoordinateEncoding(int mode, bool enabled)
         {
             if (enabled)
@@ -166,6 +169,7 @@ namespace Ntilde.VT
                 MouseModeUtf8 = mode == 1005;
                 MouseModeSGR = mode == 1006;
                 MouseModeUrxvt = mode == 1015;
+                MouseModePixel = mode == 1016;
                 return;
             }
 
@@ -174,6 +178,7 @@ namespace Ntilde.VT
                 case 1005: MouseModeUtf8 = false; break;
                 case 1006: MouseModeSGR = false; break;
                 case 1015: MouseModeUrxvt = false; break;
+                case 1016: MouseModePixel = false; break;
             }
         }
 
@@ -188,6 +193,7 @@ namespace Ntilde.VT
                 MouseModeSGR = this.MouseModeSGR,
                 MouseModeUtf8 = this.MouseModeUtf8,
                 MouseModeUrxvt = this.MouseModeUrxvt,
+                MouseModePixel = this.MouseModePixel,
                 IsApplicationCursorKeys = this.IsApplicationCursorKeys,
                 IsApplicationKeypad = this.IsApplicationKeypad,
                 IsAutoWrapMode = this.IsAutoWrapMode,

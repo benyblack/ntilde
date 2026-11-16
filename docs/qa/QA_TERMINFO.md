@@ -1274,3 +1274,11 @@ and read back through OSC 21 and the legacy replies, each key alone and in reque
 **supported**; the stock counts move from 92/1/162 to 93/1/161. Names, alpha, the dynamic value, `cursor_text`, `visual_bell` and the transparent colors are not modeled (recorded policy), and `#RGB` scaling and an
 out-of-range `rgbi` differ from kitty's text (recorded policy divergences). Query policy v5 owes the exact-query witness a framed `rgb:rr/gg/bb` reply (a pattern entry: the host foreground is not a constant); every
 earlier run keeps the silence expectation. Receipt schema 66 and source policy v60 (401 files) bind it.
+
+### SGR-Pixels mouse qualification
+
+The SGR-Pixels batch qualifies `input.pixel-mouse` (`?1016`) through a layered collector extension (`ntilde-owned-pixel-mouse-grading-v1`) over the left/right-margin one (a sibling of the routed-input, modifyOtherKeys and extended-mouse layers)
+and input plan v5, which keeps every v4 event verbatim and appends 32 declared Avalonia events whose pointer position is an exact device pixel (`pixelX`/`pixelY` on `generatePaneInput`). The pinned probe cannot decide (it is the
+same `mouseInputProbe` as `input.x10-mouse`), so the unchanged pinned code is replayed over the child's own DECRQM reply beside an effect contract (`ntilde-sgr-pixel-mouse-1016-effect-v1`) graded by an independent oracle written from
+xterm's `button.c`. The effect contract is **supported** (all 32 experiments matched their literal expectation and the oracle) and the pinned verdict stays **inconclusive** (a recorded divergence). No stock grade changes (93/1/161).
+Receipt schema 67 and source policy v61 (407 files) bind it; the run is measured at App and scripts `9972a6fc` with no superseded attempt. See [the qualification page](terminfo/2026-11-16-sgr-pixel-mouse-qualification.md).

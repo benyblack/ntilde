@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 135,
-    "suiteClaims": 137,
+    "uniqueBenchmarkIds": 132,
+    "suiteClaims": 134,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 130,
-    "effectUnsupportedIds": 5,
+    "effectSupportedIds": 131,
+    "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
     "pinnedAndEffectSupportedIds": 93,
     "effectSupportedPinnedInconclusiveIds": [
@@ -72,6 +72,7 @@
       "extensions.osc9-progress",
       "input.button-event-mouse",
       "input.modify-other-keys",
+      "input.pixel-mouse",
       "input.urxvt-mouse",
       "input.x10-mouse",
       "modes.altscreen-1047",
@@ -90,14 +91,10 @@
       "scrollback.set-region"
     ],
     "effectUnsupportedPinnedInconclusiveIds": [
-      "extensions.osc633-a",
-      "extensions.osc633-b",
-      "extensions.osc633-c",
-      "extensions.osc633-d",
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 129,
-    "effectUnsupportedOfStockInconclusive": 5,
+    "effectSupportedOfStockInconclusive": 130,
+    "effectUnsupportedOfStockInconclusive": 1,
     "pinnedSupportedOfStockInconclusive": 92,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -111,10 +108,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 39,
-      "effectMeasuredUnsupported": 5,
+      "effectUnqualified": 38,
+      "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 34,
+      "effectNotMeasured": 37,
       "notPinnedSupported": 76
     }
   },
@@ -3405,6 +3402,76 @@
       }
     },
     {
+      "suite": "pxm",
+      "suiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-16-sgr-pixel-mouse/",
+      "doc": "2026-11-16-sgr-pixel-mouse-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "input.pixel-mouse"
+      ],
+      "evidence": {
+        "files": 4,
+        "bytes": 8577200,
+        "sha256": "82badba3b08ea846d4ffb5835beee853dd17d60b0f65f1a530980e99d5b049f7"
+      },
+      "receipt": {
+        "schemaVersion": 67,
+        "runId": "b45702ad11ea1f0ea46eeb4908206155",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "6abcae9d98fe13a6bab560565e9ed1e3f6bfad1d0d358114c2d928ba3447bc79"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
+          "file": "pxm-observations.json",
+          "sha256": "6024bb228de17d63404b8ae89f7f4c48cca1146dbf7b816d6b3266d12a24b7ab",
+          "runFile": "pxm-run.json",
+          "runSha256": "c3b0278fe70de5cde359077efd03121ee9279901e062bd50f5806fcfd4c2d9ca",
+          "counts": {
+            "inconclusive/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "b45702ad11ea1f0ea46eeb4908206155",
+        "measuredAt": "2026-11-16T10:38:09.578Z",
+        "appRevision": "9972a6fcf7649ac66140da7354b82020bc10b131",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "9972a6fcf7649ac66140da7354b82020bc10b131",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "40be323f83fe99e0ed472e16d3035612a43ccc6fc6830e4d574e19bcc96c99a1",
+        "gradingAdapterId": "ntilde-owned-pixel-mouse-grading-v1",
+        "gradingAdapterBundleSha256": "e5053f9a77772d87befdb1b9f8c99bd877e1dfde5017a726e24688b57bad4082",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v61",
+        "sourceSnapshotManifestSha256": "3b8aed244f24f3e81d5c21f19c37e5fbef0afa38974a39fba4c01a44c72f5265"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "a3651fd70aacde5e31ec2707420d7589",
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "63022126d620eb7189355bd3ff5b0fd0f70ad512141e556f946630d2ff6e8c28",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run. input.pixel-mouse stays inconclusive under the unchanged pinned code; no stock grade changes with this layer."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/pxm-publication.test.mjs",
+        "testSha256": "feb221e172aca56290f956fd93fdd1cec6256ae17b41a366101c9840cb5088af"
+      }
+    },
+    {
       "suite": "extensions-truecolor",
       "suiteId": "ntilde-owned-extensions-truecolor-projection-v1",
       "contractsVersion": 1,
@@ -3472,79 +3539,6 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/extensions-truecolor-publication.test.mjs",
         "testSha256": "a7383b756e5957fa167f0e32b873fb33bab19093511dadfbc191bab7e6d07ce5"
-      }
-    },
-    {
-      "suite": "osc633",
-      "suiteId": "ntilde-owned-osc633-graded-v1",
-      "contractsVersion": 1,
-      "liveContractsVersion": 1,
-      "publication": "2026-11-16-osc633/",
-      "doc": "2026-11-16-osc633-qualification.md",
-      "caseCount": 4,
-      "caseIds": [
-        "extensions.osc633-a",
-        "extensions.osc633-b",
-        "extensions.osc633-c",
-        "extensions.osc633-d"
-      ],
-      "evidence": {
-        "files": 13,
-        "bytes": 60963432,
-        "sha256": "5a325c7c715cbf010010b123c51b71ca8295e905f6af7495621424287b548ffa"
-      },
-      "receipt": {
-        "schemaVersion": 68,
-        "runId": "ac59f42044dd69e06377ca6719983f76",
-        "cellReceipt": {
-          "file": "cell-observations.json",
-          "sha256": "45241410bf48b6d960903a2520f93d562958ded7b3649b1f4b1d74ae40302d61"
-        },
-        "suiteEvidence": {
-          "suiteId": "ntilde-owned-osc633-graded-v1",
-          "file": "vs633-observations.json",
-          "sha256": "e826a45e86c63d26c33b168bb5f58fc265d7cbf14f886ab8b9430a579f40066b",
-          "runFile": "vs633-run.json",
-          "runSha256": "a201564bab64f2957b46b8bea7a71f853a27fc549fa98600aeea3160f7a7754c",
-          "counts": {
-            "inconclusive/unsupported": 4
-          },
-          "contractsVersion": 1
-        }
-      },
-      "run": {
-        "ownedRunId": "ac59f42044dd69e06377ca6719983f76",
-        "measuredAt": "2026-11-16T11:01:29.958Z",
-        "appRevision": "b9d7c6273683d8546b874781f605817345e23ce1",
-        "appVersion": "0.14.0",
-        "appVersionSource": "operator supplied; not independently verified",
-        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "f8f58f817e232242a063daac95f0526f94535ef8",
-        "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "2c2622a5e1dfd4ea30092c285ce725c2d4c13281820294d6ca8939fa71d3e05d",
-        "gradingAdapterId": "ntilde-owned-osc633-grading-v1",
-        "gradingAdapterBundleSha256": "c2ce46a237b7b73fcb0ce5f79241990b8b4d4381df692972f5cbd0ac16bd54da",
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v61",
-        "sourceSnapshotManifestSha256": "7f0e26d84241103447fad11aeec5bf5bfd2bef0f5973629cb2fd4eabc6337cfc"
-      },
-      "stock": {
-        "basis": "collected-run-id-recorded",
-        "runId": "54aa17e2382bec4a26c27c370a89b23f",
-        "counts": {
-          "inconclusive": 161,
-          "supported": 93,
-          "unsupported": 1
-        },
-        "suiteComplete": false,
-        "probeHash": "16a690f34c0e",
-        "rawSha256": "d2291cd28cc4c3bc575eae09e9e194a97667b637e554727c708e0bb6e3291c37",
-        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
-        "note": null
-      },
-      "rederivation": {
-        "status": "passed",
-        "command": "node --test scripts/terminfo/osc633-publication.test.mjs",
-        "testSha256": "07d6d11c65fa20be7bd7d3f7435ca61b2c7b2c0cb1f0767112b5f21f6d457395"
       }
     }
   ],
@@ -6454,214 +6448,6 @@
       ]
     },
     {
-      "id": "extensions.osc633-a",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "unsupported",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "unsupported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc633-a",
-          "suite": "osc633",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "effect": {
-            "verdict": "unsupported"
-          },
-          "reportedConclusion": {
-            "outcome": "inconclusive",
-            "grading": "pinned-consumption-preserved-by-design"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-inconclusive-by-design",
-            "pinned": "inconclusive",
-            "effect": "unsupported",
-            "reason": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "measuredLayers": [
-            "pane-metadata-and-session-status"
-          ],
-          "evidenceTag": "owned-pane-metadata-and-session-status"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc633-b",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "unsupported",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "unsupported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc633-b",
-          "suite": "osc633",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "effect": {
-            "verdict": "unsupported"
-          },
-          "reportedConclusion": {
-            "outcome": "inconclusive",
-            "grading": "pinned-consumption-preserved-by-design"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-inconclusive-by-design",
-            "pinned": "inconclusive",
-            "effect": "unsupported",
-            "reason": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "measuredLayers": [
-            "pane-metadata-and-session-status"
-          ],
-          "evidenceTag": "owned-pane-metadata-and-session-status"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc633-c",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "unsupported",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "unsupported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc633-c",
-          "suite": "osc633",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "effect": {
-            "verdict": "unsupported"
-          },
-          "reportedConclusion": {
-            "outcome": "inconclusive",
-            "grading": "pinned-consumption-preserved-by-design"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-inconclusive-by-design",
-            "pinned": "inconclusive",
-            "effect": "unsupported",
-            "reason": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "measuredLayers": [
-            "pane-metadata-and-session-status"
-          ],
-          "evidenceTag": "owned-pane-metadata-and-session-status"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc633-d",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "inconclusive",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "inconclusive"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "unsupported",
-        "byClaim": [
-          {
-            "suite": "osc633",
-            "verdict": "unsupported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc633-d",
-          "suite": "osc633",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "inconclusive",
-            "note": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "effect": {
-            "verdict": "unsupported"
-          },
-          "reportedConclusion": {
-            "outcome": "inconclusive",
-            "grading": "pinned-consumption-preserved-by-design"
-          },
-          "divergence": {
-            "recordedInReport": true,
-            "kind": "pinned-inconclusive-by-design",
-            "pinned": "inconclusive",
-            "effect": "unsupported",
-            "reason": "Marker was consumed; shell prompt integration was not observed"
-          },
-          "measuredLayers": [
-            "pane-metadata-and-session-status"
-          ],
-          "evidenceTag": "owned-pane-metadata-and-session-status"
-        }
-      ]
-    },
-    {
       "id": "extensions.osc7-cwd",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -7091,6 +6877,58 @@
         {
           "id": "input.modify-other-keys",
           "suite": "modify-other-keys",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "input.pixel-mouse",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "pxm",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "pxm",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.pixel-mouse",
+          "suite": "pxm",
           "status": "qualified",
           "pinned": {
             "verdict": "inconclusive",

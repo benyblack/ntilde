@@ -16,7 +16,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
 
 export function includesOsc633Evidence(output, evidence, context) {
     const policy = Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0);
-    return policy >= 61 || context.osc633AdapterId !== undefined || context.osc633SuiteId !== undefined || context.osc633BundleSha256 !== undefined
+    return policy >= 62 || context.osc633AdapterId !== undefined || context.osc633SuiteId !== undefined || context.osc633BundleSha256 !== undefined
         || context.osc633ContractsVersion !== undefined || evidence.osc633Evidence !== undefined || files.some(file => present(join(output, file)));
 }
 

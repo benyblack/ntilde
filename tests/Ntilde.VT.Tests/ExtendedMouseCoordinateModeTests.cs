@@ -3,12 +3,12 @@ using System.Text.Json;
 namespace Ntilde.VT.Tests;
 
 /// <summary>
-/// ?1005 (UTF-8) and ?1015 (urxvt) coordinate encodings share one selection with ?1006 (xterm's extend_coords):
+/// ?1005 (UTF-8), ?1015 (urxvt) and ?1016 (SGR-Pixels) coordinate encodings share one selection with ?1006 (xterm's extend_coords):
 /// setting one replaces the others, a reset only clears the encoding it names, RIS clears, DECSTR keeps.
 /// </summary>
 public sealed class ExtendedMouseCoordinateModeTests
 {
-    private static readonly int[] Encodings = { 1005, 1006, 1015 };
+    private static readonly int[] Encodings = { 1005, 1006, 1015, 1016 };
 
     private static (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies) Create()
     {
@@ -32,6 +32,7 @@ public sealed class ExtendedMouseCoordinateModeTests
     [Theory]
     [InlineData(1005)]
     [InlineData(1015)]
+    [InlineData(1016)]
     public void Mode_has_exact_live_queries_and_fragmented_enable_reset(int mode)
     {
         var (_, parser, replies) = Create();
@@ -40,13 +41,14 @@ public sealed class ExtendedMouseCoordinateModeTests
         Assert.Equal(new[] { $"\u001b[?{mode};2$y", $"\u001b[?{mode};1$y", $"\u001b[?{mode};2$y" }, replies);
     }
 
+    public static IEnumerable<object[]> OrderedPairs =>
+        from first in Encodings
+        from second in Encodings
+        where first != second
+        select new object[] { first, second };
+
     [Theory]
-    [InlineData(1005, 1006)]
-    [InlineData(1005, 1015)]
-    [InlineData(1006, 1005)]
-    [InlineData(1006, 1015)]
-    [InlineData(1015, 1005)]
-    [InlineData(1015, 1006)]
+    [MemberData(nameof(OrderedPairs))]
     public void Setting_one_encoding_replaces_the_one_that_was_active(int first, int second)
     {
         var (buffer, parser, replies) = Create();
@@ -57,12 +59,15 @@ public sealed class ExtendedMouseCoordinateModeTests
         Assert.Equal(second == 1005, buffer.Modes.MouseModeUtf8);
         Assert.Equal(second == 1006, buffer.Modes.MouseModeSGR);
         Assert.Equal(second == 1015, buffer.Modes.MouseModeUrxvt);
+        Assert.Equal(second == 1016, buffer.Modes.MouseModePixel);
     }
 
     [Fact]
     public void Several_modes_in_one_sequence_end_with_the_last_one_selected()
     {
         var (_, parser, replies) = Create();
+        parser.Process("\u001b[?1005;1006;1015;1016h");
+        Assert.Equal(Expect(1016), Query(parser, replies));
         parser.Process("\u001b[?1005;1006;1015h");
         Assert.Equal(Expect(1015), Query(parser, replies));
         parser.Process("\u001b[?1015;1005h");
@@ -99,6 +104,7 @@ public sealed class ExtendedMouseCoordinateModeTests
     [Theory]
     [InlineData(1005)]
     [InlineData(1015)]
+    [InlineData(1016)]
     public void Soft_reset_keeps_the_encoding_but_full_reset_and_the_prompt_policy_clear_it(int mode)
     {
         var (buffer, parser, replies) = Create();
@@ -118,26 +124,30 @@ public sealed class ExtendedMouseCoordinateModeTests
     [Theory]
     [InlineData(1005)]
     [InlineData(1015)]
+    [InlineData(1016)]
     public void Clone_and_complete_snapshot_preserve_the_encoding_and_old_snapshots_default_off(int mode)
     {
         var source = new TerminalBuffer(20, 5);
         new AnsiParser(source).Process($"\u001b[?1000h\u001b[?{mode}h");
         Assert.Equal(mode == 1005, source.Modes.Clone().MouseModeUtf8);
         Assert.Equal(mode == 1015, source.Modes.Clone().MouseModeUrxvt);
+        Assert.Equal(mode == 1016, source.Modes.Clone().MouseModePixel);
 
         string json = JsonSerializer.Serialize(source.ExportState(0));
-        string property = mode == 1005 ? "\"m_utf8\":true" : "\"m_urxvt\":true";
+        string property = mode switch { 1005 => "\"m_utf8\":true", 1015 => "\"m_urxvt\":true", _ => "\"m_pixel\":true" };
         Assert.Contains(property, json, StringComparison.Ordinal);
         var target = new TerminalBuffer(20, 5);
         target.ImportState(JsonSerializer.Deserialize<TerminalStateSnapshot>(json)!);
         Assert.Equal(mode == 1005, target.Modes.MouseModeUtf8);
         Assert.Equal(mode == 1015, target.Modes.MouseModeUrxvt);
+        Assert.Equal(mode == 1016, target.Modes.MouseModePixel);
         Assert.False(target.Modes.MouseModeSGR);
 
         // Payloads from builds that never knew the encoding carry neither property; they import as off.
         target.ImportState(JsonSerializer.Deserialize<TerminalStateSnapshot>(json.Replace(property + ",", "").Replace("," + property, ""))!);
         Assert.False(target.Modes.MouseModeUtf8);
         Assert.False(target.Modes.MouseModeUrxvt);
+        Assert.False(target.Modes.MouseModePixel);
     }
 
     [Fact]
@@ -148,6 +158,7 @@ public sealed class ExtendedMouseCoordinateModeTests
         string json = JsonSerializer.Serialize(source.ExportState(0));
         Assert.DoesNotContain("m_utf8", json, StringComparison.Ordinal);
         Assert.DoesNotContain("m_urxvt", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("m_pixel", json, StringComparison.Ordinal);
         Assert.Contains("\"m_sgr\":true", json, StringComparison.Ordinal);
     }
 }

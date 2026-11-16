@@ -12,6 +12,7 @@ import { includesXssEvidence, checkXssEvidence } from './xss-receipt.mjs';
 import { includesXsvEvidence, checkXsvEvidence } from './xsv-receipt.mjs';
 import { includesModifyOtherKeysEvidence, checkModifyOtherKeysEvidence } from './modify-other-keys-receipt.mjs';
 import { includesMexEvidence, checkMexEvidence } from './mex-receipt.mjs';
+import { includesPxmEvidence, checkPxmEvidence } from './pxm-receipt.mjs';
 import { includesKclEvidence, checkKclEvidence } from './kcl-receipt.mjs';
 import { includesReverseWideEvidence, checkReverseWideEvidence } from './core-reverse-wide-receipt.mjs';
 import { includesSgrRasterEvidence, checkSgrRasterEvidence } from './core-sgr-raster-receipt.mjs';
@@ -21,7 +22,7 @@ import { includesCoreEraseEvidence, checkCoreEraseEvidence } from './core-erase-
 import { includesTextCursorEvidence, checkTextCursorEvidence } from './core-text-cursor-receipt.mjs';
 import { includesOsc133Evidence, checkOsc133Evidence } from './osc133-receipt.mjs';
 import { includesOsc633Evidence, checkOsc633Evidence } from './osc633-receipt.mjs';
-import { isLegacyScope, isOsc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { isHistoricOsc633Scope, isLegacyScope, isOsc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { includesOsc78Evidence, checkOsc78Evidence } from './osc78-receipt.mjs';
 import { includesPrivateClipboardEvidence, checkPrivateClipboardEvidence } from './private-clipboard-receipt.mjs';
 import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
@@ -234,12 +235,14 @@ const receiptSuffixOrder = Object.freeze([
     'includesMex',
     'includesXsv',
     'includesKcl',
+    'includesPxm',
     'includesOsc633',
     'includesScopedCollection',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
 function ownedReceiptVersion(context, suffixes) {
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v61' && isHistoricOsc633Scope(context.collectionScope)) return 68;
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -250,7 +253,7 @@ function ownedReceiptVersion(context, suffixes) {
 /** Which optional evidence suffixes a run declares, newest last. */
 function admittedSuffixes(output, evidence, context, proof) {
     const includesScopedCollection = validateCollectionScope(output, evidence, context, proof);
-    if (isOsc633Scope(context.collectionScope)) verifyScopePredecessor(output, completeOwnedReceipt);
+    if (isOsc633Scope(context.collectionScope)) verifyScopePredecessor(output, completeOwnedReceipt, context.collectionScope);
     const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
         || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
     const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
@@ -308,6 +311,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesXss = includesXssEvidence(output, evidence, context);
     const includesXsv = includesXsvEvidence(output, evidence, context);
     const includesMex = includesMexEvidence(output, evidence, context);
+    const includesPxm = !isHistoricOsc633Scope(context.collectionScope) && includesPxmEvidence(output, evidence, context);
     const includesKcl = includesKclEvidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
     const includesRoutedInput = includesRoutedInputEvidence(output, evidence, context);
@@ -319,7 +323,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc633, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesModifyOtherKeys, includesOsc9, includesAsciiReflow, includesNotify, includesSelectionColors, includesDevq, includesXcs, includesXss, includesXsv, includesMex, includesKcl, includesScopedCollection };
+        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc633, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesModifyOtherKeys, includesOsc9, includesAsciiReflow, includesNotify, includesSelectionColors, includesDevq, includesXcs, includesXss, includesXsv, includesMex, includesKcl, includesPxm, includesScopedCollection };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -387,6 +391,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesXss) checkXssEvidence(output, evidence, runId, context);
     if (suffixes.includesXsv) checkXsvEvidence(output, evidence, runId, context);
     if (suffixes.includesMex) checkMexEvidence(output, evidence, runId, context, proof);
+    if (suffixes.includesPxm) checkPxmEvidence(output, evidence, runId, context, proof);
     if (suffixes.includesKcl) checkKclEvidence(output, evidence, runId, context);
 }
 
