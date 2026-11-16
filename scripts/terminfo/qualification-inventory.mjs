@@ -64,8 +64,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('xtgettcap', '2026-11-12-xtgettcap', '2026-11-12-xtgettcap-qualification.md'), module: 'xtgettcap-contracts.mjs', exports: ['xtgettcapSuiteId', 'xtgettcapContractsVersion', 'xtgettcapCaseIds'], test: 'xtgettcap-publication.test.mjs' },
     { ...directory('modify-other-keys', '2026-11-12-modify-other-keys', '2026-11-12-modify-other-keys-qualification.md'), module: 'modify-other-keys-contracts.mjs', exports: ['modifyOtherKeysGradedSuiteId', 'modifyOtherKeysContractsVersion', 'modifyOtherKeysCaseIds'], test: 'modify-other-keys-publication.test.mjs' },
     { ...directory('osc9', '2026-11-13-osc9', '2026-11-13-osc9-qualification.md'), module: 'osc9-contracts.mjs', exports: ['osc9SuiteId', 'osc9ContractsVersion', 'osc9CaseIds'], test: 'osc9-publication.test.mjs' },
-    // The one benchmark id whose retained effect verdict is unsupported (the pinned verdict is inconclusive by design); admitted like any other suite.
-    { ...directory('ascii-reflow', '2026-11-12-ascii-reflow', '2026-11-12-ascii-reflow-qualification.md'), module: 'ascii-reflow-contracts.mjs', exports: ['asciiReflowSuiteId', 'asciiReflowContractsVersion', 'asciiReflowCaseIds'], test: 'ascii-reflow-publication.test.mjs' },
+    // The current fixed-App reflow retest; the historical unsupported publication remains frozen below.
+    { ...directory('ascii-reflow', '2026-11-16-ascii-reflow-fix', '2026-11-16-ascii-reflow-fix-qualification.md'), module: 'ascii-reflow-contracts.mjs', exports: ['asciiReflowSuiteId', 'asciiReflowContractsVersion', 'asciiReflowCaseIds'], test: 'ascii-reflow-fix-publication.test.mjs' },
     { ...directory('notify', '2026-11-14-notify', '2026-11-14-notify-qualification.md'), module: 'notify-contracts.mjs', exports: ['notifySuiteId', 'notifyContractsVersion', 'notifyCaseIds'], test: 'notify-publication.test.mjs' },
     { ...directory('selection-colors', '2026-11-12-selection-colors', '2026-11-12-selection-colors-qualification.md'), module: 'selection-colors-contracts.mjs', exports: ['selectionColorsSuiteId', 'selectionColorsContractsVersion', 'selectionColorsCaseIds'], test: 'selection-colors-publication.test.mjs' },
     { ...directory('devq', '2026-11-15-device-queries', '2026-11-15-device-queries-qualification.md'), module: 'devq-contracts.mjs', exports: ['devqSuiteId', 'devqContractsVersion', 'devqCaseIds'], test: 'devq-publication.test.mjs' },
@@ -88,6 +88,7 @@ export const benchmarkSuites = Object.freeze([
  * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
  */
 export const nonInventoryPublicationTests = Object.freeze({
+    'ascii-reflow-publication.test.mjs': 'frozen historical unsupported reflow result; current fixed-App retest is the active suite claim',
     'modern-publication.test.mjs': 'frozen Modern requirement reassessment; preserves separate stock and owned semantic results without adding benchmark-suite claims',
     'image-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
     'input-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',

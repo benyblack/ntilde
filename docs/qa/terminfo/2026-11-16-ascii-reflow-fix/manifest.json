@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "attempts/attempt-1-timeout.zip": "2826da50245254ba4e66250eff26782fb8894fadb59d677933ef718cb1aa315d",
+    "attempts/attempt-3-unexpected-input.zip": "5c5f7a12d042f19a8a2a050ff29d428c15b0ec5442763405f60e37da269cbf3a",
+    "attempts/attempt-4-timeout.zip": "5c0ac96fb07314693385d9f7bae4e4f7720a2092c1a43814b790a53450f08cc5",
+    "before-fix.zip": "8c46be5faa72b137e93a628a6aa558c50927f6f53a8ec097602da4baf1bdeb8e",
+    "owned-run.zip": "04e2bd9b394955edf61614ae7213c3cd20a76f80c700ff8b530f1e13c5be7feb",
+    "production-sources.zip": "3ee54ff7f7bd1770317c41f9f5ecda64b9201051bf82bc6599325a8323adf769"
+  },
+  "buildIdentitiesSha256": "bc055b8b57ff2b88f22baafc34f8ae2653b5313e823a625fed065d2c724adf4c",
+  "sameReflowInputs": {
+    "ascii-reflow-contracts.mjs": "8a9984b91cb29353bd53e4b0321c8718ec7211121049e286ef2774b82bd96f6c",
+    "ascii-reflow-grading.mjs": "2f0cbf528efa8f9f11274f00f1dee67652ff88c03cb62ff0d01efd60f3f9a68c",
+    "ascii-reflow-observer.mjs": "ff3cc2c496e4c1f18cf8d7722d162d88a28534fcdb501cf0260f9df590acefc6",
+    "ascii-reflow-collector.mjs": "0ac2cc6074be322999fb12dbd64cf462fa2ea4c3242304f58f031205388ee215",
+    "ascii-reflow-grading-collector.mjs": "6e0428e2970c746a32ec138c9fde75af4822771a14cd123a6cafe0f66e0893e5",
+    "resize-capture.mjs": "29bcf146259806890c5a7ead9cf3b5df567f8bbae1db0dfb9df4b1aa04e22517",
+    "resize.mjs": "4e5cea43e0dd54ecb806c73fad3963f069e68592baf6ee472b75403e936890a9"
+  },
+  "runs": {
+    "before": {
+      "runId": "2b00a54a9b4774e4828d0cd5810cb034",
+      "appRevision": "9c692a04aa880372a9461be51e4144e307ab5c83",
+      "scriptsRevision": "9c692a04aa880372a9461be51e4144e307ab5c83",
+      "receiptSchemaVersion": 67
+    },
+    "after": {
+      "runId": "7a3c3f1779fb10cfd83ff5f0b8c70c39",
+      "appRevision": "cbc70bde25249b39365994477b43fd39b98198a5",
+      "scriptsRevision": "1955928d36d0d6fdf4f7bbe43088aae6d8414a74",
+      "receiptSchemaVersion": 69
+    }
+  }
+}

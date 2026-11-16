@@ -85,6 +85,9 @@ invariant changes.
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
   fixed physical layout barriers; a rectangle clipped by a narrower grid or taller than the
   new screen is discarded whole, as permitted by the sizing protocol.
+- ED 2 and EL 2 retire erased rows' soft-wrap identity and extents in place. A later
+  positioned replacement must not join neighboring hard lines during reflow. Row IDs,
+  cursor, pen and scrollback remain intact; EL 2 leaves other rows' wraps unchanged.
 - **OSC 66 geometry belongs to VT.** Immutable block text/options are shared by optional per-row
   side tables, paged history and render snapshots; packed cells remain 12 bytes. Overwrite/erase
   operate on whole rectangles and ordinary writes skip their lower rows. Additional retained

@@ -50,3 +50,7 @@ blank layout cells + `line k+1` — displacing 38 ordered rows instead of 44, lo
 reproduces the model for the same fixture under every tried resize sequence, isolating the divergence to the live pane-resize
 path. The effect verdict is **unsupported** for this criterion as authored; the pinned verdict stays inconclusive. See
 [the qualification](2026-11-12-ascii-reflow-qualification.md) for the retained evidence.
+
+The [#979 follow-up](2026-11-16-ascii-reflow-fix-qualification.md) retains that historical result
+and a fresh baseline, identifies the preceding width fixture's stale soft-wrap flags after
+full-row erasure, and separately records the fixed-App retest. The contract and oracle are unchanged.

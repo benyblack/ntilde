@@ -12,19 +12,19 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 | Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 136 |
 | Suite claims (an id covered by two suites has two claims) | 138 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 131 |
-| Effect contract unsupported (measured, retained, not supported) | 5 |
+| Effect contract supported | 132 |
+| Effect contract unsupported (measured, retained, not supported) | 4 |
 | Supported by both the pinned probe and the effect contract | 93 |
-| Effect supported, pinned verdict inconclusive | 38 |
-| Effect unsupported, pinned verdict inconclusive | 5 |
+| Effect supported, pinned verdict inconclusive | 39 |
+| Effect unsupported, pinned verdict inconclusive | 4 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
 An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.
 
-Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.pixel-mouse`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `extensions.reflow`, `input.button-event-mouse`, `input.modify-other-keys`, `input.pixel-mouse`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
-Effect unsupported, pinned inconclusive (by design): `extensions.osc633-a`, `extensions.osc633-b`, `extensions.osc633-c`, `extensions.osc633-d`, `extensions.reflow`.
+Effect unsupported, pinned inconclusive (by design): `extensions.osc633-a`, `extensions.osc633-b`, `extensions.osc633-c`, `extensions.osc633-d`.
 
 ## Remaining cases against an explicit baseline
 
@@ -32,8 +32,8 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Not effect-supported, `effectUnqualified` (168 − 130) | 38 |
-| of which measured, effect unsupported | 5 |
+| Not effect-supported, `effectUnqualified` (168 − 131) | 37 |
+| of which measured, effect unsupported | 4 |
 | of which measured, another non-supported verdict | 0 |
 | of which not measured (no qualified effect evidence) | 33 |
 | Not pinned-supported (168 − 92) | 76 |
@@ -88,7 +88,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `xtgettcap` | 1 | v1 | passed | 55 | `2d8433d9` | v49 | 37 | `f0caebd7` |
 | `modify-other-keys` | 1 | v1 | passed | 56 | `2091d3d6` | v50 | 122 | `f01ed9c2` |
 | `osc9` | 2 | v1 | passed | 57 | `1ac4476c` | v51 | 17 | `de13f6ad` |
-| `ascii-reflow` | 1 | v1 | passed | 58 | `d8679e11` | v52 | 19 | `889a48b8` |
+| `ascii-reflow` | 1 | v1 | passed | 69 | `cbc70bde` | v62 | 14 | `9b88c15d` |
 | `notify` | 2 | v1 | passed | 59 | `d904c663` | v53 | 10 | `106e7f00` |
 | `selection-colors` | 4 | v1 | passed | 60 | `fe2ccbca` | v54 | 15 | `25ca76e5` |
 | `devq` | 4 | v1 | passed | 61 | `8692e250` | v55 | 10 | `08590e34` |
@@ -146,7 +146,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `xtgettcap` | collected-run-id-recorded | `db8145b1` | 167/87/1 | `cf7d8759` |
 | `modify-other-keys` | collected-run-id-recorded | `65f00779` | 167/87/1 | `cf7d8759` |
 | `osc9` | collected-run-id-recorded | `26c93f5a` | 167/87/1 | `cf7d8759` |
-| `ascii-reflow` | collected-run-id-recorded | `7dd243ac` | 167/87/1 | `cf7d8759` |
+| `ascii-reflow` | collected-run-id-recorded | `731340d8` | 161/93/1 | `cf7d8759` |
 | `notify` | collected-run-id-recorded | `44271b95` | 166/88/1 | `cf7d8759` |
 | `selection-colors` | collected-run-id-recorded | `2940c076` | 166/88/1 | `cf7d8759` |
 | `devq` | collected-run-id-recorded | `ece4f56d` | 163/91/1 | `cf7d8759` |
@@ -236,7 +236,7 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc8` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc78 | - |
 | `extensions.osc9-progress` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | osc9 | osc9: pinned-inconclusive-by-design |
 | `extensions.osc99-kitty-notify` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | notify | - |
-| `extensions.reflow` | inconclusive | inconclusive | unsupported | stored-state + actual-scrollback | ascii-reflow | ascii-reflow: pinned-inconclusive-by-design |
+| `extensions.reflow` | inconclusive | inconclusive | supported | stored-state + actual-scrollback | ascii-reflow | ascii-reflow: pinned-inconclusive-by-design |
 | `extensions.truecolor` | inconclusive | supported | supported | stored-state + app-resolved-color | extensions-truecolor | - |
 | `input.button-event-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `input.modify-other-keys` | inconclusive | inconclusive | supported | generated-input-child-bytes | modify-other-keys | modify-other-keys: pinned-inconclusive-by-design |

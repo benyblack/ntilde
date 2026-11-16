@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 export const measuredScriptsRevision = 'd8679e112ce919fd050c5a74f40693edfce13b1c';
 export const measuredAppRevision = 'd8679e112ce919fd050c5a74f40693edfce13b1c';
-export function asciiReflowPublication(dir) {
+export function asciiReflowPublication(dir, { appRevision = measuredAppRevision, scriptsRevision = measuredScriptsRevision } = {}) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
     const measured = json(dir, 'reflow-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json');
     const scope = 'Pinned termless and terminal paths (always inconclusive by design, no fixture, no resize request, no cell readback) replayed byte-exactly over the journaled declared capability, plus the versioned effect contract for controlled ASCII reflow in a disposable main screen buffer: two parent-owned shrink/restore experiments graded from paired complete stored cells, cursor, modes, attributes and complete ordered history at three actual geometries, with independent kernel geometry and output-processing proof per action. No Unicode, wide-cell, grapheme or history-attribute claim, no rendered appearance, no stock-score inference.';
@@ -21,7 +21,7 @@ export function asciiReflowPublication(dir) {
     const report = { schemaVersion: 1, suiteId: measured.suiteId, contractsVersion: measured.contractsVersion, runId: measured.runId,
         adapter: measured.adapter, scope, cases };
     const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId,
-        appRevision: measuredAppRevision, scriptsRevision: measuredScriptsRevision, context, receipt,
+        appRevision, scriptsRevision, context, receipt,
         stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256,
             probeHash: raw.probeHash, sourceRevision: raw.sourceRevision,
             note: 'Stock terminal-path grades collected in the same owned run; the owned effect verdict does not change the stock score.' } };
