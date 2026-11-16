@@ -2,13 +2,17 @@
 // receipted marker publications. No collection ran for this suite and no production code changed: the
 // summary and report below derive only from retained, committed bytes (the carriers' summaries and
 // reports, their archive digests, and the pinned bundle shipped beside them) plus the exact pinned probe
-// registrations, which are extracted from the pinned bundle by hash and replayed in a sandbox that
-// refuses every use of the context the pinned code does not make.
+// registrations, which are extracted from the pinned bundle by hash and executed in a disposable child
+// process that refuses every use of the context the pinned code does not make. The child process is the
+// isolation boundary: the parent never evaluates the pinned bytes in its own address space, and every
+// carrier file the projection admits from is checked against the digest expectations the caller pins.
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
-import { runInNewContext } from 'node:vm';
 import { loadPublication } from './qualification-inventory.mjs';
 import {
     aggregateCaseIds, aggregateEvidenceSets, aggregateEvidenceTag, aggregatePinnedNotes, aggregatesSuiteId, aggregatesVersion,
@@ -20,9 +24,9 @@ const bundleName = 'terminfo-dev-4.0.0.bundle.mjs.gz';
 const qaDir = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error(`shell-integration aggregates projection: ${message}`); };
-const read = url => readFileSync(new URL(url, import.meta.url));
-const json = url => JSON.parse(read(url));
-const carrierDir = carrier => `../../docs/qa/terminfo/${carrier.dir}/`;
+const read = (root, rel) => readFileSync(join(root, rel));
+const json = (root, rel) => JSON.parse(read(root, rel));
+const carrierDir = carrier => `${carrier.dir}/`;
 
 // The exact pinned registrations this suite replays, pinned by their SHA-256 over the retained bundle
 // (each start marker and each extracted span occurs exactly once).
@@ -44,45 +48,99 @@ function extractRegistration(source, caseId) {
 }
 
 /** Run the exact pinned aggregate registration from a bundle copy, once per declared-capability value.
+ * The verified span is written to a disposable file and executed by a child Node process (a stronger
+ * isolation boundary than an in-process dynamic evaluation, and no dynamic evaluation in this module).
  * The termless context exposes only `capabilities`; the terminal context is a trap that throws if the
- * pinned terminal code ever read anything from it (the pinned terminal function ignores its argument).
- * The returned `terminal` is the settled pinned terminal result (the pinned function resolves a promise). */
-export async function replayAggregatePinned(caseId, declared, archive = read(`../../docs/qa/terminfo/2026-11-16-shell-integration-aggregates/${bundleName}`)) {
+ * pinned terminal code ever read anything from it (the pinned terminal function ignores its argument). */
+export function replayAggregatePinned(caseId, declared, archive = read(qaDir, join('2026-11-16-shell-integration-aggregates', bundleName))) {
     const bundle = gunzipSync(archive, { maxOutputLength: 2_000_000 });
     check(sha(bundle) === upstreamBundleSha256, 'upstream bundle differs');
-    const { text, digest } = extractRegistration(bundle.toString('utf8'), caseId);
-    const registered = runInNewContext(`${probeCollector}${text}\nregistered`, Object.create(null), { timeout: 1000 });
-    check(Array.isArray(registered) && registered.length === 1 && registered[0].id === caseId, 'pinned registration did not register exactly its own case');
-    const trap = new Proxy({}, { get() { throw new Error('the pinned terminal path read the context'); } });
-    // The sandbox runs in its own realm; move the results onto host objects so comparisons are structural.
-    const termless = JSON.parse(JSON.stringify(registered[0].termless({ capabilities: { semanticPrompts: declared === true } })));
-    const terminal = JSON.parse(JSON.stringify(await registered[0].terminal(trap)));
-    return { termless, terminal, registrationSha256: digest };
+    const { text } = extractRegistration(bundle.toString('utf8'), caseId);
+    const root = mkdtempSync(join(tmpdir(), 'nt-aggregate-pinned-'));
+    try {
+        const declaredLiteral = declared === true ? 'true' : 'false';
+        // The span keeps its bundle bytes byte for byte, including the trailing comma of the array
+        // element it is in the bundle - so the child evaluates it inside an array literal.
+        const child = `${probeCollector}[\n${text}\n];\n`
+            + `if (registered.length !== 1 || registered[0].id !== ${JSON.stringify(caseId)}) { throw new Error('pinned registration did not register exactly its own case'); }\n`
+            + `const trap = new Proxy({}, { get() { throw new Error('the pinned terminal path read the context'); } });\n`
+            + `const termless = registered[0].termless({ capabilities: { semanticPrompts: ${declaredLiteral} } });\n`
+            + `const terminal = await registered[0].terminal(trap);\n`
+            + `process.stdout.write(JSON.stringify({ termless, terminal }));\n`;
+        const file = join(root, 'pinned-aggregate.mjs');
+        writeFileSync(file, child);
+        const run = spawnSync(process.execPath, [file], { encoding: 'utf8', timeout: 10_000, cwd: root });
+        check(run.status === 0, `pinned replay child failed: ${(run.stderr ?? '').trim().slice(-400)}`);
+        const { termless, terminal } = JSON.parse(run.stdout);
+        check(termless && terminal, 'the pinned replay returned no results');
+        return { termless, terminal, registrationSha256: seams[caseId][1] };
+    } finally { rmSync(root, { recursive: true, force: true }); }
 }
 
-function carrierBinding(carrier) {
-    const summaryBytes = read(carrierDir(carrier) + 'summary.json');
+/** The digest expectations the projection validates the carrier files against. The defaults pin the
+ * retained bytes; a caller (the regression test) pins the committed ones against a mutated copy so the
+ * projection refuses evidence that changed while its retained outcome stayed the same. */
+export function aggregateSourceDigests(root = qaDir) {
+    const osc133Report = loadPublication(root, { layout: 'directory', dir: osc133Carrier.dir });
+    const osc633Report = loadPublication(root, { layout: 'directory', dir: osc633Carrier.dir });
+    const osc133CaseIds = osc133Report.report.cases
+        .filter(item => item.effectContract?.id === osc133Carrier.effectContractId).map(item => item.caseId);
+    check(osc133CaseIds.length === 4, 'the OSC 133 carrier does not retain its four lifecycle claims');
+    return {
+        osc133: {
+            summarySha256: sha(read(root, join(osc133Carrier.dir, 'summary.json'))),
+            admittedEvidence: Object.fromEntries([
+                [join(osc133Carrier.dir, 'journal-common.json'), sha(read(root, join(osc133Carrier.dir, 'journal-common.json')))],
+                ...osc133CaseIds.map(caseId => [join(osc133Carrier.dir, `case-${caseId}.json`), sha(read(root, join(osc133Carrier.dir, `case-${caseId}.json`)))]),
+            ]),
+        },
+        osc633: {
+            summarySha256: sha(read(root, join(osc633Carrier.dir, 'summary.json'))),
+            archiveSha256: json(root, join(osc633Carrier.dir, 'manifest.json')).archives['owned-run.zip'],
+            adapterId: osc633Report.report.adapter.id,
+            admittedEvidence: { [join(osc633Carrier.dir, 'report.json')]: sha(read(root, join(osc633Carrier.dir, 'report.json'))) },
+        },
+    };
+}
+
+function carrierBinding(carrier, root, sources) {
+    const expected = sources[carrier.suite];
+    const summaryBytes = read(root, join(carrier.dir, 'summary.json'));
+    check(sha(summaryBytes) === expected.summarySha256, `carrier ${carrier.suite} summary differs from the pinned expectation`);
     const summary = JSON.parse(summaryBytes);
-    const { report } = loadPublication(qaDir, { layout: 'directory', dir: carrier.dir });
+    const { report } = loadPublication(root, { layout: 'directory', dir: carrier.dir });
     const admitted = report.cases
         .filter(item => item.effectContract?.id === carrier.effectContractId)
         .map(item => ({ caseId: item.caseId, outcome: item.contractResult.outcome }));
     check(admitted.length === 4, `carrier ${carrier.suite} does not admit its four lifecycle claims`);
+    // The exact bytes each admitted outcome is read from are pinned per file, so a mutation that keeps
+    // the retained outcome but alters the evidence is refused here instead of being silently admitted.
+    const admittedEvidence = carrier === osc133Carrier
+        ? Object.fromEntries([
+            [join(carrier.dir, 'journal-common.json'), sha(read(root, join(carrier.dir, 'journal-common.json')))],
+            ...admitted.map(({ caseId }) => [join(carrier.dir, `case-${caseId}.json`), sha(read(root, join(carrier.dir, `case-${caseId}.json`)))]),
+        ])
+        : { [join(carrier.dir, 'report.json')]: sha(read(root, join(carrier.dir, 'report.json'))) };
+    for (const [rel, digest] of Object.entries(admittedEvidence)) {
+        const pinned = expected.admittedEvidence?.[rel];
+        if (pinned === undefined) check(false, `carrier ${carrier.suite} evidence is not pinned by the caller: ${rel}`);
+        check(pinned === digest, `carrier ${carrier.suite} evidence differs from the pinned expectation: ${rel}`);
+    }
     const binding = {
-        suite: carrier.suite, suiteId: carrier.suiteId, publication: carrier.publication, summarySha256: sha(summaryBytes),
+        suite: carrier.suite, suiteId: carrier.suiteId, publication: carrier.publication, summarySha256: expected.summarySha256,
         contractsVersion: report.contractsVersion, effectContractId: carrier.effectContractId,
         ownedRunId: summary.ownedRunId, measuredAt: summary.measuredAt, appRevision: summary.appRevision, scriptsRevision: summary.scriptsRevision,
-        receiptSchemaVersion: summary.receipt.schemaVersion, gradingAdapter: report.adapter, admitted,
+        receiptSchemaVersion: summary.receipt.schemaVersion, gradingAdapter: report.adapter, admitted, admittedEvidence,
     };
     if (carrier === osc633Carrier) {
-        const manifest = json(carrierDir(carrier) + 'manifest.json');
-        check(Object.hasOwn(manifest.archives, 'owned-run.zip'), 'carrier archive missing');
-        binding.archiveSha256 = manifest.archives['owned-run.zip'];
+        check(expected.archiveSha256 === json(root, join(carrier.dir, 'manifest.json')).archives['owned-run.zip'], 'carrier OSC 633 archive differs from the pinned expectation');
+        check(expected.adapterId === report.adapter.id, 'carrier OSC 633 grading adapter differs from the pinned expectation');
+        binding.archiveSha256 = expected.archiveSha256;
     }
     return binding;
 }
 
-async function buildCase(caseId, bindings) {
+function buildCase(caseId, bindings) {
     const set = aggregateEvidenceSets[caseId];
     const carrier = set.carrier === osc133Carrier ? bindings.osc133 : bindings.osc633;
     check(carrier.suiteId === set.carrier.suiteId, 'carrier binding mismatch');
@@ -102,7 +160,7 @@ async function buildCase(caseId, bindings) {
     const pinnedVariants = [];
     let replayed = null;
     for (const value of declaredCapabilityVariants) {
-        const result = await replayAggregatePinned(caseId, value);
+        const result = replayAggregatePinned(caseId, value);
         pinnedVariants.push({ declared: value === true, response: result.termless.response });
         if (value === false) replayed = result;
     }
@@ -154,12 +212,13 @@ async function buildCase(caseId, bindings) {
     };
 }
 
-export async function shellIntegrationAggregatesPublication() {
-    const primarySummary = json(carrierDir(osc633Carrier) + 'summary.json');
+export function shellIntegrationAggregatesPublication(root = qaDir, sources = aggregateSourceDigests(root)) {
+    const primarySummary = json(root, join(osc633Carrier.dir, 'summary.json'));
+    check(sha(read(root, join(osc633Carrier.dir, 'summary.json'))) === sources.osc633.summarySha256, 'primary carrier summary differs from the pinned expectation');
     check(primarySummary.receipt.runId === primarySummary.ownedRunId, 'primary carrier receipt does not bind its own run');
-    const bindings = { osc133: carrierBinding(osc133Carrier), osc633: carrierBinding(osc633Carrier) };
+    const bindings = { osc133: carrierBinding(osc133Carrier, root, sources), osc633: carrierBinding(osc633Carrier, root, sources) };
     const cases = [];
-    for (const caseId of aggregateCaseIds) cases.push(await buildCase(caseId, bindings));
+    for (const caseId of aggregateCaseIds) cases.push(buildCase(caseId, bindings));
     const scope = 'Pinned terminfo.dev@4.0.0 aggregate replay: extensions.osc-633-vscode and extensions.semantic-prompts read only the declared '
         + 'semanticPrompts capability and perform no readback, so both pinned paths are inconclusive by design; the exact pinned registrations are replayed '
         + 'from the retained bundle beside two admitted, separately receipted lifecycle publications (OSC 133 A-D, ntilde-owned-osc133-graded-v1; '
@@ -171,6 +230,9 @@ export async function shellIntegrationAggregatesPublication() {
     const report = {
         schemaVersion: 1, suiteId: aggregatesSuiteId, contractsVersion: aggregatesVersion,
         carriers: { osc133: bindings.osc133.suiteId, osc633: bindings.osc633.suiteId },
+        // The admitted lifecycle evidence was graded by the OSC 633 carrier's grading adapter; naming it here keeps the
+        // inventory record from inheriting an unrelated adapter through the context fallback.
+        adapter: bindings.osc633.gradingAdapter,
         scope, cases,
     };
     const summary = {

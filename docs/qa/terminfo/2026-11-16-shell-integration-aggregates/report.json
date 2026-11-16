@@ -6,6 +6,12 @@
     "osc133": "ntilde-owned-osc133-graded-v1",
     "osc633": "ntilde-owned-osc633-graded-v1"
   },
+  "adapter": {
+    "id": "ntilde-owned-osc633-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-osc133-grading-v1",
+    "bundleSha256": "b4431b661572bd1616040c2e221266f29d0ebf1de8b5e8eeae8a47f82c9ba0c7",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
   "scope": "Pinned terminfo.dev@4.0.0 aggregate replay: extensions.osc-633-vscode and extensions.semantic-prompts read only the declared semanticPrompts capability and perform no readback, so both pinned paths are inconclusive by design; the exact pinned registrations are replayed from the retained bundle beside two admitted, separately receipted lifecycle publications (OSC 133 A-D, ntilde-owned-osc133-graded-v1; OSC 633 A-D, ntilde-owned-osc633-graded-v1). The aggregate effect contracts are separately identified and never attributed to the pinned probes or to each other: ntilde-semantic-prompts-aggregate-effect-v1 is supported over the four admitted OSC 133 lifecycle claims, and ntilde-osc633-vscode-aggregate-effect-v1 stays inconclusive until the OSC 633 E command-line and P property publications (#983) exist. No new collection and no production change; no real shell, remote delivery, command exit status or commandFinished readback; no stock, Core, Modern or common-harness claim; the sum of the marker publications is never an upstream supported verdict.",
   "cases": [
     {

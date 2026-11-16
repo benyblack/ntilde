@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { benchmarkSuites, loadPublication, pinnedVerdictOf, effectVerdictOf } from './qualification-inventory.mjs';
 import { aggregateCaseIds, aggregateEvidenceSets, aggregatePinnedNotes } from './shell-integration-aggregates-contracts.mjs';
-import { replayAggregatePinned, shellIntegrationAggregatesPublication, upstreamBundleSha256 } from './shell-integration-aggregates-publication.mjs';
+import { aggregateSourceDigests, replayAggregatePinned, shellIntegrationAggregatesPublication, upstreamBundleSha256 } from './shell-integration-aggregates-publication.mjs';
 
 const dir = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-16-shell-integration-aggregates/', import.meta.url));
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
@@ -27,6 +28,13 @@ test('the projection independently rederives both carrier bindings and the retai
     assert.equal(osc633.archiveSha256, json(join(qa, '2026-11-16-osc633-implementation/'), 'manifest.json').archives['owned-run.zip']);
     assert.equal(osc133.receiptSchemaVersion, 45);
     assert.equal(osc633.receiptSchemaVersion, 69);
+    // Every admitted outcome is pinned to the exact carrier bytes it was read from.
+    const evidence = Object.entries(osc133.admittedEvidence).concat(Object.entries(osc633.admittedEvidence));
+    assert.equal(evidence.length, 6, 'four OSC 133 case files, their journal header and the OSC 633 report');
+    for (const [rel, digest] of evidence) assert.equal(hash(read(qa, rel)), digest, rel);
+    // The report names the OSC 633 grading adapter, not one inherited through the context fallback.
+    assert.equal(retained.report.adapter.id, 'ntilde-owned-osc633-grading-v1');
+    assert.deepEqual(retained.report.adapter, osc633.gradingAdapter);
     // Contract equivalence: every admitted claim is exactly the carrier's retained claim for the same
     // effect contract, and the frozen historical negative stays untouched beside them.
     assert.deepEqual(osc133.admitted, ['a', 'b', 'c', 'd'].map(letter => ({ caseId: `extensions.osc133-${letter}`, outcome: 'supported' })));
@@ -67,8 +75,8 @@ test('the pinned aggregate paths replay to exactly their registered inconclusive
     assert.equal(hash(gunzipSync(bundle)), upstreamBundleSha256);
     // A tampered bundle content is refused before any replay.
     const doctored = gzipSync(gunzipSync(bundle).toString('utf8').replace('insufficient-evidence', 'insufficient-evidenc'), { mtime: 0 });
-    await assert.rejects(() => replayAggregatePinned(aggregateCaseIds[0], false, doctored), /upstream bundle differs/);
-    await assert.rejects(() => replayAggregatePinned(aggregateCaseIds[0], false, Buffer.from('not a bundle')), /.+/, 'a corrupt archive cannot replay');
+    assert.throws(() => replayAggregatePinned(aggregateCaseIds[0], false, doctored), /upstream bundle differs/);
+    assert.throws(() => replayAggregatePinned(aggregateCaseIds[0], false, Buffer.from('not a bundle')), /.+/, 'a corrupt archive cannot replay');
 });
 
 test('the retained report keeps the pinned, effect, stock and upstream outcomes distinct per aggregate', async () => {
@@ -119,4 +127,49 @@ test('the suite is registered with the exact retained layout and the evidence se
         assert.equal(item.evidenceContract.id, set.effectContractId, caseId);
         assert.deepEqual(item.evidenceContract.required.map(entry => entry.caseId), set.required.map(entry => entry.caseId), caseId);
     }
+});
+
+test('the projection refuses carrier mutations even when the retained outcomes are unchanged', () => {
+    const withRoot = body => {
+        const root = mkdtempSync(join(tmpdir(), 'nt-aggregate-mutated-'));
+        try {
+            cpSync(join(qa, '2026-11-11-osc133'), join(root, '2026-11-11-osc133'), { recursive: true });
+            cpSync(join(qa, '2026-11-16-osc633-implementation'), join(root, '2026-11-16-osc633-implementation'), { recursive: true });
+            return body(root);
+        } finally { rmSync(root, { recursive: true, force: true }); }
+    };
+    // Control: a faithful copy of both carrier directories rederives the retained projection exactly.
+    const faithful = withRoot(root => shellIntegrationAggregatesPublication(root, aggregateSourceDigests(qa)));
+    assert.deepEqual(faithful.summary, json(dir, 'summary.json'));
+    assert.deepEqual(faithful.report, json(dir, 'report.json'));
+    const mutate = (change, pattern) => withRoot(root => {
+        change(root);
+        assert.throws(() => shellIntegrationAggregatesPublication(root, aggregateSourceDigests(qa)), pattern);
+    });
+    // An OSC 133 case file altered while its admitted outcome stays supported is refused by its pinned digest.
+    mutate(root => {
+        const rel = join('2026-11-11-osc133', 'case-extensions.osc133-a.json');
+        const item = JSON.parse(readFileSync(join(root, rel), 'utf8'));
+        assert.equal(item.contractResult.outcome, 'supported');
+        item.marker = 'tampered';
+        writeFileSync(join(root, rel), JSON.stringify(item, null, 2) + '\n');
+    }, /carrier osc133 evidence differs from the pinned expectation/);
+    // The carrier summary (which carries its receipt) cannot change either.
+    mutate(root => {
+        const rel = join('2026-11-11-osc133', 'summary.json');
+        const item = JSON.parse(readFileSync(join(root, rel), 'utf8'));
+        delete item.receipt;
+        writeFileSync(join(root, rel), JSON.stringify(item, null, 2) + '\n');
+    }, /carrier osc133 summary differs from the pinned expectation/);
+    // Nor the OSC 633 report whose outcomes the projection admits.
+    mutate(root => {
+        const rel = join('2026-11-16-osc633-implementation', 'report.json');
+        const item = JSON.parse(readFileSync(join(root, rel), 'utf8'));
+        item.cases[0].contractResult = { outcome: 'unsupported' };
+        writeFileSync(join(root, rel), JSON.stringify(item, null, 2) + '\n');
+    }, /carrier osc633 evidence differs from the pinned expectation/);
+    // The caller must pin every file the projection admits from: an unpinned expectation is refused.
+    const unpinned = aggregateSourceDigests(qa);
+    delete unpinned.osc133.admittedEvidence[join('2026-11-11-osc133', 'journal-common.json')];
+    assert.throws(() => shellIntegrationAggregatesPublication(qa, unpinned), /is not pinned by the caller/);
 });

@@ -84,7 +84,8 @@ export const benchmarkSuites = Object.freeze([
     // Issue #984: the first aggregate qualification. Both pinned aggregate probes read only the declared semanticPrompts
     // capability and perform no readback; this projection replays them over two admitted, separately receipted marker
     // publications and binds the primary (OSC 633) carrier receipt at the suite level, the OSC 133 carrier per case.
-    { ...directory('shell-integration-aggregates', '2026-11-16-shell-integration-aggregates', '2026-11-16-shell-integration-aggregates-qualification.md'), module: 'shell-integration-aggregates-contracts.mjs', exports: ['aggregatesSuiteId', 'aggregatesVersion', 'aggregateCaseIds'], receiptSuiteId: 'ntilde-owned-osc633-graded-v1', test: 'shell-integration-aggregates-publication.test.mjs' },
+    // `carrierSuites` makes its claims transitive: a carrier whose own rederivation fails lends no verdict to them.
+    { ...directory('shell-integration-aggregates', '2026-11-16-shell-integration-aggregates', '2026-11-16-shell-integration-aggregates-qualification.md'), module: 'shell-integration-aggregates-contracts.mjs', exports: ['aggregatesSuiteId', 'aggregatesVersion', 'aggregateCaseIds'], carrierSuites: ['osc133', 'osc633'], receiptSuiteId: 'ntilde-owned-osc633-graded-v1', test: 'shell-integration-aggregates-publication.test.mjs' },
 ]);
 
 /**
@@ -319,6 +320,7 @@ async function suiteRecord(root, suite, options) {
             liveContractsVersion: contract.contractsVersion,
             publication: suite.layout === 'single' ? suite.file : `${suite.dir}/`,
             doc: suite.doc,
+            ...(suite.carrierSuites ? { carrierSuites: suite.carrierSuites } : {}),
             caseCount: ids.length,
             caseIds: contract.caseIds,
             evidence: evidenceDigest(root, suite),
@@ -332,12 +334,22 @@ async function suiteRecord(root, suite, options) {
     };
 }
 
-const claimOf = (suite, report, item, rederivationStatus) => {
+/** Whether a suite may qualify claims: its own rederivation must have passed, and for an aggregate suite
+ * every carrier the claim admits evidence from must have passed too — a failed carrier lends no verdict
+ * to the claims that were built on top of it. */
+export function rederivationAllows(status, carrierStatuses) {
+    if (status !== 'passed') return false;
+    return (carrierStatuses ?? []).every(entry => entry === 'passed');
+}
+
+const claimOf = (suite, report, item, rederivationStatus, carriers = null) => {
     const pinned = pinnedVerdictOf(item), effect = effectVerdictOf(item);
+    const allowed = rederivationAllows(rederivationStatus, carriers?.statuses);
     return {
         id: item.caseId,
         suite: suite.suite,
-        status: rederivationStatus === 'passed' ? 'qualified' : 'declared-not-rederived',
+        status: allowed ? 'qualified' : 'declared-not-rederived',
+        ...(carriers ? { carrierSuites: carriers.names } : {}),
         pinned: { verdict: pinned, note: item.pinned?.note ?? item.pinned?.observation?.note ?? null },
         effect: { verdict: effect },
         reportedConclusion: { outcome: item.conclusion?.outcome ?? null, grading: item.conclusion?.grading ?? null },
@@ -410,12 +422,24 @@ export async function buildInventory({ root = defaultQaRoot, ...options } = {}) 
     const baseline = readJson(join(root, stockBaselineFile));
     const suites = [], claimsById = new Map();
     const loaded = await Promise.all(benchmarkSuites.map(suite => suiteRecord(root, suite, options)));
+    const statusBySuite = new Map(loaded.map(({ record }) => [record.suite, record.rederivation.status]));
+    const recordBySuite = new Map(loaded.map(({ record }) => [record.suite, record]));
+    // An aggregate case names the carrier publication it projects over; a claim depends on exactly that
+    // carrier (all of the suite's carriers when its report names none). A failed carrier lends nothing.
+    const carriersOf = (suite, item) => {
+        if (!suite.carrierSuites?.length) return null;
+        const carrierSuiteId = item.aggregateOf?.carrier ?? item.carrier?.suiteId ?? null;
+        const names = carrierSuiteId
+            ? [([...recordBySuite.values()].find(record => record.suiteId === carrierSuiteId)?.suite ?? '')].filter(name => statusBySuite.has(name))
+            : suite.carrierSuites;
+        return { names, statuses: names.map(name => statusBySuite.get(name)) };
+    };
     for (const [index, entry] of loaded.entries()) {
         const suite = benchmarkSuites[index];
         suites.push(entry.record);
         for (const item of entry.report.cases) {
             if (!claimsById.has(item.caseId)) claimsById.set(item.caseId, []);
-            claimsById.get(item.caseId).push(claimOf(suite, entry.report, item, entry.record.rederivation.status));
+            claimsById.get(item.caseId).push(claimOf(suite, entry.report, item, entry.record.rederivation.status, carriersOf(suite, item)));
         }
     }
     const benchmark = [...claimsById].sort(([a], [b]) => byText(a, b)).map(([id, claims]) => ({ id, kind: 'benchmark', stockOutcome: baseline.outcomes[id] ?? null,
@@ -480,7 +504,15 @@ function claimProblems(inventory, row, claim, suiteNames, seenClaims) {
     if (claim.divergence && (claim.divergence.pinned !== claim.pinned.verdict || claim.divergence.effect !== claim.effect.verdict)) problems.push(`${row.id}: the divergence does not match the claim's verdicts.`);
     const suite = inventory.suites.find(item => item.suite === claim.suite);
     if (suite && claim.status === 'qualified' && suite.rederivation.status !== 'passed') problems.push(`${row.id}: counted as qualified without a passed rederivation of suite ${claim.suite}.`);
-    if (suite && claim.status !== 'qualified' && suite.rederivation.status === 'passed') problems.push(`${row.id}: rederived suite ${claim.suite} left a claim unqualified.`);
+    // An aggregate claim is qualified only while the carrier publication it names was rederived too;
+    // conversely, a claim left unqualified by a failed carrier is consistent, not a lost verdict.
+    const carriers = claim.carrierSuites ?? [];
+    for (const carrier of carriers) {
+        if (!inventory.suites.some(item => item.suite === carrier)) problems.push(`${row.id}: suite ${claim.suite} names unknown carrier suite ${carrier}.`);
+    }
+    const failedCarriers = carriers.filter(name => inventory.suites.find(item => item.suite === name)?.rederivation.status !== 'passed');
+    if (suite && claim.status === 'qualified' && failedCarriers.length > 0) problems.push(`${row.id}: counted as qualified while carrier suite ${failedCarriers.join(', ')} was not rederived.`);
+    if (suite && claim.status !== 'qualified' && suite.rederivation.status === 'passed' && failedCarriers.length === 0) problems.push(`${row.id}: rederived suite ${claim.suite} left a claim unqualified.`);
     return problems;
 }
 

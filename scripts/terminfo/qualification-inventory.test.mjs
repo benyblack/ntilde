@@ -519,10 +519,17 @@ test('the OSC 633 implementation publication is the active claim while the histo
         assert.equal(item.claims[0].divergence.kind, 'pinned-inconclusive-by-design');
     }
     // A failed rederivation of the replacement refuses to count the claim; the frozen negative is not silently substituted.
+    // The refusal is transitive and per case: the OSC 633 aggregate names the OSC 633 carrier, so it is declared-not-rederived
+    // too, while the semantic-prompts aggregate (an OSC 133 carrier claim) keeps its qualified status and verdict.
     const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'osc633' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
     assert.equal(row(failing, ids[0]).claims[0].status, 'declared-not-rederived');
-    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 4);
+    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 5);
     assert.equal(failing.totals.effectSupportedIds, stored.totals.effectSupportedIds - 4);
+    assert.equal(row(failing, 'extensions.osc-633-vscode').claims[0].status, 'declared-not-rederived');
+    assert.deepEqual(row(failing, 'extensions.osc-633-vscode').claims[0].carrierSuites, ['osc633']);
+    assert.equal(row(failing, 'extensions.semantic-prompts').claims[0].status, 'qualified');
+    assert.deepEqual(row(failing, 'extensions.semantic-prompts').claims[0].carrierSuites, ['osc133']);
+    assert.equal(failing.totals.effectOtherIds, stored.totals.effectOtherIds - 1);
 });
 
 test('the aggregate projection qualifies the two aggregate ids over one claim each while keeping their outcomes distinct', async () => {
@@ -536,6 +543,10 @@ test('the aggregate projection qualifies the two aggregate ids over one claim ea
     assert.equal(suite.receipt.suiteEvidence.suiteId, 'ntilde-owned-osc633-graded-v1');
     assert.equal(suite.receipt.runId, suite.run.ownedRunId);
     assert.equal(suite.run.sourceSnapshotPolicy, 'readonly-owned-source-graph-v62');
+    // The grading identity is the OSC 633 carrier's, not one inherited through the context fallback.
+    assert.equal(suite.run.gradingAdapterId, 'ntilde-owned-osc633-grading-v1');
+    assert.match(suite.run.gradingAdapterBundleSha256, /^[0-9a-f]{64}$/);
+    assert.deepEqual(suite.carrierSuites, ['osc133', 'osc633']);
     assert.equal(suite.stock.basis, 'collected-raw-digest-recorded');
     assert.equal(suite.stock.runId, null, 'the projection claims no stock run of its own');
     for (const [id, effect, divergent] of [
@@ -569,4 +580,11 @@ test('the aggregate projection qualifies the two aggregate ids over one claim ea
     assert.equal(failing.totals.effectSupportedIds, stored.totals.effectSupportedIds - 1);
     assert.equal(failing.totals.effectOtherIds, stored.totals.effectOtherIds - 1);
     assert.equal(failing.totals.remainingAgainstStockInconclusive.effectNotMeasured, stored.totals.remainingAgainstStockInconclusive.effectNotMeasured + 2);
+    // A failed carrier lends its verdict to nothing built on top of it: an OSC 133 carrier failure drops the four
+    // OSC 133 ids and the semantic-prompts aggregate, while the OSC 633 aggregate keeps its qualified status.
+    const osc133Failed = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'osc133' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
+    assert.equal(row(osc133Failed, 'extensions.semantic-prompts').claims[0].status, 'declared-not-rederived');
+    assert.equal(row(osc133Failed, 'extensions.osc-633-vscode').claims[0].status, 'qualified');
+    assert.equal(osc133Failed.totals.effectSupportedIds, stored.totals.effectSupportedIds - 5);
+    assert.equal(osc133Failed.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 5);
 });

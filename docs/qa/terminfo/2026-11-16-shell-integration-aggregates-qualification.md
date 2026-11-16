@@ -30,8 +30,10 @@ a pinned supported verdict. The exact pinned registrations are extracted from
 the [retained compressed bundle](2026-11-16-shell-integration-aggregates/terminfo-dev-4.0.0.bundle.mjs.gz)
 by SHA-256-checked source spans (`d8205e6e…f4108a5c` for the OSC 633 aggregate,
 `05dade3d…3855fb8` for the semantic-prompts aggregate) and replayed in a
-sandbox whose terminal context throws on any read — the pinned terminal code
-reads nothing, which the replay proves rather than assumes. Each aggregate is
+disposable child process whose terminal context throws on any read — the pinned
+terminal code reads nothing, which the replay proves rather than assumes. The
+parent never evaluates the pinned bytes in its own address space; the child
+process is the isolation boundary. Each aggregate is
 replayed under **both** declared values, `false` (what the stock collector
 context declared) and `true` (what an owned observation API that reports the
 admitted lifecycle metadata would declare); both resolve to the same
@@ -87,11 +89,17 @@ moves.
 
 ## Carrier binding and equivalence
 
-Evidence reuse is explicit: the projection binds each carrier by the SHA-256 of
-its committed `summary.json` (receipts 45 and 69 respectively), pins the OSC 633
-carrier's `owned-run.zip` archive digest, and re-derives both carriers' four
+Evidence reuse is explicit and validated: the projection binds each carrier by
+the SHA-256 of its committed `summary.json` (receipts 45 and 69 respectively),
+pins the OSC 633 carrier's `owned-run.zip` archive digest and grading adapter,
+pins a digest per file each admitted outcome is read from (the OSC 133 journal
+header and case files, the OSC 633 report), and re-derives both carriers' four
 admitted claims from their retained reports with the required effect outcome
-and the same effect-contract identity per case. The suite-level receipt binding
+and the same effect-contract identity per case. A carrier file that changes —
+even while its retained outcome stays the same — is refused by the projection,
+and the inventory refuses an aggregate claim whenever the carrier publication
+it names was not rederived (`carrierSuites`), so a failed carrier lends its
+verdict to nothing built on top of it. The suite-level receipt binding
 is the primary (OSC 633) carrier's; the OSC 133 carrier is bound in
 `projection.carriers` and per case. The two dialect contracts share one lineage
 (the OSC 633 grading adapter derives from the OSC 133 grading adapter over the

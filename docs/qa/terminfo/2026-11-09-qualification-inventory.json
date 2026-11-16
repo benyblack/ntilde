@@ -3625,6 +3625,10 @@
       "liveContractsVersion": 1,
       "publication": "2026-11-16-shell-integration-aggregates/",
       "doc": "2026-11-16-shell-integration-aggregates-qualification.md",
+      "carrierSuites": [
+        "osc133",
+        "osc633"
+      ],
       "caseCount": 2,
       "caseIds": [
         "extensions.osc-633-vscode",
@@ -3632,8 +3636,8 @@
       ],
       "evidence": {
         "files": 3,
-        "bytes": 230340,
-        "sha256": "22fdad396faa81ac0178dbcb7c2f9caf215e41f526c33cdb0b2c75f822724518"
+        "bytes": 231490,
+        "sha256": "768bef0470bccd77fa17a9e241d34253df28cfc177b1a7a027e0bd81069ca0ce"
       },
       "receipt": {
         "schemaVersion": 69,
@@ -3664,8 +3668,8 @@
         "scriptsRevision": "9c814b13215b6abf9186b0c4c784e7702b3e1828",
         "collectorAdapterId": "ntilde-owned-macos-v1",
         "collectorAdapterBundleSha256": "488c07058bd79db22d711294a44d9149181b3989b64985f7da8204feb45990d4",
-        "gradingAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
-        "gradingAdapterBundleSha256": null,
+        "gradingAdapterId": "ntilde-owned-osc633-grading-v1",
+        "gradingAdapterBundleSha256": "b4431b661572bd1616040c2e221266f29d0ebf1de8b5e8eeae8a47f82c9ba0c7",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v62",
         "sourceSnapshotManifestSha256": "bd58ab31fded213d8e10c7a38b199030f26cd3d4edbc32aec95b38af920e0bfc"
       },
@@ -3686,7 +3690,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/shell-integration-aggregates-publication.test.mjs",
-        "testSha256": "3149c9fa347e39f5ca3ee046f4928be58c090be7c73718b1c4bd9b53b765ea04"
+        "testSha256": "5b5cac0327c82c27ba727485604753c0ef7b6377c6e0a9d25e3f563234e1bb88"
       }
     }
   ],
@@ -5807,6 +5811,9 @@
           "id": "extensions.osc-633-vscode",
           "suite": "shell-integration-aggregates",
           "status": "qualified",
+          "carrierSuites": [
+            "osc633"
+          ],
           "pinned": {
             "verdict": "inconclusive",
             "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration"
@@ -7182,6 +7189,9 @@
           "id": "extensions.semantic-prompts",
           "suite": "shell-integration-aggregates",
           "status": "qualified",
+          "carrierSuites": [
+            "osc133"
+          ],
           "pinned": {
             "verdict": "inconclusive",
             "note": "Declared semantic-prompt capability does not establish shell prompt integration"

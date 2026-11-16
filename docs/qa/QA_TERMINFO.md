@@ -1293,7 +1293,8 @@ The [aggregate batch](terminfo/2026-11-16-shell-integration-aggregates-qualifica
 `extensions.semantic-prompts` — the first aggregate ids any batch has qualified (`sgr.underline.color` deliberately stayed unqualified). Both aggregate probes are declared-capability
 probes with no fixture bytes and no readback (both pinned paths inconclusive by design, under either declared capability value), so the batch is a retrospective projection over the two
 admitted, separately receipted marker publications instead of a new collection: the exact pinned registrations are extracted from the retained bundle by SHA-256-checked source spans and
-replayed in a sandbox whose terminal context refuses every read. Each aggregate effect is defined by the exact lifecycle/metadata evidence it needs: `extensions.semantic-prompts` requires
+replayed in a disposable child process whose terminal context refuses every read; every admitted carrier file is
+digest-pinned and an aggregate claim is refused whenever the carrier publication it names was not rederived. Each aggregate effect is defined by the exact lifecycle/metadata evidence it needs: `extensions.semantic-prompts` requires
 the four OSC 133 lifecycle publications (all admitted supported; OSC 133 P stays with its separately owned #985 audit) and its separately identified effect contract is **supported** with
 the pinned inconclusive recorded as `pinned-inconclusive-by-design`; `extensions.osc-633-vscode` additionally requires the OSC 633 E command-line and P property records of the same
 authoritative VS Code contract, which have no implemented publication yet, so its effect contract stays **inconclusive** with them recorded as required-and-pending (#983) — the

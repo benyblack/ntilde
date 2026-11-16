@@ -46,7 +46,14 @@
             "caseId": "extensions.osc133-d",
             "outcome": "supported"
           }
-        ]
+        ],
+        "admittedEvidence": {
+          "2026-11-11-osc133/journal-common.json": "7fec4e76ea83100c5a3b0897c56f49bb7c82148a8d69bb3a59f769ac6430ba53",
+          "2026-11-11-osc133/case-extensions.osc133-a.json": "6f9b878d9ef1f3153a480b158198ff22c4647b0425c4575caded639573dedd93",
+          "2026-11-11-osc133/case-extensions.osc133-b.json": "5fc3a41bfbf674037ba99190d1699911d4671ba61d53708871b094b2baea70ee",
+          "2026-11-11-osc133/case-extensions.osc133-c.json": "11e5d59b5bcccc672791799015fb2c735d450e194a7b25e908856e402dae0c9c",
+          "2026-11-11-osc133/case-extensions.osc133-d.json": "469d1368f6413300d53599e3e7383be0996d409f3e3dfabeaaafcfcbd8144d45"
+        }
       },
       {
         "suite": "osc633",
@@ -84,6 +91,9 @@
             "outcome": "supported"
           }
         ],
+        "admittedEvidence": {
+          "2026-11-16-osc633-implementation/report.json": "527228c0523b2d6da1af10608aece5c92bfac5e121668d67d456f8eb521bded0"
+        },
         "archiveSha256": "009129be83a1560af7bb11870399cc19e643f486900bae4886a57231aa7c6217"
       }
     ]
