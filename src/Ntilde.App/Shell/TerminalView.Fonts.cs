@@ -268,8 +268,8 @@ namespace Ntilde.Shell
                 _metrics.CellWidth = (float)(Math.Ceiling(testText.Width) / scaling);
                 _metrics.CellHeight = (float)(Math.Ceiling(testText.Height) / scaling);
                 _metrics.Baseline = (float)(Math.Round(testText.Baseline) / scaling);
-                _metrics.Ascent = (float)testText.Baseline;
-                _metrics.Descent = (float)(testText.Height - testText.Baseline);
+                _metrics.Ascent = (float)(testText.Baseline / scaling);
+                _metrics.Descent = (float)((testText.Height - testText.Baseline) / scaling);
                 _metrics.Leading = 0;
             }
 

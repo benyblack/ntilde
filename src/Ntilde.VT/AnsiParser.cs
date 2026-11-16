@@ -706,7 +706,7 @@ namespace Ntilde.VT
                             case State.Osc:
                                 if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleOsc(TakeSequence(ref _oscStringBuffer));
+                                    HandleOsc(TakeSequence(ref _oscStringBuffer), c == '\a' ? "\a" : "\u009c");
                                     _state = State.Normal;
                                 }
                                 else if (c == '\x1b')
@@ -723,7 +723,7 @@ namespace Ntilde.VT
                             case State.OscEsc:
                                 if (c == '\\')
                                 {
-                                    HandleOsc(TakeSequence(ref _oscStringBuffer));
+                                    HandleOsc(TakeSequence(ref _oscStringBuffer), "\x1b\\");
                                     _state = State.Normal;
                                 }
                                 else
