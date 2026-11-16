@@ -81,6 +81,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], receiptSuiteId: 'ntilde-owned-sgr-truecolor-graded-v1', test: 'extensions-truecolor-publication.test.mjs' },
     // The current OSC 633 remeasurement on the implementing App; the historical unsupported publication remains frozen below.
     { ...directory('osc633', '2026-11-16-osc633-implementation', '2026-11-16-osc633-implementation-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-implementation-publication.test.mjs' },
+    // Static SIXEL and iTerm2 pixels: pinned callbacks replayed, effect contracts composed from the owned static-image carrier suite of the same run.
+    { ...directory('static-images', '2026-11-16-static-images', '2026-11-16-static-images-qualification.md'), module: 'static-images-qualification.mjs', exports: ['staticImagesQualificationSuiteId', 'staticImagesQualificationVersion', 'staticImagesQualificationIds'], receiptSuiteId: 'ntilde-owned-static-images-v1', test: 'static-images-publication.test.mjs' },
 ]);
 
 /**

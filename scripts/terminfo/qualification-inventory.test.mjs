@@ -112,14 +112,14 @@ test('benchmark ids, Ntilde findings, controls and diagnostics are separated', (
     assert.deepEqual(stored.stockBaseline.stockUnsupported, ['extensions.osc5522-clipboard']);
 });
 
-test('only controlled pixels are measured, by the cursor, runtime-color reset and selection-color suites; layers are classified from the retained evidence', () => {
+test('only controlled pixels are measured, by the cursor, runtime-color reset, selection-color and static-image suites; layers are classified from the retained evidence', () => {
     const stored = committed();
     assert.ok(stored.benchmark.every(item => item.claims.every(claim => !claim.measuredLayers.includes('pixels'))));
     const pixelClaims = stored.benchmark.flatMap(item => item.claims.filter(claim => claim.measuredLayers.includes('controlled-pixels')).map(claim => [item.id, claim.suite]));
-    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
+    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.iterm2-images', 'static-images'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
         ['extensions.osc111-reset-bg', 'color-reset'], ['extensions.osc112-reset-cursor', 'color-reset'],
         ['extensions.osc117-reset-highlight-bg', 'selection-colors'], ['extensions.osc119-reset-highlight-fg', 'selection-colors'],
-        ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors']]);
+        ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors'], ['extensions.sixel', 'static-images']]);
     assert.deepEqual(measuredLayersOf('owned-stored-physical-cursor-and-cpr', ''), ['stored-state', 'cursor-position-report']);
     assert.deepEqual(measuredLayersOf('owned-stored-cursor-and-controlled-pixels', ''), ['stored-state', 'controlled-pixels']);
     assert.deepEqual(measuredLayersOf('owned-cells', 'graded from parent-journaled readScreen cells'), ['stored-state']);
@@ -305,23 +305,25 @@ test('extensions.reflow selects the fresh supported effect while preserving its 
 
 test('fixing the measured reflow mismatch adds one effect-supported id without changing unique ids or stock and pinned scores', () => {
     const stored = committed(), { totals } = stored;
-    // The OSC 633 implementation remeasurement then turned its four ids from effect-unsupported to effect-supported (pinned stays inconclusive), leaving no measured-unsupported id.
-    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, []);
-    assert.equal(totals.effectUnsupportedIds, 0);
+    // The OSC 633 implementation remeasurement turned its four ids from effect-unsupported to effect-supported (pinned stays inconclusive). The static-image qualification (#987)
+    // then measured extensions.sixel effect-unsupported (native-size defect #851), the only measured-unsupported id, and extensions.iterm2-images effect-supported.
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.sixel']);
+    assert.equal(totals.effectUnsupportedIds, 1);
     assert.equal(totals.effectOtherIds, 0);
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
+    assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.iterm2-images'));
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
-    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds);
+    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + 1);
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
-    assert.equal(totals.effectSupportedIds, 136);
+    assert.equal(totals.effectSupportedIds, 137);
     assert.equal(totals.pinnedSupportedIds, 93);
     assert.equal(totals.pinnedAndEffectSupportedIds, 93);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 43);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 135);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 44);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 136);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 92);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 33, effectMeasuredUnsupported: 0, effectMeasuredOther: 0, effectNotMeasured: 33, notPinnedSupported: 76 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 32, effectMeasuredUnsupported: 1, effectMeasuredOther: 0, effectNotMeasured: 31, notPinnedSupported: 76 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -373,7 +375,7 @@ test('guard: a separate effect verdict cannot be collapsed into its pinned verdi
     dropped.benchmark = dropped.benchmark.filter(entry => entry.id !== 'extensions.reflow');
     assert.throws(() => check(dropped), /ascii-reflow: .*(?:claims|lost)/);
     const inflated = committed();
-    inflated.totals.effectUnsupportedIds = 1;
+    inflated.totals.effectUnsupportedIds = 0;
     assert.throws(() => check(inflated), /totals differ/);
 });
 
@@ -414,11 +416,11 @@ test('every publication test is a registered suite or finding, or is explicitly 
 
 test('the generated summary defines unsupported and not-measured separately and lists the unsupported id without counting it as supported', () => {
     const text = renderSummary(committed());
-    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 0 \|/);
-    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): \./);
-    assert.match(text, /\| of which measured, effect unsupported \| 0 \|/);
+    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 1 \|/);
+    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.sixel`\./);
+    assert.match(text, /\| of which measured, effect unsupported \| 1 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 33 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 31 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -521,4 +523,31 @@ test('the OSC 633 implementation publication is the active claim while the histo
     assert.equal(row(failing, ids[0]).claims[0].status, 'declared-not-rederived');
     assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 4);
     assert.equal(failing.totals.effectSupportedIds, stored.totals.effectSupportedIds - 4);
+});
+
+test('the static-image qualification keeps the SIXEL native-size negative and the iTerm2 support as separate, rederived effect claims', async () => {
+    const suite = benchmarkSuites.find(entry => entry.suite === 'static-images');
+    assert.equal(suite.dir, '2026-11-16-static-images');
+    const { report, summary } = loadPublication(defaultQaRoot, suite);
+    assert.deepEqual(report.cases.map(item => [item.caseId, pinnedVerdictOf(item), effectVerdictOf(item)]),
+        [['extensions.sixel', 'inconclusive', 'unsupported'], ['extensions.iterm2-images', 'inconclusive', 'supported']]);
+    assert.equal(summary.ownedRunId, '569294d0402a900696bef00b68490d9d');
+    const stored = committed();
+    for (const id of ['extensions.sixel', 'extensions.iterm2-images']) {
+        const item = row(stored, id);
+        assert.equal(item.claims.length, 1);
+        assert.equal(item.stockOutcome, 'inconclusive');
+        assert.equal(item.pinned.best, 'inconclusive');
+        assert.equal(item.claims[0].divergence.kind, 'pinned-inconclusive-by-design');
+        assert.deepEqual(item.claims[0].measuredLayers, ['controlled-pixels']);
+        assert.equal(item.claims[0].status, 'qualified');
+    }
+    assert.equal(row(stored, 'extensions.sixel').effect.verdict, 'unsupported');
+    assert.equal(row(stored, 'extensions.iterm2-images').effect.verdict, 'supported');
+    // The unsupported verdict is a measured result: it is never promoted, counted as supported, or silently dropped.
+    assert.ok(!stored.totals.effectSupportedPinnedInconclusiveIds.includes('extensions.sixel'));
+    const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'static-images' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
+    assert.equal(row(failing, 'extensions.sixel').claims[0].status, 'declared-not-rederived');
+    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 2);
+    assert.equal(failing.totals.effectUnsupportedIds, 0);
 });
