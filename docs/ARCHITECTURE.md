@@ -337,7 +337,7 @@ Mouse coordinate encoding is a second, independent selection. `?1005` (UTF-8),
 `?1006` (SGR), `?1015` (urxvt) and `?1016` (SGR-Pixels) are one choice, as in
 xterm's `extend_coords`: setting one replaces the others and a reset only clears
 the encoding it names. The App encoder prefers SGR-Pixels, then SGR, then urxvt,
-then UTF-8 if an imported state ever carries several. SGR-Pixels is the SGR frame
+then UTF-8 if an imported state ever carries several. The mux text renderer never mirrors SGR-Pixels (and withholds tracking while it is selected): the session's `CSI 14 t`/`16 t` metrics are not the outer terminal's pixels. SGR-Pixels is the SGR frame
 with the pointer's device-pixel position (the unit of `CSI 14 t`/`CSI 16 t`) in place
 of the cell. UTF-8 and urxvt reports are ordinary text (the UTF-8 form's code
 points are sent UTF-8-encoded); only the plain X10 form takes the byte-preserving

@@ -247,7 +247,6 @@ public sealed class TextClientRendererTests
     [InlineData(1005)]
     [InlineData(1006)]
     [InlineData(1015)]
-    [InlineData(1016)]
     public void Coordinate_encoding_is_mirrored_as_one_selection_and_only_while_unclipped(int encoding)
     {
         var inner = new Session(80, 24); var outer = new Session(80, 24);
@@ -258,22 +257,36 @@ public sealed class TextClientRendererTests
         Assert.Equal(encoding == 1005, outer.Buffer.Modes.MouseModeUtf8);
         Assert.Equal(encoding == 1006, outer.Buffer.Modes.MouseModeSGR);
         Assert.Equal(encoding == 1015, outer.Buffer.Modes.MouseModeUrxvt);
-        Assert.Equal(encoding == 1016, outer.Buffer.Modes.MouseModePixel);
 
         outer.Feed(renderer.Render(60, 20));
         Assert.False(outer.Buffer.Modes.MouseModeUtf8 || outer.Buffer.Modes.MouseModeSGR || outer.Buffer.Modes.MouseModeUrxvt || outer.Buffer.Modes.MouseModePixel);
 
-        // A change of the selection is restated after resets of all four, so the outer terminal ends on the new one.
-        int next = encoding switch { 1005 => 1006, 1006 => 1015, 1015 => 1016, _ => 1005 };
+        // A change of the selection is restated after resets of all the others, so the outer terminal ends on the new one.
+        int next = encoding == 1015 ? 1005 : encoding + (encoding == 1005 ? 1 : 9);
         inner.Feed($"\x1b[?{next}h");
         outer.Feed(renderer.Render(80, 24));
         Assert.Equal(next == 1005, outer.Buffer.Modes.MouseModeUtf8);
         Assert.Equal(next == 1006, outer.Buffer.Modes.MouseModeSGR);
         Assert.Equal(next == 1015, outer.Buffer.Modes.MouseModeUrxvt);
-        Assert.Equal(next == 1016, outer.Buffer.Modes.MouseModePixel);
 
         outer.Feed(TextClientRenderer.LeaveSequence);
         Assert.False(outer.Buffer.Modes.MouseModeUtf8 || outer.Buffer.Modes.MouseModeSGR || outer.Buffer.Modes.MouseModeUrxvt || outer.Buffer.Modes.MouseModePixel);
+    }
+
+    [Fact]
+    public void Pixel_encoding_is_not_mirrored_and_withholds_tracking_so_the_outer_terminal_sends_no_foreign_pixels()
+    {
+        var inner = new Session(80, 24); var outer = new Session(80, 24);
+        inner.Feed("\x1b[?1000h\x1b[?1016h");
+        var renderer = new TextClientRenderer(inner.Buffer);
+
+        outer.Feed(renderer.Render(80, 24));
+        Assert.False(outer.Buffer.Modes.MouseModePixel || outer.Buffer.Modes.MouseModeSGR || outer.Buffer.Modes.MouseModeX10);
+
+        // Leaving the pixel encoding restores the ordinary mirror.
+        inner.Feed("\x1b[?1006h");
+        outer.Feed(renderer.Render(80, 24));
+        Assert.True(outer.Buffer.Modes.MouseModeX10 && outer.Buffer.Modes.MouseModeSGR);
     }
 
     [Fact]

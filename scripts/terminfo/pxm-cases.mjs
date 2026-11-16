@@ -23,10 +23,10 @@ export const pxmReset = mexReset + '\x1b[?1016l';
 export const pxmQueries = mexQueries + '\x1b[?1016$p';
 /** The DECRQM query that proves the pixel selector in every control capture. */
 export const pixelStateQuery = '\x1b[?1016$p';
-/** Smallest grid the plan is admitted for: every planned pixel must lie inside a text area of at least 6 x 12 device pixels per cell. */
+/** Smallest grid the plan is admitted for: every planned pixel must lie inside a text area of at least 4 x 8 device pixels per cell. */
 export const minimumPxmColumns = 97;
 export const minimumPxmRows = 24;
-const minimumCellPixels = Object.freeze({ width: 6, height: 12 });
+const minimumCellPixels = Object.freeze({ width: 4, height: 8 });
 const hex = value => Buffer.from(value, 'latin1').toString('hex');
 
 /** The pixel positions the plan uses (device pixels, zero-based): the first pixel, two small ones, a mid-cell one, and a far and a near-limit one (the latter two still inside the smallest admitted text area). */
@@ -36,8 +36,8 @@ export const pixelPositions = Object.freeze({
     mid: Object.freeze({ pixelX: 143, pixelY: 57 }),
     neighbour: Object.freeze({ pixelX: 144, pixelY: 57 }),
     below: Object.freeze({ pixelX: 144, pixelY: 58 }),
-    far: Object.freeze({ pixelX: 557, pixelY: 261 }),
-    edge: Object.freeze({ pixelX: 570, pixelY: 280 }),
+    far: Object.freeze({ pixelX: 361, pixelY: 171 }),
+    edge: Object.freeze({ pixelX: 387, pixelY: 191 }),
 });
 
 /** The v5 mode profile (key order is part of the journal): the v4 profile plus the pixel encoding state. */
