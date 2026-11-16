@@ -56,6 +56,7 @@ namespace Ntilde.Shell
             _isAttachedToVisualTree = false;
             _isUiRenderable = false;
             StopUiTimers();
+            CancelKittyAnimationWake();
             _metricsTimer.Stop();
 
             if (_cachedTopLevel != null)

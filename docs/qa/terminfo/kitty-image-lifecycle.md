@@ -73,3 +73,31 @@ placeholder rendering, extended source crops/layout/deletion, fresh owned Sixel
 and iTerm2 pixels, timed playback, and cross-platform runtime evidence remain in
 #770/#775. #770 stays open. Historical stock grades and published evidence remain
 unchanged.
+
+## Animation frames and playback (#988)
+
+`a=f` adds a frame to a retained image and `a=a` controls it. Frames are raw `f=24`/`f=32` only
+(`o=z` allowed); the rectangle is `x`,`y`,`s`,`v`, composed over a solid `Y` color or base frame
+`c`, or over the frame being edited with `r`, alpha-blended or replaced with `X=1`. `z` is the gap
+in milliseconds: unspecified or 0 is 40 ms for a new frame, negative is gapless and never shown.
+`a=a` sets run state `s` (1 stop, 2 run and wait at the last frame, 3 run and loop), loop count `v`
+(0 ignored, 1 infinite, n loops n-1 more times, reset by stop), a frame's gap (`r` with `z`) and the
+displayed frame (`c`). An animation starts stopped; the playhead only moves after `s=2` or `s=3`.
+Time comes from `TerminalBuffer.KittyAnimationClock` (a monotonic millisecond clock); the live
+`TerminalView` advances the buffer on each frame and arms one wake-up for the next change, only
+while an animation with a placement is running.
+
+Deliberate bounds, each with its own negative reply: 64 frames per image including the root; a
+frame is charged at 8 bytes per pixel (decoded pixels plus the RGBA kept for later composition)
+against the same 64 MiB screen quota and is refused with ENOSPC rather than evicting everything;
+the root frame's pixels are not retained, so `c=1`/`r=1` return ENOTSUP; `f=100`, an absent `f`
+and `a=c` composition return ENOTSUP, and `a=q,e=c` answers ERR. The root frame's gap is 0 by the
+protocol; the playhead shows it for the 40 ms default (an implementation policy, not a protocol
+statement). Frames are released with their image (replace, hard delete, reset); they are not carried
+by snapshots or persistent-session replay, which keep the root frame only.
+
+`KittyAnimationTests` (VT) pin the frame store, composition arithmetic, error replies, quotas, the
+playhead on an injected clock and frame retirement; `KittyAnimationRenderTests` check the real view
+paints the frame the clock selects. These do not establish wall-clock playback on the desktop; that
+belongs to the owned measurement, which has not been collected. The pinned
+`extensions.kitty-graphics.animation` probe can only return inconclusive whatever Ntilde does.

@@ -96,6 +96,38 @@ namespace Ntilde.Shell
             }
         }
 
+        private IDisposable? _kittyAnimationWake;
+        private long _kittyAnimationWakeDue;
+
+        /// <summary>
+        /// Moves running Kitty animations to the frame the clock is in before this frame snapshots the
+        /// buffer, then arms one wake-up for the next change. Nothing is armed while no animation with
+        /// a placement is running, so a still image costs no timer. Elapsed time, not the number of
+        /// frames drawn, selects the frame.
+        /// </summary>
+        private void AdvanceKittyAnimations(TerminalBuffer buffer, bool schedule)
+        {
+            long now = buffer.KittyAnimationClock();
+            buffer.AdvanceKittyAnimations(now, out long? due, invalidate: false);
+            if (!schedule || due is not { } at) return;
+            if (_kittyAnimationWake is not null && _kittyAnimationWakeDue > now && _kittyAnimationWakeDue <= at) return;
+            _kittyAnimationWake?.Dispose();
+            _kittyAnimationWakeDue = at;
+            _kittyAnimationWake = DispatcherTimer.RunOnce(() =>
+            {
+                _kittyAnimationWake = null;
+                InvalidateVisual();
+            }, TimeSpan.FromMilliseconds(Math.Max(1, at - now)), DispatcherPriority.Render);
+        }
+
+        internal bool KittyAnimationWakeArmedForTest => _kittyAnimationWake is not null;
+
+        private void CancelKittyAnimationWake()
+        {
+            _kittyAnimationWake?.Dispose();
+            _kittyAnimationWake = null;
+        }
+
         public override void Render(DrawingContext context)
         {
             var buffer = _buffer; // Capture local reference to prevent it becoming null mid-render (race condition)
@@ -108,6 +140,7 @@ namespace Ntilde.Shell
             }
 
             DisposeRetiredImageBitmaps();
+            AdvanceKittyAnimations(buffer, schedule: _offscreenRenderDepth == 0);
 
             // Failsafe: Ensure we have fonts, but even if we don't, we should draw a background
             // to avoid "white panes"

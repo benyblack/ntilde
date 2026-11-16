@@ -14,7 +14,7 @@ public partial class TerminalBuffer
     /// Monotonic milliseconds the animation playhead is measured on. The live view and the parser share
     /// the buffer, so one clock orders <c>a=a</c> commands and presentation; tests substitute their own.
     /// </summary>
-    internal Func<long> KittyAnimationClock { get; set; } = static () => Environment.TickCount64;
+    public Func<long> KittyAnimationClock { get; set; } = static () => Environment.TickCount64;
 
     /// <summary>Frames in the image including the root (1 for a still image).</summary>
     internal static int KittyFrameCount(KittyImageAsset asset) => asset.Animation?.Frames.Count ?? 1;
@@ -90,7 +90,7 @@ public partial class TerminalBuffer
     /// <paramref name="nextDueMs"/> is the earliest later change among animations that have a placement
     /// (nothing is gained by waking for one nobody can see), or null when none is pending.
     /// </summary>
-    internal bool AdvanceKittyAnimations(long nowMs, out long? nextDueMs)
+    public bool AdvanceKittyAnimations(long nowMs, out long? nextDueMs, bool invalidate = true)
     {
         nextDueMs = null;
         bool changed = false;
@@ -109,7 +109,8 @@ public partial class TerminalBuffer
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
-        if (changed) Invalidate();
+        // A caller inside a frame passes false: the frame it is drawing already shows the new pixels.
+        if (changed && invalidate) Invalidate();
         return changed;
     }
 
