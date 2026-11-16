@@ -163,7 +163,7 @@ jobs:
         # scripts/ci/node-tests-shard.py balances by each file's measured duration (MUST MATCH its
         # `--list`; checked by scripts/tests/node_tests_shard_tests.py). The quick checks run once,
         # in the rest shard, which the cut gives a head start for them.
-        shard: [a, b, rest]
+        shard: [a, b, c, rest]
 
     steps:
       - uses: actions/checkout@v4
