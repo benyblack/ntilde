@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { osc633CaseIds } from './osc633-grading-collector.mjs';
 
-export const measuredScriptsRevision = 'f8f58f817e232242a063daac95f0526f94535ef8';
-export const measuredAppRevision = 'b9d7c6273683d8546b874781f605817345e23ce1';
+export const measuredScriptsRevision = '2d32bfaf00c9b6d3a5bb768f64ab4ab3831f2942';
+export const measuredAppRevision = '9c692a04aa880372a9461be51e4144e307ab5c83';
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 const scope = 'Pinned terminfo.dev@4.0.0 OSC 633 A–D termless and terminal marker-consumption probes replayed over parent-journaled stored cells and cursor; '
     + 'the unchanged pinned verdicts are always inconclusive. A separately identified lifecycle effect contract uses paired pane metadata and session status, '

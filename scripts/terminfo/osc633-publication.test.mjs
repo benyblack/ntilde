@@ -17,9 +17,9 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained OSC 633 run independently rederives the receipt, paired journal, and publication', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '9fe4f267918c2776fa5376fb02f0a382ed9648dd7fd33078a66c6ab42dfe70a3');
+    assert.equal(hash(manifestBytes), 'ddfdcc5598b52dd7877e9962c6ca17ac4f246572bf481fcf5ba1669d77acfc5e');
     const manifest = JSON.parse(manifestBytes);
-    assert.deepEqual(Object.keys(manifest.archives), ['owned-run.zip', 'superseded/attempt-1-deadline.zip', 'superseded/attempt-2-scoped.zip', 'superseded/default-validation-interrupted.zip', 'superseded/default-validation-interrupted-2.zip', 'default-validation/owned-run.zip']);
+    assert.deepEqual(Object.keys(manifest.archives), ['owned-run.zip', 'superseded/attempt-1-deadline.zip', 'superseded/attempt-2-scoped.zip', 'superseded/attempt-3-scoped.zip', 'superseded/default-validation-interrupted.zip', 'superseded/default-validation-interrupted-2.zip', 'default-validation/owned-run.zip']);
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-osc633-publication-'));
     try {
@@ -37,10 +37,11 @@ test('retained OSC 633 run independently rederives the receipt, paired journal, 
         projected.summary.receipt = original;
         assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
-        assert.equal(schemaVersion, 68); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 69); assert.equal(fixtureRemoved, true);
         assert.deepEqual(original.collectionScope.omittedSuites, ['osc9', 'notify']);
-        assert.equal(original.collectionScope.predecessor.runId, '55f0ba462cd3cc6fbc315a0e5fad5126');
-        assert.equal(projected.summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v61');
+        assert.deepEqual(original.pxmEvidence.counts, { 'inconclusive/supported': 1 });
+        assert.equal(original.collectionScope.predecessor.runId, 'b45702ad11ea1f0ea46eeb4908206155');
+        assert.equal(projected.summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v62');
         assert.deepEqual(projected.report.cases.map(item => item.caseId), [...osc633CaseIds]);
         assert.equal(frames.length, 63);
         for (const item of projected.report.cases) {
@@ -58,6 +59,7 @@ test('superseded and interrupted attempts retain their distinct cleanup and outc
     for (const [name, runId, completed] of [
         ['superseded/attempt-1-deadline.zip', 'e4fd81d6c7bb7e0d0557276f1eb740c1', false],
         ['superseded/attempt-2-scoped.zip', '5040e7f86d90b51061a9166d45c1750a', true],
+        ['superseded/attempt-3-scoped.zip', 'ac59f42044dd69e06377ca6719983f76', true],
         ['superseded/default-validation-interrupted.zip', '8efbd0971a5f59f2a27d059e36dc496a', false],
         ['superseded/default-validation-interrupted-2.zip', '5d26045795c25b3c969b7d49d43bae8a', false],
     ]) {
