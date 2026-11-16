@@ -63,6 +63,13 @@ export function validateCollectionScope(output, evidence, context, proof) {
     return true;
 }
 
+// Terminate a stalled extractor without leaving the desktop lease held indefinitely.
+export function runPredecessorExtractor(spawn, python, script, archive, root) {
+    const result = spawn(python, ['-c', script, archive, root],
+        { encoding: 'utf8', windowsHide: true, timeout: 30000, killSignal: 'SIGKILL' });
+    if (result.error || result.status !== 0) throw new Error('Scoped predecessor archive extraction failed.');
+}
+
 /** Reissue the pinned predecessor's full receipt with the trusted current
  * validators. The predecessor remains a different run, never a same-run claim. */
 export function verifyScopePredecessor(output, finalizeReceipt, scope = osc633Scope) {
@@ -85,8 +92,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
   dest=pathlib.Path(sys.argv[2]).joinpath(*p.parts)
   dest.parent.mkdir(parents=True,exist_ok=True)
   dest.write_bytes(z.read(i))`;
-        const extracted = spawnSync(python, ['-c', script, archive, root], { encoding: 'utf8', windowsHide: true });
-        if (extracted.status !== 0) throw new Error('Scoped predecessor archive extraction failed.');
+        runPredecessorExtractor(spawnSync, python, script, archive, root);
         const path = join(root, 'cell-receipt.json'), original = JSON.parse(readFileSync(path));
         const context = JSON.parse(readFileSync(join(root, 'context.json')));
         if (original.schemaVersion !== (isHistoricOsc633Scope(scope) ? 66 : 67) || original.runId !== scope.predecessor.runId

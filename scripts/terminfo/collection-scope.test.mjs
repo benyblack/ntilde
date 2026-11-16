@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, runPredecessorExtractor, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
 test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
@@ -60,6 +61,20 @@ test('historical v61 scope refuses SGR-pixel evidence that belongs to the other 
         writeFileSync(join(root, 'pxm-run.json'), '');
         assert.throws(() => validateCollectionScope(root, evidence, context, proof), /scoped collection/);
     } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a stalled predecessor extractor is killed and extraction fails closed', () => {
+    let called = false;
+    const stalled = (_python, args, options) => {
+        called = true;
+        assert.deepEqual(args, ['-c', 'script', 'archive', 'root']);
+        assert.equal(options.timeout, 30000);
+        assert.equal(options.killSignal, 'SIGKILL');
+        return spawnSync(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { ...options, timeout: 150 });
+    };
+    assert.throws(() => runPredecessorExtractor(stalled, 'python', 'script', 'archive', 'root'), /archive extraction failed/);
+    assert.equal(called, true);
+    assert.throws(() => runPredecessorExtractor(() => ({ status: 0, error: new Error('spawn failed') }), 'python', '', '', ''), /archive extraction failed/);
 });
 
 test('the pinned full predecessor reissues its actual receipt; modified archive bytes are refused', () => {
