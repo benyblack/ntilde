@@ -1,0 +1,497 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-core-gaps-v1",
+  "contractsVersion": 1,
+  "runId": "59b3fbe52f6062679e5233e0b62fb9d2",
+  "adapter": {
+    "id": "ntilde-owned-core-gaps-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "74934e86acf0cfdf96ce4e39698281ba30b3efd32dcfe9981b1733d8a8c056eb",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "child": {
+    "pid": 26698,
+    "term": "xterm-256color",
+    "output": "TERM-59b3fbe52f6062679e5233e0b62fb9d2=xterm-256color"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 probes text.reverse-index-scroll (margins 1;5, \"MARKER\" at the home cell, ESC M, the marker one row down) and reset.method (write \"Hello World\", call the backend reset(), the cursor home and the text gone). The unchanged pinned callbacks are replayed over the independently journaled screens of their exact writes, beside the separately identified effect contract ntilde-core-gaps-effect-v1: for reverse index, the pinned top-boundary fixture, a separately seeded interior region (rows 2-5, the cursor at its top row) and a control with the cursor below the top margin (ESC M only moves the cursor up; nothing scrolls), with actual scrollback unchanged and the margins restored; for reset, three actual asynchronous backend reset() calls (after Hello World, after a dirty main bank with margins, origin mode, insert mode, no auto-wrap, a hidden cursor and an SGR pen, and from the alternate screen entered over that dirty main bank), each followed by a pristine-state check of cells, cursor, margins, modes, visibility, rendition and actual scrollback. Stored cells, cursor, margins and scrollback only. reset() is the desktop collector's own backend API (core-gaps.mjs createCoreBackend), which writes one documented sequence (leave the alternate screen, RIS, then explicit normalization of origin, wrap, insert, cursor visibility, margins, rendition, display and scrollback); the App itself has no reset() endpoint, the stock terminal path still returns insufficient-evidence for reset.method, and RIS (reset.ris) is a separate case. No host presentation, no remote/mux, Windows/Linux or common-harness claim; the stock grades are unchanged by this suite.",
+  "cases": [
+    {
+      "caseId": "text.reverse-index-scroll",
+      "pinnedCriterion": "      ...probe(\"text.reverse-index-scroll\", (ctx) => {\n        if (!validSize(ctx.getScrollback().screenLines, 5)) {\n          return {\n            pass: false,\n            observation: { outcome: \"inconclusive\", reason: \"insufficient-evidence\", evidence: \"none\" }\n          };\n        }\n        try {\n          ctx.feed(\"\\x1B[1;5r\");\n          ctx.feed(\"\\x1B[H\");\n          ctx.feed(\"MARKER\");\n          const before = ctx.getCell(0, 0);\n          ctx.feed(\"\\x1B[H\");\n          ctx.feed(\"\\x1BM\");\n          const cell = ctx.getCell(1, 0);\n          return parserStateResult(before.char === \"M\" ? cell.char === \"M\" : null, \"RI moves the measured MARKER to row 2\", { before, cell }, before.char === \"M\" ? undefined : \"MARKER control was not measured\");\n        } finally {\n          ctx.feed(\"\\x1B[r\");\n        }\n      }, async (ctx) => {\n        const refusal = tooSmall(ctx, 10, 1);\n        if (refusal)\n          return refusal;\n        try {\n          ctx.write(\"\\x1B[3;10r\");\n          ctx.write(\"\\x1B[3;1H\");\n          ctx.write(\"\\x1BM\");\n          const pos = await ctx.queryCursorPosition();\n          return unmeasuredCellResult(pos, \"RI scrolling of region contents\");\n        } finally {\n          ctx.write(\"\\x1B[r\");\n        }\n      }),\n      termNeedsGeometry: true\n    },",
+      "pinned": {
+        "probeId": "text.reverse-index-scroll",
+        "pass": true,
+        "response": "{\"before\":{\"char\":\"M\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"cell\":{\"char\":\"M\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "RI moves the measured MARKER to row 2",
+            "observed": "{\"before\":{\"char\":\"M\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null},\"cell\":{\"char\":\"M\",\"flags\":768,\"bold\":false,\"dim\":false,\"italic\":false,\"underline\":false,\"inverse\":false,\"hidden\":false,\"strikethrough\":false,\"blink\":false,\"overline\":false,\"fg\":null,\"bg\":null,\"fgSource\":\"default\",\"bgSource\":\"default\",\"underlineStyle\":0,\"underlineColorIndex\":-1,\"underlineArgb\":null,\"fgIndex\":-1,\"bgIndex\":-1,\"foregroundArgb\":null,\"backgroundArgb\":null}}"
+          }
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-core-gaps-effect-v1",
+        "outcome": "supported",
+        "layer": "stored-state/cursor/margins/history",
+        "note": "Exact pinned top-boundary fixture and a separately seeded interior region; below-boundary cursor-only control."
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "observed": {
+        "pinnedTopBoundary": {
+          "before": {
+            "firstRow": "MARKER",
+            "rows": [
+              "MARKER",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "cursor": [
+              0,
+              6
+            ],
+            "cursorVisible": true,
+            "margins": [
+              0,
+              4
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": false
+          },
+          "after": {
+            "firstRow": "",
+            "rows": [
+              "",
+              "MARKER",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "cursor": [
+              0,
+              0
+            ],
+            "cursorVisible": true,
+            "margins": [
+              0,
+              4
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": false
+          },
+          "restoredMargins": [
+            0,
+            39
+          ]
+        },
+        "interiorRegion": {
+          "before": {
+            "firstRow": "ABOVE",
+            "rows": [
+              "ABOVE",
+              "SECOND",
+              "THIRD",
+              "FOURTH",
+              "BOTTOM",
+              "OUTSIDE"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "cursorVisible": true,
+            "margins": [
+              1,
+              4
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": false
+          },
+          "after": {
+            "firstRow": "ABOVE",
+            "rows": [
+              "ABOVE",
+              "",
+              "SECOND",
+              "THIRD",
+              "FOURTH",
+              "OUTSIDE"
+            ],
+            "cursor": [
+              1,
+              2
+            ],
+            "cursorVisible": true,
+            "margins": [
+              1,
+              4
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": false
+          },
+          "restoredMargins": [
+            0,
+            39
+          ]
+        },
+        "belowTopMarginControl": {
+          "before": {
+            "firstRow": "ABOVE",
+            "rows": [
+              "ABOVE",
+              "",
+              "SECOND",
+              "THIRD",
+              "FOURTH",
+              "OUTSIDE"
+            ],
+            "cursor": [
+              3,
+              2
+            ],
+            "cursorVisible": true,
+            "margins": [
+              1,
+              4
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": false
+          },
+          "after": {
+            "firstRow": "ABOVE",
+            "rows": [
+              "ABOVE",
+              "",
+              "SECOND",
+              "THIRD",
+              "FOURTH",
+              "OUTSIDE"
+            ],
+            "cursor": [
+              2,
+              2
+            ],
+            "cursorVisible": true,
+            "margins": [
+              1,
+              4
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": false
+          }
+        }
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "pinned-replay-plus-core-gaps-effect-v1",
+        "evidence": "owned-stored-cells-cursor-margins-and-actual-scrollback",
+        "note": "Exact pinned top-boundary fixture and a separately seeded interior region; below-boundary cursor-only control."
+      }
+    },
+    {
+      "caseId": "reset.method",
+      "pinnedCriterion": "      ...probe(\"reset.method\", (ctx) => {\n        ctx.feed(\"Hello World\");\n        const before = { ...ctx.getCursor(), text: ctx.getText() };\n        ctx.reset();\n        const after = { ...ctx.getCursor(), text: ctx.getText() };\n        const expected = \"Reset method returns the cursor home and clears measured text\";\n        if (!before.text.includes(\"Hello World\") || before.x === 0) {\n          return parserStateResult(null, expected, { before, after }, \"Reset-method control state was not measured\");\n        }\n        return parserStateResult(after.x === 0 && after.y === 0 && !after.text.includes(\"Hello World\"), expected, {\n          before,\n          after\n        });\n      }, () => {\n        const note = \"The app context has no reset() method or equivalent state readback\";\n        return Promise.resolve({\n          pass: false,\n          note,\n          observation: {\n            outcome: \"inconclusive\",\n            reason: \"insufficient-evidence\",\n            evidence: \"none\",\n            note\n          }\n        });\n      })\n    }",
+      "pinned": {
+        "probeId": "reset.method",
+        "pass": true,
+        "response": "{\"before\":{\"x\":11,\"y\":0,\"visible\":true,\"text\":\"Hello World\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"},\"after\":{\"x\":0,\"y\":0,\"visible\":true,\"text\":\"\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"}}",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "parser-state"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "Reset method returns the cursor home and clears measured text",
+            "observed": "{\"before\":{\"x\":11,\"y\":0,\"visible\":true,\"text\":\"Hello World\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"},\"after\":{\"x\":0,\"y\":0,\"visible\":true,\"text\":\"\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\"}}"
+          }
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-core-gaps-effect-v1",
+        "outcome": "supported",
+        "layer": "desktop-backend-reset-api/stored-state",
+        "note": "Actual asynchronous desktop backend reset() call; sequence implementation is retained separately from runner preparation."
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "observed": {
+        "calls": [
+          {
+            "method": "reset",
+            "bytesSha256": "35143ef44becb91ad5a1583b3817c2311f98b093d624612cb43dff08bf4e78fd",
+            "bytesMatchContract": true
+          },
+          {
+            "method": "reset",
+            "bytesSha256": "35143ef44becb91ad5a1583b3817c2311f98b093d624612cb43dff08bf4e78fd",
+            "bytesMatchContract": true
+          },
+          {
+            "method": "reset",
+            "bytesSha256": "35143ef44becb91ad5a1583b3817c2311f98b093d624612cb43dff08bf4e78fd",
+            "bytesMatchContract": true
+          }
+        ],
+        "helloWorld": {
+          "before": {
+            "firstRow": "Hello World",
+            "rows": [
+              "Hello World",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "cursor": [
+              0,
+              11
+            ],
+            "cursorVisible": true,
+            "margins": [
+              0,
+              39
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": false
+          },
+          "after": {
+            "firstRow": "",
+            "rows": [
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "cursor": [
+              0,
+              0
+            ],
+            "cursorVisible": true,
+            "margins": [
+              0,
+              39
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": true
+          }
+        },
+        "dirtyMainBank": {
+          "dirtyHistory": 4,
+          "before": {
+            "firstRow": "DIRTY-4",
+            "rows": [
+              "DIRTY-4",
+              "DIRTY-5",
+              "MAIN-DIRTYDIRTY-6",
+              "DIRTY-7",
+              "DIRTY-8",
+              "DIRTY-9"
+            ],
+            "cursor": [
+              2,
+              10
+            ],
+            "cursorVisible": false,
+            "margins": [
+              2,
+              8
+            ],
+            "alternate": false,
+            "origin": true,
+            "insert": true,
+            "autoWrap": false,
+            "pendingWrap": false,
+            "historyLines": 4,
+            "storedDefault": false,
+            "blankViewport": false
+          },
+          "after": {
+            "firstRow": "",
+            "rows": [
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "cursor": [
+              0,
+              0
+            ],
+            "cursorVisible": true,
+            "margins": [
+              0,
+              39
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": true
+          }
+        },
+        "alternateOverDirtyMain": {
+          "dirtyHistory": 4,
+          "before": {
+            "firstRow": "",
+            "rows": [
+              "",
+              "",
+              "DIRTY",
+              "",
+              "",
+              ""
+            ],
+            "cursor": [
+              2,
+              5
+            ],
+            "cursorVisible": false,
+            "margins": [
+              2,
+              8
+            ],
+            "alternate": true,
+            "origin": true,
+            "insert": true,
+            "autoWrap": false,
+            "pendingWrap": false,
+            "historyLines": 4,
+            "storedDefault": false,
+            "blankViewport": false
+          },
+          "after": {
+            "firstRow": "",
+            "rows": [
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "cursor": [
+              0,
+              0
+            ],
+            "cursorVisible": true,
+            "margins": [
+              0,
+              39
+            ],
+            "alternate": false,
+            "origin": false,
+            "insert": false,
+            "autoWrap": true,
+            "pendingWrap": false,
+            "historyLines": 0,
+            "storedDefault": true,
+            "blankViewport": true
+          }
+        },
+        "penAfterReset": {
+          "firstRow": "X",
+          "rows": [
+            "X",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "cursor": [
+            0,
+            1
+          ],
+          "cursorVisible": true,
+          "margins": [
+            0,
+            39
+          ],
+          "alternate": false,
+          "origin": false,
+          "insert": false,
+          "autoWrap": true,
+          "pendingWrap": false,
+          "historyLines": 0,
+          "storedDefault": true,
+          "blankViewport": false
+        }
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "pinned-replay-plus-core-gaps-effect-v1",
+        "evidence": "owned-desktop-backend-reset-api-stored-cells-and-actual-scrollback",
+        "note": "Actual asynchronous desktop backend reset() call; sequence implementation is retained separately from runner preparation. The pinned callback ran as a replay over the journaled states of that call; reset() is the collector's backend API, not an App endpoint."
+      }
+    }
+  ]
+}

@@ -20,7 +20,7 @@ export const defaultQaRoot = fileURLToPath(new URL('../../docs/qa/terminfo/', im
 
 export const verdicts = Object.freeze(['supported', 'unsupported', 'inconclusive']);
 /** Every layer an owned suite can measure; a claim naming anything else is refused. */
-export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels', 'generated-input-child-bytes', 'pane-metadata-and-session-status']);
+export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels', 'generated-input-child-bytes', 'pane-metadata-and-session-status', 'desktop-backend-reset-api']);
 /** Suites whose ids are terminfo.dev benchmark ids; the two findings are Ntilde-specific and never counted as benchmark ids. */
 const sgrAttrsFile = '2026-11-08-sgr-attributes-qualification.json';
 
@@ -72,6 +72,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('xcs', '2026-11-15-xterm-color-stack', '2026-11-15-xterm-color-stack-qualification.md'), module: 'xcs-contracts.mjs', exports: ['xcsSuiteId', 'xcsContractsVersion', 'xcsCaseIds'], test: 'xcs-publication.test.mjs' },
     { ...directory('xss', '2026-11-15-xterm-sgr-stack', '2026-11-15-xterm-sgr-stack-qualification.md'), module: 'xss-contracts.mjs', exports: ['xssSuiteId', 'xssContractsVersion', 'xssCaseIds'], test: 'xss-publication.test.mjs' },
     { ...directory('mex', '2026-11-15-mouse-extended', '2026-11-15-mouse-extended-qualification.md'), module: 'mex-contracts.mjs', exports: ['mexGradedSuiteId', 'mexContractsVersion', 'mexCaseIds'], test: 'mex-publication.test.mjs' },
+    // Core-to-inventory reconciliation: two ids whose Core requirement rows pass; restated from the Core-gaps suite retained in the newest merged run.
+    { ...directory('core-gaps', '2026-11-15-core-gaps', '2026-11-15-core-gaps-qualification.md'), module: 'core-gaps-contracts.mjs', exports: ['coreGapsQualSuiteId', 'coreGapsQualContractsVersion', 'coreGapsQualCaseIds'], test: 'core-gaps-publication.test.mjs' },
 ]);
 
 /**
@@ -191,6 +193,8 @@ export function measuredLayersOf(evidence, scope) {
     if (/generated-input/.test(text)) layers.push('generated-input-child-bytes');
     // Paired complete stored cells, raw pane metadata (input window, command/output anchors, title, cwd) and the session status the App reports.
     if (/pane-metadata/.test(text)) layers.push('pane-metadata-and-session-status');
+    // A case that exercises the desktop collector's own backend reset() API (an asynchronous call whose sequence is retained and graded), beside stored cells.
+    if (/backend-reset-api/.test(text)) layers.push('desktop-backend-reset-api');
     if (layers.length === 0) throw new Error(`Cannot classify the measured layer of evidence "${text}".`);
     return layers;
 }
