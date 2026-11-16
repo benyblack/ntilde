@@ -79,7 +79,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('pxm', '2026-11-16-sgr-pixel-mouse', '2026-11-16-sgr-pixel-mouse-qualification.md'), module: 'pxm-contracts.mjs', exports: ['pxmGradedSuiteId', 'pxmContractsVersion', 'pxmCaseIds'], test: 'pxm-publication.test.mjs' },
     // Retrospective replay over the already-receipted SGR-truecolor foreground fixture.
     { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], receiptSuiteId: 'ntilde-owned-sgr-truecolor-graded-v1', test: 'extensions-truecolor-publication.test.mjs' },
-    { ...directory('osc633', '2026-11-16-osc633', '2026-11-16-osc633-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-publication.test.mjs' },
+    // The current OSC 633 remeasurement on the implementing App; the historical unsupported publication remains frozen below.
+    { ...directory('osc633', '2026-11-16-osc633-implementation', '2026-11-16-osc633-implementation-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-implementation-publication.test.mjs' },
 ]);
 
 /**
@@ -88,6 +89,7 @@ export const benchmarkSuites = Object.freeze([
  * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
  */
 export const nonInventoryPublicationTests = Object.freeze({
+    'osc633-publication.test.mjs': 'frozen historical unsupported OSC 633 result; the current implementing-App remeasurement is the active suite claim',
     'ascii-reflow-publication.test.mjs': 'frozen historical unsupported reflow result; current fixed-App retest is the active suite claim',
     'modern-publication.test.mjs': 'frozen Modern requirement reassessment; preserves separate stock and owned semantic results without adding benchmark-suite claims',
     'image-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',

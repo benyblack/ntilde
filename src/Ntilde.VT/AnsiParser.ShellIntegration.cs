@@ -4,7 +4,8 @@ using System.Text;
 namespace Ntilde.VT
 {
     /// <summary>
-    /// OSC 133 shell-integration marks: where a B mark landed, and the command text a C mark carries.
+    /// OSC 133 shell-integration marks (and the OSC 633 lifecycle subset that shares their state):
+    /// where a B mark landed, and the command text a C mark carries.
     /// </summary>
     public partial class AnsiParser
     {
@@ -21,7 +22,24 @@ namespace Ntilde.VT
         // Any parameters after the marker letter are tolerated and ignored (FinalTerm
         // allows key=value attributes on these marks, e.g. "133;B;aid=7"), so a payload
         // we don't understand still produces the mark rather than being dropped.
-        private void HandleShellIntegrationMark(string data)
+        private void HandleShellIntegrationMark(string data) => DispatchShellIntegrationMark(data, vsCodeDialect: false);
+
+        // OSC 633: VS Code's shell-integration dialect, documented at
+        // https://code.visualstudio.com/docs/terminal/shell-integration#_supported-escape-sequences.
+        // Its four lifecycle markers have the same meaning as OSC 133's, so they drive the very same
+        // state (prompt, input window, anchors, events) instead of a parallel copy:
+        //   OSC 633;A       -> prompt start
+        //   OSC 633;B       -> prompt end (start of user input)
+        //   OSC 633;C       -> pre-execution (the command is about to run)
+        //   OSC 633;D[;N]   -> execution finished, with an optional exit code N
+        // The dialect differs from 133 only where the documented grammar does:
+        //   - C carries no payload, so nothing after the letter is ever read as command text. The
+        //     command line travels in the separate E record, which is deliberately not handled here.
+        //   - D takes an exit code only; 133's trailing duration field is not part of 633.
+        // E, P and every other 633 record are ignored (no lifecycle effect, no state).
+        private void HandleVsCodeShellIntegrationMark(string data) => DispatchShellIntegrationMark(data, vsCodeDialect: true);
+
+        private void DispatchShellIntegrationMark(string data, bool vsCodeDialect)
         {
             if (string.IsNullOrWhiteSpace(data)) return;
 
@@ -55,11 +73,11 @@ namespace Ntilde.VT
                     // that stops the cells below it being served as a command line once the output
                     // starts arriving.
                     _buffer.CloseCommandInputWindow();
-                    OnCommandAccepted?.Invoke(DecodeAcceptedCommandPayload(parts));
+                    OnCommandAccepted?.Invoke(vsCodeDialect ? null : DecodeAcceptedCommandPayload(parts));
                     break;
 
                 case "D":
-                    HandleCommandFinished(parts);
+                    HandleCommandFinished(parts, readDuration: !vsCodeDialect);
                     break;
             }
         }
@@ -68,7 +86,7 @@ namespace Ntilde.VT
         /// <c>OSC 133;D;N[;M]</c>: the command finished with exit code N and, optionally, a duration of M
         /// milliseconds.
         /// </summary>
-        private void HandleCommandFinished(string[] parts)
+        private void HandleCommandFinished(string[] parts, bool readDuration)
         {
             int? exitCode = null;
             long? durationMs = null;
@@ -78,7 +96,7 @@ namespace Ntilde.VT
                 exitCode = parsed;
             }
 
-            if (parts.Length > 2 &&
+            if (readDuration && parts.Length > 2 &&
                 long.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsedDuration))
             {
                 durationMs = parsedDuration;

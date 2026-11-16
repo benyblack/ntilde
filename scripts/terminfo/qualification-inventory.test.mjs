@@ -305,22 +305,23 @@ test('extensions.reflow selects the fresh supported effect while preserving its 
 
 test('fixing the measured reflow mismatch adds one effect-supported id without changing unique ids or stock and pinned scores', () => {
     const stored = committed(), { totals } = stored;
-    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc633-a', 'extensions.osc633-b', 'extensions.osc633-c', 'extensions.osc633-d']);
-    assert.equal(totals.effectUnsupportedIds, 4);
+    // The OSC 633 implementation remeasurement then turned its four ids from effect-unsupported to effect-supported (pinned stays inconclusive), leaving no measured-unsupported id.
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, []);
+    assert.equal(totals.effectUnsupportedIds, 0);
     assert.equal(totals.effectOtherIds, 0);
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
-    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + 4);
+    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds);
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
-    assert.equal(totals.effectSupportedIds, 132);
+    assert.equal(totals.effectSupportedIds, 136);
     assert.equal(totals.pinnedSupportedIds, 93);
     assert.equal(totals.pinnedAndEffectSupportedIds, 93);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 39);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 131);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 43);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 135);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 92);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 37, effectMeasuredUnsupported: 4, effectMeasuredOther: 0, effectNotMeasured: 33, notPinnedSupported: 76 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 33, effectMeasuredUnsupported: 0, effectMeasuredOther: 0, effectNotMeasured: 33, notPinnedSupported: 76 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -372,7 +373,7 @@ test('guard: a separate effect verdict cannot be collapsed into its pinned verdi
     dropped.benchmark = dropped.benchmark.filter(entry => entry.id !== 'extensions.reflow');
     assert.throws(() => check(dropped), /ascii-reflow: .*(?:claims|lost)/);
     const inflated = committed();
-    inflated.totals.effectUnsupportedIds = 0;
+    inflated.totals.effectUnsupportedIds = 1;
     assert.throws(() => check(inflated), /totals differ/);
 });
 
@@ -413,9 +414,10 @@ test('every publication test is a registered suite or finding, or is explicitly 
 
 test('the generated summary defines unsupported and not-measured separately and lists the unsupported id without counting it as supported', () => {
     const text = renderSummary(committed());
-    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 4 \|/);
-    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): .*`extensions\.osc633-a`.*`extensions\.osc633-d`\./);
-    assert.match(text, /\| of which measured, effect unsupported \| 4 \|/);
+    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 0 \|/);
+    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): \./);
+    assert.match(text, /\| of which measured, effect unsupported \| 0 \|/);
+    assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
     assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 33 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
@@ -494,4 +496,29 @@ test('inventory hashes compressed evidence as raw bytes, including CRLF byte pai
         assert.equal(after.bytes, original.length - 1);
         assert.notEqual(after.sha256, before.sha256);
     } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the OSC 633 implementation publication is the active claim while the historical unsupported negative remains intact', async () => {
+    const suite = benchmarkSuites.find(entry => entry.suite === 'osc633');
+    assert.equal(suite.dir, '2026-11-16-osc633-implementation');
+    const { report, summary } = loadPublication(defaultQaRoot, suite);
+    const ids = ['extensions.osc633-a', 'extensions.osc633-b', 'extensions.osc633-c', 'extensions.osc633-d'];
+    assert.deepEqual(report.cases.map(item => [item.caseId, pinnedVerdictOf(item), effectVerdictOf(item)]), ids.map(id => [id, 'inconclusive', 'supported']));
+    assert.equal(summary.ownedRunId, '323882a7d7b0e3c86ce4152fa54e6aa3');
+    const historical = read('2026-11-16-osc633/report.json');
+    assert.deepEqual(historical.cases.map(item => [item.caseId, pinnedVerdictOf(item), effectVerdictOf(item)]), ids.map(id => [id, 'inconclusive', 'unsupported']));
+    assert.ok('osc633-publication.test.mjs' in nonInventoryPublicationTests, 'the frozen baseline test is classified, not dropped');
+    const stored = committed();
+    for (const id of ids) {
+        const item = row(stored, id);
+        assert.equal(item.claims.length, 1);
+        assert.equal(item.effect.verdict, 'supported');
+        assert.equal(item.pinned.best, 'inconclusive');
+        assert.equal(item.claims[0].divergence.kind, 'pinned-inconclusive-by-design');
+    }
+    // A failed rederivation of the replacement refuses to count the claim; the frozen negative is not silently substituted.
+    const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'osc633' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
+    assert.equal(row(failing, ids[0]).claims[0].status, 'declared-not-rederived');
+    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 4);
+    assert.equal(failing.totals.effectSupportedIds, stored.totals.effectSupportedIds - 4);
 });
