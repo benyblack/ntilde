@@ -632,6 +632,8 @@ public class ExplainEscapeSequenceTests
     [InlineData("\x1b]776;??\x07")]
     [InlineData("\x1b]776;?;1\x07")]
     [InlineData("\x1b]776 ?\x07")]
+    [InlineData("\x1b]776:?\x07")]
+    [InlineData("\x1b]1337:ReportCellSize\x07")]
     [InlineData("\x1b]1337;ReportCellSize;\x07")]
     [InlineData("\x1b]1337;ReportCellSize=17;8;2\x07")]
     [InlineData("\x1b]1337;reportcellsize\x07")]

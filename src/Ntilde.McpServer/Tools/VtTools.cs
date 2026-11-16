@@ -381,7 +381,7 @@ public sealed class VtTools
             else if (exactBody.EndsWith("ESC\\", StringComparison.Ordinal)) exactBody = exactBody[..^4];
             string exactKey = "OSC:" + exactBody.Replace(';', ':');
             if (!rawBytes) exactKey = exactKey.Replace(' ', ':');
-            if (ContractSequenceTable.TryGetValue(exactKey, out var exactDescription))
+            if (!exactBody.Contains(':') && ContractSequenceTable.TryGetValue(exactKey, out var exactDescription))
                 return $"OSC {exactBody}: {exactDescription}";
             // Leading numeric code up to ';' or space.
             int i = 0;
