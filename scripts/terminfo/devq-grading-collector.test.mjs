@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { existsSync } from 'node:fs';
+import { testWithPinnedCollector } from './real-bundle-test.mjs';
 import { adaptDevqCollector, devqAdapterId, devqSeams } from './devq-grading-collector.mjs';
 import { devqCaseIds, devqContracts, replayDevqPinned } from './devq-contracts.mjs';
 import { devqRecordingContext } from './devq-collector.mjs';
@@ -46,8 +46,7 @@ test('refuses a pinned body that would change a request, a criterion or a setup'
     }
 });
 
-const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
-test('the real pinned bundle derives through every layer and the pinned code runs over served replies', { skip: existsSync(bundleUrl) ? false : 'collector cache not installed' }, async () => {
+testWithPinnedCollector('the real pinned bundle derives through every layer and the pinned code runs over served replies', async bundleUrl => {
     const { adaptCollector } = await import('./collector.mjs');
     const { adaptGradingCollector } = await import('./grading-collector.mjs');
     const { layerChain } = await import('./osc133-receipt.mjs');
@@ -56,7 +55,7 @@ test('the real pinned bundle derives through every layer and the pinned code run
     let text = adaptGradingCollector(adaptCollector(readFileSync(bundleUrl).toString(), new URL('./ownership.mjs', import.meta.url).pathname));
     for (const [, adapt] of layerChain) text = adapt(text);
     text = adaptDevqCollector(text);
-    const file = fileURLToPath(new URL(`../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/ntilde-dvq-test-${process.pid}.mjs`, import.meta.url));
+    const file = fileURLToPath(new URL(`./ntilde-dvq-test-${process.pid}.mjs`, bundleUrl));
     try {
         writeFileSync(file, text);
         const module = await import(pathToFileURL(file).href);

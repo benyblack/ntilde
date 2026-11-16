@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { existsSync } from 'node:fs';
+import { testWithPinnedCollector } from './real-bundle-test.mjs';
 import { adaptKclCollector, kclAdapterId, kclSeams } from './kcl-grading-collector.mjs';
 import { kclCaseIds, kclContracts, kclPinnedPattern, kclPinnedQuery, replayKclPinned } from './kcl-contracts.mjs';
 import { kclRecordingContext } from './kcl-collector.mjs';
@@ -45,8 +45,7 @@ test('refuses a pinned body that would change a request, a criterion or a verdic
     }
 });
 
-const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
-test('the real pinned bundle derives through every layer and the pinned code runs over served bytes', { skip: existsSync(bundleUrl) ? false : 'collector cache not installed' }, async () => {
+testWithPinnedCollector('the real pinned bundle derives through every layer and the pinned code runs over served bytes', async bundleUrl => {
     const { adaptCollector } = await import('./collector.mjs');
     const { adaptGradingCollector } = await import('./grading-collector.mjs');
     const { layerChain } = await import('./osc133-receipt.mjs');
@@ -55,7 +54,7 @@ test('the real pinned bundle derives through every layer and the pinned code run
     let text = adaptGradingCollector(adaptCollector(readFileSync(bundleUrl).toString(), new URL('./ownership.mjs', import.meta.url).pathname));
     for (const [, adapt] of layerChain) text = adapt(text);
     text = adaptKclCollector(text);
-    const file = fileURLToPath(new URL(`../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/ntilde-kcl-test-${process.pid}.mjs`, import.meta.url));
+    const file = fileURLToPath(new URL(`./ntilde-kcl-test-${process.pid}.mjs`, bundleUrl));
     const frames = ['\x1b]21;foreground=rgb:cc/cc/cc\x1b\\', '\x1b]21;foreground=\x1b\\', '\x07', '\x1b]21;foreground=rgb:1234/5678/9abc\x07', '\x1b]21;foreground=red\x1b\\', '\x1b]21;foreground=rgb:1/2\x1b\\',
         '\x1b]21;background=rgb:1/2/3\x1b\\', '\x1b]21;foreground=rgb:1/2/3;foreground=rgb:1/2/3\x1b\\', '\x1b]21;unknown=Zm9v\x1b\\', '\x1b]21;foreground=RGB:A/B/C\x1b\\', '\x1b]21;\x1b\\', '\x1b]21;foreground=rgb:1/2/3'];
     try {
