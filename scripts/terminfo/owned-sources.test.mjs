@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 406 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 406); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 407 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 407); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -85,11 +85,11 @@ test('private v61 fixed360 source scope adds the seven selection-colors scripts 
     assert.deepEqual(Object.values(capturedV61SourceFiles).slice(353), ['selection-colors-contracts.mjs', 'selection-colors-model.mjs', 'selection-colors-collector.mjs', 'selection-colors-capture.mjs', 'selection-colors-grading.mjs', 'selection-colors-grading-collector.mjs', 'selection-colors-receipt.mjs']);
 });
 
-test('private v68 fixed406 source scope adds OSC 633 to the frozen v67 scope', () => {
+test('private v68 fixed407 source scope adds OSC 633 to the frozen v67 scope', () => {
     assert.deepEqual(ownedSourceFiles, capturedV68SourceFiles);
-    assert.equal(Object.keys(capturedV68SourceFiles).length, 406);
+    assert.equal(Object.keys(capturedV68SourceFiles).length, 407);
     assert.deepEqual(Object.keys(capturedV68SourceFiles).slice(0, 401), Object.keys(capturedV67SourceFiles));
-    assert.deepEqual(Object.values(capturedV68SourceFiles).slice(401), ['osc633-contracts.mjs', 'osc633-collector.mjs', 'osc633-grading.mjs', 'osc633-grading-collector.mjs', 'osc633-receipt.mjs']);
+    assert.deepEqual(Object.values(capturedV68SourceFiles).slice(401), ['osc633-contracts.mjs', 'osc633-collector.mjs', 'osc633-grading.mjs', 'osc633-grading-collector.mjs', 'osc633-receipt.mjs', 'collection-scope.mjs']);
 });
 
 test('private v67 fixed401 source scope adds the seven kitty color-control scripts to v66 fixed394 (xterm saved modes)', () => {

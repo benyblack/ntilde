@@ -5,11 +5,11 @@ import { planFeeds } from '../graded-plan.mjs';
 import { expectedOsc133Screen, osc133Fixture, osc133NonceRow, simulateOsc133 } from '../osc133-contracts.mjs';
 import { makeOsc633Experiments, osc633Pinned, osc633Prefix, replayOsc633Pinned } from '../osc633-contracts.mjs';
 import { osc633AdapterId, osc633CaseIds } from '../osc633-grading-collector.mjs';
+import { withoutOsc633Markers } from '../osc633-grading.mjs';
 import { paletteBinding } from './col-edit-evidence.mjs';
 import { blankScreen, frameOf, withOverride } from './osc133-evidence.mjs';
 export { osc133PaneId } from './osc133-evidence.mjs';
 const barrier = '\x1b[?1;2c';
-const markerPattern = new RegExp(String.raw`\x1b\]633;[^\x07\x1b]*(?:\x07|\x1b\\)`, 'g');
 
 /** A complete, valid synthetic run: frames, worker run log and adapter facts. `adjust(experimentId, label, state)` may change the model App's answer to one read. */
 export function syntheticOsc633Evidence({ runId = 'a'.repeat(32), adjust = null, supported = false, bundleSha256 = 'f'.repeat(64) } = {}) {
@@ -25,7 +25,7 @@ export function syntheticOsc633Evidence({ runId = 'a'.repeat(32), adjust = null,
         const feeds = [], reads = [];
         for (const step of contract.plan) {
             if (step.feed !== undefined) { feeds.push(step.feed); continue; }
-            const state = structuredClone(simulateOsc133(feeds.map(feed => supported ? feed.replaceAll('\x1b]633;', '\x1b]133;') : feed.replace(markerPattern, '')), fixture));
+            const state = structuredClone(simulateOsc133(feeds.map(feed => supported ? feed.replaceAll('\x1b]633;', '\x1b]133;') : withoutOsc633Markers(feed)), fixture));
             adjust?.(contract.caseId, step.read, state);
             const screen = expectedOsc133Screen(bound, state);
             frames.push(frameOf(runId, frames.length, `${osc633Prefix}-read`, screen, state));

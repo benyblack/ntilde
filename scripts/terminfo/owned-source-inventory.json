@@ -404,5 +404,6 @@
     "osc633CollectorSourceSha256": "osc633-collector.mjs",
     "osc633GradingSourceSha256": "osc633-grading.mjs",
     "osc633GradingCollectorSourceSha256": "osc633-grading-collector.mjs",
-    "osc633ReceiptSourceSha256": "osc633-receipt.mjs"
+    "osc633ReceiptSourceSha256": "osc633-receipt.mjs",
+    "collectionScopeSourceSha256": "collection-scope.mjs"
 }

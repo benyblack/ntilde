@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { syntheticOsc633Evidence } from './fixtures/osc633-evidence.mjs';
-import { buildOsc633GradingReport, osc633Counts } from './osc633-grading.mjs';
+import { buildOsc633GradingReport, osc633Counts, withoutOsc633Markers } from './osc633-grading.mjs';
 
 const report = evidence => buildOsc633GradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter);
+
+test('target stripping preserves adjacent bytes and accepts BEL or ST only when terminated', () => {
+    assert.equal(withoutOsc633Markers('a\x1b]633;A\x07b\x1b]633;D;0\x1b\\c'), 'abc');
+    assert.equal(withoutOsc633Markers('\x1b]133;A\x07X'), '\x1b]133;A\x07X');
+    assert.throws(() => withoutOsc633Markers('x\x1b]633;A'), /Unterminated/);
+});
 
 test('distinct synthetic supported and ignored worlds preserve the pinned verdict and distinguish effects', () => {
     for (const supported of [false, true]) {

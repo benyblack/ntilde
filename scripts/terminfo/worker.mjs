@@ -8,6 +8,7 @@ import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
 import { collectOsc633 } from './osc633-collector.mjs';
+import { isOsc633Scope } from './collection-scope.mjs';
 import { collectOsc78 } from './osc78-collector.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -96,6 +97,7 @@ let config;
 try {
     assertPrivateFile(process.argv[2]);
     config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+    if (config.collectionScope !== undefined && !isOsc633Scope(config.collectionScope)) throw new Error('Unknown owned collection scope.');
     // Establish the real process/PTY relation before loading the probe engine.
     const binding = await verifyNtildeOutput(config, process.stdout);
     const fence = terminalFence(process.stdin, process.stdout);
@@ -418,15 +420,16 @@ try {
         writeFileSync(join(config.output, 'xgtc-run.json'), JSON.stringify(xtgettcapRun) + '\n', { flag: 'wx', mode: 0o600 });
         // The layered OSC 9 qualification follows the XTGETTCAP suite on the same exclusively owned fence. A typed refusal of its first observation is
         // retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
-        const osc9Source = readFileSync(config.osc9Bundle);
-        if (createHash('sha256').update(osc9Source).digest('hex') !== config.osc9BundleSha256) throw new Error('Local OSC 9 adapter bundle changed.');
-        const osc9Result = await collectOsc9({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc9Bundle).href) });
-        if (osc9Result.status === 'complete') writeFileSync(join(config.output, 'osn-run.json'), JSON.stringify(osc9Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered OSC 777 / OSC 99 notification qualification follows the OSC 9 suite on the same fence; a typed refusal of its first observation is retained by the parent.
-        const notifySource = readFileSync(config.notifyBundle);
-        if (createHash('sha256').update(notifySource).digest('hex') !== config.notifyBundleSha256) throw new Error('Local notification adapter bundle changed.');
-        const notifyResult = await collectNotify({ config, fence, owner, gradingModule: await import(pathToFileURL(config.notifyBundle).href) });
-        if (notifyResult.status === 'complete') writeFileSync(join(config.output, 'ntf-run.json'), JSON.stringify(notifyResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+        if (config.collectionScope === undefined) {
+            const osc9Source = readFileSync(config.osc9Bundle);
+            if (createHash('sha256').update(osc9Source).digest('hex') !== config.osc9BundleSha256) throw new Error('Local OSC 9 adapter bundle changed.');
+            const osc9Result = await collectOsc9({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc9Bundle).href) });
+            if (osc9Result.status === 'complete') writeFileSync(join(config.output, 'osn-run.json'), JSON.stringify(osc9Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+            const notifySource = readFileSync(config.notifyBundle);
+            if (createHash('sha256').update(notifySource).digest('hex') !== config.notifyBundleSha256) throw new Error('Local notification adapter bundle changed.');
+            const notifyResult = await collectNotify({ config, fence, owner, gradingModule: await import(pathToFileURL(config.notifyBundle).href) });
+            if (notifyResult.status === 'complete') writeFileSync(join(config.output, 'ntf-run.json'), JSON.stringify(notifyResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+        }
         // The layered device-query qualification follows the notification suite on the same exclusively owned fence: every request is one fenced exchange whose raw replies the
         // parent journals beside the unchanged state.
         const devqSource = readFileSync(config.devqBundle);

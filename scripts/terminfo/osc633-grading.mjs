@@ -21,8 +21,19 @@ const targets = [
 // For expected screen and control state, the target marker has no visible text.
 // For the lifecycle effect use the independently specified A–D transitions;
 // OSC 133 supplies the same abstract transitions, never the observed result.
-const markerPattern = new RegExp(String.raw`\x1b\]633;[^\x07\x1b]*(?:\x07|\x1b\\)`, 'g');
-const withoutTarget = feed => feed.replace(markerPattern, '');
+export function withoutOsc633Markers(feed) {
+    const prefix = '\x1b]633;', bell = '\x07', st = '\x1b\\';
+    let remaining = feed, result = '';
+    while (remaining.includes(prefix)) {
+        const start = remaining.indexOf(prefix), from = start + prefix.length;
+        const bellAt = remaining.indexOf(bell, from), stAt = remaining.indexOf(st, from);
+        const end = bellAt < 0 ? stAt : stAt < 0 ? bellAt : Math.min(bellAt, stAt);
+        if (end < 0) throw new Error('Unterminated OSC 633 marker.');
+        result += remaining.slice(0, start);
+        remaining = remaining.slice(end + (end === stAt ? st.length : bell.length));
+    }
+    return result + remaining;
+}
 const abstractTarget = feed => feed.replaceAll('\x1b]633;', '\x1b]133;');
 const stateFor = (feeds, fixture, transform) => simulateOsc133(feeds.map(transform), fixture);
 
@@ -56,7 +67,7 @@ function evaluateExperiments(frames, run, contracts, runId) {
             const frame = frames[frameIndex++], recorded = record.reads[reads.length];
             check(recorded.kind === step.read && frame.barrier === record.barriers[feeds.length - 1]
                 && same(recorded.cursor, [frame.before.screen.cursorRow, frame.before.screen.cursorCol]), 'OSC 633 capture differs from its journal.');
-            const baseline = evaluateRead(frame, stateFor(feeds, fixture, withoutTarget), bound, fixture);
+            const baseline = evaluateRead(frame, stateFor(feeds, fixture, withoutOsc633Markers), bound, fixture);
             const effect = evaluateRead(frame, stateFor(feeds, fixture, abstractTarget), bound, fixture);
             reads.push({ label: step.read, snapshot: frame.index, baseline, effect });
         }

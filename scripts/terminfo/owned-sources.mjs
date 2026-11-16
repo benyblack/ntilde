@@ -773,6 +773,7 @@ export const capturedV68SourceFiles = Object.freeze({
     osc633GradingSourceSha256: 'osc633-grading.mjs',
     osc633GradingCollectorSourceSha256: 'osc633-grading-collector.mjs',
     osc633ReceiptSourceSha256: 'osc633-receipt.mjs',
+    collectionScopeSourceSha256: 'collection-scope.mjs',
 });
 
 /** Bind the private temporary root, exact v68 inventory and manifest environment pin before trusting any captured source. */

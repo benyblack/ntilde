@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import { isOsc633Scope, osc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { completeOwnedReceipt } from './receipt.mjs';
+
+test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-scope-'));
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v61', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
+    const proof = { collectionScope: structuredClone(osc633Scope) };
+    const evidence = { osc633Evidence: {} };
+    try {
+        assert.equal(validateCollectionScope(root, {}, {}, {}), false);
+        assert.equal(validateCollectionScope(root, evidence, context, proof), true);
+        for (const alter of [
+            () => [{ ...context, collectionScope: undefined }, proof, evidence],
+            () => [context, {}, evidence],
+            () => [{ ...context, sourceSnapshotPolicy: 'readonly-owned-source-graph-v60' }, proof, evidence],
+            () => [{ ...context, collectionScope: { ...osc633Scope, omittedSuites: ['notify'] } }, proof, evidence],
+            () => [context, proof, {}],
+            () => [context, proof, { ...evidence, osc9Evidence: {} }],
+            () => [context, proof, { ...evidence, notifyEvidence: {} }],
+        ]) {
+            const [c, p, e] = alter();
+            assert.throws(() => validateCollectionScope(root, e, c, p));
+        }
+        for (const file of ['osn-run.json', 'osn-snapshots.jsonl', 'ntf-run.json', 'ntf-unavailable.json']) {
+            writeFileSync(join(root, file), '');
+            assert.throws(() => validateCollectionScope(root, evidence, context, proof), /scoped collection/);
+            rmSync(join(root, file));
+        }
+        assert.equal(isOsc633Scope({ ...osc633Scope, deadlineMs: 300001 }), false);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the pinned full predecessor reissues its actual receipt; modified archive bytes are refused', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-scope-predecessor-test-'));
+    try {
+        const archive = join(root, osc633Scope.predecessor.file);
+        copyFileSync(new URL('../../docs/qa/terminfo/2026-11-15-kitty-color-control/owned-run.zip', import.meta.url), archive);
+        assert.doesNotThrow(() => verifyScopePredecessor(root, completeOwnedReceipt));
+        writeFileSync(archive, 'changed');
+        assert.throws(() => verifyScopePredecessor(root, completeOwnedReceipt), /archive changed/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});

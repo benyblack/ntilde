@@ -124,6 +124,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
+import { osc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -363,7 +364,8 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
 }
 
 function validateInvocation(args) {
-    if (args.length !== 4 || args[0] !== '--executable' || args[2] !== '--app-version'
+    if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
+        || (args.length === 6 && (args[4] !== '--scope' || args[5] !== 'osc633'))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -1831,7 +1833,7 @@ async function terminateLaunchedApp(app) {
     });
 }
 
-async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }) {
+async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }) {
     let workerError;
     try { await terminateRecordedWorker(workerIdentity, runId); }
     catch (error) { workerError = error; }
@@ -1854,7 +1856,7 @@ async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, serve
     const cleanup = cleanupError
         ? { cleanupError: cleanupError.message, retainedFixture: scratch }
         : { cleanedUpAt: new Date().toISOString() };
-    writeJson(join(output, 'ownership-proof.json'), { proofs, completed, ...cleanup });
+    writeJson(join(output, 'ownership-proof.json'), { proofs, completed, ...(collectionScope ? { collectionScope } : {}), ...cleanup });
     if (cleanupError) throw cleanupError;
 }
 
@@ -1869,7 +1871,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -1884,6 +1886,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
+    const collectionScope = args.length === 6 ? osc633Scope : undefined;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
     let resolveDone;
@@ -1986,6 +1989,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         lease = await acquireDesktopLease(() => interruption);
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
+        if (collectionScope) {
+            const predecessor = readFileSync(join(repo, 'docs', 'qa', 'terminfo', '2026-11-15-kitty-color-control', 'owned-run.zip'));
+            writeFileSync(join(output, collectionScope.predecessor.file), predecessor, { flag: 'wx', mode: 0o600 });
+            verifyScopePredecessor(output, completeOwnedReceipt);
+        }
         scratch = createPrivateScratch();
         if (interruption) throw interruption;
         const privateTool = join(scratch, 'collector');
@@ -2050,6 +2058,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
+            ...(collectionScope ? { collectionScope } : {}),
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
             coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc633Bundle, osc633BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, notifyBundle, notifyBundleSha256, devqBundle, devqBundleSha256, xcsBundle, xcsBundleSha256, xssBundle, xssBundleSha256, xsvBundle, xsvBundleSha256, kclBundle, kclBundleSha256, mexBundle, mexBundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
@@ -2152,6 +2161,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const image = statSync(executable);
         const context = {
             adapter: adapterId, adapterBundleSha256, upstreamBundleSha256, appVersion: args[3],
+            ...(collectionScope ? { collectionScope } : {}),
             coreGapsSuiteId, coreGapsAdapterId, coreGapsBundleSha256, textCursorSuiteId, coreEraseSuiteId, tabStopsSuiteId, coreWrapSuiteId: wrapSuiteId, sgrRasterSuiteId, reverseWideSuiteId,
             sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshot.sha256, sourceSnapshotRoot: sourceRepo,
             appVersionSource: 'operator supplied; not independently verified',
@@ -2301,8 +2311,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'tst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ost-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xgtc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        writeFileSync(join(output, 'osn-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        writeFileSync(join(output, 'ntf-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        if (!collectionScope) {
+            writeFileSync(join(output, 'osn-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+            writeFileSync(join(output, 'ntf-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        }
         writeFileSync(join(output, 'dvq-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xcs-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xss-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -3075,6 +3087,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
+            if (collectionScope && [osc9Prefix, notifyPrefix].includes(prefix)) throw new Error('Notification observations are outside this collection scope.');
             if (prefix === 'input') return observeInput(request, budget);
             if (prefix === 'resize') return observeResize(request, budget);
             if (prefix === 'saved') return observeSaved(request, budget);
@@ -3380,7 +3393,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             }
             if (prefix === devqPrefix) {
                 // The device-query suite runs after the notification suite; a report read also journals the raw reply list bound to its barrier.
-                if (!notifyState?.observer?.restored && notifyState?.unavailable !== true) throw new Error('Notification suite must restore before device-query observations.');
+                if (collectionScope ? !xtgettcapObserver?.restored : (!notifyState?.observer?.restored && notifyState?.unavailable !== true)) {
+                    throw new Error('The preceding selected suite must restore before device-query observations.');
+                }
                 devqObserver ??= new DevqObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `${devqNoncePrefix}${runId}`, expectedPaneId: cellObserver.paneId });
                 const result = await devqObserver.handle(request, budget);
@@ -3636,6 +3651,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             } else if (request.kind === 'raw-output') {
                 attestOutputMode(request, queryTimeout);
             } else if (request.kind === 'done') {
+                if (collectionScope && (osc9State !== undefined || notifyState !== undefined)) throw new Error('Omitted notification suites ran in the scoped collection.');
                 requireInputCompletion(inputState);
                 requireStaticImageCompletion(staticImageState);
                 requireQueryCompletion(queryState);
@@ -3815,8 +3831,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
             xtgettcapEvidence = await retainXtgettcapEvidence(output, runId, xtgettcapBundle, upstreamBundleSha256);
-            osc9Evidence = retainOsc9Evidence(output, runId, upstreamBundleSha256, osc9State?.unavailable === true);
-            notifyEvidence = retainNotifyEvidence(output, runId, upstreamBundleSha256, notifyState?.unavailable === true);
+            if (!collectionScope) {
+                osc9Evidence = retainOsc9Evidence(output, runId, upstreamBundleSha256, osc9State?.unavailable === true);
+                notifyEvidence = retainNotifyEvidence(output, runId, upstreamBundleSha256, notifyState?.unavailable === true);
+            }
             devqEvidence = await retainDevqEvidence(output, runId, devqBundle, upstreamBundleSha256);
             xcsEvidence = await retainXcsEvidence(output, runId, xcsBundle, upstreamBundleSha256);
             xssEvidence = await retainXssEvidence(output, runId, xssBundle, upstreamBundleSha256);
@@ -3922,7 +3940,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;
-            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch }));
+            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }));
             preserveScratch = cleanupOutcome.failed;
         }
         throwOwnedRunFailures(runOutcome, cleanupOutcome);
