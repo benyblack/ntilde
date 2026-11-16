@@ -845,7 +845,7 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false, m
                     counts: mexCounts(mexReport), provisionalUntil: 'cell-receipt.json' };
             }
             // The SGR-pixel suffix rides the v5 journal: the pinned probe replays over the child's own DECRQM replies.
-            if (pxm || pxm) {
+            if (pxm) {
                 const { fakePxmGradingModule } = await import('./pxm-evidence.mjs');
                 const { buildPxmGradingReport, pxmCounts } = await import('../pxm-grading.mjs');
                 const { adaptPxmCollector, pxmAdapterId } = await import('../pxm-grading-collector.mjs');
