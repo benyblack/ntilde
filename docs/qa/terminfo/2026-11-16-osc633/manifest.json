@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "6cda4e625e970c60bd6047ac785689a825077d622184c0bac14c378aefa48153",
+    "superseded/attempt-1-deadline.zip": "4bcf5a27a3dd3ece0c0d157c5c2fb7e0d9678115e74048b1be4285d81cd0666f",
+    "superseded/attempt-2-scoped.zip": "057c890413745426c839130210f7339e9d43e74ca9ccb6ed157863d1182abb0c",
+    "superseded/default-validation-interrupted.zip": "d5f13f6fc40f9e553c09bf8a21234187993e5bbb445f513cf0eed15470c10547",
+    "superseded/default-validation-interrupted-2.zip": "6178045eca73e8eef22657ea471319cd6d04ff5d87d1c2cf8cdcafcc82636391",
+    "default-validation/owned-run.zip": "630d5707a0201aa43bec30c0ac31eb8ac8c9b4c734e27359c11630fcb8aca2f9"
+  }
+}
