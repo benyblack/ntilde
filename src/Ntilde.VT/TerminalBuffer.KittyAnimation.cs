@@ -45,7 +45,7 @@ public partial class TerminalBuffer
             }
             KittyFrame old = animation.Frames[replaceIndex];
             animation.Frames[replaceIndex] = frame;
-            if (replaceIndex == animation.Current) ShowKittyFrame(asset, frame);
+            if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
             RetireUnstoredKittyHandle(old.Handle); // no placement or asset references it any more
             return KittyFrameStoreResult.Stored;
         }
@@ -69,7 +69,7 @@ public partial class TerminalBuffer
             if (control.CurrentFrame != 0)
             {
                 animation.SetCurrent((int)control.CurrentFrame - 1, now);
-                ShowKittyFrame(asset, animation.Frames[animation.Current]);
+                ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             }
             animation.SetLoops(control.Loops);
             if (control.State is { } state)
@@ -102,7 +102,7 @@ public partial class TerminalBuffer
                 KittyAnimation animation = asset.Animation!;
                 if (animation.Advance(nowMs))
                 {
-                    ShowKittyFrame(asset, animation.Frames[animation.Current]);
+                    ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
                     changed = true;
                 }
                 if (animation.NextDueMs is { } due && HasKittyPlacement(asset) && (nextDueMs is null || due < nextDueMs)) nextDueMs = due;

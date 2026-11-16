@@ -283,29 +283,122 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
-    public void A_finite_loop_count_stops_on_the_last_frame()
+    public void A_finite_loop_count_plays_the_animation_n_minus_one_times_then_stops_on_the_last_frame()
     {
         var h = ThreeFrames();
-        h.Now = 0; h.Send("a=a,i=1,s=3,v=2"); h.Replies.Clear();   // two passes
-        h.Advance(350);                                    // end of pass 1 -> frame 1 again
-        Assert.Equal(0, Index(h));
-        h.Advance(700);                                    // end of pass 2
+        h.Now = 0; h.Send("a=a,i=1,s=3,v=2"); h.Replies.Clear();    // v=2 is one pass in total
+        h.Advance(349);
+        Assert.Equal(2, Index(h));
+        h.Advance(350);                                    // end of the only pass
         var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
         Assert.Equal(KittyAnimationState.Stopped, animation.State);
-        Assert.Equal(2, animation.Current);
+        Assert.Equal(2, animation.Displayed);
         Assert.False(h.Advance(99_999));
+
+        var again = ThreeFrames();
+        again.Now = 0; again.Send("a=a,i=1,s=3,v=3"); again.Replies.Clear();   // two passes
+        again.Advance(350);
+        Assert.Equal(0, Index(again));                     // the second pass begins
+        Assert.Equal(KittyAnimationState.Running, again.Buffer.FindKittyImage(1, 0)!.Animation!.State);
+        again.Advance(700);
+        Assert.Equal(KittyAnimationState.Stopped, again.Buffer.FindKittyImage(1, 0)!.Animation!.State);
+        Assert.Equal(2, again.Buffer.FindKittyImage(1, 0)!.Animation!.Displayed);
     }
 
     [Fact]
-    public void Loop_value_zero_is_ignored_and_one_is_infinite()
+    public void Loop_value_zero_is_ignored_one_is_infinite_and_n_is_n_minus_one_passes()
     {
         var h = ThreeFrames();
         h.Now = 0; h.Send("a=a,i=1,s=3,v=0"); h.Replies.Clear();
         Assert.Equal(-1, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);
         h.Send("a=a,i=1,v=3");
-        Assert.Equal(2, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);
+        Assert.Equal(1, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);   // one pass after the current one
+        h.Send("a=a,i=1,v=2");
+        Assert.Equal(0, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);
         h.Send("a=a,i=1,v=1");
         Assert.Equal(-1, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);
+    }
+
+    [Fact]
+    public void A_clock_that_jumps_far_ahead_lands_exactly_where_elapsed_time_says_without_replaying()
+    {
+        var h = ThreeFrames();                             // holds 50, 100, 200: a 350 ms cycle
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        foreach (long elapsed in new long[] { 200_000, 1_000_000_000_000, 349, 350 * 5000 + 49, 350 * 5000 + 50, 350 * 5000 + 149, 350 * 5000 + 150 })
+        {
+            var run = ThreeFrames();
+            run.Now = 0; run.Send("a=a,i=1,s=3"); run.Replies.Clear();
+            run.Advance(elapsed);
+            long phase = elapsed % 350;
+            Assert.Equal(phase < 50 ? 0 : phase < 150 ? 1 : 2, Index(run));
+            Assert.Equal(KittyAnimationState.Running, run.Buffer.FindKittyImage(1, 0)!.Animation!.State);
+        }
+        var finite = ThreeFrames();
+        finite.Now = 0; finite.Send("a=a,i=1,s=3,v=3"); finite.Replies.Clear();
+        finite.Advance(1_000_000_000_000);                // far past two passes
+        var animation = finite.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(KittyAnimationState.Stopped, animation.State);
+        Assert.Equal(2, animation.Displayed);
+        Assert.Equal(-1, animation.LoopsRemaining);
+    }
+
+    [Fact]
+    public void A_catch_up_after_a_long_gap_is_one_step_not_thousands_of_replays()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=40", Solid(0, 255, 0, 255));
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=40", Solid(0, 0, 255, 255));
+        h.Send("a=a,i=1,r=1,z=40"); h.Replies.Clear();    // three 40 ms frames: a 120 ms cycle
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Advance(200_000);                                // more than 4096 transitions later
+        Assert.Equal(200_000 % 120 < 40 ? 0 : 200_000 % 120 < 80 ? 1 : 2, Index(h));
+    }
+
+    [Fact]
+    public void Loading_resumes_from_the_moment_a_frame_arrives_not_from_the_stale_timeline()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=2"); h.Replies.Clear();
+        Assert.True(h.Advance(10_000));
+        Assert.False(h.Advance(100_000));                  // parked on the last frame for a long time
+        h.Now = 100_000; h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 0, 255, 255));
+        h.Replies.Clear();
+        Assert.True(h.Advance(100_000));                   // the new frame is shown at once
+        Assert.Equal(3, Index(h));
+        h.Now = 100_019; h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(255, 0, 255, 255));
+        h.Replies.Clear();
+        Assert.False(h.Advance(100_019));                  // the first new frame has been up for 19 ms of its 100
+        Assert.Equal(3, Index(h));
+        Assert.True(h.Advance(100_100));
+        Assert.Equal(4, Index(h));
+    }
+
+    [Fact]
+    public void A_trailing_gapless_frame_is_never_displayed_even_when_loading_mode_parks_on_it()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 255, 0, 255));
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=-1", Solid(0, 0, 255, 255));
+        h.Send("a=a,i=1,r=1,z=50"); h.Replies.Clear();
+        h.Now = 0; h.Send("a=a,i=1,s=2"); h.Replies.Clear();
+        h.Advance(10_000);
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(2, animation.Current);                // the playhead rests on the helper frame
+        Assert.Equal(1, animation.Displayed);              // but the visible frame is the last one with a gap
+        Assert.Same(h.FramePixels(1), h.Shown);
+        Assert.Null(NextDue(h));
+    }
+
+    [Fact]
+    public void An_animation_whose_frames_are_all_gapless_cannot_hang_or_change_the_display()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=-1", Solid(0, 255, 0, 255));
+        h.Send("a=a,i=1,r=1,z=-1"); h.Replies.Clear();
+        object root = h.Shown;
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        Assert.False(h.Advance(5_000));
+        Assert.Same(root, h.Shown);
     }
 
     [Fact]

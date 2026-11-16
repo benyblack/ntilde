@@ -32,17 +32,19 @@ internal sealed class KittyAnimation
     internal const int MaxFrames = 64;
     /// <summary>Gap of a frame sent without <c>z</c>, and the hold applied to a zero-gap frame such as the root.</summary>
     internal const int DefaultGapMs = 40;
-    private const int MaxAdvanceSteps = 4096;
-
     internal KittyAnimation(object rootHandle) => Frames.Add(new KittyFrame(rootHandle, null, 0, 0));
 
     internal List<KittyFrame> Frames { get; } = new();
     internal KittyAnimationState State { get; private set; } = KittyAnimationState.Stopped;
-    /// <summary>Zero-based index of the frame on display.</summary>
+    /// <summary>Zero-based index of the frame the playhead is in; it may rest on a gapless frame the display skips.</summary>
     internal int Current { get; private set; }
-    /// <summary>Loops left after the current pass; negative is infinite.</summary>
+    /// <summary>Zero-based index of the frame whose pixels are shown: gapless frames are passed through, never displayed.</summary>
+    internal int Displayed { get; private set; }
+    /// <summary>Passes left after the current one; negative is infinite.</summary>
     internal int LoopsRemaining { get; private set; } = -1;
     internal long FrameStartMs { get; private set; }
+    /// <summary>Loading mode is parked on the last frame until another one is appended.</summary>
+    private bool _waiting;
 
     internal long ExtraCharge
     {
@@ -56,56 +58,100 @@ internal sealed class KittyAnimation
 
     private static long Hold(KittyFrame frame) => frame.GapMs < 0 ? 0 : frame.GapMs == 0 ? DefaultGapMs : frame.GapMs;
 
-    internal void SetCurrent(int index, long nowMs)
+    private long CycleMs()
+    {
+        long total = 0;
+        foreach (KittyFrame frame in Frames) total += Hold(frame);
+        return total;
+    }
+
+    private void MoveTo(int index)
     {
         Current = index;
+        if (Hold(Frames[index]) > 0) Displayed = index;
+    }
+
+    /// <summary><c>a=a,c=</c>: the client picks the frame, so it is shown even when its own gap is negative.</summary>
+    internal void SetCurrent(int index, long nowMs)
+    {
+        Current = Displayed = index;
         FrameStartMs = nowMs;
+        _waiting = false;
     }
 
     internal void Start(KittyAnimationState state, long nowMs)
     {
         if (State == KittyAnimationState.Stopped) FrameStartMs = nowMs;
         State = state;
+        if (state == KittyAnimationState.Running) _waiting = false;
     }
 
     internal void Stop()
     {
         State = KittyAnimationState.Stopped;
         LoopsRemaining = -1;
+        _waiting = false;
     }
 
-    /// <summary><c>v=</c>: 0 is ignored, 1 loops forever, n loops n-1 more times.</summary>
+    /// <summary><c>v=</c>: 0 is ignored, 1 loops forever, n plays the animation n-1 times in total.</summary>
     internal void SetLoops(uint v)
     {
         if (v == 0) return;
-        LoopsRemaining = v == 1 ? -1 : (int)Math.Min(v - 1, int.MaxValue);
+        LoopsRemaining = v == 1 ? -1 : (int)Math.Min(v - 2, int.MaxValue);
     }
 
     /// <summary>Moves the playhead to where <paramref name="nowMs"/> falls. True when the displayed frame changed.</summary>
     internal bool Advance(long nowMs)
     {
         if (State == KittyAnimationState.Stopped) return false;
-        int before = Current;
-        for (int steps = 0; ; steps++)
+        int before = Displayed;
+        if (_waiting)
+        {
+            // A frame arrived while parked: it is shown now and its gap counts from now, not from the old timeline.
+            if (Current + 1 >= Frames.Count) return false;
+            _waiting = false;
+            MoveTo(Current + 1);
+            FrameStartMs = nowMs;
+        }
+        if (CycleMs() == 0)
+        {
+            // Every frame is gapless: nothing can be shown for a time, so the playhead cannot move.
+            FrameStartMs = nowMs;
+            return false;
+        }
+        SkipWholeCycles(nowMs);
+        for (int steps = 0, limit = Frames.Count * 4 + 8; steps < limit; steps++)
         {
             long hold = Hold(Frames[Current]);
             if (hold > 0 && nowMs - FrameStartMs < hold) break;
-            if (steps >= MaxAdvanceSteps) { FrameStartMs = nowMs; break; }
             if (Current + 1 < Frames.Count)
             {
                 FrameStartMs += hold;
-                Current++;
+                MoveTo(Current + 1);
                 continue;
             }
             // Past the last frame.
-            if (State == KittyAnimationState.Loading) break; // waits for more frames
+            if (State == KittyAnimationState.Loading) { _waiting = true; break; }
             if (LoopsRemaining == 0) { Stop(); break; }
             if (LoopsRemaining > 0) LoopsRemaining--;
             FrameStartMs += hold;
-            Current = 0;
-            // A single skipped (gapless) frame loops forever without time passing; the step bound ends it.
+            MoveTo(0);
         }
-        return Current != before;
+        return Displayed != before;
+    }
+
+    /// <summary>
+    /// Whole cycles that elapsed since the current frame began leave the playhead where it is, so they are skipped in one step
+    /// (a view resumed after hours does not replay them). Finite playback consumes the passes it skips and finishes below.
+    /// </summary>
+    private void SkipWholeCycles(long nowMs)
+    {
+        if (State != KittyAnimationState.Running) return;
+        long cycle = CycleMs(), whole = (nowMs - FrameStartMs) / cycle;
+        if (whole <= 0) return;
+        if (LoopsRemaining >= 0) whole = Math.Min(whole, LoopsRemaining);
+        FrameStartMs += whole * cycle;
+        if (LoopsRemaining >= 0) LoopsRemaining -= (int)whole;
     }
 
     /// <summary>When the next frame change is due, or null when nothing is running.</summary>
@@ -114,7 +160,8 @@ internal sealed class KittyAnimation
         get
         {
             if (State == KittyAnimationState.Stopped) return null;
-            if (State == KittyAnimationState.Loading && Current + 1 >= Frames.Count) return null;
+            if (_waiting) return Current + 1 < Frames.Count ? FrameStartMs : null;
+            if (State == KittyAnimationState.Loading && Current + 1 >= Frames.Count && Hold(Frames[Current]) == 0) return null;
             return FrameStartMs + Math.Max(1, Hold(Frames[Current]));
         }
     }

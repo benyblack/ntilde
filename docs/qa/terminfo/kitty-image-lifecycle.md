@@ -81,11 +81,11 @@ unchanged.
 `c`, or over the frame being edited with `r`, alpha-blended or replaced with `X=1`. `z` is the gap
 in milliseconds: unspecified or 0 is 40 ms for a new frame, negative is gapless and never shown.
 `a=a` sets run state `s` (1 stop, 2 run and wait at the last frame, 3 run and loop), loop count `v`
-(0 ignored, 1 infinite, n loops n-1 more times, reset by stop), a frame's gap (`r` with `z`) and the
+(0 ignored, 1 infinite, n plays the animation n-1 times in total, reset by stop), a frame's gap (`r` with `z`) and the
 displayed frame (`c`). An animation starts stopped; the playhead only moves after `s=2` or `s=3`.
 Time comes from `TerminalBuffer.KittyAnimationClock` (a monotonic millisecond clock); the live
 `TerminalView` advances the buffer on each frame and arms one wake-up for the next change, only
-while an animation with a placement is running.
+while an animation with a placement is running; a retired view arms none. A clock that jumps far ahead skips whole cycles in one step instead of replaying them, a gapless frame is passed through and never shown (loading mode parked on one keeps the last visible frame), and loading mode resumes from the moment a new frame arrives.
 
 Deliberate bounds, each with its own negative reply: 64 frames per image including the root; a
 frame is charged at 8 bytes per pixel (decoded pixels plus the RGBA kept for later composition)

@@ -109,7 +109,8 @@ namespace Ntilde.Shell
         {
             long now = buffer.KittyAnimationClock();
             buffer.AdvanceKittyAnimations(now, out long? due, invalidate: false);
-            if (!schedule || due is not { } at) return;
+            // A retired view arms nothing, whatever a render it still receives finds running.
+            if (!schedule || _retired || due is not { } at) return;
             if (_kittyAnimationWake is not null && _kittyAnimationWakeDue > now && _kittyAnimationWakeDue <= at) return;
             _kittyAnimationWake?.Dispose();
             _kittyAnimationWakeDue = at;

@@ -101,4 +101,20 @@ public sealed class KittyAnimationRenderTests
         rig.View.InvalidateVisual();
         using (var frame = rig.Window.CaptureRenderedFrame()) Assert.NotNull(frame);
     }
+
+    [AvaloniaFact]
+    public void Retiring_the_view_cancels_the_wake_up_and_a_later_frame_cannot_arm_another()
+    {
+        using var rig = new Rig();
+        Build(rig);
+        rig.Send("a=a,i=1,s=3");
+        rig.View.InvalidateVisual();
+        using (var frame = rig.Window.CaptureRenderedFrame()) Assert.NotNull(frame);
+        Assert.True(rig.View.KittyAnimationWakeArmedForTest);
+        rig.View.Retire();
+        Assert.False(rig.View.KittyAnimationWakeArmedForTest);
+        rig.View.InvalidateVisual();
+        using (var frame = rig.Window.CaptureRenderedFrame()) Assert.NotNull(frame);
+        Assert.False(rig.View.KittyAnimationWakeArmedForTest);
+    }
 }

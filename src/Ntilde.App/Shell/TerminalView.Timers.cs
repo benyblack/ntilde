@@ -272,6 +272,7 @@ namespace Ntilde.Shell
             _autoScrollTimer?.Stop();
             _resizeThrottleTimer?.Stop();
             _metricsTimer.Stop();
+            CancelKittyAnimationWake();
 
             // And its glyph atlas and row pictures: the last draw operation still holding them disposes them (#644).
             _renderCaches.Release();
