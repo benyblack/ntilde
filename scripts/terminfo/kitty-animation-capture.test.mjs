@@ -6,7 +6,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { OwnedAnimationObserver } from './kitty-animation-capture.mjs';
 import { collectAnimation, animationWait } from './kitty-animation-collector.mjs';
-import { animationPlan, animationBoundScreen } from './kitty-animation.mjs';
+import { animationPlan, animationBoundScreen, animationPriorCap } from './kitty-animation.mjs';
+import { inputPriorCaptureCap } from './input-plan.mjs';
+import { imagePlan } from './static-images.mjs';
 import { animationCases, animationExpectedReplies, animationHoldMs } from './kitty-animation-cases.mjs';
 import { imageModeQueries, imageModeReplyHex, imageBackgroundReply } from './static-images.mjs';
 import { initialInputScreen, inputRunId, inputPaneId } from './fixtures/input-journal.mjs';
@@ -127,3 +129,14 @@ for (const [name, mutate] of [['missing requested envelope', value => delete val
         await assert.rejects(collectAnimation(f)); assert.equal(f.observer.actions.length, 0);
         assert.equal(f.observer.restored, false); assert.equal(existsSync(join(f.directory, 'animation-inputs')), false);
     }, { mutateCapture: mutate }));
+
+test('prior challenges from both earlier phases are admitted although they exceed the input cap alone; one more is refused', () => {
+    const priors = count => Array.from({ length: count }, (_, index) => `${40000 + index},${50000 + index}`);
+    const make = priorChallenges => new OwnedAnimationObserver({ output: tmpdir(), nonce: 'NTILDE_IMG_' + inputRunId, profileName: 'fixture',
+        expectedPaneId: inputPaneId, endpoint: () => 'private', rpc: async () => ({}), priorChallenges });
+    assert.equal(animationPriorCap, inputPriorCaptureCap + imagePlan.length + 1);
+    assert.ok(animationPriorCap > inputPriorCaptureCap + imagePlan.length - 1);
+    assert.doesNotThrow(() => make(priors(inputPriorCaptureCap + imagePlan.length + 1)));
+    assert.throws(() => make(priors(animationPriorCap + 1)));
+    assert.ok(priors(inputPriorCaptureCap + imagePlan.length + 1).length > inputPriorCaptureCap, 'the old input-only cap would have refused this');
+});

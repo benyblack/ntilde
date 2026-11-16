@@ -5,7 +5,7 @@ import { inputPriorCaptureCap } from './input-plan.mjs';
 import { animationCases, animationCommand, animationExpectedReplies, animationSuiteId, animationAnchor, animationCellEnvelope, animationHoldMs } from './kitty-animation-cases.mjs';
 import { animationFrameInput, animationFrameIds } from './kitty-animation-inputs.mjs';
 import { inspectAnimationPixels, evaluateAnimationTiming } from './kitty-animation-oracle.mjs';
-import { checkImages, imageSetup, imageRestore, imagePosition, imageBoundScreen, pristineImageBaseline, imageRawReplies, stableImageContext,
+import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, pristineImageBaseline, imageRawReplies, stableImageContext,
     validateImageCapture, validateImageOwnership } from './static-images.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
 
@@ -15,6 +15,8 @@ export const animationPlan = Object.freeze([
         { kind: 'restore', caseId: item.id }]), { kind: 'finish' },
 ].map(Object.freeze));
 export const animationActionCount = animationPlan.length;
+/** The input phase's challenge pairs plus the static-image suite's (one per capture) that this suite must also avoid. */
+export const animationPriorCap = inputPriorCaptureCap + imagePlan.length + 1;
 export const animationPlannedStages = animationCases.reduce((total, item) => total + item.stages.length, 0);
 export const animationPixelPrefix = 'animation-pixels';
 const framePixelFile = (index, side) => `${animationPixelPrefix}/frame-${String(index).padStart(3, '0')}-${side}.png`;
@@ -72,7 +74,7 @@ export const animationSpanOf = frame => {
 
 export function buildAnimationReport(frames, actions, seal, runId, output, priorChallenges = []) {
     checkImages(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === animationActionCount + 1 && actions?.length === animationActionCount
-        && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap && new Set(priorChallenges).size === priorChallenges.length);
+        && Array.isArray(priorChallenges) && priorChallenges.length <= animationPriorCap && new Set(priorChallenges).size === priorChallenges.length);
     const builder = new AnimationReport(frames, actions, runId, output, priorChallenges);
     frames.forEach((frame, index) => builder.processFrame(frame, index));
     builder.checkSeal(seal);

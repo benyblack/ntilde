@@ -2,9 +2,8 @@ import { createHash, randomInt } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { rawInputCapture } from './input-bytes.mjs';
-import { inputPriorCaptureCap } from './input-plan.mjs';
 import { imageModeQueries, imageRestore, checkImages } from './static-images.mjs';
-import { animationPlan } from './kitty-animation.mjs';
+import { animationPlan, animationPriorCap } from './kitty-animation.mjs';
 import { animationCases } from './kitty-animation-cases.mjs';
 
 const write = (output, bytes) => new Promise((resolve, reject) => {
@@ -42,7 +41,7 @@ export async function collectAnimation({ config, owner, fence, input = process.s
         if (['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)) return { status: 'unavailable', reason: error.code };
         throw error;
     }
-    checkImages(Array.isArray(initial.priorChallenges) && initial.priorChallenges.length <= inputPriorCaptureCap && typeof initial.screen?.cursorVisible === 'boolean');
+    checkImages(Array.isArray(initial.priorChallenges) && initial.priorChallenges.length <= animationPriorCap && typeof initial.screen?.cursorVisible === 'boolean');
     const prior = new Set(initial.priorChallenges);
     const capture = rawInputCapture(input, output, 4500, used => {
         for (let attempt = 0; attempt < 8; attempt++) {

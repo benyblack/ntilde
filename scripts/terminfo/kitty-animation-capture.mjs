@@ -2,16 +2,15 @@ import { randomInt } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest } from './agent-observer.mjs';
-import { inputPriorCaptureCap } from './input-plan.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
 import { animationCases } from './kitty-animation-cases.mjs';
 import { checkImages, imageRawReplies, validateImageCapture, stableImageContext, pristineImageBaseline, validateImageOwnership } from './static-images.mjs';
-import { animationPlan, animationAction, animationReply, animationBoundScreen, animationInputs, animationPixelPrefix, buildAnimationReport, imageCaptureKind } from './kitty-animation.mjs';
+import { animationPlan, animationPriorCap, animationAction, animationReply, animationBoundScreen, animationInputs, animationPixelPrefix, buildAnimationReport, imageCaptureKind } from './kitty-animation.mjs';
 
 /** No new action surface: the worker emits bytes only after each parent ownership admission. */
 export class OwnedAnimationObserver {
     constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, now = Date.now, ...options }) {
-        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap);
+        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= animationPriorCap);
         this.output = output; this.runId = options.nonce.slice(11); this.priorChallenges = [...priorChallenges]; this.now = now;
         this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.frames = []; this.actions = []; this.states = new Map();
         this.next = 0; this.phase = 'start'; this.totalPixels = 0;
