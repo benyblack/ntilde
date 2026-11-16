@@ -3722,12 +3722,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeQueries(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
-                const result = await observeImageRequest(request, queryTimeout, owner, worker);
-                return { ok: true, ownerPid: app.pid, ...result };
-            }
-            if (/^kan-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
-                const result = await observeImageRequest(request, queryTimeout, owner, worker, observeAnimation);
+            if (/^(?:images|kan)-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
+                const result = await observeImageRequest(request, queryTimeout, owner, worker, request.kind.startsWith('kan-') ? observeAnimation : observeImages);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
             if (untranslatedCellKind(request.kind)
