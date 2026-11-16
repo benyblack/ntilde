@@ -3402,7 +3402,7 @@
     },
     {
       "suite": "extensions-truecolor",
-      "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+      "suiteId": "ntilde-owned-extensions-truecolor-projection-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
       "publication": "2026-11-16-extensions-truecolor/",
@@ -3413,8 +3413,8 @@
       ],
       "evidence": {
         "files": 3,
-        "bytes": 222798,
-        "sha256": "041647c03048b0ed63c51a4389ff2b384256102584e046ff7170e1d2d5959c7a"
+        "bytes": 222868,
+        "sha256": "1df2c158a628ad459113a75fd04a5df0889bae02739e46f6246cc7deb7ea6f01"
       },
       "receipt": {
         "schemaVersion": 66,
@@ -3467,7 +3467,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/extensions-truecolor-publication.test.mjs",
-        "testSha256": "182aecfcaea0180096e3c3381f32329e20442719862806bf60b83f3ab6bb9d34"
+        "testSha256": "a7383b756e5957fa167f0e32b873fb33bab19093511dadfbc191bab7e6d07ce5"
       }
     }
   ],

@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
-  "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+  "suiteId": "ntilde-owned-extensions-truecolor-projection-v1",
+  "sourceSuiteId": "ntilde-owned-sgr-truecolor-graded-v1",
   "contractsVersion": 1,
   "runId": "55f0ba462cd3cc6fbc315a0e5fad5126",
   "adapter": {

@@ -471,3 +471,11 @@ test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and 
     assert.equal(row(stored, 'device.env-term') ?? null, null);
     assert.deepEqual(row(stored, 'extensions.osc1-icon').claims.map(claim => claim.suite), ['osc-title']);
 });
+
+
+test('extensions.truecolor projection has its own suite identity and cites its carrying receipt', () => {
+    const suite = committed().suites.find(item => item.suite === 'extensions-truecolor');
+    assert.equal(suite.suiteId, 'ntilde-owned-extensions-truecolor-projection-v1');
+    assert.equal(suite.receipt.suiteEvidence.suiteId, 'ntilde-owned-sgr-truecolor-graded-v1');
+    assert.equal(suite.receipt.runId, suite.run.ownedRunId);
+});

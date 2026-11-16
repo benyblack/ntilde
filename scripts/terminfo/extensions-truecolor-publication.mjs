@@ -8,7 +8,8 @@ import { gunzipSync } from 'node:zlib';
 import { buildSgrTruecolorGradingReport } from './sgr-truecolor-grading.mjs';
 
 export const sourcePublication = '2026-11-15-kitty-color-control';
-export const extensionTruecolorSuiteId = 'ntilde-owned-sgr-truecolor-graded-v1';
+export const extensionTruecolorSuiteId = 'ntilde-owned-extensions-truecolor-projection-v1';
+export const extensionTruecolorCarrierSuiteId = 'ntilde-owned-sgr-truecolor-graded-v1';
 export const extensionTruecolorVersion = 1;
 export const extensionTruecolorIds = Object.freeze(['extensions.truecolor']);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -56,7 +57,7 @@ export function extensionTruecolorPublication(dir, source) {
     const frames = read(dir, 'sgtc-snapshots.jsonl').toString('utf8').trim().split('\n').map(JSON.parse);
     const binding = receipt.sgrTruecolorEvidence;
     check(source.ownedRunId === context.runId && binding?.runId === context.runId && retained.runId === context.runId, 'run identity mismatch');
-    check(binding.suiteId === extensionTruecolorSuiteId && binding.contractsVersion === 1 && receipt.fixtureRemoved === true, 'receipt binding or cleanup missing');
+    check(binding.suiteId === extensionTruecolorCarrierSuiteId && binding.contractsVersion === 1 && receipt.fixtureRemoved === true, 'receipt binding or cleanup missing');
     check(binding.sha256 === sha(read(dir, 'sgtc-observations.json')) && binding.runSha256 === sha(read(dir, 'sgtc-run.json')), 'receipt evidence differs');
     check(binding.adapterBundleSha256 === retained.adapter.bundleSha256 && sha(read(dir, 'collector-sgtc.mjs')) === binding.adapterBundleSha256, 'truecolor adapter differs');
     check(sha(read(dir, 'collector-sgrgb.mjs')) === context.sgrRgbBundleSha256 && receipt.sgrRgbEvidence.adapterBundleSha256 === context.sgrRgbBundleSha256, 'source adapter differs');
@@ -72,7 +73,7 @@ export function extensionTruecolorPublication(dir, source) {
         pinnedFeeds: item.pinnedFeeds, pinned, contractResult: item.contractResult, observed: item.observed, colorBinding: item.colorBinding,
         ...(pv === effect ? {} : { divergence: { kind: 'pinned-differs-from-effect', pinnedOutcome: pv, contractOutcome: effect } }),
         conclusion: { ...item.conclusion, grading: 'retrospective-pinned-callback-plus-existing-effect-v1' } };
-    const report = { schemaVersion: 1, suiteId: extensionTruecolorSuiteId, contractsVersion: 1, runId: context.runId, adapter: retained.adapter,
+    const report = { schemaVersion: 1, suiteId: extensionTruecolorSuiteId, sourceSuiteId: extensionTruecolorCarrierSuiteId, contractsVersion: 1, runId: context.runId, adapter: retained.adapter,
         scope: 'Retrospective exact pinned extensions.truecolor termless replay over the retained foreground fixture and its journaled stored and App-resolved cells. The existing foreground effect contract and receipt are reused; no fresh measurement, stock grade, rendered appearance, or other platform is claimed.', cases: [result] };
     const summary = { schemaVersion: 1, measuredAt: source.measuredAt, ownedRunId: context.runId, appRevision: source.appRevision, scriptsRevision: source.scriptsRevision,
         source: { publication: `docs/qa/terminfo/${sourcePublication}/`, summarySha256: source.summarySha256, archiveSha256: source.archiveSha256,

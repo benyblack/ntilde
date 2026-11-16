@@ -34,6 +34,8 @@ test('retained complete receipt and projected publication independently rederive
     const projection = extensionTruecolorPublication(root, source());
     for (const name of ['summary', 'report']) assert.deepEqual(projection[name], json(destination, `${name}.json`));
     const item = projection.report.cases[0];
+    assert.equal(projection.report.suiteId, 'ntilde-owned-extensions-truecolor-projection-v1');
+    assert.equal(projection.report.sourceSuiteId, original.sgrTruecolorEvidence.suiteId);
     assert.equal(item.caseId, 'extensions.truecolor');
     assert.equal(item.pinned.observation.outcome, 'supported');
     assert.equal(item.contractResult.outcome, 'supported');

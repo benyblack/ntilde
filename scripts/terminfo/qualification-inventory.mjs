@@ -77,7 +77,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('xsv', '2026-11-16-xterm-saved-modes', '2026-11-16-xterm-saved-modes-qualification.md'), module: 'xsv-contracts.mjs', exports: ['xsvSuiteId', 'xsvContractsVersion', 'xsvCaseIds'], test: 'xsv-publication.test.mjs' },
     { ...directory('kcl', '2026-11-15-kitty-color-control', '2026-11-15-kitty-color-control-qualification.md'), module: 'kcl-contracts.mjs', exports: ['kclSuiteId', 'kclContractsVersion', 'kclCaseIds'], test: 'kcl-publication.test.mjs' },
     // Retrospective replay over the already-receipted SGR-truecolor foreground fixture.
-    { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], test: 'extensions-truecolor-publication.test.mjs' },
+    { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], receiptSuiteId: 'ntilde-owned-sgr-truecolor-graded-v1', test: 'extensions-truecolor-publication.test.mjs' },
 ]);
 
 /**
@@ -307,7 +307,7 @@ async function suiteRecord(root, suite, options) {
             caseCount: ids.length,
             caseIds: contract.caseIds,
             evidence: evidenceDigest(root, suite),
-            receipt: receiptBinding(summary.receipt, report.suiteId ?? contract.suiteId),
+            receipt: receiptBinding(summary.receipt, suite.receiptSuiteId ?? report.suiteId ?? contract.suiteId),
             run: runIdentity(summary, report),
             stock: stockProvenance(summary),
             rederivation: rederivationOf(suite, options),

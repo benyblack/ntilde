@@ -7,7 +7,8 @@ measured `sgr.fg.truecolor` fixture. The existing independent stored/resolved
 foreground effect contract also returned **supported**. There is no verdict
 divergence. This publication replays a different pinned callback over retained
 observations; it is **not a new desktop measurement** and does not change the
-carrying run or its receipt.
+carrying run or its receipt. The projection has its own suite ID; the receipt
+still names the original SGR-truecolor carrying suite.
 
 The callback writes `C ESC[31m A ESC[34m B ESC[38;2;255;128;0m X
 ESC[38;2;17;97;201m Y`. In the measured default theme, A and B resolved to
