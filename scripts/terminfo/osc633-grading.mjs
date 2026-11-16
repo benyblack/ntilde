@@ -21,7 +21,8 @@ const targets = [
 // For expected screen and control state, the target marker has no visible text.
 // For the lifecycle effect use the independently specified A–D transitions;
 // OSC 133 supplies the same abstract transitions, never the observed result.
-const withoutTarget = feed => feed.replace(/\x1b\]633;[^\x07\x1b]*(?:\x07|\x1b\\)/g, '');
+const markerPattern = new RegExp(String.raw`\x1b\]633;[^\x07\x1b]*(?:\x07|\x1b\\)`, 'g');
+const withoutTarget = feed => feed.replace(markerPattern, '');
 const abstractTarget = feed => feed.replaceAll('\x1b]633;', '\x1b]133;');
 const stateFor = (feeds, fixture, transform) => simulateOsc133(feeds.map(transform), fixture);
 
@@ -78,8 +79,9 @@ function grade(index, experiments) {
             && item.reads[1].baseline.screenMatches && item.reads[1].baseline.preserved && !target(item.reads[0].baseline.observed, item.reads[1].baseline.observed) })),
     ];
     const required = [{ id: 'pinned-effect', held: effect[2].effect.passed && target(prior, observed) }];
-    return { outcome: valid.some(item => !item.held) ? 'inconclusive' : required.every(item => item.held) ? 'supported' : 'unsupported',
-        validity: valid, required, prior, observed };
+    let outcome = 'inconclusive';
+    if (valid.every(item => item.held)) outcome = required.every(item => item.held) ? 'supported' : 'unsupported';
+    return { outcome, validity: valid, required, prior, observed };
 }
 
 export function buildOsc633GradingReport(frames, run, runId, adapter, { replayModule = null } = {}) {

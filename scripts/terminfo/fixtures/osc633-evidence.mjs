@@ -1,49 +1,15 @@
 // Synthetic, fully valid OSC 633 evidence for portable tests. Every read is built from the suite's own lifecycle oracle (the model App agrees with it by
 // construction), so this fixture exercises the journal, report and receipt plumbing and the sensitivity of the graders to tampering, not the oracle itself:
 // neither branch is an App measurement.
-import { screenSnapshot, snapshotHash } from '../agent-observer.mjs';
 import { planFeeds } from '../graded-plan.mjs';
-import { copyMetadataStatus, copyPaneMetadata } from '../metadata-state.mjs';
-import { metadataProjection } from '../metadata.mjs';
 import { expectedOsc133Screen, osc133Fixture, osc133NonceRow, simulateOsc133 } from '../osc133-contracts.mjs';
 import { makeOsc633Experiments, osc633Pinned, osc633Prefix, replayOsc633Pinned } from '../osc633-contracts.mjs';
-import { osc633CaseIds } from '../osc633-grading-collector.mjs';
-import { osc633AdapterId } from '../osc633-grading-collector.mjs';
-import { colEditCols, colEditRows, paletteBinding, syntheticColEditScreen } from './col-edit-evidence.mjs';
-
-export const osc133PaneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
+import { osc633AdapterId, osc633CaseIds } from '../osc633-grading-collector.mjs';
+import { paletteBinding } from './col-edit-evidence.mjs';
+import { blankScreen, frameOf, withOverride } from './osc133-evidence.mjs';
+export { osc133PaneId } from './osc133-evidence.mjs';
 const barrier = '\x1b[?1;2c';
-const rows = colEditRows, cols = colEditCols;
-
-/** A valid pristine initial main screen with the given theme binding, in the shape the metadata observer retains (cell details, cursor mode, buffer state, colors). */
-function blankScreen(binding) {
-    const { attributeRuns, ...screen } = syntheticColEditScreen([], [0, 0], undefined, [], binding);
-    return screenSnapshot({ ...screen, cursorMode: { style: 2, blink: true, isDefault: true } }, false, true, true, true, true, true);
-}
-const withOverride = binding => ({ ...binding, paletteOverrideIndices: [7] });
-
-const mark = (value, generation) => value === null ? null : { row: value[0], col: value[1], absoluteRow: value[0], generation, alternateScreen: false };
-
-function wire(runId, screen, state, { initial = false } = {}) {
-    const fixture = osc133Fixture(runId), title = initial ? null : fixture.title;
-    return { paneId: osc133PaneId, oscTitle: title, workingDirectory: initial ? null : fixture.cwd, displayTitle: initial ? 'Owned fixture' : fixture.title,
-        buffer: { rows: screen.rows, cols: screen.cols, cursorRow: screen.cursorRow, cursorCol: screen.cursorCol, alternateScreen: false, scrollbackLines: 0,
-            historyGeneration: 4, rowsEvicted: 0, acceptingCommandInput: state.accepting, commandStart: mark(state.commandStart, 4), outputStart: mark(state.outputStart, 4), links: [] },
-        presentation: { windowActive: false, windowVisible: true, paneActive: true, focusMode: false, notificationsEnabled: true, progressEnabled: true,
-            tabTextVisible: true, tabText: title ?? 'Owned fixture', progressOwner: null, progressKind: null, progressPercent: null, progressBar: null,
-            toastVisible: false, toastTitle: '', toastMessage: '' } };
-}
-function statusOf(state, { initial = false } = {}) {
-    return { paneId: osc133PaneId, status: state.status === 'running' ? 'running' : 'awaitingInput', confidence: initial ? 'heuristic' : 'precise', currentCommand: state.command,
-        exitCode: null, statusSinceMs: 100, lastOutputAtMs: 101, isStalled: false, stallThresholdSeconds: 30, idleThresholdSeconds: 60 };
-}
-
-/** A paired frame of `screen` and the oracle `state`. */
-function frameOf(runId, index, kind, screen, state, options = {}) {
-    const metadata = copyPaneMetadata(wire(runId, screen, state, options)), rawStatus = statusOf(state, options), status = copyMetadataStatus(rawStatus, osc133PaneId);
-    const before = { screen, metadata, status, rawStatus }, sha256 = snapshotHash(metadataProjection(before));
-    return { index, kind, paneId: osc133PaneId, barrier: index === 0 ? null : barrier, before, sha256, after: structuredClone(before), afterSha256: sha256, caseId: null, stageId: null };
-}
+const markerPattern = new RegExp(String.raw`\x1b\]633;[^\x07\x1b]*(?:\x07|\x1b\\)`, 'g');
 
 /** A complete, valid synthetic run: frames, worker run log and adapter facts. `adjust(experimentId, label, state)` may change the model App's answer to one read. */
 export function syntheticOsc633Evidence({ runId = 'a'.repeat(32), adjust = null, supported = false, bundleSha256 = 'f'.repeat(64) } = {}) {
@@ -59,7 +25,7 @@ export function syntheticOsc633Evidence({ runId = 'a'.repeat(32), adjust = null,
         const feeds = [], reads = [];
         for (const step of contract.plan) {
             if (step.feed !== undefined) { feeds.push(step.feed); continue; }
-            const state = structuredClone(simulateOsc133(feeds.map(feed => supported ? feed.replaceAll('\x1b]633;', '\x1b]133;') : feed.replace(/\x1b\]633;[^\x07\x1b]*(?:\x07|\x1b\\)/g, '')), fixture));
+            const state = structuredClone(simulateOsc133(feeds.map(feed => supported ? feed.replaceAll('\x1b]633;', '\x1b]133;') : feed.replace(markerPattern, '')), fixture));
             adjust?.(contract.caseId, step.read, state);
             const screen = expectedOsc133Screen(bound, state);
             frames.push(frameOf(runId, frames.length, `${osc633Prefix}-read`, screen, state));

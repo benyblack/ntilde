@@ -239,7 +239,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'vs633', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'xcs', 'xss', 'xsv', 'kcl', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'xcs', 'xss', 'xsv', 'kcl', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -2654,6 +2654,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeJson(join(output, 'vs633-unavailable.json'), { schemaVersion: 1, runId, suiteId: osc633SuiteId, status: 'unavailable', reason, plannedCases: 4 });
             osc633State.unavailable = true;
         };
+        const refuseOsc633StartWhenUnavailable = () => {
+            const { rows, cols } = cellObserver.baseline;
+            const reason = metadataState?.unavailable?.reason ?? savedState?.unavailable?.reason
+                ?? (rows < osc133Minimum.rows || cols < osc133Minimum.cols ? 'metadataGeometryUnavailable' : null);
+            if (reason === null) return;
+            if (!['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC 633 unavailability reason.');
+            recordOsc633Unavailable(reason);
+            throw Object.assign(new Error('OSC 633 fixture is unavailable.'), { code: reason });
+        };
         /** The OSC 633 suite reuses the paired metadata/status observer under its own prefix and plan; it runs after the left/right-margin suite. */
         const observeOsc633 = async (request, budget) => {
             if (!osc133State?.unavailable && !osc133State?.observer?.restored) throw new Error('OSC 133 suite must restore before OSC 633 observations.');
@@ -2662,16 +2671,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     prefix: osc633Prefix, includeResolvedColors: true, planOf: osc633ObserverPlan, matchesBaseline: matchesOsc133Baseline }) };
             const state = osc633State;
             if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC 633 fixture ownership or availability changed.');
-            if (request.kind === `${osc633Prefix}-start`) {
-                const { rows, cols } = cellObserver.baseline;
-                const reason = metadataState?.unavailable?.reason ?? savedState?.unavailable?.reason
-                    ?? (rows < osc133Minimum.rows || cols < osc133Minimum.cols ? 'metadataGeometryUnavailable' : null);
-                if (reason !== null && !['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC 633 unavailability reason.');
-                if (reason !== null) {
-                    recordOsc633Unavailable(reason);
-                    throw Object.assign(new Error('OSC 633 fixture is unavailable.'), { code: reason });
-                }
-            }
+            if (request.kind === `${osc633Prefix}-start`) refuseOsc633StartWhenUnavailable();
             try {
                 const result = await state.observer.handle(request, budget);
                 if (request.kind === `${osc633Prefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {

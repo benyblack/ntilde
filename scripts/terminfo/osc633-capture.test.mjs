@@ -51,7 +51,7 @@ test('unbound, duplicate or reordered requests refuse before transport', async (
 
 test('a read request that names a stage of the frozen metadata plan is refused: this plan has none', async () => {
     const f = fixture(); await f.call(f.frames[0]); f.set(f.frames[1]); await f.call(f.frames[1]); f.set(f.frames[2]);
-    await assert.rejects(f.observer.handle({ kind: 'vs633-read', barrier: f.frames[2].barrier, caseId: 'metadata.title.osc2', stageId: 'control' }, () => 1000));
+    await assert.rejects(f.observer.handle({ kind: 'vsc-read', barrier: f.frames[2].barrier, caseId: 'metadata.title.osc2', stageId: 'control' }, () => 1000));
     assert.equal(f.observer.frames.length, 2);
 });
 
@@ -92,12 +92,12 @@ for (const [name, inject] of [
 test('only an initial preflight refusal under this suite\'s own prefix is an optional unavailable marker', () => {
     for (const code of ['paneMetadataUnavailable', 'screenDetailsUnavailable', 'metadataGeometryUnavailable']) {
         const observer = { frames: [], prefix: osc633Prefix };
-        assert.equal(initialMetadataRefusal({ kind: 'vs633-start' }, Object.assign(new Error('preflight'), { code }), observer), true, code);
+        assert.equal(initialMetadataRefusal({ kind: 'vsc-start' }, Object.assign(new Error('preflight'), { code }), observer), true, code);
         assert.equal(initialMetadataRefusal({ kind: 'metadata-start' }, Object.assign(new Error('preflight'), { code }), observer), false, 'another suite\'s kind never qualifies');
-        assert.equal(initialMetadataRefusal({ kind: 'vs633-read' }, Object.assign(new Error('preflight'), { code }), observer), false);
-        assert.equal(initialMetadataRefusal({ kind: 'vs633-start' }, Object.assign(new Error('preflight'), { code }), { frames: [{}], prefix: osc633Prefix }), false);
+        assert.equal(initialMetadataRefusal({ kind: 'vsc-read' }, Object.assign(new Error('preflight'), { code }), observer), false);
+        assert.equal(initialMetadataRefusal({ kind: 'vsc-start' }, Object.assign(new Error('preflight'), { code }), { frames: [{}], prefix: osc633Prefix }), false);
     }
     assert.equal(initialMetadataRefusal({ kind: 'metadata-start' }, Object.assign(new Error('preflight'), { code: 'paneMetadataUnavailable' }), { frames: [] }), true, 'the frozen suite keeps its default prefix');
-    const partial = metadataFailure({ kind: 'vs633-read' }, Object.assign(new Error('x'), { code: 'paneMetadataUnavailable' }), { frames: [{}], prefix: osc633Prefix });
+    const partial = metadataFailure({ kind: 'vsc-read' }, Object.assign(new Error('x'), { code: 'paneMetadataUnavailable' }), { frames: [{}], prefix: osc633Prefix });
     assert.equal(partial.code, undefined, 'a partial failure never keeps a code a worker treats as a clean skip');
 });

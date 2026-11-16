@@ -11,7 +11,7 @@ const mark = (code, marker) => osc(`${code};${marker}`);
 const prompt = 'ntilde$ ';
 const read = label => ({ read: label });
 const target = ['A', 'B', 'C', 'D;0'];
-export const osc633Prefix = 'vs633';
+export const osc633Prefix = 'vsc';
 export const osc633SuiteId = 'ntilde-owned-osc633-graded-v1';
 export const osc633ContractsVersion = 1;
 export const osc633EffectContractId = 'ntilde-osc633-shell-lifecycle-effect-v1';
@@ -37,10 +37,10 @@ export function makeOsc633Experiments(runId) {
             plan: [{ feed: fixture.stage }, ...steps.map(step => typeof step === 'string' ? { feed: step } : step)] });
         const pinned = osc633Pinned[id].terminalWrites;
         const setup = prior(index);
-        experiments.push(name('stock', [...pinned, read('pinned')]));
-        experiments.push(name('effect', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', 'X', read('ordinary'), ...pinned, read('pinned')]));
-        experiments.push(name('positive-control', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(133, target[index])}X`, read('positive')]));
-        experiments.push(name('st-terminator', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `\x1b]633;${target[index]}\x1b\\X`, read('post')]));
+        experiments.push(name('stock', [...pinned, read('pinned')]),
+            name('effect', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', 'X', read('ordinary'), ...pinned, read('pinned')]),
+            name('positive-control', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(133, target[index])}X`, read('positive')]),
+            name('st-terminator', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `\x1b]633;${target[index]}\x1b\\X`, read('post')]));
         // A and D may both return a running session to a prompt, and A may
         // clear the anchors too. Neither is a valid gate for the other.
         for (const [gateIndex, gate] of target.entries()) {
@@ -49,9 +49,9 @@ export function makeOsc633Experiments(runId) {
         }
         if (index === 0) experiments.push(name('shared-d', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(633, 'D;0')}X`, read('post')]));
         if (index === 3) {
-            experiments.push(name('shared-a', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(633, 'A')}X`, read('post')]));
-            experiments.push(name('no-exit-code', [...setup, read('prior'), mark(633, 'D'), read('post')]));
-            experiments.push(name('nonzero-exit-code', [...setup, read('prior'), mark(633, 'D;7'), read('post')]));
+            experiments.push(name('shared-a', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(633, 'A')}X`, read('post')]),
+                name('no-exit-code', [...setup, read('prior'), mark(633, 'D'), read('post')]),
+                name('nonzero-exit-code', [...setup, read('prior'), mark(633, 'D;7'), read('post')]));
         }
     }
     return experiments;
@@ -62,16 +62,16 @@ export function osc633TermlessContext(caseId, screen) {
     if (!pinned) throw new Error('Unknown OSC 633 case.');
     let fed = 0;
     return { get fedCount() { return fed; },
-        feed: text => { if (fed !== 0 || text !== pinned.termlessFeeds[0]) throw new Error(`Pinned ${caseId} feed differs.`); fed++; },
-        getCell: (row, col) => { if (fed !== 1 || row !== 0 || col !== 0) throw new Error(`Pinned ${caseId} read differs.`); return { char: screen.lines[0]?.[0] ?? '' }; } };
+        feed: text => { if (fed !== 0 || text !== pinned.termlessFeeds[0]) { throw new Error(`Pinned ${caseId} feed differs.`); } fed++; },
+        getCell: (row, col) => { if (fed !== 1 || row !== 0 || col !== 0) { throw new Error(`Pinned ${caseId} read differs.`); } return { char: screen.lines[0]?.[0] ?? '' }; } };
 }
 export function osc633TerminalContext(caseId, screen) {
     const pinned = osc633Pinned[caseId];
     if (!pinned) throw new Error('Unknown OSC 633 case.');
     let written = 0;
     return { get writtenCount() { return written; },
-        write: text => { if (text !== pinned.terminalWrites[written]) throw new Error(`Pinned ${caseId} write differs.`); written++; },
-        queryCursorPosition: () => { if (written !== 2) throw new Error(`Pinned ${caseId} queried early.`); return Promise.resolve({ row: screen.cursorRow + 1, col: screen.cursorCol + 1 }); } };
+        write: text => { if (text !== pinned.terminalWrites[written]) { throw new Error(`Pinned ${caseId} write differs.`); } written++; },
+        queryCursorPosition: () => { if (written !== 2) { throw new Error(`Pinned ${caseId} queried early.`); } return Promise.resolve({ row: screen.cursorRow + 1, col: screen.cursorCol + 1 }); } };
 }
 export function replayOsc633Pinned(caseId, screen) {
     if (!osc633Pinned[caseId]) throw new Error('Unknown OSC 633 case.');
