@@ -18,10 +18,14 @@ schema 11/fixed 74-source policy v4. Its packet/state/ownership contract is
 [the owned query model](terminfo/owned-query-model.md). The preceding calibrated
 static-image suite and frozen v10 publication retain their original 67-source
 scope; published v9 input and v8 observations likewise keep their original bytes.
-The newest graded layer is the [controlled ASCII resize/reflow suite](terminfo/ascii-reflow.md)
-(receipt schema 58/source policy v52, on top of the OSC 9 layer's schema 57/policy v51), which qualifies `extensions.reflow` through a
-separately identified effect contract and records a deterministic divergence of
-the live pane-resize path; the pinned criterion stays inconclusive by design.
+The [controlled ASCII resize/reflow suite](terminfo/ascii-reflow.md) has a
+[fixed-App follow-up](terminfo/2026-11-16-ascii-reflow-fix-qualification.md) for
+`extensions.reflow`: full-row erasure now retires stale soft-wrap identity, and
+the separately identified effect contract matches the independent ASCII model
+(44 displaced history rows rather than 38). The historical unsupported result
+remains frozen; the pinned and stock verdicts remain inconclusive. The new
+bounded retest and its separately rederived notification predecessor are labeled
+combined evidence, with no Unicode, mux/remote or other-platform claim.
 
 
 [terminfo.dev](https://github.com/beorn/terminfo.dev) collects external terminal
