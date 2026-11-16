@@ -366,6 +366,7 @@
     "scripts/terminfo/static-images-cases.test.mjs": 0.1,
     "scripts/terminfo/static-images-inputs.test.mjs": 0.1,
     "scripts/terminfo/static-images-oracle.test.mjs": 0.5,
+    "scripts/terminfo/static-images-publication.test.mjs": 150.0,
     "scripts/terminfo/static-images-receipt.test.mjs": 376.3,
     "scripts/terminfo/static-images.test.mjs": 30.5,
     "scripts/terminfo/terminal-fence.test.mjs": 0.1,

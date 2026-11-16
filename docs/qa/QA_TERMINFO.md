@@ -859,6 +859,12 @@ binds all 15 suites and 67 sources; both older failed/uncalibrated preparation a
 remain separate. Current raw stock 84/0/171 stays incomplete, and historical grades
 are unchanged. This publishes evidence, not a renderer fix or full #770 completion.
 
+The [2026-11-16 static-image qualification](terminfo/2026-11-16-static-images-qualification.md)
+(#987) qualifies `extensions.sixel` (effect unsupported: native-size defect #851) and
+`extensions.iterm2-images` (effect supported) from a fresh scoped run of that same suite on current
+main, with both pinned callbacks replayed and kept inconclusive. It adds no measured source, so it
+needs no source-policy or receipt bump; stock grades and Core scores do not change.
+
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
 90 state captures, with all 16 suite bindings and a fixed 74-file source graph.

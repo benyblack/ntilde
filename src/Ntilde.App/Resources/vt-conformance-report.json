@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "ba789991e731ba1f65931c813b2d399600f56beb9bb9bb9d5b930df57f82940b",
+  "matrixSha256": "30d5616f85316e260e0d3bada90b6e8900f25212cfb6433381bb2547fc1ce58e",
   "summary": {
     "totalRows": 134,
     "supportedCount": 65,
@@ -3598,7 +3598,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
-      "knownDeviations": "Requires \u0060inline=1\u0060, in the single \u0060File=args:payload\u0060 form or the multipart form (\u0060MultipartFile=args\u0060, \u0060FilePart=\u0060 chunks, \u0060FileEnd\u0060) that \u0060imgcat\u0060 sends by default; no \u0060name=\u0060/\u0060size=\u0060 enforcement. The multipart payload is capped at the single-sequence limit and placed at the cursor at \u0060FileEnd\u0060; output between parts leaves the transfer pending, a new \u0060MultipartFile\u0060 drops an unfinished one, RIS ends it, and complete snapshots carry it, so a client attaching between parts places the same image. Persistent sessions assemble the multipart form only under image policy 2; policy-1 sessions (and peers from before it) ignore it on every side. Image pixels and \u0060Npx\u0060 sizes map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, not iTerm2\u0027s points). Default/explicit aspect preservation and explicit-zero stretch have real parser/Skia/offscreen pixel controls across wide/tall sources and DPI, including clipping, history and snapshot-pinned clear. Legacy/SIXEL policy and complete snapshots carry retained iTerm2 images where the parser retains image sources, and persistent sessions spawned with the image policy show them (#838). Native-pixel/default sizing, other OSC 1337 variants (file downloads, \u0060inline=0\u0060) and owned runtime image pixels remain unqualified. See \u0060docs/qa/terminfo/iterm-aspect-fit.md\u0060. Placement follows the image header (\u0060ImageHeaderProbe\u0060), never the decoder: an undecodable body with a valid header keeps its cells, and a format the probe cannot size is ignored (#838).",
+      "knownDeviations": "Requires \u0060inline=1\u0060, in the single \u0060File=args:payload\u0060 form or the multipart form (\u0060MultipartFile=args\u0060, \u0060FilePart=\u0060 chunks, \u0060FileEnd\u0060) that \u0060imgcat\u0060 sends by default; no \u0060name=\u0060/\u0060size=\u0060 enforcement. The multipart payload is capped at the single-sequence limit and placed at the cursor at \u0060FileEnd\u0060; output between parts leaves the transfer pending, a new \u0060MultipartFile\u0060 drops an unfinished one, RIS ends it, and complete snapshots carry it, so a client attaching between parts places the same image. Persistent sessions assemble the multipart form only under image policy 2; policy-1 sessions (and peers from before it) ignore it on every side. Image pixels and \u0060Npx\u0060 sizes map to cells in the \u0060CSI 16 t\u0060 unit (device pixels on a scaled display, not iTerm2\u0027s points). Default/explicit aspect preservation and explicit-zero stretch have real parser/Skia/offscreen pixel controls across wide/tall sources and DPI, including clipping, history and snapshot-pinned clear. Legacy/SIXEL policy and complete snapshots carry retained iTerm2 images where the parser retains image sources, and persistent sessions spawned with the image policy show them (#838). Native-pixel/default sizing, other OSC 1337 variants (file downloads, \u0060inline=0\u0060) remain unqualified. Real-App owned pixel qualification of the single-shot PNG at a 4x2 cell request (\u0060extensions.iterm2-images\u0060: effect contract supported for explicit stretch and default aspect, pinned probe inconclusive by design): \u0060docs/qa/terminfo/2026-11-16-static-images-qualification.md\u0060. See \u0060docs/qa/terminfo/iterm-aspect-fit.md\u0060. Placement follows the image header (\u0060ImageHeaderProbe\u0060), never the decoder: an undecodable body with a valid header keeps its cells, and a format the probe cannot size is ignored (#838).",
       "sourceLine": 230
     },
     {
@@ -3750,7 +3750,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Decoder\u002BRenderer",
-      "knownDeviations": "",
+      "knownDeviations": "Real-App owned pixel measurement of \u0060extensions.sixel\u0060 (\u0060docs/qa/terminfo/2026-11-16-static-images-qualification.md\u0060): colours, order, anchor and surroundings are right, but the raster is stretched to its cell reservation instead of painted at native size, so the native-raster effect contract is **unsupported** (pinned probe inconclusive by design); tracked by #851.",
       "sourceLine": 248
     },
     {
