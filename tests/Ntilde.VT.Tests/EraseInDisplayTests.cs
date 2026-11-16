@@ -40,6 +40,31 @@ public class EraseInDisplayTests
     private static string ReadViewportRow(TerminalBuffer buffer, int viewportRow)
         => ReadAbsoluteRow(buffer, buffer.Scrollback.Count + viewportRow);
 
+    [Theory]
+    [InlineData("\x1b[2J")]
+    [InlineData("\x1b[2K")]
+    public void Full_row_erasure_retires_soft_wrap_identity_before_positioned_replacement(string erase)
+    {
+        var (buffer, parser) = CreateFilledTerminal();
+        int history = buffer.Scrollback.Count;
+        string oldHistory = ReadAbsoluteRow(buffer, 0);
+        parser.Process("\x1b[1;1H" + new string('x', 2 * Cols + 3));
+        Assert.True(buffer.ViewportRows[0].IsWrapped);
+        Assert.True(buffer.ViewportRows[1].IsWrapped);
+        long rowId = buffer.ViewportRows[0].Id;
+        parser.Process("\x1b[1;1H\x1b[1;4m" + erase);
+
+        Assert.False(buffer.ViewportRows[0].IsWrapped);
+        Assert.Equal(erase == "\x1b[2K", buffer.ViewportRows[1].IsWrapped);
+        Assert.Null(buffer.ViewportRows[0].WrappedColumns);
+        Assert.Equal(rowId, buffer.ViewportRows[0].Id); // Erasure remains in place for render-cache identity.
+        Assert.Equal((0, 0), (buffer.CursorRow, buffer.CursorCol));
+        Assert.True(buffer.IsBold);
+        Assert.True(buffer.IsUnderline);
+        Assert.Equal(history, buffer.Scrollback.Count);
+        Assert.Equal(oldHistory, ReadAbsoluteRow(buffer, 0));
+    }
+
     [Fact]
     public void Ed2_ErasesScreen_PreservesScrollback()
     {

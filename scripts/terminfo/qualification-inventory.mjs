@@ -64,8 +64,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('xtgettcap', '2026-11-12-xtgettcap', '2026-11-12-xtgettcap-qualification.md'), module: 'xtgettcap-contracts.mjs', exports: ['xtgettcapSuiteId', 'xtgettcapContractsVersion', 'xtgettcapCaseIds'], test: 'xtgettcap-publication.test.mjs' },
     { ...directory('modify-other-keys', '2026-11-12-modify-other-keys', '2026-11-12-modify-other-keys-qualification.md'), module: 'modify-other-keys-contracts.mjs', exports: ['modifyOtherKeysGradedSuiteId', 'modifyOtherKeysContractsVersion', 'modifyOtherKeysCaseIds'], test: 'modify-other-keys-publication.test.mjs' },
     { ...directory('osc9', '2026-11-13-osc9', '2026-11-13-osc9-qualification.md'), module: 'osc9-contracts.mjs', exports: ['osc9SuiteId', 'osc9ContractsVersion', 'osc9CaseIds'], test: 'osc9-publication.test.mjs' },
-    // The one benchmark id whose retained effect verdict is unsupported (the pinned verdict is inconclusive by design); admitted like any other suite.
-    { ...directory('ascii-reflow', '2026-11-12-ascii-reflow', '2026-11-12-ascii-reflow-qualification.md'), module: 'ascii-reflow-contracts.mjs', exports: ['asciiReflowSuiteId', 'asciiReflowContractsVersion', 'asciiReflowCaseIds'], test: 'ascii-reflow-publication.test.mjs' },
+    // The current fixed-App reflow retest; the historical unsupported publication remains frozen below.
+    { ...directory('ascii-reflow', '2026-11-16-ascii-reflow-fix', '2026-11-16-ascii-reflow-fix-qualification.md'), module: 'ascii-reflow-contracts.mjs', exports: ['asciiReflowSuiteId', 'asciiReflowContractsVersion', 'asciiReflowCaseIds'], test: 'ascii-reflow-fix-publication.test.mjs' },
     { ...directory('notify', '2026-11-14-notify', '2026-11-14-notify-qualification.md'), module: 'notify-contracts.mjs', exports: ['notifySuiteId', 'notifyContractsVersion', 'notifyCaseIds'], test: 'notify-publication.test.mjs' },
     { ...directory('selection-colors', '2026-11-12-selection-colors', '2026-11-12-selection-colors-qualification.md'), module: 'selection-colors-contracts.mjs', exports: ['selectionColorsSuiteId', 'selectionColorsContractsVersion', 'selectionColorsCaseIds'], test: 'selection-colors-publication.test.mjs' },
     { ...directory('devq', '2026-11-15-device-queries', '2026-11-15-device-queries-qualification.md'), module: 'devq-contracts.mjs', exports: ['devqSuiteId', 'devqContractsVersion', 'devqCaseIds'], test: 'devq-publication.test.mjs' },
@@ -79,9 +79,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('pxm', '2026-11-16-sgr-pixel-mouse', '2026-11-16-sgr-pixel-mouse-qualification.md'), module: 'pxm-contracts.mjs', exports: ['pxmGradedSuiteId', 'pxmContractsVersion', 'pxmCaseIds'], test: 'pxm-publication.test.mjs' },
     // Retrospective replay over the already-receipted SGR-truecolor foreground fixture.
     { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], receiptSuiteId: 'ntilde-owned-sgr-truecolor-graded-v1', test: 'extensions-truecolor-publication.test.mjs' },
-    { ...directory('osc633', '2026-11-16-osc633', '2026-11-16-osc633-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-publication.test.mjs' },
-    // The same four ids on an App that implements the markers. The earlier unsupported measurement stays retained, listed and rederived as a historical claim.
-    { ...directory('osc633-implementation', '2026-11-16-osc633-implementation', '2026-11-16-osc633-implementation-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-implementation-publication.test.mjs', supersedes: 'osc633' },
+    // The current OSC 633 remeasurement on the implementing App; the historical unsupported publication remains frozen below.
+    { ...directory('osc633', '2026-11-16-osc633-implementation', '2026-11-16-osc633-implementation-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-implementation-publication.test.mjs' },
 ]);
 
 /**
@@ -90,6 +89,8 @@ export const benchmarkSuites = Object.freeze([
  * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
  */
 export const nonInventoryPublicationTests = Object.freeze({
+    'osc633-publication.test.mjs': 'frozen historical unsupported OSC 633 result; the current implementing-App remeasurement is the active suite claim',
+    'ascii-reflow-publication.test.mjs': 'frozen historical unsupported reflow result; current fixed-App retest is the active suite claim',
     'modern-publication.test.mjs': 'frozen Modern requirement reassessment; preserves separate stock and owned semantic results without adding benchmark-suite claims',
     'image-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
     'input-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
@@ -314,7 +315,6 @@ async function suiteRecord(root, suite, options) {
             liveContractsVersion: contract.contractsVersion,
             publication: suite.layout === 'single' ? suite.file : `${suite.dir}/`,
             doc: suite.doc,
-            ...(suite.supersedes ? { supersedes: suite.supersedes } : {}),
             caseCount: ids.length,
             caseIds: contract.caseIds,
             evidence: evidenceDigest(root, suite),
@@ -343,21 +343,11 @@ const claimOf = (suite, report, item, rederivationStatus) => {
     };
 };
 
-/** A claim measured an earlier App that a later suite remeasured stays listed (and rederived) but does not decide the roll-up. When every
- * claim is superseded (its replacement is not qualified) the history decides again, so a failed replacement cannot hide it. */
-const decidingClaims = claims => {
-    const current = claims.filter(claim => !claim.supersededBy);
-    return current.length > 0 ? current : claims;
-};
-const withSupersession = (claim, entry) => (claim.supersededBy ? { ...entry, supersededBy: claim.supersededBy } : entry);
-
 const rollup = claims => {
-    const deciding = decidingClaims(claims);
-    const effectVerdicts = [...new Set(deciding.map(claim => claim.effect.verdict))];
+    const effectVerdicts = [...new Set(claims.map(claim => claim.effect.verdict))];
     return {
-        pinned: { best: deciding.some(claim => claim.pinned.verdict === 'supported') ? 'supported' : deciding[0].pinned.verdict,
-            byClaim: claims.map(claim => withSupersession(claim, { suite: claim.suite, verdict: claim.pinned.verdict })) },
-        effect: { verdict: effectVerdicts.length === 1 ? effectVerdicts[0] : 'mixed', byClaim: claims.map(claim => withSupersession(claim, { suite: claim.suite, verdict: claim.effect.verdict })) },
+        pinned: { best: claims.some(claim => claim.pinned.verdict === 'supported') ? 'supported' : claims[0].pinned.verdict, byClaim: claims.map(claim => ({ suite: claim.suite, verdict: claim.pinned.verdict })) },
+        effect: { verdict: effectVerdicts.length === 1 ? effectVerdicts[0] : 'mixed', byClaim: claims.map(claim => ({ suite: claim.suite, verdict: claim.effect.verdict })) },
     };
 };
 
@@ -380,7 +370,6 @@ export function totalsOf(rows, baseline) {
     return {
         uniqueBenchmarkIds: qualified.length,
         suiteClaims: qualified.reduce((count, row) => count + row.claims.length, 0),
-        supersededClaims: qualified.reduce((count, row) => count + row.claims.filter(claim => claim.supersededBy).length, 0),
         idsWithMultipleClaims: qualified.filter(row => row.claims.length > 1).map(row => row.id),
         effectSupportedIds: effectSupported.length,
         effectUnsupportedIds: effectUnsupported.length,
@@ -423,12 +412,6 @@ export async function buildInventory({ root = defaultQaRoot, ...options } = {}) 
         for (const item of entry.report.cases) {
             if (!claimsById.has(item.caseId)) claimsById.set(item.caseId, []);
             claimsById.get(item.caseId).push(claimOf(suite, entry.report, item, entry.record.rederivation.status));
-        }
-    }
-    for (const suite of benchmarkSuites.filter(item => item.supersedes)) {
-        for (const claims of claimsById.values()) {
-            const replacement = claims.some(claim => claim.suite === suite.suite);
-            for (const claim of claims) if (replacement && claim.suite === suite.supersedes) claim.supersededBy = suite.suite;
         }
     }
     const benchmark = [...claimsById].sort(([a], [b]) => byText(a, b)).map(([id, claims]) => ({ id, kind: 'benchmark', stockOutcome: baseline.outcomes[id] ?? null,
@@ -529,29 +512,6 @@ function suiteProblems(inventory, suite, contracts, options) {
     return problems;
 }
 
-/** A superseded claim is only legitimate when a later registered suite measured exactly the same ids, and every such claim must be marked. */
-function supersessionProblems(inventory) {
-    const problems = [];
-    const order = inventory.suites.map(suite => suite.suite);
-    for (const suite of inventory.suites.filter(item => item.supersedes)) {
-        const earlier = inventory.suites.find(item => item.suite === suite.supersedes);
-        if (!earlier || order.indexOf(earlier.suite) >= order.indexOf(suite.suite)) problems.push(`${suite.suite}: supersedes ${suite.supersedes}, which is not an earlier registered suite.`);
-        else if (sortedJson(earlier.caseIds) !== sortedJson(suite.caseIds)) problems.push(`${suite.suite}: supersedes ${earlier.suite} but does not cover exactly its case ids.`);
-        for (const row of inventory.benchmark) {
-            for (const claim of row.claims.filter(item => item.suite === suite.supersedes)) {
-                const marked = claim.supersededBy === suite.suite, replaced = row.claims.some(item => item.suite === suite.suite);
-                if (marked !== replaced) problems.push(`${row.id}: the ${earlier?.suite} claim's supersession marker disagrees with the retained ${suite.suite} claim.`);
-            }
-        }
-    }
-    for (const row of inventory.benchmark) {
-        for (const claim of row.claims.filter(item => item.supersededBy)) {
-            if (!inventory.suites.some(item => item.suite === claim.supersededBy && item.supersedes === claim.suite)) problems.push(`${row.id}: ${claim.suite} is marked superseded by an unregistered suite.`);
-        }
-    }
-    return problems;
-}
-
 /** Structural guards: duplicate counting, lost cases, unsupported promotion and pinned/effect collapse all throw. */
 export function assertInventory(inventory, { baseline, contracts, ...options }) {
     const problems = [];
@@ -559,7 +519,6 @@ export function assertInventory(inventory, { baseline, contracts, ...options }) 
     if (suiteNames.size !== inventory.suites.length) problems.push('A suite appears twice.');
     const ids = inventory.benchmark.map(row => row.id);
     if (new Set(ids).size !== ids.length) problems.push('A benchmark id is listed twice; multiple suites must be separate claims of one row.');
-    problems.push(...supersessionProblems(inventory));
     const seenClaims = new Set();
     for (const row of inventory.benchmark) problems.push(...rowProblems(inventory, row, baseline, suiteNames, seenClaims));
     for (const suite of inventory.suites) problems.push(...suiteProblems(inventory, suite, contracts, options));
@@ -596,7 +555,6 @@ function totalsSection(inventory) {
     return ['## Totals', '', '| Measure | Value |', '|---|---:|',
         `| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | ${totals.uniqueBenchmarkIds} |`,
         `| Suite claims (an id covered by two suites has two claims) | ${totals.suiteClaims} |`,
-        `| of which superseded by a later remeasurement (kept, rederived, not deciding the roll-up) | ${totals.supersededClaims} |`,
         `| Ids with more than one claim | ${multi} |`,
         `| Effect contract supported | ${totals.effectSupportedIds} |`,
         `| Effect contract unsupported (measured, retained, not supported) | ${totals.effectUnsupportedIds} |`,
@@ -663,7 +621,7 @@ function benchmarkSection(inventory) {
             return `${claim.suite}: ${claim.divergence.kind}${derived}`;
         }).join('; ') || '-';
         const pinned = row.pinned.byClaim.length > 1 ? row.pinned.byClaim.map(entry => `${entry.suite}=${entry.verdict}`).join(', ') : row.pinned.best;
-        lines.push(`| ${code(row.id)} | ${row.stockOutcome ?? 'ungraded'} | ${pinned} | ${row.effect.verdict} | ${layers} | ${row.claims.map(claim => (claim.supersededBy ? `${claim.suite} (superseded by ${claim.supersededBy})` : claim.suite)).join(', ')} | ${divergence} |`);
+        lines.push(`| ${code(row.id)} | ${row.stockOutcome ?? 'ungraded'} | ${pinned} | ${row.effect.verdict} | ${layers} | ${row.claims.map(claim => claim.suite).join(', ')} | ${divergence} |`);
     }
     return lines;
 }

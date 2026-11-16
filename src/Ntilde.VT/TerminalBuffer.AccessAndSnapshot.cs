@@ -581,7 +581,7 @@ namespace Ntilde.VT
         {
             EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(rowIndex), TextSizingAbsoluteRow(rowIndex) + 1);
             var row = _viewport[rowIndex];
-            row.WrappedColumns = null;
+            row.IsWrapped = false;
             row.WrittenColumns = 0;
             var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
             for (int i = 0; i < Cols; i++)

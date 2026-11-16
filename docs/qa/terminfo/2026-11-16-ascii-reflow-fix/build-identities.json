@@ -1,0 +1,20 @@
+{
+  "before": {
+    "appRevision": "9c692a04aa880372a9461be51e4144e307ab5c83",
+    "buildCommand": "scripts/run-sidecar.sh -c Release --no-launch --skip-mcp-server --sidecar-root <owned-stage-root>",
+    "files": {
+      "Ntilde": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "Ntilde.dll": "e0fe764891a9baddb26da3ec67457a8d33f542e7803d9b6ad52ce77c7699d6e8",
+      "Ntilde.VT.dll": "f421cad22cd06c5b9484a869ecb062b562d0f790151c75fb36ddc5cae46afd01"
+    }
+  },
+  "after": {
+    "appRevision": "cbc70bde25249b39365994477b43fd39b98198a5",
+    "buildCommand": "scripts/run-sidecar.sh -c Release --no-launch --skip-mcp-server --sidecar-root <owned-stage-root>",
+    "files": {
+      "Ntilde": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "Ntilde.dll": "b2aac7d15dc16a93cf627a300ee9179754cdc87cd1c2dbaa88fc6af845a5ab22",
+      "Ntilde.VT.dll": "e1eab62ba58e4483fc374ca27c552e149c0724520150a00b3bf2f64cddff03fd"
+    }
+  }
+}

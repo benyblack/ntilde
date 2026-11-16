@@ -224,6 +224,7 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/analyzer_gate_tests.py
           "$py" scripts/tests/private_clipboard_gate_tests.py
+          "$py" scripts/tests/real_bundle_gate_tests.py
 
       - name: Select Node for terminfo adapter self-tests
         uses: actions/setup-node@v4
@@ -346,6 +347,26 @@ jobs:
       - name: Rederive frozen v11 query publication and complete receipt
         shell: bash
         run: node --test scripts/terminfo/query-publication.test.mjs
+
+  # Real imports require Node 24 (silvery uses explicit resource management).
+  # Fresh pinned installs are mandatory; missing preparation fails instead of skipping.
+  terminfo_real_bundle:
+    name: Terminfo real-bundle replay (Node 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Execute required real-bundle checks with fresh pinned dependencies
+        env:
+          NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED: '1'
+        run: >-
+          node --test
+          scripts/terminfo/kcl-grading-collector.test.mjs
+          scripts/terminfo/devq-grading-collector.test.mjs
+          scripts/terminfo/mex-grading-collector.test.mjs
 
   private_clipboard_owned:
     name: Owned private clipboard controls (${{ matrix.os }})
@@ -1005,7 +1026,7 @@ jobs:
   # the shards and Analyzers never ran, and only then does "skipped" count.
   unit_tests:
     name: Unit Tests (${{ matrix.os }})
-    needs: [dotnet_detect, build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, analyzers]
+    needs: [dotnet_detect, build_and_unit_tests, script_self_tests, query_publication_guards, private_clipboard_owned, terminfo_real_bundle, analyzers]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1022,6 +1043,7 @@ jobs:
           scripts: ${{ needs.script_self_tests.result }}
           clipboard: ${{ needs.private_clipboard_owned.result }}
           publication: ${{ needs.query_publication_guards.result }}
+          replay: ${{ needs.terminfo_real_bundle.result }}
           analyzers: ${{ needs.analyzers.result }}
         run: |
           echo ".NET gate: ${dotnet:-<no decision>}; Unit Tests shards: $result; script self-tests: $scripts; query publication: $publication; analyzers: $analyzers"
@@ -1032,6 +1054,7 @@ jobs:
           [ "$result" = success ] || { echo "::error::A Unit Tests shard did not succeed ($result); see the 'Unit Tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$scripts" = success ] || { echo "::error::The CI script self-tests did not succeed ($scripts); see the 'Script self-tests (<os>, <shard>)' jobs."; exit 1; }
           [ "$publication" = success ] || { echo "::error::The frozen query publication guards did not succeed ($publication); see the 'Query publication guards (<os>)' jobs."; exit 1; }
+          [ "$replay" = success ] || { echo "::error::The real-bundle replay did not succeed ($replay)."; exit 1; }
           [ "$clipboard" = success ] || { echo "::error::The owned private clipboard controls did not succeed ($clipboard)."; exit 1; }
           [ "$analyzers" = success ] || { echo "::error::The analyzer and code-style build did not succeed ($analyzers); see the 'Analyzers' job."; exit 1; }
 

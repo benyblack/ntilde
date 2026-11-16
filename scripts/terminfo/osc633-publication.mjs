@@ -12,7 +12,9 @@ const scope = 'Pinned terminfo.dev@4.0.0 OSC 633 A–D termless and terminal mar
     + 'no command exit-event payload, real shell, remote or mux, other platforms, common-harness or stock-score claim. '
     + 'OSC 9 and OSC 777/99 evidence is from the separately identified, independently revalidated predecessor run.';
 
-export function osc633Publication(dir, identity = { scope, appRevision: measuredAppRevision, scriptsRevision: measuredScriptsRevision }) {
+const baselineIdentity = Object.freeze({ scope, appRevision: measuredAppRevision, scriptsRevision: measuredScriptsRevision });
+
+export function osc633Publication(dir, identity = baselineIdentity) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
     const measured = json(dir, 'vs633-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json');
     const cases = measured.cases.map(item => {
