@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 130,
-    "suiteClaims": 132,
+    "uniqueBenchmarkIds": 135,
+    "suiteClaims": 137,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 129,
-    "effectUnsupportedIds": 1,
+    "effectSupportedIds": 130,
+    "effectUnsupportedIds": 5,
     "effectOtherIds": 0,
-    "pinnedAndEffectSupportedIds": 92,
+    "pinnedAndEffectSupportedIds": 93,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -90,15 +90,19 @@
       "scrollback.set-region"
     ],
     "effectUnsupportedPinnedInconclusiveIds": [
+      "extensions.osc633-a",
+      "extensions.osc633-b",
+      "extensions.osc633-c",
+      "extensions.osc633-d",
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 128,
-    "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 91,
+    "effectSupportedOfStockInconclusive": 129,
+    "effectUnsupportedOfStockInconclusive": 5,
+    "pinnedSupportedOfStockInconclusive": 92,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 92,
+    "pinnedSupportedIds": 93,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -107,11 +111,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 40,
-      "effectMeasuredUnsupported": 1,
+      "effectUnqualified": 39,
+      "effectMeasuredUnsupported": 5,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 39,
-      "notPinnedSupported": 77
+      "effectNotMeasured": 34,
+      "notPinnedSupported": 76
     }
   },
   "suites": [
@@ -3399,6 +3403,149 @@
         "command": "node --test scripts/terminfo/kcl-publication.test.mjs",
         "testSha256": "356e9d53c4bbb1dfd9fd4e4ca33ae4a21d0e1f114f380277487bc1ec87297bae"
       }
+    },
+    {
+      "suite": "extensions-truecolor",
+      "suiteId": "ntilde-owned-extensions-truecolor-projection-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-16-extensions-truecolor/",
+      "doc": "2026-11-16-extensions-truecolor-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.truecolor"
+      ],
+      "evidence": {
+        "files": 3,
+        "bytes": 222870,
+        "sha256": "5e01771871593650c12a7634920267ed199e13572c02d76984199410ed4ee3f6"
+      },
+      "receipt": {
+        "schemaVersion": 66,
+        "runId": "55f0ba462cd3cc6fbc315a0e5fad5126",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "bf4a798bc3a6d5be3d258e023961b39a2edcce99bf748e586e861a047edf82dc"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+          "file": "sgtc-observations.json",
+          "sha256": "ff13cc42b0acdf4603058df9837cb6af33964a8e98d6966a360b8d94ab1128d7",
+          "runFile": "sgtc-run.json",
+          "runSha256": "75627075fc17286f1bcbcef3dc025e080c6c96384068bb75f2ee29ff7b348299",
+          "counts": {
+            "supported": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "55f0ba462cd3cc6fbc315a0e5fad5126",
+        "measuredAt": "2026-11-16T09:15:04.524Z",
+        "appRevision": "d82374aa8e22e7b4e1115344908e3c2bb975c7c6",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "ec6c5b99431af6d8fcee5083f196a585e66f2d13",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "9f61ba5cff436bf276291bea70da2bb7596db7bec03d0d63992f3d047f9940bc",
+        "gradingAdapterId": "ntilde-owned-sgr-truecolor-grading-v1",
+        "gradingAdapterBundleSha256": "bb7d612fb5dd11d484b39e023a9e604f4c48a6d978ee1430dff8922f882f95ec",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v60",
+        "sourceSnapshotManifestSha256": "677391b6832d0d77fff8126908c326700d27af225078a7584e60056047e9de11"
+      },
+      "stock": {
+        "basis": "collected-raw-digest-recorded",
+        "runId": null,
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "d7da4d74e0b4b9a2c586d159477a6b6e65be46bed1e8b2e12b25707ace62a970",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock collector results from the carrying run; the retrospective replay does not alter them."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/extensions-truecolor-publication.test.mjs",
+        "testSha256": "a7383b756e5957fa167f0e32b873fb33bab19093511dadfbc191bab7e6d07ce5"
+      }
+    },
+    {
+      "suite": "osc633",
+      "suiteId": "ntilde-owned-osc633-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-16-osc633/",
+      "doc": "2026-11-16-osc633-qualification.md",
+      "caseCount": 4,
+      "caseIds": [
+        "extensions.osc633-a",
+        "extensions.osc633-b",
+        "extensions.osc633-c",
+        "extensions.osc633-d"
+      ],
+      "evidence": {
+        "files": 13,
+        "bytes": 60963432,
+        "sha256": "5a325c7c715cbf010010b123c51b71ca8295e905f6af7495621424287b548ffa"
+      },
+      "receipt": {
+        "schemaVersion": 68,
+        "runId": "ac59f42044dd69e06377ca6719983f76",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "45241410bf48b6d960903a2520f93d562958ded7b3649b1f4b1d74ae40302d61"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc633-graded-v1",
+          "file": "vs633-observations.json",
+          "sha256": "e826a45e86c63d26c33b168bb5f58fc265d7cbf14f886ab8b9430a579f40066b",
+          "runFile": "vs633-run.json",
+          "runSha256": "a201564bab64f2957b46b8bea7a71f853a27fc549fa98600aeea3160f7a7754c",
+          "counts": {
+            "inconclusive/unsupported": 4
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "ac59f42044dd69e06377ca6719983f76",
+        "measuredAt": "2026-11-16T11:01:29.958Z",
+        "appRevision": "b9d7c6273683d8546b874781f605817345e23ce1",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "f8f58f817e232242a063daac95f0526f94535ef8",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "2c2622a5e1dfd4ea30092c285ce725c2d4c13281820294d6ca8939fa71d3e05d",
+        "gradingAdapterId": "ntilde-owned-osc633-grading-v1",
+        "gradingAdapterBundleSha256": "c2ce46a237b7b73fcb0ce5f79241990b8b4d4381df692972f5cbd0ac16bd54da",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v61",
+        "sourceSnapshotManifestSha256": "7f0e26d84241103447fad11aeec5bf5bfd2bef0f5973629cb2fd4eabc6337cfc"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "54aa17e2382bec4a26c27c370a89b23f",
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "d2291cd28cc4c3bc575eae09e9e194a97667b637e554727c708e0bb6e3291c37",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc633-publication.test.mjs",
+        "testSha256": "07d6d11c65fa20be7bd7d3f7435ca61b2c7b2c0cb1f0767112b5f21f6d457395"
+      }
     }
   ],
   "benchmark": [
@@ -6307,6 +6454,214 @@
       ]
     },
     {
+      "id": "extensions.osc633-a",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc633-a",
+          "suite": "osc633",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-consumption-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "measuredLayers": [
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc633-b",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc633-b",
+          "suite": "osc633",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-consumption-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "measuredLayers": [
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc633-c",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc633-c",
+          "suite": "osc633",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-consumption-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "measuredLayers": [
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc633-d",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "osc633",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc633-d",
+          "suite": "osc633",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-consumption-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "Marker was consumed; shell prompt integration was not observed"
+          },
+          "measuredLayers": [
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
       "id": "extensions.osc7-cwd",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -6608,6 +6963,53 @@
             "actual-scrollback"
           ],
           "evidenceTag": "stored-state and actual-scrollback"
+        }
+      ]
+    },
+    {
+      "id": "extensions.truecolor",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "extensions-truecolor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "extensions-truecolor",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.truecolor",
+          "suite": "extensions-truecolor",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "retrospective-pinned-callback-plus-existing-effect-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color"
+          ],
+          "evidenceTag": "owned-stored-and-resolved-cells"
         }
       ]
     },
