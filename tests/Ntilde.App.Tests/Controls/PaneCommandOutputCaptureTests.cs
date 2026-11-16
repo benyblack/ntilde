@@ -52,6 +52,24 @@ public class PaneCommandOutputCaptureTests
     }
 
     /// <summary>
+    /// The VS Code OSC 633 lifecycle drives the same pane wiring as OSC 133: the failing command's
+    /// output region is bounded by C and D and the documented exit code reaches the capture gate.
+    /// </summary>
+    [AvaloniaFact]
+    public void TheVsCodeOsc633Lifecycle_CapturesAFailingCommandsOutput()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+
+        pane.Parser!.Process("\x1b]633;A\x07$ \x1b]633;B\x07git status");
+        pane.Parser!.Process("\x1b]633;C\x07");
+        pane.Parser!.Process("\r\nfatal: not a git repository\r\n");
+        pane.Parser!.Process("\x1b]633;D;128\x07");
+
+        Assert.Equal("fatal: not a git repository", pane.LastFailureOutputTailForTest);
+    }
+
+    /// <summary>
     /// The gate. Break it - capture unconditionally - and this test fails, which is the point:
     /// every successful command in every pane would otherwise pay for a grid walk and a redaction
     /// pass on the read thread.
