@@ -20,7 +20,8 @@
 // answer `unknown`; no rendering or painted-pixel claim; the colors are reset with OSC 104/110/111/112/117/119 at the end, and an overridden slot returns to the host default (the baseline replies).
 import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { selectiveEraseInk } from './selective-erase-contracts.mjs';
-import { devqColorReset, devqFixture, devqMinimum, devqReseed, devqReset, devqSeed, validateDevqScreen } from './devq-contracts.mjs';
+import { devqColorReset, devqFixture, devqMinimum, devqReseed, devqReset, devqSeed } from './devq-contracts.mjs';
+export { validateDevqScreen as validateKclScreen } from './devq-contracts.mjs';
 
 /** Contracts v1 is the first measured semantics of this batch. */
 export const kclContractsVersion = 1;
@@ -41,7 +42,6 @@ export const kclReseed = devqReseed;
 export const kclSeed = devqSeed;
 /** The reset every phase ends with: every palette entry and the five dynamic colors back to the host's. */
 export const kclColorReset = devqColorReset;
-export const validateKclScreen = validateDevqScreen;
 /** The run's baseline title, written by the finish so the pane never keeps a test label. */
 export const kclBaseTitle = runId => `KC-base-${runId.slice(0, 8)}`;
 
@@ -49,13 +49,13 @@ const esc = '\x1b';
 const st = esc + '\\';
 const bel = '\x07';
 /** Build a regular expression from a source written with <ESC>, so no control character sits in a pattern literal. */
-const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.fromCodePoint(27)), flags);
+const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.fromCodePoint(27)).replaceAll('<BEL>', String.fromCodePoint(7)), flags);
 
 // ---------- the pinned probe (read from the bundle) ----------
 
 /** The pinned request, and the frame pattern both pinned paths search the captured text for. */
 export const kclPinnedQuery = `${esc}]21;foreground=?${st}`;
-export const kclPinnedPattern = new RegExp(String.raw`\x1b\]21;([^\x07\x1b]*)(?:\x07|\x1b\\)`);
+export const kclPinnedPattern = re(String.raw`<ESC>\]21;([^<BEL><ESC>]*)(?:<BEL>|<ESC>\\)`);
 const pinnedNoReply = 'No OSC 21 reply; color rendering was not tested';
 const pinnedValueOk = re(String.raw`^rgb:[a-f\d]{1,4}/[a-f\d]{1,4}/[a-f\d]{1,4}$`, 'i');
 
@@ -108,7 +108,7 @@ const hex2 = value => value.toString(16).padStart(2, '0');
 const channelsOf = hex => [1, 3, 5].map(at => Number.parseInt(hex.slice(at, at + 2), 16));
 const narrow = hex => `rgb:${channelsOf(hex).map(hex2).join('/')}`;
 const wide = value => `rgb:${value.slice(4).split('/').map(part => part.repeat(2)).join('/')}`;
-const rgbDigits = String.raw`([0-9a-f]{1,4})`;
+const rgbDigits = '([0-9a-f]{1,4})';
 const rgbForm = re(`^rgb:${rgbDigits}/${rgbDigits}/${rgbDigits}$`, 'i');
 const rgbiPart = String.raw`(\d(?:\.\d+)?)`;
 const rgbiForm = re(`^rgbi:${rgbiPart}/${rgbiPart}/${rgbiPart}$`);
@@ -143,13 +143,17 @@ class ColorModel {
         for (const field of text.length > 4096 ? [] : text.split(';')) {
             if (field === '') continue;
             if (++seen > 256) break;
-            const at = field.indexOf('='), key = at < 0 ? field : field.slice(0, at), value = at < 0 ? null : field.slice(at + 1);
-            if (!isKey(key)) fields.push(`unknown=${base64(key)}`);
-            else if (value === '?') fields.push(this.token(key));
-            else if (value === null) delete this.colors[key];
-            else if (parseKittyColor(value) !== null) this.colors[key] = parseKittyColor(value);
+            this.oscField(field, fields);
         }
         return { bytes: `${esc}]21;${text}${terminator}`, reply: fields.length === 0 ? null : { fields } };
+    }
+    /** One OSC 21 field: a query answers, a bare key resets, a numeric value sets (anything else leaves the color in force). */
+    oscField(field, fields) {
+        const at = field.indexOf('='), key = at < 0 ? field : field.slice(0, at), value = at < 0 ? null : field.slice(at + 1);
+        if (!isKey(key)) fields.push(`unknown=${base64(key)}`);
+        else if (value === '?') fields.push(this.token(key));
+        else if (value === null) delete this.colors[key];
+        else if (parseKittyColor(value) !== null) this.colors[key] = parseKittyColor(value);
     }
     /** A legacy OSC set (no reply). */
     legacySet(key, hex) {

@@ -35,22 +35,7 @@ namespace Ntilde.VT
             {
                 if (field.Length == 0) continue;
                 if (++seen > KittyColorMaxFields) break;
-                int equals = field.IndexOf('=');
-                string key = equals < 0 ? field : field[..equals];
-                string? value = equals < 0 ? null : field[(equals + 1)..];
-                if (!TryKittyColorSlot(key, out int slot))
-                {
-                    // The key is Base64-encoded (no padding) so the terminal cannot be made to emit arbitrary text.
-                    fields.Add("unknown=" + Convert.ToBase64String(Encoding.UTF8.GetBytes(key)).TrimEnd('='));
-                }
-                else if (value == "?")
-                {
-                    fields.Add(KittyColorName(slot) + "=" + FormatKittyColor(ResolveKittyColor(slot, colors)));
-                }
-                else
-                {
-                    changed |= ApplyKittyColor(colors, slot, value);
-                }
+                changed |= HandleKittyColorField(field, colors, fields);
             }
 
             if (changed)
@@ -60,6 +45,28 @@ namespace Ntilde.VT
             }
 
             if (fields.Count > 0) OnResponse?.Invoke("\x1b]21;" + string.Join(';', fields) + "\x1b\\");
+        }
+
+        /// <summary>One OSC 21 field: a query appends its reply field, anything else sets or resets; true when a color changed.</summary>
+        private bool HandleKittyColorField(string field, TerminalColorOverrides colors, List<string> fields)
+        {
+            int equals = field.IndexOf('=');
+            string key = equals < 0 ? field : field[..equals];
+            string? value = equals < 0 ? null : field[(equals + 1)..];
+            if (!TryKittyColorSlot(key, out int slot))
+            {
+                // The key is Base64-encoded (no padding) so the terminal cannot be made to emit arbitrary text.
+                fields.Add("unknown=" + Convert.ToBase64String(Encoding.UTF8.GetBytes(key)).TrimEnd('='));
+                return false;
+            }
+
+            if (value == "?")
+            {
+                fields.Add(KittyColorName(slot) + "=" + FormatKittyColor(ResolveKittyColor(slot, colors)));
+                return false;
+            }
+
+            return ApplyKittyColor(colors, slot, value);
         }
 
         private static bool TryKittyColorSlot(string key, out int slot)
