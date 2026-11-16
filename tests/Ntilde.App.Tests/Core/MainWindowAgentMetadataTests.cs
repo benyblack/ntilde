@@ -67,6 +67,7 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
         Assert.Equal(pane.TermView.Metrics.CellHeight, geometry.CellHeightDip);
         Assert.Equal(pane.TermView.Metrics.Ascent, geometry.FontAscentDip);
         Assert.Equal(pane.TermView.EffectiveRenderScaling, geometry.RenderScaling);
+        Assert.Equal(window.RenderScaling, geometry.BackingScale);
         Assert.Equal((pane.TermView.Rows, pane.TermView.Cols), (geometry.ViewRows, geometry.ViewCols));
         Assert.Equal(size, window.ClientSize);
     }

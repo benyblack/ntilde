@@ -11,4 +11,5 @@ public sealed record PaneCellGeometry
     [JsonPropertyName("cellHeightDip")] public double CellHeightDip { get; init; }
     [JsonPropertyName("fontAscentDip")] public double FontAscentDip { get; init; }
     [JsonPropertyName("renderScaling")] public double RenderScaling { get; init; }
+    [JsonPropertyName("backingScale")] public double BackingScale { get; init; }
 }

@@ -47,6 +47,7 @@ public partial class MainWindow
                 CellHeightDip = pane.TermView.Metrics.CellHeight,
                 FontAscentDip = pane.TermView.Metrics.Ascent,
                 RenderScaling = pane.TermView.EffectiveRenderScaling,
+                BackingScale = RenderScaling,
             },
             Presentation = new PanePresentationMetadata
             {
