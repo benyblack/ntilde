@@ -94,7 +94,7 @@ test('every experiment matched its literal expectation and the independent oracl
     assert.equal(bytes('press.left.origin'), hex('\x1b[<0;1;1M'));
     assert.equal(bytes('press.left.mid'), hex('\x1b[<0;144;58M'));
     assert.equal(bytes('press.mods7'), hex('\x1b[<28;144;58M'));
-    assert.equal(bytes('press.far'), hex('\x1b[<0;558;262M'));
+    assert.equal(bytes('press.far'), hex('\x1b[<0;362;172M'));
     assert.equal(bytes('release.left'), hex('\x1b[<0;144;58m'));
     assert.equal(bytes('wheel.up'), hex('\x1b[<64;144;58M'));
     assert.equal(bytes('motion.next-pixel'), hex('\x1b[<32;145;58M'), 'an adjacent pixel in the same cell is reported');

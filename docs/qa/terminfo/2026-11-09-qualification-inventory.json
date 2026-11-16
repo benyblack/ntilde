@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 130,
-    "suiteClaims": 132,
+    "uniqueBenchmarkIds": 131,
+    "suiteClaims": 133,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 129,
+    "effectSupportedIds": 130,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
     "pinnedAndEffectSupportedIds": 92,
@@ -72,6 +72,7 @@
       "extensions.osc9-progress",
       "input.button-event-mouse",
       "input.modify-other-keys",
+      "input.pixel-mouse",
       "input.urxvt-mouse",
       "input.x10-mouse",
       "modes.altscreen-1047",
@@ -92,7 +93,7 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 128,
+    "effectSupportedOfStockInconclusive": 129,
     "effectUnsupportedOfStockInconclusive": 1,
     "pinnedSupportedOfStockInconclusive": 91,
     "ungradedStockIdsWithEvidence": [
@@ -107,10 +108,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 40,
+      "effectUnqualified": 39,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 39,
+      "effectNotMeasured": 38,
       "notPinnedSupported": 77
     }
   },
@@ -3398,6 +3399,76 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/kcl-publication.test.mjs",
         "testSha256": "356e9d53c4bbb1dfd9fd4e4ca33ae4a21d0e1f114f380277487bc1ec87297bae"
+      }
+    },
+    {
+      "suite": "pxm",
+      "suiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-16-sgr-pixel-mouse/",
+      "doc": "2026-11-16-sgr-pixel-mouse-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "input.pixel-mouse"
+      ],
+      "evidence": {
+        "files": 4,
+        "bytes": 8577200,
+        "sha256": "82badba3b08ea846d4ffb5835beee853dd17d60b0f65f1a530980e99d5b049f7"
+      },
+      "receipt": {
+        "schemaVersion": 67,
+        "runId": "b45702ad11ea1f0ea46eeb4908206155",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "6abcae9d98fe13a6bab560565e9ed1e3f6bfad1d0d358114c2d928ba3447bc79"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
+          "file": "pxm-observations.json",
+          "sha256": "6024bb228de17d63404b8ae89f7f4c48cca1146dbf7b816d6b3266d12a24b7ab",
+          "runFile": "pxm-run.json",
+          "runSha256": "c3b0278fe70de5cde359077efd03121ee9279901e062bd50f5806fcfd4c2d9ca",
+          "counts": {
+            "inconclusive/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "b45702ad11ea1f0ea46eeb4908206155",
+        "measuredAt": "2026-11-16T10:38:09.578Z",
+        "appRevision": "9972a6fcf7649ac66140da7354b82020bc10b131",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "9972a6fcf7649ac66140da7354b82020bc10b131",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "40be323f83fe99e0ed472e16d3035612a43ccc6fc6830e4d574e19bcc96c99a1",
+        "gradingAdapterId": "ntilde-owned-pixel-mouse-grading-v1",
+        "gradingAdapterBundleSha256": "e5053f9a77772d87befdb1b9f8c99bd877e1dfde5017a726e24688b57bad4082",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v61",
+        "sourceSnapshotManifestSha256": "3b8aed244f24f3e81d5c21f19c37e5fbef0afa38974a39fba4c01a44c72f5265"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "a3651fd70aacde5e31ec2707420d7589",
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "63022126d620eb7189355bd3ff5b0fd0f70ad512141e556f946630d2ff6e8c28",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run. input.pixel-mouse stays inconclusive under the unchanged pinned code; no stock grade changes with this layer."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/pxm-publication.test.mjs",
+        "testSha256": "feb221e172aca56290f956fd93fdd1cec6256ae17b41a366101c9840cb5088af"
       }
     }
   ],
@@ -6689,6 +6760,58 @@
         {
           "id": "input.modify-other-keys",
           "suite": "modify-other-keys",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "No generated input event and encoded report were validated"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "No generated input event and encoded report were validated"
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "input.pixel-mouse",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "pxm",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "pxm",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.pixel-mouse",
+          "suite": "pxm",
           "status": "qualified",
           "pinned": {
             "verdict": "inconclusive",

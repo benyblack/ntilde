@@ -76,6 +76,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('core-gaps', '2026-11-15-core-gaps', '2026-11-15-core-gaps-qualification.md'), module: 'core-gaps-contracts.mjs', exports: ['coreGapsQualSuiteId', 'coreGapsQualContractsVersion', 'coreGapsQualCaseIds'], test: 'core-gaps-publication.test.mjs' },
     { ...directory('xsv', '2026-11-16-xterm-saved-modes', '2026-11-16-xterm-saved-modes-qualification.md'), module: 'xsv-contracts.mjs', exports: ['xsvSuiteId', 'xsvContractsVersion', 'xsvCaseIds'], test: 'xsv-publication.test.mjs' },
     { ...directory('kcl', '2026-11-15-kitty-color-control', '2026-11-15-kitty-color-control-qualification.md'), module: 'kcl-contracts.mjs', exports: ['kclSuiteId', 'kclContractsVersion', 'kclCaseIds'], test: 'kcl-publication.test.mjs' },
+    { ...directory('pxm', '2026-11-16-sgr-pixel-mouse', '2026-11-16-sgr-pixel-mouse-qualification.md'), module: 'pxm-contracts.mjs', exports: ['pxmGradedSuiteId', 'pxmContractsVersion', 'pxmCaseIds'], test: 'pxm-publication.test.mjs' },
 ]);
 
 /**

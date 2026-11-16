@@ -1,0 +1,1370 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
+  "runId": "b45702ad11ea1f0ea46eeb4908206155",
+  "contractsVersion": 1,
+  "adapter": {
+    "id": "ntilde-owned-pixel-mouse-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "e5053f9a77772d87befdb1b9f8c99bd877e1dfde5017a726e24688b57bad4082",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 input.pixel-mouse termless code (always inconclusive by design: mouseInputProbe reads ctx.getMode(\"pixelMouse\") and validates no generated event or report) replayed over the DECRQM state the child itself received, preserved beside a separately identified effect contract graded from 32 declared Avalonia events routed through the production App input path in a disposable direct-local pane: negotiation proved by the child DECRQM replies for 1005, 1006, 1015, 1016 and the tracking selectors before every dispatch, exact child-received bytes from an independent raw stdin reader, literal protocol expectations cross-checked by an independent oracle written from xterm button.c, events declared by exact device-pixel positions in the pane text area, legacy and SGR cell-coordinate controls, SGR-Pixels reports for presses, releases, wheel, held-button and any-event motion (reported per pixel change, not per cell), modifiers and X10 press-only tracking, the single-slot selection rules between 1005, 1006, 1015 and 1016, ordered FIFO capture barriers, and restoration. Generated App events are not physical pointer input, the declared pixels are the App's device-pixel unit (the unit of its CSI 14 t / 16 t reports) and not a measurement of any other terminal's pixel geometry, App admission is not child receipt, direct-local delivery does not qualify SSH, mux or Windows, and no stock grade is changed by this layer.",
+  "inputSuiteId": "ntilde-owned-routed-input-v5",
+  "inputReportSha256": "38b127cf10a4e972ca4881ee6f548adcb41971bc32aaba0e161ece0ac8ce6cdf",
+  "initialSnapshot": 0,
+  "restoredSnapshot": 394,
+  "cases": [
+    {
+      "caseId": "input.pixel-mouse",
+      "pinnedCriterion": "mouseInputProbe(\"input.pixel-mouse\", \"pixelMouse\"): reads ctx.getMode(\"pixelMouse\") and returns inconclusive for any value; the terminal path returns inconclusive without touching the terminal",
+      "pinnedFeeds": [],
+      "served": {
+        "currentMode": false,
+        "on": true,
+        "off": false,
+        "sources": [
+          "input.pxm.alone.set",
+          "restored"
+        ]
+      },
+      "pinned": {
+        "pass": false,
+        "response": "{\"currentMode\":false}",
+        "note": "No generated input event and encoded report were validated",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "No generated input event and encoded report were validated"
+        },
+        "notTested": null
+      },
+      "effectContract": {
+        "id": "ntilde-sgr-pixel-mouse-1016-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "experiments": [
+        {
+          "id": "input.pxm.alone.set",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "kind": "keyUp",
+            "key": "a"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 0,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1016h",
+          "expectedHex": "",
+          "actualHex": "",
+          "oracleHex": "",
+          "controlSnapshot": 330,
+          "snapshot": 331,
+          "actionIndex": 164,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": false,
+            "inputSubmitted": false,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        },
+        {
+          "id": "input.pxm.control.legacy.press",
+          "role": "control",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "column": 96,
+            "row": 3,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": false
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h",
+          "expectedHex": "1b5b4d208023",
+          "actualHex": "1b5b4d208023",
+          "oracleHex": "1b5b4d208023",
+          "controlSnapshot": 332,
+          "snapshot": 333,
+          "actionIndex": 165,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        },
+        {
+          "id": "input.pxm.control.sgr.press",
+          "role": "control",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "column": 96,
+            "row": 3,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": true,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": false
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1006h",
+          "expectedHex": "1b5b3c303b39363b334d",
+          "actualHex": "1b5b3c303b39363b334d",
+          "oracleHex": "1b5b3c303b39363b334d",
+          "controlSnapshot": 334,
+          "snapshot": 335,
+          "actionIndex": 166,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        },
+        {
+          "id": "input.pxm.press.left.origin",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 0,
+            "pixelY": 0,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b313b314d",
+          "actualHex": "1b5b3c303b313b314d",
+          "oracleHex": "1b5b3c303b313b314d",
+          "controlSnapshot": 336,
+          "snapshot": 337,
+          "actionIndex": 167,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 1,
+            "row": 1,
+            "x": 0.25,
+            "y": 0.25
+          }
+        },
+        {
+          "id": "input.pxm.press.left.small",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 3,
+            "pixelY": 11,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b343b31324d",
+          "actualHex": "1b5b3c303b343b31324d",
+          "oracleHex": "1b5b3c303b343b31324d",
+          "controlSnapshot": 338,
+          "snapshot": 339,
+          "actionIndex": 168,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 1,
+            "row": 1,
+            "x": 1.75,
+            "y": 5.75
+          }
+        },
+        {
+          "id": "input.pxm.press.left.mid",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3134343b35384d",
+          "actualHex": "1b5b3c303b3134343b35384d",
+          "oracleHex": "1b5b3c303b3134343b35384d",
+          "controlSnapshot": 340,
+          "snapshot": 341,
+          "actionIndex": 169,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.press.middle.mid",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "middle"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c313b3134343b35384d",
+          "actualHex": "1b5b3c313b3134343b35384d",
+          "oracleHex": "1b5b3c313b3134343b35384d",
+          "controlSnapshot": 342,
+          "snapshot": 343,
+          "actionIndex": 170,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.press.right.mid",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "right"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c323b3134343b35384d",
+          "actualHex": "1b5b3c323b3134343b35384d",
+          "oracleHex": "1b5b3c323b3134343b35384d",
+          "controlSnapshot": 344,
+          "snapshot": 345,
+          "actionIndex": 171,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.press.shift",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 1,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c343b3134343b35384d",
+          "actualHex": "1b5b3c343b3134343b35384d",
+          "oracleHex": "1b5b3c343b3134343b35384d",
+          "controlSnapshot": 346,
+          "snapshot": 347,
+          "actionIndex": 172,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.press.alt",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 4,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c383b3134343b35384d",
+          "actualHex": "1b5b3c383b3134343b35384d",
+          "oracleHex": "1b5b3c383b3134343b35384d",
+          "controlSnapshot": 348,
+          "snapshot": 349,
+          "actionIndex": 173,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.press.ctrl",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 2,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c31363b3134343b35384d",
+          "actualHex": "1b5b3c31363b3134343b35384d",
+          "oracleHex": "1b5b3c31363b3134343b35384d",
+          "controlSnapshot": 350,
+          "snapshot": 351,
+          "actionIndex": 174,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.press.mods7",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 7,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c32383b3134343b35384d",
+          "actualHex": "1b5b3c32383b3134343b35384d",
+          "oracleHex": "1b5b3c32383b3134343b35384d",
+          "controlSnapshot": 352,
+          "snapshot": 353,
+          "actionIndex": 175,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.press.far",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 361,
+            "pixelY": 171,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3336323b3137324d",
+          "actualHex": "1b5b3c303b3336323b3137324d",
+          "oracleHex": "1b5b3c303b3336323b3137324d",
+          "controlSnapshot": 354,
+          "snapshot": 355,
+          "actionIndex": 176,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 22,
+            "row": 5,
+            "x": 180.75,
+            "y": 85.75
+          }
+        },
+        {
+          "id": "input.pxm.press.edge",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 387,
+            "pixelY": 191,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3338383b3139324d",
+          "actualHex": "1b5b3c303b3338383b3139324d",
+          "oracleHex": "1b5b3c303b3338383b3139324d",
+          "controlSnapshot": 356,
+          "snapshot": 357,
+          "actionIndex": 177,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 23,
+            "row": 6,
+            "x": 193.75,
+            "y": 95.75
+          }
+        },
+        {
+          "id": "input.pxm.release.left",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mouseRelease",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3134343b35386d",
+          "actualHex": "1b5b3c303b3134343b35386d",
+          "oracleHex": "1b5b3c303b3134343b35386d",
+          "controlSnapshot": 358,
+          "snapshot": 359,
+          "actionIndex": 178,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.release.right",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mouseRelease",
+            "button": "right"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c323b3134343b35386d",
+          "actualHex": "1b5b3c323b3134343b35386d",
+          "oracleHex": "1b5b3c323b3134343b35386d",
+          "controlSnapshot": 360,
+          "snapshot": 361,
+          "actionIndex": 179,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.wheel.up",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mouseWheel",
+            "wheelDelta": 1
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c36343b3134343b35384d",
+          "actualHex": "1b5b3c36343b3134343b35384d",
+          "oracleHex": "1b5b3c36343b3134343b35384d",
+          "controlSnapshot": 362,
+          "snapshot": 363,
+          "actionIndex": 180,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.wheel.down",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mouseWheel",
+            "wheelDelta": -1
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h",
+          "expectedHex": "1b5b3c36353b3134343b35384d",
+          "actualHex": "1b5b3c36353b3134343b35384d",
+          "oracleHex": "1b5b3c36353b3134343b35384d",
+          "controlSnapshot": 364,
+          "snapshot": 365,
+          "actionIndex": 181,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.motion.held",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mouseMove",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1002,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1002h\u001b[?1016h",
+          "expectedHex": "1b5b3c33323b3134343b35384d",
+          "actualHex": "1b5b3c33323b3134343b35384d",
+          "oracleHex": "1b5b3c33323b3134343b35384d",
+          "controlSnapshot": 366,
+          "snapshot": 367,
+          "actionIndex": 182,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.motion.next-pixel",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 144,
+            "pixelY": 57,
+            "kind": "mouseMove",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1002,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1002h\u001b[?1016h",
+          "expectedHex": "1b5b3c33323b3134353b35384d",
+          "actualHex": "1b5b3c33323b3134353b35384d",
+          "oracleHex": "1b5b3c33323b3134353b35384d",
+          "controlSnapshot": 368,
+          "snapshot": 369,
+          "actionIndex": 183,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 72.25,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.motion.next-row",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 144,
+            "pixelY": 58,
+            "kind": "mouseMove",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1002,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1002h\u001b[?1016h",
+          "expectedHex": "1b5b3c33323b3134353b35394d",
+          "actualHex": "1b5b3c33323b3134353b35394d",
+          "oracleHex": "1b5b3c33323b3134353b35394d",
+          "controlSnapshot": 370,
+          "snapshot": 371,
+          "actionIndex": 184,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 72.25,
+            "y": 29.25
+          }
+        },
+        {
+          "id": "input.pxm.hover.any",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 0,
+            "pixelY": 0,
+            "kind": "mouseMove",
+            "button": "none"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1003,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1003h\u001b[?1016h",
+          "expectedHex": "1b5b3c33353b313b314d",
+          "actualHex": "1b5b3c33353b313b314d",
+          "oracleHex": "1b5b3c33353b313b314d",
+          "controlSnapshot": 372,
+          "snapshot": 373,
+          "actionIndex": 185,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 1,
+            "row": 1,
+            "x": 0.25,
+            "y": 0.25
+          }
+        },
+        {
+          "id": "input.pxm.hover.same-pixel",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 0,
+            "pixelY": 0,
+            "kind": "mouseMove",
+            "button": "none"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1003,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1003h\u001b[?1016h",
+          "expectedHex": "",
+          "actualHex": "",
+          "oracleHex": "",
+          "controlSnapshot": 374,
+          "snapshot": 375,
+          "actionIndex": 186,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": false,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 1,
+            "row": 1,
+            "x": 0.25,
+            "y": 0.25
+          }
+        },
+        {
+          "id": "input.pxm.x10.press",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 7,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 9,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?9h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3134343b35384d",
+          "actualHex": "1b5b3c303b3134343b35384d",
+          "oracleHex": "1b5b3c303b3134343b35384d",
+          "controlSnapshot": 376,
+          "snapshot": 377,
+          "actionIndex": 187,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.slot.pixel.replaces.1005",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1005h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3134343b35384d",
+          "actualHex": "1b5b3c303b3134343b35384d",
+          "oracleHex": "1b5b3c303b3134343b35384d",
+          "controlSnapshot": 378,
+          "snapshot": 379,
+          "actionIndex": 188,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.slot.pixel.replaces.1006",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1006h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3134343b35384d",
+          "actualHex": "1b5b3c303b3134343b35384d",
+          "oracleHex": "1b5b3c303b3134343b35384d",
+          "controlSnapshot": 380,
+          "snapshot": 381,
+          "actionIndex": 189,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.slot.pixel.replaces.1015",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "pixelX": 143,
+            "pixelY": 57,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": true
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1015h\u001b[?1016h",
+          "expectedHex": "1b5b3c303b3134343b35384d",
+          "actualHex": "1b5b3c303b3134343b35384d",
+          "oracleHex": "1b5b3c303b3134343b35384d",
+          "controlSnapshot": 382,
+          "snapshot": 383,
+          "actionIndex": 190,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          },
+          "pointer": {
+            "column": 9,
+            "row": 2,
+            "x": 71.75,
+            "y": 28.75
+          }
+        },
+        {
+          "id": "input.pxm.slot.sgr.replaces",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "column": 96,
+            "row": 3,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": true,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": false
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h\u001b[?1006h",
+          "expectedHex": "1b5b3c303b39363b334d",
+          "actualHex": "1b5b3c303b39363b334d",
+          "oracleHex": "1b5b3c303b39363b334d",
+          "controlSnapshot": 384,
+          "snapshot": 385,
+          "actionIndex": 191,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        },
+        {
+          "id": "input.pxm.slot.urxvt.replaces",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "column": 96,
+            "row": 3,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": true,
+            "mousePixel": false
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h\u001b[?1015h",
+          "expectedHex": "1b5b33323b39363b334d",
+          "actualHex": "1b5b33323b39363b334d",
+          "oracleHex": "1b5b33323b39363b334d",
+          "controlSnapshot": 386,
+          "snapshot": 387,
+          "actionIndex": 192,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        },
+        {
+          "id": "input.pxm.slot.utf8.replaces",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "column": 96,
+            "row": 3,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": true,
+            "mouseUrxvt": false,
+            "mousePixel": false
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h\u001b[?1005h",
+          "expectedHex": "1b5b4d20c28023",
+          "actualHex": "1b5b4d20c28023",
+          "oracleHex": "1b5b4d20c28023",
+          "controlSnapshot": 388,
+          "snapshot": 389,
+          "actionIndex": 193,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        },
+        {
+          "id": "input.pxm.slot.reset.inactive",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "column": 96,
+            "row": 3,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": true,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": false
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1006h\u001b[?1016l",
+          "expectedHex": "1b5b3c303b39363b334d",
+          "actualHex": "1b5b3c303b39363b334d",
+          "oracleHex": "1b5b3c303b39363b334d",
+          "controlSnapshot": 390,
+          "snapshot": 391,
+          "actionIndex": 194,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        },
+        {
+          "id": "input.pxm.slot.reset.active",
+          "role": "required",
+          "matched": true,
+          "event": {
+            "modifiers": 0,
+            "column": 96,
+            "row": 3,
+            "kind": "mousePress",
+            "button": "left"
+          },
+          "modes": {
+            "applicationKeypad": false,
+            "mouseTracking": 1000,
+            "mouseSgr": false,
+            "kittyKeyboardFlags": 0,
+            "modifyOtherKeysLevel": 0,
+            "mouseUtf8": false,
+            "mouseUrxvt": false,
+            "mousePixel": false
+          },
+          "setup": "\u001b>\u001b[=0u\u001b[>4;0m\u001b[?1;9;1000;1002;1003;1006l\u001b[?1005;1015l\u001b[?1016l\u001b[?1000h\u001b[?1016h\u001b[?1016l",
+          "expectedHex": "1b5b4d208023",
+          "actualHex": "1b5b4d208023",
+          "oracleHex": "1b5b4d208023",
+          "controlSnapshot": 392,
+          "snapshot": 393,
+          "actionIndex": 195,
+          "appFacts": {
+            "eventDispatched": true,
+            "handled": true,
+            "inputSubmitted": true,
+            "observationAvailable": true,
+            "boundary": "avalonia-routed"
+          }
+        }
+      ],
+      "stock": {
+        "featureId": "input.pixel-mouse",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No generated input event and encoded report were validated",
+        "rawReplyRef": "input.pixel-mouse"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-by-design"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-generated-input-child-bytes",
+        "grading": "pinned-termless-preserved-by-design",
+        "note": "No generated input event and encoded report were validated",
+        "scope": "declared Avalonia events in a disposable direct-local pane; child bytes captured independently of the App"
+      }
+    }
+  ]
+}

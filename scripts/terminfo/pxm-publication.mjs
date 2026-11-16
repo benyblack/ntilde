@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { pxmCaseIds } from './pxm-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'PENDING';
-export const measuredAppRevision = 'PENDING';
+export const measuredScriptsRevision = '9972a6fcf7649ac66140da7354b82020bc10b131';
+export const measuredAppRevision = '9972a6fcf7649ac66140da7354b82020bc10b131';
 const stockOf = (raw, caseId) => {
     const observation = raw.observations.find(entry => entry.featureId === caseId);
     if (!observation) throw new Error(`Missing stock outcome: ${caseId}`);
