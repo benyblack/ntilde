@@ -149,6 +149,26 @@ test('a run of the v4 query policy owes the exact XTGETXRES and XTREPORTCOLORS r
     }
 });
 
+test('a run of the v5 query policy owes a framed OSC 21 foreground reply shape; absent the marker the silence expectation is unchanged', () => {
+    const v4 = queryWitnessPlan({ ...context, marginsReport: true, noticeReport: true, deviceReport: true }), v5 = queryWitnessPlan({ ...context, marginsReport: true, noticeReport: true, deviceReport: true, colorReport: true });
+    const witness = (plan, id) => plan.find(item => item.id === id);
+    assert.deepEqual({ ...witness(v4, 'q07.extensions.osc21-kitty-color') }, { ...witness(v4, 'q07.extensions.osc21-kitty-color'), expectedEvidence: 'silence', expectedReply: '' });
+    assert.equal(Object.hasOwn(witness(v4, 'q07.extensions.osc21-kitty-color'), 'expectedPattern'), false);
+    const osc21 = witness(v5, 'q07.extensions.osc21-kitty-color');
+    assert.equal(osc21.expectedEvidence, 'positive-reply');
+    assert.equal(osc21.request, '\x1b]21;foreground=?\x1b\\');
+    for (const reply of ['\x1b]21;foreground=rgb:12/34/56\x1b\\', '\x1b]21;foreground=rgb:ff/ff/ff\x1b\\']) assert.ok(osc21.expectedPattern.test(reply), reply);
+    for (const reply of ['', '\x1b]21;foreground=\x1b\\', '\x1b]21;foreground=rgb:12/34/56\x07', '\x1b]21;foreground=rgb:1234/5678/9abc\x1b\\', '\x1b]21;foreground=rgb:12/34/56;cursor=\x1b\\',
+        '\x1b]21;unknown=Zm9v\x1b\\', '\x1b]21;foreground=rgb:12/34/56\x1b\\\x1b[?62c']) assert.equal(osc21.expectedPattern.test(reply), false, JSON.stringify(reply));
+    const others = plan => plan.filter(item => item.id !== 'q07.extensions.osc21-kitty-color').map(item => ({ ...item }));
+    assert.deepEqual(others(v5), others(v4), 'every other witness is unchanged');
+    assert.equal(queryWitnessContext({ ...context, colorReport: true }).colorReport, true);
+    assert.equal(Object.hasOwn(queryWitnessContext(context), 'colorReport'), false);
+    for (const bad of [{ ...context, colorReport: false }, { ...context, colorReport: 'true' }, { ...context, colorReport: true, extra: 1 }]) {
+        assert.throws(() => queryWitnessContext(bad), /bounded observed geometry/, JSON.stringify(bad));
+    }
+});
+
 test('a run of the v2 query policy owes the exact DECRQSS s reply; absent the marker the negative expectation is unchanged', () => {
     const plain = queryWitnessPlan(context), marked = queryWitnessPlan({ ...context, marginsReport: true });
     const witness = plan => plan.find(item => item.id === 'q12.decrqss.horizontal-margins');

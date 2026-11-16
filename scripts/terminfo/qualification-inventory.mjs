@@ -75,6 +75,7 @@ export const benchmarkSuites = Object.freeze([
     // Core-to-inventory reconciliation: two ids whose Core requirement rows pass; restated from the Core-gaps suite retained in the newest merged run.
     { ...directory('core-gaps', '2026-11-15-core-gaps', '2026-11-15-core-gaps-qualification.md'), module: 'core-gaps-contracts.mjs', exports: ['coreGapsQualSuiteId', 'coreGapsQualContractsVersion', 'coreGapsQualCaseIds'], test: 'core-gaps-publication.test.mjs' },
     { ...directory('xsv', '2026-11-16-xterm-saved-modes', '2026-11-16-xterm-saved-modes-qualification.md'), module: 'xsv-contracts.mjs', exports: ['xsvSuiteId', 'xsvContractsVersion', 'xsvCaseIds'], test: 'xsv-publication.test.mjs' },
+    { ...directory('kcl', '2026-11-15-kitty-color-control', '2026-11-15-kitty-color-control-qualification.md'), module: 'kcl-contracts.mjs', exports: ['kclSuiteId', 'kclContractsVersion', 'kclCaseIds'], test: 'kcl-publication.test.mjs' },
 ]);
 
 /**

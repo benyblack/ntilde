@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -950,7 +950,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, mex = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, mex = false, kcl = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -988,7 +988,11 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (xsv) {
             await addXsvEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv) writerFor(output)('context.json', context);
+        // The kitty color-control suffix is the next sibling off the same left/right-margin bytes and is equally opt-in; it needs no setting.
+        if (kcl) {
+            await addKclEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1101,6 +1105,26 @@ async function addXssEvidence({ output, write, context, evidence, lrMarginsBytes
     evidence.xssEvidence = { runId: context.runId, suiteId: xssSuiteId, file: 'xss-observations.json', sha256: hash(readFileSync(join(output, 'xss-observations.json'))),
         runFile: 'xss-run.json', runSha256: hash(readFileSync(join(output, 'xss-run.json'))), adapterBundleSha256: hash(xssBytes),
         contractsVersion: xssContractsVersion, counts: xssCounts(xssReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+async function addKclEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticKclEvidence } = await import('./kcl-evidence.mjs');
+    const { buildKclGradingReport } = await import('../kcl-grading.mjs');
+    const { kclCounts } = await import('../kcl-receipt.mjs');
+    const { adaptKclCollector, kclAdapterId } = await import('../kcl-grading-collector.mjs');
+    const { kclSuiteId, kclContractsVersion } = await import('../kcl-contracts.mjs');
+    const kclBytes = Buffer.from(adaptKclCollector(lrMarginsBytes.toString()));
+    const kcl = syntheticKclEvidence({ runId: context.runId, bundleSha256: hash(kclBytes) });
+    kcl.adapter = { ...kcl.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const kclReport = buildKclGradingReport(kcl.frames, kcl.run, context.runId, kcl.adapter);
+    write('kcl-observations.json', kclReport);
+    write('kcl-run.json', kcl.run);
+    writeFileSync(join(output, 'kcl-snapshots.jsonl'), kcl.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-kcl.mjs'), kclBytes);
+    Object.assign(context, { kclAdapterId, kclSuiteId, kclBundleSha256: hash(kclBytes), kclContractsVersion });
+    evidence.kclEvidence = { runId: context.runId, suiteId: kclSuiteId, file: 'kcl-observations.json', sha256: hash(readFileSync(join(output, 'kcl-observations.json'))),
+        runFile: 'kcl-run.json', runSha256: hash(readFileSync(join(output, 'kcl-run.json'))), adapterBundleSha256: hash(kclBytes),
+        contractsVersion: kclContractsVersion, counts: kclCounts(kclReport), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** The opt-in xterm saved-mode suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */

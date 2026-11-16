@@ -38,7 +38,8 @@ records reset, snapshot and shared-session scope.
 | ANSI palette and cursor query | No matching replies | Replies from effective colors | Fresh OSC 4 and OSC 12 collector queries |
 | Palette changes | No runtime palette | All 256 indexed colors; existing truecolor cells stay literal | Every-slot tests and live cached-render pixels for index 200 |
 | Color-stack push/pop | Two unsupported observations | Newest 16 frames; colors and palette survive attach/replay | Fresh foreground save/change/restore traces, state and live rendering tests |
-| X11 names / OSC 21 | Outside implemented scope | Remain outside implemented scope | The VT matrix records numeric-only support |
+| X11 names | Outside implemented scope | Remain outside implemented scope | The VT matrix records numeric-only support |
+| OSC 21 (kitty color control) | Partial: query, numeric set and reset of foreground, background, selection colors, cursor and palette | Names, alpha and dynamic values remain outside implemented scope | `KittyColorTests`; qualified by the kitty color-control batch |
 
 The [Kitty color-control specification](https://sw.kovidgoyal.net/kitty/color-stack/)
 defines the stack protocol; [xterm's control-sequence reference](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)

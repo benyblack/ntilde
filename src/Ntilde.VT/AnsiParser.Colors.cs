@@ -23,6 +23,7 @@ public partial class AnsiParser
                 ResetDynamicColor(code, data);
                 return true;
             case "4": HandlePaletteColors(data); return true;
+            case "21": HandleKittyColors(data); return true;
             case "10":
             case "11":
             case "12":
@@ -92,15 +93,16 @@ public partial class AnsiParser
         RefreshColorScheme();
     }
 
+    private TermColor? ResolveDynamicColor(int code, TerminalColorOverrides colors) => code switch
+    {
+        10 => colors.Foreground is uint fg ? TermColor.FromUint(fg) : DefaultForeground ?? TermColor.FromRgb(0xc0, 0xc0, 0xc0),
+        11 => colors.Background is uint bg ? TermColor.FromUint(bg) : DefaultBackground ?? TermColor.Black,
+        _ => _buffer.GetDynamicColor(code, colors)
+    };
+
     private void ReportDynamicColor(int code, TerminalColorOverrides colors)
     {
-        TermColor? color = code switch
-        {
-            10 => colors.Foreground is uint fg ? TermColor.FromUint(fg) : DefaultForeground ?? TermColor.FromRgb(0xc0, 0xc0, 0xc0),
-            11 => colors.Background is uint bg ? TermColor.FromUint(bg) : DefaultBackground ?? TermColor.Black,
-            _ => _buffer.GetDynamicColor(code, colors)
-        };
-        if (color is TermColor result)
+        if (ResolveDynamicColor(code, colors) is TermColor result)
             OnResponse?.Invoke(FormatOscColorResponse(code.ToString(CultureInfo.InvariantCulture), result));
     }
 

@@ -392,5 +392,12 @@
     "xsvCollectorSourceSha256": "xsv-collector.mjs",
     "xsvGradingSourceSha256": "xsv-grading.mjs",
     "xsvGradingCollectorSourceSha256": "xsv-grading-collector.mjs",
-    "xsvReceiptSourceSha256": "xsv-receipt.mjs"
+    "xsvReceiptSourceSha256": "xsv-receipt.mjs",
+    "kclReportSourceSha256": "kcl-report.mjs",
+    "kclContractsSourceSha256": "kcl-contracts.mjs",
+    "kclCaptureSourceSha256": "kcl-capture.mjs",
+    "kclCollectorSourceSha256": "kcl-collector.mjs",
+    "kclGradingSourceSha256": "kcl-grading.mjs",
+    "kclGradingCollectorSourceSha256": "kcl-grading-collector.mjs",
+    "kclReceiptSourceSha256": "kcl-receipt.mjs"
 }

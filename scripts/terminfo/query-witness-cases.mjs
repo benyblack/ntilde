@@ -38,13 +38,18 @@ const noticeReply = `${esc}]99;i=ntilde-query-audit:p=?;o=always:p=title,body${s
 const xtgetxresReply = `${esc}P1+R7465726d4e616d65=787465726D2D323536636F6C6F72${st}`;
 const xtreportcolorsReply = `${esc}[?0;0#Q`;
 
+/** The shape query policy v5 owes the kitty OSC 21 foreground request: one complete reply `OSC 21 ; foreground=rgb:rr/gg/bb ST` with 8-bit lowercase channels. The value is the
+ * host theme's own foreground (this suite begins with RIS, which clears every override), which the witness model cannot name, so the witness decides the exact framing and shape;
+ * the kitty color-control layer's effect contract measures exact values against colors it sets itself. */
+const kittyForegroundShape = new RegExp(String.raw`^<ESC>\]21;foreground=rgb:[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{2}<ESC>\\$`.replaceAll('<ESC>', String.fromCodePoint(27)));
+
 /** The reply DECRQCRA owes the 1x1 witness request while the run turns AllowRectangleChecksumReport on: the bound first line
  * always starts with the N of NTILDE_QRY_ (0x4E, plain), so the negated 16-bit checksum is FFB2. */
 const checksumReply = `${esc}P1!~FFB2${st}`;
 
 /** The optional context flags, each exactly `true` or absent: `checksumReport` (a run whose initial settings turn the off-by-default
  * DECRQCRA report on) and `marginsReport` (a run of the query policy that expects the DECRQSS s reply, which is unconditional) and `noticeReport` (query policy v3, which also expects the OSC 99 capability reply). */
-const contextFlags = ['checksumReport', 'marginsReport', 'noticeReport', 'deviceReport'];
+const contextFlags = ['checksumReport', 'marginsReport', 'noticeReport', 'deviceReport', 'colorReport'];
 /** Observed geometry and absolute one-based margins plus the optional flags above. Without them (every run before they existed) the
  * context is exactly the four numbers. */
 export function queryWitnessContext(value) {
@@ -65,8 +70,8 @@ export function queryWitnessContext(value) {
 
 export function queryWitnessPlan(context) {
     const c = queryWitnessContext(context);
-    const entry = (id, featureId, request, expectedEvidence, expectedReply) => Object.freeze({
-        id, featureId, request, expectedEvidence, expectedReply,
+    const entry = (id, featureId, request, expectedEvidence, expectedReply, expectedPattern = undefined) => Object.freeze({
+        id, featureId, request, expectedEvidence, expectedReply, ...(expectedPattern === undefined ? {} : { expectedPattern }),
     });
     return Object.freeze([
         entry('q07.device.tertiary-da', 'device.tertiary-da', `${esc}[=c`, 'positive-reply', `${esc}P!|00000000${st}`),
@@ -74,6 +79,7 @@ export function queryWitnessPlan(context) {
         ...silent.map(([id, request]) => {
             if (id === 'editing.decrqcra' && c.checksumReport) return entry(`q07.${id}`, id, request, 'positive-reply', checksumReply);
             if (id === 'extensions.osc99-kitty-notify' && c.noticeReport) return entry(`q07.${id}`, id, request, 'positive-reply', noticeReply);
+            if (id === 'extensions.osc21-kitty-color' && c.colorReport) return entry(`q07.${id}`, id, request, 'positive-reply', '', kittyForegroundShape);
             if (id === 'device.xtgetxres' && c.deviceReport) return entry(`q07.${id}`, id, request, 'positive-reply', xtgetxresReply);
             if (id === 'device.xtreportcolors' && c.deviceReport) return entry(`q07.${id}`, id, request, 'positive-reply', xtreportcolorsReply);
             return entry(`q07.${id}`, id, request, 'silence', '');

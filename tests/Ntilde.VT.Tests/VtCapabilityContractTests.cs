@@ -70,6 +70,7 @@ public sealed class VtCapabilityContractTests
             ["set-left-right-margins"] = AssertSetLeftRightMargins,
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
+            ["kitty-color-control"] = AssertKittyColorControl,
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
             ["alternate-scroll"] = AssertAlternateScroll,
@@ -123,6 +124,7 @@ public sealed class VtCapabilityContractTests
             ["set-left-right-margins"] = "\u001b[?69h\u001b[3;5s\u001b[1;4H12345",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
             ["color-stack-pop"] = "\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a",
+            ["kitty-color-control"] = "\u001b]21;foreground=#123456;foreground=?\u001b\\",
             ["color-scheme-query"] = "\x1b[?996n",
             ["color-scheme-notifications"] = "\x1b[?2031h\x1b[?2031$p",
             ["alternate-scroll"] = "\x1b[?1007l\x1b[?1007$p",
@@ -623,6 +625,16 @@ public sealed class VtCapabilityContractTests
         parser.Process("\u001b]10;#123456\a\u001b]30001\a\u001b]10;#abcdef\a\u001b]30101\a");
         Assert.Equal(0xff123456u, buffer.ExportState(0).Colors!.Current.Foreground);
         Assert.Empty(buffer.ExportState(0).Colors!.Stack);
+    }
+
+    /// <summary>OSC 21 sets and queries the foreground, answering with one OSC 21 and a standard terminator.</summary>
+    private static void AssertKittyColorControl()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(12, 8));
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process("\u001b]21;foreground=#123456;foreground=?\u001b\\");
+        Assert.Equal(new[] { "\u001b]21;foreground=rgb:12/34/56\u001b\\" }, replies);
     }
 
     private static void AssertColorSchemeQuery()
