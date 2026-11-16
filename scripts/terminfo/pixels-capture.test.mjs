@@ -173,7 +173,7 @@ test('pixel-start typed refusal writes no fixture input, and later refusals rema
     assert.equal(writes.at(-1), '\x1b[?1049l\x1b[!p');
 });
 
-for (const privateClipboard of [false, true]) test('portable worker orchestration retains private-close transport=' + privateClipboard, async () => {
+for (const [privateClipboard, scoped] of [[false, false], [true, false], [true, true]]) test(`portable worker orchestration retains private-close transport=${privateClipboard}, scoped=${scoped}`, async () => {
     const { spawnSync } = await import('node:child_process');
     const { createHash } = await import('node:crypto');
     const { fileURLToPath } = await import('node:url');
@@ -238,7 +238,8 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
         writeFileSync(lrMarginsBundle, lrMarginsSource);
         const colorResetSource = 'export const ntildeColorResetAdapter = Object.freeze({ id: \"stub\", probeIds: [] }); export function ntildeRunColorResetTermless() {}';
         writeFileSync(colorResetBundle, colorResetSource);
-        writeFileSync(config, JSON.stringify({ privateClipboard, output, bundle, gradingBundle,
+        const { legacyScope, osc633Scope } = await import('./collection-scope.mjs');
+        writeFileSync(config, JSON.stringify({ privateClipboard, collectionScope: scoped ? osc633Scope : legacyScope, output, bundle, gradingBundle,
             gradingBundleSha256: createHash('sha256').update(gradingSource).digest('hex'),
             sgrColorsBundle, sgrColorsBundleSha256: createHash('sha256').update(sgrColorsSource).digest('hex'),
             sgrRgbBundle, sgrRgbBundleSha256: createHash('sha256').update(sgrRgbSource).digest('hex'),
@@ -271,6 +272,7 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
             selectionColorsBundle: lrMarginsBundle, selectionColorsBundleSha256: createHash('sha256').update(lrMarginsSource).digest('hex'),
             colorResetBundle, colorResetBundleSha256: createHash('sha256').update(colorResetSource).digest('hex'),
             osc133Bundle: lrMarginsBundle, osc133BundleSha256: createHash('sha256').update(lrMarginsSource).digest('hex'),
+            osc633Bundle: lrMarginsBundle, osc633BundleSha256: createHash('sha256').update(lrMarginsSource).digest('hex'),
             osc78Bundle: lrMarginsBundle, osc78BundleSha256: createHash('sha256').update(lrMarginsSource).digest('hex'),
             titleStackBundle: lrMarginsBundle, titleStackBundleSha256: createHash('sha256').update(lrMarginsSource).digest('hex'),
             oscTitleBundle: lrMarginsBundle, oscTitleBundleSha256: createHash('sha256').update(lrMarginsSource).digest('hex'),
@@ -291,7 +293,7 @@ for (const privateClipboard of [false, true]) test('portable worker orchestratio
             fileURLToPath(new URL('./worker.mjs', import.meta.url)), config], { encoding: 'utf8', timeout: 5000,
             env: { ...process.env, NTILDE_WORKER_TEST_LOG: log } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Reflow', 'Saved', 'Metadata', 'Grading', 'SelectionColors', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'SgrClosure', 'EraseLine', 'CharEdit', 'EraseDisplay', 'LineEdit', 'InsertReplace', 'Charsets', 'Scrollback', 'SavedReset', 'EraseAttrsRegion', 'AttrRect', 'CursorQual', 'EraseCharsHistory', 'SelectiveErase', 'RectEdit', 'ColEdit', 'RectChecksum', 'LrMargins', 'CoreGaps', 'ColorReset', 'TextCursor', 'Osc133', 'CoreErase', 'TabStops', 'CoreWrap', 'SgrRaster', 'ReverseWide', 'Osc78', 'TitleStack', 'OscTitle', 'Xtgettcap', 'Osc9', 'Notify', 'Devq', 'Xcs', 'Xss', 'Xsv', 'Kcl', 'Input', 'RoutedInput', 'ModifyOtherKeys', 'Mex', 'Pxm', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);        assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
+        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['private-config', 'proof', 'fence', 'output-setup', 'raw-output', 'Cells', 'Sgr', 'Rgb', 'Rendition', 'Cursor', 'Pixels', 'Colors', 'Erase', 'Editing', 'History', 'Resize', 'Reflow', 'Saved', 'Metadata', 'Grading', 'SelectionColors', 'SgrColors', 'SgrRgb', 'SgrAttrs', 'SgrPalette', 'SgrTruecolor', 'TruecolorFinding', 'SgrUnderline', 'SgrUnderlineColor', 'UnderlineResolved', 'SgrReset', 'SgrClosure', 'EraseLine', 'CharEdit', 'EraseDisplay', 'LineEdit', 'InsertReplace', 'Charsets', 'Scrollback', 'SavedReset', 'EraseAttrsRegion', 'AttrRect', 'CursorQual', 'EraseCharsHistory', 'SelectiveErase', 'RectEdit', 'ColEdit', 'RectChecksum', 'LrMargins', 'CoreGaps', 'ColorReset', 'TextCursor', 'Osc133', ...(scoped ? ['Osc633'] : []), 'CoreErase', 'TabStops', 'CoreWrap', 'SgrRaster', 'ReverseWide', 'Osc78', 'TitleStack', 'OscTitle', 'Xtgettcap', ...(scoped ? [] : ['Osc9', 'Notify']), 'Devq', 'Xcs', 'Xss', 'Xsv', 'Kcl', 'Input', 'RoutedInput', 'ModifyOtherKeys', 'Mex', 'Pxm', 'StaticImages', 'Queries', ...(privateClipboard ? ['retire', 'stock-close', 'output-restore', 'dispose', 'exact-original-mode'] : ['output-restore', 'dispose', 'stock-close']), 'done']);        assert.equal(JSON.parse(readFileSync(join(output, 'raw.json'))).testOnly, true);
         assert.equal(JSON.parse(readFileSync(join(output, 'grading-run.json'))).adapterId, 'stub');
         assert.equal(JSON.parse(readFileSync(join(output, 'sgcolors-run.json'))).adapterId, 'stub');
         assert.equal(JSON.parse(readFileSync(join(output, 'selc-run.json'))).adapterId, 'stub');
