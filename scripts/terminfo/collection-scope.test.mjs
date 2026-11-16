@@ -4,12 +4,12 @@ import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, runPredecessorExtractor, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { historicOsc633Scope, integratedLegacyScope, integratedOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, runPredecessorExtractor, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
 test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v63', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
     const proof = { collectionScope: structuredClone(osc633Scope) };
     const evidence = { osc633Evidence: {} };
     try {
@@ -38,7 +38,7 @@ test('only the fixed scope is admitted by matching context, parent proof, policy
 
 test('the default selection preserves all prior suites and explicitly excludes only OSC 633', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62', collectionScope: structuredClone(legacyScope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v63', collectionScope: structuredClone(legacyScope) };
     const proof = { collectionScope: structuredClone(legacyScope) };
     try {
         assert.equal(isLegacyScope(context.collectionScope), true);
@@ -48,6 +48,19 @@ test('the default selection preserves all prior suites and explicitly excludes o
         assert.throws(() => validateCollectionScope(root, {}, context, { collectionScope: osc633Scope }), /scoped collection/);
         writeFileSync(join(root, 'vs633-run.json'), '');
         assert.throws(() => validateCollectionScope(root, {}, context, proof), /scoped collection/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the integrated v62 selections retain their own exact identities while the new selections require v63', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-integrated-scope-'));
+    try {
+        for (const scope of [integratedLegacyScope, integratedOsc633Scope]) {
+            const evidence = isLegacyScope(scope) ? {} : { osc633Evidence: {} };
+            const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62', collectionScope: scope,
+                ...(isLegacyScope(scope) ? {} : { osc633SuiteId: 'ntilde-owned-osc633-graded-v1' }) };
+            assert.equal(validateCollectionScope(root, evidence, context, { collectionScope: scope }), true);
+            assert.throws(() => validateCollectionScope(root, evidence, { ...context, sourceSnapshotPolicy: 'readonly-owned-source-graph-v63' }, { collectionScope: scope }));
+        }
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

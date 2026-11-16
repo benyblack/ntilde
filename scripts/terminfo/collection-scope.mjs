@@ -16,19 +16,26 @@ export const historicOsc633Scope = Object.freeze({
         runId: '55f0ba462cd3cc6fbc315a0e5fad5126', sourcePolicy: 'readonly-owned-source-graph-v60' }),
 });
 
-export const osc633Scope = Object.freeze({
+export const integratedOsc633Scope = Object.freeze({
     id: 'owned-osc633-without-notification-suites-v2', omittedSuites: Object.freeze(['osc9', 'notify']), deadlineMs: 300000,
     predecessor: Object.freeze({ file: 'scope-predecessor.zip', sha256: 'a3ef48571fc95de3e7c54f8c3d4d924d85b4ead8c7f8f6b959b11414a9d8e820',
         runId: 'b45702ad11ea1f0ea46eeb4908206155', sourcePolicy: 'readonly-owned-source-graph-v61' }),
 });
 export const historicLegacyScope = Object.freeze({ id: 'owned-pre-osc633-full-selection-v1', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
-export const legacyScope = Object.freeze({ id: 'owned-pre-osc633-full-selection-v2', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
+export const integratedLegacyScope = Object.freeze({ id: 'owned-pre-osc633-full-selection-v2', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
+
+export const osc633Scope = Object.freeze({ ...integratedOsc633Scope, id: 'owned-osc633-without-notification-suites-v3' });
+export const legacyScope = Object.freeze({ ...integratedLegacyScope, id: 'owned-pre-osc633-full-selection-v3' });
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-export const isOsc633Scope = value => same(value, osc633Scope) || same(value, historicOsc633Scope);
-export const isLegacyScope = value => same(value, legacyScope) || same(value, historicLegacyScope);
+export const isOsc633Scope = value => same(value, osc633Scope) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
+export const isLegacyScope = value => same(value, legacyScope) || same(value, integratedLegacyScope) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
-const policyForScope = scope => isHistoricOsc633Scope(scope) ? 'readonly-owned-source-graph-v61' : 'readonly-owned-source-graph-v62';
+const policyForScope = scope => {
+    if (isHistoricOsc633Scope(scope)) return 'readonly-owned-source-graph-v61';
+    if (same(scope, integratedOsc633Scope) || same(scope, integratedLegacyScope)) return 'readonly-owned-source-graph-v62';
+    return 'readonly-owned-source-graph-v63';
+};
 const omittedArtifacts = Object.freeze([
     'osn-observations.json', 'osn-run.json', 'osn-snapshots.jsonl', 'osn-unavailable.json', 'osn-focus.json', 'osn-failed-observation.json',
     'ntf-observations.json', 'ntf-run.json', 'ntf-snapshots.jsonl', 'ntf-unavailable.json', 'ntf-focus.json', 'ntf-failed-observation.json',

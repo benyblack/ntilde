@@ -411,5 +411,17 @@
     "osc633GradingSourceSha256": "osc633-grading.mjs",
     "osc633GradingCollectorSourceSha256": "osc633-grading-collector.mjs",
     "osc633ReceiptSourceSha256": "osc633-receipt.mjs",
-    "collectionScopeSourceSha256": "collection-scope.mjs"
+    "collectionScopeSourceSha256": "collection-scope.mjs",
+    "cellSizeContractsSourceSha256": "cell-size-contracts.mjs",
+    "cellSizeFrameSourceSha256": "cell-size-frame.mjs",
+    "cellSizeGradingCollectorSourceSha256": "cell-size-grading-collector.mjs",
+    "cellSizeCollectorSourceSha256": "cell-size-collector.mjs",
+    "cellSizeCaptureSourceSha256": "cell-size-capture.mjs",
+    "cellSizeGradingSourceSha256": "cell-size-grading.mjs",
+    "cellSizeReceiptSourceSha256": "cell-size-receipt.mjs",
+    "cellSizeParserReferenceSha256": "cell-size-parser.cs",
+    "cellSizeMetricsReferenceSha256": "cell-size-metrics.cs",
+    "cellSizeFramingReferenceSha256": "cell-size-framing.cs",
+    "cellSizeFontReferenceSha256": "cell-size-font.cs",
+    "cellSizeGeometryContractReferenceSha256": "cell-size-observer-contract.cs"
 }

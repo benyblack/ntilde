@@ -52,6 +52,7 @@ import { collectXtgettcapGrading } from './xtgettcap-collector.mjs';
 import { collectOsc9 } from './osc9-collector.mjs';
 import { collectNotify } from './notify-collector.mjs';
 import { collectDevqGrading } from './devq-collector.mjs';
+import { collectCellSize } from './cell-size-collector.mjs';
 import { collectXcsGrading } from './xcs-collector.mjs';
 import { collectXssGrading } from './xss-collector.mjs';
 import { collectXsvGrading } from './xsv-collector.mjs';
@@ -441,6 +442,10 @@ try {
         const devqModule = await import(pathToFileURL(config.devqBundle).href);
         const devqRun = await collectDevqGrading({ config, fence, owner, gradingModule: devqModule });
         writeFileSync(join(config.output, 'dvq-run.json'), JSON.stringify(devqRun) + '\n', { flag: 'wx', mode: 0o600 });
+        const cellSizeSource = readFileSync(config.cellSizeBundle);
+        if (createHash('sha256').update(cellSizeSource).digest('hex') !== config.cellSizeBundleSha256) throw new Error('Cell-size adapter bundle changed.');
+        const cellSizeRun = await collectCellSize({ config, fence, owner, module: await import(pathToFileURL(config.cellSizeBundle).href) });
+        writeFileSync(join(config.output, 'cell-size-run.json'), JSON.stringify(cellSizeRun) + '\n', { flag: 'wx', mode: 0o600 });
         // The layered xterm color-stack qualification follows the device-query suite on the same fence; it leaves every color reset and the xterm palette stack balanced.
         const xcsSource = readFileSync(config.xcsBundle);
         if (createHash('sha256').update(xcsSource).digest('hex') !== config.xcsBundleSha256) throw new Error('Local xterm color-stack adapter bundle changed.');
