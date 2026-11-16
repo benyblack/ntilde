@@ -31,11 +31,12 @@ export function animationAction(entry, state, runId, initialCursorVisible) {
 /** Exact framing of consecutive APC replies; mixed or uncorrelated bytes invalidate the experiment. */
 export function parseAnimationReplies(raw, imageId) {
     checkImages(typeof raw === 'string' && raw.length <= 512 && uint(imageId));
-    const replies = []; let rest = raw;
+    const prefix = '\x1b_Gi=', terminator = '\x1b\\', replies = []; let rest = raw;
     while (rest.length) {
-        const match = /^\x1b_Gi=(\d{1,10});([ -~]+?)\x1b\\/.exec(rest);
-        checkImages(match && Number(match[1]) === imageId && /^(OK|E[A-Z\d]+(?::[ -~]*)?)$/.test(match[2]));
-        replies.push(match[2]); rest = rest.slice(match[0].length);
+        const end = rest.indexOf(terminator), body = end > 0 && rest.startsWith(prefix) ? rest.slice(prefix.length, end) : '', separator = body.indexOf(';');
+        checkImages(separator > 0 && /^\d{1,10}$/.test(body.slice(0, separator)) && Number(body.slice(0, separator)) === imageId
+            && /^(OK|E[A-Z\d]+(?::[ -~]*)?)$/.test(body.slice(separator + 1)));
+        replies.push(body.slice(separator + 1)); rest = rest.slice(end + terminator.length);
     }
     return replies;
 }

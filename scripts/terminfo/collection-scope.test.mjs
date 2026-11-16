@@ -4,7 +4,7 @@ import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, runPredecessorExtractor, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, legacyScopeV2, osc633Scope, osc633ScopeV2, runPredecessorExtractor, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
 test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
@@ -33,6 +33,26 @@ test('only the fixed scope is admitted by matching context, parent proof, policy
             rmSync(join(root, file));
         }
         assert.equal(isOsc633Scope({ ...osc633Scope, deadlineMs: 300001 }), false);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('each scope generation is bound to the one source policy it was collected under, so published v62 runs stay valid', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-scope-gen-'));
+    const scoped = (scope, policy) => [root, { osc633Evidence: {} }, { sourceSnapshotPolicy: policy, osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(scope) }, { collectionScope: structuredClone(scope) }];
+    const legacy = (scope, policy) => [root, {}, { sourceSnapshotPolicy: policy, collectionScope: structuredClone(scope) }, { collectionScope: structuredClone(scope) }];
+    try {
+        const reorder = ([dir, evidence, context, proof]) => validateCollectionScope(dir, evidence, context, proof);
+        assert.equal(reorder(scoped(osc633ScopeV2, 'readonly-owned-source-graph-v62')), true);
+        assert.equal(reorder(scoped(osc633Scope, 'readonly-owned-source-graph-v63')), true);
+        assert.throws(() => reorder(scoped(osc633ScopeV2, 'readonly-owned-source-graph-v63')), /scoped collection/);
+        assert.throws(() => reorder(scoped(osc633Scope, 'readonly-owned-source-graph-v62')), /scoped collection/);
+        assert.equal(reorder(legacy(legacyScopeV2, 'readonly-owned-source-graph-v62')), true);
+        assert.equal(reorder(legacy(legacyScope, 'readonly-owned-source-graph-v63')), true);
+        assert.throws(() => reorder(legacy(legacyScopeV2, 'readonly-owned-source-graph-v63')), /scoped collection/);
+        assert.throws(() => reorder(legacy(legacyScope, 'readonly-owned-source-graph-v62')), /scoped collection/);
+        assert.equal(osc633ScopeV2.id.endsWith('-v2'), true); assert.equal(osc633Scope.id.endsWith('-v3'), true);
+        assert.deepEqual(osc633Scope.predecessor, osc633ScopeV2.predecessor);
+        assert.equal(isOsc633Scope(osc633ScopeV2) && isLegacyScope(legacyScopeV2), true);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

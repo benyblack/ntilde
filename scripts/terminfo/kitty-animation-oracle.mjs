@@ -82,6 +82,24 @@ export function framesPossibleAt(start, window) {
     return animationHoldCycle.filter(id => set.has(id));
 }
 
+const timingOk = Object.freeze({ valid: true, reason: null }), timingNo = reason => ({ valid: false, reason });
+function runningTiming(stage, facts) {
+    if (!facts.start) return timingNo('animation start time unavailable');
+    const possible = framesPossibleAt(facts.start, facts.capture);
+    if (possible.length !== 1) return timingNo('capture span straddles a frame boundary: ' + possible.join('/'));
+    return possible[0] === stage.appearance ? timingOk : timingNo(`read landed in the ${possible[0]} window, not the planned ${stage.appearance} window`);
+}
+function frozenTiming(stage, facts) {
+    const { capture } = facts;
+    if (!facts.start) return facts.build && capture.start - facts.build.latest >= animationHoldMs
+        ? timingOk : timingNo('read did not outlast the root hold since the frame was built');
+    if (!facts.stop) return timingNo('stop time unavailable');
+    const frozenAt = framesPossibleAt(facts.start, { start: facts.stop.earliest, end: facts.stop.latest });
+    if (frozenAt.length !== 1 || frozenAt[0] !== stage.appearance) return timingNo('stop did not land inside the ' + stage.appearance + ' window');
+    if (capture.start < facts.stop.latest) return timingNo('read precedes the stop taking effect');
+    if (stage.waitMs === undefined) return timingOk;
+    return framesPossibleAt(facts.start, capture).includes(stage.appearance) ? timingNo('a running animation could still show ' + stage.appearance + ' here') : timingOk;
+}
 /**
  * Whether the timing facts let a read of this stage stand for its declared frame. Invalid timing makes a stage
  * inconclusive (a read outside its window says nothing about playback); it never becomes a failure.
@@ -89,23 +107,8 @@ export function framesPossibleAt(start, window) {
  * { start, end }, the wall-clock span of the paired image captures.
  */
 export function evaluateAnimationTiming(stage, facts) {
-    const ok = { valid: true, reason: null }, no = reason => ({ valid: false, reason });
-    if (stage.clock === 'static') return ok;
-    const { capture } = facts;
-    if (!capture || !Number.isFinite(capture.start) || !Number.isFinite(capture.end) || capture.start > capture.end) return no('capture span unavailable');
-    if (stage.clock === 'running') {
-        if (!facts.start) return no('animation start time unavailable');
-        const possible = framesPossibleAt(facts.start, capture);
-        if (possible.length !== 1) return no('capture span straddles a frame boundary: ' + possible.join('/'));
-        return possible[0] === stage.appearance ? ok : no(`read landed in the ${possible[0]} window, not the planned ${stage.appearance} window`);
-    }
-    if (!facts.start) return facts.build && capture.start - facts.build.latest >= animationHoldMs
-        ? ok : no('read did not outlast the root hold since the frame was built');
-    if (!facts.stop) return no('stop time unavailable');
-    const frozenAt = framesPossibleAt(facts.start, { start: facts.stop.earliest, end: facts.stop.latest });
-    if (frozenAt.length !== 1 || frozenAt[0] !== stage.appearance) return no('stop did not land inside the ' + stage.appearance + ' window');
-    if (capture.start < facts.stop.latest) return no('read precedes the stop taking effect');
-    if (stage.waitMs === undefined) return ok;
-    const running = framesPossibleAt(facts.start, capture);
-    return running.includes(stage.appearance) ? no('a running animation could still show ' + stage.appearance + ' here') : ok;
+    if (stage.clock === 'static') return timingOk;
+    const capture = facts.capture;
+    if (!capture || !Number.isFinite(capture.start) || !Number.isFinite(capture.end) || capture.start > capture.end) return timingNo('capture span unavailable');
+    return stage.clock === 'running' ? runningTiming(stage, facts) : frozenTiming(stage, facts);
 }
