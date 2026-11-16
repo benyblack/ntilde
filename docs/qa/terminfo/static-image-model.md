@@ -260,3 +260,9 @@ define either region. Both the region and its authority are retained explicitly.
 An exact fit of the source canvas/reservation in4×2 is eligible for native raster
 comparison: the independently blank enlarged region verifies the outer edge band.
 Only a genuinely larger projection is refused as an undersized fixed target.
+
+## Qualification of the SIXEL and iTerm2 benchmark cases (#987)
+
+The [2026-11-16 qualification](2026-11-16-static-images-qualification.md) projects this suite's `sixel.native-raster`, `iterm.explicit-stretch` and `iterm.default-aspect` cases onto
+`extensions.sixel` and `extensions.iterm2-images`. It is publication-only (`scripts/terminfo/static-images-qualification.mjs`): the measured source graph, policy v62 and receipt schema 69 are unchanged. The Kitty cases are
+not claimed there. A SIXEL native-size fix (#851) needs a fresh measurement; the retained negative stays frozen.

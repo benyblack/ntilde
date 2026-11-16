@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 136,
-    "suiteClaims": 138,
+    "uniqueBenchmarkIds": 138,
+    "suiteClaims": 140,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 136,
-    "effectUnsupportedIds": 0,
+    "effectSupportedIds": 137,
+    "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
     "pinnedAndEffectSupportedIds": 93,
     "effectSupportedPinnedInconclusiveIds": [
@@ -56,6 +56,7 @@
       "editing.deccara",
       "editing.decrara",
       "editing.decsace",
+      "extensions.iterm2-images",
       "extensions.notifications",
       "extensions.osc0-icon-title",
       "extensions.osc1-icon",
@@ -95,9 +96,11 @@
       "scrollback.decstbm-reset",
       "scrollback.set-region"
     ],
-    "effectUnsupportedPinnedInconclusiveIds": [],
-    "effectSupportedOfStockInconclusive": 135,
-    "effectUnsupportedOfStockInconclusive": 0,
+    "effectUnsupportedPinnedInconclusiveIds": [
+      "extensions.sixel"
+    ],
+    "effectSupportedOfStockInconclusive": 136,
+    "effectUnsupportedOfStockInconclusive": 1,
     "pinnedSupportedOfStockInconclusive": 92,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -111,10 +114,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 33,
-      "effectMeasuredUnsupported": 0,
+      "effectUnqualified": 32,
+      "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 33,
+      "effectNotMeasured": 31,
       "notPinnedSupported": 76
     }
   },
@@ -3616,6 +3619,76 @@
         "command": "node --test scripts/terminfo/osc633-implementation-publication.test.mjs",
         "testSha256": "a300678b3afdbbded85d7355ab0080553b97ce712458dec6841b745556f701f1"
       }
+    },
+    {
+      "suite": "static-images",
+      "suiteId": "ntilde-owned-static-images-qualification-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-16-static-images/",
+      "doc": "2026-11-16-static-images-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "extensions.sixel",
+        "extensions.iterm2-images"
+      ],
+      "evidence": {
+        "files": 5,
+        "bytes": 16152725,
+        "sha256": "b31cf4153ddb4e097c0ac51ef2f03e56fe0bf622ab545791db83da5b407f9265"
+      },
+      "receipt": {
+        "schemaVersion": 69,
+        "runId": "569294d0402a900696bef00b68490d9d",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "4d6f30296522e28fd9f695e5b99e9c7f7f17d1ded2332882d7f1bac00b3b0727"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-static-images-v1",
+          "file": "image-observations.json",
+          "sha256": "f526083215ca1f42f346727770a53067e6f92f886c1386b6f7821864509389cc",
+          "counts": {
+            "passed": 21,
+            "failed": 1,
+            "inconclusive": 1
+          }
+        }
+      },
+      "run": {
+        "ownedRunId": "569294d0402a900696bef00b68490d9d",
+        "measuredAt": "2026-11-16T15:59:40.155Z",
+        "appRevision": "49bc7b7627a1f2c7385e2c400d5d0baedaeb96d4",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "49bc7b7627a1f2c7385e2c400d5d0baedaeb96d4",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "ec18cc02a3bbb72c81a32f7b087d8801420a4af405e05f4d45daeebfd1f5d748",
+        "gradingAdapterId": "ntilde-owned-macos-v1",
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v62",
+        "sourceSnapshotManifestSha256": "bd58ab31fded213d8e10c7a38b199030f26cd3d4edbc32aec95b38af920e0bfc"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "620df11352a96f08f8a6fd01d0c01e98",
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "2036e565537a2b46363d5c1dd260c30dfd1985b1a2b5380fab79cf9227ebd126",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/static-images-publication.test.mjs",
+        "testSha256": "6435aebac9ce848c93541dc60004d73e449b61f08352de51297852aeb041edad"
+      }
     }
   ],
   "benchmark": [
@@ -5656,6 +5729,58 @@
       ]
     },
     {
+      "id": "extensions.iterm2-images",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "static-images",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "static-images",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.iterm2-images",
+          "suite": "static-images",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared iTerm2 image capability does not establish rendered image pixels"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-callbacks-preserved-plus-owned-pixel-effect-v1"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Declared iTerm2 image capability does not establish rendered image pixels"
+          },
+          "measuredLayers": [
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-controlled-pixels-paired-raw-render"
+        }
+      ]
+    },
+    {
       "id": "extensions.notifications",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -7033,6 +7158,58 @@
             "actual-scrollback"
           ],
           "evidenceTag": "stored-state and actual-scrollback"
+        }
+      ]
+    },
+    {
+      "id": "extensions.sixel",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "static-images",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "static-images",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.sixel",
+          "suite": "static-images",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared Sixel capability does not establish rendered pixels"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "unsupported",
+            "grading": "pinned-callbacks-preserved-plus-owned-pixel-effect-v1"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "Declared Sixel capability does not establish rendered pixels"
+          },
+          "measuredLayers": [
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-controlled-pixels-paired-raw-render"
         }
       ]
     },
