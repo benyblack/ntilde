@@ -74,6 +74,15 @@
       "contractCase": "urxvt-mouse-coordinates"
     },
     {
+      "key": "DEC:1016",
+      "mnemonic": "SGR-Pixels mouse coordinates",
+      "support": "supported",
+      "description": "Selects the SGR-Pixels encoding for mouse reports: the ?1006 format (CSI < Cb ; Px ; Py M, a release ending in m) with the pointer position in device pixels, the zero-based offset inside the text area plus one, instead of cells. DECSET replaces ?1005/?1006/?1015, DECRST only clears this encoding, and DECRQM reports its state.",
+      "matrixFeature": "SGR-Pixels mouse coordinates",
+      "evidencePath": "tests/Ntilde.VT.Tests/ExtendedMouseCoordinateModeTests.cs",
+      "contractCase": "pixel-mouse-coordinates"
+    },
+    {
       "key": "DEC:69",
       "mnemonic": "DECLRMM",
       "support": "partial",
