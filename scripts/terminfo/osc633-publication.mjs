@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { osc633CaseIds } from './osc633-grading-collector.mjs';
 
-export const measuredScriptsRevision = '2d32bfaf00c9b6d3a5bb768f64ab4ab3831f2942';
+export const measuredScriptsRevision = '9cedcc50e1f29206dcdc83e54d5b41a0fba77e7f';
 export const measuredAppRevision = '9c692a04aa880372a9461be51e4144e307ab5c83';
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 const scope = 'Pinned terminfo.dev@4.0.0 OSC 633 A–D termless and terminal marker-consumption probes replayed over parent-journaled stored cells and cursor; '

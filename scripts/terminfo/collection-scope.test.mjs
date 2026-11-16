@@ -70,7 +70,10 @@ test('a stalled predecessor extractor is killed and extraction fails closed', ()
         assert.deepEqual(args, ['-c', 'script', 'archive', 'root']);
         assert.equal(options.timeout, 30000);
         assert.equal(options.killSignal, 'SIGKILL');
-        return spawnSync(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { ...options, timeout: 150 });
+        const result = spawnSync(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { ...options, timeout: 150 });
+        assert.equal(result.error?.code, 'ETIMEDOUT');
+        assert.equal(result.status, null);
+        return result;
     };
     assert.throws(() => runPredecessorExtractor(stalled, 'python', 'script', 'archive', 'root'), /archive extraction failed/);
     assert.equal(called, true);
