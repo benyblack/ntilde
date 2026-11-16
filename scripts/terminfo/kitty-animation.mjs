@@ -32,20 +32,22 @@ export function animationAction(entry, state, runId, initialCursorVisible) {
 
 /** Exact framing of consecutive APC replies; mixed or uncorrelated bytes invalidate the experiment. */
 export function parseAnimationReplies(raw, imageId) {
-    checkImages(typeof raw === 'string' && raw.length <= 512 && uint(imageId));
+    checkImages(typeof raw === 'string' && raw.length <= 1024 && uint(imageId));
     const prefix = '\x1b_Gi=', terminator = '\x1b\\', replies = []; let rest = raw;
     while (rest.length) {
         const end = rest.indexOf(terminator), body = end > 0 && rest.startsWith(prefix) ? rest.slice(prefix.length, end) : '', separator = body.indexOf(';');
-        checkImages(separator > 0 && /^\d{1,10}$/.test(body.slice(0, separator)) && Number(body.slice(0, separator)) === imageId
-            && /^(OK|E[A-Z\d]+(?::[ -~]*)?)$/.test(body.slice(separator + 1)));
-        replies.push(body.slice(separator + 1)); rest = rest.slice(end + terminator.length);
+        const fields = body.slice(0, separator).split(','), status = body.slice(separator + 1);
+        checkImages(separator > 0 && fields.length <= 2 && /^\d{1,10}$/.test(fields[0]) && Number(fields[0]) === imageId
+            && (fields.length === 1 || /^p=[1-9]\d{0,9}$/.test(fields[1])) && /^(OK|E[A-Z\d]+(?::[ -~]*)?)$/.test(status));
+        replies.push({ status, placement: fields.length === 2 ? Number(fields[1].slice(2)) : null }); rest = rest.slice(end + terminator.length);
     }
     return replies;
 }
 /** Missing or error replies are semantic negatives; extra, reordered-id or malformed bytes are invalid. */
 export function animationReply(raw, stage, imageId) {
-    const expected = animationExpectedReplies(stage.id, imageId), statuses = parseAnimationReplies(raw, imageId);
-    checkImages(statuses.length <= expected.length);
+    const expected = parseAnimationReplies(animationExpectedReplies(stage.id, imageId).join(''), imageId), parsed = parseAnimationReplies(raw, imageId);
+    checkImages(parsed.length <= expected.length && parsed.every((reply, index) => reply.placement === expected[index].placement));
+    const statuses = parsed.map(reply => reply.status);
     if (!expected.length) return { passed: true, statuses };
     return { passed: statuses.length === expected.length && statuses.every(status => status === 'OK'), statuses };
 }

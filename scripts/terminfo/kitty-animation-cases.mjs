@@ -57,11 +57,11 @@ export function animationCommand(caseId, stageId, { imageId } = {}) {
     return '';
 }
 
-/** The ordered correlated replies one stage's command produces; a=d success is silent. */
+/** The ordered correlated replies one stage's command produces; a=d success is silent. The a=T reply echoes the placement id it was given (p=1). */
 export function animationExpectedReplies(stageId, imageId) {
     if (!uint(imageId)) throw new Error('Animation image id must be an explicit positive uint32.');
     const ok = `\x1b_Gi=${imageId};OK\x1b\\`;
-    if (stageId === 'build') return [ok, ok, ok, ok];
+    if (stageId === 'build') return [`\x1b_Gi=${imageId},p=1;OK\x1b\\`, ok, ok, ok];
     if (['start', 'stop'].includes(stageId)) return [ok];
     return [];
 }

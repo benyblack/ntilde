@@ -50,7 +50,7 @@ test('commands are exact bounded bytes from an explicit image id', () => {
     assert.equal(animationCommand('kitty.animation.stopped-hold', 'hold', { imageId: 7 }), '');
     assert.throws(() => animationCommand('kitty.animation.playback', 'build', {})); assert.throws(() => animationCommand('kitty.animation.playback', 'build', { imageId: 0 }));
     assert.throws(() => animationCommand('kitty.animation.playback', 'nope', { imageId: 1 })); assert.throws(() => animationCommand('nope', 'build', { imageId: 1 }));
-    assert.deepEqual(animationExpectedReplies('build', 7), Array(4).fill('\x1b_Gi=7;OK\x1b\\'));
+    assert.deepEqual(animationExpectedReplies('build', 7), ['\x1b_Gi=7,p=1;OK\x1b\\', ...Array(3).fill('\x1b_Gi=7;OK\x1b\\')], 'a=T echoes its placement id');
     assert.deepEqual(animationExpectedReplies('start', 7), ['\x1b_Gi=7;OK\x1b\\']); assert.deepEqual(animationExpectedReplies('clear', 7), []);
 });
 

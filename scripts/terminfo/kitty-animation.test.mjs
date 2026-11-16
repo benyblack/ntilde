@@ -133,16 +133,22 @@ test('tampering with the journal, actions, timing, replies or seal is refused', 
     });
 });
 
-test('replies: exact correlated framing; missing or error replies are negatives; extras and foreign ids are invalid', () => {
-    const ok = id => `\x1b_Gi=${id};OK\x1b\\`, build = stageOf('kitty.animation.playback', 'build'), start = stageOf('kitty.animation.playback', 'start');
-    assert.deepEqual(animationReply(ok(7).repeat(4), build, 7), { passed: true, statuses: Array(4).fill('OK') });
+test('replies: exact correlated framing with the a=T placement echo; missing or error replies are negatives; extras and foreign ids are invalid', () => {
+    const ok = id => `\x1b_Gi=${id};OK\x1b\\`, placed = id => `\x1b_Gi=${id},p=1;OK\x1b\\`, error = (id, extra = '') => `\x1b_Gi=${id}${extra};ENOTSUP:Graphics action not supported\x1b\\`;
+    const build = stageOf('kitty.animation.playback', 'build'), start = stageOf('kitty.animation.playback', 'start');
+    const faithful = placed(7) + ok(7).repeat(3);
+    assert.deepEqual(animationReply(faithful, build, 7), { passed: true, statuses: Array(4).fill('OK') });
     assert.equal(animationReply('', build, 7).passed, false);
-    assert.equal(animationReply(ok(7) + '\x1b_Gi=7;ENOTSUP:Graphics action not supported\x1b\\'.repeat(3), build, 7).passed, false);
+    assert.equal(animationReply(placed(7) + error(7).repeat(3), build, 7).passed, false);
+    assert.equal(animationReply(error(7, ',p=1') + error(7).repeat(3), build, 7).passed, false, 'an error may echo the placement the request named');
     assert.equal(animationReply('\x1b_Gi=7;ENOENT:Image not found\x1b\\', start, 7).passed, false);
-    assert.throws(() => animationReply(ok(7).repeat(5), build, 7)); assert.throws(() => animationReply(ok(8), start, 7));
+    assert.throws(() => animationReply(ok(7) + ok(7).repeat(3), build, 7), 'a=T must echo its placement id');
+    assert.throws(() => animationReply(placed(7) + placed(7) + ok(7).repeat(2), build, 7), 'only a=T carries a placement');
+    assert.throws(() => animationReply(faithful + ok(7), build, 7)); assert.throws(() => animationReply(ok(8), start, 7));
     assert.throws(() => animationReply('OK', start, 7)); assert.throws(() => animationReply(ok(7) + 'x', start, 7));
+    assert.throws(() => animationReply('\x1b_Gi=7,p=0;OK\x1b\\', start, 7)); assert.throws(() => animationReply('\x1b_Gi=7,q=1;OK\x1b\\', start, 7));
     assert.deepEqual(animationReply('', stageOf('kitty.animation.playback', 'second'), 7), { passed: true, statuses: [] });
     assert.throws(() => animationReply(ok(7), stageOf('kitty.animation.playback', 'second'), 7));
-    assert.deepEqual(parseAnimationReplies(ok(7) + ok(7), 7), ['OK', 'OK']);
+    assert.deepEqual(parseAnimationReplies(placed(7) + ok(7), 7), [{ status: 'OK', placement: 1 }, { status: 'OK', placement: null }]);
     assert.equal(animationInputs().length, 3); assert.ok(animationEpoch > 0);
 });
