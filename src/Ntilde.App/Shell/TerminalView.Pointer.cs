@@ -427,9 +427,9 @@ namespace Ntilde.Shell
             effectiveScale = double.IsFinite(scale) && scale > 0 ? scale : 1;
             width = height = 0;
             if (!double.IsFinite(cellWidth) || !double.IsFinite(cellHeight) || cellWidth <= 0 || cellHeight <= 0 || cols <= 0 || rows <= 0) return false;
-            // A float cell metric at a fractional scale can land a hair under the whole pixel the geometry replies round to (7.2 x 1.25 x 80), so the
-            // extent tolerates that error rather than losing the last pixel row or column.
-            double w = Math.Floor(cols * cellWidth * effectiveScale + 0.001), h = Math.Floor(rows * cellHeight * effectiveScale + 0.001);
+            // The extent is what CSI 14 t reports: the float cell size SyncLocalSixelCellSize stores times the grid, rounded, so the last pixel the
+            // reply counts is also reachable here (flooring would lose it to float error at fractional scales).
+            double w = Math.Round(cols * (float)(cellWidth * effectiveScale)), h = Math.Round(rows * (float)(cellHeight * effectiveScale));
             if (w < 1 || h < 1 || w > int.MaxValue || h > int.MaxValue) return false;
             width = (int)w;
             height = (int)h;

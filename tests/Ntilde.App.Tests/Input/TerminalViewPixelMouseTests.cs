@@ -150,6 +150,15 @@ namespace Ntilde.Tests.Input
             }
         }
 
+        [Theory]
+        [InlineData(1.25, 7.2, 80, 720)]
+        [InlineData(1.0, 7.36, 80, 589)]
+        public void The_text_area_extent_is_what_the_geometry_reply_rounds_to(double scale, double cellWidth, int cols, int expectedWidth)
+        {
+            Assert.True(TerminalView.TryGetTextAreaPixels(scale, cellWidth, 20, cols, 24, out _, out int width, out _));
+            Assert.Equal(expectedWidth, width);
+        }
+
         [AvaloniaTheory]
         [InlineData(-1, 0)]
         [InlineData(0, -1)]
