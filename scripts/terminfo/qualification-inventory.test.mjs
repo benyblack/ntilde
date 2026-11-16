@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
     assertInventory, benchmarkSuites, buildInventory, defaultQaRoot, effectVerdictOf, evidenceDigest, findingSuites, inventoryFiles, loadPublication, measuredLayersOf,
-    nonInventoryPublicationTests, pinnedVerdictOf, readText, receiptBinding, renderSummary, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
+    nonInventoryPublicationTests, pinnedVerdictOf, readText, receiptBinding, renderSummary, resolveCarriers, serialize, stockBaselineFile, stockProvenance, testDigest, totalsOf,
 } from './qualification-inventory.mjs';
 
 const read = name => JSON.parse(readText(join(defaultQaRoot, name)));
@@ -532,6 +532,19 @@ test('the OSC 633 implementation publication is the active claim while the histo
     assert.equal(row(failing, 'extensions.semantic-prompts').claims[0].status, 'qualified');
     assert.deepEqual(row(failing, 'extensions.semantic-prompts').claims[0].carrierSuites, ['osc133']);
     assert.equal(failing.totals.effectOtherIds, stored.totals.effectOtherIds - 1);
+});
+
+test('an aggregate case naming a carrier no registered suite owns is refused, not silently unvalidated', () => {
+    const recordBySuite = new Map([['osc133', { suite: 'osc133', suiteId: 'ntilde-owned-osc133-graded-v1' }]]);
+    const statusBySuite = new Map([['osc133', 'passed']]);
+    const suite = { carrierSuites: ['osc133'] };
+    assert.deepEqual(resolveCarriers(suite, { caseId: 'x', aggregateOf: { carrier: 'ntilde-owned-osc133-graded-v1' } }, recordBySuite, statusBySuite),
+        { names: ['osc133'], statuses: ['passed'] });
+    assert.deepEqual(resolveCarriers(suite, { caseId: 'x' }, recordBySuite, statusBySuite), { names: ['osc133'], statuses: ['passed'] });
+    // A carrier id nothing owns must fail the build: dropping it would qualify the claim without any carrier rederivation.
+    assert.throws(() => resolveCarriers(suite, { caseId: 'x', aggregateOf: { carrier: 'ntilde-owned-nowhere-graded-v1' } }, recordBySuite, statusBySuite),
+        /no registered suite owns/);
+    assert.equal(resolveCarriers({ carrierSuites: undefined }, { caseId: 'x' }, recordBySuite, statusBySuite), null);
 });
 
 test('the aggregate projection qualifies the two aggregate ids over one claim each while keeping their outcomes distinct', async () => {

@@ -344,6 +344,20 @@ export function rederivationAllows(status, carrierStatuses) {
     return (carrierStatuses ?? []).every(entry => entry === 'passed');
 }
 
+/** The carriers one claim depends on: the carrier publication the case names, or all of the suite's
+ * declared carriers when its report names none. A carrier id that no registered suite owns is refused
+ * instead of being dropped — dropping it would leave the claim qualified without any carrier rederivation. */
+export function resolveCarriers(suite, item, recordBySuite, statusBySuite) {
+    if (!suite.carrierSuites?.length) return null;
+    const carrierSuiteId = item.aggregateOf?.carrier ?? item.carrier?.suiteId ?? null;
+    if (!carrierSuiteId) return { names: [...suite.carrierSuites], statuses: suite.carrierSuites.map(name => statusBySuite.get(name)) };
+    const name = [...recordBySuite.values()].find(record => record.suiteId === carrierSuiteId)?.suite;
+    if (!name || !statusBySuite.has(name)) {
+        throw new Error(`${item.caseId}: aggregate names carrier suite id ${carrierSuiteId}, which no registered suite owns.`);
+    }
+    return { names: [name], statuses: [statusBySuite.get(name)] };
+}
+
 const claimOf = (suite, report, item, rederivationStatus, carriers = null) => {
     const pinned = pinnedVerdictOf(item), effect = effectVerdictOf(item);
     const allowed = rederivationAllows(rederivationStatus, carriers?.statuses);
@@ -428,20 +442,12 @@ export async function buildInventory({ root = defaultQaRoot, ...options } = {}) 
     const recordBySuite = new Map(loaded.map(({ record }) => [record.suite, record]));
     // An aggregate case names the carrier publication it projects over; a claim depends on exactly that
     // carrier (all of the suite's carriers when its report names none). A failed carrier lends nothing.
-    const carriersOf = (suite, item) => {
-        if (!suite.carrierSuites?.length) return null;
-        const carrierSuiteId = item.aggregateOf?.carrier ?? item.carrier?.suiteId ?? null;
-        const names = carrierSuiteId
-            ? [([...recordBySuite.values()].find(record => record.suiteId === carrierSuiteId)?.suite ?? '')].filter(name => statusBySuite.has(name))
-            : suite.carrierSuites;
-        return { names, statuses: names.map(name => statusBySuite.get(name)) };
-    };
     for (const [index, entry] of loaded.entries()) {
         const suite = benchmarkSuites[index];
         suites.push(entry.record);
         for (const item of entry.report.cases) {
             if (!claimsById.has(item.caseId)) claimsById.set(item.caseId, []);
-            claimsById.get(item.caseId).push(claimOf(suite, entry.report, item, entry.record.rederivation.status, carriersOf(suite, item)));
+            claimsById.get(item.caseId).push(claimOf(suite, entry.report, item, entry.record.rederivation.status, resolveCarriers(suite, item, recordBySuite, statusBySuite)));
         }
     }
     const benchmark = [...claimsById].sort(([a], [b]) => byText(a, b)).map(([id, claims]) => ({ id, kind: 'benchmark', stockOutcome: baseline.outcomes[id] ?? null,
