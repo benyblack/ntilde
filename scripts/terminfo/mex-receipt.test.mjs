@@ -90,7 +90,7 @@ test('the extended-mouse receipt refuses a changed observation report that no lo
 
 test('the extended-mouse receipt refuses a run whose declared input suite is not the v4 plan', () => privateClipboardReceiptFixture(f => {
     f.context.inputSuiteId = 'ntilde-owned-routed-input-v3'; f.write('context.json', f.context);
-    assert.throws(own(f), /requires the owned routed-input v4 suite plan/);
+    assert.throws(own(f), /requires the owned routed-input v4 or later suite plan/);
 }));
 
 test('the earlier input layers keep re-deriving from the v4 journal: routed-input and modifyOtherKeys accept it, a v3 declaration for it does not', () => privateClipboardReceiptFixture(async f => {

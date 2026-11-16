@@ -234,9 +234,15 @@ The BCL contract validates the following bounds before any UI work:
   agreeing view/buffer grid. `button` is `left`, `middle`, `right`; move also
   permits `none`. Wheel accepts no held button and exactly one `wheelDelta`
   of +1 or -1. Unrelated/unknown fields and combined events are rejected.
+- Pointer `pixelX`/`pixelY`: the alternative to a cell for a pointer event — the
+  zero-based device-pixel position inside the pane's text area (the unit of
+  `CSI 14 t`/`CSI 16 t` and SGR-Pixels `?1016`), 0–16383 each. Both or neither, and never
+  together with `column`/`row`; non-pointer events accept none. The App routes the event at the
+  centre of that pixel, refuses a pixel outside the grid, and reports the viewport cell it falls in
+  as `column`/`row` (the cell the report path itself derives).
 
 App raises actual Avalonia routed key/text/pointer events at the TerminalView.
-Mouse positions are measured cell centers translated into the window's event
+Mouse positions are measured cell centers (or declared pixel centers) translated into the window's event
 coordinate space. Mouse events require active reporting immediately before the
 TerminalView handler, so a disabled protocol cannot fall through into selection
 or hyperlink activation. Such unavailable attempts are not no-byte evidence.

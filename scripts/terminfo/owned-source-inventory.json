@@ -399,5 +399,11 @@
     "kclCollectorSourceSha256": "kcl-collector.mjs",
     "kclGradingSourceSha256": "kcl-grading.mjs",
     "kclGradingCollectorSourceSha256": "kcl-grading-collector.mjs",
-    "kclReceiptSourceSha256": "kcl-receipt.mjs"
+    "kclReceiptSourceSha256": "kcl-receipt.mjs",
+    "pxmCasesSourceSha256": "pxm-cases.mjs",
+    "pxmContractsSourceSha256": "pxm-contracts.mjs",
+    "pxmCollectorSourceSha256": "pxm-collector.mjs",
+    "pxmGradingSourceSha256": "pxm-grading.mjs",
+    "pxmGradingCollectorSourceSha256": "pxm-grading-collector.mjs",
+    "pxmReceiptSourceSha256": "pxm-receipt.mjs"
 }

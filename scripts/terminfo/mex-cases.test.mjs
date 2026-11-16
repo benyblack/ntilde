@@ -23,9 +23,9 @@ test('v4 keeps every v3 event verbatim, its modes only gaining the two neutral e
 });
 
 test('the plan identity, reset, queries, budgets and policy selection', () => {
-    assert.equal(inputPlanV4.id, 'v4'); assert.equal(inputPlanV4.suiteId, mexSuiteId); assert.equal(currentInputPlan, inputPlanV4);
+    assert.equal(inputPlanV4.id, 'v4'); assert.equal(inputPlanV4.suiteId, mexSuiteId); assert.notEqual(currentInputPlan, inputPlanV4, 'a later plan generation has taken over');
     assert.equal(inputPlanForSuiteId(mexSuiteId), inputPlanV4);
-    assert.equal(inputPlans.at(-1), inputPlanV4);
+    assert.ok(inputPlans.includes(inputPlanV4));
     assert.equal(inputPlanForPolicy(`readonly-owned-source-graph-v${mexFirstPolicy}`), inputPlanV4);
     assert.equal(inputPlanForPolicy(`readonly-owned-source-graph-v${mexFirstPolicy - 1}`), inputPlanV3, 'earlier policies keep the plan they executed');
     assert.ok(mexReset.endsWith('\x1b[?1005;1015l'));
@@ -36,7 +36,7 @@ test('the plan identity, reset, queries, budgets and policy selection', () => {
     assert.ok(inputAttemptCount(cases.length) <= inputPlanV4.captureBudget, 'the raw capture budget covers bind, two captures per event and the restoration');
     assert.ok(cases.length + 3 <= inputPlanV4.readerBudget, 'each reader stays inside its snapshot budget');
     assert.equal(inputFrameCount(cases.length), 331);
-    assert.equal(queryPriorCounts.at(-1), inputAttemptCount(cases.length) + 30, 'later suites owe the v4 capture count');
+    assert.ok(queryPriorCounts.includes(inputAttemptCount(cases.length) + 30), 'later suites still accept the v4 capture count');
 });
 
 test('every new event resets the encodings, selects exactly one encoding and its mode profile equals the DECRQM state the setup produces', () => {

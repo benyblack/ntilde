@@ -34,7 +34,9 @@ namespace Ntilde.Shell
         TerminalMouseButton Button,
         int Column,
         int Row,
-        KeyModifiers Modifiers);
+        KeyModifiers Modifiers,
+        int PixelX = 0,
+        int PixelY = 0);
 
     internal static partial class TerminalInputModeEncoder
     {
@@ -532,6 +534,15 @@ namespace Ntilde.Shell
 
             int x = Math.Max(1, mouseEvent.Column);
             int y = Math.Max(1, mouseEvent.Row);
+
+            // SGR-Pixels (?1016): the SGR report, with the pointer position in pixels instead of cells. PixelX and PixelY are
+            // already the one-based wire positions (the zero-based pixel offset inside the text area plus one, as xterm's
+            // EmitMousePosition sends it), with no ceiling; 0 means the caller supplied none and reads as the first pixel.
+            if (modes.MouseModePixel)
+            {
+                char pixelFinal = mouseEvent.Kind == TerminalMouseEventKind.Release ? 'm' : 'M';
+                return $"\x1b[<{buttonCode};{Math.Max(1, mouseEvent.PixelX)};{Math.Max(1, mouseEvent.PixelY)}{pixelFinal}";
+            }
 
             if (modes.MouseModeSGR)
             {

@@ -62,7 +62,7 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.Equal(submitted, result.InputSubmitted);
         Assert.False(result.ObservationAvailable); Assert.Null(result.Rows); Assert.Null(result.Cols);
         Assert.Null(result.ViewRows); Assert.Null(result.ViewCols); Assert.Null(result.ApplicationKeypad);
-        Assert.Null(result.MouseTracking); Assert.Null(result.MouseSgr); Assert.Null(result.MouseUtf8); Assert.Null(result.MouseUrxvt);
+        Assert.Null(result.MouseTracking); Assert.Null(result.MouseSgr); Assert.Null(result.MouseUtf8); Assert.Null(result.MouseUrxvt); Assert.Null(result.MousePixel);
         Assert.Null(result.KittyKeyboardFlags);
         Assert.Null(result.ModifyOtherKeysLevel);
     }
@@ -317,6 +317,56 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
         Assert.Equal((utf8, urxvt), (result.MouseUtf8, result.MouseUrxvt));
         Assert.Equal(setup.EndsWith("1006h", StringComparison.Ordinal), result.MouseSgr);
         Assert.Equal(expected, Assert.Single(session.SentInput));
+    }
+
+    [AvaloniaTheory]
+    [InlineData("mousePress", "left", 0, 0, "\u001b[<0;1;1M")]
+    [InlineData("mousePress", "right", 123, 45, "\u001b[<2;124;46M")]
+    [InlineData("mouseRelease", "left", 123, 45, "\u001b[<0;124;46m")]
+    [InlineData("mouseMove", "none", 17, 99, "\u001b[<35;18;100M")]
+    public async Task Declared_pixels_are_routed_at_their_centre_and_reported_as_pixels(string kind, string button, int pixelX, int pixelY, string expected)
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[?1003h\u001b[?1016h");
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = kind, Button = button, PixelX = pixelX, PixelY = pixelY });
+        var view = pane.TermView;
+        double scale = view.EffectiveRenderScaling;
+        Assert.NotNull(result); Assert.True(result.EventDispatched); Assert.True(result.Handled); Assert.True(result.ObservationAvailable);
+        Assert.Equal((1003, true, false), (result.MouseTracking, result.MousePixel, result.MouseSgr));
+        Assert.Equal((pixelX + 0.5) / scale, result.X!.Value, 6);
+        Assert.Equal((pixelY + 0.5) / scale, result.Y!.Value, 6);
+        // The viewport cell is the one the pixel falls in, derived from the logical cell size.
+        Assert.Equal(((int)(pixelX / (view.Metrics.CellWidth * scale)) + 1, (int)(pixelY / (view.Metrics.CellHeight * scale)) + 1), (result.Column!.Value, result.Row!.Value));
+        Assert.Equal(expected, Assert.Single(session.SentInput));
+    }
+
+    [AvaloniaFact]
+    public async Task Pixels_outside_the_text_area_are_refused_without_session_input()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[?1000h\u001b[?1016h");
+        var view = pane.TermView;
+        int width = (int)Math.Floor(pane.Buffer!.Cols * view.Metrics.CellWidth * view.EffectiveRenderScaling);
+        int height = (int)Math.Floor(pane.Buffer.Rows * view.Metrics.CellHeight * view.EffectiveRenderScaling);
+        foreach (var (x, y) in new[] { (width, 0), (0, height), (16383, 16383) })
+        {
+            Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", PixelX = x, PixelY = y }));
+        }
+
+        Assert.Empty(session.SentInput);
+        var last = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", PixelX = width - 1, PixelY = height - 1 });
+        Assert.NotNull(last);
+        Assert.Equal($"\u001b[<0;{width};{height}M", Assert.Single(session.SentInput));
+        Assert.Equal((pane.Buffer.Cols, pane.Buffer.Rows), (last.Column, last.Row));
+    }
+
+    [AvaloniaFact]
+    public async Task A_pixel_event_needs_active_mouse_reporting_like_a_cell_event()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[?1016h");
+        Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mousePress", Button = "left", PixelX = 5, PixelY = 5 }));
+        Assert.Empty(session.SentInput);
     }
 
     [AvaloniaFact]

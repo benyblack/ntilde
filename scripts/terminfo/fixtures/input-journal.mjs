@@ -9,20 +9,25 @@ export function inputCapture(hex, index) {
     const nonces = [32768 + index * 2, 32769 + index * 2];
     return { hex, byteLength: hex.length / 2, nonces, barrier: nonces.map(n => `\x1b[?${n};0$y`).join('') };
 }
+/** The pointer facts the App echoes. A pixel-declared event carries no cell: the App derives one (here 10 x 20 pixel cells) and the position it routed. */
+function pointerFacts(event) {
+    if (!event.kind.startsWith('mouse')) return { column: null, row: null, x: null, y: null };
+    const pixels = event.column === undefined;
+    return { column: pixels ? Math.floor(event.pixelX / 10) + 1 : event.column, row: pixels ? Math.floor(event.pixelY / 20) + 1 : event.row,
+        x: pixels ? event.pixelX + 0.5 : (event.column - 0.5) * 10, y: pixels ? event.pixelY + 0.5 : (event.row - 0.5) * 10 };
+}
 export function inputActionProof(event, modes, runId = inputRunId, paneId = inputPaneId, rows = 12, cols = 120) {
     const pane = { paneId, rows, cols, kind: 'local', profileName: 'fixture', windowless: false };
     const side = { pane, app: { pid: 42, ppid: 41, uid: 1000, tty: '??', executable: '/owned/app' },
         worker: { pid: 43, ppid: 42, uid: 1000, tty: 'ttys100', executable: '/node' },
         appCommand: `/owned/app --ntilde-terminfo-owner=${runId}`, workerCommand: `/node --ntilde-terminfo-worker=${runId}`,
         terminalOutput: { tool: '/bin/stty', outputProcessing: false, description: `${rows} rows; ${cols} columns;\n-opost` } };
-    const pointer = event.kind.startsWith('mouse');
     return { paneId, runId, request: { paneId, ...event }, rpcStarted: true, postVerified: true,
         observedAt: '2026-11-04T12:00:00.000Z', before: structuredClone(side), after: structuredClone(side),
         app: { eventDispatched: true, inputSubmitted: Boolean(event.kind !== 'keyUp'), handled: true,
             observationAvailable: true, boundary: 'avalonia-routed', rows, cols, viewRows: rows, viewCols: cols,
             modifiers: event.modifiers, ...modes, ...(event.kind === 'keyDown' && event.text !== undefined ? { textHandled: true } : {}),
-            column: pointer ? event.column : null, row: pointer ? event.row : null,
-            x: pointer ? (event.column - 0.5) * 10 : null, y: pointer ? (event.row - 0.5) * 10 : null } };
+            ...pointerFacts(event) } };
 }
 /** `actual(item)` overrides the child bytes of a read (v2 plans record mismatches); `plan` selects the experiment list (default frozen v1);
  * `controlHex(item)` and `finalHex()` override the control and restoration reply profiles (plan v3 proves the XTQMODKEYS level too). */

@@ -211,6 +211,21 @@ public sealed class ModeSaveTests
     }
 
     [Fact]
+    public void The_pixel_encoding_shares_the_coordinate_encoding_slot()
+    {
+        var (parser, buffer, _) = Create();
+        parser.Process(Set("1016") + Save("1006") + Set("1006"));
+        Assert.True(buffer.Modes.MouseModeSGR);
+        Assert.False(buffer.Modes.MouseModePixel);
+
+        parser.Process(Restore("1015"));
+
+        Assert.True(buffer.Modes.MouseModePixel);
+        Assert.False(buffer.Modes.MouseModeSGR);
+        Assert.Equal(1016, buffer.Modes.MouseEncodingSelector);
+    }
+
+    [Fact]
     public void Mode_1048_saves_and_restores_the_cursor_like_DECSC_and_DECRC()
     {
         var (parser, buffer, _) = Create();

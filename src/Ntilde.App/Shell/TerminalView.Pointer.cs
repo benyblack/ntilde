@@ -137,12 +137,15 @@ namespace Ntilde.Shell
             {
                 var point = e.GetCurrentPoint(this);
                 var (reportColumn, reportRow) = ToMouseReportCell(point.Position);
+                var (reportPixelX, reportPixelY) = ToMouseReportPixel(point.Position);
                 SendMouseEvent(new TerminalMouseEvent(
                     TerminalMouseEventKind.Release,
                     GetReleasedMouseButton(e),
                     reportColumn,
                     reportRow,
-                    e.KeyModifiers));
+                    e.KeyModifiers,
+                    reportPixelX,
+                    reportPixelY));
                 e.Handled = true;
                 return;
             }
@@ -177,9 +180,12 @@ namespace Ntilde.Shell
         // to coalesce to at most one report per cell change instead of flooding the PTY with
         // a report per raw PointerMoved event. Coordinates are 1-based terminal coordinates
         // (matching TerminalMouseEvent), null means "no cell reported yet / tracking reset".
+        // Under SGR-Pixels (?1016) the key is the (1-based) pixel position instead: xterm compares the pixel offsets
+        // it reports, so every pixel change is a new report and the same pixel is still coalesced.
         private (int Row, int Column)? _lastReportedMouseMotionCell;
         private bool _lastMouseMotionAnyEvent;
         private bool _lastMouseMotionButtonEvent;
+        private bool _lastMouseMotionPixel;
 
         /// <summary>
         /// Clears the motion-reporting coalescing state (issue #269) so the next qualifying
@@ -222,6 +228,14 @@ namespace Ntilde.Shell
         /// actually move content under the pointer; see <see cref="ResetMouseMotionTracking"/>.
         /// </summary>
         internal void HandleMouseMoveCore(TerminalMouseButton button, int column, int row, KeyModifiers modifiers)
+            => HandleMouseMoveCore(button, column, row, modifiers, 0, 0);
+
+        /// <summary>
+        /// <see cref="HandleMouseMoveCore(TerminalMouseButton, int, int, KeyModifiers)"/> with the one-based pixel position
+        /// <paramref name="pixelX"/>, <paramref name="pixelY"/> (see <see cref="ToMouseReportPixel(Point)"/>). The pixel
+        /// position is only the coalescing key and the report's coordinates while SGR-Pixels (?1016) is the active encoding.
+        /// </summary>
+        internal void HandleMouseMoveCore(TerminalMouseButton button, int column, int row, KeyModifiers modifiers, int pixelX, int pixelY)
         {
             if (_buffer == null) return;
 
@@ -234,10 +248,12 @@ namespace Ntilde.Shell
             bool anyEvent = modes.MouseModeAnyEvent;
             bool buttonEvent = modes.MouseModeButtonEvent;
 
-            if (anyEvent != _lastMouseMotionAnyEvent || buttonEvent != _lastMouseMotionButtonEvent)
+            bool pixelMode = modes.MouseModePixel;
+            if (anyEvent != _lastMouseMotionAnyEvent || buttonEvent != _lastMouseMotionButtonEvent || pixelMode != _lastMouseMotionPixel)
             {
                 _lastMouseMotionAnyEvent = anyEvent;
                 _lastMouseMotionButtonEvent = buttonEvent;
+                _lastMouseMotionPixel = pixelMode;
                 _lastReportedMouseMotionCell = null;
             }
 
@@ -251,7 +267,7 @@ namespace Ntilde.Shell
                 return;
             }
 
-            var cell = (row, column);
+            var cell = pixelMode ? (pixelY, pixelX) : (row, column);
             if (_lastReportedMouseMotionCell == cell)
             {
                 return;
@@ -260,7 +276,7 @@ namespace Ntilde.Shell
             // Only remember the cell if a report actually went out. A pointer move that lands
             // between SetBuffer and SetSession (no session yet) sends nothing, and recording it
             // anyway would suppress the first real hover in that cell once the session attaches.
-            if (SendMouseEvent(new TerminalMouseEvent(TerminalMouseEventKind.Move, button, column, row, modifiers)))
+            if (SendMouseEvent(new TerminalMouseEvent(TerminalMouseEventKind.Move, button, column, row, modifiers, pixelX, pixelY)))
             {
                 _lastReportedMouseMotionCell = cell;
             }
@@ -276,7 +292,8 @@ namespace Ntilde.Shell
         internal void HandleMousePressAt(Point position, TerminalMouseButton button, KeyModifiers modifiers)
         {
             var (column, row) = ToMouseReportCell(position);
-            SendMouseEvent(new TerminalMouseEvent(TerminalMouseEventKind.Press, button, column, row, modifiers));
+            var (pixelX, pixelY) = ToMouseReportPixel(position);
+            SendMouseEvent(new TerminalMouseEvent(TerminalMouseEventKind.Press, button, column, row, modifiers, pixelX, pixelY));
         }
 
         /// <summary>
@@ -288,7 +305,8 @@ namespace Ntilde.Shell
         internal void HandleMouseMoveAt(Point position, TerminalMouseButton button, KeyModifiers modifiers)
         {
             var (column, row) = ToMouseReportCell(position);
-            HandleMouseMoveCore(button, column, row, modifiers);
+            var (pixelX, pixelY) = ToMouseReportPixel(position);
+            HandleMouseMoveCore(button, column, row, modifiers, pixelX, pixelY);
         }
 
         /// <summary>
@@ -365,7 +383,7 @@ namespace Ntilde.Shell
         /// motion coalescing - the dedup key drifted under a physically stationary pointer as
         /// output scrolled - and pushed rows past the legacy encoding's 223-coordinate ceiling.
         /// </summary>
-        private (int Column, int Row) ToMouseReportCell(Point position)
+        internal (int Column, int Row) ToMouseReportCell(Point position)
         {
             if (_buffer == null || _metrics.CellWidth <= 0 || _metrics.CellHeight <= 0)
             {
@@ -375,6 +393,62 @@ namespace Ntilde.Shell
             int col = Math.Clamp((int)(position.X / _metrics.CellWidth), 0, _buffer.Cols - 1);
             int visualRow = Math.Clamp((int)(position.Y / _metrics.CellHeight), 0, _buffer.Rows - 1);
             return (col + 1, visualRow + 1);
+        }
+
+        /// <summary>
+        /// The pointer position SGR-Pixels (?1016) reports: the one-based pixel position inside the text area, in the same device
+        /// pixels <c>CSI 14 t</c>, <c>CSI 16 t</c> and Sixel placement use (the logical position times
+        /// <see cref="EffectiveRenderScaling"/>). xterm sends the zero-based offset plus one and does not clamp; the pointer
+        /// here is clamped to the grid, as <see cref="ToMouseReportCell"/> clamps the cell, so both stay in one coordinate space.
+        /// </summary>
+        internal (int X, int Y) ToMouseReportPixel(Point position)
+        {
+            if (_buffer == null) return (1, 1);
+            return ToMouseReportPixel(position, _cachedRenderScaling, _metrics.CellWidth, _metrics.CellHeight, _buffer.Cols, _buffer.Rows);
+        }
+
+        /// <summary>The pure conversion behind <see cref="ToMouseReportPixel(Point)"/>: the logical position, the scale and the grid in, the one-based pixel position out.</summary>
+        internal static (int X, int Y) ToMouseReportPixel(Point position, double scale, double cellWidth, double cellHeight, int cols, int rows)
+        {
+            if (!TryGetTextAreaPixels(scale, cellWidth, cellHeight, cols, rows, out scale, out int width, out int height)) return (1, 1);
+            return (PixelOffset(position.X, scale, width) + 1, PixelOffset(position.Y, scale, height) + 1);
+        }
+
+        private static int PixelOffset(double logical, double scale, int extent)
+        {
+            double pixels = Math.Floor(logical * scale);
+            return double.IsNaN(pixels) ? 0 : (int)Math.Clamp(pixels, 0, extent - 1);
+        }
+
+        /// <summary>The text area in whole device pixels (the largest pixel offset is one less), or false for a grid without a measurable size.</summary>
+        internal static bool TryGetTextAreaPixels(double scale, double cellWidth, double cellHeight, int cols, int rows,
+            out double effectiveScale, out int width, out int height)
+        {
+            effectiveScale = double.IsFinite(scale) && scale > 0 ? scale : 1;
+            width = height = 0;
+            if (!double.IsFinite(cellWidth) || !double.IsFinite(cellHeight) || cellWidth <= 0 || cellHeight <= 0 || cols <= 0 || rows <= 0) return false;
+            // The extent is what CSI 14 t reports: the float cell size SyncLocalSixelCellSize stores times the grid, rounded, so the last pixel the
+            // reply counts is also reachable here (flooring would lose it to float error at fractional scales).
+            double w = Math.Round(cols * (float)(cellWidth * effectiveScale)), h = Math.Round(rows * (float)(cellHeight * effectiveScale));
+            if (w < 1 || h < 1 || w > int.MaxValue || h > int.MaxValue) return false;
+            width = (int)w;
+            height = (int)h;
+            return true;
+        }
+
+        /// <summary>
+        /// The logical pointer position at the centre of the device pixel (<paramref name="pixelX"/>, <paramref name="pixelY"/>), zero-based
+        /// inside the text area, or false when that pixel lies outside the grid. Centring keeps the floor in
+        /// <see cref="ToMouseReportPixel(Point)"/> from landing on a neighbouring pixel through rounding.
+        /// </summary>
+        internal bool TryGetPixelPosition(int pixelX, int pixelY, out Point position)
+        {
+            position = default;
+            if (_buffer == null || !TryGetTextAreaPixels(_cachedRenderScaling, _metrics.CellWidth, _metrics.CellHeight, _buffer.Cols, _buffer.Rows,
+                    out double scale, out int width, out int height)
+                || pixelX < 0 || pixelY < 0 || pixelX >= width || pixelY >= height) return false;
+            position = new Point((pixelX + 0.5) / scale, (pixelY + 0.5) / scale);
+            return true;
         }
 
         /// <summary>
