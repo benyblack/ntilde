@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 127,
-    "suiteClaims": 129,
+    "uniqueBenchmarkIds": 129,
+    "suiteClaims": 131,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 126,
+    "effectSupportedIds": 128,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
-    "pinnedAndEffectSupportedIds": 89,
+    "pinnedAndEffectSupportedIds": 91,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -92,13 +92,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 125,
+    "effectSupportedOfStockInconclusive": 127,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 88,
+    "pinnedSupportedOfStockInconclusive": 90,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 89,
+    "pinnedSupportedIds": 91,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -107,11 +107,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 43,
+      "effectUnqualified": 41,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 42,
-      "notPinnedSupported": 80
+      "effectNotMeasured": 40,
+      "notPinnedSupported": 78
     }
   },
   "suites": [
@@ -3190,6 +3190,73 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/mex-publication.test.mjs",
         "testSha256": "92c5edd5122cbaedc434e086ca01fff12176b8aa71f01a69ca95cd1542af0587"
+      }
+    },
+    {
+      "suite": "core-gaps",
+      "suiteId": "ntilde-owned-core-gaps-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-15-core-gaps/",
+      "doc": "2026-11-15-core-gaps-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "text.reverse-index-scroll",
+        "reset.method"
+      ],
+      "evidence": {
+        "files": 2,
+        "bytes": 145881,
+        "sha256": "65fe175527201a973fa954c45f9e47f5f6130e07ffdb974f0dc62b0d75cfe560"
+      },
+      "receipt": {
+        "schemaVersion": 64,
+        "runId": "59b3fbe52f6062679e5233e0b62fb9d2",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "a02329d897215ace86862a4030c43976244d8d14d3001162b311adcdd9b6487f"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-core-gaps-v1",
+          "file": "cg-observations.json",
+          "sha256": "a5128201a91bd0258c1070f4457bfce0cfd7ee485da9e3557cc1bbdcbb2f3a6e",
+          "runFile": "cg-run.json",
+          "runSha256": "45b1ea75f0b81b64d4928a2c30e7a55c55cb8e1fa411b73b54000e4b82868ecf"
+        }
+      },
+      "run": {
+        "ownedRunId": "59b3fbe52f6062679e5233e0b62fb9d2",
+        "measuredAt": "2026-11-15T20:57:38.308Z",
+        "appRevision": "aaaece9966cd62ae3e0cbf9afe1c87a52fb120db",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "aaaece9966cd62ae3e0cbf9afe1c87a52fb120db",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "c830385e29c8af876864fef86e4af02debd2fa1a8c8bcd8ba7002d66380018c1",
+        "gradingAdapterId": "ntilde-owned-core-gaps-grading-v1",
+        "gradingAdapterBundleSha256": "74934e86acf0cfdf96ce4e39698281ba30b3efd32dcfe9981b1733d8a8c056eb",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v58",
+        "sourceSnapshotManifestSha256": "be4ba9463b7607816117025269525d6ef06c651320171247d8222616669ea78c"
+      },
+      "stock": {
+        "basis": "collected-raw-digest-recorded",
+        "runId": null,
+        "counts": {
+          "inconclusive": 162,
+          "supported": 92,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "2faa5789539201e0eef30ac90c5d34645d07766f26038d5aff92dcaa9a6a8593",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades of the same owned run as the carrying 2026-11-15-mouse-extended publication (its run id is recorded there); both ids stay inconclusive under the unchanged pinned code, so this suite moves no stock grade."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/core-gaps-publication.test.mjs",
+        "testSha256": "756d533eaeca96b3a4320dc0edfd07ae52dec11102ab8c711b47df9084cf3b17"
       }
     },
     {
@@ -7351,6 +7418,54 @@
       ]
     },
     {
+      "id": "reset.method",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "reset.method",
+          "suite": "core-gaps",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-replay-plus-core-gaps-effect-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "actual-scrollback",
+            "desktop-backend-reset-api"
+          ],
+          "evidenceTag": "owned-desktop-backend-reset-api-stored-cells-and-actual-scrollback"
+        }
+      ]
+    },
+    {
       "id": "reset.sgr",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -9489,6 +9604,53 @@
             "stored-state"
           ],
           "evidenceTag": "owned-cells"
+        }
+      ]
+    },
+    {
+      "id": "text.reverse-index-scroll",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "text.reverse-index-scroll",
+          "suite": "core-gaps",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-replay-plus-core-gaps-effect-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "actual-scrollback"
+          ],
+          "evidenceTag": "owned-stored-cells-cursor-margins-and-actual-scrollback"
         }
       ]
     }
