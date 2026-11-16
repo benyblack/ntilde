@@ -95,9 +95,9 @@ function caseReport(caseId, recorded, context) {
 }
 
 /** The routed events' modes with the keys later plan generations add removed while they hold their neutral value: the negotiated
- * modifyOtherKeys level 0 (v3) and the UTF-8 and urxvt coordinate encodings false (v4). Any other value stays and is a divergence. */
+ * modifyOtherKeys level 0 (v3), the UTF-8 and urxvt coordinate encodings false (v4) and the SGR-pixel encoding false (v5). Any other value stays and is a divergence. */
 export function withoutPlanExtensions(modes) {
-    const neutral = { modifyOtherKeysLevel: 0, mouseUtf8: false, mouseUrxvt: false };
+    const neutral = { modifyOtherKeysLevel: 0, mouseUtf8: false, mouseUrxvt: false, mousePixel: false };
     return Object.fromEntries(Object.entries(modes).filter(([key, value]) => !(Object.hasOwn(neutral, key) && neutral[key] === value)));
 }
 

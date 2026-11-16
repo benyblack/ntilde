@@ -28,6 +28,8 @@ export function inputModeReplyHex(modes) {
         const state = flag => (flag ? 1 : 2);
         reply += Buffer.from(`\x1b[?1005;${state(modes.mouseUtf8)}$y\x1b[?1015;${state(modes.mouseUrxvt)}$y`).toString('hex');
     }
+    // v5 plans also prove the SGR-pixel encoding (DECRQM 1016, after the 1005 and 1015 replies); older plans never carry the key.
+    if (modes.mousePixel !== undefined) reply += Buffer.from(`\x1b[?1016;${modes.mousePixel ? 1 : 2}$y`).toString('hex');
     return reply;
 }
 /** Raw hex is a copied child observation; challenge bytes are never event bytes. */
@@ -76,7 +78,9 @@ export function validateInputAction(action, item, paneId, runId, geometry, profi
     // A key-down that carries text raised that TextInput right after it: its handled fact is retained evidence, absent for every other event.
     if (item.event.kind === 'keyDown' && item.event.text !== undefined) checkInput(typeof app.textHandled === 'boolean');
     else checkInput(app.textHandled == null);
-    if (item.event.kind.startsWith('mouse')) checkInput(app.column === item.event.column && app.row === item.event.row
+    // A pixel-declared event names exact pixels and no cell: the App echoes the one cell it derived, which must lie in the observed grid.
+    if (item.event.kind.startsWith('mouse')) checkInput((item.event.pixelX === undefined ? app.column === item.event.column && app.row === item.event.row
+        : Number.isSafeInteger(app.column) && app.column >= 1 && app.column <= geometry.cols && Number.isSafeInteger(app.row) && app.row >= 1 && app.row <= geometry.rows)
         && Number.isFinite(app.x) && app.x >= 0 && Number.isFinite(app.y) && app.y >= 0);
     else checkInput(['column', 'row', 'x', 'y'].every(key => app[key] == null));
 }
@@ -119,6 +123,6 @@ export function buildInputReport(frames, actions, seal, runId, plan = inputPlanV
         && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
         && seal.lastAttempt.hex === final.capture.hex + Buffer.from(final.capture.barrier).toString('hex')
         && sameInputFact(seal.lastAttempt.nonces, final.capture.nonces));
-    return { schemaVersion: { v1: 1, v2: 2, v3: 3, v4: 4 }[plan.id], suiteId: plan.suiteId, runId, scope: plan.scope(count),
+    return { schemaVersion: { v1: 1, v2: 2, v3: 3, v4: 4, v5: 5 }[plan.id], suiteId: plan.suiteId, runId, scope: plan.scope(count),
         inputs: cases, initialSnapshot: 0, restoredSnapshot: frames.length - 1, snapshots: frames, actions, seal, observations };
 }

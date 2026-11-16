@@ -7,6 +7,7 @@ import { inputSuiteId, makeInputCases, ownedInputPolicy } from './input-cases.mj
 import { makeRoutedInputCases, ownedRoutedInputPolicy, routedInputPlanId, routedInputSuiteId } from './routed-input-cases.mjs';
 import { makeModifyOtherKeysCases, modifyOtherKeysPlanId, ownedModifyOtherKeysPolicy, routedInputV3SuiteId, xtqmodkeysQuery } from './modify-other-keys-cases.mjs';
 import { makeMexCases, mexPlanId, mexQueries, mexReset, mexSuiteId, ownedMexPolicy } from './mex-cases.mjs';
+import { makePxmCases, ownedPxmPolicy, pxmPlanId, pxmQueries, pxmReset, pxmSuiteId } from './pxm-cases.mjs';
 
 /** The mode-profile constants the plans share; input-state re-exports them so existing importers stay unchanged. */
 export const inputModeNumbers = Object.freeze([66, 9, 1000, 1002, 1003, 1006]);
@@ -28,9 +29,16 @@ export const inputPlanV4 = Object.freeze({ id: mexPlanId, suiteId: mexSuiteId, p
     finalModes: Object.freeze({ ...defaultInputModes, modifyOtherKeysLevel: 0, mouseUtf8: false, mouseUrxvt: false }),
     captureBudget: 384, readerBudget: 192,
     scope: count => `${count} standalone declared Avalonia events in the benchmark plan (input.x10-mouse, input.button-event-mouse, modes.application-keypad, input.modify-other-keys levels 1 and 2, modes.utf8-mouse-1005, input.urxvt-mouse); paired complete state, independent raw local-child bytes, source-selected mode, XTQMODKEYS and 1005/1015 DECRQM queries and recorded (not asserted) event bytes. No native keyboard or pointer, remote/mux transport, Windows runtime or stock-grade claim.` });
+// v5 keeps every v4 event verbatim and appends the SGR pixel-coordinate events (input.pixel-mouse); its control captures additionally prove the
+// DECRQM state of mode 1016, and its resets clear it. The larger budgets cover its 196 events (394 raw attempts).
+export const inputPlanV5 = Object.freeze({ id: pxmPlanId, suiteId: pxmSuiteId, policy: ownedPxmPolicy, make: makePxmCases, exactEvents: false,
+    queries: inputModeQueries + xtqmodkeysQuery + pxmQueries, reset: pxmReset,
+    finalModes: Object.freeze({ ...defaultInputModes, modifyOtherKeysLevel: 0, mouseUtf8: false, mouseUrxvt: false, mousePixel: false }),
+    captureBudget: 512, readerBudget: 256,
+    scope: count => `${count} standalone declared Avalonia events in the benchmark plan (input.x10-mouse, input.button-event-mouse, modes.application-keypad, input.modify-other-keys levels 1 and 2, modes.utf8-mouse-1005, input.urxvt-mouse, input.pixel-mouse); paired complete state, independent raw local-child bytes, source-selected mode, XTQMODKEYS and 1005/1015/1016 DECRQM queries and recorded (not asserted) event bytes. No native keyboard or pointer, remote/mux transport, Windows runtime or stock-grade claim.` });
 /** The plan the current runner and worker execute; every older plan stays available for historical re-derivation. */
-export const currentInputPlan = inputPlanV4;
-export const inputPlans = Object.freeze([inputPlanV1, inputPlanV2, inputPlanV3, inputPlanV4]);
+export const currentInputPlan = inputPlanV5;
+export const inputPlans = Object.freeze([inputPlanV1, inputPlanV2, inputPlanV3, inputPlanV4, inputPlanV5]);
 /** Frames: start, bind, a control and a read per case, finish. Raw attempts: bind, two per case, the final restoration. */
 export const inputFrameCount = count => 2 * count + 3;
 export const inputAttemptCount = count => 2 * count + 2;
@@ -43,9 +51,12 @@ export const routedInputFirstPolicy = 36;
 export const modifyOtherKeysFirstPolicy = 50;
 /** First source policy whose runs execute the v4 plan (the extended mouse coordinate encodings); set when the layer is plumbed. */
 export const mexFirstPolicy = 58;
+/** First source policy whose runs execute the v5 plan (the SGR pixel-coordinate events); set when the layer is plumbed. */
+export const pxmFirstPolicy = 60;
 export function inputPlanForPolicy(policy) {
     const version = /^readonly-owned-source-graph-v(\d+)$/.exec(policy ?? '')?.[1];
     if (version === undefined) return inputPlanV1;
+    if (Number(version) >= pxmFirstPolicy) return inputPlanV5;
     if (Number(version) >= mexFirstPolicy) return inputPlanV4;
     return Number(version) >= modifyOtherKeysFirstPolicy ? inputPlanV3 : Number(version) >= routedInputFirstPolicy ? inputPlanV2 : inputPlanV1;
 }

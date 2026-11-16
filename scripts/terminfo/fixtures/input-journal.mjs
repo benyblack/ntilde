@@ -21,8 +21,10 @@ export function inputActionProof(event, modes, runId = inputRunId, paneId = inpu
         app: { eventDispatched: true, inputSubmitted: Boolean(event.kind !== 'keyUp'), handled: true,
             observationAvailable: true, boundary: 'avalonia-routed', rows, cols, viewRows: rows, viewCols: cols,
             modifiers: event.modifiers, ...modes, ...(event.kind === 'keyDown' && event.text !== undefined ? { textHandled: true } : {}),
-            column: pointer ? event.column : null, row: pointer ? event.row : null,
-            x: pointer ? (event.column - 0.5) * 10 : null, y: pointer ? (event.row - 0.5) * 10 : null } };
+            // A pixel-declared event carries no cell: the App derives one (here 10 x 20 pixel cells) and echoes the position it routed.
+            column: pointer ? event.column ?? Math.floor(event.pixelX / 10) + 1 : null, row: pointer ? event.row ?? Math.floor(event.pixelY / 20) + 1 : null,
+            x: pointer ? event.column === undefined ? event.pixelX + 0.5 : (event.column - 0.5) * 10 : null,
+            y: pointer ? event.row === undefined ? event.pixelY + 0.5 : (event.row - 0.5) * 10 : null } };
 }
 /** `actual(item)` overrides the child bytes of a read (v2 plans record mismatches); `plan` selects the experiment list (default frozen v1);
  * `controlHex(item)` and `finalHex()` override the control and restoration reply profiles (plan v3 proves the XTQMODKEYS level too). */
