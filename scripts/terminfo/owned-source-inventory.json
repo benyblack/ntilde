@@ -399,5 +399,10 @@
     "kclCollectorSourceSha256": "kcl-collector.mjs",
     "kclGradingSourceSha256": "kcl-grading.mjs",
     "kclGradingCollectorSourceSha256": "kcl-grading-collector.mjs",
-    "kclReceiptSourceSha256": "kcl-receipt.mjs"
+    "kclReceiptSourceSha256": "kcl-receipt.mjs",
+    "osc633ContractsSourceSha256": "osc633-contracts.mjs",
+    "osc633CollectorSourceSha256": "osc633-collector.mjs",
+    "osc633GradingSourceSha256": "osc633-grading.mjs",
+    "osc633GradingCollectorSourceSha256": "osc633-grading-collector.mjs",
+    "osc633ReceiptSourceSha256": "osc633-receipt.mjs"
 }

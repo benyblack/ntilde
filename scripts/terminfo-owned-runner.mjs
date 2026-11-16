@@ -124,6 +124,9 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
+import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
+import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
+import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
 import { osc133ContractsVersion, osc133Minimum, osc133Prefix, osc133SuiteId } from './terminfo/osc133-contracts.mjs';
 import { buildOsc133GradingReport, matchesOsc133Baseline, osc133Counts, osc133ObserverPlan } from './terminfo/osc133-grading.mjs';
 import { adaptOsc78Collector, osc78AdapterId } from './terminfo/osc78-grading-collector.mjs';
@@ -236,7 +239,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'xcs', 'xss', 'xsv', 'kcl', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'vs633', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'xcs', 'xss', 'xsv', 'kcl', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -1193,6 +1196,36 @@ async function retainOsc133Evidence(output, runId, osc133Bundle, upstream, unava
         contractsVersion: osc133ContractsVersion, counts: osc133Counts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered OSC 633 grading extension over the OSC 133 one. */
+function prepareOsc633Collector(tool, osc133Bundle, output) {
+    const adapted = adaptOsc633Collector(readFileSync(osc133Bundle));
+    const osc633BundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-vs633-${osc633BundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== osc633BundleSha256) throw new Error('Derived OSC 633 bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-vs633.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, osc633BundleSha256 };
+}
+
+/** Re-derive the OSC 633 report parent-side from the paired journal and the layered pinned replay. */
+async function retainOsc633Evidence(output, runId, osc633Bundle, upstream, unavailable) {
+    const adapterBytes = readFileSync(join(output, 'collector-vs633.mjs'));
+    if (unavailable) {
+        const markerBytes = readFileSync(join(output, 'vs633-unavailable.json')), marker = JSON.parse(markerBytes);
+        return { runId, suiteId: osc633SuiteId, file: 'vs633-unavailable.json', sha256: hash(markerBytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(adapterBytes), contractsVersion: osc633ContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    const runBytes = readFileSync(join(output, 'vs633-run.json'));
+    const frames = readFileSync(join(output, 'vs633-snapshots.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapter = { id: osc633AdapterId, derivedFromAdapterId: osc133AdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(osc633Bundle).href);
+    const report = buildOsc633GradingReport(frames, JSON.parse(runBytes), runId, adapter, { replayModule });
+    writeJson(join(output, 'vs633-observations.json'), report);
+    return { runId, suiteId: osc633SuiteId, file: 'vs633-observations.json', sha256: hash(readFileSync(join(output, 'vs633-observations.json'))),
+        runFile: 'vs633-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: osc633ContractsVersion, counts: osc633Counts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Derive and lock the layered OSC 7/8 grading extension over the left/right-margin one. */
 function prepareOsc78Collector(tool, lrMarginsBundle, output) {
     const adapted = adaptOsc78Collector(readFileSync(lrMarginsBundle));
@@ -1912,6 +1945,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let modifyOtherKeysEvidence;
     let mexEvidence;
     let osc133Evidence;
+    let osc633Evidence;
     let osc78Evidence;
     let titleStackEvidence;
     let xtgettcapEvidence;
@@ -1991,6 +2025,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'collector-cg.mjs'), coreGapsSource, { flag: 'wx', mode: 0o600 });
         const { bundle: routedInputBundle, routedInputBundleSha256 } = prepareRoutedInputCollector(privateTool, lrMarginsBundle, output);
         const { bundle: osc133Bundle, osc133BundleSha256 } = prepareOsc133Collector(privateTool, lrMarginsBundle, output);
+        const { bundle: osc633Bundle, osc633BundleSha256 } = prepareOsc633Collector(privateTool, osc133Bundle, output);
         const { bundle: osc78Bundle, osc78BundleSha256 } = prepareOsc78Collector(privateTool, lrMarginsBundle, output);
         const { bundle: titleStackBundle, titleStackBundleSha256 } = prepareTitleStackCollector(privateTool, lrMarginsBundle, output);
         const { bundle: oscTitleBundle, oscTitleBundleSha256 } = prepareOscTitleCollector(privateTool, titleStackBundle, output);
@@ -2017,7 +2052,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, notifyBundle, notifyBundleSha256, devqBundle, devqBundleSha256, xcsBundle, xcsBundleSha256, xssBundle, xssBundleSha256, xsvBundle, xsvBundleSha256, kclBundle, kclBundleSha256, mexBundle, mexBundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc633Bundle, osc633BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, notifyBundle, notifyBundleSha256, devqBundle, devqBundleSha256, xcsBundle, xcsBundleSha256, xssBundle, xssBundleSha256, xsvBundle, xsvBundleSha256, kclBundle, kclBundleSha256, mexBundle, mexBundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -2175,6 +2210,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             mex: 'layered versioned collector extension; pinned termless modes.utf8-mouse-1005 code (feeds ?1005h, captures the DECRQM reply, feeds ?1005l, then notTestedResult: always inconclusive by design) and input.urxvt-mouse code (mouseInputProbe: always inconclusive) replayed over the DECRQM reply and tracking state the child itself received and preserved, beside separately identified effect contracts graded from the owned routed-input v4 plan: declared Avalonia events routed through the production App input path and the exact bytes the child received for UTF-8 (1005) and urxvt (1015) coordinates under X10, normal, button-event and any-event tracking, every dispatch preceded by child DECRQM proofs of the encoding and tracking state, literal protocol expectations cross-checked by an independent oracle written from xterm button.c, legacy and SGR controls, the single-slot selection rules and their reset forms; generated events, not physical pointer input; the stock terminal path of modes.utf8-mouse-1005 is a separate stock-collector result; direct-local only; no stock grade change by this layer',
             routedInput: 'layered versioned collector extension; pinned termless input.x10-mouse, input.button-event-mouse and modes.application-keypad code (always inconclusive by design) replayed over mode values the child itself received as DECRQM replies and preserved, beside separately identified effect contracts graded from the owned routed-input suite: declared Avalonia events routed through the production App input path and the exact bytes the child received, literal protocol expectations cross-checked by an independent oracle; generated events, not physical input; direct-local only; no stock grades',
             osc133AdapterId, osc133SuiteId, osc133BundleSha256, osc133ContractsVersion,
+            osc633AdapterId, osc633SuiteId, osc633BundleSha256, osc633ContractsVersion,
             osc78AdapterId, osc78SuiteId, osc78BundleSha256, osc78ContractsVersion,
             osc78: 'layered versioned collector extension; pinned extensions.osc7-cwd (no fixture bytes: declared-capability and no-readback results, inconclusive by design) and extensions.osc8 (termless: stored cells and hyperlink metadata of the pinned fixture; terminal: cursor position, inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, host working directory, hyperlink runs with snapshot-local identities) and session status by an independent oracle: reported working-directory metadata only (not the child process directory or path existence) and stored hyperlink-bearing cells only (not click handling, URL opening or rendering); protocol handling in a disposable direct-local App only; no stock-grade claim',
             titleStackAdapterId, titleStackSuiteId, titleStackBundleSha256, titleStackContractsVersion,
@@ -2260,6 +2296,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'csum-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'lrmm-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'shi-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'vs633-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'lnk-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'tst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ost-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -2609,6 +2646,42 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             } catch (error) {
                 retainFailedMetadataAttempt(output, request, error, state.observer, 'shi-failed-observation.json');
                 if (initialMetadataRefusal(request, error, state.observer)) recordOsc133Unavailable(error.code);
+                throw metadataFailure(request, error, state.observer);
+            }
+        };
+        let osc633State;
+        const recordOsc633Unavailable = reason => {
+            writeJson(join(output, 'vs633-unavailable.json'), { schemaVersion: 1, runId, suiteId: osc633SuiteId, status: 'unavailable', reason, plannedCases: 4 });
+            osc633State.unavailable = true;
+        };
+        /** The OSC 633 suite reuses the paired metadata/status observer under its own prefix and plan; it runs after the left/right-margin suite. */
+        const observeOsc633 = async (request, budget) => {
+            if (!osc133State?.unavailable && !osc133State?.observer?.restored) throw new Error('OSC 133 suite must restore before OSC 633 observations.');
+            osc633State ??= { workerPid: request.workerPid, tty: request.tty,
+                observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName, runId, expectedPaneId: cellObserver.paneId,
+                    prefix: osc633Prefix, includeResolvedColors: true, planOf: osc633ObserverPlan, matchesBaseline: matchesOsc133Baseline }) };
+            const state = osc633State;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC 633 fixture ownership or availability changed.');
+            if (request.kind === `${osc633Prefix}-start`) {
+                const { rows, cols } = cellObserver.baseline;
+                const reason = metadataState?.unavailable?.reason ?? savedState?.unavailable?.reason
+                    ?? (rows < osc133Minimum.rows || cols < osc133Minimum.cols ? 'metadataGeometryUnavailable' : null);
+                if (reason !== null && !['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC 633 unavailability reason.');
+                if (reason !== null) {
+                    recordOsc633Unavailable(reason);
+                    throw Object.assign(new Error('OSC 633 fixture is unavailable.'), { code: reason });
+                }
+            }
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === `${osc633Prefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
+                    throw new Error('Original geometry changed before OSC 633 observations.');
+                }
+                appendFileSync(join(output, 'vs633-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
+                return result;
+            } catch (error) {
+                retainFailedMetadataAttempt(output, request, error, state.observer, 'vs633-failed-observation.json');
+                if (initialMetadataRefusal(request, error, state.observer)) recordOsc633Unavailable(error.code);
                 throw metadataFailure(request, error, state.observer);
             }
         };
@@ -3008,6 +3081,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (prefix === 'metadata') return observeMetadata(request, budget);
             if (prefix === 'reflow') return observeReflow(request, budget);
             if (prefix === osc133Prefix) return observeOsc133(request, budget);
+            if (prefix === osc633Prefix) return observeOsc633(request, budget);
             if (prefix === osc78Prefix) return observeOsc78(request, budget);
             if (prefix === titleStackPrefix) return observeTitleStack(request, budget);
             if (prefix === oscTitlePrefix) return observeOscTitle(request, budget);
@@ -3737,6 +3811,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             modifyOtherKeysEvidence = await retainModifyOtherKeysEvidence(output, runId, modifyOtherKeysBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
             mexEvidence = await retainMexEvidence(output, runId, mexBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
             osc133Evidence = await retainOsc133Evidence(output, runId, osc133Bundle, upstreamBundleSha256, osc133State?.unavailable === true);
+            osc633Evidence = await retainOsc633Evidence(output, runId, osc633Bundle, upstreamBundleSha256, osc633State?.unavailable === true);
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
             xtgettcapEvidence = await retainXtgettcapEvidence(output, runId, xtgettcapBundle, upstreamBundleSha256);
@@ -3821,6 +3896,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.modifyOtherKeysEvidence = modifyOtherKeysEvidence;
             summary.mexEvidence = mexEvidence;
             summary.osc133Evidence = osc133Evidence;
+            summary.osc633Evidence = osc633Evidence;
             summary.osc78Evidence = osc78Evidence;
             summary.titleStackEvidence = titleStackEvidence;
             summary.xtgettcapEvidence = xtgettcapEvidence;
@@ -3874,7 +3950,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, kclEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, kclEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
