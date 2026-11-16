@@ -16,7 +16,7 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), 'a4d8ac5e5e2e44e41f14a6353913dc93f8588910170d953dd864285dfcf412f0');
+    assert.equal(hash(manifestBytes), '762b9ba7817a9e319c50a690db045d13503ad7293b8f51318b1e344e53bd1c03');
     const manifest = JSON.parse(manifestBytes);
     assert.equal(Object.keys(manifest.archives).length, 1, 'the single final run; no superseded attempt');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);

@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-kitty-color-graded-v1",
   "contractsVersion": 1,
-  "runId": "59863c5da6e5a5cdb2f0483d633655b3",
+  "runId": "ef7dfed09cd955d7262ddb77d50d21c7",
   "adapter": {
     "id": "ntilde-owned-kitty-color-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "e83ac5d5e134db14b779695a8a83a4573d6737a87e2aff2cd1d5e82ce76cac7b",
+    "bundleSha256": "086facd7a7128ed65b9ccfeeffe3aebd720e10c91c0e949c7156e261f361d038",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 criterion for extensions.osc21-kitty-color (OSC 21;foreground=? ST: one framed OSC 21 whose single foreground field is empty or rgb:h/h/h with one to four hex digits; a query-only probe that can never return unsupported), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v5) and replayed byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent oracle written from kitty's color-control protocol text: exact 8-bit rgb replies for foreground, background, cursor, the selection colors and palette entries 5 and 200 that other sequences (OSC 4, 10, 11, 12, 17, 19) set, each key alone and together in request order, ST-terminated replies to BEL requests, set-then-query and the numeric encodings read back through OSC 21 and through the legacy OSC replies, a bare key restoring the baseline reply, the legacy resets restoring the baseline, unknown keys as Base64 unknown fields, every exchange leaving the complete screen, cursor, margins, modes and active screen unchanged; color names, alpha, the empty (dynamic) value, cursor_text, visual_bell, transparent_background_color keys, key case, the oversize cap and the field cap are policy groups that never decide, and the #RGB and out-of-range rgbi spellings differ from kitty's text and are recorded as policy divergences; raw replies and stored state, not rendering or painted pixels; no setting of dynamic or named colors, no alpha or opacity, no remote/mux, Windows/Linux or common-harness claim.",
@@ -59,7 +59,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_KC_59863c5da6e5a5cdb2f0483d633655b3",
+          "nonce": "NTILDE_KC_ef7dfed09cd955d7262ddb77d50d21c7",
           "margins": [
             1,
             5

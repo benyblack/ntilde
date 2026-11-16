@@ -23,7 +23,7 @@ corroborated by the exact-query witness `q07.extensions.osc21-kitty-color` under
 |---|---|---|---|---|
 | `extensions.osc21-kitty-color` | **supported** / **supported** | **supported** (was inconclusive: no reply) | matched a framed `rgb:rr/gg/bb` reply | **supported** (6 controls and 31 protocol groups matched; 12 policy groups, 10 matched Ntilde's choices and 2 record divergences from kitty's text) |
 
-The stock collector in the same owned run (`931f609fadd7bd95cedb3d9c5ac91c8e`) grades 93 supported / 1 unsupported / 161 inconclusive (`suiteComplete=false`). On main (after the extended-mouse batch) the
+The stock collector in the same owned run (`b661b193bfdcad9b1702b6887dbd7041`) grades 93 supported / 1 unsupported / 161 inconclusive (`suiteComplete=false`). On main (after the extended-mouse batch) the
 counts are 92 / 1 / 162, so exactly one stock grade moves: `extensions.osc21-kitty-color`. The frozen stock baseline keeps its original grades. No Core point is added. Inventory: one more ID with both a
 supported pinned verdict and a supported effect contract.
 
@@ -81,14 +81,14 @@ Raw replies and stored state only: no rendering, painted-pixel or host-presentat
 
 ## Identities
 
-App 0.14.0 (operator supplied) built from `2b5b70e81c57377e34eddb818a82febc95c5a290` (arm64 Release; the last commit that changed the App sources; executable SHA-256
-`f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `1a877910fa38e35b3006ee5de74ec2088bb4e90cd65f795c1afac01e2a609c8a`); measured scripts
-`6ace1f35c74dc9e6b46e2a2c8a1dfa68c45f012f`; source policy `readonly-owned-source-graph-v59` (394 files; manifest SHA-256 `93f7bc7c02b8e8473c5a8020d3e706271619c404fc8bdd463ee56824dbe2c108`); query policy
-`owned-exact-query-paired-raw-state-v5`; initial settings SHA-256 `07fa84a3cd13a4b1121d61ae280ce0ce400e186c59f71a41db6b7be32d947cd5`; receipt schema 65; Node v24.22.2; owned run
-`59863c5da6e5a5cdb2f0483d633655b3`; collected 2026-11-15T23:06Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
-retained bytes. The run waited for the desktop lease held by another worktree's collection and started only after it was released.
+App 0.14.0 (operator supplied) built from `339c7a253d1f462a7ccf2bddb14b1e2d9ecf87c2` (arm64 Release; the last commit that changed the App sources; executable SHA-256
+`f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `7c8b0fc9ffc4c9f5faf78d9f31d9e82be1c7ec5fcfaf4c83a47c997d4106f452`); measured scripts
+`6890b8f6b13324970ba333441d47a1cff70489f6`; source policy `readonly-owned-source-graph-v59` (394 files; manifest SHA-256 `fcff1aa88de74f320398f47ef9a255ef8257080c02e77b18068be59b650ffe5e`); query policy
+`owned-exact-query-paired-raw-state-v5`; initial settings SHA-256 `a988daba2c9d4456fe6641096cdcbda6d5a0fd4fd65eca516b0eed32bf6bd66b`; receipt schema 65; Node v24.22.2; owned run
+`ef7dfed09cd955d7262ddb77d50d21c7`; collected 2026-11-16T08:12Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
+retained bytes. The measured scripts are this branch's head after the merge of main (PRs 970 and 971, which changed no measured source), so the run postdates review-driven fixes to the contract module and the production handler.
 
 ## Retained evidence
 
 [2026-11-15-kitty-color-control/](2026-11-15-kitty-color-control/): `owned-run.zip` (the complete owned run), `report.json` (the projected result), `summary.json` (identities, stock counts, receipt) and
-`manifest.json`. `node --test scripts/terminfo/kcl-publication.test.mjs` re-derives the receipt and the report from the retained bytes. No superseded attempt exists: the first complete run is the published one.
+`manifest.json`. `node --test scripts/terminfo/kcl-publication.test.mjs` re-derives the receipt and the report from the retained bytes. No completed run was superseded: six earlier collections on this head aborted before finishing a run (stray keyboard input reaching the disposable App, a 5-minute limit under heavy machine load, and a defect in an intermediate fix of the pinned frame pattern that the collector itself refused) and none is published; the first complete run is the published one.

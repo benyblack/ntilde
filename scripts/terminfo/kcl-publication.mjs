@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { kclCaseIds } from './kcl-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '6ace1f35c74dc9e6b46e2a2c8a1dfa68c45f012f';
+export const measuredScriptsRevision = '6890b8f6b13324970ba333441d47a1cff70489f6';
 /** The last commit that changed production (src/): the sidecar App was built from this source and later commits changed only scripts and docs. */
-export const measuredAppRevision = '2b5b70e81c57377e34eddb818a82febc95c5a290';
+export const measuredAppRevision = '339c7a253d1f462a7ccf2bddb14b1e2d9ecf87c2';
 const scope = 'Pinned terminfo.dev@4.0.0 criterion for extensions.osc21-kitty-color (OSC 21;foreground=? ST: one framed OSC 21 whose single foreground field is empty or rgb:h/h/h with one to four hex digits; '
     + 'a query-only probe that can never return unsupported), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v5) and replayed '
     + 'byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent oracle written from kitty\'s color-control '
