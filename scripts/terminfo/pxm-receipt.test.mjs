@@ -11,7 +11,7 @@ import { pxmGradedSuiteId } from './pxm-contracts.mjs';
 import { inputPlanV5, pxmFirstPolicy } from './input-plan.mjs';
 
 // The newest receipt schema: the suffix order puts the pixel layer last (filled by the integration step).
-const receiptSchema = 0;
+const receiptSchema = 67;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Re-bind a changed retained file so only the semantic change is under test, not the stale digest. */
 const rebind = (f, field, file) => { f.evidence.pxmEvidence[field] = hash(readFileSync(join(f.output, file))); };

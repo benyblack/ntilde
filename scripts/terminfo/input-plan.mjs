@@ -52,7 +52,7 @@ export const modifyOtherKeysFirstPolicy = 50;
 /** First source policy whose runs execute the v4 plan (the extended mouse coordinate encodings); set when the layer is plumbed. */
 export const mexFirstPolicy = 58;
 /** First source policy whose runs execute the v5 plan (the SGR pixel-coordinate events); set when the layer is plumbed. */
-export const pxmFirstPolicy = 60;
+export const pxmFirstPolicy = 61;
 export function inputPlanForPolicy(policy) {
     const version = /^readonly-owned-source-graph-v(\d+)$/.exec(policy ?? '')?.[1];
     if (version === undefined) return inputPlanV1;

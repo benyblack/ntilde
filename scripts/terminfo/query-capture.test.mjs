@@ -54,14 +54,15 @@ test('full 110 earlier pairs are retained without expanding either read budget',
     const priorChallenges = Array.from({ length: 110 }, (_, index) => [32768 + index * 2, 32769 + index * 2].join(','));
     const world = queryWorld({ priorChallenges }); await world.collect();
     assert.deepEqual(world.observer.report.priorChallenges, priorChallenges);
-    // 111 earlier challenges are a valid count for a larger input plan; the bound is the largest plan's 360 and every plan generation's own count is valid, never an open list.
+    // 111 earlier challenges are a valid count for a larger input plan; the bound is the largest plan's 424 and every plan generation's own count is valid, never an open list.
     const pair = index => [32768 + index * 2, 32769 + index * 2].join(',');
     assert.doesNotThrow(() => queryPrior([...priorChallenges, '43000,43001']));
-    assert.deepEqual(queryPriorCounts, [110, 152, 268, 360]);
+    assert.deepEqual(queryPriorCounts, [110, 152, 268, 360, 424]);
     assert.doesNotThrow(() => queryPrior(Array.from({ length: 152 }, (_, index) => pair(index))));
     assert.doesNotThrow(() => queryPrior(Array.from({ length: 268 }, (_, index) => pair(index))));
     assert.doesNotThrow(() => queryPrior(Array.from({ length: 360 }, (_, index) => pair(index))));
-    assert.throws(() => queryPrior(Array.from({ length: 361 }, (_, index) => pair(index))));
+    assert.doesNotThrow(() => queryPrior(Array.from({ length: 424 }, (_, index) => pair(index))));
+    assert.throws(() => queryPrior(Array.from({ length: 425 }, (_, index) => pair(index))));
     assert.throws(() => queryWorld({ priorChallenges: [...priorChallenges, '43000,43001'] }), 'only whole plans are admitted as the earlier-challenge list');
     assert.throws(() => queryPrior(['42000,42001', '42000,42001']));
 });

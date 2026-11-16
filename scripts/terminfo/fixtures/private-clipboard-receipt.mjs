@@ -8,7 +8,7 @@ import { historicalArchive } from './captured-sources.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
 import { capturedV41SourceFiles, capturedV44SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
-import { inputPlanForPolicy, inputPlanV3, inputPlanV4 } from '../input-plan.mjs';
+import { inputPlanForPolicy, inputPlanV3, inputPlanV4, inputPlanV5 } from '../input-plan.mjs';
 import { inputCounts } from '../input-receipt.mjs';
 import { boundInputScreen, buildInputReport, inputModeReplyHex } from '../input-state.mjs';
 import { syntheticInputJournal } from './input-journal.mjs';
@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -92,15 +92,16 @@ async function addXtgettcapEvidence({ output, write, context, evidence, titleSta
 }
 
 /** Clone immutable v11 data into `output`, add every synthetic suffix and return the mutable state the tests receive. */
-async function buildFixture(output, { routed = false, modifyOtherKeys = false, mex = false } = {}) {
+async function buildFixture(output, { routed = false, modifyOtherKeys = false, mex = false, pxm = false } = {}) {
     const write = writerFor(output);
-    const routedPlans = routed || modifyOtherKeys || mex;
+    const routedPlans = routed || modifyOtherKeys || mex || pxm;
     const sourceSnapshotPolicy = routedPlans ? 'readonly-owned-source-graph-v37' : legacyPolicy;
     const scope = routedPlans ? capturedV44SourceFiles : capturedV41SourceFiles;
     /** The extended-mouse variant executes the v4 plan and the modifyOtherKeys variant the v3 one; every other variant keeps its policy-mapped plan. */
     let executedInputPlan = inputPlanForPolicy(sourceSnapshotPolicy);
     if (modifyOtherKeys) executedInputPlan = inputPlanV3;
     if (mex) executedInputPlan = inputPlanV4;
+    if (pxm) executedInputPlan = inputPlanV5;
     {
         const archive = historicalArchive('2026-11-05-query-observations');
         for (const [file, bytes] of archive) { const path = join(output, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
@@ -128,7 +129,7 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false, m
             const inputPlan = executedInputPlan;
             const frames0 = journalOf('input-snapshots.jsonl'), actions0 = journalOf('input-actions.jsonl'), template = actions0[0].observed;
             const synthetic = syntheticInputJournal(context.runId, { paneId: frames0[0].paneId, initial: frames0[0].screen, plan: inputPlan,
-                ...(modifyOtherKeys || mex ? {
+                ...(modifyOtherKeys || mex || pxm ? {
                     controlHex: item => (item.controlPrefixHex ?? '') + inputModeReplyHex(item.modes),
                     finalHex: () => inputModeReplyHex(inputPlan.finalModes),
                 } : {}) });
@@ -788,7 +789,7 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false, m
                     counts: routedInputCounts(routedInputReport), provisionalUntil: 'cell-receipt.json' };
             }
             // The modifyOtherKeys suffix rides the same v3 (or v4) journal: the pinned probe replays over the child's XTGETTCAP declaration capture.
-            if (modifyOtherKeys || mex) {
+            if (modifyOtherKeys || mex || pxm) {
                 const { fakeModifyOtherKeysGradingModule } = await import('./modify-other-keys-evidence.mjs');
                 const { buildModifyOtherKeysGradingReport, modifyOtherKeysCounts } = await import('../modify-other-keys-grading.mjs');
                 const { adaptModifyOtherKeysCollector, modifyOtherKeysAdapterId } = await import('../modify-other-keys-grading-collector.mjs');
@@ -817,7 +818,7 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false, m
                     counts: modifyOtherKeysCounts(modifyOtherKeysReport), provisionalUntil: 'cell-receipt.json' };
             }
             // The extended-mouse suffix rides the v4 journal: both pinned probes replay over the child's own DECRQM replies.
-            if (mex) {
+            if (mex || pxm) {
                 const { fakeMexGradingModule } = await import('./mex-evidence.mjs');
                 const { buildMexGradingReport, mexCounts } = await import('../mex-grading.mjs');
                 const { adaptMexCollector, mexAdapterId } = await import('../mex-grading-collector.mjs');
@@ -842,6 +843,33 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false, m
                     runFile: 'mex-run.json', runSha256: hash(readFileSync(join(output, 'mex-run.json'))),
                     adapterBundleSha256: hash(mexBytes), contractsVersion: mexContractsVersion,
                     counts: mexCounts(mexReport), provisionalUntil: 'cell-receipt.json' };
+            }
+            // The SGR-pixel suffix rides the v5 journal: the pinned probe replays over the child's own DECRQM replies.
+            if (pxm || pxm) {
+                const { fakePxmGradingModule } = await import('./pxm-evidence.mjs');
+                const { buildPxmGradingReport, pxmCounts } = await import('../pxm-grading.mjs');
+                const { adaptPxmCollector, pxmAdapterId } = await import('../pxm-grading-collector.mjs');
+                const { pxmGradedSuiteId, pxmContractsVersion } = await import('../pxm-contracts.mjs');
+                const { collectPxmPinned } = await import('../pxm-collector.mjs');
+                const pxmBytes = Buffer.from(adaptPxmCollector(lrMarginsBytes.toString()));
+                const lines = file => readFileSync(join(output, file), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+                const inputFrames = lines('input-snapshots.jsonl'), inputActions = lines('input-actions.jsonl'), pxmControls = {};
+                for (const frame of inputFrames) if (frame.kind === 'input-control') pxmControls[frame.caseId] = frame.capture.hex;
+                const pxmRun = collectPxmPinned({ geometry: { rows: inputFrames[0].screen.rows, cols: inputFrames[0].screen.cols },
+                    controls: pxmControls, restored: inputFrames.at(-1).capture.hex, gradingModule: fakePxmGradingModule });
+                const pxmAdapter = { id: pxmAdapterId, derivedFromAdapterId: lrMarginsAdapterId,
+                    bundleSha256: hash(pxmBytes), upstreamBundleSha256: context.upstreamBundleSha256 };
+                const pxmReport = buildPxmGradingReport({ frames: inputFrames, actions: inputActions, seal: process.input.seal },
+                    pxmRun, context.runId, pxmAdapter, { inputPlan: executedInputPlan, inputReportSha256: evidence.inputEvidence.sha256 });
+                write('pxm-observations.json', pxmReport);
+                write('pxm-run.json', pxmRun);
+                writeFileSync(join(output, 'collector-pxm.mjs'), pxmBytes);
+                Object.assign(context, { pxmAdapterId, pxmSuiteId: pxmGradedSuiteId, pxmBundleSha256: hash(pxmBytes), pxmContractsVersion });
+                evidence.pxmEvidence = { runId: context.runId, suiteId: pxmGradedSuiteId,
+                    file: 'pxm-observations.json', sha256: hash(readFileSync(join(output, 'pxm-observations.json'))),
+                    runFile: 'pxm-run.json', runSha256: hash(readFileSync(join(output, 'pxm-run.json'))),
+                    adapterBundleSha256: hash(pxmBytes), contractsVersion: pxmContractsVersion,
+                    counts: pxmCounts(pxmReport), provisionalUntil: 'cell-receipt.json' };
             }
             // Policy v35 always carries the layered runtime-color reset suffix as well.
             const { syntheticColorResetEvidence, writeColorResetPngs } = await import('./color-reset-evidence.mjs');
@@ -950,8 +978,8 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, mex = false, kcl = false } = {}) {
-    const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex });
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false } = {}) {
+    const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
         cpSync(source, output, { recursive: true, verbatimSymlinks: true });
