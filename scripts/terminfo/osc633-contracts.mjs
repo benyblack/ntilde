@@ -41,14 +41,15 @@ export function makeOsc633Experiments(runId) {
         experiments.push(name('effect', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', 'X', read('ordinary'), ...pinned, read('pinned')]));
         experiments.push(name('positive-control', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(133, target[index])}X`, read('positive')]));
         experiments.push(name('st-terminator', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `\x1b]633;${target[index]}\x1b\\X`, read('post')]));
-        // A and D may both return a running session to a prompt; D is not a
-        // valid negative control for A's status observable. Record it separately.
+        // A and D may both return a running session to a prompt, and A may
+        // clear the anchors too. Neither is a valid gate for the other.
         for (const [gateIndex, gate] of target.entries()) {
-            if (gateIndex === index || (index === 0 && gateIndex === 3)) continue;
+            if (gateIndex === index || (index === 0 && gateIndex === 3) || (index === 3 && gateIndex === 0)) continue;
             experiments.push(name(`gate-${'abcd'[gateIndex]}`, [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(633, gate)}X`, read('post')]));
         }
         if (index === 0) experiments.push(name('shared-d', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(633, 'D;0')}X`, read('post')]));
         if (index === 3) {
+            experiments.push(name('shared-a', [...setup, read('prior'), '\x1b[1;1H\x1b[2K', `${mark(633, 'A')}X`, read('post')]));
             experiments.push(name('no-exit-code', [...setup, read('prior'), mark(633, 'D'), read('post')]));
             experiments.push(name('nonzero-exit-code', [...setup, read('prior'), mark(633, 'D;7'), read('post')]));
         }

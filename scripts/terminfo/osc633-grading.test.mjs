@@ -33,6 +33,17 @@ test('a bad prior, positive control, ordinary control or wrong-marker gate preve
     }
 });
 
+test('A may clear anchors as well as returning to the prompt without invalidating the D effect control', () => {
+    const evidence = syntheticOsc633Evidence({ supported: true, adjust: (experiment, read, state) => {
+        if (experiment === 'extensions.osc633-d/shared-a' && read === 'post') {
+            state.accepting = false; state.commandStart = null; state.outputStart = null;
+        }
+    } });
+    const completion = report(evidence).cases.find(item => item.caseId === 'extensions.osc633-d');
+    assert.equal(completion.effectContract.outcome, 'supported');
+    assert.ok(completion.effectContract.validity.every(value => value.held));
+});
+
 test('changed fixture, stale barrier, wrong pinned result, damaged frame and incomplete cleanup are refused', () => {
     const mutations = [
         e => { e.run.experiments[0].feeds.at(-1); e.run.experiments[0].feeds[e.run.experiments[0].feeds.length - 1] += 'x'; },

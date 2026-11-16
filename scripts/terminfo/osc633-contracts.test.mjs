@@ -23,7 +23,7 @@ test('the exact pinned fixtures and separately prepared positive controls cover 
         assert.deepEqual(effect.filter(step => step.read).map(step => step.read), ['prior', 'ordinary', 'pinned']);
         assert.ok(effect.some(step => step.feed === 'X'));
         const gates = selected.filter(item => item.name.startsWith('gate-'));
-        assert.equal(gates.length, index === 0 ? 2 : 3);
+        assert.equal(gates.length, index === 0 || index === 3 ? 2 : 3);
         for (const gate of gates) {
             assert.deepEqual(gate.plan.filter(step => step.read).map(step => step.read), ['prior', 'post']);
             assert.notEqual(gate.plan.at(-2).feed, exact);
