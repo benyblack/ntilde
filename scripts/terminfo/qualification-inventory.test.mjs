@@ -306,31 +306,32 @@ test('extensions.reflow is admitted with an unsupported effect verdict kept dist
 
 test('an unsupported effect result is counted as qualified evidence but never as supported, pinned-supported or a score change', () => {
     const stored = committed(), { totals } = stored;
-    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc633-a', 'extensions.osc633-b', 'extensions.osc633-c', 'extensions.osc633-d', 'extensions.reflow']);
-    assert.equal(totals.effectUnsupportedIds, 5);
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.reflow']);
+    assert.equal(totals.effectUnsupportedIds, 1);
     assert.equal(totals.effectOtherIds, 0);
     assert.ok(!totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
     assert.ok(!totals.ungradedStockIdsWithEvidence.includes('extensions.reflow'));
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
-    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + 5);
+    assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + 1);
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
     // Supported-only measures: the unsupported reflow id adds to none of them. The Core-gaps reconciliation added two ids supported by the replayed pinned
     // callbacks and by the effect contract (effect-supported 124 -> 126, pinned-supported 89 -> 91), and the saved-mode batch added two ids supported by the
     // effect contract only (effect-supported 126 -> 128; their pinned verdicts stay inconclusive: 35 -> 37). Kitty color control and the retrospective
     // extensions.truecolor replay each add one id supported by the pinned probe and the effect contract (-> 130 and 93); the SGR-pixel batch adds one id supported by the effect contract only (effect-supported 131, pinned-supported stays 93).
-    assert.equal(totals.effectSupportedIds, 131);
+    // The OSC 633 implementation remeasurement turns four ids from effect-unsupported to effect-supported (pinned stays inconclusive): 131 -> 135, 38 -> 42.
+    assert.equal(totals.effectSupportedIds, 135);
     assert.equal(totals.pinnedSupportedIds, 93);
     assert.equal(totals.pinnedAndEffectSupportedIds, 93);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 38);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 130);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 42);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 134);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 92);
     // The reflow row lowers no stock grade and the baseline is untouched.
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    // The remaining counts keep "not supported" and "not measured" apart: reflow and four OSC 633 ids have measured unsupported effects.
+    // The remaining counts keep "not supported" and "not measured" apart: only reflow has a measured unsupported effect now.
     // They do not change the not-effect-supported or not-pinned-supported counts they were already part of.
     const remaining = totals.remainingAgainstStockInconclusive;
-    assert.deepEqual(remaining, { effectUnqualified: 38, effectMeasuredUnsupported: 5, effectMeasuredOther: 0, effectNotMeasured: 33, notPinnedSupported: 76 });
+    assert.deepEqual(remaining, { effectUnqualified: 34, effectMeasuredUnsupported: 1, effectMeasuredOther: 0, effectNotMeasured: 33, notPinnedSupported: 76 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -416,9 +417,9 @@ test('every publication test is a registered suite or finding, or is explicitly 
 
 test('the generated summary defines unsupported and not-measured separately and lists the unsupported id without counting it as supported', () => {
     const text = renderSummary(committed());
-    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 5 \|/);
-    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): .*`extensions\.osc633-a`.*`extensions\.osc633-d`.*`extensions\.reflow`\./);
-    assert.match(text, /\| of which measured, effect unsupported \| 5 \|/);
+    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 1 \|/);
+    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.reflow`\./);
+    assert.match(text, /\| of which measured, effect unsupported \| 1 \|/);
     assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 33 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.doesNotMatch(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
@@ -497,4 +498,53 @@ test('inventory hashes compressed evidence as raw bytes, including CRLF byte pai
         assert.equal(after.bytes, original.length - 1);
         assert.notEqual(after.sha256, before.sha256);
     } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+const osc633Ids = ['extensions.osc633-a', 'extensions.osc633-b', 'extensions.osc633-c', 'extensions.osc633-d'];
+
+test('the OSC 633 remeasurement supersedes the retained unsupported baseline without hiding or double counting it', () => {
+    const stored = committed();
+    const baselineSuite = stored.suites.find(suite => suite.suite === 'osc633'), current = stored.suites.find(suite => suite.suite === 'osc633-implementation');
+    assert.equal(current.supersedes, 'osc633');
+    assert.deepEqual(current.caseIds, baselineSuite.caseIds);
+    assert.notEqual(current.run.ownedRunId, baselineSuite.run.ownedRunId);
+    assert.equal(stored.totals.supersededClaims, 4);
+    for (const id of osc633Ids) {
+        const item = row(stored, id);
+        assert.deepEqual(item.claims.map(claim => [claim.suite, claim.effect.verdict, claim.supersededBy ?? null]),
+            [['osc633', 'unsupported', 'osc633-implementation'], ['osc633-implementation', 'supported', null]]);
+        // The historical negative stays listed and rederived; only the remeasured claim decides the roll-up. Pinned stays inconclusive and separate.
+        assert.equal(item.effect.verdict, 'supported');
+        assert.equal(item.pinned.best, 'inconclusive');
+        assert.ok(item.claims.every(claim => claim.status === 'qualified' && claim.divergence?.kind === 'pinned-inconclusive-by-design'));
+        assert.ok(stored.totals.effectSupportedPinnedInconclusiveIds.includes(id));
+        assert.ok(!stored.totals.effectUnsupportedPinnedInconclusiveIds.includes(id));
+    }
+    assert.deepEqual(stored.totals.idsWithMultipleClaims.filter(id => id.startsWith('extensions.osc633')), osc633Ids);
+});
+
+test('a superseded claim decides again when its replacement is not qualified, so a failed remeasurement cannot hide the history', () => {
+    const failed = clone(committed());
+    failed.suites.find(suite => suite.suite === 'osc633-implementation').rederivation.status = 'failed';
+    for (const item of failed.benchmark) for (const claim of item.claims) if (claim.suite === 'osc633-implementation') claim.status = 'declared-not-rederived';
+    const totals = totalsOf(failed.benchmark, baseline());
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, [...osc633Ids, 'extensions.reflow']);
+    assert.equal(totals.effectOtherIds, 0);
+    assert.equal(totals.supersededClaims, 4,'the superseded markers stay on the retained claims');
+    assert.equal(row(failed, osc633Ids[0]).effect.verdict, 'supported', 'the stored roll-up is unchanged; only the recomputed totals ignore the failed suite');
+});
+
+test('guard: supersession needs the retained replacement claim, an earlier suite and the same case ids', () => {
+    const unmarked = clone(committed());
+    for (const claim of row(unmarked, osc633Ids[1]).claims) delete claim.supersededBy;
+    assert.throws(() => check(unmarked), /supersession marker disagrees|roll-up differs/);
+    const orphan = clone(committed());
+    row(orphan, osc633Ids[2]).claims = row(orphan, osc633Ids[2]).claims.filter(claim => claim.suite === 'osc633');
+    assert.throws(() => check(orphan), /supersession marker disagrees|osc633-implementation: its claims are not exactly|roll-up differs/);
+    const misordered = clone(committed());
+    misordered.suites.find(suite => suite.suite === 'osc633').supersedes = 'osc633-implementation';
+    assert.throws(() => check(misordered), /not an earlier registered suite|supersedes/);
+    const narrowed = clone(committed());
+    narrowed.suites.find(suite => suite.suite === 'osc633-implementation').caseIds = osc633Ids.slice(0, 3);
+    assert.throws(() => check(narrowed), /does not cover exactly its case ids|contract ids differ/);
 });

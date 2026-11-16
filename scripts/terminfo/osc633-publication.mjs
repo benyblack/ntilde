@@ -12,7 +12,7 @@ const scope = 'Pinned terminfo.dev@4.0.0 OSC 633 A–D termless and terminal mar
     + 'no command exit-event payload, real shell, remote or mux, other platforms, common-harness or stock-score claim. '
     + 'OSC 9 and OSC 777/99 evidence is from the separately identified, independently revalidated predecessor run.';
 
-export function osc633Publication(dir) {
+export function osc633Publication(dir, identity = { scope, appRevision: measuredAppRevision, scriptsRevision: measuredScriptsRevision }) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
     const measured = json(dir, 'vs633-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json');
     const cases = measured.cases.map(item => {
@@ -25,9 +25,9 @@ export function osc633Publication(dir) {
             ...(item.divergence ? { divergence: item.divergence } : {}), conclusion: { ...item.conclusion, evidence: 'owned-pane-metadata-and-session-status', note: termless.note } };
     });
     if (JSON.stringify(cases.map(item => item.caseId)) !== JSON.stringify([...osc633CaseIds])) throw new Error('Unexpected OSC 633 cases.');
-    const report = { schemaVersion: 1, suiteId: measured.suiteId, contractsVersion: measured.contractsVersion, runId: measured.runId, adapter: measured.adapter, scope, cases };
+    const report = { schemaVersion: 1, suiteId: measured.suiteId, contractsVersion: measured.contractsVersion, runId: measured.runId, adapter: measured.adapter, scope: identity.scope, cases };
     const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId,
-        appRevision: measuredAppRevision, scriptsRevision: measuredScriptsRevision, context, receipt,
+        appRevision: identity.appRevision, scriptsRevision: identity.scriptsRevision, context, receipt,
         stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash, sourceRevision: raw.sourceRevision } };
     return { summary, report };
 }
