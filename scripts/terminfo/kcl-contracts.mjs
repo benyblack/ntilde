@@ -49,13 +49,15 @@ const esc = '\x1b';
 const st = esc + '\\';
 const bel = '\x07';
 /** Build a regular expression from a source written with <ESC>, so no control character sits in a pattern literal. */
-const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.fromCodePoint(27)).replaceAll('<BEL>', String.fromCodePoint(7)), flags);
+const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.fromCodePoint(27)), flags);
 
 // ---------- the pinned probe (read from the bundle) ----------
 
 /** The pinned request, and the frame pattern both pinned paths search the captured text for. */
 export const kclPinnedQuery = `${esc}]21;foreground=?${st}`;
-export const kclPinnedPattern = re(String.raw`<ESC>\]21;([^<BEL><ESC>]*)(?:<BEL>|<ESC>\\)`);
+/** The pinned code's frame pattern spells its control characters as text escapes (the collector compares the source text exactly), so they are written as text here too. */
+const escText = String.raw`\x1b`, belText = String.raw`\x07`;
+export const kclPinnedPattern = new RegExp(`${escText}\\]21;([^${belText}${escText}]*)(?:${belText}|${escText}\\\\)`);
 const pinnedNoReply = 'No OSC 21 reply; color rendering was not tested';
 const pinnedValueOk = re(String.raw`^rgb:[a-f\d]{1,4}/[a-f\d]{1,4}/[a-f\d]{1,4}$`, 'i');
 
