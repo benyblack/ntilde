@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "publication": "docs/qa/terminfo/2026-11-15-modern-results",
+  "evidenceRef": "b3d39a27347007ace335986be43d41ac9cd8fc67",
+  "sha256": {
+    "report.json": "f15e903a6c672cca2c8a638ab2499280aeb8e11cefa3348d21012689b8d8b147",
+    "report.md": "4246e1cb25e62aed13bdccc62574a867b316cc616874f7db9fd96111723345e2"
+  }
+}

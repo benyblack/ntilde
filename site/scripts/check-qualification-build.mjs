@@ -12,6 +12,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildModernSummary } from './modern-summary.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.resolve(here, '..', 'dist');
@@ -104,6 +105,27 @@ for (const href of new Set(hrefs)) {
     check(false, `unexpected link form: ${href}`);
   }
 }
+
+// Compatibility summaries must come from the same publications. The historical
+// common-harness table keeps its own rows and counts, independently of these.
+const compatibility = readFileSync(path.join(dist, 'compatibility/index.html'), 'utf8');
+const modern = buildModernSummary();
+for (const [baseline, expected, reportUrl] of [
+  ['core', data.totals, data.source.links.report],
+  ['modern', modern.totals, modern.reportUrl],
+]) {
+  const card = new RegExp(String.raw`<article[^>]*data-baseline="${baseline}"[^>]*>([\s\S]*?)</article>`).exec(compatibility)?.[1] ?? '';
+  check(card.length > 0, `compatibility is missing the ${baseline} summary`);
+  for (const outcome of ['pass', 'fail', 'inconclusive']) {
+    const value = new RegExp(String.raw`<dd[^>]*data-outcome="${outcome}"[^>]*>\s*(\d+)\s*</dd>`).exec(card)?.[1];
+    check(Number(value) === expected[outcome], `compatibility ${baseline} ${outcome} differs from the publication`);
+  }
+  check(card.includes(reportUrl), `compatibility ${baseline} report link is not the pinned source`);
+}
+const comparison = JSON.parse(readFileSync(path.resolve(here, '../src/data/common-core-comparison.json'), 'utf8'));
+check([...compatibility.matchAll(/<tr[^>]*\sdata-feature-row(?:\s|>)/g)].length === comparison.requirementCount, 'compatibility dropped historical comparison rows');
+check(compatibility.includes('Historical comparison:'), 'compatibility does not label the historical comparison');
+check(!compatibility.includes('Fresh runs'), 'compatibility presents historical evidence as fresh');
 
 if (failures.length) {
   console.error(`[check-qualification-build] ${failures.length} problem(s):`);
