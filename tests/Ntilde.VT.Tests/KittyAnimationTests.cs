@@ -1,0 +1,471 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Xunit;
+
+namespace Ntilde.VT.Tests;
+
+/// <summary>
+/// Kitty animation (#988): <c>a=f</c> frame data, <c>a=a</c> control and the playhead. Deterministic
+/// local tests on an injected clock and a decoder whose handles expose their RGBA; they are not
+/// runtime qualification and do not establish painted pixels or elapsed wall-clock playback.
+/// </summary>
+public sealed class KittyAnimationTests
+{
+    private sealed record Pixels(byte[] Rgba, int Width, int Height);
+
+    private sealed class PixelDecoder : IImageDecoder
+    {
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
+        {
+            (pixelWidth, pixelHeight) = (width, height);
+            var rgba = new byte[width * height * 4];
+            for (int i = 0; i < width * height; i++)
+            {
+                Array.Copy(data, i * bytesPerPixel, rgba, i * 4, 3);
+                rgba[i * 4 + 3] = bytesPerPixel == 4 ? data[i * bytesPerPixel + 3] : (byte)255;
+            }
+            return new Pixels(rgba, width, height);
+        }
+    }
+
+    private static string B64(params byte[] bytes) => Convert.ToBase64String(bytes);
+    private static string Command(string controls, string payload = "") => $"\x1b_G{controls};{payload}\x1b\\";
+
+    private sealed class Harness
+    {
+        internal readonly TerminalBuffer Buffer = new(80, 24);
+        internal readonly AnsiParser Parser;
+        internal readonly List<string> Replies = new();
+        internal long Now;
+
+        internal Harness(int width = 2, int height = 1)
+        {
+            Parser = new AnsiParser(Buffer, forceConPtyFiltering: false) { ImageDecoder = new PixelDecoder(), CellWidth = 8, CellHeight = 16 };
+            Parser.OnResponse = Replies.Add;
+            Buffer.KittyAnimationClock = () => Now;
+            // Root frame: opaque red | opaque blue, shown with a=T.
+            Send($"a=T,f=32,s={width},v={height},i=1,C=1", B64(Enumerable.Range(0, width * height).SelectMany(i => i % 2 == 0 ? new byte[] { 255, 0, 0, 255 } : new byte[] { 0, 0, 255, 255 }).ToArray()));
+            Replies.Clear();
+        }
+
+        internal void Send(string controls, string payload = "") => Parser.Process(Command(controls, payload));
+        internal string Reply() { string reply = Assert.Single(Replies); Replies.Clear(); return reply; }
+        internal object Shown => Assert.Single(Buffer.Images).ImageHandle;
+        internal Pixels FramePixels(int index) => (Pixels)Buffer.FindKittyImage(1, 0)!.Animation!.Frames[index].Handle;
+        internal bool Advance(long now) { Now = now; return Buffer.AdvanceKittyAnimations(now, out _); }
+    }
+
+    private static string Solid(byte r, byte g, byte b, byte a, int pixels = 2) =>
+        B64(Enumerable.Range(0, pixels).SelectMany(_ => new[] { r, g, b, a }).ToArray());
+
+    [Fact]
+    public void Frame_data_adds_a_frame_with_its_gap_and_acknowledges_it()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=120", Solid(0, 255, 0, 255));
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(2, animation.Frames.Count);
+        Assert.Equal(120, animation.Frames[1].GapMs);
+        Assert.Equal(new byte[] { 0, 255, 0, 255, 0, 255, 0, 255 }, h.FramePixels(1).Rgba);
+        Assert.Equal(KittyAnimationState.Stopped, animation.State);
+    }
+
+    [Fact]
+    public void A_frame_without_a_gap_uses_the_forty_millisecond_default()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1", Solid(1, 2, 3, 255));
+        Assert.Equal(40, h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames[1].GapMs);
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=0", Solid(1, 2, 3, 255));
+        Assert.Equal(40, h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames[2].GapMs);
+    }
+
+    [Fact]
+    public void A_rectangle_lands_where_asked_over_the_background_color()
+    {
+        var h = new Harness();
+        // Background Y=0xff0000ff (opaque red); a green pixel at x=1.
+        h.Send("a=f,i=1,f=32,s=1,v=1,x=1,Y=4278190335", Solid(0, 255, 0, 255, 1));
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 255, 0, 0, 255, 0, 255, 0, 255 }, h.FramePixels(1).Rgba);
+    }
+
+    [Fact]
+    public void Blend_composes_over_a_base_frame_and_overwrite_replaces_it()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1", Solid(255, 0, 0, 255));        // frame 2: opaque red
+        h.Replies.Clear();
+        // Frame 3 on base frame 2: half-transparent white blended over opaque red.
+        h.Send("a=f,i=1,f=32,s=1,v=1,c=2", Solid(255, 255, 255, 128, 1));
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        byte[] blended = h.FramePixels(2).Rgba;
+        Assert.Equal(255, blended[0]);
+        Assert.InRange(blended[1], 126, 129);
+        Assert.InRange(blended[2], 126, 129);
+        Assert.Equal(255, blended[3]);
+        Assert.Equal(new byte[] { 255, 0, 0, 255 }, blended[4..8]);   // untouched pixel keeps the base
+        // The same data with X=1 replaces the pixel, alpha included.
+        h.Send("a=f,i=1,f=32,s=1,v=1,c=2,X=1", Solid(255, 255, 255, 128, 1));
+        Assert.Equal(new byte[] { 255, 255, 255, 128 }, h.FramePixels(3).Rgba[0..4]);
+    }
+
+    [Fact]
+    public void Editing_a_frame_replaces_it_in_place_keeps_its_gap_and_retires_the_old_pixels()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=77", Solid(255, 0, 0, 255));
+        h.Replies.Clear();
+        object old = h.FramePixels(1);
+        h.Send("a=f,i=1,f=32,s=1,v=1,r=2,X=1", Solid(0, 255, 0, 255, 1));
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(2, animation.Frames.Count);
+        Assert.Equal(77, animation.Frames[1].GapMs);
+        Assert.Equal(new byte[] { 0, 255, 0, 255, 255, 0, 0, 255 }, h.FramePixels(1).Rgba);
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Contains(old, retired);
+    }
+
+    [Theory]
+    [InlineData("a=f,i=1,f=32,s=2,v=1,c=1", "ENOTSUP")]           // root pixels are not retained
+    [InlineData("a=f,i=1,f=32,s=2,v=1,r=1", "ENOTSUP")]
+    [InlineData("a=f,i=1,f=32,s=2,v=1,c=9", "ENOENT")]
+    [InlineData("a=f,i=1,f=32,s=2,v=1,r=9", "ENOENT")]
+    [InlineData("a=f,i=1,f=32,s=2,v=1,x=1", "EINVAL")]            // rectangle leaves the 2x1 image
+    [InlineData("a=f,i=1,f=32,s=2,v=2", "EINVAL")]
+    [InlineData("a=f,i=1,f=32,s=2,v=1,X=2", "EINVAL")]
+    [InlineData("a=f,i=1,f=32,s=2,v=1,z=abc", "EINVAL")]
+    [InlineData("a=f,i=1,f=100", "ENOTSUP")]                       // only raw frames
+    [InlineData("a=f,i=1,s=2,v=1", "ENOTSUP")]                      // f absent is not assumed
+    [InlineData("a=f,i=2,f=32,s=2,v=1", "ENOENT")]                  // unknown image
+    [InlineData("a=a,i=2,s=3", "ENOENT")]
+    [InlineData("a=a,i=1,s=4", "EINVAL")]
+    [InlineData("a=a,i=1,c=2", "ENOENT")]                           // no second frame yet
+    [InlineData("a=a,i=1,r=2,z=10", "ENOENT")]
+    public void Invalid_requests_get_a_correlated_negative_reply_and_change_nothing(string controls, string code)
+    {
+        var h = new Harness();
+        h.Send(controls, Solid(1, 2, 3, 255));
+        string reply = h.Reply();
+        Assert.Contains($";{code}:", reply);
+        Assert.Equal(1, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+    }
+
+    [Fact]
+    public void A_payload_that_does_not_match_its_dimensions_is_rejected()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1", Solid(1, 2, 3, 255, 1));
+        Assert.Contains(";EINVAL:", h.Reply());
+        Assert.Equal(1, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+    }
+
+    [Fact]
+    public void Raw_rgb_frames_are_opaque()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=24,s=2,v=1", B64(1, 2, 3, 4, 5, 6));
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 1, 2, 3, 255, 4, 5, 6, 255 }, h.FramePixels(1).Rgba);
+    }
+
+    [Fact]
+    public void Chunked_frame_data_is_assembled_before_it_is_stored()
+    {
+        var h = new Harness();
+        string all = Solid(9, 8, 7, 255);
+        h.Send("a=f,i=1,f=32,s=2,v=1,m=1", all[..4]);
+        Assert.Empty(h.Replies);
+        h.Send("a=f,m=0", all[4..]);
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 9, 8, 7, 255, 9, 8, 7, 255 }, h.FramePixels(1).Rgba);
+    }
+
+    [Fact]
+    public void Quiet_policy_applies_to_animation_commands()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,q=1", Solid(1, 2, 3, 255));
+        h.Send("a=a,i=1,s=3,q=1");
+        Assert.Empty(h.Replies);
+        h.Send("a=a,i=9,s=3,q=1");
+        Assert.Contains(";ENOENT:", h.Reply());
+        h.Send("a=a,i=9,s=3,q=2");
+        Assert.Empty(h.Replies);
+    }
+
+    [Fact]
+    public void Frame_count_and_pixel_quota_are_bounded_without_partial_effects()
+    {
+        var h = new Harness();
+        for (int i = 2; i <= KittyAnimation.MaxFrames; i++) h.Send("a=f,i=1,f=32,s=2,v=1", Solid(1, 1, 1, 255));
+        Assert.All(h.Replies, reply => Assert.Equal("\x1b_Gi=1;OK\x1b\\", reply));
+        h.Replies.Clear();
+        h.Send("a=f,i=1,f=32,s=2,v=1", Solid(1, 1, 1, 255));
+        Assert.Contains(";ENOSPC:", h.Reply());
+        Assert.Equal(KittyAnimation.MaxFrames, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+    }
+
+    [Fact]
+    public void A_frame_larger_than_the_screen_quota_is_refused_and_evicts_nothing()
+    {
+        var h = new Harness(width: 1500, height: 1500);   // 9 MB root; each frame charges 18 MB
+        h.Send("a=t,f=32,s=1,v=1,i=2", Solid(1, 2, 3, 255, 1));
+        h.Replies.Clear();
+        string frame = Solid(5, 5, 5, 255, 1500 * 1500);
+        for (int i = 0; i < 3; i++) h.Send("a=f,i=1,f=32,s=1500,v=1500", frame);
+        Assert.All(h.Replies, reply => Assert.Equal("\x1b_Gi=1;OK\x1b\\", reply));
+        h.Replies.Clear();
+        h.Send("a=f,i=1,f=32,s=1500,v=1500", frame);                 // 9 + 4*18 MB > 64 MiB
+        Assert.Contains(";ENOSPC:", h.Reply());
+        Assert.Equal(4, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+        Assert.NotNull(h.Buffer.FindKittyImage(2, 0));            // the other image was not evicted for nothing
+    }
+
+    // ---- playback ----------------------------------------------------------------------------
+
+    private static Harness ThreeFrames()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 255, 0, 255));
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=200", Solid(255, 255, 0, 255));
+        h.Send("a=a,i=1,r=1,z=50");                                   // root frame shows for 50 ms
+        h.Replies.Clear();
+        return h;
+    }
+
+    private static int Index(Harness h) => h.Buffer.FindKittyImage(1, 0)!.Animation!.Current;
+
+    [Fact]
+    public void A_stopped_animation_never_moves_however_much_time_passes()
+    {
+        var h = ThreeFrames();
+        object root = h.Shown;
+        Assert.False(h.Advance(60_000));
+        Assert.Same(root, h.Shown);
+        Assert.Equal(0, Index(h));
+    }
+
+    [Fact]
+    public void Running_walks_the_frames_on_their_gaps_and_loops_forever()
+    {
+        var h = ThreeFrames();
+        h.Now = 1000;
+        h.Send("a=a,i=1,s=3");
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        object root = h.Shown;
+        Assert.False(h.Advance(1049));                    // root: 50 ms
+        Assert.Same(root, h.Shown);
+        Assert.True(h.Advance(1050));
+        Assert.Equal(1, Index(h)); Assert.Same(h.FramePixels(1), h.Shown);
+        Assert.False(h.Advance(1149));
+        Assert.True(h.Advance(1150));                     // frame 2: 100 ms
+        Assert.Equal(2, Index(h)); Assert.Same(h.FramePixels(2), h.Shown);
+        Assert.False(h.Advance(1349));
+        Assert.True(h.Advance(1350));                     // frame 3: 200 ms, then back to the root
+        Assert.Equal(0, Index(h)); Assert.Same(root, h.Shown);
+        Assert.True(h.Advance(1400 + 350 * 1000));        // many cycles later still lands on a real boundary
+        Assert.InRange(Index(h), 0, 2);
+    }
+
+    [Fact]
+    public void A_late_clock_catches_up_through_several_frames_in_order()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        Assert.True(h.Advance(170));                      // 50 + 100 passed, 20 into frame 3
+        Assert.Equal(2, Index(h));
+    }
+
+    [Fact]
+    public void A_finite_loop_count_stops_on_the_last_frame()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=3,v=2"); h.Replies.Clear();   // two passes
+        h.Advance(350);                                    // end of pass 1 -> frame 1 again
+        Assert.Equal(0, Index(h));
+        h.Advance(700);                                    // end of pass 2
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(KittyAnimationState.Stopped, animation.State);
+        Assert.Equal(2, animation.Current);
+        Assert.False(h.Advance(99_999));
+    }
+
+    [Fact]
+    public void Loop_value_zero_is_ignored_and_one_is_infinite()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=3,v=0"); h.Replies.Clear();
+        Assert.Equal(-1, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);
+        h.Send("a=a,i=1,v=3");
+        Assert.Equal(2, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);
+        h.Send("a=a,i=1,v=1");
+        Assert.Equal(-1, h.Buffer.FindKittyImage(1, 0)!.Animation!.LoopsRemaining);
+    }
+
+    [Fact]
+    public void Loading_mode_waits_at_the_last_frame_and_resumes_when_more_arrives()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=2"); h.Replies.Clear();
+        Assert.True(h.Advance(10_000));                    // ran to the last frame
+        Assert.Equal(2, Index(h));
+        Assert.False(h.Advance(20_000));                   // and waits, never looping
+        Assert.Equal(2, Index(h));
+        Assert.Null(NextDue(h));
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 0, 255, 255));
+        Assert.True(h.Advance(20_001));
+        Assert.Equal(3, Index(h));
+    }
+
+    private static long? NextDue(Harness h) { h.Buffer.AdvanceKittyAnimations(h.Now, out long? due); return due; }
+
+    [Fact]
+    public void Stopping_freezes_the_current_frame_and_resets_the_loop_counter()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=3,v=5"); h.Replies.Clear();
+        h.Advance(60);
+        Assert.Equal(1, Index(h));
+        h.Send("a=a,i=1,s=1"); h.Replies.Clear();
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(-1, animation.LoopsRemaining);
+        Assert.False(h.Advance(50_000));
+        Assert.Equal(1, Index(h));
+        Assert.Same(h.FramePixels(1), h.Shown);
+    }
+
+    [Fact]
+    public void A_gapless_frame_is_never_displayed()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=-1", Solid(0, 255, 0, 255));
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(255, 255, 0, 255));
+        h.Send("a=a,i=1,r=1,z=50"); h.Replies.Clear();
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        Assert.True(h.Advance(50));
+        Assert.Equal(2, Index(h));                         // skipped frame 2
+    }
+
+    [Fact]
+    public void Setting_the_current_frame_shows_it_immediately_and_restarts_its_clock()
+    {
+        var h = ThreeFrames();
+        h.Now = 500; h.Send("a=a,i=1,c=3");
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Same(h.FramePixels(2), h.Shown);
+        h.Send("a=a,i=1,c=2"); h.Replies.Clear();
+        Assert.Same(h.FramePixels(1), h.Shown);
+    }
+
+    [Fact]
+    public void Every_placement_of_an_animated_image_follows_the_frame()
+    {
+        var h = ThreeFrames();
+        h.Parser.Process("\x1b[5;1H");
+        h.Send("a=p,i=1,C=1"); h.Replies.Clear();
+        Assert.Equal(2, h.Buffer.Images.Count);
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Advance(60);
+        Assert.All(h.Buffer.Images, image => Assert.Same(h.FramePixels(1), image.ImageHandle));
+    }
+
+    [Fact]
+    public void A_placement_made_during_playback_shows_the_current_frame()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Advance(60);
+        h.Send("a=p,i=1,C=1,p=7"); h.Replies.Clear();
+        Assert.Same(h.FramePixels(1), h.Buffer.Images[^1].ImageHandle);
+    }
+
+    [Fact]
+    public void Wake_ups_are_requested_only_while_a_visible_placement_is_animating()
+    {
+        var h = ThreeFrames();
+        Assert.Null(NextDue(h));                           // stopped
+        h.Now = 1000; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        Assert.Equal(1050, NextDue(h));
+        h.Send("a=d,d=i,i=1"); h.Replies.Clear();         // soft delete: no placement, data kept
+        Assert.Null(NextDue(h));
+    }
+
+    [Fact]
+    public void Replacing_the_image_drops_its_frames_and_state()
+    {
+        var h = ThreeFrames();
+        var frames = Enumerable.Range(0, 3).Select(i => h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames[i].Handle).ToArray();
+        h.Send("a=t,f=32,s=2,v=1,i=1", Solid(9, 9, 9, 255));
+        Assert.Null(h.Buffer.FindKittyImage(1, 0)!.Animation);
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.All(frames, frame => Assert.Contains(frame, retired));
+    }
+
+    [Fact]
+    public void Hard_delete_retires_every_frame_exactly_once_even_when_a_later_frame_is_displayed()
+    {
+        var h = ThreeFrames();
+        h.Send("a=a,i=1,c=3"); h.Replies.Clear();
+        var frames = Enumerable.Range(0, 3).Select(i => h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames[i].Handle).ToArray();
+        h.Send("a=d,d=I,i=1");
+        Assert.Null(h.Buffer.FindKittyImage(1, 0));
+        Assert.Empty(h.Buffer.Images);
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Equal(frames.Length, retired.Count(frame => frames.Contains(frame)));
+        Assert.Equal(frames.Length, retired.Distinct().Count(frame => frames.Contains(frame)));
+    }
+
+    [Fact]
+    public void Soft_delete_keeps_frames_live_and_redisplay_shows_the_current_frame()
+    {
+        var h = ThreeFrames();
+        h.Send("a=a,i=1,c=2"); h.Replies.Clear();
+        h.Send("a=d,d=i,i=1");
+        Assert.Empty(h.Buffer.Images);
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Empty(retired);
+        h.Send("a=p,i=1,C=1");
+        Assert.Same(h.FramePixels(1), Assert.Single(h.Buffer.Images).ImageHandle);
+    }
+
+    [Fact]
+    public void Screen_reset_releases_all_frames()
+    {
+        var h = ThreeFrames();
+        var frames = Enumerable.Range(0, 3).Select(i => h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames[i].Handle).ToArray();
+        h.Buffer.Reset();
+        Assert.Null(h.Buffer.FindKittyImage(1, 0));
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.All(frames, frame => Assert.Contains(frame, retired));
+    }
+
+    [Fact]
+    public void Composition_is_not_advertised_but_animation_is()
+    {
+        var h = new Harness();
+        h.Send("a=q,i=31,s=1,v=1,f=24,t=d,e=f", "AAAA");
+        Assert.Equal("\x1b_Gi=31;OK\x1b\\", h.Reply());
+        h.Send("a=q,i=31,s=1,v=1,f=24,t=d,e=c", "AAAA");
+        Assert.Equal("\x1b_Gi=31;ERR\x1b\\", h.Reply());
+        h.Send("a=c,i=1,r=2,c=3");
+        Assert.Contains(";ENOTSUP:", h.Reply());
+    }
+
+    [Fact]
+    public void Number_addressing_selects_the_newest_image_for_frames()
+    {
+        var h = new Harness();
+        h.Send("a=t,f=32,s=2,v=1,I=5", Solid(1, 1, 1, 255));
+        Assert.Contains("I=5;OK", h.Reply());
+        h.Send("a=f,I=5,f=32,s=2,v=1", Solid(2, 2, 2, 255));
+        Assert.Equal("\x1b_Gi=2,I=5;OK\x1b\\", h.Reply());
+        Assert.Equal(2, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(0, 5)!));
+        Assert.Equal(1, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+    }
+}

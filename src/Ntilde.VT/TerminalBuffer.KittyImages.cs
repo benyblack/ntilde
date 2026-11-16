@@ -13,7 +13,12 @@ internal sealed class KittyImageAsset(uint id, uint number, bool isAltScreen, ob
     internal object Handle { get; set; } = handle;
     internal int PixelWidth { get; } = pixelWidth;
     internal int PixelHeight { get; } = pixelHeight;
-    internal long PixelCharge => (long)PixelWidth * PixelHeight * 4;
+    internal long PixelCharge => (long)PixelWidth * PixelHeight * 4 + (Animation?.ExtraCharge ?? 0);
+    /// <summary>The frames and playback clock once <c>a=f</c> or <c>a=a</c> has addressed the image; null for a still image.</summary>
+    internal KittyAnimation? Animation { get; set; }
+    /// <summary>Whether <paramref name="candidate"/> is the displayed handle or any frame's.</summary>
+    internal bool OwnsHandle(object candidate) =>
+        ReferenceEquals(Handle, candidate) || (Animation?.Frames.Exists(frame => ReferenceEquals(frame.Handle, candidate)) ?? false);
     /// <summary>The bytes as sent, kept for snapshots when the parser retains image sources (#838).</summary>
     internal ImageSource? Source { get; init; }
     /// <summary>How <see cref="Source"/> was sent, so it can be decoded again on restore.</summary>
@@ -196,9 +201,12 @@ public partial class TerminalBuffer
         _kittyImageAssets.Remove(asset);
         asset.Source?.Release();
         RetireUnstoredKittyHandle(asset.Handle);
+        if (asset.Animation is { } animation)
+            foreach (KittyFrame frame in animation.Frames)
+                if (!ReferenceEquals(frame.Handle, asset.Handle)) RetireUnstoredKittyHandle(frame.Handle);
     }
 
-    private bool IsRetainedKittyHandle(object handle) => _kittyImageAssets.Any(asset => ReferenceEquals(asset.Handle, handle));
+    private bool IsRetainedKittyHandle(object handle) => _kittyImageAssets.Any(asset => asset.OwnsHandle(handle));
 
     /// <summary>
     /// Queues an unreferenced retained handle; a native source enters the retired tier only after its last alias is gone.

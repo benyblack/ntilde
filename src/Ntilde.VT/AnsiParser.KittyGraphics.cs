@@ -164,6 +164,8 @@ namespace Ntilde.VT
                     {
                         "t" or "T" => TransmitKittyImage(identity, action == "T", out id),
                         "p" => DisplayStoredKittyImage(identity, out id),
+                        "f" => TransmitKittyFrame(identity, out id),
+                        "a" => ControlKittyAnimation(identity, out id),
                         "d" => DeleteStoredKittyImages(identity),
                         _ => "ENOTSUP:Graphics action not supported"
                     };
@@ -224,7 +226,9 @@ namespace Ntilde.VT
             string probeTransport = _kittyPendingParams.TryGetValue("t", out var probeT) ? probeT : "d";
             bool transportSupported = probeTransport == "d"
                 || (probeTransport == "f" && ReadFileBytes != null);
-            string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported
+            // a=a/a=f are implemented; a=c composition is not, and a client probing it (e=c) must fall back.
+            bool probesComposition = _kittyPendingParams.TryGetValue("e", out string? probedAction) && probedAction == "c";
+            string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported || probesComposition
                 ? "ERR"
                 : "OK";
             OnResponse?.Invoke($"\x1b_Gi={id};{status}\x1b\\");
