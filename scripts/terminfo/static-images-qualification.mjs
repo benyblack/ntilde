@@ -107,7 +107,8 @@ const stageSummary = item => ({
 /** Validity controls over the whole carrier run: every one must hold before any image verdict is reported. */
 export function validityControls(report, receipt, context, observationBytes) {
     const binding = receipt.staticImageEvidence, captures = report.snapshots.filter(frame => frame.capture), nonces = captures.flatMap(frame => frame.capture.nonces);
-    const prior = new Set(report.priorChallenges);
+    // The earlier input phase retains each challenge as the comma-joined pair, so compare the same representation.
+    const pairs = captures.map(frame => frame.capture.nonces.join(',')), prior = new Set(report.priorChallenges);
     const stages = report.observations;
     const blanks = stages.filter(item => item.featureId.endsWith('.blank'));
     const controls = [
@@ -122,7 +123,7 @@ export function validityControls(report, receipt, context, observationBytes) {
         ['controlled-background', report.backgroundControls.length === report.actions.length && report.backgroundControls.at(-1).snapshot === report.restoredSnapshot
             && report.backgroundControls.slice(0, -1).every(item => item.argb === 0xff101010 && same(item.query.channels16, [4112, 4112, 4112])),
             'every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme'],
-        ['fresh-paired-fences', captures.length === report.actions.length && nonces.length === new Set(nonces).size && nonces.every(value => !prior.has(value)) && captures.every(frame => frame.capture.nonces.length === 2),
+        ['fresh-paired-fences', captures.length === report.actions.length && nonces.length === new Set(nonces).size && pairs.length === new Set(pairs).size && pairs.every(pair => !prior.has(pair)) && captures.every(frame => frame.capture.nonces.length === 2),
             'every capture carries its own unpredictable paired challenges, none reused from the earlier input phase or another capture (a stale capture cannot qualify)'],
         ['blank-before-controls', blanks.length === 5 && blanks.every(item => item.result === 'passed' && item.assertions.length === 2 && item.assertions.every(value => value.passed)),
             'every case began from an independently blank, unchanged-surroundings target'],

@@ -146,7 +146,9 @@ test('stale, reused or unhealthy captures fail the validity controls before any 
     const failing = mutate => { const report = retained(); mutate(report); return validityControls(report, original, context, bytes).filter(item => !item.held).map(item => item.name); };
     const frames = report => report.snapshots.filter(frame => frame.capture);
     assert.deepEqual(failing(report => { frames(report)[3].capture.nonces[0] = frames(report)[2].capture.nonces[0]; }), ['fresh-paired-fences']);
-    assert.deepEqual(failing(report => { frames(report)[1].capture.nonces[1] = report.priorChallenges[0]; }), ['fresh-paired-fences']);
+    // An earlier input-phase fence replayed in the carrier's actual numeric-pair representation.
+    assert.deepEqual(failing(report => { frames(report)[1].capture.nonces = report.priorChallenges[0].split(',').map(Number); }), ['fresh-paired-fences']);
+    assert.ok(retained().priorChallenges.every(pair => /^\d+,\d+$/.test(pair)));
     assert.deepEqual(failing(report => { report.seal.failed = true; }), ['raw-reader-healthy']);
     assert.deepEqual(failing(report => { report.backgroundControls[4].argb = 0xff000000; }), ['controlled-background']);
     assert.deepEqual(failing(report => { report.observations.find(item => item.featureId === 'iterm.default-aspect.blank').result = 'failed'; }), ['blank-before-controls']);

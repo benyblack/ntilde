@@ -3687,7 +3687,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/static-images-publication.test.mjs",
-        "testSha256": "53d033240241573d90bc7dfac1b4acca2a41e7f8fc173732caca88a82627d70a"
+        "testSha256": "6435aebac9ce848c93541dc60004d73e449b61f08352de51297852aeb041edad"
       }
     }
   ],
