@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 138,
-    "suiteClaims": 140,
+    "uniqueBenchmarkIds": 139,
+    "suiteClaims": 141,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 137,
+    "effectSupportedIds": 138,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
     "pinnedAndEffectSupportedIds": 93,
@@ -57,6 +57,7 @@
       "editing.decrara",
       "editing.decsace",
       "extensions.iterm2-images",
+      "extensions.kitty-graphics.animation",
       "extensions.notifications",
       "extensions.osc0-icon-title",
       "extensions.osc1-icon",
@@ -99,7 +100,7 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.sixel"
     ],
-    "effectSupportedOfStockInconclusive": 136,
+    "effectSupportedOfStockInconclusive": 137,
     "effectUnsupportedOfStockInconclusive": 1,
     "pinnedSupportedOfStockInconclusive": 92,
     "ungradedStockIdsWithEvidence": [
@@ -114,10 +115,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 32,
+      "effectUnqualified": 31,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 31,
+      "effectNotMeasured": 30,
       "notPinnedSupported": 76
     }
   },
@@ -3689,6 +3690,73 @@
         "command": "node --test scripts/terminfo/static-images-publication.test.mjs",
         "testSha256": "6435aebac9ce848c93541dc60004d73e449b61f08352de51297852aeb041edad"
       }
+    },
+    {
+      "suite": "kitty-animation",
+      "suiteId": "ntilde-owned-kitty-animation-qualification-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-16-kitty-animation/",
+      "doc": "2026-11-16-kitty-animation-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.kitty-graphics.animation"
+      ],
+      "evidence": {
+        "files": 14,
+        "bytes": 16474214,
+        "sha256": "ebb9949d981cf658c3b727bfa71d6866250b3752ec1d4e3ec9fa56e9e84a5ff9"
+      },
+      "receipt": {
+        "schemaVersion": 70,
+        "runId": "c14fff8234ded3203aba2b8450b66cc4",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "1b2eda35799293b944cd4c8672d359449d733cfe3ae3fc9f13823307ee575f3d"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-kitty-animation-v1",
+          "file": "animation-observations.json",
+          "sha256": "1842b5c1e2a51ba4f3bdb2053f7bbe07270d62f8ea9a52d0c1b7510f0e0a0581",
+          "counts": {
+            "passed": 18
+          }
+        }
+      },
+      "run": {
+        "ownedRunId": "c14fff8234ded3203aba2b8450b66cc4",
+        "measuredAt": "2026-11-16T22:56:48.568Z",
+        "appRevision": "479a5465614258f289d6bf7b8f56f8469321ad27",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "c98758767316f1aa493260e2bcb7cef563850550",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "b94eb952b4c610bfa1311b5338e0b9d5e552bc74af9e511e43b6084bad4e7f9d",
+        "gradingAdapterId": "ntilde-owned-macos-v1",
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v63",
+        "sourceSnapshotManifestSha256": "8dc1fa109583214f8ccd4f2f835dc59fd6b4c849dfe47808fb341bf317ac5bb6"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "9a342488d04142df17ae8a64bf6efb7d",
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "9ff54fa40e69cbdf5d6da588913a32850294afa616a92aa2f8f323ffb0142700",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/kitty-animation-publication.test.mjs",
+        "testSha256": "8820e24051ffbb8ba5f08a16aa5bf4f9eaf7a034d667c059134317fa314879dc"
+      }
     }
   ],
   "benchmark": [
@@ -5772,6 +5840,58 @@
             "pinned": "inconclusive",
             "effect": "supported",
             "reason": "Declared iTerm2 image capability does not establish rendered image pixels"
+          },
+          "measuredLayers": [
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-controlled-pixels-paired-raw-render"
+        }
+      ]
+    },
+    {
+      "id": "extensions.kitty-graphics.animation",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "kitty-animation",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "kitty-animation",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.kitty-graphics.animation",
+          "suite": "kitty-animation",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-callbacks-preserved-plus-owned-wall-clock-pixel-effect-v1"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Declared Kitty graphics capability does not establish timed animation playback"
           },
           "measuredLayers": [
             "controlled-pixels"

@@ -865,6 +865,14 @@ The [2026-11-16 static-image qualification](terminfo/2026-11-16-static-images-qu
 main, with both pinned callbacks replayed and kept inconclusive. It adds no measured source, so it
 needs no source-policy or receipt bump; stock grades and Core scores do not change.
 
+The [2026-11-16 Kitty animation qualification](terminfo/2026-11-16-kitty-animation-qualification.md)
+(#988) implements bounded Kitty frame playback (`a=f` raw frames, `a=a` control, a clock-driven playhead) and
+qualifies `extensions.kitty-graphics.animation` with a new owned suite, [`ntilde-owned-kitty-animation-v1`](terminfo/kitty-animation-model.md)
+(source policy v63, receipt schema 70): three cases of three solid frames held 5 s each, read by paired offscreen captures
+against retained wall-clock brackets. The effect contract is supported (18/18 stages) while both pinned callbacks stay
+inconclusive by design and the stock grade stays inconclusive; Core scores do not change. Three superseded attempts are retained with their
+actual failures.
+
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
 90 state captures, with all 16 suite bindings and a fixed 74-file source graph.

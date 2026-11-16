@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "note": "Superseded collection attempts on the way to the published run. Each is retained with its actual failure; full raw directories are not committed. None produced a grade.",
+  "attempts": [
+    {
+      "runId": "fd78b5e9ff0578117b9c1905e028baf9",
+      "scriptsRevision": "e0c32683",
+      "reason": "The disposable App aborted before collection (SIGABRT, Avalonia RenderTimer error -6661): the desktop display was unavailable. Nothing was measured; the cause is the environment, not the suite.",
+      "retainedFiles": {
+        "app-output.log": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
+        "failure.json": "79235bc568b031245cb33d08bfe8f8d8cd4c276bb875d01a9d71645bcbd8bde8"
+      }
+    },
+    {
+      "runId": "eb498291e493a5c339cec7cf3acd5081",
+      "scriptsRevision": "e0c32683",
+      "reason": "The static-image suite completed but the animation observer refused its first request (diagnosed from the retained evidence and the fix: no animation frame was recorded): its prior-challenge allowance covered the input phase only, while the static-image phase adds 31 more pairs. Fixed in b8625ed5 with a regression test.",
+      "retainedFiles": {
+        "failure.json": "8d826675522cac2547f8f8e04d9551725ca4d7e4d4a76044d23bf1755fa1e1e2",
+        "worker-error.txt": "7624a6f782a5d3cd40f1497eb34a5087af667435fc20d9a44e28ed16bcbbca6d"
+      }
+    },
+    {
+      "runId": "2f1f9e79b2dcfc2692a2f6c71a3395ce",
+      "scriptsRevision": "b8625ed5",
+      "reason": "The animation suite reached its first build stage and refused the raw replies: the App acknowledged a=T with its placement id (i=<id>,p=1;OK) as the lifecycle contract documents, while the expected reply shape omitted it. The reply-format expectation was corrected in c9875876; no pixel result or grade was involved.",
+      "retainedFiles": {
+        "failure.json": "b4eb54cbb91bed4b24221a761dda06ef29708e9fa56aa8f99494b0e85594de58",
+        "worker-error.txt": "8ed3e73d99ab37123140ab9343b4832c92519841a5482e1bf561499c12d771a1",
+        "animation-raw-failure.json": "720d3414d121024e1a1b8651e3f9893b834b8d3e80860f99b6dad06e05dc8942",
+        "animation-failed-observation.json": "9ea59a0eee6a6de0af591621be043e0ed89b48903db31219c026d554b2d9cada"
+      }
+    }
+  ]
+}

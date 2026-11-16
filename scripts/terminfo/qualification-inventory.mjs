@@ -83,6 +83,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('osc633', '2026-11-16-osc633-implementation', '2026-11-16-osc633-implementation-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-implementation-publication.test.mjs' },
     // Static SIXEL and iTerm2 pixels: pinned callbacks replayed, effect contracts composed from the owned static-image carrier suite of the same run.
     { ...directory('static-images', '2026-11-16-static-images', '2026-11-16-static-images-qualification.md'), module: 'static-images-qualification.mjs', exports: ['staticImagesQualificationSuiteId', 'staticImagesQualificationVersion', 'staticImagesQualificationIds'], receiptSuiteId: 'ntilde-owned-static-images-v1', test: 'static-images-publication.test.mjs' },
+    // Kitty graphics animation: the pinned callbacks replayed (always inconclusive), one effect contract composed from the owned animation carrier of the same run.
+    { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v1', test: 'kitty-animation-publication.test.mjs' },
 ]);
 
 /**
