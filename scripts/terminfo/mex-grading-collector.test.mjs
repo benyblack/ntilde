@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { existsSync } from 'node:fs';
+import { testWithPinnedCollector } from './real-bundle-test.mjs';
 import { adaptMexCollector, mexAdapterId, mexSeams } from './mex-grading-collector.mjs';
 
 /** A verbatim source: seams appear exactly once each, as plain text. */
@@ -43,8 +43,7 @@ test('refuses a pinned body that would gain a verdict or change its bytes', () =
     }
 });
 
-const bundleUrl = new URL('../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/terminfo.bundle.mjs', import.meta.url);
-test('the real pinned bundle derives through every layer and the pinned code runs over served child replies', { skip: existsSync(bundleUrl) ? false : 'collector cache not installed' }, async () => {
+testWithPinnedCollector('the real pinned bundle derives through every layer and the pinned code runs over served child replies', async bundleUrl => {
     const { adaptCollector } = await import('./collector.mjs');
     const { adaptGradingCollector } = await import('./grading-collector.mjs');
     const names = ['sgr-colors', 'sgr-rgb', 'sgr-attrs', 'sgr-palette', 'sgr-truecolor', 'sgr-underline', 'sgr-underline-color', 'sgr-reset',
@@ -60,7 +59,7 @@ test('the real pinned bundle derives through every layer and the pinned code run
     let text = adaptCollector(readFileSync(bundleUrl).toString(), new URL('./ownership.mjs', import.meta.url).pathname);
     text = adaptGradingCollector(text);
     for (const adapt of [...layers, adaptMexCollector]) text = adapt(text);
-    const file = fileURLToPath(new URL(`../../artifacts/terminfo/tool/node_modules/terminfo.dev/dist/ntilde-mex-test-${process.pid}.mjs`, import.meta.url));
+    const file = fileURLToPath(new URL(`./ntilde-mex-test-${process.pid}.mjs`, bundleUrl));
     try {
         writeFileSync(file, text);
         const module = await import(pathToFileURL(file).href);

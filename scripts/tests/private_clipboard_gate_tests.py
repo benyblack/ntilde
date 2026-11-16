@@ -51,7 +51,7 @@ def main():
     mutants = {
         'removed job': real.replace('\n  private_clipboard_owned:\n', '\n  private_clipboard_removed:\n'),
         'conditional job': real.replace('  private_clipboard_owned:\n', '  private_clipboard_owned:\n    if: false\n'),
-        'missing prerequisite': real.replace('query_publication_guards, private_clipboard_owned, analyzers]', 'query_publication_guards, analyzers]'),
+        'missing prerequisite': real.replace('query_publication_guards, private_clipboard_owned, terminfo_real_bundle, analyzers]', 'query_publication_guards, analyzers]'),
         'missing result': real.replace('needs.private_clipboard_owned.result', 'needs.private_clipboard_owned.outputs'),
         'ignored failure': real.replace('[ "$clipboard" = success ] ||', '[ true ] ||'),
         'lost full finalizer': real.replace(' scripts/terminfo/private-clipboard-receipt.test.mjs', ''),

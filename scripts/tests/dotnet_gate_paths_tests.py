@@ -136,7 +136,7 @@ def rollup_problems(script, bash):
     found = []
     for dotnet, shards, analyzers, scripts, passes in ROLLUP:
         env = {**os.environ, 'dotnet': dotnet, 'result': shards, 'analyzers': analyzers, 'scripts': scripts,
-               'clipboard': 'success', 'publication': 'success'}
+               'clipboard': 'success', 'publication': 'success', 'replay': 'success'}
         ran = subprocess.run([bash, '-c', script], env=env, capture_output=True, text=True)
         if (ran.returncode == 0) != passes:
             found.append(f'roll-up with dotnet={dotnet!r} shards={shards} analyzers={analyzers} scripts={scripts} '
