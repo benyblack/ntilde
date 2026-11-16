@@ -9,7 +9,7 @@ import { repoRoot } from '../../site/scripts/qualification-data.mjs';
 
 const pin = JSON.parse(readFileSync(path.join(repoRoot, 'site/modern-source.json'), 'utf8'));
 
-function modified(change, { repin = true } = {}) {
+function modified(change, { repin = true, updateMarkdown = true } = {}) {
   const base = mkdtempSync(path.join(tmpdir(), 'nt-modern-site-'));
   try {
     mkdirSync(path.join(base, 'site'));
@@ -24,6 +24,15 @@ function modified(change, { repin = true } = {}) {
     writeFileSync(file, text);
     const next = structuredClone(pin);
     if (repin) next.sha256['report.json'] = createHash('sha256').update(text).digest('hex');
+    if (updateMarkdown) {
+      const mdFile = path.join(base, pin.publication, 'report.md');
+      const lines = readFileSync(mdFile, 'utf8').replaceAll('\r\n', '\n').split('\n');
+      const { pass, fail, inconclusive } = report.totals;
+      lines[2] = `**${pass} pass / ${fail} fail / ${inconclusive} inconclusive across ${report.rows.length} frozen requirements.**`;
+      const markdown = lines.join('\n');
+      writeFileSync(mdFile, markdown);
+      next.sha256['report.md'] = createHash('sha256').update(markdown).digest('hex');
+    }
     writeFileSync(path.join(base, 'site/modern-source.json'), JSON.stringify(next));
     return buildModernSummary({ base });
   } finally {
@@ -60,4 +69,12 @@ test('when deliberately repinned, changed valid conclusions change the summary r
     report.totals.inconclusive++;
   });
   assert.deepEqual(data.totals, { pass: 44, fail: 0, inconclusive: 25, total: 69 });
+});
+
+test('repinning only JSON cannot publish new totals beside a stale readable report', () => {
+  assert.throws(() => modified(report => {
+    report.rows.find(row => row.conclusion === 'pass').conclusion = 'inconclusive';
+    report.totals.pass--;
+    report.totals.inconclusive++;
+  }, { updateMarkdown: false }), /Markdown summary disagrees/);
 });

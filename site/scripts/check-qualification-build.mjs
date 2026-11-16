@@ -114,10 +114,10 @@ for (const [baseline, expected, reportUrl] of [
   ['core', data.totals, data.source.links.report],
   ['modern', modern.totals, modern.reportUrl],
 ]) {
-  const card = new RegExp(`<article[^>]*data-baseline="${baseline}"[^>]*>([\\s\\S]*?)</article>`).exec(compatibility)?.[1] ?? '';
+  const card = new RegExp(String.raw`<article[^>]*data-baseline="${baseline}"[^>]*>([\s\S]*?)</article>`).exec(compatibility)?.[1] ?? '';
   check(card.length > 0, `compatibility is missing the ${baseline} summary`);
   for (const outcome of ['pass', 'fail', 'inconclusive']) {
-    const value = new RegExp(`<dd[^>]*data-outcome="${outcome}"[^>]*>\\s*(\\d+)\\s*</dd>`).exec(card)?.[1];
+    const value = new RegExp(String.raw`<dd[^>]*data-outcome="${outcome}"[^>]*>\s*(\d+)\s*</dd>`).exec(card)?.[1];
     check(Number(value) === expected[outcome], `compatibility ${baseline} ${outcome} differs from the publication`);
   }
   check(card.includes(reportUrl), `compatibility ${baseline} report link is not the pinned source`);
