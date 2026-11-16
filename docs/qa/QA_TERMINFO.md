@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [2026-11-15 Modern assessment](terminfo/2026-11-15-modern-results/report.md)
+freezes all 69 Modern requirements and re-assesses one retained owned run. It gives
+a separate semantic conclusion and exact evidence blocker per requirement; it is
+not an upstream application score or a percentage comparable with the public
+leaderboard. Reproduce offline with `node scripts/terminfo-modern-results.mjs --check`.
+
 The [insert/replace qualification](terminfo/2026-11-12-insert-replace-qualification.md) separately preserves the pinned termless,
 terminal-path, stock and stored-cell effect outcomes for `modes.insert-replace`. Its ASCII transition, edge, attribute and restoration
 controls were collected on a disposable macOS sidecar under source policy v48 and receipt schema 54; this adds no automatic Core score.
@@ -1246,3 +1252,13 @@ and read back through OSC 21 and the legacy replies, each key alone and in reque
 **supported**; the stock counts move from 92/1/162 to 93/1/161. Names, alpha, the dynamic value, `cursor_text`, `visual_bell` and the transparent colors are not modeled (recorded policy), and `#RGB` scaling and an
 out-of-range `rgbi` differ from kitty's text (recorded policy divergences). Query policy v5 owes the exact-query witness a framed `rgb:rr/gg/bb` reply (a pattern entry: the host foreground is not a constant); every
 earlier run keeps the silence expectation. Receipt schema 65 and source policy v59 (394 files) bind it.
+
+### Core-to-inventory reconciliation: reverse index and backend reset()
+
+`text.reverse-index-scroll` and `reset.method` passed in the frozen Core requirement results but were not in the qualification inventory, because Core result publications are a separate evidence class. Both are
+graded by the Core-gaps suite (`ntilde-owned-core-gaps-v1`), which every owned run since then retains. The newest merged run (the extended-mouse run, App and scripts `aaaece99`, policy v58, receipt schema 64; production
+`src` is unchanged since) already carries its measurement, so the batch took **no new collection and no production change**: `2026-11-15-core-gaps/` restates those two cases from that archive, and its publication test
+re-issues the complete receipt and requires the retained observations to equal the live grading module's rebuild of the journal. Both pinned callbacks (replayed over the journaled states of their exact writes) and
+both effect contracts (`ntilde-core-gaps-effect-v1`) are **supported**, with no divergence, and both stock grades stay inconclusive. `reset.method` is graded for the desktop collector's own backend `reset()` sequence
+(three real calls, including from the alternate screen over a dirty main bank), not for an App endpoint; `reset.ris` is not substituted. Inventory: 127 ids / 129 claims, effect-supported 126, pinned-supported 91; no
+stock, Core or common-harness count moves. `device.env-term` (the same suite's other id) is not admitted here. See [the qualification page](terminfo/2026-11-15-core-gaps-qualification.md).

@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 126,
-    "suiteClaims": 128,
+    "uniqueBenchmarkIds": 127,
+    "suiteClaims": 129,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 125,
+    "effectSupportedIds": 126,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 0,
-    "pinnedAndEffectSupportedIds": 90,
+    "pinnedAndEffectSupportedIds": 91,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -90,13 +90,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.reflow"
     ],
-    "effectSupportedOfStockInconclusive": 124,
+    "effectSupportedOfStockInconclusive": 125,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 89,
+    "pinnedSupportedOfStockInconclusive": 90,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 90,
+    "pinnedSupportedIds": 91,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -105,11 +105,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 44,
+      "effectUnqualified": 43,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 0,
-      "effectNotMeasured": 43,
-      "notPinnedSupported": 79
+      "effectNotMeasured": 42,
+      "notPinnedSupported": 78
     }
   },
   "suites": [
@@ -3191,73 +3191,70 @@
       }
     },
     {
-      "suite": "kcl",
-      "suiteId": "ntilde-owned-kitty-color-graded-v1",
+      "suite": "core-gaps",
+      "suiteId": "ntilde-owned-core-gaps-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-15-kitty-color-control/",
-      "doc": "2026-11-15-kitty-color-control-qualification.md",
-      "caseCount": 1,
+      "publication": "2026-11-15-core-gaps/",
+      "doc": "2026-11-15-core-gaps-qualification.md",
+      "caseCount": 2,
       "caseIds": [
-        "extensions.osc21-kitty-color"
+        "text.reverse-index-scroll",
+        "reset.method"
       ],
       "evidence": {
-        "files": 4,
-        "bytes": 8320225,
-        "sha256": "93e736dc0b7cff69e67560e9e52aa0d7fb3fc9d3f6ab8e370f6f093091621c9e"
+        "files": 2,
+        "bytes": 145881,
+        "sha256": "65fe175527201a973fa954c45f9e47f5f6130e07ffdb974f0dc62b0d75cfe560"
       },
       "receipt": {
-        "schemaVersion": 65,
-        "runId": "59863c5da6e5a5cdb2f0483d633655b3",
+        "schemaVersion": 64,
+        "runId": "59b3fbe52f6062679e5233e0b62fb9d2",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "a3dbc8b8ffa5da6b1fcba4ddbcda196ab0c20ef6057414ca8cb6cddaffdffdcc"
+          "sha256": "a02329d897215ace86862a4030c43976244d8d14d3001162b311adcdd9b6487f"
         },
         "suiteEvidence": {
-          "suiteId": "ntilde-owned-kitty-color-graded-v1",
-          "file": "kcl-observations.json",
-          "sha256": "9c8e5db3dd444f89c3178864d99f45b4bf5a38c2e00aecdd6d6d2f650e82d39e",
-          "runFile": "kcl-run.json",
-          "runSha256": "c09693c9a4887038b51672fd7aaa3b73d89cf351c2a8c6492268b0a392fd040d",
-          "counts": {
-            "supported": 1
-          },
-          "contractsVersion": 1
+          "suiteId": "ntilde-owned-core-gaps-v1",
+          "file": "cg-observations.json",
+          "sha256": "a5128201a91bd0258c1070f4457bfce0cfd7ee485da9e3557cc1bbdcbb2f3a6e",
+          "runFile": "cg-run.json",
+          "runSha256": "45b1ea75f0b81b64d4928a2c30e7a55c55cb8e1fa411b73b54000e4b82868ecf"
         }
       },
       "run": {
-        "ownedRunId": "59863c5da6e5a5cdb2f0483d633655b3",
-        "measuredAt": "2026-11-15T23:10:29.107Z",
-        "appRevision": "2b5b70e81c57377e34eddb818a82febc95c5a290",
+        "ownedRunId": "59b3fbe52f6062679e5233e0b62fb9d2",
+        "measuredAt": "2026-11-15T20:57:38.308Z",
+        "appRevision": "aaaece9966cd62ae3e0cbf9afe1c87a52fb120db",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "6ace1f35c74dc9e6b46e2a2c8a1dfa68c45f012f",
+        "scriptsRevision": "aaaece9966cd62ae3e0cbf9afe1c87a52fb120db",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "7490fea74bcbc7b3ed8d3186c2e590f143488677715e673385f104b6361ba581",
-        "gradingAdapterId": "ntilde-owned-kitty-color-grading-v1",
-        "gradingAdapterBundleSha256": "e83ac5d5e134db14b779695a8a83a4573d6737a87e2aff2cd1d5e82ce76cac7b",
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v59",
-        "sourceSnapshotManifestSha256": "93f7bc7c02b8e8473c5a8020d3e706271619c404fc8bdd463ee56824dbe2c108"
+        "collectorAdapterBundleSha256": "c830385e29c8af876864fef86e4af02debd2fa1a8c8bcd8ba7002d66380018c1",
+        "gradingAdapterId": "ntilde-owned-core-gaps-grading-v1",
+        "gradingAdapterBundleSha256": "74934e86acf0cfdf96ce4e39698281ba30b3efd32dcfe9981b1733d8a8c056eb",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v58",
+        "sourceSnapshotManifestSha256": "be4ba9463b7607816117025269525d6ef06c651320171247d8222616669ea78c"
       },
       "stock": {
-        "basis": "collected-run-id-recorded",
-        "runId": "931f609fadd7bd95cedb3d9c5ac91c8e",
+        "basis": "collected-raw-digest-recorded",
+        "runId": null,
         "counts": {
-          "inconclusive": 161,
-          "supported": 93,
+          "inconclusive": 162,
+          "supported": 92,
           "unsupported": 1
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "2bddf8d7de00901c5fc4eae520e94b2d2597581c6ac8011a75d54f04832b7490",
+        "rawSha256": "2faa5789539201e0eef30ac90c5d34645d07766f26038d5aff92dcaa9a6a8593",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
-        "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc21-kitty-color from inconclusive to supported."
+        "note": "Stock terminal-path grades of the same owned run as the carrying 2026-11-15-mouse-extended publication (its run id is recorded there); both ids stay inconclusive under the unchanged pinned code, so this suite moves no stock grade."
       },
       "rederivation": {
         "status": "passed",
-        "command": "node --test scripts/terminfo/kcl-publication.test.mjs",
-        "testSha256": "b771a90c88c79b6158c7a3f396715bbf383428a055efc4c31b34fccdf634c4b3"
+        "command": "node --test scripts/terminfo/core-gaps-publication.test.mjs",
+        "testSha256": "756d533eaeca96b3a4320dc0edfd07ae52dec11102ab8c711b47df9084cf3b17"
       }
     }
   ],
@@ -6121,52 +6118,6 @@
       ]
     },
     {
-      "id": "extensions.osc21-kitty-color",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "supported",
-        "byClaim": [
-          {
-            "suite": "kcl",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "kcl",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc21-kitty-color",
-          "suite": "kcl",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "supported",
-            "note": null
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-replayed"
-          },
-          "divergence": null,
-          "measuredLayers": [
-            "stored-state"
-          ],
-          "evidenceTag": "owned-raw-replies-and-unchanged-state"
-        }
-      ]
-    },
-    {
       "id": "extensions.osc7-cwd",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -7286,6 +7237,54 @@
             "app-resolved-color"
           ],
           "evidenceTag": "owned-stored-and-resolved-cells"
+        }
+      ]
+    },
+    {
+      "id": "reset.method",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "reset.method",
+          "suite": "core-gaps",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-replay-plus-core-gaps-effect-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "actual-scrollback",
+            "desktop-backend-reset-api"
+          ],
+          "evidenceTag": "owned-desktop-backend-reset-api-stored-cells-and-actual-scrollback"
         }
       ]
     },
@@ -9428,6 +9427,53 @@
             "stored-state"
           ],
           "evidenceTag": "owned-cells"
+        }
+      ]
+    },
+    {
+      "id": "text.reverse-index-scroll",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "core-gaps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "text.reverse-index-scroll",
+          "suite": "core-gaps",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-replay-plus-core-gaps-effect-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "actual-scrollback"
+          ],
+          "evidenceTag": "owned-stored-cells-cursor-margins-and-actual-scrollback"
         }
       ]
     }
