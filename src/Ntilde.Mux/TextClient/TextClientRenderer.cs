@@ -29,7 +29,7 @@ public sealed class TextClientRenderer
     public const string EnterSequence = "\x1b[?1049h\x1b[?7l\x1b>\x1b[H\x1b[2J";
 
     /// <summary>Written on every exit path: plain SGR, cursor shown, modes off, autowrap back on, back to the outer main screen.</summary>
-    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b>\x1b[?7h\x1b[?1049l";
+    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b[?1016l\x1b>\x1b[?7h\x1b[?1049l";
 
     private const string DetachHint = "Ctrl+\\ d to detach";
 
@@ -192,21 +192,22 @@ public sealed class TextClientRenderer
             if (tracking != 0) sb.Append("\x1b[?").Append(tracking.ToString(CultureInfo.InvariantCulture)).Append('h');
             _mouseTrackingMode = tracking;
         }
-        // The coordinate encodings (?1005/?1006/?1015) are one selection in the outer terminal too, and a reset only
+        // The coordinate encodings (?1005/?1006/?1015/?1016) are one selection in the outer terminal too, and a reset only
         // clears the encoding it names, so every reset is emitted before the desired one is set.
         int encoding = DesiredMouseEncoding(m, unclipped);
         if (_mouseEncodingMode != encoding)
         {
-            sb.Append("\x1b[?1005l\x1b[?1006l\x1b[?1015l");
+            sb.Append("\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b[?1016l");
             if (encoding != 0) sb.Append("\x1b[?").Append(encoding.ToString(CultureInfo.InvariantCulture)).Append('h');
             _mouseEncodingMode = encoding;
         }
     }
 
-    /// <summary>Snapshots may carry several flags; the encoder's priority is SGR, then urxvt, then UTF-8.</summary>
+    /// <summary>Snapshots may carry several flags; the encoder's priority is SGR-Pixels, then SGR, then urxvt, then UTF-8.</summary>
     private static int DesiredMouseEncoding(ModeState modes, bool unclipped)
     {
         if (!unclipped) return 0;
+        if (modes.MouseModePixel) return 1016;
         if (modes.MouseModeSGR) return 1006;
         if (modes.MouseModeUrxvt) return 1015;
         return modes.MouseModeUtf8 ? 1005 : 0;

@@ -27,6 +27,7 @@ public partial class MainWindow
     {
         cancellationToken.ThrowIfCancellationRequested();
         var pane = _paneOwnerTab.Keys.FirstOrDefault(candidate => candidate.PaneId == input.PaneId);
+        bool pointer = GeneratePaneInputValidation.IsPointer(input);
         var session = registration.ObservationSession;
         // The follow-up text of a key-down pair runs while that key's own one-shot text decision is pending, so only the entry check and
         // the first event's lease include the pending-correlation test; the follow-up keeps every identity and currentness condition.
@@ -34,15 +35,13 @@ public partial class MainWindow
             && pane.IsCurrentAgentRegistration(registration) && ReferenceEquals(pane.Buffer, registration.Buffer) && ReferenceEquals(pane.Session, session)
             && ReferenceEquals(registration.ObservationSession, session)
             && pane.TermView.MatchesGeneratedInputContext(registration.Buffer, session)
-            && (input.Column == null || registration.Buffer.IsMouseReportingActive());
-        bool Matches() => MatchesTarget() && pane!.TermView.CanGenerateInputSynchronously(input.Column == null);
+            && (!pointer || registration.Buffer.IsMouseReportingActive());
+        bool Matches() => MatchesTarget() && pane!.TermView.CanGenerateInputSynchronously(!pointer);
         if (_agentGeneratedInputInProgress || _agentPaneResizeInProgress || pane == null || !Matches()) return null;
         var view = pane.TermView;
-        if (!TryObserveGeneratedInput(view, registration, input, false, null, out _)) return null;
-        bool pointer = input.Column != null;
         // Without reporting a press can activate a hyperlink. This bounded QA API does not authorize host actions.
-        Point? position = pointer ? new Point((input.Column.GetValueOrDefault() - 0.5) * view.Metrics.CellWidth,
-            (input.Row.GetValueOrDefault() - 0.5) * view.Metrics.CellHeight) : null;
+        if (!TryGeneratedPointerPosition(view, input, out var position, out var cell)) return null;
+        if (!TryObserveGeneratedInput(view, registration, input, cell, false, null, out _)) return null;
         var modifiers = GeneratedModifiers(input.Modifiers);
         var args = CreateGeneratedInputEvent(view, input, modifiers, position);
         if (args == null) return null;
@@ -62,9 +61,9 @@ public partial class MainWindow
         }
         finally { _agentGeneratedInputInProgress = false; }
         if (!accepted && !inputSubmitted) return null;
-        var facts = GeneratedDispatchFacts(input, args, position, inputSubmitted) with { TextHandled = followUp?.Handled };
+        var facts = GeneratedDispatchFacts(input, args, cell, position, inputSubmitted) with { TextHandled = followUp?.Handled };
         if (!TryNotifyGeneratedSubmission(inputSubmitted, onInputSubmitted)) return facts;
-        return ObserveGeneratedInputAfterDispatch(view, registration, input, args, position, facts, Matches);
+        return ObserveGeneratedInputAfterDispatch(view, registration, input, args, cell, position, facts, Matches);
     }
 
     private static bool TryNotifyGeneratedSubmission(bool submitted, Action onInputSubmitted)
@@ -81,8 +80,32 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// The routed position of a pointer event and the viewport cell it falls in (the same one-based cell the report path derives). A cell
+    /// request is routed at that cell's centre; a pixel request at the centre of that device pixel, and is refused outside the grid.
+    /// Non-pointer events have neither.
+    /// </summary>
+    private static bool TryGeneratedPointerPosition(TerminalView view, GeneratePaneInputParams input, out Point? position, out (int Column, int Row)? cell)
+    {
+        position = null;
+        cell = null;
+        if (!GeneratePaneInputValidation.IsPointer(input)) return true;
+        if (input.PixelX is { } pixelX && input.PixelY is { } pixelY)
+        {
+            if (!view.TryGetPixelPosition(pixelX, pixelY, out var centre)) return false;
+            position = centre;
+            cell = view.ToMouseReportCell(centre);
+            return true;
+        }
+
+        position = new Point((input.Column.GetValueOrDefault() - 0.5) * view.Metrics.CellWidth,
+            (input.Row.GetValueOrDefault() - 0.5) * view.Metrics.CellHeight);
+        cell = (input.Column.GetValueOrDefault(), input.Row.GetValueOrDefault());
+        return true;
+    }
+
     private static GeneratePaneInputResult GeneratedDispatchFacts(GeneratePaneInputParams input, RoutedEventArgs args,
-        Point? position, bool inputSubmitted)
+        (int Column, int Row)? cell, Point? position, bool inputSubmitted)
     {
         var modifiers = args switch { KeyEventArgs key => key.KeyModifiers, PointerEventArgs pointer => pointer.KeyModifiers, _ => KeyModifiers.None };
         return new GeneratePaneInputResult
@@ -90,8 +113,8 @@ public partial class MainWindow
             EventDispatched = true,
             Handled = args.Handled,
             InputSubmitted = inputSubmitted,
-            Column = input.Column,
-            Row = input.Row,
+            Column = cell?.Column,
+            Row = cell?.Row,
             X = position?.X,
             Y = position?.Y,
             Modifiers = GeneratedModifierBits(modifiers),
@@ -99,11 +122,11 @@ public partial class MainWindow
     }
 
     private static GeneratePaneInputResult ObserveGeneratedInputAfterDispatch(TerminalView view, AgentSessionRegistration registration,
-        GeneratePaneInputParams input, RoutedEventArgs args, Point? position, GeneratePaneInputResult facts, Func<bool> isCurrent)
+        GeneratePaneInputParams input, RoutedEventArgs args, (int Column, int Row)? cell, Point? position, GeneratePaneInputResult facts, Func<bool> isCurrent)
     {
         try
         {
-            if (!isCurrent() || !TryObserveGeneratedInput(view, registration, input, args.Handled, position, out var observed)
+            if (!isCurrent() || !TryObserveGeneratedInput(view, registration, input, cell, args.Handled, position, out var observed)
                 || observed == null || !isCurrent()) return facts;
             return observed with { Modifiers = facts.Modifiers, InputSubmitted = facts.InputSubmitted, TextHandled = facts.TextHandled };
         }
@@ -236,7 +259,7 @@ public partial class MainWindow
     };
 
     private static bool TryObserveGeneratedInput(TerminalView view, AgentSessionRegistration registration,
-        GeneratePaneInputParams input, bool handled, Point? position, out GeneratePaneInputResult? result)
+        GeneratePaneInputParams input, (int Column, int Row)? cell, bool handled, Point? position, out GeneratePaneInputResult? result)
     {
         result = null;
         var buffer = registration.Buffer;
@@ -244,7 +267,7 @@ public partial class MainWindow
         try
         {
             if (buffer.Rows != view.Rows || buffer.Cols != view.Cols || view.Metrics.CellWidth <= 0 || view.Metrics.CellHeight <= 0
-                || input.Column > buffer.Cols || input.Row > buffer.Rows) return false;
+                || cell?.Column > buffer.Cols || cell?.Row > buffer.Rows) return false;
             var modes = buffer.Modes;
             result = new GeneratePaneInputResult
             {
@@ -255,8 +278,8 @@ public partial class MainWindow
                 Cols = buffer.Cols,
                 ViewRows = view.Rows,
                 ViewCols = view.Cols,
-                Column = input.Column,
-                Row = input.Row,
+                Column = cell?.Column,
+                Row = cell?.Row,
                 X = position?.X,
                 Y = position?.Y,
                 Modifiers = input.Modifiers,
@@ -264,6 +287,7 @@ public partial class MainWindow
                 MouseSgr = modes.MouseModeSGR,
                 MouseUtf8 = modes.MouseModeUtf8,
                 MouseUrxvt = modes.MouseModeUrxvt,
+                MousePixel = modes.MouseModePixel,
                 MouseTracking = ObservedMouseTracking(modes),
                 KittyKeyboardFlags = modes.KittyKeyboard.Flags,
                 ModifyOtherKeysLevel = modes.ModifyOtherKeys.Level,

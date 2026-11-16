@@ -31,6 +31,15 @@ public sealed record GeneratePaneInputParams
     public int? Column { get; init; }
     [JsonPropertyName("row")]
     public int? Row { get; init; }
+    /// <summary>
+    /// Alternative to <see cref="Column"/>/<see cref="Row"/> for a pointer event: the zero-based device-pixel position of the pointer inside the
+    /// pane's text area (the unit of <c>CSI 14 t</c>/<c>CSI 16 t</c> and of SGR-Pixels, ?1016), 0–16383 each. Both or neither; never together with
+    /// a cell. The App routes the event at the centre of that pixel and refuses a pixel outside the grid.
+    /// </summary>
+    [JsonPropertyName("pixelX")]
+    public int? PixelX { get; init; }
+    [JsonPropertyName("pixelY")]
+    public int? PixelY { get; init; }
     /// <summary>left, middle, right; move additionally accepts none. Wheel has no held button.</summary>
     [JsonPropertyName("button")]
     public string? Button { get; init; }
@@ -69,7 +78,7 @@ public sealed record GeneratePaneInputResult
     public int? Column { get; init; }
     [JsonPropertyName("row")]
     public int? Row { get; init; }
-    /// <summary>Actual routed view-local DIP position, at the requested cell center.</summary>
+    /// <summary>Actual routed view-local DIP position, at the requested cell center or the center of the requested pixel.</summary>
     [JsonPropertyName("x")]
     public double? X { get; init; }
     [JsonPropertyName("y")]
@@ -93,6 +102,9 @@ public sealed record GeneratePaneInputResult
     /// <summary>Post-dispatch urxvt (?1015) coordinate-encoding sample; null when modes were not observed.</summary>
     [JsonPropertyName("mouseUrxvt")]
     public bool? MouseUrxvt { get; init; }
+    /// <summary>Post-dispatch SGR-Pixels (?1016) coordinate-encoding sample; null when modes were not observed.</summary>
+    [JsonPropertyName("mousePixel")]
+    public bool? MousePixel { get; init; }
     [JsonPropertyName("kittyKeyboardFlags")]
     public int? KittyKeyboardFlags { get; init; }
 }
@@ -113,7 +125,17 @@ public static class GeneratePaneInputValidation
     }
 
     private static bool HasNoPointerFields(GeneratePaneInputParams p)
-        => p.Column == null && p.Row == null && p.Button == null && p.WheelDelta == null;
+        => !IsPointer(p) && p.Button == null && p.WheelDelta == null;
+
+    /// <summary>True when the request declares any pointer position (a cell or a pixel field); the kind decides whether that is valid.</summary>
+    public static bool IsPointer(GeneratePaneInputParams p) => p.Column != null || p.Row != null || p.PixelX != null || p.PixelY != null;
+
+    /// <summary>The largest declared pixel offset; far above any grid the 256×128 cell bound allows.</summary>
+    public const int MaxPixel = 16383;
+
+    private static bool HasValidPosition(GeneratePaneInputParams p)
+        => p.PixelX == null && p.PixelY == null ? p.Column is >= 1 and <= 256 && p.Row is >= 1 and <= 128
+            : p.Column == null && p.Row == null && p.PixelX is >= 0 and <= MaxPixel && p.PixelY is >= 0 and <= MaxPixel;
 
     private static bool IsTextInput(GeneratePaneInputParams p)
         => HasNoPointerFields(p) && p.Key == null && p.Modifiers == 0 && IsKeypadText(p.Text);
@@ -123,7 +145,7 @@ public static class GeneratePaneInputValidation
 
     private static bool IsMouseInput(GeneratePaneInputParams p)
     {
-        if (p.Key != null || p.Text != null || p.Column is not (>= 1 and <= 256) || p.Row is not (>= 1 and <= 128)) return false;
+        if (p.Key != null || p.Text != null || !HasValidPosition(p)) return false;
         return p.Kind switch
         {
             "mousePress" or "mouseRelease" => IsButton(p.Button) && p.WheelDelta == null,

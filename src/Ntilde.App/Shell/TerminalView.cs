@@ -260,6 +260,9 @@ namespace Ntilde.Shell
             _metrics.CellHeight = cellHeight;
         }
 
+        /// <summary>Pins the device pixels per logical pixel the view reports pointer pixels in, which a headless window cannot change.</summary>
+        internal void SetRenderScalingForTest(double scale) => _cachedRenderScaling = scale;
+
         /// <summary>The measured cell size, so a test can recompute the grid the view is drawing.</summary>
         internal (double Width, double Height) CellSizeForTest => (_metrics.CellWidth, _metrics.CellHeight);
 

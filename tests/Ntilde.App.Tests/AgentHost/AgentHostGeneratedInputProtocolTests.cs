@@ -38,6 +38,7 @@ public sealed class AgentHostGeneratedInputProtocolTests
         MouseSgr = false,
         MouseUtf8 = false,
         MouseUrxvt = false,
+        MousePixel = false,
         KittyKeyboardFlags = 0,
     };
 
@@ -59,6 +60,17 @@ public sealed class AgentHostGeneratedInputProtocolTests
     [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"column\":0,\"row\":1")]
     [InlineData("\"kind\":\"mouseMove\",\"button\":\"none\",\"column\":257,\"row\":1")]
     [InlineData("\"kind\":\"mouseWheel\",\"wheelDelta\":2,\"column\":1,\"row\":1")]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"pixelX\":5")]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"pixelY\":5")]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"pixelX\":-1,\"pixelY\":5")]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"pixelX\":16384,\"pixelY\":5")]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"pixelX\":5,\"pixelY\":5,\"column\":1,\"row\":1")]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"pixelX\":5,\"pixelY\":5,\"column\":1")]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"column\":1,\"row\":1,\"pixelY\":5")]
+    [InlineData("\"kind\":\"mouseWheel\",\"wheelDelta\":2,\"pixelX\":5,\"pixelY\":5")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"pixelX\":5,\"pixelY\":5")]
+    [InlineData("\"kind\":\"keyUp\",\"key\":\"7\",\"pixelX\":5")]
+    [InlineData("\"kind\":\"text\",\"text\":\"7\",\"pixelX\":5,\"pixelY\":5")]
     [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"selector\":\"any\"")]
     [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"7\",\"modifiers\":1")]
     [InlineData("\"kind\":\"keyDown\",\"key\":\"7\",\"text\":\"A\"")]
@@ -142,6 +154,25 @@ public sealed class AgentHostGeneratedInputProtocolTests
         string raw = response.Result!.Value.GetRawText();
         Assert.Contains("\"mouseUtf8\":true", raw, StringComparison.Ordinal);
         Assert.Contains("\"mouseUrxvt\":false", raw, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("\"kind\":\"mousePress\",\"button\":\"left\",\"pixelX\":0,\"pixelY\":0")]
+    [InlineData("\"kind\":\"mouseMove\",\"button\":\"none\",\"pixelX\":16383,\"pixelY\":16383")]
+    [InlineData("\"kind\":\"mouseWheel\",\"wheelDelta\":-1,\"pixelX\":12,\"pixelY\":34")]
+    public async Task A_pointer_event_may_declare_a_pixel_pair_instead_of_a_cell(string fields)
+    {
+        var s = Setup(); using var service = s.Service;
+        GeneratePaneInputParams? seen = null;
+        s.Executor.OnGenerateInput = (input, _, _, _) => { seen = input; return Task.FromResult<GeneratePaneInputResult?>(Observed() with { MousePixel = true }); };
+        var response = await service.HandleRequestLineAsync(Request(s.Registration.PaneId, fields), TestContext.Current.CancellationToken);
+        Assert.Null(response.Error);
+        Assert.Equal(1, s.Executor.GenerateInputCalls);
+        Assert.Null(seen!.Column); Assert.Null(seen.Row);
+        Assert.NotNull(seen.PixelX); Assert.NotNull(seen.PixelY);
+        var result = response.Result!.Value.Deserialize(AgentHostJsonContext.Default.GeneratePaneInputResult)!;
+        Assert.True(result.MousePixel);
+        Assert.Contains("\"mousePixel\":true", response.Result!.Value.GetRawText(), StringComparison.Ordinal);
     }
 
     [Theory]

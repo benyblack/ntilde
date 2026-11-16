@@ -271,6 +271,7 @@ namespace Ntilde.Shell
                     // Viewport-relative, 1-based - the wire coordinate space. Must agree with the
                     // press/release/motion paths so an app sees one consistent coordinate system.
                     var (reportColumn, reportRow) = ToMouseReportCell(point.Position);
+                    var (reportPixelX, reportPixelY) = ToMouseReportPixel(point.Position);
                     var button = notches > 0 ? TerminalMouseButton.WheelUp : TerminalMouseButton.WheelDown;
                     for (int i = 0; i < Math.Abs(notches); i++)
                     {
@@ -279,7 +280,9 @@ namespace Ntilde.Shell
                             button,
                             reportColumn,
                             reportRow,
-                            e.KeyModifiers));
+                            e.KeyModifiers,
+                            reportPixelX,
+                            reportPixelY));
                     }
                 }
                 e.Handled = true;
