@@ -1250,3 +1250,15 @@ re-issues the complete receipt and requires the retained observations to equal t
 both effect contracts (`ntilde-core-gaps-effect-v1`) are **supported**, with no divergence, and both stock grades stay inconclusive. `reset.method` is graded for the desktop collector's own backend `reset()` sequence
 (three real calls, including from the alternate screen over a dirty main bank), not for an App endpoint; `reset.ris` is not substituted. Inventory: 127 ids / 129 claims, effect-supported 126, pinned-supported 91; no
 stock, Core or common-harness count moves. `device.env-term` (the same suite's other id) is not admitted here. See [the qualification page](terminfo/2026-11-15-core-gaps-qualification.md).
+
+### Xterm saved-mode qualification
+
+The [xterm saved-mode batch](terminfo/2026-11-16-xterm-saved-modes-qualification.md) qualifies `modes.xtsave` (`CSI ? 7 s`) and `modes.xtrestore` (`CSI ? 7 r`). The parser used to ignore both (so they could not be taken for SCOSC and
+DECSTBM), so this batch also adds the production feature: xterm's one-level cache of DEC private mode values (`CSI ? Pm s` keeps each listed mode's live value in its slot, `CSI ? Pm r` applies it again through the
+DECSET/DECRST path; `?1048` is the cursor save). Both pinned probes can only return inconclusive (they measure DA1 and cursor responsiveness), so the unchanged pinned code is replayed over the journaled raw bytes of its
+own fenced exchange and the cursor of its read through a layered collector extension (`ntilde-owned-xterm-saved-modes-grading-v1`) over the left/right-margin one, beside an effect contract
+(`ntilde-xterm-saved-modes-effect-v1`) graded by an independent oracle written from xterm's control-sequence text. The contract reads the *stored* DECAWM (also as a pending wrap after a character in the last column), DECOM,
+DECLRMM and DECTCEM state after restores: each mode returns to its saved value in both polarities, only the listed modes are restored, a list restores together, a second save replaces the first, and the sequences are
+neither SCOSC/SCORC nor DECSTBM. Both effect contracts are **supported** and both pinned verdicts stay **inconclusive** (a recorded divergence); values the text does not list, a repeated restore, `?1048` and the cursor
+move of a restored `?6` are recorded policy groups that never decide. The input-side, mouse, alternate-screen and reverse-wrap modes and a restore with nothing saved are not measured. No stock grade or query policy
+changes (stock stays 92/1/162). Receipt schema 65 and source policy v59 (394 files) bind it.

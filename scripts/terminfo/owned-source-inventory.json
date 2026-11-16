@@ -385,5 +385,12 @@
     "mexCollectorSourceSha256": "mex-collector.mjs",
     "mexGradingSourceSha256": "mex-grading.mjs",
     "mexGradingCollectorSourceSha256": "mex-grading-collector.mjs",
-    "mexReceiptSourceSha256": "mex-receipt.mjs"
+    "mexReceiptSourceSha256": "mex-receipt.mjs",
+    "xsvReportSourceSha256": "xsv-report.mjs",
+    "xsvContractsSourceSha256": "xsv-contracts.mjs",
+    "xsvCaptureSourceSha256": "xsv-capture.mjs",
+    "xsvCollectorSourceSha256": "xsv-collector.mjs",
+    "xsvGradingSourceSha256": "xsv-grading.mjs",
+    "xsvGradingCollectorSourceSha256": "xsv-grading-collector.mjs",
+    "xsvReceiptSourceSha256": "xsv-receipt.mjs"
 }

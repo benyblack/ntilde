@@ -395,6 +395,24 @@
       "contractCase": "xterm-sgr-stack-pop"
     },
     {
+      "key": "CSI:?s",
+      "mnemonic": "XTSAVE",
+      "support": "supported",
+      "description": "Save DEC private mode values, CSI ? Pm s, into xterm's one-level cache: each listed mode keeps its live value in its own slot (?1000, ?1002 and ?1003 share the mouse tracking slot, ?1005, ?1006 and ?1015 the encoding slot, ?9 has its own), replacing the earlier value; ?1048 is the cursor save. Modes: 1, 5, 6, 7, 9, 25, 45, 66, 69, 80, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1015, 2004, 1048; any other value does nothing. Silent.",
+      "matrixFeature": "XTSAVE (CSI ? Pm s)",
+      "evidencePath": "tests/Ntilde.VT.Tests/ModeSaveTests.cs",
+      "contractCase": "xterm-mode-save"
+    },
+    {
+      "key": "CSI:?r",
+      "mnemonic": "XTRESTORE",
+      "support": "supported",
+      "description": "Restore DEC private mode values, CSI ? Pm r: each listed mode returns to the value its slot holds, through the same path as DECSET and DECRST (a restored ?6 homes the cursor); a slot nothing was saved into keeps the live value and a restore leaves the slot filled; ?1048 is the cursor restore. Silent.",
+      "matrixFeature": "XTRESTORE (CSI ? Pm r)",
+      "evidencePath": "tests/Ntilde.VT.Tests/ModeSaveTests.cs",
+      "contractCase": "xterm-mode-restore"
+    },
+    {
       "key": "CSI:'}",
       "mnemonic": "DECIC",
       "support": "partial",

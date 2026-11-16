@@ -64,6 +64,8 @@ public sealed class VtCapabilityContractTests
             ["xterm-color-stack-report"] = AssertXtermColorStack,
             ["xterm-sgr-stack-push"] = AssertXtermSgrStack,
             ["xterm-sgr-stack-pop"] = AssertXtermSgrStack,
+            ["xterm-mode-save"] = AssertXtermModeSave,
+            ["xterm-mode-restore"] = AssertXtermModeSave,
             ["left-right-margin-mode"] = AssertLeftRightMarginMode,
             ["set-left-right-margins"] = AssertSetLeftRightMargins,
             ["color-stack-push"] = AssertRuntimeColorStack,
@@ -114,6 +116,8 @@ public sealed class VtCapabilityContractTests
             ["xterm-color-stack-report"] = "\u001b[#P\u001b[#R",
             ["xterm-sgr-stack-push"] = "\u001b[1m\u001b[#{",
             ["xterm-sgr-stack-pop"] = "\u001b[#{\u001b[1m\u001b[#}",
+            ["xterm-mode-save"] = "\u001b[?7s\u001b[?7l",
+            ["xterm-mode-restore"] = "\u001b[?7s\u001b[?7l\u001b[?7r",
             ["left-right-margin-mode"] = "\u001b[?69h\u001b[?69$p",
             ["set-left-right-margins"] = "\u001b[?69h\u001b[3;5s\u001b[1;4H12345",
             ["color-stack-push"] = "\u001b]10;#123456\a\u001b]30001\a",
@@ -260,6 +264,19 @@ public sealed class VtCapabilityContractTests
         parser.Process("\u001b[#}");
         Assert.True(buffer.IsBold);
         Assert.Equal(1, buffer.CurrentFgIndex);
+        Assert.Empty(responses);
+    }
+
+    /// <summary>Save keeps the mode's value silently; restore applies it again.</summary>
+    private static void AssertXtermModeSave()
+    {
+        var buffer = new TerminalBuffer(8, 2);
+        var responses = new List<string>();
+        var parser = new AnsiParser(buffer) { OnResponse = responses.Add };
+        parser.Process("\u001b[?7s\u001b[?7l");
+        Assert.False(buffer.Modes.IsAutoWrapMode);
+        parser.Process("\u001b[?7r");
+        Assert.True(buffer.Modes.IsAutoWrapMode);
         Assert.Empty(responses);
     }
 

@@ -97,6 +97,10 @@ namespace Ntilde.VT
         [JsonPropertyName("sgr_stack"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<TerminalSgrStackEntry>? SgrStack { get; set; }
 
+        /// <summary>XTSAVE slots that hold a value; absent means every slot is empty (every earlier payload).</summary>
+        [JsonPropertyName("saved_modes"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalSavedModeEntry>? SavedModes { get; set; }
+
         [JsonPropertyName("sgr")] public TerminalSgrState Sgr { get; set; } = new();
         [JsonPropertyName("modes")] public TerminalModeState Modes { get; set; } = new();
         [JsonPropertyName("kitty_kbd")] public TerminalKittyKeyboardState KittyKeyboard { get; set; } = new();
@@ -322,6 +326,13 @@ namespace Ntilde.VT
     {
         [JsonPropertyName("mask")] public int Mask { get; set; }
         [JsonPropertyName("pen")] public TerminalSgrState Pen { get; set; } = new();
+    }
+
+    /// <summary>One XTSAVE slot: the slot's mode (the lowest mode of a shared slot) and the value saved there.</summary>
+    public sealed class TerminalSavedModeEntry
+    {
+        [JsonPropertyName("mode")] public int Mode { get; set; }
+        [JsonPropertyName("value")] public int Value { get; set; }
     }
 
     /// <summary>The SGR attribute set, shared by the live style and the saved cursors.</summary>

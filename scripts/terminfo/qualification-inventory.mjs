@@ -74,6 +74,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('mex', '2026-11-15-mouse-extended', '2026-11-15-mouse-extended-qualification.md'), module: 'mex-contracts.mjs', exports: ['mexGradedSuiteId', 'mexContractsVersion', 'mexCaseIds'], test: 'mex-publication.test.mjs' },
     // Core-to-inventory reconciliation: two ids whose Core requirement rows pass; restated from the Core-gaps suite retained in the newest merged run.
     { ...directory('core-gaps', '2026-11-15-core-gaps', '2026-11-15-core-gaps-qualification.md'), module: 'core-gaps-contracts.mjs', exports: ['coreGapsQualSuiteId', 'coreGapsQualContractsVersion', 'coreGapsQualCaseIds'], test: 'core-gaps-publication.test.mjs' },
+    { ...directory('xsv', '2026-11-16-xterm-saved-modes', '2026-11-16-xterm-saved-modes-qualification.md'), module: 'xsv-contracts.mjs', exports: ['xsvSuiteId', 'xsvContractsVersion', 'xsvCaseIds'], test: 'xsv-publication.test.mjs' },
 ]);
 
 /**
