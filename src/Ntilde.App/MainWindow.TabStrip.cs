@@ -866,8 +866,7 @@ namespace Ntilde
             // Clearing it invalidates the popup's measurement and focus on every pass, making
             // it repeatedly resize and move. Keep the controls and their handlers, updating
             // properties in place; only a change in the tab list changes the collection.
-            var existing = flyout.Items.OfType<MenuItem>()
-                .Where(item => item.Tag is not null).ToDictionary(item => item.Tag!);
+            var existing = IndexTabListMenuItems(flyout);
             var desired = new List<Control>();
 
             MenuItem Item(object key, string header, EventHandler<RoutedEventArgs> click)
@@ -925,6 +924,29 @@ namespace Ntilde
                 }
             }
 
+            ReconcileTabListMenuItems(flyout, desired);
+
+            if (showFlyout)
+            {
+                flyout.ShowAt(anchor);
+            }
+
+            UpdateTabOverflowIndicator();
+        }
+
+        private static Dictionary<object, MenuItem> IndexTabListMenuItems(MenuFlyout flyout)
+        {
+            var existing = new Dictionary<object, MenuItem>();
+            foreach (var item in flyout.Items.OfType<MenuItem>())
+            {
+                if (item.Tag is { } key) existing.Add(key, item);
+            }
+
+            return existing;
+        }
+
+        private static void ReconcileTabListMenuItems(MenuFlyout flyout, List<Control> desired)
+        {
             for (int i = 0; i < desired.Count; i++)
             {
                 if (i < flyout.Items.Count && ReferenceEquals(flyout.Items[i], desired[i])) continue;
@@ -933,13 +955,6 @@ namespace Ntilde
             }
 
             while (flyout.Items.Count > desired.Count) flyout.Items.RemoveAt(flyout.Items.Count - 1);
-
-            if (showFlyout)
-            {
-                flyout.ShowAt(anchor);
-            }
-
-            UpdateTabOverflowIndicator();
         }
     }
 }
