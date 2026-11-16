@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "a19b4f96ce657ddac5e01b24f8bc1b350e31201ddb81f008b1212d7ba495af74",
+  "matrixSha256": "f137f76bc6f1c95a3075005d651b24a8578f1e338b2cc81c030507d84e3c2347",
   "summary": {
     "totalRows": 133,
     "supportedCount": 65,
@@ -2096,7 +2096,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "VT\u002BApp input",
-      "knownDeviations": "RIS and the shell-prompt policy clear it; DECSTR keeps it. A mux text client mirrors \u0060?1016\u0060 to the outer terminal and passes its reports through unchanged, so the pixel unit is the outer terminal\u0027s. Native pointer devices, other platforms and fractional-scale rounding beyond the tested scales are unqualified. Real-App qualification of \u0060input.pixel-mouse\u0060 is pending; see \u0060docs/qa/terminfo/remaining-protocol-variants.md\u0060.",
+      "knownDeviations": "RIS and the shell-prompt policy clear it; DECSTR keeps it. A mux text client does not mirror \u0060?1016\u0060 (and withholds tracking while it is selected): the session\u0027s \u0060CSI 14 t\u0060/\u006016 t\u0060 metrics are not the outer terminal\u0027s pixels. Native pointer devices, other platforms and fractional-scale rounding beyond the tested scales are unqualified. Real-App qualification of \u0060input.pixel-mouse\u0060 (effect contract supported, pinned probe inconclusive by design): \u0060docs/qa/terminfo/2026-11-16-sgr-pixel-mouse-qualification.md\u0060.",
       "sourceLine": 161
     },
     {
