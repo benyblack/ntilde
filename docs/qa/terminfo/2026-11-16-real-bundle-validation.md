@@ -32,9 +32,11 @@ dependency installation/import. Each executed test creates a fresh, separate
 integrity-checked installation, validates the bundle/receipt and removes its
 installation afterward; cached dependency bytes never execute. A local cache
 still selects optional coverage for ordinary local runs. The dedicated
-`Terminfo real-bundle replay` CI workflow sets
+`terminfo_real_bundle` job in the main CI workflow sets
 `NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED=1`, so the three tests run without a cache
-and failed preparation is a failed test, never a skip. They move out of the
+and failed preparation is a failed test, never a skip. Its result gates the
+branch-protected Unit Tests roll-up, including failures, skips and cancellations.
+They move out of the
 portable shards into that required Node 24 lane. A regression proves the
 preparation-failure refusal.
 

@@ -52,7 +52,7 @@ DURATIONS = Path(__file__).with_name("node-tests-durations.json")
 # Test files that run in a job or workflow of their own, not in the shards: a name, or a name
 # prefix ending in "-". The self-test checks that a workflow names each such file, so a file
 # matched here that nothing runs fails CI rather than going quiet.
-REAL_BUNDLE_WORKFLOW = "terminfo-real-bundle.yml replay"
+REAL_BUNDLE_WORKFLOW = "ci.yml terminfo_real_bundle"
 ELSEWHERE = {
     "kcl-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "devq-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
