@@ -51,38 +51,45 @@ export const pinnedSpanDigests = Object.freeze({ helper: helperSpan[2], 'extensi
 
 function extract(source, [start, end, digest]) {
     const from = source.indexOf(start), to = source.indexOf(end, from + start.length);
-    check(from >= 0 && to > from && source.indexOf(start, from + start.length) < 0, 'pinned source seam missing or duplicated');
+    check(from >= 0 && to > from && !source.slice(from + start.length).includes(start), 'pinned source seam missing or duplicated');
     const text = source.slice(from, to);
     check(sha(text) === digest, `pinned source bytes differ (${sha(text)})`);
     return text;
+}
+
+// The executed text is upstream bytes pinned by SHA-256 above, evaluated in an empty context with a hard timeout; it reads no input.
+function loadPinnedRegistration(helper, registration, id) {
+    const definition = runInNewContext(`${helper}\n(${registration})`, Object.create(null), { timeout: 1000 }); // NOSONAR - pinned upstream bytes, isolated context
+    check(definition.id === id && typeof definition.termless === 'function' && typeof definition.term === 'function', 'pinned registration shape differs');
+    return definition;
+}
+
+async function replayOne(source, helper, id) {
+    const definition = loadPinnedRegistration(helper, extract(source, registrations[id]).trim().replace(/,$/, ''), id);
+    const capabilitiesFor = value => (id === 'extensions.sixel' ? { sixel: value } : { extensions: new Set(value ? ['iterm2Images'] : []) });
+    const [declaredTrue, declaredFalse] = [true, false].map(value => structuredClone(definition.termless({ capabilities: capabilitiesFor(value) })));
+    check(same(declaredTrue.observation, declaredFalse.observation), 'pinned termless verdict depends on the declaration');
+    const terminal = structuredClone(await definition.term({}));
+    return { termless: { ...declaredTrue, declaredFalseResponse: declaredFalse.response }, terminal };
 }
 
 /** Run both exact pinned callbacks. Neither reads a pixel: their observations are constants, whatever the declaration. */
 export async function replayPinnedImageProbes(archive) {
     const bundle = gunzipSync(archive, { maxOutputLength: 1_000_000 });
     check(sha(bundle) === upstreamBundleSha256, 'upstream bundle differs');
-    const source = bundle.toString('utf8'), helper = extract(source, helperSpan), results = {};
-    for (const id of staticImagesQualificationIds) {
-        const registration = extract(source, registrations[id]).trim().replace(/,$/, '');
-        const definition = runInNewContext(`${helper}\n(${registration})`, Object.create(null), { timeout: 1000 });
-        check(definition.id === id && typeof definition.termless === 'function' && typeof definition.term === 'function', 'pinned registration shape differs');
-        const declared = [];
-        for (const value of [true, false]) {
-            const capabilities = id === 'extensions.sixel' ? { sixel: value } : { extensions: new Set(value ? ['iterm2Images'] : []) };
-            const result = JSON.parse(JSON.stringify(definition.termless({ capabilities })));
-            declared.push({ declared: value, result });
-        }
-        const terminal = JSON.parse(JSON.stringify(await definition.term({})));
-        check(same(declared[0].result.observation, declared[1].result.observation), 'pinned termless verdict depends on the declaration');
-        results[id] = { termless: { ...declared[0].result, declaredFalseResponse: declared[1].result.response }, terminal };
-    }
-    return results;
+    const source = bundle.toString('utf8'), helper = extract(source, helperSpan);
+    const replayed = await Promise.all(staticImagesQualificationIds.map(id => replayOne(source, helper, id)));
+    return Object.fromEntries(staticImagesQualificationIds.map((id, index) => [id, replayed[index]]));
 }
 
 const passedAll = results => results.every(value => value === 'passed');
 /** Grade a stage list exactly as an effect: failed wins, otherwise every stage must pass. */
-export const caseOutcome = results => (passedAll(results) ? 'passed' : results.includes('failed') ? 'failed' : 'inconclusive');
-const effectOf = outcome => (outcome === 'passed' ? 'supported' : outcome === 'failed' ? 'unsupported' : 'inconclusive');
+export function caseOutcome(results) {
+    if (passedAll(results)) return 'passed';
+    return results.includes('failed') ? 'failed' : 'inconclusive';
+}
+const effectNames = Object.freeze({ passed: 'supported', failed: 'unsupported', inconclusive: 'inconclusive' });
+const effectOf = outcome => effectNames[outcome];
 
 const stageSummary = item => ({
     stage: item.featureId, result: item.result, inconclusiveReason: item.inconclusiveReason,
