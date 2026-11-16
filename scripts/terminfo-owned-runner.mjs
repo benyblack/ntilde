@@ -124,7 +124,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
-import { osc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
+import { legacyScope, osc633Scope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -1886,7 +1886,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
-    const collectionScope = args.length === 6 ? osc633Scope : undefined;
+    const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
     let resolveDone;
@@ -1989,7 +1989,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         lease = await acquireDesktopLease(() => interruption);
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
-        if (collectionScope) {
+        if (isOsc633Scope(collectionScope)) {
             const predecessor = readFileSync(join(repo, 'docs', 'qa', 'terminfo', '2026-11-15-kitty-color-control', 'owned-run.zip'));
             writeFileSync(join(output, collectionScope.predecessor.file), predecessor, { flag: 'wx', mode: 0o600 });
             verifyScopePredecessor(output, completeOwnedReceipt);
@@ -2033,7 +2033,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'collector-cg.mjs'), coreGapsSource, { flag: 'wx', mode: 0o600 });
         const { bundle: routedInputBundle, routedInputBundleSha256 } = prepareRoutedInputCollector(privateTool, lrMarginsBundle, output);
         const { bundle: osc133Bundle, osc133BundleSha256 } = prepareOsc133Collector(privateTool, lrMarginsBundle, output);
-        const { bundle: osc633Bundle, osc633BundleSha256 } = prepareOsc633Collector(privateTool, osc133Bundle, output);
+        const { bundle: osc633Bundle, osc633BundleSha256 } = isOsc633Scope(collectionScope) ? prepareOsc633Collector(privateTool, osc133Bundle, output) : {};
         const { bundle: osc78Bundle, osc78BundleSha256 } = prepareOsc78Collector(privateTool, lrMarginsBundle, output);
         const { bundle: titleStackBundle, titleStackBundleSha256 } = prepareTitleStackCollector(privateTool, lrMarginsBundle, output);
         const { bundle: oscTitleBundle, oscTitleBundleSha256 } = prepareOscTitleCollector(privateTool, titleStackBundle, output);
@@ -2220,7 +2220,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             mex: 'layered versioned collector extension; pinned termless modes.utf8-mouse-1005 code (feeds ?1005h, captures the DECRQM reply, feeds ?1005l, then notTestedResult: always inconclusive by design) and input.urxvt-mouse code (mouseInputProbe: always inconclusive) replayed over the DECRQM reply and tracking state the child itself received and preserved, beside separately identified effect contracts graded from the owned routed-input v4 plan: declared Avalonia events routed through the production App input path and the exact bytes the child received for UTF-8 (1005) and urxvt (1015) coordinates under X10, normal, button-event and any-event tracking, every dispatch preceded by child DECRQM proofs of the encoding and tracking state, literal protocol expectations cross-checked by an independent oracle written from xterm button.c, legacy and SGR controls, the single-slot selection rules and their reset forms; generated events, not physical pointer input; the stock terminal path of modes.utf8-mouse-1005 is a separate stock-collector result; direct-local only; no stock grade change by this layer',
             routedInput: 'layered versioned collector extension; pinned termless input.x10-mouse, input.button-event-mouse and modes.application-keypad code (always inconclusive by design) replayed over mode values the child itself received as DECRQM replies and preserved, beside separately identified effect contracts graded from the owned routed-input suite: declared Avalonia events routed through the production App input path and the exact bytes the child received, literal protocol expectations cross-checked by an independent oracle; generated events, not physical input; direct-local only; no stock grades',
             osc133AdapterId, osc133SuiteId, osc133BundleSha256, osc133ContractsVersion,
-            osc633AdapterId, osc633SuiteId, osc633BundleSha256, osc633ContractsVersion,
+            ...(isOsc633Scope(collectionScope) ? { osc633AdapterId, osc633SuiteId, osc633BundleSha256, osc633ContractsVersion } : {}),
             osc78AdapterId, osc78SuiteId, osc78BundleSha256, osc78ContractsVersion,
             osc78: 'layered versioned collector extension; pinned extensions.osc7-cwd (no fixture bytes: declared-capability and no-readback results, inconclusive by design) and extensions.osc8 (termless: stored cells and hyperlink metadata of the pinned fixture; terminal: cursor position, inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, host working directory, hyperlink runs with snapshot-local identities) and session status by an independent oracle: reported working-directory metadata only (not the child process directory or path existence) and stored hyperlink-bearing cells only (not click handling, URL opening or rendering); protocol handling in a disposable direct-local App only; no stock-grade claim',
             titleStackAdapterId, titleStackSuiteId, titleStackBundleSha256, titleStackContractsVersion,
@@ -2306,12 +2306,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'csum-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'lrmm-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'shi-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        writeFileSync(join(output, 'vs633-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        if (isOsc633Scope(collectionScope)) writeFileSync(join(output, 'vs633-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'lnk-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'tst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ost-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xgtc-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
-        if (!collectionScope) {
+        if (!isOsc633Scope(collectionScope)) {
             writeFileSync(join(output, 'osn-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
             writeFileSync(join(output, 'ntf-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         }
@@ -3087,7 +3087,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         const observeCells = async (request, budget) => {
             const prefix = request.kind.split('-')[0];
-            if (collectionScope && [osc9Prefix, notifyPrefix].includes(prefix)) throw new Error('Notification observations are outside this collection scope.');
+            if (isOsc633Scope(collectionScope) && [osc9Prefix, notifyPrefix].includes(prefix)) throw new Error('Notification observations are outside this collection scope.');
+            if (!isOsc633Scope(collectionScope) && prefix === osc633Prefix) throw new Error('OSC 633 observations are outside this collection scope.');
             if (prefix === 'input') return observeInput(request, budget);
             if (prefix === 'resize') return observeResize(request, budget);
             if (prefix === 'saved') return observeSaved(request, budget);
@@ -3393,7 +3394,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             }
             if (prefix === devqPrefix) {
                 // The device-query suite runs after the notification suite; a report read also journals the raw reply list bound to its barrier.
-                if (collectionScope ? !xtgettcapObserver?.restored : (!notifyState?.observer?.restored && notifyState?.unavailable !== true)) {
+                if (isOsc633Scope(collectionScope) ? !xtgettcapObserver?.restored : (!notifyState?.observer?.restored && notifyState?.unavailable !== true)) {
                     throw new Error('The preceding selected suite must restore before device-query observations.');
                 }
                 devqObserver ??= new DevqObserver({ appData, ownerPid: app.pid, profileName,
@@ -3651,7 +3652,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             } else if (request.kind === 'raw-output') {
                 attestOutputMode(request, queryTimeout);
             } else if (request.kind === 'done') {
-                if (collectionScope && (osc9State !== undefined || notifyState !== undefined)) throw new Error('Omitted notification suites ran in the scoped collection.');
+                if (isOsc633Scope(collectionScope) && (osc9State !== undefined || notifyState !== undefined)) throw new Error('Omitted notification suites ran in the scoped collection.');
                 requireInputCompletion(inputState);
                 requireStaticImageCompletion(staticImageState);
                 requireQueryCompletion(queryState);
@@ -3827,11 +3828,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             modifyOtherKeysEvidence = await retainModifyOtherKeysEvidence(output, runId, modifyOtherKeysBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
             mexEvidence = await retainMexEvidence(output, runId, mexBundle, upstreamBundleSha256, inputEvidence, inputState.observer?.seal, inputSuiteId);
             osc133Evidence = await retainOsc133Evidence(output, runId, osc133Bundle, upstreamBundleSha256, osc133State?.unavailable === true);
-            osc633Evidence = await retainOsc633Evidence(output, runId, osc633Bundle, upstreamBundleSha256, osc633State?.unavailable === true);
+            if (isOsc633Scope(collectionScope)) osc633Evidence = await retainOsc633Evidence(output, runId, osc633Bundle, upstreamBundleSha256, osc633State?.unavailable === true);
             osc78Evidence = await retainOsc78Evidence(output, runId, osc78Bundle, upstreamBundleSha256, osc78State?.unavailable === true);
             titleStackEvidence = await retainTitleStackEvidence(output, runId, titleStackBundle, upstreamBundleSha256, titleStackState?.unavailable === true);
             xtgettcapEvidence = await retainXtgettcapEvidence(output, runId, xtgettcapBundle, upstreamBundleSha256);
-            if (!collectionScope) {
+            if (!isOsc633Scope(collectionScope)) {
                 osc9Evidence = retainOsc9Evidence(output, runId, upstreamBundleSha256, osc9State?.unavailable === true);
                 notifyEvidence = retainNotifyEvidence(output, runId, upstreamBundleSha256, notifyState?.unavailable === true);
             }

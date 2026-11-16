@@ -21,7 +21,7 @@ import { includesCoreEraseEvidence, checkCoreEraseEvidence } from './core-erase-
 import { includesTextCursorEvidence, checkTextCursorEvidence } from './core-text-cursor-receipt.mjs';
 import { includesOsc133Evidence, checkOsc133Evidence } from './osc133-receipt.mjs';
 import { includesOsc633Evidence, checkOsc633Evidence } from './osc633-receipt.mjs';
-import { validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { isLegacyScope, isOsc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { includesOsc78Evidence, checkOsc78Evidence } from './osc78-receipt.mjs';
 import { includesPrivateClipboardEvidence, checkPrivateClipboardEvidence } from './private-clipboard-receipt.mjs';
 import { includesMetadataEvidence, checkMetadataEvidence } from './metadata-receipt.mjs';
@@ -250,7 +250,7 @@ function ownedReceiptVersion(context, suffixes) {
 /** Which optional evidence suffixes a run declares, newest last. */
 function admittedSuffixes(output, evidence, context, proof) {
     const includesScopedCollection = validateCollectionScope(output, evidence, context, proof);
-    if (includesScopedCollection) verifyScopePredecessor(output, completeOwnedReceipt);
+    if (isOsc633Scope(context.collectionScope)) verifyScopePredecessor(output, completeOwnedReceipt);
     const includesEditing = context.eraseSuiteId !== undefined || context.editingSuiteId !== undefined
         || evidence.eraseEvidence !== undefined || evidence.editingEvidence !== undefined;
     const historyMarkers = ['historySuiteId', 'terminalOutput', 'historyCasesSourceSha256', 'historyCaptureSourceSha256', 'historySuiteSourceSha256', 'terminalOutputSourceSha256'];
@@ -287,7 +287,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesCoreGaps = includesCoreGapsEvidence(output, evidence, context);
     const includesTextCursor = includesTextCursorEvidence(output, evidence, context);
     const includesOsc133 = includesOsc133Evidence(output, evidence, context);
-    const includesOsc633 = includesOsc633Evidence(output, evidence, context);
+    const includesOsc633 = !isLegacyScope(context.collectionScope) && includesOsc633Evidence(output, evidence, context);
     const includesCoreErase = includesCoreEraseEvidence(output, evidence, context);
     const includesTabStops = includesTabStopsEvidence(output, evidence, context);
     const includesCoreWrap = includesCoreWrapEvidence(output, evidence, context, proof);
@@ -299,9 +299,9 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesInsertReplace = includesInsertReplaceEvidence(output, evidence, context, 48);
     const includesXtgettcap = includesXtgettcapEvidence(output, evidence, context);
     const includesModifyOtherKeys = includesModifyOtherKeysEvidence(output, evidence, context);
-    const includesOsc9 = !includesScopedCollection && includesOsc9Evidence(output, evidence, context);
+    const includesOsc9 = !isOsc633Scope(context.collectionScope) && includesOsc9Evidence(output, evidence, context);
     const includesAsciiReflow = includesReflowEvidence(output, evidence, context, proof);
-    const includesNotify = !includesScopedCollection && includesNotifyEvidence(output, evidence, context);
+    const includesNotify = !isOsc633Scope(context.collectionScope) && includesNotifyEvidence(output, evidence, context);
     const includesSelectionColors = includesSelectionColorsEvidence(output, evidence, context);
     const includesDevq = includesDevqEvidence(output, evidence, context);
     const includesXcs = includesXcsEvidence(output, evidence, context);

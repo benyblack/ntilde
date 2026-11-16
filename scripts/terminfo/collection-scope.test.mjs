@@ -3,7 +3,7 @@ import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { isOsc633Scope, osc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
 test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
@@ -32,6 +32,21 @@ test('only the fixed scope is admitted by matching context, parent proof, policy
             rmSync(join(root, file));
         }
         assert.equal(isOsc633Scope({ ...osc633Scope, deadlineMs: 300001 }), false);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the default selection preserves all prior suites and explicitly excludes only OSC 633', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-legacy-scope-'));
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v61', collectionScope: structuredClone(legacyScope) };
+    const proof = { collectionScope: structuredClone(legacyScope) };
+    try {
+        assert.equal(isLegacyScope(context.collectionScope), true);
+        assert.equal(validateCollectionScope(root, { osc9Evidence: {}, notifyEvidence: {} }, context, proof), true);
+        assert.throws(() => validateCollectionScope(root, { osc633Evidence: {} }, context, proof), /scoped collection/);
+        assert.throws(() => validateCollectionScope(root, {}, { ...context, osc633SuiteId: 'x' }, proof), /scoped collection/);
+        assert.throws(() => validateCollectionScope(root, {}, context, { collectionScope: osc633Scope }), /scoped collection/);
+        writeFileSync(join(root, 'vs633-run.json'), '');
+        assert.throws(() => validateCollectionScope(root, {}, context, proof), /scoped collection/);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

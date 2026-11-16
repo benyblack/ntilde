@@ -16,8 +16,11 @@ export const osc633Scope = Object.freeze({
         runId: '55f0ba462cd3cc6fbc315a0e5fad5126', sourcePolicy: 'readonly-owned-source-graph-v60' }),
 });
 
+export const legacyScope = Object.freeze({ id: 'owned-pre-osc633-full-selection-v1', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
+
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export const isOsc633Scope = value => same(value, osc633Scope);
+export const isLegacyScope = value => same(value, legacyScope);
 const omittedArtifacts = Object.freeze([
     'osn-observations.json', 'osn-run.json', 'osn-snapshots.jsonl', 'osn-unavailable.json', 'osn-focus.json', 'osn-failed-observation.json',
     'ntf-observations.json', 'ntf-run.json', 'ntf-snapshots.jsonl', 'ntf-unavailable.json', 'ntf-focus.json', 'ntf-failed-observation.json',
@@ -27,6 +30,15 @@ const omittedArtifacts = Object.freeze([
  * all agree on the fixed selection. Partial omitted-suite evidence is fatal. */
 export function validateCollectionScope(output, evidence, context, proof) {
     if (context.collectionScope === undefined && proof.collectionScope === undefined) return false;
+    if (isLegacyScope(context.collectionScope) && isLegacyScope(proof.collectionScope)) {
+        const markers = ['osc633AdapterId', 'osc633SuiteId', 'osc633BundleSha256', 'osc633ContractsVersion'];
+        const files = ['collector-vs633.mjs', 'vs633-snapshots.jsonl', 'vs633-run.json', 'vs633-observations.json', 'vs633-unavailable.json', 'vs633-failed-observation.json'];
+        if (context.sourceSnapshotPolicy !== 'readonly-owned-source-graph-v61' || evidence.osc633Evidence !== undefined
+            || markers.some(key => context[key] !== undefined) || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined)) {
+            throw new Error('Invalid or incomplete scoped collection declaration.');
+        }
+        return true;
+    }
     if (!isOsc633Scope(context.collectionScope) || !isOsc633Scope(proof.collectionScope)
         || context.sourceSnapshotPolicy !== 'readonly-owned-source-graph-v61'
         || context.osc633SuiteId !== 'ntilde-owned-osc633-graded-v1' || evidence.osc633Evidence === undefined

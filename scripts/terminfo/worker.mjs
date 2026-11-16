@@ -8,7 +8,7 @@ import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
 import { collectOsc633 } from './osc633-collector.mjs';
-import { isOsc633Scope } from './collection-scope.mjs';
+import { isLegacyScope, isOsc633Scope } from './collection-scope.mjs';
 import { collectOsc78 } from './osc78-collector.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -97,7 +97,7 @@ let config;
 try {
     assertPrivateFile(process.argv[2]);
     config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-    if (config.collectionScope !== undefined && !isOsc633Scope(config.collectionScope)) throw new Error('Unknown owned collection scope.');
+    if (config.collectionScope !== undefined && !isOsc633Scope(config.collectionScope) && !isLegacyScope(config.collectionScope)) throw new Error('Unknown owned collection scope.');
     // Establish the real process/PTY relation before loading the probe engine.
     const binding = await verifyNtildeOutput(config, process.stdout);
     const fence = terminalFence(process.stdin, process.stdout);
@@ -381,10 +381,12 @@ try {
         if (createHash('sha256').update(osc133Source).digest('hex') !== config.osc133BundleSha256) throw new Error('Local OSC 133 adapter bundle changed.');
         const osc133Result = await collectOsc133({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc133Bundle).href) });
         if (osc133Result.status === 'complete') writeFileSync(join(config.output, 'shi-run.json'), JSON.stringify(osc133Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-        const osc633Source = readFileSync(config.osc633Bundle);
-        if (createHash('sha256').update(osc633Source).digest('hex') !== config.osc633BundleSha256) throw new Error('Local OSC 633 adapter bundle changed.');
-        const osc633Result = await collectOsc633({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc633Bundle).href) });
-        if (osc633Result.status === 'complete') writeFileSync(join(config.output, 'vs633-run.json'), JSON.stringify(osc633Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        if (isOsc633Scope(config.collectionScope)) {
+            const osc633Source = readFileSync(config.osc633Bundle);
+            if (createHash('sha256').update(osc633Source).digest('hex') !== config.osc633BundleSha256) throw new Error('Local OSC 633 adapter bundle changed.');
+            const osc633Result = await collectOsc633({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc633Bundle).href) });
+            if (osc633Result.status === 'complete') writeFileSync(join(config.output, 'vs633-run.json'), JSON.stringify(osc633Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        }
         const coreEraseRun = await collectCoreErase({ config, fence, owner });
         writeFileSync(join(config.output, 'ce-run.json'), JSON.stringify(coreEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
         const tabStopsRun = await collectTabStops({ config, fence, owner });
@@ -420,7 +422,7 @@ try {
         writeFileSync(join(config.output, 'xgtc-run.json'), JSON.stringify(xtgettcapRun) + '\n', { flag: 'wx', mode: 0o600 });
         // The layered OSC 9 qualification follows the XTGETTCAP suite on the same exclusively owned fence. A typed refusal of its first observation is
         // retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
-        if (config.collectionScope === undefined) {
+        if (!isOsc633Scope(config.collectionScope)) {
             const osc9Source = readFileSync(config.osc9Bundle);
             if (createHash('sha256').update(osc9Source).digest('hex') !== config.osc9BundleSha256) throw new Error('Local OSC 9 adapter bundle changed.');
             const osc9Result = await collectOsc9({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc9Bundle).href) });
