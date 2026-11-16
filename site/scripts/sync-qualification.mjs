@@ -11,11 +11,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildQualificationData, outputPath, QualificationDataError, repoRoot } from './qualification-data.mjs';
+import { buildModernSummary } from './modern-summary.mjs';
 
 try {
   const data = buildQualificationData();
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify(data, null, 2)}\n`);
+  writeFileSync(path.join(path.dirname(outputPath), 'ntilde-modern-summary.json'), `${JSON.stringify(buildModernSummary(), null, 2)}\n`);
   console.log(
     `[qualification] ${data.totals.pass}/${data.totals.total} pass, ${data.totals.fail} fail, ${data.totals.inconclusive} inconclusive ` +
       `from ${data.source.publication} (run ${data.measurement.runId.slice(0, 8)}) -> ${path.relative(repoRoot, outputPath)}`,
