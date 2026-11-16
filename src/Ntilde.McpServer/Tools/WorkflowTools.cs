@@ -123,6 +123,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/AnsiParser.KittyColors.cs",
             "src/Ntilde.VT/AnsiParser.Sgr.cs",
             "src/Ntilde.VT/AnsiParser.SgrStack.cs",
+            "src/Ntilde.VT/AnsiParser.ModeSave.cs",
             "src/Ntilde.VT/AnsiParser.Reset.cs",
             "src/Ntilde.VT/AnsiParser.Osc.cs",
             "src/Ntilde.VT/AnsiParser.TextSizing.cs",

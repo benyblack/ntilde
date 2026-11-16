@@ -14,7 +14,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'kcl-observations.json', run: 'kcl-run.json', journal: 'kcl-snapshots.jsonl', adapter: 'collector-kcl.mjs' });
 /** The first source policy whose worker always runs this suite (the parent's plumbing sets the real number). */
-export const kclFirstPolicy = 59;
+export const kclFirstPolicy = 60;
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const fail = message => { throw new Error(message); };

@@ -2,8 +2,8 @@
 
 Qualifies one pinned terminfo.dev@4.0.0 case (bundle SHA-256 `aa5f2bf9…e1f6`, probeHash `16a690f34c0e`): `extensions.osc21-kitty-color`, whose exact request is `OSC 21;foreground=? ST`. Like the
 [SGR-stack batch](2026-11-15-xterm-sgr-stack-qualification.md), **this batch adds production code**: main did not answer the request (the [exact query audit](exact-query-audit.md) recorded matched silence),
-so a qualification had nothing to measure. The VT now implements a documented subset of kitty's color-control protocol, and the batch measures it. The private-mode save/restore batch runs in parallel and
-owns different cases; whichever merges second restacks the source policy and receipt numbers.
+so a qualification had nothing to measure. The VT now implements a documented subset of kitty's color-control protocol, and the batch measures it. The private-mode save/restore batch ran in parallel, owns different cases and merged first; this batch was restacked on it (source policy v60, receipt
+schema 66).
 
 ## What the pinned probe can say
 
@@ -23,7 +23,7 @@ corroborated by the exact-query witness `q07.extensions.osc21-kitty-color` under
 |---|---|---|---|---|
 | `extensions.osc21-kitty-color` | **supported** / **supported** | **supported** (was inconclusive: no reply) | matched a framed `rgb:rr/gg/bb` reply | **supported** (6 controls and 31 protocol groups matched; 12 policy groups, 10 matched Ntilde's choices and 2 record divergences from kitty's text) |
 
-The stock collector in the same owned run (`b661b193bfdcad9b1702b6887dbd7041`) grades 93 supported / 1 unsupported / 161 inconclusive (`suiteComplete=false`). On main (after the extended-mouse batch) the
+The stock collector in the same owned run (`9a77d0d0193af108f347421092087cbf`) grades 93 supported / 1 unsupported / 161 inconclusive (`suiteComplete=false`). On main (after the saved-mode batch) the
 counts are 92 / 1 / 162, so exactly one stock grade moves: `extensions.osc21-kitty-color`. The frozen stock baseline keeps its original grades. No Core point is added. Inventory: one more ID with both a
 supported pinned verdict and a supported effect contract.
 
@@ -81,12 +81,12 @@ Raw replies and stored state only: no rendering, painted-pixel or host-presentat
 
 ## Identities
 
-App 0.14.0 (operator supplied) built from `339c7a253d1f462a7ccf2bddb14b1e2d9ecf87c2` (arm64 Release; the last commit that changed the App sources; executable SHA-256
-`f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `7c8b0fc9ffc4c9f5faf78d9f31d9e82be1c7ec5fcfaf4c83a47c997d4106f452`); measured scripts
-`6890b8f6b13324970ba333441d47a1cff70489f6`; source policy `readonly-owned-source-graph-v59` (394 files; manifest SHA-256 `fcff1aa88de74f320398f47ef9a255ef8257080c02e77b18068be59b650ffe5e`); query policy
-`owned-exact-query-paired-raw-state-v5`; initial settings SHA-256 `a988daba2c9d4456fe6641096cdcbda6d5a0fd4fd65eca516b0eed32bf6bd66b`; receipt schema 65; Node v24.22.2; owned run
-`ef7dfed09cd955d7262ddb77d50d21c7`; collected 2026-11-16T08:12Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
-retained bytes. The measured scripts are this branch's head after the merge of main (PRs 970 and 971, which changed no measured source), so the run postdates review-driven fixes to the contract module and the production handler.
+App 0.14.0 (operator supplied) built from `d82374aa8e22e7b4e1115344908e3c2bb975c7c6` (arm64 Release; the last commit that changed the App sources; executable SHA-256
+`f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, assembly SHA-256 `a6a1db21fd76a0cde3d320534fe09a260d743320fefe7e8bc9ad9fdf1a8371c3`); measured scripts
+`ec6c5b99431af6d8fcee5083f196a585e66f2d13`; source policy `readonly-owned-source-graph-v60` (401 files; manifest SHA-256 `677391b6832d0d77fff8126908c326700d27af225078a7584e60056047e9de11`); query policy
+`owned-exact-query-paired-raw-state-v5`; initial settings SHA-256 `08d42282e15a297de1e484b6b92658a98046a61333a1ca3ebbbb9ae025019091`; receipt schema 66; Node v24.22.2; owned run
+`55f0ba462cd3cc6fbc315a0e5fad5126`; collected 2026-11-16T09:11Z on macOS. The build is not binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the
+retained bytes. The measured scripts are the restacked branch head (after the saved-mode batch), so the run postdates review-driven fixes to the contract module and the production handler.
 
 ## Retained evidence
 

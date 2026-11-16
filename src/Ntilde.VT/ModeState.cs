@@ -142,6 +142,21 @@ namespace Ntilde.VT
             MouseModeAnyEvent = enabled && mode == 1003;
         }
 
+        /// <summary>The active tracking selector: 0 for none, otherwise the mode that selects it (9, 1000, 1002 or 1003).</summary>
+        internal int MouseTrackingSelector => MouseModeX10PressOnly ? 9 : MouseModeX10 ? 1000 : MouseModeButtonEvent ? 1002 : MouseModeAnyEvent ? 1003 : 0;
+
+        /// <summary>The active coordinate encoding selector: 0 for the default, otherwise 1005, 1006 or 1015.</summary>
+        internal int MouseEncodingSelector => MouseModeUtf8 ? 1005 : MouseModeSGR ? 1006 : MouseModeUrxvt ? 1015 : 0;
+
+        internal void SetMouseTrackingSelector(int selector) => SetMouseTrackingMode(selector == 0 ? 1000 : selector, selector != 0);
+
+        internal void SetMouseEncodingSelector(int selector)
+        {
+            MouseModeUtf8 = selector == 1005;
+            MouseModeSGR = selector == 1006;
+            MouseModeUrxvt = selector == 1015;
+        }
+
         // Coordinate encodings are one selection, as in xterm's extend_coords: setting any of ?1005, ?1006
         // or ?1015 replaces the others, and a reset is only effective against the encoding that is active.
         internal void SetMouseCoordinateEncoding(int mode, bool enabled)

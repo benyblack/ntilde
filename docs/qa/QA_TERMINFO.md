@@ -1241,6 +1241,28 @@ pinned code is replayed over the child's own DECRQM replies beside effect contra
 upgrade; stock grades are now 92/1/162. Receipt schema 64 and source policy v58 (387 files) bind it; the run is measured at App and scripts `aaaece99` with one retained superseded attempt (an environmental App startup abort).
 See [the qualification page](terminfo/2026-11-15-mouse-extended-qualification.md).
 
+### Core-to-inventory reconciliation: reverse index and backend reset()
+
+`text.reverse-index-scroll` and `reset.method` passed in the frozen Core requirement results but were not in the qualification inventory, because Core result publications are a separate evidence class. Both are
+graded by the Core-gaps suite (`ntilde-owned-core-gaps-v1`), which every owned run since then retains. The newest merged run (the extended-mouse run, App and scripts `aaaece99`, policy v58, receipt schema 64; production
+`src` is unchanged since) already carries its measurement, so the batch took **no new collection and no production change**: `2026-11-15-core-gaps/` restates those two cases from that archive, and its publication test
+re-issues the complete receipt and requires the retained observations to equal the live grading module's rebuild of the journal. Both pinned callbacks (replayed over the journaled states of their exact writes) and
+both effect contracts (`ntilde-core-gaps-effect-v1`) are **supported**, with no divergence, and both stock grades stay inconclusive. `reset.method` is graded for the desktop collector's own backend `reset()` sequence
+(three real calls, including from the alternate screen over a dirty main bank), not for an App endpoint; `reset.ris` is not substituted. Inventory: 127 ids / 129 claims, effect-supported 126, pinned-supported 91; no
+stock, Core or common-harness count moves. `device.env-term` (the same suite's other id) is not admitted here. See [the qualification page](terminfo/2026-11-15-core-gaps-qualification.md).
+
+### Xterm saved-mode qualification
+
+The [xterm saved-mode batch](terminfo/2026-11-16-xterm-saved-modes-qualification.md) qualifies `modes.xtsave` (`CSI ? 7 s`) and `modes.xtrestore` (`CSI ? 7 r`). The parser used to ignore both (so they could not be taken for SCOSC and
+DECSTBM), so this batch also adds the production feature: xterm's one-level cache of DEC private mode values (`CSI ? Pm s` keeps each listed mode's live value in its slot, `CSI ? Pm r` applies it again through the
+DECSET/DECRST path; `?1048` is the cursor save). Both pinned probes can only return inconclusive (they measure DA1 and cursor responsiveness), so the unchanged pinned code is replayed over the journaled raw bytes of its
+own fenced exchange and the cursor of its read through a layered collector extension (`ntilde-owned-xterm-saved-modes-grading-v1`) over the left/right-margin one, beside an effect contract
+(`ntilde-xterm-saved-modes-effect-v1`) graded by an independent oracle written from xterm's control-sequence text. The contract reads the *stored* DECAWM (also as a pending wrap after a character in the last column), DECOM,
+DECLRMM and DECTCEM state after restores: each mode returns to its saved value in both polarities, only the listed modes are restored, a list restores together, a second save replaces the first, and the sequences are
+neither SCOSC/SCORC nor DECSTBM. Both effect contracts are **supported** and both pinned verdicts stay **inconclusive** (a recorded divergence); values the text does not list, a repeated restore, `?1048` and the cursor
+move of a restored `?6` are recorded policy groups that never decide. The input-side, mouse, alternate-screen and reverse-wrap modes and a restore with nothing saved are not measured. No stock grade or query policy
+changes (stock stays 92/1/162). Receipt schema 65 and source policy v59 (394 files) bind it.
+
 ### Kitty color-control qualification
 
 The [kitty color-control batch](terminfo/2026-11-15-kitty-color-control-qualification.md) qualifies `extensions.osc21-kitty-color` (`OSC 21;foreground=? ST`). Main did not answer it, so this batch also adds the
@@ -1251,14 +1273,4 @@ App in the same owned run, and both pinned paths are replayed over the journaled
 and read back through OSC 21 and the legacy replies, each key alone and in request order, encodings, bare-key resets, unknown keys, unchanged screen state). Both pinned paths, the stock grade and the effect contract are
 **supported**; the stock counts move from 92/1/162 to 93/1/161. Names, alpha, the dynamic value, `cursor_text`, `visual_bell` and the transparent colors are not modeled (recorded policy), and `#RGB` scaling and an
 out-of-range `rgbi` differ from kitty's text (recorded policy divergences). Query policy v5 owes the exact-query witness a framed `rgb:rr/gg/bb` reply (a pattern entry: the host foreground is not a constant); every
-earlier run keeps the silence expectation. Receipt schema 65 and source policy v59 (394 files) bind it.
-
-### Core-to-inventory reconciliation: reverse index and backend reset()
-
-`text.reverse-index-scroll` and `reset.method` passed in the frozen Core requirement results but were not in the qualification inventory, because Core result publications are a separate evidence class. Both are
-graded by the Core-gaps suite (`ntilde-owned-core-gaps-v1`), which every owned run since then retains. The newest merged run (the extended-mouse run, App and scripts `aaaece99`, policy v58, receipt schema 64; production
-`src` is unchanged since) already carries its measurement, so the batch took **no new collection and no production change**: `2026-11-15-core-gaps/` restates those two cases from that archive, and its publication test
-re-issues the complete receipt and requires the retained observations to equal the live grading module's rebuild of the journal. Both pinned callbacks (replayed over the journaled states of their exact writes) and
-both effect contracts (`ntilde-core-gaps-effect-v1`) are **supported**, with no divergence, and both stock grades stay inconclusive. `reset.method` is graded for the desktop collector's own backend `reset()` sequence
-(three real calls, including from the alternate screen over a dirty main bank), not for an App endpoint; `reset.ris` is not substituted. Inventory: 127 ids / 129 claims, effect-supported 126, pinned-supported 91; no
-stock, Core or common-harness count moves. `device.env-term` (the same suite's other id) is not admitted here. See [the qualification page](terminfo/2026-11-15-core-gaps-qualification.md).
+earlier run keeps the silence expectation. Receipt schema 66 and source policy v60 (401 files) bind it.

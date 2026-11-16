@@ -9,20 +9,20 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 128 |
-| Suite claims (an id covered by two suites has two claims) | 130 |
+| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 130 |
+| Suite claims (an id covered by two suites has two claims) | 132 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 127 |
+| Effect contract supported | 129 |
 | Effect contract unsupported (measured, retained, not supported) | 1 |
 | Supported by both the pinned probe and the effect contract | 92 |
-| Effect supported, pinned verdict inconclusive | 35 |
+| Effect supported, pinned verdict inconclusive | 37 |
 | Effect unsupported, pinned verdict inconclusive | 1 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
 An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.
 
-Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc7-cwd`, `extensions.osc777-notify`, `extensions.osc9-progress`, `input.button-event-mouse`, `input.modify-other-keys`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 Effect unsupported, pinned inconclusive (by design): `extensions.reflow`.
 
@@ -32,10 +32,10 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Not effect-supported, `effectUnqualified` (168 − 126) | 42 |
+| Not effect-supported, `effectUnqualified` (168 − 128) | 40 |
 | of which measured, effect unsupported | 1 |
 | of which measured, another non-supported verdict | 0 |
-| of which not measured (no qualified effect evidence) | 41 |
+| of which not measured (no qualified effect evidence) | 39 |
 | Not pinned-supported (168 − 91) | 77 |
 
 `effectUnqualified` is every stock-inconclusive id without a supported effect verdict. It splits into exactly three states that must not be conflated: *measured and unsupported* (retained evidence says the behavior is absent or diverges), *measured with another non-supported verdict*, and *not measured* (no qualified evidence at all). Only the last is "not yet qualified".
@@ -96,7 +96,8 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `xss` | 2 | v1 | passed | 63 | `876d9786` | v57 | 8 | `9b66d16c` |
 | `mex` | 2 | v1 | passed | 64 | `aaaece99` | v58 | 5 | `b3514233` |
 | `core-gaps` | 2 | v1 | passed | 64 | `aaaece99` | v58 | 2 | `65fe1755` |
-| `kcl` | 1 | v1 | passed | 65 | `339c7a25` | v59 | 4 | `68e3c0fb` |
+| `xsv` | 2 | v1 | passed | 65 | `27babfa6` | v59 | 6 | `a605f038` |
+| `kcl` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 4 | `084f98f9` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -150,7 +151,8 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `xss` | collected-run-id-recorded | `0f8b3ff8` | 163/91/1 | `cf7d8759` |
 | `mex` | collected-run-id-recorded | `29a8f5ad` | 162/92/1 | `cf7d8759` |
 | `core-gaps` | collected-raw-digest-recorded | raw `2faa5789` | 162/92/1 | `cf7d8759` |
-| `kcl` | collected-run-id-recorded | `b661b193` | 161/93/1 | `cf7d8759` |
+| `xsv` | collected-run-id-recorded | `f1940b35` | 162/92/1 | `cf7d8759` |
+| `kcl` | collected-run-id-recorded | `9a77d0d0` | 161/93/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
@@ -240,6 +242,8 @@ The stock collector reports `suiteComplete=false` in every run.
 | `modes.xtpopsgr` | inconclusive | inconclusive | supported | stored-state | xss | xss: pinned-inconclusive-effect-supported |
 | `modes.xtpushcolors` | inconclusive | inconclusive | supported | stored-state | xcs | xcs: pinned-inconclusive-effect-supported |
 | `modes.xtpushsgr` | inconclusive | inconclusive | supported | stored-state | xss | xss: pinned-inconclusive-effect-supported |
+| `modes.xtrestore` | inconclusive | inconclusive | supported | stored-state | xsv | xsv: pinned-inconclusive-effect-supported |
+| `modes.xtsave` | inconclusive | inconclusive | supported | stored-state | xsv | xsv: pinned-inconclusive-effect-supported |
 | `reset.decaln` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |
 | `reset.method` | inconclusive | supported | supported | stored-state + actual-scrollback + desktop-backend-reset-api | core-gaps | - |
 | `reset.sgr` | inconclusive | supported | supported | stored-state + app-resolved-color | saved-reset | - |

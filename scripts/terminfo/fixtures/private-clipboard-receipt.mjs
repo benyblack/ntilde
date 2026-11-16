@@ -33,7 +33,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc133|osc78|title-stack|osc-title|insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -42,7 +42,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-text-cursor(?:-receipt)?|osc133-[a-z-]+|osc78-[a-z-]+|title-stack-[a-z-]+|osc-title-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|xcs|xss|xsv|mex|kcl)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -950,7 +950,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, mex = false, kcl = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, mex = false, kcl = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -984,11 +984,15 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (xss) {
             await addXssEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
+        // The xterm saved-mode suffix is the next sibling off the same left/right-margin bytes and is equally opt-in; it needs no setting.
+        if (xsv) {
+            await addXsvEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
         // The kitty color-control suffix is the next sibling off the same left/right-margin bytes and is equally opt-in; it needs no setting.
         if (kcl) {
             await addKclEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || kcl) writerFor(output)('context.json', context);
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1121,4 +1125,25 @@ async function addKclEvidence({ output, write, context, evidence, lrMarginsBytes
     evidence.kclEvidence = { runId: context.runId, suiteId: kclSuiteId, file: 'kcl-observations.json', sha256: hash(readFileSync(join(output, 'kcl-observations.json'))),
         runFile: 'kcl-run.json', runSha256: hash(readFileSync(join(output, 'kcl-run.json'))), adapterBundleSha256: hash(kclBytes),
         contractsVersion: kclContractsVersion, counts: kclCounts(kclReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in xterm saved-mode suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */
+async function addXsvEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticXsvEvidence } = await import('./xsv-evidence.mjs');
+    const { buildXsvGradingReport } = await import('../xsv-grading.mjs');
+    const { xsvCounts } = await import('../xsv-receipt.mjs');
+    const { adaptXsvCollector, xsvAdapterId } = await import('../xsv-grading-collector.mjs');
+    const { xsvSuiteId, xsvContractsVersion } = await import('../xsv-contracts.mjs');
+    const xsvBytes = Buffer.from(adaptXsvCollector(lrMarginsBytes.toString()));
+    const xsv = syntheticXsvEvidence({ runId: context.runId, bundleSha256: hash(xsvBytes) });
+    xsv.adapter = { ...xsv.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const xsvReport = buildXsvGradingReport(xsv.frames, xsv.run, context.runId, xsv.adapter);
+    write('xsv-observations.json', xsvReport);
+    write('xsv-run.json', xsv.run);
+    writeFileSync(join(output, 'xsv-snapshots.jsonl'), xsv.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-xsv.mjs'), xsvBytes);
+    Object.assign(context, { xsvAdapterId, xsvSuiteId, xsvBundleSha256: hash(xsvBytes), xsvContractsVersion });
+    evidence.xsvEvidence = { runId: context.runId, suiteId: xsvSuiteId, file: 'xsv-observations.json', sha256: hash(readFileSync(join(output, 'xsv-observations.json'))),
+        runFile: 'xsv-run.json', runSha256: hash(readFileSync(join(output, 'xsv-run.json'))), adapterBundleSha256: hash(xsvBytes),
+        contractsVersion: xsvContractsVersion, counts: xsvCounts(xsvReport), provisionalUntil: 'cell-receipt.json' };
 }

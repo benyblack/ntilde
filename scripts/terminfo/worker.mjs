@@ -52,6 +52,7 @@ import { collectNotify } from './notify-collector.mjs';
 import { collectDevqGrading } from './devq-collector.mjs';
 import { collectXcsGrading } from './xcs-collector.mjs';
 import { collectXssGrading } from './xss-collector.mjs';
+import { collectXsvGrading } from './xsv-collector.mjs';
 import { collectKclGrading } from './kcl-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
@@ -440,6 +441,12 @@ try {
         const xssModule = await import(pathToFileURL(config.xssBundle).href);
         const xssRun = await collectXssGrading({ config, fence, owner, gradingModule: xssModule });
         writeFileSync(join(config.output, 'xss-run.json'), JSON.stringify(xssRun) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered xterm saved-mode qualification follows the SGR-stack suite on the same fence; it leaves the baseline modes and an erased probe row.
+        const xsvSource = readFileSync(config.xsvBundle);
+        if (createHash('sha256').update(xsvSource).digest('hex') !== config.xsvBundleSha256) throw new Error('Local xterm saved-mode adapter bundle changed.');
+        const xsvModule = await import(pathToFileURL(config.xsvBundle).href);
+        const xsvRun = await collectXsvGrading({ config, fence, owner, gradingModule: xsvModule });
+        writeFileSync(join(config.output, 'xsv-run.json'), JSON.stringify(xsvRun) + '\n', { flag: 'wx', mode: 0o600 });
         // The layered kitty color-control (OSC 21) qualification follows the xterm SGR-stack suite on the same fence; it leaves every runtime color override reset.
         const kclSource = readFileSync(config.kclBundle);
         if (createHash('sha256').update(kclSource).digest('hex') !== config.kclBundleSha256) throw new Error('Local kitty color-control adapter bundle changed.');

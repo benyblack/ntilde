@@ -16,7 +16,7 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '762b9ba7817a9e319c50a690db045d13503ad7293b8f51318b1e344e53bd1c03');
+    assert.equal(hash(manifestBytes), 'fcae2238f791f318e8c49407ebe3ef7ea39c962bf6ba44a582b06434c69697ea');
     const manifest = JSON.parse(manifestBytes);
     assert.equal(Object.keys(manifest.archives).length, 1, 'the single final run; no superseded attempt');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
@@ -37,10 +37,10 @@ test('retained run independently rederives the complete receipt and published pr
         projected.summary.receipt = original;
         assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
-        assert.equal(schemaVersion, 65); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 66); assert.equal(fixtureRemoved, true);
         const context = JSON.parse(readFileSync(join(root, 'context.json')));
         assert.equal(context.ownedQueryPolicy, 'owned-exact-query-paired-raw-state-v5');
-        assert.equal(context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v59');
+        assert.equal(context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v60');
         // Both pinned paths replay the unchanged pinned code over the journaled reply of their own exchange; the stock collector and the exact-query witness agree.
         const [item] = projected.report.cases;
         assert.deepEqual([item.caseId, item.pinned.termless.observation.outcome, item.pinned.terminal.observation.outcome, item.effectContract.outcome, item.stock.outcome],

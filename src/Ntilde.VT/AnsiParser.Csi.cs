@@ -231,9 +231,13 @@ namespace Ntilde.VT
                     }
                     break;
                 case 'r': // DECSTBM - Set Scrolling Region
-                          // Ignore leader-prefixed "...r" sequences, e.g. CSI ? Pm r (XTRESTORE -
-                          // restore DEC private mode values). They are NOT DECSTBM.
-                    if (leader == '\0' && intermediates.Length == 0)
+                          // CSI ? Pm r is XTRESTORE (restore DEC private mode values), not DECSTBM; any other
+                          // leader-prefixed "...r" sequence is ignored.
+                    if (leader == '?' && intermediates.Length == 0)
+                    {
+                        HandleXtermModeSave(csi);
+                    }
+                    else if (leader == '\0' && intermediates.Length == 0)
                     {
                         int regionTop = (argCount > 0 && validArgs[0] > 0 ? validArgs[0] : 1) - 1;
                         int regionBottom = (argCount > 1 && validArgs[1] > 0 ? validArgs[1] : _buffer.Rows) - 1;
@@ -490,9 +494,13 @@ namespace Ntilde.VT
                     }
                     break;
                 case 's': // Save Cursor (ANSI.SYS / SCO)
-                          // Ignore leader-prefixed "...s" sequences, e.g. CSI ? Pm s (XTSAVE -
-                          // save DEC private mode values). They are NOT SCO save-cursor.
-                    if (leader == '\0' && intermediates.Length == 0)
+                          // CSI ? Pm s is XTSAVE (save DEC private mode values), not SCO save-cursor; any other
+                          // leader-prefixed "...s" sequence is ignored.
+                    if (leader == '?' && intermediates.Length == 0)
+                    {
+                        HandleXtermModeSave(csi);
+                    }
+                    else if (leader == '\0' && intermediates.Length == 0)
                     {
                         // While DECLRMM is set, CSI Pl ; Pr s is DECSLRM (set left/right margins), never SCOSC.
                         if (_buffer.Modes.IsLeftRightMarginMode) SetLeftRightMargins(validArgs);

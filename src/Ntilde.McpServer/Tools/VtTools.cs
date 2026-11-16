@@ -264,6 +264,11 @@ public sealed class VtTools
                 return ExplainXtermSgrStack(finalByte, prefix[..^1]) + note;
             }
 
+            if (finalByte is 's' or 'r' && qualifiers == "?")
+            {
+                return ExplainXtermModeSave(finalByte, prefix[1..]) + note;
+            }
+
             if (finalByte is 'P' or 'Q' or 'R' && qualifiers == "#" && prefix.EndsWith('#'))
             {
                 return ExplainXtermColorStack(finalByte, prefix[..^1]) + note;
@@ -559,6 +564,15 @@ public sealed class VtTools
         return admitted
             ? $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable["CSI:#" + finalByte]
             : $"CSI palette-stack form, final byte '{finalByte}': only plain parameters are admitted (none or 0 for the report); Ntilde's parser ignores this form.";
+    }
+
+    /// <summary>XTSAVE and XTRESTORE take plain parameters, each naming a DEC private mode.</summary>
+    private static string ExplainXtermModeSave(char finalByte, string parameters)
+    {
+        bool plain = parameters.All(c => c is ';' || (c >= '0' && c <= '9'));
+        return plain
+            ? $"CSI sequence, final byte '{finalByte}': " + ContractSequenceTable["CSI:?" + finalByte]
+            : $"CSI private-mode save/restore form, final byte '{finalByte}': only plain parameters are admitted; Ntilde's parser ignores this form.";
     }
 
     /// <summary>XTPUSHSGR takes plain parameters; XTPOPSGR takes none.</summary>
