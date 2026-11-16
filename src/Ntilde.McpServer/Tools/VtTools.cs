@@ -374,6 +374,15 @@ public sealed class VtTools
         if (oscBody is not null)
         {
             string body = oscBody.Trim().TrimStart(' ');
+            // Subcommands have their own exact catalog identities. Preserve raw payload spacing;
+            // only readable catalog spellings use spaces instead of semicolons.
+            string exactBody = rawBytes ? oscBody : body;
+            if (exactBody.EndsWith('\x07')) exactBody = exactBody[..^1];
+            else if (exactBody.EndsWith("ESC\\", StringComparison.Ordinal)) exactBody = exactBody[..^4];
+            string exactKey = "OSC:" + exactBody.Replace(';', ':');
+            if (!rawBytes) exactKey = exactKey.Replace(' ', ':');
+            if (ContractSequenceTable.TryGetValue(exactKey, out var exactDescription))
+                return $"OSC {exactBody}: {exactDescription}";
             // Leading numeric code up to ';' or space.
             int i = 0;
             while (i < body.Length && char.IsDigit(body[i])) i++;

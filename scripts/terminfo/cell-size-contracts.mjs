@@ -45,15 +45,15 @@ export function cellSizeMatches(exchange, replies, geometry) {
     const px = points => Math.max(1, Math.floor(points * geometry.renderScaling + 0.5));
     if (exchange.protocol === 'csi') return raw === `\x1b[6;${px(geometry.cellHeightDip)};${px(geometry.cellWidthDip)}t`;
     if (exchange.protocol === 'urxvt') return raw === `\x1b]776;${px(geometry.cellWidthDip)};${px(geometry.cellHeightDip)};${px(geometry.fontAscentDip)}${exchange.terminator}`;
-    const match = /^\x1b\]1337;ReportCellSize=([0-9]+(?:\.[0-9]+)?);([0-9]+(?:\.[0-9]+)?);([0-9]+(?:\.[0-9]+)?)\x1b\\$/.exec(raw);
+    const match = /^\x1b\]1337;ReportCellSize=(\d+(?:\.\d+)?);(\d+(?:\.\d+)?);(\d+(?:\.\d+)?)\x1b\\$/.exec(raw); // NOSONAR - exact OSC reply framing requires ESC and ST protocol bytes
     return match !== null && [geometry.cellHeightDip * geometry.renderScaling / geometry.backingScale, geometry.cellWidthDip * geometry.renderScaling / geometry.backingScale, geometry.backingScale]
         .every((expected, index) => Math.abs(Number(match[index + 1]) - expected) <= Math.max(1, expected) * 1e-8);
 }
 
 /** Independent reproduction of frozen oscReplyResult, not an effect grade. */
 export function replayCellSizePinned(index, raw) {
-    const pattern = index === 0 ? /\x1b\]1337;ReportCellSize=[1-9][0-9]*(?:\.[0-9]+)?;[1-9][0-9]*(?:\.[0-9]+)?(?:\x07|\x1b\\)/
-        : /\x1b\]776;[0-9]+;[0-9]+;[0-9]+(?:\x07|\x1b\\)/;
+    const pattern = index === 0 ? /\x1b\]1337;ReportCellSize=[1-9]\d*(?:\.\d+)?;[1-9]\d*(?:\.\d+)?(?:\x07|\x1b\\)/ // NOSONAR - frozen matcher recognizes literal OSC framing bytes
+        : /\x1b\]776;\d+;\d+;\d+(?:\x07|\x1b\\)/; // NOSONAR - frozen matcher recognizes literal OSC framing bytes
     const frame = pattern.exec(raw)?.[0];
     if (frame) return { pass: true, response: raw, observation: { outcome: 'supported', evidence: 'query' }, assertions: [{ kind: 'positive',
         expected: index === 0 ? 'Complete OSC 1337 ReportCellSize reply with two positive dimensions' : 'Complete OSC 776 cell-size reply', observed: frame }] };

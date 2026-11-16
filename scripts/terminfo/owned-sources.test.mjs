@@ -20,10 +20,18 @@ function fixture(action) {
 test('all 425 exact live source/input files still match their initial snapshot', () => fixture(f => {
     assert.equal(Object.keys(ownedSourceFiles).length, 425); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
-for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
+for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs', 'clipboard-pane-session.cs', 'core-icon-window.cs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
     assert.throws(() => assertOwnedSourcesUnchanged(f.root, f.context), /Owned source changed before completion/);
 }));
+
+test('cell-size metric producer and independent observer retain their existing fixed aliases', () => {
+    const root = fileURLToPath(new URL('../../', import.meta.url));
+    assert.equal(capturedV70SourceFiles.privateClipboardInput8SourceSha256, 'clipboard-pane-session.cs');
+    assert.equal(capturedV70SourceFiles.coreIconWindowSourceSha256, 'core-icon-window.cs');
+    assert.equal(ownedSourcePath(root, 'clipboard-pane-session.cs'), join(root, 'src/Ntilde.App/Controls/TerminalPane.Session.cs'));
+    assert.equal(ownedSourcePath(root, 'core-icon-window.cs'), join(root, 'src/Ntilde.App/MainWindow.AgentMetadata.cs'));
+});
 
 test('future measured inputs cannot change the historical published v8 source scope', async () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-source-unit-'));

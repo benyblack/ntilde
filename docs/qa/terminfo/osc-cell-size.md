@@ -84,3 +84,10 @@ are outside this implementation's positive claim. The new metadata projection
 is an observation capability, not terminal support itself. The source snapshot
 includes selected App/VT reference bytes and exact executable/assembly hashes;
 it is not complete binary-to-source or reproducible-build attestation.
+
+The source graph retains the metric producer `TerminalPane.Session.cs` under
+its existing `clipboard-pane-session.cs` alias, and the independent metadata
+observer `MainWindow.AgentMetadata.cs` under `core-icon-window.cs`. The new
+cell-size scope adds only paths not already retained by earlier scopes; aliases
+are unique, and mutation tests require changes in either implementation to fail
+the source binding.

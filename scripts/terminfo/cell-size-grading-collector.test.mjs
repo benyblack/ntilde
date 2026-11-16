@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,6 +15,18 @@ import { checkCellSizeEvidence, includesCellSizeEvidence } from './cell-size-rec
 import { syntheticCellSizeEvidence } from './fixtures/cell-size-evidence.mjs';
 
 const hash = data => createHash('sha256').update(data).digest('hex');
+
+test('pinned contexts refuse a changed request and a second query on either path', async () => {
+    const report = { replies: [], barrier: '\x1b[?62c' };
+    const termless = cellSizeContext(1, report);
+    assert.throws(() => termless.feedCapture('\x1b]776;?\x07'), /request differs/);
+    assert.equal(termless.feedCapture('\x1b]776\x07'), '');
+    assert.throws(() => termless.feedCapture('\x1b]776\x07'), /request differs/);
+    const terminal = cellSizeContext(1, report);
+    await assert.rejects(terminal.queryWithSentinelOutcome('\x1b]776;?\x07', /x/), /request differs/);
+    assert.deepEqual(await terminal.queryWithSentinelOutcome('\x1b]776\x07', /x/), { raw: report.barrier, match: null, reason: 'sentinel' });
+    await assert.rejects(terminal.queryWithSentinelOutcome('\x1b]776\x07', /x/), /request differs/);
+});
 
 testWithPinnedCollector('real frozen OSC cell-size probes preserve their own criteria and the retained receipt refuses mutations', async bundleUrl => {
     const upstream = readFileSync(bundleUrl, 'utf8');

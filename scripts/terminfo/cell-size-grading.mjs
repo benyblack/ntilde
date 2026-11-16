@@ -47,7 +47,8 @@ export function buildCellSizeReport(frames, run, runId, adapter, { replayModule 
             replayModule.ntildeRunCellSizeTermless(contract.caseId, cellSizeContext(index, pinnedReport)), pinned.termless);
         const validity = exchanges.filter(item => item.role === 'control').map(item => ({ id: item.id, held: item.matches }));
         const required = exchanges.filter(item => item.role === 'required').map(item => ({ id: item.id, held: item.matches }));
-        const outcome = validity.every(item => item.held) ? required.every(item => item.held) ? 'supported' : 'unsupported' : 'inconclusive';
+        const requiredOutcome = required.every(item => item.held) ? 'supported' : 'unsupported';
+        const outcome = validity.every(item => item.held) ? requiredOutcome : 'inconclusive';
         const pinnedOutcome = pinned.terminal.observation.outcome;
         return { caseId: contract.caseId, pinned, contractResult: { outcome },
             conclusion: { outcome: pinnedOutcome, grading: 'unchanged-pinned-query', evidence: 'owned-raw-replies-and-unchanged-state' },
