@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { loadPublication } from './qualification-inventory.mjs';
@@ -25,6 +25,9 @@ const qaDir = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url))
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error(`shell-integration aggregates projection: ${message}`); };
 const read = (root, rel) => readFileSync(join(root, rel));
+// Serialized evidence keys are checkout-independent (like the inventory's evidence digest): a Windows
+// checkout joins with backslashes, but the retained bytes and their keys are POSIX in git.
+const posix = path => path.split(sep).join('/');
 const json = (root, rel) => JSON.parse(read(root, rel));
 const carrierDir = carrier => `${carrier.dir}/`;
 
@@ -90,15 +93,15 @@ export function aggregateSourceDigests(root = qaDir) {
         osc133: {
             summarySha256: sha(read(root, join(osc133Carrier.dir, 'summary.json'))),
             admittedEvidence: Object.fromEntries([
-                [join(osc133Carrier.dir, 'journal-common.json'), sha(read(root, join(osc133Carrier.dir, 'journal-common.json')))],
-                ...osc133CaseIds.map(caseId => [join(osc133Carrier.dir, `case-${caseId}.json`), sha(read(root, join(osc133Carrier.dir, `case-${caseId}.json`)))]),
+                [posix(join(osc133Carrier.dir, 'journal-common.json')), sha(read(root, join(osc133Carrier.dir, 'journal-common.json')))],
+                ...osc133CaseIds.map(caseId => [posix(join(osc133Carrier.dir, `case-${caseId}.json`)), sha(read(root, join(osc133Carrier.dir, `case-${caseId}.json`)))]),
             ]),
         },
         osc633: {
             summarySha256: sha(read(root, join(osc633Carrier.dir, 'summary.json'))),
             archiveSha256: json(root, join(osc633Carrier.dir, 'manifest.json')).archives['owned-run.zip'],
             adapterId: osc633Report.report.adapter.id,
-            admittedEvidence: { [join(osc633Carrier.dir, 'report.json')]: sha(read(root, join(osc633Carrier.dir, 'report.json'))) },
+            admittedEvidence: { [posix(join(osc633Carrier.dir, 'report.json'))]: sha(read(root, join(osc633Carrier.dir, 'report.json'))) },
         },
     };
 }
@@ -117,10 +120,10 @@ function carrierBinding(carrier, root, sources) {
     // the retained outcome but alters the evidence is refused here instead of being silently admitted.
     const admittedEvidence = carrier === osc133Carrier
         ? Object.fromEntries([
-            [join(carrier.dir, 'journal-common.json'), sha(read(root, join(carrier.dir, 'journal-common.json')))],
-            ...admitted.map(({ caseId }) => [join(carrier.dir, `case-${caseId}.json`), sha(read(root, join(carrier.dir, `case-${caseId}.json`)))]),
+            [posix(join(carrier.dir, 'journal-common.json')), sha(read(root, join(carrier.dir, 'journal-common.json')))],
+            ...admitted.map(({ caseId }) => [posix(join(carrier.dir, `case-${caseId}.json`)), sha(read(root, join(carrier.dir, `case-${caseId}.json`)))]),
         ])
-        : { [join(carrier.dir, 'report.json')]: sha(read(root, join(carrier.dir, 'report.json'))) };
+        : { [posix(join(carrier.dir, 'report.json'))]: sha(read(root, join(carrier.dir, 'report.json'))) };
     for (const [rel, digest] of Object.entries(admittedEvidence)) {
         const pinned = expected.admittedEvidence?.[rel];
         if (pinned === undefined) check(false, `carrier ${carrier.suite} evidence is not pinned by the caller: ${rel}`);

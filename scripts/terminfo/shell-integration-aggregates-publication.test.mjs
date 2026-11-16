@@ -170,6 +170,6 @@ test('the projection refuses carrier mutations even when the retained outcomes a
     }, /carrier osc633 evidence differs from the pinned expectation/);
     // The caller must pin every file the projection admits from: an unpinned expectation is refused.
     const unpinned = aggregateSourceDigests(qa);
-    delete unpinned.osc133.admittedEvidence[join('2026-11-11-osc133', 'journal-common.json')];
+    delete unpinned.osc133.admittedEvidence['2026-11-11-osc133/journal-common.json'];
     assert.throws(() => shellIntegrationAggregatesPublication(qa, unpinned), /is not pinned by the caller/);
 });
