@@ -172,4 +172,12 @@ test('the projection refuses carrier mutations even when the retained outcomes a
     const unpinned = aggregateSourceDigests(qa);
     delete unpinned.osc133.admittedEvidence['2026-11-11-osc133/journal-common.json'];
     assert.throws(() => shellIntegrationAggregatesPublication(qa, unpinned), /is not pinned by the caller/);
+    // loadPublication would prefer a report.json over the retained journal header, so an added one is an
+    // alternate layout and is refused before it could supply the admitted outcomes unpinned.
+    mutate(root => {
+        writeFileSync(join(root, '2026-11-11-osc133', 'report.json'), JSON.stringify({
+            schemaVersion: 1, suiteId: 'ntilde-owned-osc133-graded-v1', contractsVersion: 1, runId: 'tampered', adapter: {}, scope: 'tampered',
+            cases: [{ caseId: 'extensions.osc133-a', pinned: {}, contractResult: { outcome: 'unsupported' }, conclusion: {} }],
+        }, null, 2) + '\n');
+    }, /alternate report layout/);
 });

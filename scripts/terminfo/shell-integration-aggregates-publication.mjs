@@ -8,7 +8,7 @@
 // carrier file the projection admits from is checked against the digest expectations the caller pins.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -93,7 +93,7 @@ export function aggregateSourceDigests(root = qaDir) {
         osc133: {
             summarySha256: sha(read(root, join(osc133Carrier.dir, 'summary.json'))),
             admittedEvidence: Object.fromEntries([
-                [posix(join(osc133Carrier.dir, 'journal-common.json')), sha(read(root, join(osc133Carrier.dir, 'journal-common.json')))],
+                [posix(join(osc133Carrier.dir, carrierHeader(osc133Carrier, root))), sha(read(root, join(osc133Carrier.dir, carrierHeader(osc133Carrier, root))))],
                 ...osc133CaseIds.map(caseId => [posix(join(osc133Carrier.dir, `case-${caseId}.json`)), sha(read(root, join(osc133Carrier.dir, `case-${caseId}.json`)))]),
             ]),
         },
@@ -101,13 +101,26 @@ export function aggregateSourceDigests(root = qaDir) {
             summarySha256: sha(read(root, join(osc633Carrier.dir, 'summary.json'))),
             archiveSha256: json(root, join(osc633Carrier.dir, 'manifest.json')).archives['owned-run.zip'],
             adapterId: osc633Report.report.adapter.id,
-            admittedEvidence: { [posix(join(osc633Carrier.dir, 'report.json'))]: sha(read(root, join(osc633Carrier.dir, 'report.json'))) },
+            admittedEvidence: { [posix(join(osc633Carrier.dir, carrierHeader(osc633Carrier, root)))]: sha(read(root, join(osc633Carrier.dir, carrierHeader(osc633Carrier, root)))) },
         },
     };
 }
 
+// The header file loadPublication selects for a directory-layout carrier (same precedence order), and a
+// refusal of alternate layouts: an unpinned report.json appearing beside the retained journal would
+// otherwise supply the admitted outcomes without being digest-checked.
+function carrierHeader(carrier, root) {
+    const candidates = ['report.json', 'report-common.json', 'journal-common.json'];
+    const present = candidates.filter(name => readdirSync(join(root, carrier.dir)).includes(name));
+    check(present.length === 1, `carrier ${carrier.suite} retains an alternate report layout: ${present.join(', ') || 'none'}`);
+    return present[0];
+}
+
 function carrierBinding(carrier, root, sources) {
     const expected = sources[carrier.suite];
+    // The layout is refused before loadPublication runs: an added report.json must not be the file that
+    // supplies the admitted outcomes, even once.
+    const header = carrierHeader(carrier, root);
     const summaryBytes = read(root, join(carrier.dir, 'summary.json'));
     check(sha(summaryBytes) === expected.summarySha256, `carrier ${carrier.suite} summary differs from the pinned expectation`);
     const summary = JSON.parse(summaryBytes);
@@ -118,12 +131,12 @@ function carrierBinding(carrier, root, sources) {
     check(admitted.length === 4, `carrier ${carrier.suite} does not admit its four lifecycle claims`);
     // The exact bytes each admitted outcome is read from are pinned per file, so a mutation that keeps
     // the retained outcome but alters the evidence is refused here instead of being silently admitted.
-    const admittedEvidence = carrier === osc133Carrier
-        ? Object.fromEntries([
-            [posix(join(carrier.dir, 'journal-common.json')), sha(read(root, join(carrier.dir, 'journal-common.json')))],
-            ...admitted.map(({ caseId }) => [posix(join(carrier.dir, `case-${caseId}.json`)), sha(read(root, join(carrier.dir, `case-${caseId}.json`)))]),
-        ])
-        : { [posix(join(carrier.dir, 'report.json'))]: sha(read(root, join(carrier.dir, 'report.json'))) };
+    // A journal header means loadPublication reads the admitted outcomes from the per-case files beside it;
+    // a report header carries them inline, so the header itself is the only case source to pin.
+    const caseEntries = header === 'journal-common.json'
+        ? admitted.map(({ caseId }) => [posix(join(carrier.dir, `case-${caseId}.json`)), sha(read(root, join(carrier.dir, `case-${caseId}.json`)))])
+        : [];
+    const admittedEvidence = Object.fromEntries([[posix(join(carrier.dir, header)), sha(read(root, join(carrier.dir, header)))], ...caseEntries]);
     for (const [rel, digest] of Object.entries(admittedEvidence)) {
         const pinned = expected.admittedEvidence?.[rel];
         if (pinned === undefined) check(false, `carrier ${carrier.suite} evidence is not pinned by the caller: ${rel}`);

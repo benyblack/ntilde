@@ -3690,7 +3690,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/shell-integration-aggregates-publication.test.mjs",
-        "testSha256": "2a604d31bbd0c3536b3dadc107be5669fd40ed36955a37dd4a4776a5b4a5acb9"
+        "testSha256": "bc3be6ff024aaeab84d0570f407c0783004a56f8a4d31360b989e445a8cf5e79"
       }
     }
   ],
