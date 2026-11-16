@@ -859,6 +859,12 @@ binds all 15 suites and 67 sources; both older failed/uncalibrated preparation a
 remain separate. Current raw stock 84/0/171 stays incomplete, and historical grades
 are unchanged. This publishes evidence, not a renderer fix or full #770 completion.
 
+The [2026-11-16 static-image qualification](terminfo/2026-11-16-static-images-qualification.md)
+(#987) qualifies `extensions.sixel` (effect unsupported: native-size defect #851) and
+`extensions.iterm2-images` (effect supported) from a fresh scoped run of that same suite on current
+main, with both pinned callbacks replayed and kept inconclusive. It adds no measured source, so it
+needs no source-policy or receipt bump; stock grades and Core scores do not change.
+
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
 90 state captures, with all 16 suite bindings and a fixed 74-file source graph.
@@ -1286,3 +1292,17 @@ and input plan v5, which keeps every v4 event verbatim and appends 32 declared A
 same `mouseInputProbe` as `input.x10-mouse`), so the unchanged pinned code is replayed over the child's own DECRQM reply beside an effect contract (`ntilde-sgr-pixel-mouse-1016-effect-v1`) graded by an independent oracle written from
 xterm's `button.c`. The effect contract is **supported** (all 32 experiments matched their literal expectation and the oracle) and the pinned verdict stays **inconclusive** (a recorded divergence). No stock grade changes (93/1/161).
 Receipt schema 67 and source policy v61 (407 files) bind it; the run is measured at App and scripts `9972a6fc` with no superseded attempt. See [the qualification page](terminfo/2026-11-16-sgr-pixel-mouse-qualification.md).
+
+### Shell-integration aggregate qualification
+
+The [aggregate batch](terminfo/2026-11-16-shell-integration-aggregates-qualification.md) qualifies the two pinned terminfo.dev@4.0.0 aggregate cases, `extensions.osc-633-vscode` and
+`extensions.semantic-prompts` — the first aggregate ids any batch has qualified (`sgr.underline.color` deliberately stayed unqualified). Both aggregate probes are declared-capability
+probes with no fixture bytes and no readback (both pinned paths inconclusive by design, under either declared capability value), so the batch is a retrospective projection over the two
+admitted, separately receipted marker publications instead of a new collection: the exact pinned registrations are extracted from the retained bundle by SHA-256-checked source spans and
+replayed in a disposable child process whose terminal context refuses every read; every admitted carrier file is
+digest-pinned and an aggregate claim is refused whenever the carrier publication it names was not rederived. Each aggregate effect is defined by the exact lifecycle/metadata evidence it needs: `extensions.semantic-prompts` requires
+the four OSC 133 lifecycle publications (all admitted supported; OSC 133 P stays with its separately owned #985 audit) and its separately identified effect contract is **supported** with
+the pinned inconclusive recorded as `pinned-inconclusive-by-design`; `extensions.osc-633-vscode` additionally requires the OSC 633 E command-line and P property records of the same
+authoritative VS Code contract, which have no implemented publication yet, so its effect contract stays **inconclusive** with them recorded as required-and-pending (#983) — the
+inventory's first measured-other id, not a demonstrated failure. No production code changed, no stock grade moved (frozen baseline unchanged), and no Core, Modern or common-harness
+count moves; the sum of the marker publications is explicitly not an upstream supported verdict. See [the qualification page](terminfo/2026-11-16-shell-integration-aggregates-qualification.md).

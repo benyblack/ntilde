@@ -1,0 +1,769 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-static-images-qualification-v1",
+  "carrierSuiteId": "ntilde-owned-static-images-v1",
+  "contractsVersion": 1,
+  "runId": "569294d0402a900696bef00b68490d9d",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "pinnedSpans": {
+      "helper": "e337ddbb1f81a40c2c6f997912e6f53aa9a86fa4d0cfde2705dbdb0b6b9899bb",
+      "extensions.sixel": "e9e53d23730ef28bba98b9dbd1ff348b2aa2860d5cfb405a1b554e179bb080e5",
+      "extensions.iterm2-images": "20c0502f9c40648d3bae8eaf044f731a772bde9a4b9e49ce533c88c600992568"
+    }
+  },
+  "scope": "Two exact pinned terminfo.dev@4.0.0 cases, extensions.sixel and extensions.iterm2-images. Both pinned callbacks (termless and terminal) are replayed from the retained pinned bundle and are always inconclusive. Two separately identified effect contracts compose the existing owned static-image carrier: blank-before, source-derived raster pixels at the controlled anchor with unchanged surroundings, and clear-after, over paired original offscreen PNGs, complete cell/mode reads and fresh raw fences. Protocol acknowledgement, reservation metadata and painted pixels are separate facts. A single-shot PNG at one 4x2 cell request and one fixed SIXEL packet only: no animation, Unicode placeholders, multipart or other image formats, font/DPI change, different-background compositing, remote/mux, other platforms, common-harness or stock-score claim. Kitty cases of the same carrier are not part of this qualification.",
+  "cases": [
+    {
+      "caseId": "extensions.sixel",
+      "pinnedCriterion": {
+        "termless": "Declared Sixel capability does not establish rendered pixels (always inconclusive, evidence legacy)",
+        "terminal": "No pixel readback for Sixel rendering (always inconclusive, evidence none)"
+      },
+      "pinned": {
+        "pass": false,
+        "note": "Declared Sixel capability does not establish rendered pixels",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "Declared Sixel capability does not establish rendered pixels"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":true}",
+          "note": "Declared Sixel capability does not establish rendered pixels",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Sixel capability does not establish rendered pixels"
+          },
+          "declaredFalseResponse": "{\"declared\":false}"
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No pixel readback for Sixel rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No pixel readback for Sixel rendering"
+          }
+        }
+      },
+      "effectContract": {
+        "id": "ntilde-sixel-native-raster-effect-v1",
+        "version": 1,
+        "statement": "A fixed DEC SIXEL packet (7-bit DCS, explicit 1:1 aspect, declared 16x16 raster, RGB-percent palette, unequal four-colour quadrants, P2=1) is absent before the write, paints the independently source-derived native raster at the controlled anchor with unchanged surroundings, and is absent again after an erase.",
+        "primary": "https://vt100.net/docs/vt3xx-gp/chapter14.html",
+        "carrierCases": [
+          "sixel.native-raster"
+        ],
+        "validity": [
+          {
+            "name": "receipt-binds-image-report",
+            "held": true,
+            "detail": "the complete receipt binds this exact report and records fixture removal"
+          },
+          {
+            "name": "carrier-policy",
+            "held": true,
+            "detail": "the retained report is the paired raw render policy v2 report of this run"
+          },
+          {
+            "name": "raw-reader-healthy",
+            "held": true,
+            "detail": "the exclusive raw reader sealed without failure over every admitted write"
+          },
+          {
+            "name": "state-restored",
+            "held": true,
+            "detail": "the final paired state is bound to the initial state after every write"
+          },
+          {
+            "name": "controlled-background",
+            "held": true,
+            "detail": "every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme"
+          },
+          {
+            "name": "fresh-paired-fences",
+            "held": true,
+            "detail": "every capture carries its own unpredictable paired challenges, none reused from the earlier input phase or another capture (a stale capture cannot qualify)"
+          },
+          {
+            "name": "blank-before-controls",
+            "held": true,
+            "detail": "every case began from an independently blank, unchanged-surroundings target"
+          },
+          {
+            "name": "acknowledgement-separate-from-pixels",
+            "held": true,
+            "detail": "every write was acknowledged by its raw fence while pixel assertions were graded separately"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "unsupported",
+        "carrierCases": [
+          {
+            "caseId": "sixel.native-raster",
+            "result": "failed"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "caseId": "sixel.native-raster",
+          "result": "failed",
+          "stages": [
+            {
+              "stage": "sixel.native-raster.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null,
+                "geometry": "native"
+              }
+            },
+            {
+              "stage": "sixel.native-raster.show",
+              "result": "failed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "calibrated native raster fidelity",
+                  "passed": false
+                },
+                {
+                  "description": "independent source canvas matches reservation and actual bitmap dimensions",
+                  "passed": true
+                },
+                {
+                  "description": "independent float32 ceiling reservation, anchor and unclipped native intent",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "sixel.native-raster.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 9,
+                  "height": 17
+                },
+                "geometry": "native",
+                "sourceCanvas": {
+                  "declaredWidth": 16,
+                  "declaredHeight": 16,
+                  "width": 16,
+                  "height": 18,
+                  "paintedWidth": 16,
+                  "paintedHeight": 16
+                },
+                "reservationCells": {
+                  "cols": 1,
+                  "rows": 1
+                },
+                "nativeProjection": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 8.470588235294118,
+                  "height": 9.243243243243242,
+                  "paintedWidth": 8.470588235294118,
+                  "paintedHeight": 8.216216216216216
+                },
+                "nativeRaster": {
+                  "passed": false,
+                  "mismatches": 80,
+                  "safeColorPixels": [
+                    2,
+                    6,
+                    2,
+                    6
+                  ],
+                  "safeBackgroundPixels": 1287,
+                  "uncertaintyPixels": 65,
+                  "edgeTolerancePx": 1,
+                  "discriminating": true
+                },
+                "compatibility": {
+                  "passed": true,
+                  "mismatches": 0,
+                  "safeColorPixels": [
+                    5,
+                    20,
+                    8,
+                    32
+                  ],
+                  "safeBackgroundPixels": 1188,
+                  "uncertaintyPixels": 115,
+                  "edgeTolerancePx": 1,
+                  "discriminating": true
+                },
+                "nonTargetEnvelope": {
+                  "x": 30,
+                  "y": 75,
+                  "width": 11,
+                  "height": 21
+                }
+              }
+            },
+            {
+              "stage": "sixel.native-raster.clear",
+              "result": "inconclusive",
+              "inconclusiveReason": "requires passed prior witness: sixel.native-raster.show (failed)",
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "sixel.native-raster.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "sixel.native-raster.show",
+                  "snapshot": 3,
+                  "result": "failed",
+                  "passed": false
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null,
+                "geometry": "native"
+              }
+            }
+          ]
+        }
+      ],
+      "finding": {
+        "issue": "https://github.com/benyblack/ntilde/issues/851",
+        "independentControlsHeld": {
+          "sourceCanvasAgreesWithBitmap": true,
+          "float32ReservationAndAnchor": true,
+          "nonTargetUnchanged": true,
+          "acknowledged": true
+        },
+        "nativeRasterPassed": false,
+        "nativeProjection": {
+          "x": 31,
+          "y": 76,
+          "width": 8.470588235294118,
+          "height": 9.243243243243242,
+          "paintedWidth": 8.470588235294118,
+          "paintedHeight": 8.216216216216216
+        },
+        "observedContentBounds": {
+          "x": 31,
+          "y": 76,
+          "width": 9,
+          "height": 17
+        },
+        "reservationCells": {
+          "cols": 1,
+          "rows": 1
+        },
+        "nativeMismatches": 80,
+        "wholeCellCompatibilityMismatches": 0,
+        "note": "Cell reservation is distinct from native raster sizing. The whole-cell compatibility projection is diagnostic only and cannot earn a native pass."
+      },
+      "stock": {
+        "featureId": "extensions.sixel",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No pixel readback for Sixel rendering",
+        "rawReplyRef": "extensions.sixel"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "unsupported"
+      },
+      "conclusion": {
+        "outcome": "unsupported",
+        "grading": "pinned-callbacks-preserved-plus-owned-pixel-effect-v1",
+        "evidence": "owned-controlled-pixels-paired-raw-render",
+        "note": "Declared Sixel capability does not establish rendered pixels"
+      }
+    },
+    {
+      "caseId": "extensions.iterm2-images",
+      "pinnedCriterion": {
+        "termless": "Declared iTerm2 image capability does not establish rendered image pixels (always inconclusive, evidence legacy)",
+        "terminal": "No pixel readback for iTerm2 inline image rendering (always inconclusive, evidence none)"
+      },
+      "pinned": {
+        "pass": false,
+        "note": "Declared iTerm2 image capability does not establish rendered image pixels",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "Declared iTerm2 image capability does not establish rendered image pixels"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":true}",
+          "note": "Declared iTerm2 image capability does not establish rendered image pixels",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared iTerm2 image capability does not establish rendered image pixels"
+          },
+          "declaredFalseResponse": "{\"declared\":false}"
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No pixel readback for iTerm2 inline image rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No pixel readback for iTerm2 inline image rendering"
+          }
+        }
+      },
+      "effectContract": {
+        "id": "ntilde-iterm2-inline-image-effect-v1",
+        "version": 1,
+        "statement": "A single-shot OSC 1337 File=inline=1 PNG with a 4x2 cell request is absent before the write, paints the independently source-derived pixels (full-envelope stretch when preserveAspectRatio=0, contained undistorted fit by default) with unchanged surroundings and a transparent hole revealing the known background, and is absent after an erase.",
+        "primary": "https://github.com/gnachman/iterm2-website/blob/d6249e4f778822ac2ec89cc099607a3bc5ef4e3f/source/_includes/3.7/documentation-images.md#L64",
+        "carrierCases": [
+          "iterm.explicit-stretch",
+          "iterm.default-aspect"
+        ],
+        "validity": [
+          {
+            "name": "receipt-binds-image-report",
+            "held": true,
+            "detail": "the complete receipt binds this exact report and records fixture removal"
+          },
+          {
+            "name": "carrier-policy",
+            "held": true,
+            "detail": "the retained report is the paired raw render policy v2 report of this run"
+          },
+          {
+            "name": "raw-reader-healthy",
+            "held": true,
+            "detail": "the exclusive raw reader sealed without failure over every admitted write"
+          },
+          {
+            "name": "state-restored",
+            "held": true,
+            "detail": "the final paired state is bound to the initial state after every write"
+          },
+          {
+            "name": "controlled-background",
+            "held": true,
+            "detail": "every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme"
+          },
+          {
+            "name": "fresh-paired-fences",
+            "held": true,
+            "detail": "every capture carries its own unpredictable paired challenges, none reused from the earlier input phase or another capture (a stale capture cannot qualify)"
+          },
+          {
+            "name": "blank-before-controls",
+            "held": true,
+            "detail": "every case began from an independently blank, unchanged-surroundings target"
+          },
+          {
+            "name": "acknowledgement-separate-from-pixels",
+            "held": true,
+            "detail": "every write was acknowledged by its raw fence while pixel assertions were graded separately"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "carrierCases": [
+          {
+            "caseId": "iterm.explicit-stretch",
+            "result": "passed"
+          },
+          {
+            "caseId": "iterm.default-aspect",
+            "result": "passed"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "caseId": "iterm.explicit-stretch",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "iterm.explicit-stretch.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null,
+                "geometry": "stretch"
+              }
+            },
+            {
+              "stage": "iterm.explicit-stretch.show",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "source-backed native/stretch/aspect geometry",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 0",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 1",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 2",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 3",
+                  "passed": true
+                },
+                {
+                  "description": "alpha-zero interior reveals the known background",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "iterm.explicit-stretch.blank",
+                  "snapshot": 6,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "geometry": "stretch"
+              }
+            },
+            {
+              "stage": "iterm.explicit-stretch.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "iterm.explicit-stretch.blank",
+                  "snapshot": 6,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "iterm.explicit-stretch.show",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null,
+                "geometry": "stretch"
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "iterm.default-aspect",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "iterm.default-aspect.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null,
+                "geometry": "aspect"
+              }
+            },
+            {
+              "stage": "iterm.default-aspect.show",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "source-backed native/stretch/aspect geometry",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 0",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 1",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 2",
+                  "passed": true
+                },
+                {
+                  "description": "asymmetric color interior 3",
+                  "passed": true
+                },
+                {
+                  "description": "alpha-zero interior reveals the known background",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "iterm.default-aspect.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                },
+                "geometry": "aspect"
+              }
+            },
+            {
+              "stage": "iterm.default-aspect.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "iterm.default-aspect.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "iterm.default-aspect.show",
+                  "snapshot": 11,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null,
+                "geometry": "aspect"
+              }
+            }
+          ]
+        }
+      ],
+      "stock": {
+        "featureId": "extensions.iterm2-images",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No pixel readback for iTerm2 inline image rendering",
+        "rawReplyRef": "extensions.iterm2-images"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "pinned-callbacks-preserved-plus-owned-pixel-effect-v1",
+        "evidence": "owned-controlled-pixels-paired-raw-render",
+        "note": "Declared iTerm2 image capability does not establish rendered image pixels"
+      }
+    }
+  ]
+}
