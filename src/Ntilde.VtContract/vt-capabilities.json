@@ -110,6 +110,15 @@
       "contractCase": "color-stack-pop"
     },
     {
+      "key": "OSC:21",
+      "mnemonic": "Kitty color control",
+      "support": "partial",
+      "description": "Kitty's key=value color protocol over the runtime colors: query (value ?), set (numeric color) and reset (bare key) for foreground, background, selection_background, selection_foreground, cursor and palette indices 0-255. One OSC 21 reply carries a field per query in request order, an empty value for a color with no concrete value, and unknown=<Base64 key> for a key it has no color for. Color names, alpha suffixes, the empty (dynamic) value and cursor_text, visual_bell and transparent_background_color keys are not modeled.",
+      "matrixFeature": "OSC 21 (kitty color control)",
+      "evidencePath": "tests/Ntilde.VT.Tests/KittyColorTests.cs",
+      "contractCase": "kitty-color-control"
+    },
+    {
       "key": "DEC:5522",
       "mnemonic": "MIME clipboard paste notifications",
       "support": "supported",
