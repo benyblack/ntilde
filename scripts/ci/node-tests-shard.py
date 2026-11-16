@@ -44,7 +44,7 @@ REST = "rest"
 # Workflow order. REST is last; it also runs the job's quick checks, which the table's
 # rest_head_start_seconds accounts for. Adding a shard is a name here and in the workflow's matrix
 # (scripts/tests/node_tests_shard_tests.py checks the two agree).
-SHARDS = ["a", "b", REST]
+SHARDS = ["a", "b", "c", REST]
 PREFIX = "scripts/terminfo/"
 ROOT = Path(__file__).resolve().parents[2]
 DURATIONS = Path(__file__).with_name("node-tests-durations.json")
