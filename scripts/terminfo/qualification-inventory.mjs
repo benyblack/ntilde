@@ -81,6 +81,10 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('extensions-truecolor', '2026-11-16-extensions-truecolor', '2026-11-16-extensions-truecolor-qualification.md'), module: 'extensions-truecolor-publication.mjs', exports: ['extensionTruecolorSuiteId', 'extensionTruecolorVersion', 'extensionTruecolorIds'], receiptSuiteId: 'ntilde-owned-sgr-truecolor-graded-v1', test: 'extensions-truecolor-publication.test.mjs' },
     // The current OSC 633 remeasurement on the implementing App; the historical unsupported publication remains frozen below.
     { ...directory('osc633', '2026-11-16-osc633-implementation', '2026-11-16-osc633-implementation-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-implementation-publication.test.mjs' },
+    // Issue #984: the first aggregate qualification. Both pinned aggregate probes read only the declared semanticPrompts
+    // capability and perform no readback; this projection replays them over two admitted, separately receipted marker
+    // publications and binds the primary (OSC 633) carrier receipt at the suite level, the OSC 133 carrier per case.
+    { ...directory('shell-integration-aggregates', '2026-11-16-shell-integration-aggregates', '2026-11-16-shell-integration-aggregates-qualification.md'), module: 'shell-integration-aggregates-contracts.mjs', exports: ['aggregatesSuiteId', 'aggregatesVersion', 'aggregateCaseIds'], receiptSuiteId: 'ntilde-owned-osc633-graded-v1', test: 'shell-integration-aggregates-publication.test.mjs' },
 ]);
 
 /**
