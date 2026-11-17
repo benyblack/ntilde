@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-17T14:48:05.112Z",
-  "ownedRunId": "bb832e39430176c8f96f62d40ea4a5e6",
-  "stockCollectorRunId": "54d8392084916c19f55245d2379b43d5",
+  "measuredAt": "2026-11-17T15:27:43.766Z",
+  "ownedRunId": "4889417f35fe10780c3385cb19e8a51d",
+  "stockCollectorRunId": "8d1225c1db24ee9e81fb81a16e497791",
   "appRevision": "85efa784607f1e98b36c52c1538a30d25c6f9000",
-  "scriptsRevision": "0c825f5a0f6c225cc4b881c9f31a9e67156469b4",
+  "scriptsRevision": "6dcfc318148c96b18b73d264837a8c5b62b11b01",
   "context": {
     "adapter": "ntilde-owned-macos-v1",
-    "adapterBundleSha256": "fe4e0da777119025197ee83239d9422a2afd74b60f2e0255b9c7940426629a42",
+    "adapterBundleSha256": "e4d307755b4fd5278feb37aa70147852482a3971abbcb4771b98c0684786f7b6",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
     "appVersion": "0.14.0",
     "collectionScope": {
@@ -26,7 +26,7 @@
     },
     "coreGapsSuiteId": "ntilde-owned-core-gaps-v1",
     "coreGapsAdapterId": "ntilde-owned-core-gaps-grading-v1",
-    "coreGapsBundleSha256": "98e2c84fb0bec70f33ce871fea405c117b3875aa18ac169b5183b40aa157759f",
+    "coreGapsBundleSha256": "b41abc448eab8850da3b170af00868a070d06c8bd523286acec244f822ca5267",
     "textCursorSuiteId": "ntilde-core-text-cursor-v1",
     "coreEraseSuiteId": "ntilde-core-erase-v1",
     "tabStopsSuiteId": "ntilde-core-tab-stops-v1",
@@ -34,18 +34,18 @@
     "sgrRasterSuiteId": "ntilde-core-sgr-raster-v1",
     "reverseWideSuiteId": "ntilde-core-reverse-wide-v1",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-v67",
-    "sourceSnapshotManifestSha256": "09767e0a4e3e32a562da91a2ce46758b43901b5980add81f810b33479c0bb2f7",
-    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-aK8sDc",
+    "sourceSnapshotManifestSha256": "c194aeba57a484e89da531c004ebd5906b35e59fe58ee8309f3431a59369e527",
+    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-chi06V",
     "appVersionSource": "operator supplied; not independently verified",
-    "initialSettingsSha256": "4a684be310fcd96712209b84b687011fa5321b53a49b88497a603ff69a742fbd",
+    "initialSettingsSha256": "58a8149edb36079911b70dfa7d055fb70991f34df6fe798dbaadfc3ae0ac117c",
     "executable": "/Users/behnam/.codex/worktrees/terminfo-osc720/ntilde/artifacts/sidecar-osc720/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "d8ba024ea0983551c9fb312a65e77214cb060812f86b3dd6438002aa94dbe099",
     "nodeVersion": "v24.22.2",
     "dependencyInstall": "isolated npm ci --ignore-scripts",
-    "startedAt": "2026-11-17T14:46:24.467Z",
-    "runId": "bb832e39430176c8f96f62d40ea4a5e6",
-    "runnerSourceSha256": "80267a5ee64cd188695ab859207551d867fffffbfc94c3328bcf8f7e8c4b6973",
+    "startedAt": "2026-11-17T15:26:02.706Z",
+    "runId": "4889417f35fe10780c3385cb19e8a51d",
+    "runnerSourceSha256": "db87f05b6dd0204c7a1bcb5c3f5476050ab8e5d250b62f821831a5911dd779df",
     "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
     "ownershipSourceSha256": "3aa5d6d43121a099760c6c9304f6c44126f5b92825a94d94ddd7f2eb5c9829d8",
     "workerSourceSha256": "6ef2267cff3bf3c4dd1c4ee4fe7339ba2dd8db7c0c283a59d76bbb2095e4a0ed",
@@ -489,7 +489,7 @@
     "osc3008GradingSourceSha256": "e6d1068e7af451226c9249443b92a00c64fd87eb0126455bdba27edf021ef6aa",
     "osc3008GradingCollectorSourceSha256": "818f6471585269c5f346340026d2c7c770ec5455801b984ce7cde4c7065e920f",
     "osc3008ReceiptSourceSha256": "48a592a4c6e7e02f4f42244b171da31960ec5797caa0a8960dd6098b2be825a4",
-    "osc720ContractsSourceSha256": "c228cafafd55c074b4735552d81989b391cb852445aa4a419d7b5e92b3d2c11c",
+    "osc720ContractsSourceSha256": "2208ebbcb1dcaec77698166aeb81e9837b663458db8176cd00485a885ee361ad",
     "osc720CollectorSourceSha256": "14985d3e12391b62884677a209f397baca8dad10e5bdaf229334afbae9641a45",
     "osc720ActionSourceSha256": "004a2d33581e4bd72a9bac3f029af696883bae707dfb3b2d80b093cc40029462",
     "osc720GradingSourceSha256": "2d15567e1929022ecaf484e39a3f044107bb33e2ea73e9674063f6ff721bd8e7",
@@ -525,138 +525,138 @@
     "pixels": "nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing",
     "gradingAdapterId": "ntilde-owned-ascii-sgr-grading-v1",
     "asciiSgrSuiteId": "ntilde-owned-ascii-sgr-graded-v1",
-    "gradingBundleSha256": "d96e13ff43770c8f227caf8f57d9d929d87805f2b26f731e19e454ff29874eea",
+    "gradingBundleSha256": "6d5369e5ef1a8b4fc7b36d36c5baaa09534b2e655f403ace71a3c0a1b6e05718",
     "gradingContractsVersion": 1,
     "grading": "versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output",
     "sgrColorsAdapterId": "ntilde-owned-sgr-colors-grading-v1",
     "sgrColorsSuiteId": "ntilde-owned-sgr-colors-graded-v1",
-    "sgrColorsBundleSha256": "0284aaed994ada5d4d471d17d26d6d75a98ae0c15f7d5e54f7ebe26569ed231a",
+    "sgrColorsBundleSha256": "437d86b5ae98530f74ec1b15c5c3b93c57470b7d9fc1c4c26bbd31fb03056f2f",
     "sgrColorsContractsVersion": 2,
     "sgrColors": "layered versioned collector extension; pinned reset/standard-color termless criteria replayed on parent-observed stored attributes and palette indices; not stock output",
     "sgrPaletteAdapterId": "ntilde-owned-sgr-palette-grading-v1",
     "sgrPaletteSuiteId": "ntilde-owned-sgr-palette-graded-v1",
-    "sgrPaletteBundleSha256": "6a0397e6012a7619f80af3bd407c135dea6c4b7ab5453e1300cb7d639d1af422",
+    "sgrPaletteBundleSha256": "456b329aa092aec1d72ce1a447daf66a7814db1cadef3f25f16e0336fac3a351",
     "sgrPaletteContractsVersion": 1,
     "sgrTruecolorAdapterId": "ntilde-owned-sgr-truecolor-grading-v1",
     "sgrTruecolorSuiteId": "ntilde-owned-sgr-truecolor-graded-v1",
-    "sgrTruecolorBundleSha256": "950dc6403d6e28dc8acbc1ac54d93cbfd821c09a06780d0dbc25fbb9dabec422",
+    "sgrTruecolorBundleSha256": "b69d81a766db1a429e1aa75106f909e3f9599fb0d83b25a839934f5b57bd5115",
     "sgrTruecolorContractsVersion": 1,
     "truecolorFindingSuiteId": "ntilde-owned-truecolor-literal-finding-v1",
     "truecolorFindingContractsVersion": 1,
     "sgrUnderlineAdapterId": "ntilde-owned-sgr-underline-grading-v1",
     "sgrUnderlineSuiteId": "ntilde-owned-sgr-underline-styles-graded-v1",
-    "sgrUnderlineBundleSha256": "567fe32ee935e8a7b675d76a246fffc4b2abb408eedc0fc166a71da632e500d5",
+    "sgrUnderlineBundleSha256": "8675b02c8ebe25b43aebe8b2243277187b07e977aecf937a3aeb18fe21593a1f",
     "sgrUnderlineContractsVersion": 1,
     "sgrUnderlineColorAdapterId": "ntilde-owned-sgr-underline-color-grading-v1",
     "sgrUnderlineColorSuiteId": "ntilde-owned-sgr-underline-color-graded-v1",
-    "sgrUnderlineColorBundleSha256": "dff947e8a6428eccb1666eaf24c946faf24e8b8dc769438eefec73d44981b278",
+    "sgrUnderlineColorBundleSha256": "51b9998ba4f237d4bae6871155683d743811ab4f69a65a53befea18567771453",
     "sgrUnderlineColorContractsVersion": 1,
     "underlineResolvedSuiteId": "ntilde-owned-underline-color-resolved-v1",
     "underlineResolvedContractsVersion": 1,
     "sgrResetAdapterId": "ntilde-owned-sgr-selective-reset-grading-v1",
     "sgrResetSuiteId": "ntilde-owned-sgr-selective-reset-graded-v1",
-    "sgrResetBundleSha256": "96128c714d9073292a20ffe469f83be9e5cec1b1aa1ee01398c8170795411b1d",
+    "sgrResetBundleSha256": "ba9f672056a15a49d35439369582c2c2c44e87db2722c1c620592b653737bc7c",
     "sgrResetContractsVersion": 1,
     "sgrClosureAdapterId": "ntilde-owned-sgr-closure-grading-v1",
     "sgrClosureSuiteId": "ntilde-owned-sgr-closure-graded-v1",
-    "sgrClosureBundleSha256": "30033bc0bb31eff554aced91bed7e94ad91d1a0296722500e7451441483ead03",
+    "sgrClosureBundleSha256": "d9e9c23a09d7fa49f726e752ce14cb69a3c9fed00ca42a0d247f2403a39b1ddb",
     "sgrClosureContractsVersion": 1,
     "sgrClosure": "layered versioned collector extension; pinned termless criteria sgr.blink, sgr.overline and sgr.underline.color replayed byte-exactly on parent-observed stored blink flag, explicit overline boolean and stored underline color with reset, decoy, independence and sibling-shared color controls; sgr.underline.color is graded from its own reads, never from the sibling sgr.underline-color-rgb verdict; no blink timing, rendering or App-resolved color; not stock output",
     "eraseLineAdapterId": "ntilde-owned-erase-line-grading-v1",
     "eraseLineSuiteId": "ntilde-owned-erase-line-graded-v1",
-    "eraseLineBundleSha256": "7cd453ca985215b9a7ef1234c00b82bafe2da579bf51318cd8732f6bb5abadd8",
+    "eraseLineBundleSha256": "bde7794a2e0ba39c6cc6058d2960cee7f987937ef4076c9454e0bdeffdfc4a24",
     "eraseLineContractsVersion": 1,
     "charEditAdapterId": "ntilde-owned-char-edit-grading-v1",
     "charEditSuiteId": "ntilde-owned-char-edit-graded-v1",
-    "charEditBundleSha256": "0d8178de34e9ac8e0cd43daea02b3ed72723c0b789e0f84291e230a1766bf49b",
+    "charEditBundleSha256": "4a674671ca6e3cb0cd6745db323d5c983a7b2c0867bb84358039c82dccb03a22",
     "charEditContractsVersion": 1,
     "charEdit": "layered versioned collector extension; pinned character-editing termless criteria (editing.insert-chars with the explicit-1 ICH spelling, editing.delete-chars with the explicit-1 DCH spelling, editing.repeat-char with REP count 3) replayed on parent-observed stored ASCII cells, cursor and stored attribute details, with unmodified-seed, other-count-spelling, wide-row, right-edge, REP-after-barrier and attribute controls; REP graphic and repeat sent in one fenced write; created-blank and repeated-cell attributes observed not required; the pinned pixel/query paths never measure cells and are not qualified; no Unicode, wide-cell or combining editing; not stock output",
     "eraseDisplayAdapterId": "ntilde-owned-erase-display-grading-v1",
     "eraseDisplaySuiteId": "ntilde-owned-erase-display-graded-v1",
-    "eraseDisplayBundleSha256": "070fb90099cf83762e2ac64068a0bb4b1cce013814a8e64f0e5e35365568ecf2",
+    "eraseDisplayBundleSha256": "74462cd25dbabc25d9a19ec9116945f68949db3dbf4b509534b9bea68f9383b2",
     "eraseDisplayContractsVersion": 1,
     "lineEditAdapterId": "ntilde-owned-line-editing-grading-v1",
     "lineEditSuiteId": "ntilde-owned-line-editing-graded-v1",
-    "lineEditBundleSha256": "ab1ba39109b010d99a2d616c2ba096107130171a8ff3ff2bff30a1a2de4c7e7d",
+    "lineEditBundleSha256": "a357eef630ccb946f8a1136c11fd5c1afab81a91fed7c7ca25c8f2b622027375",
     "lineEditContractsVersion": 1,
     "insertReplaceAdapterId": "ntilde-owned-insert-replace-grading-v1",
     "insertReplaceSuiteId": "ntilde-owned-insert-replace-effect-v1",
-    "insertReplaceBundleSha256": "5f91717be844f0faa5b7e9febbdd3e8e9700df27f09792e3471672e296f4528c",
+    "insertReplaceBundleSha256": "73e471d8509be5db9c30c5d179bc958936d14edba1ee0babb55da80a4dca2612",
     "insertReplaceContractsVersion": 1,
     "charsetsAdapterId": "ntilde-owned-charsets-grading-v1",
     "charsetsSuiteId": "ntilde-owned-charsets-graded-v1",
-    "charsetsBundleSha256": "62d278894f757d911caee9e2d70c4d8c06e5805060bba4ac110071007a7eb1a2",
+    "charsetsBundleSha256": "857cccb4d555086980f63281034e64e76cb3a9a613feb0fc588089534fdac570",
     "charsetsContractsVersion": 1,
     "charsets": "layered versioned collector extension; pinned charset termless criteria (charsets.utf8, charsets.dec-special, charsets.dec-line-drawing, charsets.g0-g1-switching) replayed byte-exactly (UTF-8 text, escape designations and shift controls untouched) on parent-observed decoded physical cells from complete stored cell details (never attribute strings or UTF-16 offsets), the cursor and neutral stored attributes, with ASCII, designation, invocation, uppercase and lowercase restoration-witness controls; the pinned terminal pixel capture and cursor-query paths are never verdicts and are not qualified; no glyph, pixel, font, keyboard, locale or platform claim",
     "scrollbackAdapterId": "ntilde-owned-scrollback-grading-v1",
     "scrollbackSuiteId": "ntilde-owned-scrollback-graded-v1",
-    "scrollbackBundleSha256": "3237e8e81c2c74b263420477c5c98cbd6f3d5f34c83179fa7a0e92a9c313602d",
+    "scrollbackBundleSha256": "bf652bbb078ee244124580026d1ca0df4d4af8c0a6f574d454059134ee279d80",
     "scrollbackContractsVersion": 1,
     "savedResetAdapterId": "ntilde-owned-saved-reset-grading-v1",
     "savedResetSuiteId": "ntilde-owned-saved-reset-graded-v1",
-    "savedResetBundleSha256": "40ba351521cdd1c40a1f02c886ef662522a722ba0b71cf984468d5614edd2d72",
+    "savedResetBundleSha256": "cfe67c76ded196d870e628c01e28b4446693d62e890f10cd2bf1f907a1dd3721",
     "savedResetContractsVersion": 1,
     "eraseAttrsRegionAdapterId": "ntilde-owned-erase-attrs-region-grading-v1",
     "eraseAttrsRegionSuiteId": "ntilde-owned-erase-attrs-region-graded-v1",
-    "eraseAttrsRegionBundleSha256": "f2020a925b90e069facd08737b79c2cc294b6fc0114dc7aa05a5872b031ef15a",
+    "eraseAttrsRegionBundleSha256": "111c37645722cbe33733c7e4453ac0fb3cfceae53ebf78cf0d2bcce5a8602862",
     "eraseAttrsRegionContractsVersion": 1,
     "eraseAttrsRegion": "layered versioned collector extension; pinned termless criteria erase.el-with-attrs (EL with the omitted parameter over a measured SGR 42 background: the erased cell (0,0) reads blank with the same App-resolved background RGB as the X it replaced) and erase.ed-scroll-region (ED with the omitted parameter, margins 3;10 and the cursor at row 2: the preceding row KEEP! survives and the target cells read blank) replayed byte-exactly on the disposable App main screen and graded from parent-observed stored cells, App-resolved colors, the cursor, margins, mode flags and history, with a colored-X seed proof, pen and margin restoration witnesses, a full-screen control against accidental whole-screen clearing, resolved-color versus stored-representation comparison and current-pen versus preserved-background controls (observed, not required) and a marker fill recording where ED stopped relative to the margins (observed, not graded; no clipping claim); the pinned terminal cursor-query paths never carry a verdict and are not qualified; no rendered-appearance claim; not stock output",
     "savedReset": "layered versioned collector extension; pinned termless criteria modes.alt-screen.exit (the seeded ?1049 roundtrip), modes.altscreen-47, modes.altscreen-1047 (inconclusive by design in the pinned probe), reset.sgr (a case separate from sgr.reset) and reset.decaln (cell 0,0) replayed byte-exactly on the disposable App main screen and graded from parent-observed stored cells, cursor, active-buffer flag, margins, mode flags and history; the visible-buffer effect contracts for ?47 and ?1047 are separately identified Ntilde observations beside the preserved pinned verdicts; active-screen reads only, no direct inactive-bank inspection; reset.method, RIS and the pinned DECALN pixel path are not claimed",
     "cursorQualAdapterId": "ntilde-owned-cursor-qualification-grading-v1",
     "cursorQualSuiteId": "ntilde-owned-cursor-qualification-graded-v1",
-    "cursorQualBundleSha256": "a3bb719dd29ffacd6275f24338d5465173ebbcf0f9f6a055aa27274bcd406b1a",
+    "cursorQualBundleSha256": "b7a34ea86c96b50eeb0f600ed3fc3fd3b09bc8d6a5705518344d3534c4dbc256",
     "cursorQualContractsVersion": 1,
     "eraseCharsHistoryAdapterId": "ntilde-owned-erase-chars-history-grading-v1",
     "eraseCharsHistorySuiteId": "ntilde-owned-erase-chars-history-graded-v1",
-    "eraseCharsHistoryBundleSha256": "8715352503a15c931748882646b1b267fcb72170798cb4b40fbf51667e102a6f",
+    "eraseCharsHistoryBundleSha256": "0e1ec2c03fd38ba2af554aa47d313f973ca7d7b95e46e904464759a52bfff416",
     "eraseCharsHistoryContractsVersion": 1,
     "selectiveEraseAdapterId": "ntilde-owned-selective-erase-grading-v1",
     "selectiveEraseSuiteId": "ntilde-owned-selective-erase-graded-v1",
-    "selectiveEraseBundleSha256": "ea3c2f4cc5a035a0d7062535c1d4cfe36678ce67ab91e878061b73e2064192f7",
+    "selectiveEraseBundleSha256": "332958ce350e03fefc69e9176101d0271a780f21ccf631d49e674bfaebe1dd7d",
     "selectiveEraseContractsVersion": 1,
     "selectiveErase": "layered versioned collector extension; pinned termless criteria erase.selective (DECSED, ESC[?2J) and editing.decsera (DECSERA, ESC[1;1;1;5${) replayed byte-exactly over the seeded DECSCA-protected P and unprotected ABCDZ and graded from parent-observed stored cells, per-cell DECSCA protection (observed, never inferred from a surviving marker), cursor, stored attributes, mode flags, buffer state and saved lines, with ordinary-erase, protection-off, overwrite, restoration, full-screen, edge, bold-attribute, history and incorrect-bounds or other-mode controls; the pinned terminal pixel and cursor-query paths never carry a verdict and are not qualified; ASCII only; not stock output",
     "rectEditAdapterId": "ntilde-owned-rectangle-editing-grading-v1",
     "rectEditSuiteId": "ntilde-owned-rectangle-editing-graded-v1",
-    "rectEditBundleSha256": "7bf4281368676b55d325b5c7b4439804e24bc55bd02bc0c663b149e1098e8438",
+    "rectEditBundleSha256": "8c2d39d0bdd97a7dd80fbb9ebaf322641f7a2802671606c0763b9947ae1ca99f",
     "rectEditContractsVersion": 1,
     "colEditAdapterId": "ntilde-owned-column-editing-grading-v1",
     "colEditSuiteId": "ntilde-owned-column-editing-graded-v1",
-    "colEditBundleSha256": "c12c672c7db60aadd31fe0b4b4aa12f26f9657ea3b08e093d437f63f4af8e48a",
+    "colEditBundleSha256": "5741f88549ff25c642fc0d72cea510a79fa1e759035eb99be2e545924099567e",
     "colEditContractsVersion": 1,
     "rectChecksumAdapterId": "ntilde-owned-rectangle-checksum-grading-v1",
     "rectChecksumSuiteId": "ntilde-owned-rectangle-checksum-graded-v1",
-    "rectChecksumBundleSha256": "a3ab434635e9a098409d03addf27c6926fc4c5eab7611d433e58ed6cfe4668ef",
+    "rectChecksumBundleSha256": "9c1e78b34a67ceb8f4425b9d893710f81468c949335e253d13baab8e10f5fe17",
     "rectChecksumContractsVersion": 1,
     "lrMarginsAdapterId": "ntilde-owned-left-right-margins-grading-v1",
     "lrMarginsSuiteId": "ntilde-owned-left-right-margins-graded-v1",
-    "lrMarginsBundleSha256": "6bdea26768a8ef9d1e3bb2b0dd34cea2dac12c775006c486aa6127cd9e40cd9a",
+    "lrMarginsBundleSha256": "80eb8e2c4e417c823efcad1475c74ea8288303cf232ab3906cbc8fa4499db9ac",
     "lrMarginsContractsVersion": 1,
     "colorResetAdapterId": "ntilde-owned-runtime-color-reset-grading-v1",
     "colorResetSuiteId": "ntilde-owned-runtime-color-reset-graded-v1",
-    "colorResetBundleSha256": "afc6430fbd5cfa5cc46adaad1681c2f05192f20d3e68c883728c7c86b6213cd6",
+    "colorResetBundleSha256": "95a1ec45de0e57ee367ab28cd720e4edcd0d63cb2c86afd530ab056ffe9ef924",
     "colorResetContractsVersion": 1,
     "selectionColorsAdapterId": "ntilde-owned-selection-colors-grading-v1",
     "selectionColorsSuiteId": "ntilde-owned-selection-colors-graded-v1",
-    "selectionColorsBundleSha256": "832843bb530e41a7c35e1396f70ebcc97e762012272a7d9f15602ea8cf5d574e",
+    "selectionColorsBundleSha256": "cc0839c8e9b6f53e02537a1b4ca03ec067b3fe204b4e2f5a2bda973ea4967518",
     "selectionColorsContractsVersion": 1,
     "colorReset": "layered versioned collector extension; pinned termless criteria extensions.osc104-reset-palette, osc110-reset-fg, osc111-reset-bg and osc112-reset-cursor (the BEL-spelled query, set of rgb:aa/bb/cc, query, reset and query) replayed byte-exactly on a disposable App and graded from exact fenced OSC replies, the App-resolved colors and override metadata, stored default/palette/literal cells, the cursor and controlled offscreen renders by an independent runtime-color model over the measured baseline; the pinned terminal paths (unmeasuredStateEffect) stay inconclusive by design; not stock CLI data",
     "lrMargins": "layered versioned collector extension; pinned termless modes.left-right-margin code (ESC[?69h, the mode metadata, ESC[?69l; inconclusive by design) replayed byte-exactly and preserved, beside a separately identified effect contract graded from parent-observed stored cells, the cursor and the App-stored region, left/right margins, DECLRMM, origin and insert mode by an independent margins model over sixteen controls; stored ASCII cells only, no stock grades",
     "routedInputAdapterId": "ntilde-owned-routed-input-grading-v1",
     "routedInputSuiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
-    "routedInputBundleSha256": "530d44d3ccb2b5fed17affb4520ffb36ac2860c5483241002bd4ee9214200f23",
+    "routedInputBundleSha256": "a0491811dfb0b5293c23eefa2a0a8fe858593ae2868e4bb5b0654f0b744f1888",
     "routedInputContractsVersion": 1,
     "modifyOtherKeysAdapterId": "ntilde-owned-modify-other-keys-grading-v1",
     "modifyOtherKeysSuiteId": "ntilde-owned-modify-other-keys-benchmark-graded-v1",
-    "modifyOtherKeysBundleSha256": "bc697debe4a55d362ee464293f20182cd2f8fcaf48de0c6270ca7aff5261bf1f",
+    "modifyOtherKeysBundleSha256": "35b411c9374412b0c1f1e357edd58cbbd26085873a896e706ce1dd54dc2268d3",
     "modifyOtherKeysContractsVersion": 1,
     "modifyOtherKeysFirstPolicy": 50,
     "mexAdapterId": "ntilde-owned-mouse-extended-grading-v1",
     "mexSuiteId": "ntilde-owned-mouse-extended-benchmark-graded-v1",
-    "mexBundleSha256": "21ac4881df4e8f7303cd15179bb13ebc730cc751324c314d7a087d400b281540",
+    "mexBundleSha256": "9cf561e72c584595674a64f5d7aec515dc32d521bef7d39b9fd2a9185d56f06a",
     "mexContractsVersion": 1,
     "pxmAdapterId": "ntilde-owned-pixel-mouse-grading-v1",
     "pxmSuiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
-    "pxmBundleSha256": "5658d7bce8c799a2d9680a2be7a40e17f9e064b2f9473f46722bf7891c58261c",
+    "pxmBundleSha256": "00b9052f2caa72c76a7e6a7b9ce7504f7842c1a46ba54476251949dee919ff76",
     "pxmContractsVersion": 1,
     "modifyOtherKeys": "layered versioned collector extension; pinned termless input.modify-other-keys code (always inconclusive by design) replayed over the declaration value the child itself answered by XTGETTCAP and preserved, beside a separately identified effect contract graded from the owned routed-input v3 plan: declared Avalonia events routed through the production App input path and the exact bytes the child received for the negotiated XTMODKEYS levels 1 and 2 (subcases of one benchmark id), every dispatch preceded by a child XTQMODKEYS proof of the level, literal protocol expectations cross-checked by an independent oracle, disabled/level-1/level-2 transitions, paired key-down/backend-text duplicate suppression, documented Shift-only-printable, Meta and AltGr policy limits, key-up and deliberately unhandled controls and a bounded kitty-precedence control; generated events, not physical keyboard input; no level 3, no formatOtherKeys, no Kitty expansion; direct-local only; no stock grades",
     "mex": "layered versioned collector extension; pinned termless modes.utf8-mouse-1005 code (feeds ?1005h, captures the DECRQM reply, feeds ?1005l, then notTestedResult: always inconclusive by design) and input.urxvt-mouse code (mouseInputProbe: always inconclusive) replayed over the DECRQM reply and tracking state the child itself received and preserved, beside separately identified effect contracts graded from the owned routed-input v4 plan: declared Avalonia events routed through the production App input path and the exact bytes the child received for UTF-8 (1005) and urxvt (1015) coordinates under X10, normal, button-event and any-event tracking, every dispatch preceded by child DECRQM proofs of the encoding and tracking state, literal protocol expectations cross-checked by an independent oracle written from xterm button.c, legacy and SGR controls, the single-slot selection rules and their reset forms; generated events, not physical pointer input; the stock terminal path of modes.utf8-mouse-1005 is a separate stock-collector result; direct-local only; no stock grade change by this layer",
@@ -664,78 +664,78 @@
     "routedInput": "layered versioned collector extension; pinned termless input.x10-mouse, input.button-event-mouse and modes.application-keypad code (always inconclusive by design) replayed over mode values the child itself received as DECRQM replies and preserved, beside separately identified effect contracts graded from the owned routed-input suite: declared Avalonia events routed through the production App input path and the exact bytes the child received, literal protocol expectations cross-checked by an independent oracle; generated events, not physical input; direct-local only; no stock grades",
     "osc133AdapterId": "ntilde-owned-osc133-grading-v1",
     "osc133SuiteId": "ntilde-owned-osc133-graded-v1",
-    "osc133BundleSha256": "49a6b52bf7fe4d42377c08845bbf5e7b764bb88eaaf75b42b61543fb1e5b3d9b",
+    "osc133BundleSha256": "9a526f3b11d86ca265254af2345d1cb6bb66bc2faea49d13621f001bae8898a3",
     "osc133ContractsVersion": 1,
     "osc633AdapterId": "ntilde-owned-osc633-grading-v1",
     "osc633SuiteId": "ntilde-owned-osc633-graded-v1",
-    "osc633BundleSha256": "e7d0adf1a4fdc89d8d422410af0e614dc5f7eaa64d08d1692c268ef0a1c0244e",
+    "osc633BundleSha256": "673fcc8e1b54ce39534ff048b470df539d0659f1dd74fc061d5b63d73c1557a2",
     "osc633ContractsVersion": 1,
     "osc78AdapterId": "ntilde-owned-osc78-grading-v1",
     "osc78SuiteId": "ntilde-owned-osc7-osc8-graded-v1",
-    "osc78BundleSha256": "c20f9e67e8c305c2603505fff11371a553b6aa75ad612168322458f6b726bc97",
+    "osc78BundleSha256": "15f787fa4ef73508533b571f153878719814b38ba517d08607a10f45cf0fa641",
     "osc78ContractsVersion": 1,
     "osc78": "layered versioned collector extension; pinned extensions.osc7-cwd (no fixture bytes: declared-capability and no-readback results, inconclusive by design) and extensions.osc8 (termless: stored cells and hyperlink metadata of the pinned fixture; terminal: cursor position, inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells, pane metadata (title, host working directory, hyperlink runs with snapshot-local identities) and session status by an independent oracle: reported working-directory metadata only (not the child process directory or path existence) and stored hyperlink-bearing cells only (not click handling, URL opening or rendering); protocol handling in a disposable direct-local App only; no stock-grade claim",
     "titleStackAdapterId": "ntilde-owned-title-stack-grading-v1",
     "titleStackSuiteId": "ntilde-owned-title-stack-graded-v1",
-    "titleStackBundleSha256": "db4060815aba6acf056a59386bd2615ca2e781a86e0848c26c33816e631706f8",
+    "titleStackBundleSha256": "ec430eb59f6077ad21ff76a575f9b6efd414cb0f8f4c59c9357069cb57a107cf",
     "titleStackContractsVersion": 1,
     "oscTitleAdapterId": "ntilde-owned-osc-title-grading-v1",
     "oscTitleSuiteId": "ntilde-owned-osc-title-graded-v1",
-    "oscTitleBundleSha256": "b863810a2233323e526dfca87039accad5bdaf63b521bc0cb68f7a5c25a6fcc3",
+    "oscTitleBundleSha256": "2193a19d4a0ca02042de6ab532b2ef727092690c87a9eb9e022f211df2835862",
     "oscTitleContractsVersion": 1,
     "titleStack": "layered versioned collector extension; pinned device.xtwinops-22 and device.xtwinops-23 termless code (feed a title, CSI 22;0t, feed another title, CSI 23;0t, getTitle() after each stage; supported only when all three titles are as expected, never unsupported) and terminal code (the writes then a cursor query; inconclusive by design) replayed over parent-journaled observations and preserved, beside separately identified effect contracts graded from paired complete stored cells and the raw title, raw icon name, display title and tab text of the same observation by an independent title-stack oracle: each pinned fixture executed from a measured prepared baseline, plus combined, title-only, icon-only, nested (LIFO), mixed-selector, empty-pop, bounded-depth, alternate-screen, DECSTR and RIS experiments; raw icon-name state only, no host icon presentation, no title or icon report query, no direct-slot addressing, disposable direct-local App only, no stock grade",
     "xtgettcapAdapterId": "ntilde-owned-xtgettcap-grading-v1",
     "xtgettcapSuiteId": "ntilde-owned-xtgettcap-graded-v1",
-    "xtgettcapBundleSha256": "683b6255eca8afb5385ba17080c727cf25c1ac73ac25a2bd2497589bea028073",
+    "xtgettcapBundleSha256": "5e91938f059314e8b3c70280924e156ff625e2764c38ded4b9ddbea93d0cc067",
     "xtgettcapContractsVersion": 1,
     "asciiReflowAdapterId": "ntilde-owned-ascii-reflow-grading-v1",
     "asciiReflowSuiteId": "ntilde-owned-ascii-reflow-v1",
-    "asciiReflowBundleSha256": "1a981982ed4087ede834342fa3e2ec429eab956c4dd830dfa99e7b1e34d1dd66",
+    "asciiReflowBundleSha256": "7f6568f8d94c114d8727ee5f7f854d113386b1de54473e376556d5391513f064",
     "asciiReflowContractsVersion": 1,
     "ownedAsciiReflowPolicy": "parent-selected App resize in proved private pane; independent kernel geometry and -opost; two ASCII reflow experiments on one disposable main screen",
     "osc9AdapterId": "ntilde-owned-osc9-grading-v1",
     "osc9SuiteId": "ntilde-owned-osc9-graded-v1",
-    "osc9BundleSha256": "bd9bceb0833aaf6d98560edc2ee376d2e92261b73930c16e961d63dc1fa3d62f",
+    "osc9BundleSha256": "b7da2c93cb335cb831cedf600ec82cbe4f136d6648006ff1aac2f948980a8e84",
     "osc9ContractsVersion": 1,
     "notifyAdapterId": "ntilde-owned-notify-grading-v1",
     "notifySuiteId": "ntilde-owned-notify-graded-v1",
-    "notifyBundleSha256": "387c36120b839ddb7483a6dc4370808cbd1fa1000089ce122b94b5cfb69aa1a6",
+    "notifyBundleSha256": "6cfef31806cd690005566fe1482f59cb1ba855c90775ee1724edec3ca5f9a620",
     "notifyContractsVersion": 1,
     "devqAdapterId": "ntilde-owned-device-queries-grading-v1",
     "devqSuiteId": "ntilde-owned-device-queries-graded-v1",
-    "devqBundleSha256": "0e4e0f91731fd7fcf6ed7a4e532e20781e8bac7d688085109394953049dc7d1c",
+    "devqBundleSha256": "6b5699b0e24b9db6bb72b95bead02220994a0a123f6850204e5a7064b86cd26a",
     "devqContractsVersion": 1,
     "cellSizeAdapterId": "ntilde-owned-osc-cell-size-grading-v1",
     "cellSizeSuiteId": "ntilde-owned-osc-cell-size-v1",
-    "cellSizeBundleSha256": "74bf35fa2a3b0fab59ce159c53744e42e1962579e9fb7da7746aef87e6ff4798",
+    "cellSizeBundleSha256": "1e1dbe80a05f7149bc2b32e74c2ff73a4f6545214ecdf8300072917a7ab6aca8",
     "cellSizeContractsVersion": 1,
     "xcsAdapterId": "ntilde-owned-xterm-color-stack-grading-v1",
     "xcsSuiteId": "ntilde-owned-xterm-color-stack-graded-v1",
-    "xcsBundleSha256": "f0bb8809a3b507ab6a33951a09c628f5bf8f7d890f4ec383c3ae257180bfd57c",
+    "xcsBundleSha256": "19146708bba04d5826315e23eb5854993a3f51e411f0a657d610982d26cccdf9",
     "xcsContractsVersion": 1,
     "xssAdapterId": "ntilde-owned-xterm-sgr-stack-grading-v1",
     "xssSuiteId": "ntilde-owned-xterm-sgr-stack-graded-v1",
-    "xssBundleSha256": "514d064a969dc5b807a3a1f4126ae146074da62d2b2f4467252240388af84fb2",
+    "xssBundleSha256": "e1139de2a0f25922106332b0dbe17d6f626b565729a61288ccc6b43c4ae85559",
     "xssContractsVersion": 1,
     "xsvAdapterId": "ntilde-owned-xterm-saved-modes-grading-v1",
     "xsvSuiteId": "ntilde-owned-xterm-saved-modes-graded-v1",
-    "xsvBundleSha256": "748eb250c7f121a2fb1686f5c297fa5f936ce03b63a14c3d28dc03c98208d3f1",
+    "xsvBundleSha256": "955029ca43cd640d5e5302b394c381f54ea8309792462eb5a03dfdf22a301b6d",
     "xsvContractsVersion": 1,
     "kclAdapterId": "ntilde-owned-kitty-color-grading-v1",
     "kclSuiteId": "ntilde-owned-kitty-color-graded-v1",
-    "kclBundleSha256": "068ef0220b4cfa9ed303a1563763debbb7801efb6c931e94b5530c3c5a57b49a",
+    "kclBundleSha256": "036a9aa5d840905930e124a41bdc731394e5514898dc21818df737280aa8e1f3",
     "kclContractsVersion": 1,
     "osc5AdapterId": "ntilde-owned-osc5-special-colors-grading-v1",
     "osc5SuiteId": "ntilde-owned-osc5-special-colors-graded-v1",
-    "osc5BundleSha256": "909326e4488399901bf3f2bc7fec1a268d4c8d4df18105f85eedb70a4ec5bebb",
+    "osc5BundleSha256": "663e96ccca43fbfc9a1dabd852ea09927470aaf01934a73a5a0d57bfe83ec612",
     "osc5ContractsVersion": 1,
     "osc720AdapterId": "ntilde-owned-osc720-grading-v1",
     "osc720SuiteId": "ntilde-owned-osc720-graded-v1",
-    "osc720BundleSha256": "0124622fdf383aa10bd7936466c1cd66cc3c21bc722cd7e16dc85cbbce60ba76",
+    "osc720BundleSha256": "7f3aca49c4d7727438fe42e56e57b28e56eaa142b049606ffd3798ea8480d5f8",
     "osc720ContractsVersion": 1,
     "osc3008AdapterId": "ntilde-owned-osc3008-grading-v1",
     "osc3008SuiteId": "ntilde-owned-osc3008-graded-v1",
-    "osc3008BundleSha256": "c835b926063b7e647413ee801bfa423dd8db5afdccfa4b8e80fd6d6d353ecf63",
+    "osc3008BundleSha256": "6e70b5518a4080ae642921fb3903ba3d450dc46aca5a33fd40fe9102f2b0608b",
     "osc3008ContractsVersion": 1,
     "xtgettcap": "layered versioned collector extension; pinned device.xtgettcap termless and terminal code (DCS + q 544e ST; a 1+r544e=<even hex> value reply is supported, the bare 0+r refusal and silence stay inconclusive) replayed byte-exactly over the journaled raw replies of its own fenced exchange and preserved — TN is deliberately refused, so both pinned verdicts stay inconclusive — beside the separately identified effect contract ntilde-xtgettcap-capability-report-effect-v1 graded by an independent reply oracle over the same fence: the exact pinned request, the numeric Co/colors replies, the RGB/Tc flag replies, one string reply, multi-name reply order with per-name outcomes, documented unavailable and unknown names, case-sensitivity, the uppercase echo, malformed lists with exactly one refusal and verified recovery after each; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged; capability-report replies only — no rendering, color accuracy, control-string execution, Ms clipboard, X resource, remote-delivery or other-platform claim, no stock grade",
     "asciiReflow": "layered versioned collector extension; pinned extensions.reflow code (no fixture, no resize request, no cell readback; both arms always inconclusive by design) replayed byte-exactly over the journaled declared capability and preserved, beside a separately identified effect contract graded from paired complete stored cells, cursor, modes, attributes and complete ordered history at three actual geometries per experiment, proven by parent-selected App resize actions with independent kernel geometry and output-processing proof: an independent character-slicing model must reproduce the width round trip and the history round trip with top-anchored restoration in a disposable main screen buffer; the alternate screen is observed once as the nonce-bind control; no Unicode, wide-cell, grapheme or history-attribute claim, no images, pixels or rendered appearance, no saved banks, remote delivery or other platforms, no stock grades",
@@ -757,7 +757,7 @@
     "cursorQual": "layered versioned collector extension; the four pinned cursor criteria (cursor.cup-scroll-region, cursor.hide, cursor.shape, cursor.reverse-wrap): the termless AND app callbacks replayed byte-exactly on a measured reset alternate screen over parent-observed stored state, physical cursor, margins, origin and cursor mode, raw CPR exchanges and controlled synthetic-phase render captures, with controls for DECOM off/on, region boundaries, restoration, visible and hidden references, steady shapes, blink phase and the mode-off reverse-wrap fixture; the geometry-repaired derivation for cursor.reverse-wrap and cursor.shape keeps the original callbacks and retains the original UndeclaredTerminalGeometry failures",
     "attrRectAdapterId": "ntilde-owned-attr-rect-grading-v1",
     "attrRectSuiteId": "ntilde-owned-attr-rect-graded-v1",
-    "attrRectBundleSha256": "e37bf971a9a2915b986fb2f137d7a5ecef44cbb0f25c495e3f49290731fec881",
+    "attrRectBundleSha256": "0d266f1bd6656dbdcd4881f24b44cb6673a3228c96525b5901a1951e77e780ed",
     "attrRectContractsVersion": 1,
     "attrRect": "layered versioned collector extension; pinned termless criteria editing.deccara (ESC[1;1;3;5;7$r, set inverse over rows 1-3 columns 1-5 of aaaaaZ/bbbbbY/cccccX), editing.decrara (ESC[1;1;3;5;7$t, toggle inverse off the same seeded area) and editing.decsace (inconclusive by design in the pinned probe: it only feeds ESC[2*x and reports consumption) replayed byte-exactly on parent-observed stored cells, cursor and stored attribute details; the pinned verdicts are preserved and the separately identified effect contracts grade the attribute change itself with default-stream versus rectangle extent controls (DECSACE 0, 1 and 2), set/clear/toggle operand controls, preserved text, colors and current pen, outside-area controls, second-application restoration and extent-restoration witnesses; the extent setting is not readable from the App, so it is observed only through behavior; stored state only, no rendered appearance, no stock grades",
     "scrollback": "layered versioned collector extension; the nine pinned scrolling/history termless criteria (scrollback.accumulate, total-lines, scroll-up, reverse-index, scroll-down, set-region, alt-screen, decstbm, decstbm-reset) replayed byte-exactly on a measured reset main screen and graded from parent-observed viewport text, actual scrollback lines and count, margins, active screen, modes, cursor and stored attributes, with empty-history, pre-overflow, region-confinement, wrong-direction, no-op, whole-screen, alternate-screen isolation and unreset-region controls; three pinned probes are null by construction and the contract measurement beyond them is recorded as a divergence; ASCII only; not stock output",
@@ -773,12 +773,12 @@
     "sgrPalette": "layered versioned collector extension; pinned bright, 256-color and default-color termless criteria (sgr.fg/bg.bright, .256, .default) replayed on parent-observed stored palette indices, default markers and literal bytes with App-resolved RGB bound to one recorded palette/theme; no pixels; not stock output",
     "sgrAttrsAdapterId": "ntilde-owned-sgr-attributes-grading-v1",
     "sgrAttrsSuiteId": "ntilde-owned-sgr-attributes-graded-v1",
-    "sgrAttrsBundleSha256": "58317f2da6fbb1fb2652a02218f183d824776eb7fbc10c06fafd34ee0e7f363b",
+    "sgrAttrsBundleSha256": "079c705554a313f666a6be8fcf8fe70583f3192abbea5f8bc6485ba1541c8dfa",
     "sgrAttrsContractsVersion": 1,
     "sgrAttrs": "layered versioned collector extension; pinned SGR attribute termless criteria (underline.single, inverse, faint, hidden, strikethrough) replayed on parent-observed stored flags and underline style with DECSCNM, neutral-baseline and reset controls; stored state only, no pixels; not stock output",
     "sgrRgbAdapterId": "ntilde-owned-sgr-rgb-grading-v1",
     "sgrRgbSuiteId": "ntilde-owned-sgr-rgb-graded-v1",
-    "sgrRgbBundleSha256": "c79fe118f08de7ea1552218b57bdb35400a770e22b0e8f2741b3c2eea6e6a93c",
+    "sgrRgbBundleSha256": "ae232cd6bc63c6b603f66dea430c569b36926438bf753868ff4228addf929663",
     "sgrRgbContractsVersion": 1,
     "sgrRgb": "layered versioned collector extension; pinned named-color RGB termless criteria replayed on parent-observed App-resolved colors bound to one recorded theme state; not stock output",
     "resolvedColors": "opt-in readScreen projection resolved in the App rendering layer; storage-to-theme resolution stage, one coherent render snapshot; no pixels",
@@ -786,36 +786,36 @@
     "attributes": "separate ASCII SGR flags and palette-index suite",
     "cellDetails": "separate stored ARGB/underline and rendition/charset suites; no theme resolution or pixels",
     "cursorModes": "stored cursor style/blink/default/visibility; pristine owned DECSTR cleanup, no host appearance or blink phase",
-    "ownerPid": 14315
+    "ownerPid": 54710
   },
   "receipt": {
     "schemaVersion": 74,
-    "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+    "runId": "4889417f35fe10780c3385cb19e8a51d",
     "suiteId": "ntilde-owned-ascii-cells-v1",
     "file": "cell-observations.json",
-    "sha256": "439d0c9e67dd87c17eb47ba0ee2ab8d2b7b36dbb411327f88ea7b88597d64b60",
+    "sha256": "a74365339966f2b4f40f84704762b07334eb31cbbd9b9d4c040e7b70f7da66c7",
     "counts": {
       "passed": 8
     },
     "provisionalUntil": "cell-receipt.json",
     "sgrEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-indices-v1",
       "file": "sgr-observations.json",
-      "sha256": "4c4541021ece723a950c33738a0b123fe35efe3093e4f8f8d1654f80ef5d8483",
+      "sha256": "f00afef5f2a44337979c5a8a8b030241c13f811cdbc9996992eb1a621da13876",
       "counts": {
         "passed": 17
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "gradingEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
       "file": "grading-observations.json",
-      "sha256": "de72244e5cbbf1e702d29d98035d2b627d0bc76038ed8f308367edfab6fdc910",
+      "sha256": "79f99e9d4e02d05c531a60b79485f2c39d1bce4eaecd11792a7365e33ade8f8d",
       "runFile": "grading-run.json",
       "runSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
-      "adapterBundleSha256": "d96e13ff43770c8f227caf8f57d9d929d87805f2b26f731e19e454ff29874eea",
+      "adapterBundleSha256": "6d5369e5ef1a8b4fc7b36d36c5baaa09534b2e655f403ace71a3c0a1b6e05718",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -823,13 +823,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrColorsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-colors-graded-v1",
       "file": "sgcolors-observations.json",
-      "sha256": "eb2baf6b1f8cb929312b37ade32c0a4ba17f5e25d10708a6f0f83a3e96e3346d",
+      "sha256": "e5657198be07febb1360bb7bb6cdc8f71687f485705a471365f48f2d51abc8e1",
       "runFile": "sgcolors-run.json",
       "runSha256": "71b4bb63f8ad984bac39fe9f1c91c9e1432b39b2bce5c1e3c2f45a3076a3b916",
-      "adapterBundleSha256": "0284aaed994ada5d4d471d17d26d6d75a98ae0c15f7d5e54f7ebe26569ed231a",
+      "adapterBundleSha256": "437d86b5ae98530f74ec1b15c5c3b93c57470b7d9fc1c4c26bbd31fb03056f2f",
       "contractsVersion": 2,
       "counts": {
         "supported": 5
@@ -837,13 +837,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrRgbEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
       "file": "sgrgb-observations.json",
-      "sha256": "b3db09e32f4d41b6496d378553e86827007be4673dfa5f19edc0a8260d6fbe98",
+      "sha256": "2aeb03db88276a6a9a300c9e0dffde30cad3b5a72bc9b54ef294bb4d4c69784a",
       "runFile": "sgrgb-run.json",
       "runSha256": "08c884b24fa5a793184d981113f958f1b334b722aac654d9702c836ce51a7478",
-      "adapterBundleSha256": "c79fe118f08de7ea1552218b57bdb35400a770e22b0e8f2741b3c2eea6e6a93c",
+      "adapterBundleSha256": "ae232cd6bc63c6b603f66dea430c569b36926438bf753868ff4228addf929663",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -851,13 +851,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrAttrsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
       "file": "sgattr-observations.json",
-      "sha256": "a20479fb4376f396026e277d2fbd778eaf76376f58867184e207274b183d21df",
+      "sha256": "1fde3d35ebca855539eb7b83b34055ca1c4777764c4c80c3831b6f388588d290",
       "runFile": "sgattr-run.json",
       "runSha256": "bb2f0b739fdf6b4a2348ea55d62c817103a6b0ee0fd932bc18900dc3625b2960",
-      "adapterBundleSha256": "58317f2da6fbb1fb2652a02218f183d824776eb7fbc10c06fafd34ee0e7f363b",
+      "adapterBundleSha256": "079c705554a313f666a6be8fcf8fe70583f3192abbea5f8bc6485ba1541c8dfa",
       "contractsVersion": 1,
       "counts": {
         "supported": 5
@@ -865,13 +865,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrPaletteEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-palette-graded-v1",
       "file": "sgpal-observations.json",
-      "sha256": "563ec9458d83ed65f95cae66a5ae8001fe867a12dbe2a396426b7d29be09218a",
+      "sha256": "b89de55f1a62e28ee81dbb4cd3070a1db2fd9fe4fb999721dabefebf683ad604",
       "runFile": "sgpal-run.json",
       "runSha256": "a85c9738ebd6af2770f3b9e535eefbfbb66a87cb1e488ded66e3ac7eebd38912",
-      "adapterBundleSha256": "6a0397e6012a7619f80af3bd407c135dea6c4b7ab5453e1300cb7d639d1af422",
+      "adapterBundleSha256": "456b329aa092aec1d72ce1a447daf66a7814db1cadef3f25f16e0336fac3a351",
       "contractsVersion": 1,
       "counts": {
         "supported": 6
@@ -879,13 +879,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrTruecolorEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
       "file": "sgtc-observations.json",
-      "sha256": "408696a54737e65361964243b477e42f72b30b885f977edc59ab8d4822ad41c0",
+      "sha256": "29a5a49ce90d0f1fe3cf84db9ed5a0ce9940c229227ba486b86e70f4d3dfc977",
       "runFile": "sgtc-run.json",
       "runSha256": "75627075fc17286f1bcbcef3dc025e080c6c96384068bb75f2ee29ff7b348299",
-      "adapterBundleSha256": "950dc6403d6e28dc8acbc1ac54d93cbfd821c09a06780d0dbc25fbb9dabec422",
+      "adapterBundleSha256": "b69d81a766db1a429e1aa75106f909e3f9599fb0d83b25a839934f5b57bd5115",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -893,10 +893,10 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "truecolorFindingEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
       "file": "sgtf-observations.json",
-      "sha256": "da832455811dae55ae5473a7c518b55bc88e121a6f42704591dd68b463b3a16c",
+      "sha256": "e55aad9e482b692b24398b0d0b07bd3739845a9ecb25a5a89bb6291507f9313f",
       "runFile": "sgtf-run.json",
       "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
       "contractsVersion": 1,
@@ -906,13 +906,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrUnderlineEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-underline-styles-graded-v1",
       "file": "sgus-observations.json",
-      "sha256": "c57bfd40a259fb9b7abc1870dd9e10adbed39887ceef05ab287b4a81d4f4ae10",
+      "sha256": "5ad258085e1ece2406685302cdbdec593b1712be8abcc332a8f2d879c4225d8a",
       "runFile": "sgus-run.json",
       "runSha256": "09c28fe68acea0f2197945dfc789b18a2017f6fbcdb23619d5173bf6cda61dab",
-      "adapterBundleSha256": "567fe32ee935e8a7b675d76a246fffc4b2abb408eedc0fc166a71da632e500d5",
+      "adapterBundleSha256": "8675b02c8ebe25b43aebe8b2243277187b07e977aecf937a3aeb18fe21593a1f",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -920,13 +920,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrUnderlineColorEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-underline-color-graded-v1",
       "file": "sguc-observations.json",
-      "sha256": "5366daa91337f9edd0550d9341e60ce9cf5d0a2754284ae3df988c7163416b22",
+      "sha256": "a063d9e27c47772b34502b0190c1f0a68706d743dc47d81c2a99559d4827e040",
       "runFile": "sguc-run.json",
       "runSha256": "18ca05109449d916f9601f089ec164b00f02613f59a3d610ed97fa7cb3340b41",
-      "adapterBundleSha256": "dff947e8a6428eccb1666eaf24c946faf24e8b8dc769438eefec73d44981b278",
+      "adapterBundleSha256": "51b9998ba4f237d4bae6871155683d743811ab4f69a65a53befea18567771453",
       "contractsVersion": 1,
       "counts": {
         "supported": 3
@@ -934,10 +934,10 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "underlineResolvedEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-underline-color-resolved-v1",
       "file": "sgur-observations.json",
-      "sha256": "e6a6c1a8a2552120cfe294d575027c035aa59ac7ebce03e326faaae741bfa79a",
+      "sha256": "0a28c3be23f1a23cb5fc33e8dbf99a9daac67c276d47ccf1c049e91b82c12c97",
       "runFile": "sgur-run.json",
       "runSha256": "cf1a9eeacdde5463b564826e1d2ed01b8947424fae7f2c9f49f587ecdde109e6",
       "contractsVersion": 1,
@@ -947,13 +947,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrResetEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-selective-reset-graded-v1",
       "file": "sgsr-observations.json",
-      "sha256": "c16b65264d7e8f2ce303a5bb6295717d25488ab259aef4fa7bbd2471cd0f4f26",
+      "sha256": "82ca99d999df6bd2e1b6b6c971108e490bf508bf5a5822d7d872ca67962d95b8",
       "runFile": "sgsr-run.json",
       "runSha256": "f06b065ef7247f380a2160c92f146ff429d2dc70000ff9c4a93beb788605c2a0",
-      "adapterBundleSha256": "96128c714d9073292a20ffe469f83be9e5cec1b1aa1ee01398c8170795411b1d",
+      "adapterBundleSha256": "ba9f672056a15a49d35439369582c2c2c44e87db2722c1c620592b653737bc7c",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -961,13 +961,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrClosureEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-sgr-closure-graded-v1",
       "file": "sgcl-observations.json",
-      "sha256": "72240481c3440f53a79812a101bbc15356a997e261a5855e8cbe4b9afb17a99b",
+      "sha256": "9886acfa8c9aedfeb780edc72652e5168843b7f453e3d0d515ea2b02987731d4",
       "runFile": "sgcl-run.json",
       "runSha256": "a842c9221ae16b7375a7458f178d5e9be0bbb34b0f6ad706126a884de9bd7261",
-      "adapterBundleSha256": "30033bc0bb31eff554aced91bed7e94ad91d1a0296722500e7451441483ead03",
+      "adapterBundleSha256": "d9e9c23a09d7fa49f726e752ce14cb69a3c9fed00ca42a0d247f2403a39b1ddb",
       "contractsVersion": 1,
       "counts": {
         "supported": 3
@@ -975,13 +975,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "eraseLineEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-erase-line-graded-v1",
       "file": "erln-observations.json",
-      "sha256": "57d3116ec608f9f1016ed675d4745fa86d860c366024cedb3ff8ff7445726133",
+      "sha256": "d02fff754c5774017e7c3dc6685319cdc814c884b02b7e075495d8ea2c0b0e46",
       "runFile": "erln-run.json",
       "runSha256": "ac96b755b78770414a6d3169c112901b2d7785a4752c895c3712e086dfc30de4",
-      "adapterBundleSha256": "7cd453ca985215b9a7ef1234c00b82bafe2da579bf51318cd8732f6bb5abadd8",
+      "adapterBundleSha256": "bde7794a2e0ba39c6cc6058d2960cee7f987937ef4076c9454e0bdeffdfc4a24",
       "contractsVersion": 1,
       "counts": {
         "supported": 3
@@ -989,13 +989,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "charEditEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-char-edit-graded-v1",
       "file": "ched-observations.json",
-      "sha256": "69c5b3597dd3d93d6146fb23278181d1daf6c844281cbc54a2b18d467bfb2e80",
+      "sha256": "caf8595c891b0c30b5b348601009aebc866726fd36131caf227461067108fa26",
       "runFile": "ched-run.json",
       "runSha256": "a293572bd576983a32969733dc4c7f5a14dce2db1a10fbff8898f77dd31a4271",
-      "adapterBundleSha256": "0d8178de34e9ac8e0cd43daea02b3ed72723c0b789e0f84291e230a1766bf49b",
+      "adapterBundleSha256": "4a674671ca6e3cb0cd6745db323d5c983a7b2c0867bb84358039c82dccb03a22",
       "contractsVersion": 1,
       "counts": {
         "supported": 3
@@ -1003,13 +1003,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "eraseDisplayEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-erase-display-graded-v1",
       "file": "erdi-observations.json",
-      "sha256": "0f4fdf20c00c87c19948ee1c50c12ba2aeb209ba3da0ced78e00adcb33c5fa96",
+      "sha256": "3e3cc338b5d9550d8e460232a89e9b96251e2dcc845ba30c15774bc503af1030",
       "runFile": "erdi-run.json",
       "runSha256": "a0daf51f11702aae244553539c7d49b3b0e0c7cc7a06bdeabc83ef434406442b",
-      "adapterBundleSha256": "070fb90099cf83762e2ac64068a0bb4b1cce013814a8e64f0e5e35365568ecf2",
+      "adapterBundleSha256": "74462cd25dbabc25d9a19ec9116945f68949db3dbf4b509534b9bea68f9383b2",
       "contractsVersion": 1,
       "counts": {
         "supported": 3
@@ -1017,13 +1017,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "lineEditEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-line-editing-graded-v1",
       "file": "ledt-observations.json",
-      "sha256": "d802ff22eb62e4f773ba4feb0569a02d8a5df6fd210e3490c3b6e928d91c5fd3",
+      "sha256": "ac03bcfb132098c2346b2d58cde980afbf8689d0b95e94507c89e61570a4943c",
       "runFile": "ledt-run.json",
       "runSha256": "aca66eb387a38b68c537bc48587e674a860a63a4a6f1a0a3eebd43956e009260",
-      "adapterBundleSha256": "ab1ba39109b010d99a2d616c2ba096107130171a8ff3ff2bff30a1a2de4c7e7d",
+      "adapterBundleSha256": "a357eef630ccb946f8a1136c11fd5c1afab81a91fed7c7ca25c8f2b622027375",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -1031,13 +1031,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "charsetsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-charsets-graded-v1",
       "file": "chrs-observations.json",
-      "sha256": "4da2434579daaa481927c8501df7f79637e02e6cc698505a741965438b4e7465",
+      "sha256": "004cc7f681682da8e69d5b4c06b4cf486e0e90d35da74d7ad130e926b8adc63f",
       "runFile": "chrs-run.json",
       "runSha256": "12546bcee32b9c363592500e47db761fa046408e71f0cb040d8d4508bcaf57f8",
-      "adapterBundleSha256": "62d278894f757d911caee9e2d70c4d8c06e5805060bba4ac110071007a7eb1a2",
+      "adapterBundleSha256": "857cccb4d555086980f63281034e64e76cb3a9a613feb0fc588089534fdac570",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -1045,13 +1045,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "scrollbackEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-scrollback-graded-v1",
       "file": "scrl-observations.json",
-      "sha256": "ef95a4619c90239c5d7203a997afcbdac006b7000449161b76b346a140f7685c",
+      "sha256": "e4ad2f874bb0f2e1dadb6d3d606eea68850979c49def4c8da8801986af07b3d8",
       "runFile": "scrl-run.json",
       "runSha256": "2341670be0a151089773508024599e52d0639a69fb6a7b015c4eb2d35b5bb31d",
-      "adapterBundleSha256": "3237e8e81c2c74b263420477c5c98cbd6f3d5f34c83179fa7a0e92a9c313602d",
+      "adapterBundleSha256": "bf652bbb078ee244124580026d1ca0df4d4af8c0a6f574d454059134ee279d80",
       "contractsVersion": 1,
       "counts": {
         "supported": 9
@@ -1059,13 +1059,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "savedResetEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-saved-reset-graded-v1",
       "file": "svrs-observations.json",
-      "sha256": "40a4cb5882fa81191864d9019c84792c263b60527116ddc5a7bf4b82cae17df8",
+      "sha256": "acc85b271ae326b80262dd0554566917af9ee82b3d1bd0f5a5393899fa9020f8",
       "runFile": "svrs-run.json",
       "runSha256": "49b7a899ea4114945c3f08debdfc9f68377eb0cabca7b85b5f8114364fac48f1",
-      "adapterBundleSha256": "40ba351521cdd1c40a1f02c886ef662522a722ba0b71cf984468d5614edd2d72",
+      "adapterBundleSha256": "cfe67c76ded196d870e628c01e28b4446693d62e890f10cd2bf1f907a1dd3721",
       "contractsVersion": 1,
       "counts": {
         "supported": 3,
@@ -1077,13 +1077,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "eraseAttrsRegionEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-erase-attrs-region-graded-v1",
       "file": "erar-observations.json",
-      "sha256": "9fae6221b0602b2df9d85fd392fae971e90dc70802100216c1c050c0064119cb",
+      "sha256": "96a5f5fc53e085fa30c08b43cc39ee1db4d010e1d8a7921c1547a38eae8c7fe5",
       "runFile": "erar-run.json",
       "runSha256": "01007aae885783efd037f2fa533106aca6e079964c8c484af966cde02219ef72",
-      "adapterBundleSha256": "f2020a925b90e069facd08737b79c2cc294b6fc0114dc7aa05a5872b031ef15a",
+      "adapterBundleSha256": "111c37645722cbe33733c7e4453ac0fb3cfceae53ebf78cf0d2bcce5a8602862",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -1091,13 +1091,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "attrRectEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-attr-rect-graded-v1",
       "file": "atrc-observations.json",
-      "sha256": "cc33d3d80c0f87833c2ac7c628ee87cd789d38b5ce994266563837203a6200e3",
+      "sha256": "5f278e76648adc2f0213ad1b90c715f11a81bb86a2f145e8f2578aefc55322aa",
       "runFile": "atrc-run.json",
       "runSha256": "c87d716d5f4e813e0c5c1c05972471ba799ff8a2ddd16747a5f262997d4b7474",
-      "adapterBundleSha256": "e37bf971a9a2915b986fb2f137d7a5ecef44cbb0f25c495e3f49290731fec881",
+      "adapterBundleSha256": "0d266f1bd6656dbdcd4881f24b44cb6673a3228c96525b5901a1951e77e780ed",
       "contractsVersion": 1,
       "counts": {
         "inconclusive": 3
@@ -1108,13 +1108,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "cursorQualEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-cursor-qualification-graded-v1",
       "file": "curq-observations.json",
-      "sha256": "5a39a542dc898460c9df27bec253d43b5e352f0c62ab0bce8efb39ccdfff26fe",
+      "sha256": "849d021f57397a766f48534537deea43347889e490805584cefb76ae6234a4df",
       "runFile": "curq-run.json",
       "runSha256": "dd181b639561c31b93793b3922d8674fc12d53c1b151430ba1cb307c28429dfc",
-      "adapterBundleSha256": "a3bb719dd29ffacd6275f24338d5465173ebbcf0f9f6a055aa27274bcd406b1a",
+      "adapterBundleSha256": "b7a34ea86c96b50eeb0f600ed3fc3fd3b09bc8d6a5705518344d3534c4dbc256",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -1122,13 +1122,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "eraseCharsHistoryEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-erase-chars-history-graded-v1",
       "file": "echh-observations.json",
-      "sha256": "95c7a89d15c3da781cbe5ed78eb8ce082a6c7980b0ba574baf3ea965b8a8f840",
+      "sha256": "8521127f3699f85ec408af7aab8e562dbd7ee9cd36e80d2da69c30ac0551b8c7",
       "runFile": "echh-run.json",
       "runSha256": "63ba07b338e322b1d4298994cfc380f589ec394c56768da228320004f081f113",
-      "adapterBundleSha256": "8715352503a15c931748882646b1b267fcb72170798cb4b40fbf51667e102a6f",
+      "adapterBundleSha256": "0e1ec2c03fd38ba2af554aa47d313f973ca7d7b95e46e904464759a52bfff416",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -1136,13 +1136,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "selectiveEraseEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-selective-erase-graded-v1",
       "file": "sels-observations.json",
-      "sha256": "395b5e8896513b0a3c936fcc2e16da9f4fd425e9511d9c2935ed472e28b4254c",
+      "sha256": "128dc55bc14218896d975e5bcdce4e3cdf1899021d918a08333545587cbd4671",
       "runFile": "sels-run.json",
       "runSha256": "85671ba2fa9a8b9ed5acdc0855de480b5102e59931607a51ccfea896ca45b8e6",
-      "adapterBundleSha256": "ea3c2f4cc5a035a0d7062535c1d4cfe36678ce67ab91e878061b73e2064192f7",
+      "adapterBundleSha256": "332958ce350e03fefc69e9176101d0271a780f21ccf631d49e674bfaebe1dd7d",
       "contractsVersion": 1,
       "counts": {
         "supported": 2
@@ -1150,13 +1150,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "rectEditEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-rectangle-editing-graded-v1",
       "file": "rect-observations.json",
-      "sha256": "4a4032f2593196859f7c9894510c131d42a9b97206aba4ae85dd405852934ce2",
+      "sha256": "5c8334dfe566b658c49716f7457ae19ebd2d3a1d745782230613a7f1f2dea311",
       "runFile": "rect-run.json",
       "runSha256": "271a27f788beac2210eafecf91ac8e6b8adfc91bf0afb16c10ed60cbc9287906",
-      "adapterBundleSha256": "7bf4281368676b55d325b5c7b4439804e24bc55bd02bc0c663b149e1098e8438",
+      "adapterBundleSha256": "8c2d39d0bdd97a7dd80fbb9ebaf322641f7a2802671606c0763b9947ae1ca99f",
       "contractsVersion": 1,
       "counts": {
         "supported": 3
@@ -1164,13 +1164,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "colEditEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-column-editing-graded-v1",
       "file": "cole-observations.json",
-      "sha256": "e0b7ea3171ed52331e1b7e4e85bae93dac11c0345ff7814010af62512bd106c3",
+      "sha256": "35bf650c6de136f4e5189f1b21d7adb601a498ecae10ee0d6d9d93e3e7dcbf88",
       "runFile": "cole-run.json",
       "runSha256": "2140ec7e045b4e561a1b7a4ebf1ad76a7b340d41a9cdac16c9dfe471d0280ada",
-      "adapterBundleSha256": "c12c672c7db60aadd31fe0b4b4aa12f26f9657ea3b08e093d437f63f4af8e48a",
+      "adapterBundleSha256": "5741f88549ff25c642fc0d72cea510a79fa1e759035eb99be2e545924099567e",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -1178,13 +1178,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "rectChecksumEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-rectangle-checksum-graded-v1",
       "file": "csum-observations.json",
-      "sha256": "23d0bb4105b67888a3f3f44eb86f7f79f1e09920e2e7b42a9e52a69433a430a3",
+      "sha256": "60ff14c135ac50baa3adb62e3d39915d7af07968117de3f39af04ebccf18150d",
       "runFile": "csum-run.json",
       "runSha256": "1cbd8082b7483bcbc945e218efb0fb75d7393be31a1cdf5b0d0e2c5e77c7f7e3",
-      "adapterBundleSha256": "a3ab434635e9a098409d03addf27c6926fc4c5eab7611d433e58ed6cfe4668ef",
+      "adapterBundleSha256": "9c1e78b34a67ceb8f4425b9d893710f81468c949335e253d13baab8e10f5fe17",
       "contractsVersion": 1,
       "counts": {
         "supported": 1
@@ -1192,13 +1192,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "lrMarginsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-left-right-margins-graded-v1",
       "file": "lrmm-observations.json",
-      "sha256": "93c53a40f2f398c8876369ac9513ae813986b78b1d3e270770baf6a13a32b0b4",
+      "sha256": "b504f5bddb99bec7e8b310c72d19839c402938fba7f08ec7b7e8efd810dacc80",
       "runFile": "lrmm-run.json",
       "runSha256": "a97d379aa3f094d94115772f190b024122058e39223f074d53525167a7612411",
-      "adapterBundleSha256": "6bdea26768a8ef9d1e3bb2b0dd34cea2dac12c775006c486aa6127cd9e40cd9a",
+      "adapterBundleSha256": "80eb8e2c4e417c823efcad1475c74ea8288303cf232ab3906cbc8fa4499db9ac",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 1
@@ -1206,13 +1206,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "colorResetEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-runtime-color-reset-graded-v1",
       "file": "crst-observations.json",
-      "sha256": "bca46246b1dc91b90c8424be050850f976362b99fff59c6e59d5ff21592e9ac7",
+      "sha256": "17345cc08530108792a08778e7323d8bbab11c21c3d0d8359d87c659605bea1d",
       "runFile": "crst-run.json",
       "runSha256": "5395d3f639e2affbe0763b7fb9bc702af351fd28cb1c7c6e2753dee98798cb5b",
-      "adapterBundleSha256": "afc6430fbd5cfa5cc46adaad1681c2f05192f20d3e68c883728c7c86b6213cd6",
+      "adapterBundleSha256": "95a1ec45de0e57ee367ab28cd720e4edcd0d63cb2c86afd530ab056ffe9ef924",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -1220,23 +1220,23 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "coreGapsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-core-gaps-v1",
       "file": "cg-observations.json",
-      "sha256": "c9a9469de6b81483975a2fe96b837c7c39903f241330d93fcc6586a78a115322",
+      "sha256": "10313228e52e9a9fd5babb9871849a20306c9bad108e1c78b8ede28b56149119",
       "runFile": "cg-run.json",
-      "runSha256": "5a7f5dd7c58380f92a53cfa7fb1afb47402f9db6887176d70194b34d6d93b9ff",
-      "adapterBundleSha256": "98e2c84fb0bec70f33ce871fea405c117b3875aa18ac169b5183b40aa157759f",
+      "runSha256": "ef140be239627af5d1b73f604f1686aea25d2e142a51636f31a41023ba873c39",
+      "adapterBundleSha256": "b41abc448eab8850da3b170af00868a070d06c8bd523286acec244f822ca5267",
       "provisionalUntil": "cell-receipt.json"
     },
     "routedInputEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
       "file": "rin-observations.json",
-      "sha256": "a9b701fcf5387c9b50697d7b75289cf2557ba9ac32b0c6803dc4074488eee0a2",
+      "sha256": "f16e44e875061e6eadcd3c9fbc36be7e08941bdeef91f871801d80b3c3ce279c",
       "runFile": "rin-run.json",
       "runSha256": "40a438123e9a9a90dc3602dbed5d4ac6b3df081cbea872a24905e96a84f129d8",
-      "adapterBundleSha256": "530d44d3ccb2b5fed17affb4520ffb36ac2860c5483241002bd4ee9214200f23",
+      "adapterBundleSha256": "a0491811dfb0b5293c23eefa2a0a8fe858593ae2868e4bb5b0654f0b744f1888",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 3
@@ -1244,22 +1244,22 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "textCursorEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-core-text-cursor-v1",
       "file": "tc-observations.json",
-      "sha256": "35738f0a20268adf2d764f50e93b85742eb61e0081a3b4c974d6c6fbacf1bacf",
+      "sha256": "04ce7d59cd3edc54ff79236892a8b68a6380b34dfc8e03014bfc90860b3383eb",
       "runFile": "tc-run.json",
-      "runSha256": "0091d0d7d6b463df8943744a3fab3988edd19edc3204090969d1dd20b03c43eb",
+      "runSha256": "ce751a5c20f148749f718d44faa40f9e325275e15cedb9d9484039f9719c898c",
       "provisionalUntil": "cell-receipt.json"
     },
     "osc133Evidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc133-graded-v1",
       "file": "shi-observations.json",
-      "sha256": "131544a124f3364691c976b3864ce5bbcaf398b0a78e8c382d8c416a65e6e77d",
+      "sha256": "8ac7ab51f88ed26560c7e8b380baf365bd8a74c0cdfbf6315eadec4487be446b",
       "runFile": "shi-run.json",
-      "runSha256": "f63d3436208762b7494a794c774e52477ff11198fa3cc24e5307f69f7698ec97",
-      "adapterBundleSha256": "49a6b52bf7fe4d42377c08845bbf5e7b764bb88eaaf75b42b61543fb1e5b3d9b",
+      "runSha256": "aa280b1fd34a73c6818b59488baa0d09d7f46a462e913b4494a04d317716f32a",
+      "adapterBundleSha256": "9a526f3b11d86ca265254af2345d1cb6bb66bc2faea49d13621f001bae8898a3",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 4
@@ -1267,13 +1267,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "osc633Evidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc633-graded-v1",
       "file": "vs633-observations.json",
-      "sha256": "ff286b8082da7b6ea10fcbd65babecc0215616afeda74894568a0c6d7f67b64e",
+      "sha256": "e0187d2e6b36da825f20a6c9d4aa2896cab49e76d991ac4617b109da78b7b3e9",
       "runFile": "vs633-run.json",
-      "runSha256": "5e63e24a8ce915028580256eb8f1ef33170524e1430509dbf89279cc941d4fb3",
-      "adapterBundleSha256": "e7d0adf1a4fdc89d8d422410af0e614dc5f7eaa64d08d1692c268ef0a1c0244e",
+      "runSha256": "1a9310bb80bf69de1a69da9c361880e2bca09a598010c888469347abdd10c0bd",
+      "adapterBundleSha256": "673fcc8e1b54ce39534ff048b470df539d0659f1dd74fc061d5b63d73c1557a2",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 4
@@ -1281,13 +1281,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "osc78Evidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc7-osc8-graded-v1",
       "file": "lnk-observations.json",
-      "sha256": "3e1e255a009d3065c9342fdfd3f4832ac349ad1a45111b369751b0d27c2b5d4c",
+      "sha256": "a39d253ac19233a1dce77bb3ba5282b2de71fb19fd7d1332a533adfa1a5ddfe5",
       "runFile": "lnk-run.json",
-      "runSha256": "7e6a5d4dbe8d060d9e1a1efa369770d03f66efd8af680036b41248c8a15f99c4",
-      "adapterBundleSha256": "c20f9e67e8c305c2603505fff11371a553b6aa75ad612168322458f6b726bc97",
+      "runSha256": "64df15a86c7fe78772198e416078400bdd12c0c1179254094cbb424d43b66998",
+      "adapterBundleSha256": "15f787fa4ef73508533b571f153878719814b38ba517d08607a10f45cf0fa641",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 1,
@@ -1296,60 +1296,60 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "coreEraseEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-core-erase-v1",
       "file": "ce-observations.json",
-      "sha256": "c5d3bdd932d388016c18ee67d94428580176a7a7b1ae4a575bdc03f6a3ea3629",
+      "sha256": "28e69fbc507210805e30b96ee1e0ab07cce1c692dd85149128c7965bd8d5c7c6",
       "runFile": "ce-run.json",
-      "runSha256": "e7c98ddbc407706759c4ee7f45dac7e33572434b2038c2177352bfe5a69d8e6c",
+      "runSha256": "ce8811cafb20f54e5ae93abb23e3e14e7ff21e2a130abdd9cae2df4fce5b195e",
       "provisionalUntil": "cell-receipt.json"
     },
     "tabStopsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-core-tab-stops-v1",
       "file": "ts-observations.json",
-      "sha256": "c9e40183831ee60315d2679169942f92ae461ebee95f18a21e1be679f13c2880",
+      "sha256": "259d659a22445662828a2054ff6dc82e30bbfcd35bbb6eebe8a35ba6e1d6c9cb",
       "runFile": "ts-run.json",
-      "runSha256": "41c9f64666f083f511bc3e6b97a9856079934bb0ba2e2fce11453605bce5c0d7",
+      "runSha256": "36f6cf435d5f3813eed703956537e8edaa0202237325a25fb84dfb3d7550e7c4",
       "provisionalUntil": "cell-receipt.json"
     },
     "coreWrapEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-core-wrap-v1",
       "file": "cw-observations.json",
-      "sha256": "42c3b680625b1e898291870183b00b98178bcfd7f74124704c7e55bb9ea4c504",
+      "sha256": "a0d0838b7b13f260b0cb808ed593bac4473b3b99b594b847ca57063a0863078d",
       "runFile": "cw-run.json",
-      "runSha256": "dbf9162dd60eb6198bd913815c2ce9be24517a645b6294685510b8ea2ef2d770",
+      "runSha256": "6b713a91aae4b88451585e239cee317d73063db3f2f1c471c603280d4a17231c",
       "geometryFile": "cw-geometry.json",
-      "geometrySha256": "0db383b7948374b56ada1d6269ae66ef4f3b81a4da6cd8dfdfd7c57b74d6f212",
+      "geometrySha256": "536a887b11679b4976ff10d2d0205c698b3b968944014a3b8e345d3d8063b256",
       "provisionalUntil": "cell-receipt.json"
     },
     "sgrRasterEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-core-sgr-raster-v1",
       "file": "sr-observations.json",
-      "sha256": "c90394379f0f003181ace987c22e37593426df2429793c5b1e854ff9f7e3055e",
+      "sha256": "d43c21c21a0cef8e3f6812c2e234eef226f625b86861bb47ed8451ba5949f89c",
       "runFile": "sr-run.json",
-      "runSha256": "10109164e8bb2f6be154dbfa83085a293277979abd140b28da0fafd368fe94ae",
+      "runSha256": "f8682230c771bf32dac4230d91d78c080e113b593d80c38cdd70868296ae9be1",
       "provisionalUntil": "cell-receipt.json"
     },
     "reverseWideEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-core-reverse-wide-v1",
       "file": "rw-observations.json",
-      "sha256": "abec7e6a977a8d61e690c284b118d2464c1942e0051dd1d9b0657720cc64dcc1",
+      "sha256": "37dc10cffbb0e050848d7e8ea23285ec518d80e7a6eb58099367e38eb1aad53e",
       "runFile": "rw-run.json",
-      "runSha256": "804984ce7d2bd977a357ef09be053abb015f7d106f295cafd03b7500a9ddafe4",
+      "runSha256": "98269b3657b96a215e233b2f9e3b0baa4f96489bd11e2a8a18859a63852a335c",
       "provisionalUntil": "cell-receipt.json"
     },
     "titleStackEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-title-stack-graded-v1",
       "file": "tst-observations.json",
-      "sha256": "eda320c15347a8773552e67be0a6313a34648ba81e2d4f1d5ed1eabbc11c75f0",
+      "sha256": "200d3d1b23ecf31d78d44ef6b674b8d4bfbbefe5bb490c5b00a9c5b3d3fc50d0",
       "runFile": "tst-run.json",
-      "runSha256": "4ecad7ee6f1abb2a9f4d6cba2559985a9a5f55e20b9d61017821c659c98a2c99",
-      "adapterBundleSha256": "db4060815aba6acf056a59386bd2615ca2e781a86e0848c26c33816e631706f8",
+      "runSha256": "d48b920fd0fb4fb8c31e4ea7dbf402c2217c81ae12a711717e5d9c54e8909c54",
+      "adapterBundleSha256": "ec430eb59f6077ad21ff76a575f9b6efd414cb0f8f4c59c9357069cb57a107cf",
       "contractsVersion": 1,
       "counts": {
         "supported/supported": 2
@@ -1357,13 +1357,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "oscTitleEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc-title-graded-v1",
       "file": "ost-observations.json",
-      "sha256": "9540999ffd5ddcfdce75a9a3e4a700905b909eb73d33ee51ffdc01bf9b87e97b",
+      "sha256": "0d95e37832b361fe9f8ddaf38f43557ba4c2b26b018fd217d0172d7e72808ff9",
       "runFile": "ost-run.json",
-      "runSha256": "5fe5adc4c7ec2b671d02ede6b23a8f63b38dc174c5ac0d216e25bbecf8147ec7",
-      "adapterBundleSha256": "b863810a2233323e526dfca87039accad5bdaf63b521bc0cb68f7a5c25a6fcc3",
+      "runSha256": "7fdfe04054ad7f6cec6c25709f76e755f33645f0e5b6dbfcf417f36590ac2b9e",
+      "adapterBundleSha256": "2193a19d4a0ca02042de6ab532b2ef727092690c87a9eb9e022f211df2835862",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 2,
@@ -1372,13 +1372,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "selectionColorsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-selection-colors-graded-v1",
       "file": "selc-observations.json",
-      "sha256": "243ade8ae4221c865e491681cdb806b31b02ee0afd89395a48022c9a8d07f495",
+      "sha256": "31ae92f1a9d36c196305f323ddb58ad1fd86723dbc1c65f7b48b46495ddfe78d",
       "runFile": "selc-run.json",
       "runSha256": "3c78c3032e92c1ca39f5c532387210a6c0dccb96888d3e0a70ea7e898400ddb1",
-      "adapterBundleSha256": "832843bb530e41a7c35e1396f70ebcc97e762012272a7d9f15602ea8cf5d574e",
+      "adapterBundleSha256": "cc0839c8e9b6f53e02537a1b4ca03ec067b3fe204b4e2f5a2bda973ea4967518",
       "contractsVersion": 1,
       "counts": {
         "supported": 4
@@ -1386,13 +1386,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "insertReplaceEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-insert-replace-effect-v1",
       "file": "irm-observations.json",
-      "sha256": "a2941058362d636f39f641332704b8ad65f089234f9ccab726f6906fe31e5d79",
+      "sha256": "5c5045e4099c1b4fee7b1d0e8e0e32155693c819b6d9113e43dc0652eda34557",
       "runFile": "irm-run.json",
       "runSha256": "9b94ef97730e873f990bd04eaba883f6c5f1417f429629cf78392bb1186f38cb",
-      "adapterBundleSha256": "5f91717be844f0faa5b7e9febbdd3e8e9700df27f09792e3471672e296f4528c",
+      "adapterBundleSha256": "73e471d8509be5db9c30c5d179bc958936d14edba1ee0babb55da80a4dca2612",
       "contractsVersion": 1,
       "counts": {
         "supported": 1
@@ -1400,13 +1400,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "xtgettcapEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-xtgettcap-graded-v1",
       "file": "xgtc-observations.json",
-      "sha256": "c4c7df9cb561e2c32120b21fba02f83c78350557292a6b8193d0a390ce103ebc",
+      "sha256": "a53fa7326652758a52a0674afccc2133e0dd2d667bff5fb117ab5d16efa6ab05",
       "runFile": "xgtc-run.json",
       "runSha256": "6fd043ad6c5f469103435356502ddb26585c98a9ff0ada49e8f38244de3c8d40",
-      "adapterBundleSha256": "683b6255eca8afb5385ba17080c727cf25c1ac73ac25a2bd2497589bea028073",
+      "adapterBundleSha256": "5e91938f059314e8b3c70280924e156ff625e2764c38ded4b9ddbea93d0cc067",
       "contractsVersion": 1,
       "counts": {
         "inconclusive": 1
@@ -1414,13 +1414,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "modifyOtherKeysEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-modify-other-keys-benchmark-graded-v1",
       "file": "mok-observations.json",
-      "sha256": "a9610f37e2ff2ecf1191628819167186f895827c1512693fefdefee77210ad58",
+      "sha256": "6a2cfc750edf2b8bcaa64d85b2dbffa942004404c2e578cc32a84eb71f7d2ea7",
       "runFile": "mok-run.json",
       "runSha256": "ac4636b5463c51e2cbec9fc49fb62247308b2e6063bd3105c35cf2408e463155",
-      "adapterBundleSha256": "bc697debe4a55d362ee464293f20182cd2f8fcaf48de0c6270ca7aff5261bf1f",
+      "adapterBundleSha256": "35b411c9374412b0c1f1e357edd58cbbd26085873a896e706ce1dd54dc2268d3",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 1
@@ -1428,13 +1428,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "devqEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-device-queries-graded-v1",
       "file": "dvq-observations.json",
-      "sha256": "38e3a1ace97845d0294cf73b423fa71d6a4218b9b226b1f02dd7cea783ee442d",
+      "sha256": "9856a9d4ef37985c24b9ad837d628c58ac52ef3c43b32e8dee5df3208fd15dee",
       "runFile": "dvq-run.json",
       "runSha256": "16466a77d5696e74072595f1f094f383e985cd28a293c46e384bd76264fc4335",
-      "adapterBundleSha256": "0e4e0f91731fd7fcf6ed7a4e532e20781e8bac7d688085109394953049dc7d1c",
+      "adapterBundleSha256": "6b5699b0e24b9db6bb72b95bead02220994a0a123f6850204e5a7064b86cd26a",
       "contractsVersion": 1,
       "counts": {
         "supported": 3,
@@ -1443,13 +1443,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "cellSizeEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc-cell-size-v1",
       "file": "cell-size-observations.json",
-      "sha256": "36336f5eac084d82091e33268b3fc1834feda172e2a0998a166ddc0f72111ff2",
+      "sha256": "ff5f0caec8890d3a577c962120a0b2110c9c8e22f9588385f4840957812b6d93",
       "runFile": "cell-size-run.json",
-      "runSha256": "1c4dc69df8d6708333a57cd57be3b2498cc4a3ce09299ec03ac957a900d03c9f",
-      "adapterBundleSha256": "74bf35fa2a3b0fab59ce159c53744e42e1962579e9fb7da7746aef87e6ff4798",
+      "runSha256": "21a2d367697dfcfe2d7dc404889fd92c294fb196a3413db6a37c01ecd18c5631",
+      "adapterBundleSha256": "1e1dbe80a05f7149bc2b32e74c2ff73a4f6545214ecdf8300072917a7ab6aca8",
       "contractsVersion": 1,
       "counts": {
         "inconclusive": 2
@@ -1457,13 +1457,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "xcsEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-xterm-color-stack-graded-v1",
       "file": "xcs-observations.json",
-      "sha256": "d1ffc92f58b2257edb275ce85070e30fdd353bf55bc0fa7dd047de07a362c3ca",
+      "sha256": "06cc925657c89fc0502158c83904f6a25dc0b3e34e01a0d7337df106b4bd4672",
       "runFile": "xcs-run.json",
       "runSha256": "6233ddca17aeb1fbf87891f8779d4898d4037380616da011983c9ff2cdf20c0b",
-      "adapterBundleSha256": "f0bb8809a3b507ab6a33951a09c628f5bf8f7d890f4ec383c3ae257180bfd57c",
+      "adapterBundleSha256": "19146708bba04d5826315e23eb5854993a3f51e411f0a657d610982d26cccdf9",
       "contractsVersion": 1,
       "counts": {
         "inconclusive": 2
@@ -1471,13 +1471,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "xssEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-xterm-sgr-stack-graded-v1",
       "file": "xss-observations.json",
-      "sha256": "3f19282c90c644c49050a64bf5e815e29898e49586284dffa833a89214f123f8",
+      "sha256": "a19049557b97f6f51901cec04072342c1e8fecf94a215a2afbcc2e228a66c5fb",
       "runFile": "xss-run.json",
       "runSha256": "7da2b1c30f056f20601b0744165e60fafb2baf33984e24f3d9e634515fd2750d",
-      "adapterBundleSha256": "514d064a969dc5b807a3a1f4126ae146074da62d2b2f4467252240388af84fb2",
+      "adapterBundleSha256": "e1139de2a0f25922106332b0dbe17d6f626b565729a61288ccc6b43c4ae85559",
       "contractsVersion": 1,
       "counts": {
         "inconclusive": 2
@@ -1485,13 +1485,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "xsvEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-xterm-saved-modes-graded-v1",
       "file": "xsv-observations.json",
-      "sha256": "fd4293414ffac11788e0a9e1f71fa80e9d28ece30e64e6acdafc0d01a3d51a23",
+      "sha256": "ca0ec0cc974d5018ae6831731a7b534094e3c964d6e76c48180a36704ae89f07",
       "runFile": "xsv-run.json",
       "runSha256": "4966393ad04649fefe5229a835ca320fb7a74281a1b9221f404eca07fdef4ae7",
-      "adapterBundleSha256": "748eb250c7f121a2fb1686f5c297fa5f936ce03b63a14c3d28dc03c98208d3f1",
+      "adapterBundleSha256": "955029ca43cd640d5e5302b394c381f54ea8309792462eb5a03dfdf22a301b6d",
       "contractsVersion": 1,
       "counts": {
         "inconclusive": 2
@@ -1499,13 +1499,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "mexEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-mouse-extended-benchmark-graded-v1",
       "file": "mex-observations.json",
-      "sha256": "b38bbf46024dba3c2643b9947c7d620d5d8a89d9b9b102b8da944775e4bcf509",
+      "sha256": "e360de30bb5c0ff069b708f48d10400d1330841e77bafd9affbc3a1262219ac9",
       "runFile": "mex-run.json",
       "runSha256": "23bcef16ed4655e0835f166c7d378f0183a2de1260e5f8896e35d5a65b946beb",
-      "adapterBundleSha256": "21ac4881df4e8f7303cd15179bb13ebc730cc751324c314d7a087d400b281540",
+      "adapterBundleSha256": "9cf561e72c584595674a64f5d7aec515dc32d521bef7d39b9fd2a9185d56f06a",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 2
@@ -1513,13 +1513,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "pxmEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
       "file": "pxm-observations.json",
-      "sha256": "c0f2688e1a9c18633ddc8721e98d29ca7de4d98ae5505507763a110e54345546",
+      "sha256": "cfbafc398d13a444fc34ac00edf2576bb6823379858c724295d98853d434a812",
       "runFile": "pxm-run.json",
       "runSha256": "c3b0278fe70de5cde359077efd03121ee9279901e062bd50f5806fcfd4c2d9ca",
-      "adapterBundleSha256": "5658d7bce8c799a2d9680a2be7a40e17f9e064b2f9473f46722bf7891c58261c",
+      "adapterBundleSha256": "00b9052f2caa72c76a7e6a7b9ce7504f7842c1a46ba54476251949dee919ff76",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 1
@@ -1527,13 +1527,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "kclEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-kitty-color-graded-v1",
       "file": "kcl-observations.json",
-      "sha256": "17c54b0a827f2bf3d99de4788327af5eec8e69951b25aa3ec2b57da824cec269",
+      "sha256": "c76e503ede320ac9c1702c4f0b43effbe6e7673cc9ea1f09da355c87aa9d8997",
       "runFile": "kcl-run.json",
       "runSha256": "c09693c9a4887038b51672fd7aaa3b73d89cf351c2a8c6492268b0a392fd040d",
-      "adapterBundleSha256": "068ef0220b4cfa9ed303a1563763debbb7801efb6c931e94b5530c3c5a57b49a",
+      "adapterBundleSha256": "036a9aa5d840905930e124a41bdc731394e5514898dc21818df737280aa8e1f3",
       "contractsVersion": 1,
       "counts": {
         "supported": 1
@@ -1541,13 +1541,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "osc5Evidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
       "file": "osc5-observations.json",
-      "sha256": "1bf1b8fffc71cfc8bc7376ac465fe87c47578bd4313acd02dca3e4b2d677668d",
+      "sha256": "b72a3a65df9ae1bc8b670fb9ef696ece7593d66ec5e9e9c7fd82998bbc6ae597",
       "runFile": "osc5-run.json",
       "runSha256": "cec4d52b21d1c7d616584f51550927e38f1025fdd118f4c043d9387f6b6d6afc",
-      "adapterBundleSha256": "909326e4488399901bf3f2bc7fec1a268d4c8d4df18105f85eedb70a4ec5bebb",
+      "adapterBundleSha256": "663e96ccca43fbfc9a1dabd852ea09927470aaf01934a73a5a0d57bfe83ec612",
       "contractsVersion": 1,
       "counts": {
         "supported": 1
@@ -1555,13 +1555,13 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "osc3008Evidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc3008-graded-v1",
       "file": "ocx-observations.json",
-      "sha256": "ebf0f929e95d3faef80af2b416227d4e4a45e9988b1056f5901f8047ad719bc5",
+      "sha256": "f1caa9d5e801a324bfb20d47fb1558b86583214b8cf2528d6ffb97cb5ba97066",
       "runFile": "ocx-run.json",
-      "runSha256": "909e43b5e9bc406815e2e4328049be818455577ed7c9038394179aaeb1a33d20",
-      "adapterBundleSha256": "c835b926063b7e647413ee801bfa423dd8db5afdccfa4b8e80fd6d6d353ecf63",
+      "runSha256": "10d2b9571458f532eda2d88437f53ff00dd58a770426b09fcfdffb4821291b38",
+      "adapterBundleSha256": "6e70b5518a4080ae642921fb3903ba3d450dc46aca5a33fd40fe9102f2b0608b",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/supported": 1
@@ -1569,15 +1569,15 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "osc720Evidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-osc720-graded-v1",
       "file": "ovu-observations.json",
-      "sha256": "9c8ba5baa23138079f043c03a085d1282dedcb47ae9b454dd7fa1f3773b9c0ff",
+      "sha256": "7c7f23ab2a5087dff8384dd5fd97f256a688fa7a963dd7d857ca7cf8d38bc81b",
       "runFile": "ovu-run.json",
-      "runSha256": "dc53d5d7959a335a6780d7615f81fc3b215eb3445f7badaf84b21aa564b23f4b",
+      "runSha256": "93e2262cfa921ac8bbba1b5c0c1bbd1ba696307dcbda505f997ac6f59defd97b",
       "actionsFile": "ovu-actions.json",
-      "actionsSha256": "3c444971393bfdb616b484e14b1371c341d8340efcab8cc7c34a27a34754377d",
-      "adapterBundleSha256": "0124622fdf383aa10bd7936466c1cd66cc3c21bc722cd7e16dc85cbbce60ba76",
+      "actionsSha256": "2104c76680db6d8e41c013f35f1b6822b936e08fd4889db232bc9ab81c43b4fb",
+      "adapterBundleSha256": "7f3aca49c4d7727438fe42e56e57b28e56eaa142b049606ffd3798ea8480d5f8",
       "contractsVersion": 1,
       "counts": {
         "inconclusive/unsupported": 1
@@ -1585,30 +1585,30 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "rgbEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-rgb-underline-v1",
       "file": "rgb-observations.json",
-      "sha256": "99e881d4f1067210b868ab2906688d1b86df7fb5cc6bd40c51ae7ed3a928551b",
+      "sha256": "71545ef09f77fb7168587b6b15f2c75da1016e18745d4f8513d12d56a9327129",
       "counts": {
         "passed": 20
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "renditionEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-rendition-charsets-v3",
       "file": "rendition-observations.json",
-      "sha256": "e42a4258c8ec794396c01e222033c3c572c6d67ded288369121b11b0368e8de6",
+      "sha256": "24bc733196a58c8bafc3c61cec85acfd910b7b9d1b733c0fabc9a18578b28099",
       "counts": {
         "passed": 19
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "cursorEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-cursor-modes-v1",
       "file": "cursor-observations.json",
-      "sha256": "1a3a2cd6b708aaad6d558e523a14f72f8224e2bb4b11aff93ebe1d39e75f9a48",
+      "sha256": "4c09d3b3d2338e30d7ea3bfab40243c4fd3670d2d69e9863d79df6c4313f165a",
       "counts": {
         "passed": 8,
         "failed": 1
@@ -1616,10 +1616,10 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "pixelEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-render-pixels-v1",
       "file": "pixel-observations.json",
-      "sha256": "5e92f183f7d8226631e8522a3e7fba60895551ba58f0c0635c5dc39a0571fa0a",
+      "sha256": "54eed9f91167c826e74b9fbd1ad14f61b2e9f146c8566a31c5c29c389053b52f",
       "counts": {
         "passed": 24,
         "failed": 1
@@ -1627,63 +1627,63 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "colorEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-runtime-colors-v1",
       "file": "color-observations.json",
-      "sha256": "c12738d6c7fe2625ff67bdf3e42dd94c790181dc64a343e6340addf35f8ac240",
+      "sha256": "adb56644d030c93bb47afe6392f97d632e1a645a767dc9ddec5efa48b662bffb",
       "counts": {
         "passed": 10
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "eraseEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-erasure-v1",
       "file": "erase-observations.json",
-      "sha256": "d2cef510911aaea4150f38cb2f18123510339d4fb6437795f5e89308a532ffd9",
+      "sha256": "16836105b68f3b86ef85b87eff3b997c553b9e4f4ecf03cdad12e2b34cd9d1ed",
       "counts": {
         "passed": 13
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "editingEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-cell-editing-v1",
       "file": "editing-observations.json",
-      "sha256": "1fa701041bb7446815e9c4b3da98b4e3253df11c847969c39029824bb3009819",
+      "sha256": "4d55f781e701e1c588b8684ac482171c24da621c0a28172591fd9e60c516adf6",
       "counts": {
         "passed": 22
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "historyEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-history-scrolling-v1",
       "file": "history-observations.json",
-      "sha256": "12cb1abfbb6a4c2ba9e9c884257eaad2302d44c8b3be573549998cf634db79fd",
+      "sha256": "a878f7b539ada6d7e8e8d82986e736e838a783ee9e7eabe496a79fbfd7ce909c",
       "counts": {
         "passed": 30
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "resizeEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-resize-reflow-v1",
       "file": "resize-observations.json",
-      "sha256": "b015816f5938dc74b79523ba86b3f258cecaf58a8c67ce54ed65f6f373ec7f10",
+      "sha256": "65b30f896e4d28a732e6c43cec26f8b96e997c60eaebf43c400c243fc817d73d",
       "counts": {
         "passed": 3
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "reflowEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-ascii-reflow-v1",
       "file": "reflow-observations.json",
-      "sha256": "22d2085909c74763aa67fa677212a00afdc981d1510ddb339c5575b9af603a0d",
+      "sha256": "5e6159d17d082c42b185836fa79ba5583da35ace6669c49a586219d66edc56a7",
       "runFile": "rf-run.json",
-      "runSha256": "55544f837a2398695ae5661329186f20ce4af4c6a5b74ef7820e9e7a626d431b",
-      "adapterBundleSha256": "1a981982ed4087ede834342fa3e2ec429eab956c4dd830dfa99e7b1e34d1dd66",
+      "runSha256": "d9bdd602cc00cbec8c0ac171f8c11cb0660b467f3c12f6e4a8c0e3bcfdafbbf1",
+      "adapterBundleSha256": "7f6568f8d94c114d8727ee5f7f854d113386b1de54473e376556d5391513f064",
       "contractsVersion": 1,
       "counts": {
         "supported": 1
@@ -1691,20 +1691,20 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "savedEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-saved-alternate-v1",
       "file": "saved-observations.json",
-      "sha256": "931b4c05c7d1559a0edc445e93756abec7061b20fe8a1718a147dfd3412500d4",
+      "sha256": "5cab803bbf0dced511d6f14e92a3b2bac84f3d5e1bab2d0f21d50a2229ecb8ac",
       "counts": {
         "passed": 9
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "metadataEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-pane-metadata-v1",
       "file": "metadata-observations.json",
-      "sha256": "dcd68b7373106a3eb822611db5a3d49a01eaafa60cb997a99a7e7ed4f41c0d14",
+      "sha256": "f6feaaa1bf2cbdfcf2eb11afea68d63a793b0ed86d7ac023b12016b7f1e1e426",
       "counts": {
         "passed": 10,
         "inconclusive": 2,
@@ -1713,20 +1713,20 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "inputEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-routed-input-v5",
       "file": "input-observations.json",
-      "sha256": "3a511cbb8cd4c47b93aae137eb835754feba513603f5b958303d5ea91ffce568",
+      "sha256": "4c458c02a8ae59da07fbfe197ccbb69a5b7acdc3bc5b5c4a2a8eb2ca2358c875",
       "counts": {
         "passed": 196
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "staticImageEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-static-images-v1",
       "file": "image-observations.json",
-      "sha256": "cd76e493606be290f66357d1b56658d91b4b9d5aa5b97e67aeeaa71e569643da",
+      "sha256": "c6d7059ab6c22188b73579a6f3ae7fb51d4dfd4f94d91fa443c609b2b45376f8",
       "counts": {
         "passed": 21,
         "failed": 1,
@@ -1735,20 +1735,20 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "animationEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-kitty-animation-v2",
       "file": "animation-observations.json",
-      "sha256": "fabb5199dabf386919187fbd2ee09e6da89f87aab586bc07889431e7f63ec1c3",
+      "sha256": "bc4fbeec05cfd1b21db5c71921937428f701afa28cbe178b570b1e77b34c38bd",
       "counts": {
         "passed": 24
       },
       "provisionalUntil": "cell-receipt.json"
     },
     "queryEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-exact-queries-v1",
       "file": "query-observations.json",
-      "sha256": "40f99468b68c35a1bff2e08e6d62541e14f3c0e81e6b79010bcf3f2c52b636f8",
+      "sha256": "d26d88e9f0576c7f9efeea31164e19fbd90f8bb664b844251ebc0248b23cceee",
       "counts": {
         "matched": 30,
         "mismatched": 10
@@ -1756,19 +1756,19 @@
       "provisionalUntil": "cell-receipt.json"
     },
     "privateClipboardEvidence": {
-      "runId": "bb832e39430176c8f96f62d40ea4a5e6",
+      "runId": "4889417f35fe10780c3385cb19e8a51d",
       "suiteId": "ntilde-owned-private-clipboard-v1",
       "file": "private-clipboard-observations.json",
-      "sha256": "477054b0593a7e2b8654418b6e27a98ca15bceaae7035f1a135ab1faeca5aa36",
+      "sha256": "80d041f0c06c256d3afc21d062f2acc283203e6f3ff1773c38b5938053817989",
       "counts": {
         "completedProbes": 3,
         "acceptedWrites": 2
       },
       "complete": true
     },
-    "ownershipProofSha256": "f72c88cdd74d87ea28b6516736e90e4c40cfa26303d241746ee20fcabe3d2176",
-    "contextSha256": "e611e68252eeeb90b962815b79d197eba1b061a3037404a21c702359f1186f55",
-    "rawSha256": "d40276cac18382d9cf3fec83f716c7a1d3f636633908f749d2e7276421d02843",
+    "ownershipProofSha256": "f27c9af6fb539079febbff1a0b61e67476935f909995664ea86bc2b9397f4a46",
+    "contextSha256": "a111b7dd0fa2593dadf287b16924143da682699d191cc71f05c1fe8c5746511e",
+    "rawSha256": "a62f1f7fc31c73f8809274acf97043787fb311380dbf67c72334fc7b7f9b8e4f",
     "collectionScope": {
       "id": "owned-osc633-without-notification-suites-v5",
       "omittedSuites": [
@@ -1784,7 +1784,7 @@
       }
     },
     "fixtureRemoved": true,
-    "completedAt": "2026-11-17T14:49:06.687Z"
+    "completedAt": "2026-11-17T15:28:50.249Z"
   },
   "stockCollector": {
     "counts": {
@@ -1793,7 +1793,7 @@
       "unsupported": 1
     },
     "suiteComplete": false,
-    "rawSha256": "d40276cac18382d9cf3fec83f716c7a1d3f636633908f749d2e7276421d02843",
+    "rawSha256": "a62f1f7fc31c73f8809274acf97043787fb311380dbf67c72334fc7b7f9b8e4f",
     "probeHash": "16a690f34c0e",
     "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
     "note": "Stock terminal-path grades from the same owned run; the OSC 720 effect does not change the stock score."

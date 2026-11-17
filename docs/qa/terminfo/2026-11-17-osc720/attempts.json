@@ -64,6 +64,13 @@
       "scriptsCommit": "85efa784607f1e98b36c52c1538a30d25c6f9000",
       "failedAt": null,
       "reason": "A complete run on the restacked tree (policy v67, receipt 74) whose effect contract was inconclusive, correctly: the unmarked control started with the view still scrolled to offset 3 (left by the previous scrolled experiment) so its setup did not hold. The reset and refill of the next experiment can outrun the view's clamp. The plan now returns the view to the live line with two scroll-down notches after each scrolled experiment, and the run was repeated; the six protocol experiments had observed no change in this run either."
+    },
+    {
+      "file": "superseded/attempt-10.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "0c825f5a0f6c225cc4b881c9f31a9e67156469b4",
+      "failedAt": null,
+      "reason": "A complete, successful restacked run (owned run bb832e39430176c8f96f62d40ea4a5e6, stock collector run 54d8392084916c19f55245d2379b43d5, policy v67, receipt 74), identical conclusion. Review found the runner no longer retained a failed wheel attempt's request and ownership facts (that handler had been lost in the restack); it was restored and the run repeated. Kept as a complete run."
     }
   ]
 }

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { osc720CaseIds } from './osc720-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '0c825f5a0f6c225cc4b881c9f31a9e67156469b4';
+export const measuredScriptsRevision = '6dcfc318148c96b18b73d264837a8c5b62b11b01';
 /** The measured App build revision (stamped into the sidecar assembly). The retained selected-source manifest independently pins the measured scripts; these human-readable labels are not binary-to-source attestation. */
 export const measuredAppRevision = '85efa784607f1e98b36c52c1538a30d25c6f9000';
 const scope = 'Pinned terminfo.dev@4.0.0 paths for extensions.osc720-scroll-up preserved: the terminal path (two writes, a cursor-position query and unverifiedEffect; always inconclusive, evidence "consumed", and the path the '
