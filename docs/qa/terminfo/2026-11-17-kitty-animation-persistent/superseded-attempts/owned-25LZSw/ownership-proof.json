@@ -1,0 +1,12 @@
+{
+  "proofs": [],
+  "completed": false,
+  "collectionScope": {
+    "id": "owned-pre-osc633-full-selection-v5",
+    "omittedSuites": [
+      "osc633"
+    ],
+    "deadlineMs": 600000
+  },
+  "cleanedUpAt": "2026-11-17T15:07:29.949Z"
+}

@@ -1212,6 +1212,13 @@ requires public test classes.
   full-state/history frames, exact action/source/settings bindings, verified cleanup
   and all earlier suite bindings. Ordinary cell observers retain their read-only
   allowlist; no action attests a personal or remote session.
+- **Owned persistent-tab QA proves a different process lineage.** `scripts/terminfo-owned.mjs --scope persistent-animation` runs the Kitty animation suite alone in a
+  `KeepOnClose` tab. The App starts the multiplexer daemon detached and the daemon hosts the worker, so the worker is never the App's child. `ownership.mjs` proves
+  the relation instead: the launched executable running `mux serve`, this run's private app-data root and run identity in its environment, a descriptor inside that
+  root, a start no earlier than the App's, and the worker as the daemon's direct child. Every observed ownership fact carries that daemon record and
+  `validateImageOwnership` refuses a frame under any other parent. Cleanup stops the daemon through its private root, signals it only while it is still
+  verifiably this run's, and a failed scan for survivors fails the cleanup. The run has its own receipt (`persistent-animation-receipt.json`), not the full-collection
+  receipt: no stock collector or other suite runs. The full collection is not claimed for persistent tabs.
 - **Owned routed-input QA is a separate parent-owned acting boundary.** Policy v2
   captures a fixed 60-file graph and schema 9 requires all fourteen suites. Only
   source-selected standalone App events may run in the re-proved disposable local

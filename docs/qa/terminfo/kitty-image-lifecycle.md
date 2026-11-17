@@ -110,6 +110,8 @@ carried without pixels, and an edited root's pixels are its own packed source (t
 whether the root was edited), the playback state (state, current and displayed frame, loops left, whether it is parked) and the time the current frame had been up, from which the restoring
 side resumes its own clock; a restore charges every frame exactly as the source did (8 bytes per pixel, 4 for an edited root), validates the packings and indices without inflating them,
 and decodes the frames when a decoder exists (the displayed placement stays undecoded until then). A snapshot with frames is refused by a session whose policy is below 3.
+A live persistent tab (policy 3, the pane a client of the multiplexer daemon) is measured on the desktop by the owned animation suite ([#1025](2026-11-17-kitty-animation-persistent-qualification.md));
+restoring a tab from a snapshot after a restart or reattach is still covered only by the deterministic tests above.
 
 `KittyAnimationTests` (VT) pin the frame store, composition arithmetic, error replies, quotas, the
 playhead on an injected clock and frame retirement; `KittyAnimationRenderTests` check the real view

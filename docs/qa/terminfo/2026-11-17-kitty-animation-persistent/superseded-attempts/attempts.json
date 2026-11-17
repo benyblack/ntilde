@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "note": "Development and measurement attempts of #1025 in order. Only the retained files are kept; none of the failures produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-25LZSw",
+      "runId": "7bfcd840772a95445c9dd85d4cb34c8c",
+      "scripts": "a temporary persistence switch on the full collection (not kept in the branch history)",
+      "collection": "full collection in a persistent tab",
+      "outcome": "no evidence",
+      "reason": "The App exited at once: \"Worker is not a direct child of the owned app\". The worker is the multiplexer daemon's child, so the direct-child ownership proof cannot hold in a persistent tab.",
+      "files": [
+        {
+          "file": "owned-25LZSw/failure.json",
+          "sha256": "fbf6ee1d0230d092c0b78dce9c61fa62b9f9ba215ce6a0d1c7806bfa117931c8",
+          "bytes": 93
+        },
+        {
+          "file": "owned-25LZSw/worker-error.txt",
+          "sha256": "612d3330dfcf85a021b2410139c38404cda2e2b6a7c73fc3ce0c5456d865c736",
+          "bytes": 511
+        },
+        {
+          "file": "owned-25LZSw/ownership-proof.json",
+          "sha256": "5e51ba4a32fbd22185ada408cbed556f8520972d9a14ab2b88fa8dc924cade31",
+          "bytes": 232
+        }
+      ]
+    },
+    {
+      "attempt": "owned-1E23zG",
+      "runId": "070d9119872b9b470cab20f852fa9ec2",
+      "scripts": "91da7acb",
+      "collection": "full collection in a persistent tab",
+      "outcome": "no evidence",
+      "reason": "Ownership was proved through the daemon up to the descriptor check, which read PascalCase fields from a camelCase descriptor (\"Multiplexer descriptor does not name this daemon\"). Fixed in the next attempt.",
+      "files": [
+        {
+          "file": "owned-1E23zG/failure.json",
+          "sha256": "8a694fc7204749cb679474360d35de4b0fdb0e8ba558cbd05c3be2beb3bd121a",
+          "bytes": 93
+        },
+        {
+          "file": "owned-1E23zG/worker-error.txt",
+          "sha256": "266b05d8645c3a08ced2d5bd38b5eb0b03c870c0de12e0f62aa5a6fdae56a41d",
+          "bytes": 547
+        },
+        {
+          "file": "owned-1E23zG/ownership-proof.json",
+          "sha256": "90dabe8d0a0ca5c172142b6f33e658f8374f9127a3d242d44a9b9bfc665f07a3",
+          "bytes": 266
+        }
+      ]
+    },
+    {
+      "attempt": "owned-MGyf2w",
+      "runId": "f554bbf5b213c329ff75d0174782da35",
+      "scripts": "afa13eff",
+      "collection": "full collection in a persistent tab",
+      "outcome": "no evidence",
+      "reason": "Ownership and cleanup passed, but the first suite failed with \"Unexpected input during cell collection\" (intermittent; later runs got past it).",
+      "files": [
+        {
+          "file": "owned-MGyf2w/failure.json",
+          "sha256": "278f81bfe084d4f4c60b87651150a620da6a85cb1b1b70795a36111a5efe2f13",
+          "bytes": 94
+        },
+        {
+          "file": "owned-MGyf2w/worker-error.txt",
+          "sha256": "7b68242cd77b8373e099b7f52699d3319b6afd32b58d4333500907e0024fff6b",
+          "bytes": 512
+        },
+        {
+          "file": "owned-MGyf2w/ownership-proof.json",
+          "sha256": "ad1b88d09174769d3e100f1014fb8f7e52c9dec066f4c7a65e20e5f14597a34f",
+          "bytes": 4497
+        }
+      ]
+    },
+    {
+      "attempt": "owned-4284eu",
+      "runId": "8e6a9ac784a94f60389ae321c79a0dc9",
+      "scripts": "c6d8984e",
+      "collection": "full collection in a persistent tab",
+      "outcome": "no evidence",
+      "reason": "The cell, SGR, pixel, colour, erase, editing and history suites ran; Resize then failed because the agent observer refused the read after the first resize. The full collection is not supported in a persistent tab.",
+      "files": [
+        {
+          "file": "owned-4284eu/failure.json",
+          "sha256": "24ec9622a468238ee6a3956d3812fecb8d8bba089b3ec8e6c62fa9fac8c6c29d",
+          "bytes": 91
+        },
+        {
+          "file": "owned-4284eu/worker-error.txt",
+          "sha256": "cef8aa558844ad60d2cba6cebb09c9b438066894d442a682f695a06ec95dd335",
+          "bytes": 1428
+        },
+        {
+          "file": "owned-4284eu/ownership-proof.json",
+          "sha256": "8ae3470ae148d0187650529766a408996d2bf311712e9cf6d3ba68ce60821b13",
+          "bytes": 4948
+        }
+      ]
+    },
+    {
+      "attempt": "owned-357Iga",
+      "runId": "537ff164b4c9d6b6e5c64d2275ca7886",
+      "scripts": "1643bc48",
+      "collection": "persistent-animation scope, first mini-runner",
+      "outcome": "no evidence",
+      "reason": "A proof slot was missing: \"Cannot set properties of undefined (setting 'actions')\".",
+      "files": [
+        {
+          "file": "owned-357Iga/failure.json",
+          "sha256": "176bd99dd811b2a78b44ceef45ac8404de9ee30d331ddeca3ebdda840a3e6f1d",
+          "bytes": 108
+        },
+        {
+          "file": "owned-357Iga/worker-error.txt",
+          "sha256": "e2855d7d399dc988011ff79ca1fc0db875bc6fb77352a291d058b05a26e12bf2",
+          "bytes": 519
+        },
+        {
+          "file": "owned-357Iga/ownership-proof.json",
+          "sha256": "ac864f00dd38bbf210230fafefd8ffba1d3584b136547c233db5f882d976fea4",
+          "bytes": 2812
+        }
+      ]
+    },
+    {
+      "attempt": "owned-g3XKvX",
+      "runId": "c495257030f1bc27eb2341981679910d",
+      "scripts": "72eaf091",
+      "collection": "persistent-animation scope",
+      "outcome": "no evidence",
+      "reason": "The shared image-ownership check still required the worker to be the App's direct child (\"Invalid or incomplete owned static-image evidence\"); it now accepts a recorded daemon lineage and nothing else.",
+      "files": [
+        {
+          "file": "owned-g3XKvX/failure.json",
+          "sha256": "f5c773e33c943416b8d97ce782f2e2f98280125aadafde49842ffa20731c7af0",
+          "bytes": 104
+        },
+        {
+          "file": "owned-g3XKvX/worker-error.txt",
+          "sha256": "33c456d504fbf3078fefc44884fe832f241485fab08d7f38ebdca541cf0efc50",
+          "bytes": 515
+        },
+        {
+          "file": "owned-g3XKvX/ownership-proof.json",
+          "sha256": "913842a4524e6d4f3eefd95b248e2d62e78cd7a6473b7582b70e83a7ad0e8ba8",
+          "bytes": 2933
+        }
+      ]
+    },
+    {
+      "attempt": "owned-FGEIxw",
+      "runId": "331391872dd8998435c4f9ae9e794787",
+      "scripts": "a9081b65",
+      "collection": "persistent-animation scope",
+      "outcome": "24/24 passed",
+      "reason": "A complete run on the scripts before review: the runner was restructured and four Codex findings were fixed afterwards, which changes measured files, so it is superseded by the published run.",
+      "files": [
+        {
+          "file": "owned-FGEIxw/animation-observations.json",
+          "sha256": "1fb4a728c78b7e0211b77961540b9a8d8c968f700569c101af4ab1d26edd1fab",
+          "bytes": 977933
+        },
+        {
+          "file": "owned-FGEIxw/persistent-animation-receipt.json",
+          "sha256": "8e168f1ec5c9042c7062bb3d88bcb669b06215c94e7463727e4508d2c2ac80dc",
+          "bytes": 914
+        },
+        {
+          "file": "owned-FGEIxw/ownership-proof.json",
+          "sha256": "d971989298f0a1fcb52c72e369d1bc274d568b44d5e75484bb5446e8dc598d26",
+          "bytes": 112427
+        }
+      ]
+    },
+    {
+      "attempt": "owned-aFLiyb",
+      "runId": "837ce74a65b6330700d2b37772cf31a1",
+      "scripts": "b4bf3c83",
+      "collection": "persistent-animation scope",
+      "outcome": "24/24 passed",
+      "reason": "A complete run on the scripts after Codex review, published first. Sonar (an unsorted-compare bug in the verifier and smells in measured files) and CodeRabbit (scratch removal when preparation fails) then led to edits of measured files, so it is superseded by the published run.",
+      "files": [
+        {
+          "file": "owned-aFLiyb/animation-observations.json",
+          "sha256": "6d4dedd3c71d8ba255811e8996e4b7374cb8d10561e2d42e8f23dc095becc946",
+          "bytes": 977899
+        },
+        {
+          "file": "owned-aFLiyb/persistent-animation-receipt.json",
+          "sha256": "7b7a0ef7a16d1d62692a61cd0ad0df07e848483ed4b530efcfc2c834a7793bf3",
+          "bytes": 914
+        },
+        {
+          "file": "owned-aFLiyb/ownership-proof.json",
+          "sha256": "932f1e5edcccbf3938eb45adca8b2d6d258c453c59c449d2d753065d14e7934e",
+          "bytes": 112466
+        }
+      ]
+    },
+    {
+      "attempt": "owned-JYQcC1",
+      "runId": "6cd71813dc53d39b04328c3a1592b095",
+      "scripts": "39fac4de",
+      "collection": "persistent-animation scope",
+      "outcome": "24/24 passed",
+      "reason": "A complete run on the scripts after the Sonar and CodeRabbit fixes (source policy v66), published second. Merging main (the OSC 720 batch: source policy v67, receipt 74, changes to the runner, worker and launcher) changed the measured graph, so it is superseded by a fresh run on the merged tree.",
+      "files": [
+        {
+          "file": "owned-JYQcC1/animation-observations.json",
+          "sha256": "1252e35e5db95f68f445f9910295ae0a7069fab719babbf488fdee9b4977363e",
+          "bytes": 977862
+        },
+        {
+          "file": "owned-JYQcC1/persistent-animation-receipt.json",
+          "sha256": "a81a66221ea4cfcc8edd4a602a5783c403feaf2b5eec69d5bf154576174cd011",
+          "bytes": 914
+        },
+        {
+          "file": "owned-JYQcC1/ownership-proof.json",
+          "sha256": "419a014846e23e7a2904b659d67f9634270708445e0a4fc950ccfc266f7692e3",
+          "bytes": 112443
+        }
+      ]
+    },
+    {
+      "attempt": "owned-pTtP7e",
+      "runId": "2ae8c7e42734ba719556582c1f5e750b",
+      "scripts": "a844dbce",
+      "collection": "persistent-animation scope",
+      "outcome": "24/24 passed",
+      "reason": "A complete run on the merged tree (source policy v67), published third. A second review round (CodeRabbit: keep both errors when the scratch cleanup of a failed preparation fails; Sonar: absolute executables in the assembler, which is not measured) edited the measured runner, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-pTtP7e/animation-observations.json",
+          "sha256": "15a72cc9d1d92584abd4f693bc02722a222e38f8520651937a763ad7e3b1ca3a",
+          "bytes": 977933
+        },
+        {
+          "file": "owned-pTtP7e/persistent-animation-receipt.json",
+          "sha256": "91f5bb182bf0450b72054d0073fb7cf0f5ce0c0a2d09faf7fae7dae5b38e3605",
+          "bytes": 914
+        },
+        {
+          "file": "owned-pTtP7e/ownership-proof.json",
+          "sha256": "1b5a287cf9c082b2be40fc8b8423ae98dbcbe271f2fbe5f23c28ba4f64edf3db",
+          "bytes": 112488
+        }
+      ]
+    }
+  ]
+}

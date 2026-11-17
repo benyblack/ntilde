@@ -1,0 +1,111 @@
+{
+  "proofs": [
+    {
+      "privateClipboard": {
+        "policy": "private-app-storage-parent-transactions-v1",
+        "appBirth": "Tue Nov 17 15:19:00 2026",
+        "workerBirth": "Tue Nov 17 15:19:01 2026",
+        "outputDevice": {
+          "dev": "1018044615",
+          "rdev": "268435457",
+          "ino": "138463"
+        },
+        "originalTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600"
+      },
+      "app": {
+        "pid": 46732,
+        "ppid": 46724,
+        "uid": 501,
+        "tty": "??",
+        "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde"
+      },
+      "worker": {
+        "pid": 46734,
+        "ppid": 46733,
+        "uid": 501,
+        "tty": "ttys001",
+        "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+      },
+      "tty": "/dev/ttys001",
+      "at": "2026-11-17T15:19:01.629Z",
+      "resize": {
+        "policy": "parent-selected App resize in proved private pane; independent kernel geometry and -opost; original grid restored before stock",
+        "actions": [
+          {
+            "index": 0,
+            "caseId": "resize.width-roundtrip",
+            "stageId": "after",
+            "target": {
+              "rows": 40,
+              "cols": 133
+            },
+            "observed": null,
+            "error": "Observer refused the read."
+          }
+        ],
+        "paneId": "c56dde87-27f3-45ca-bc81-3bb89cdaba25",
+        "originalGeometry": {
+          "rows": 40,
+          "cols": 140
+        }
+      },
+      "asciiReflow": {
+        "policy": "parent-selected App resize in proved private pane; independent kernel geometry and -opost; two ASCII reflow experiments on one disposable main screen",
+        "actions": []
+      },
+      "saved": {
+        "policy": "paired owned active-screen facts and source-known restoration witnesses; no direct inactive-bank inspection"
+      },
+      "metadata": {
+        "policy": "paired private main-screen cells, bounded host metadata and actual UI controls; prepared baseline restoration plus verified disposable teardown"
+      },
+      "input": {
+        "policy": "one declared Avalonia event at a time in the proved disposable local pane; raw child stdin plus a post-action FIFO ordering reply; every control capture proves the negotiated modifyOtherKeys level and the DECRQM state of the mouse tracking selectors and of the UTF-8 (1005), SGR (1006), urxvt (1015) and SGR-pixel (1016) coordinate encodings before any dispatch, event bytes are recorded and compared with literal protocol expectations; modes and the original negotiation state restored before teardown",
+        "actions": []
+      },
+      "staticImages": {
+        "policy": "owned-static-images-paired-raw-render-v2",
+        "actions": []
+      },
+      "kittyAnimation": {
+        "policy": "owned-kitty-animation-paired-raw-render-v2",
+        "actions": []
+      },
+      "queries": {
+        "policy": "owned-exact-query-paired-raw-state-v6",
+        "actions": []
+      },
+      "terminalOutput": {
+        "tool": "/bin/stty",
+        "outputProcessing": false,
+        "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;",
+        "verifiedAt": "2026-11-17T15:19:01.661Z"
+      }
+    }
+  ],
+  "completed": false,
+  "collectionScope": {
+    "id": "owned-persistent-full-selection-v1",
+    "omittedSuites": [
+      "osc633"
+    ],
+    "deadlineMs": 600000,
+    "persistence": "KeepOnClose"
+  },
+  "persistentDaemon": {
+    "identity": {
+      "pid": 46733,
+      "uid": 501,
+      "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde"
+    },
+    "command": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde mux serve",
+    "birth": "Tue Nov 17 15:19:00 2026",
+    "appBirth": "Tue Nov 17 15:19:00 2026",
+    "descriptor": {
+      "pid": 46733,
+      "processName": "Ntilde",
+      "endpoint": "/Users/behnam/.ntilde-qa/nt-IbT0CU/appdata/mux/mux.sock"
+    }
+  },
+  "cleanedUpAt": "2026-11-17T15:19:11.000Z"
+}

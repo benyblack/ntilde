@@ -1,0 +1,13 @@
+{
+  "proofs": [],
+  "completed": false,
+  "collectionScope": {
+    "id": "owned-persistent-full-selection-v1",
+    "omittedSuites": [
+      "osc633"
+    ],
+    "deadlineMs": 600000,
+    "persistence": "KeepOnClose"
+  },
+  "cleanedUpAt": "2026-11-17T15:16:53.809Z"
+}
