@@ -152,6 +152,9 @@ namespace Ntilde.Shell
             }
         }
 
+        /// <summary>Greatest reachable <see cref="ScrollOffset"/> for the attached buffer (0 when none).</summary>
+        public int MaxScrollOffset => _buffer == null ? 0 : Math.Max(0, _buffer.TotalLines - _buffer.Rows);
+
         public void SetScrollOffset(int offset)
         {
             ScrollOffset = offset;
