@@ -15,7 +15,7 @@ test('the pinned feeds are exactly the bundle’s thirty lines then the bare req
 
 test('every experiment starts from the same bounded history and holds the observer capture budget', () => {
     const fixture = osc720Fixture(runId), contracts = osc720Experiments(runId);
-    assert.equal(contracts.length, 9);
+    assert.equal(contracts.length, 10);
     assert.ok(3 + contracts.reduce((sum, item) => sum + planReads(item), 0) <= 64);
     for (const contract of contracts) {
         const feeds = planFeeds(contract);
@@ -33,7 +33,9 @@ test('every experiment starts from the same bounded history and holds the observ
 test('the protocol experiments use the documented count forms and the controls use other operations', () => {
     const byName = Object.fromEntries(osc720Experiments(runId).map(item => [item.name, item]));
     assert.equal(byName['pinned-bare'].probe, '\x1b]720\x07');
-    assert.deepEqual(byName['pinned-bare'].expected, { kind: 'erase-saved' });
+    assert.deepEqual(byName['pinned-bare'].expected, { kind: 'none' }, 'the bare form has no `;`, so urxvt does not dispatch it');
+    assert.equal(byName['count-empty'].probe, '\x1b]720;\x07');
+    assert.deepEqual(byName['count-empty'].expected, { kind: 'erase-saved' });
     assert.equal(byName['count-zero'].probe, '\x1b]720;0\x07');
     assert.equal(byName['count-3'].probe, '\x1b]720;3\x07');
     assert.equal(byName['count-3-st'].probe, '\x1b]720;3\x1b\\');

@@ -3854,23 +3854,23 @@
         "extensions.osc720-scroll-up"
       ],
       "evidence": {
-        "files": 15,
-        "bytes": 149010332,
-        "sha256": "3ad034512e51e49c8ebdd3d959bbbb30cfcabbcca414d7c307b97acf25c05076"
+        "files": 16,
+        "bytes": 165603625,
+        "sha256": "4ab8f61d94eb6b8dab7e19518eb66cefe9c65bb2343ac3917e8c4345585baacb"
       },
       "receipt": {
         "schemaVersion": 74,
-        "runId": "4889417f35fe10780c3385cb19e8a51d",
+        "runId": "7924727037ace6f3cce045ca63697c17",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "a74365339966f2b4f40f84704762b07334eb31cbbd9b9d4c040e7b70f7da66c7"
+          "sha256": "9a93fafe00c70deaf2284413fd3892028252dbafef1bc648ef3c2c0489294fed"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-osc720-graded-v1",
           "file": "ovu-observations.json",
-          "sha256": "7c7f23ab2a5087dff8384dd5fd97f256a688fa7a963dd7d857ca7cf8d38bc81b",
+          "sha256": "38ece1af6519444da1925c18d0eeebbe103b4a0409ddc67e8226f6f82b2cf050",
           "runFile": "ovu-run.json",
-          "runSha256": "93e2262cfa921ac8bbba1b5c0c1bbd1ba696307dcbda505f997ac6f59defd97b",
+          "runSha256": "94ff48808dc942b40eb89fbb4d634d6cbb6a430b7423d2e69b553ffaad50f636",
           "counts": {
             "inconclusive/unsupported": 1
           },
@@ -3878,23 +3878,23 @@
         }
       },
       "run": {
-        "ownedRunId": "4889417f35fe10780c3385cb19e8a51d",
-        "measuredAt": "2026-11-17T15:27:43.766Z",
-        "appRevision": "85efa784607f1e98b36c52c1538a30d25c6f9000",
+        "ownedRunId": "7924727037ace6f3cce045ca63697c17",
+        "measuredAt": "2026-11-17T16:05:44.381Z",
+        "appRevision": "06ee7177a8ae6fff17b88bcf437c686f17e1bf91",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "6dcfc318148c96b18b73d264837a8c5b62b11b01",
+        "scriptsRevision": "06ee7177a8ae6fff17b88bcf437c686f17e1bf91",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "e4d307755b4fd5278feb37aa70147852482a3971abbcb4771b98c0684786f7b6",
+        "collectorAdapterBundleSha256": "a6e6e77e580f2b08ef520419202374fdb59216c45d9e4e2c5863a84cc5f64dbf",
         "gradingAdapterId": "ntilde-owned-osc720-grading-v1",
-        "gradingAdapterBundleSha256": "7f3aca49c4d7727438fe42e56e57b28e56eaa142b049606ffd3798ea8480d5f8",
+        "gradingAdapterBundleSha256": "e383cebe2c7fca5b3c20cb510bad3d1e19b461297fd6326170f4c033d7316e28",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v67",
-        "sourceSnapshotManifestSha256": "c194aeba57a484e89da531c004ebd5906b35e59fe58ee8309f3431a59369e527"
+        "sourceSnapshotManifestSha256": "b47fc78e53df289c35518558607c802ef2c1d7cf07c9f442366180edbe61150f"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "8d1225c1db24ee9e81fb81a16e497791",
+        "runId": "142102417788363f541e2f3b90c19ca6",
         "counts": {
           "inconclusive": 160,
           "supported": 94,
@@ -3902,14 +3902,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "a62f1f7fc31c73f8809274acf97043787fb311380dbf67c72334fc7b7f9b8e4f",
+        "rawSha256": "a17f637740451c76f3c4e74b8cf2aa1d49151b7851a9ba705a6007e3527903aa",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades from the same owned run; the OSC 720 effect does not change the stock score."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/osc720-publication.test.mjs",
-        "testSha256": "7cd553077a2fedf91fae8d094f1398279f16c7919507bd58e99c5c3cebcab8f0"
+        "testSha256": "a09dbcaa257dd1442bbe89726f1452ad98853039916bba6c661a5ac2042be286"
       }
     },
     {

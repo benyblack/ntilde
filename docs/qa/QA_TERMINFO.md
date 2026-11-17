@@ -1341,12 +1341,12 @@ or common-harness score increase. The retained scoped run is combined evidence w
 ### OSC 720 view-up / erase-saved qualification
 
 The [OSC 720 batch](terminfo/2026-11-17-osc720-qualification.md) qualifies `extensions.osc720-scroll-up` without changing terminal behavior. rxvt-unicode defines `OSC 720 ; Pt` as a view move up `Pt` lines for a non-zero
-count and a saved-line erase for a zero **or absent** count (`atoi` of the empty string is 0); the pinned probe sends the bare form, so its viewport criterion cannot tell a view move from a history erase. The pinned terminal
+count and a saved-line erase for a zero or empty count after the `;` (`atoi` of the empty string is 0); an OSC is only dispatched after a `;`, so the pinned probe's bare `ESC]720 BEL` is ignored by urxvt itself, and its viewport criterion also cannot tell a view move from a history erase. The pinned terminal
 path is `unverifiedEffect` (always inconclusive, the path the stock collector grades) and the pinned termless function is replayed unchanged over a parent-built scrollback context mapped from the App's own view position,
 beside an effect contract (`ntilde-osc720-view-up-and-erase-saved-effect-v1`) graded from the view scroll position, stored history, cursor and screen. Two measurement hooks were added: an optional read-only `viewport` on
-`readPaneMetadata`, and a generated wheel notch routed to the view's own scroll when mouse reporting is off (the observer control). All six protocol experiments observed no effect with the unmarked, ED 3 and wheel
+`readPaneMetadata`, and a generated wheel notch routed to the view's own scroll when mouse reporting is off (the observer control). All seven protocol experiments observed no effect with the unmarked, ED 3 and wheel
 controls held, so the effect is **unsupported**; the pinned terminal path stays **inconclusive** and the stock counts are unchanged (94/1/160). The run uses receipt schema 74 and source policy v67 (450 files) on the
-`osc633` scope v6; the frozen selections and all earlier publications remain retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc720-qualification.md).
+`osc633` scope; the frozen selections and all earlier publications remain retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc720-qualification.md).
 
 ### OSC 3008 hierarchical contexts
 

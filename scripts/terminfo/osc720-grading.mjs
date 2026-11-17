@@ -118,11 +118,11 @@ function setupHeld(contract, before, reference) {
     return visible && bounds && position;
 }
 
-function checkActions(contract, recorded) {
+function checkActions(contract, recorded, paneId) {
     const names = contract.plan.filter(step => step.action !== undefined).map(step => step.action), actions = recorded.actions ?? [];
     check(actions.length === names.length && actions.every((item, index) => item.action === names[index] && item.response?.action === names[index] && Array.isArray(item.response.notches)
         && item.response.notches.length > 0 && item.response.notches.every(notch => notch.eventDispatched === true && notch.postVerified === true && notch.request?.kind === 'mouseWheel'
-            && notch.request.wheelDelta === osc720ActionDeltas[item.action])), 'OSC 720 action record changed.');
+            && notch.request.wheelDelta === osc720ActionDeltas[item.action] && notch.request.paneId === paneId)), 'OSC 720 action record changed.');
     return actions;
 }
 
@@ -152,7 +152,7 @@ function evaluateExperiments(frames, run, runId, contracts) {
         validateExactFeeds(contract, recorded.feeds, 'OSC 720 contract');
         check(Array.isArray(recorded.barriers) && recorded.barriers.length === planFeeds(contract).length
             && recorded.barriers.every(value => /^\x1b\[\?[\d;]+c$/.test(value ?? '')) && recorded.reads?.length === planReads(contract), 'Invalid OSC 720 capture.');
-        const actions = checkActions(contract, recorded);
+        const actions = checkActions(contract, recorded, frames[1].before.metadata.paneId);
         const { records, preserved } = readExperiment(contract, recorded, frames, frameIndex);
         frameIndex += records.length;
         const [before, after] = records, classified = classifyOsc720(before, after);

@@ -8,17 +8,19 @@ can be observed and moved by an owned run (see [What changed in the App](#what-c
 
 OSC 720 belongs to rxvt-unicode. Its manual (rxvt(7), "Operating System Commands") says: `Ps = 720  Move viewing window up by Pt lines, or clear scrollback buffer if Pt = 0 (Compile frills)`; 721 is the
 same toward the live line. The reference implementation (`src/command.C`, case `URxvt_view_up` / `URxvt_view_down`) reads `lines = atoi(str)`; a non-zero count calls `scr_page(UP/DN, lines)` and a zero
-count, which an **absent or empty count also is**, calls `scr_erase_savelines()`. So OSC 720 **controls a viewport for a count and mutates the retained history for a zero or absent count.**
+count calls `scr_erase_savelines()`. The parser (`process_osc_seq`) only dispatches an OSC when the character after its digits is `;`, so the **bare** `ESC ] 720 BEL` is not dispatched at all, while an empty count after the `;` is zero. So OSC 720 **controls a viewport for `;Pt` and mutates the retained history for `;0` or `;`; the bare form does nothing in urxvt.**
 
-The pinned probe (read from the bundle; the public terminfo.dev prose is not a frozen definition) sends the **bare** form `ESC ] 720 BEL`, with no count:
+The pinned probe (read from the bundle; the public terminfo.dev prose is not a frozen definition) sends the **bare** form `ESC ] 720 BEL`, with no `;` and no count:
 
 | Path | What it does | What it can return |
 |---|---|---|
 | termless | feeds thirty lines `scroll-<i>\r\n`, reads `getScrollback()` (needs `totalLines > screenLines` and `viewportOffset > 0`, else `parserStateResult(null)`), feeds the bare form, reads again; passes iff `after.viewportOffset < before.viewportOffset` (`viewportOffset` is the absolute buffer row where the viewport starts) | supported / unsupported / inconclusive |
 | terminal | writes `ESC[1;1H ESC[2K`, the bare form, asks the cursor position, returns `unverifiedEffect` | **always inconclusive** (evidence `consumed`); the path the stock collector grades |
 
-The bare form is Pt = 0 in the reference implementation, which **erases** the saved lines; `viewportOffset` then also drops to 0, so the pinned termless criterion **cannot tell a viewport move from a
-history erase** (the synthetic regression test shows an rxvt-faithful App passing it by erasing). This qualification keeps those operations apart and never promotes either to the other. CSI SU, scrollback
+The pinned form is therefore not one the protocol owner defines: **urxvt itself ignores it, so the pinned criterion cannot pass on its own reference terminal.** (An earlier revision of this page, and
+of the contract, read the bare form as Pt = 0 and expected an erase; review corrected that from the parser source, and the run was repeated.) Separately, a history erase (`;0`) also drops `viewportOffset` to 0, so the
+pinned termless criterion **cannot tell a viewport move from a history erase** (a synthetic regression test shows it passing over an erase). This qualification keeps those operations apart, expects no effect
+for the bare form and never promotes either operation to the other. CSI SU, scrollback
 growth, and keyboard or wheel viewport scrolling are different operations: the wheel and ED 3 appear only as observer controls.
 
 ## Result
@@ -32,9 +34,9 @@ Three distinct things, recorded separately in [report.json](2026-11-17-osc720/re
 - **Pinned terminal path:** preserved, inconclusive by design. It never measures the viewport, so it can never move.
 - **Pinned termless function:** executed **unchanged** over a parent-built scrollback context mapped from the App's own observation (`viewportOffset = scrollbackLines − scrollOffset`,
   `totalLines = scrollbackLines + rows`, `screenLines = rows`). This is not a termless backend run and not a stock grade. It returned `unsupported`: the viewport stayed at the live line after the bare form.
-- **Effect contract:** independent oracle written from the rxvt text. All six protocol experiments observed **no effect**, with every control held, so the effect is **unsupported**.
+- **Effect contract:** independent oracle written from the rxvt text. All seven protocol experiments observed **no effect**, with every control held, so the effect is **unsupported**.
 
-The stock collector, re-run in the same owned run (`4889417f35fe10780c3385cb19e8a51d`; stock collector run `8d1225c1db24ee9e81fb81a16e497791`), still grades the case inconclusive
+The stock collector, re-run in the same owned run (`7924727037ace6f3cce045ca63697c17`; stock collector run `142102417788363f541e2f3b90c19ca6`), still grades the case inconclusive
 (94 supported / 1 unsupported / 160 inconclusive, `suiteComplete=false`): **no stock score, no Core point and no common-harness score is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -45,8 +47,9 @@ is a paired complete screen, stored history (count, generation, evictions and co
 
 | Experiment | Role | Bytes | rxvt expectation | Observed |
 |---|---|---|---|---|
-| `pinned-bare` | protocol | `ESC]720 BEL` | saved lines erased | nothing changed |
+| `pinned-bare` | protocol | `ESC]720 BEL` | no effect (no `;`, not dispatched) | nothing changed |
 | `count-zero` | protocol | `ESC]720;0 BEL` | saved lines erased | nothing changed |
+| `count-empty` | protocol | `ESC]720; BEL` | saved lines erased | nothing changed |
 | `count-3` | protocol | `ESC]720;3 BEL` | view up 3 | nothing changed |
 | `count-3-st` | protocol | `ESC]720;3 ST` | view up 3 | nothing changed |
 | `count-clamped` | protocol | `ESC]720;100000 BEL` | view up to the oldest row (30) | nothing changed |
@@ -70,12 +73,12 @@ After each scrolled experiment two `scroll-down` wheel notches return the view t
 
 ## Evidence and reproduction
 
-- Measured: App `0.14.0+85efa784…` (Release sidecar built on the tree restacked after PR 1016 and the OSC 3008 batch, executable SHA-256 `f5814e51…9bf8`), scripts at `6dcfc318…`, source policy v67 (450 files), receipt schema 74, scope `owned-osc633-without-notification-suites-v5`
+- Measured: App `0.14.0+06ee7177…` (Release sidecar built on the tree restacked after PR 1016 and the OSC 3008 batch, executable SHA-256 `f5814e51…9bf8`), scripts at `06ee7177…`, source policy v67 (450 files), receipt schema 74, scope `owned-osc633-without-notification-suites-v5`
   (the notification suites are omitted and independently rederived from their own publications). Layered collector extension `ntilde-owned-osc720-grading-v1` over the left/right-margin one.
-- Retained: [owned-run.zip](2026-11-17-osc720/owned-run.zip) (complete run, receipt, journals, run log, wheel actions, adapter bytes) and ten superseded runs (five failed attempts, four complete runs measured on earlier trees or with an earlier grading, and one restack run whose unmarked control failed because a scrolled view survived the next reset) in
+- Retained: [owned-run.zip](2026-11-17-osc720/owned-run.zip) (complete run, receipt, journals, run log, wheel actions, adapter bytes) and eleven superseded runs (five failed attempts, five complete runs measured on earlier trees or with an earlier grading, and one restack run whose unmarked control failed because a scrolled view survived the next reset) in
   [superseded/](2026-11-17-osc720/superseded) with reasons in [attempts.json](2026-11-17-osc720/attempts.json). `node --test scripts/terminfo/osc720-publication.test.mjs` extracts the run, reissues the complete receipt
   with the current validators, rebuilds the report from the paired journal and compares it byte for byte.
-- Policy: stock unchanged; the unchanged pinned bundle's two paths and the effect contract are three separate rows; OSC 721, painted pixels, remote/mux, Windows/Linux and a bare-form-with-count variant beyond the six
+- Policy: stock unchanged; the unchanged pinned bundle's two paths and the effect contract are three separate rows; OSC 721, painted pixels, remote/mux, Windows/Linux and a variant beyond the seven
   experiments are not claimed.
 
 ## Limits
