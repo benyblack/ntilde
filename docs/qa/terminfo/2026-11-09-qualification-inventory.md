@@ -9,12 +9,12 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 141 |
-| Suite claims (an id covered by two suites has two claims) | 143 |
+| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 142 |
+| Suite claims (an id covered by two suites has two claims) | 144 |
 | Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 139 |
+| Effect contract supported | 140 |
 | Effect contract unsupported (measured, retained, not supported) | 1 |
-| Supported by both the pinned probe and the effect contract | 93 |
+| Supported by both the pinned probe and the effect contract | 94 |
 | Effect supported, pinned verdict inconclusive | 46 |
 | Effect unsupported, pinned verdict inconclusive | 1 |
 
@@ -32,17 +32,17 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Not effect-supported, `effectUnqualified` (168 − 138) | 30 |
+| Not effect-supported, `effectUnqualified` (168 − 139) | 29 |
 | of which measured, effect unsupported | 1 |
 | of which measured, another non-supported verdict | 1 |
-| of which not measured (no qualified effect evidence) | 28 |
-| Not pinned-supported (168 − 92) | 76 |
+| of which not measured (no qualified effect evidence) | 27 |
+| Not pinned-supported (168 − 93) | 75 |
 
 `effectUnqualified` is every stock-inconclusive id without a supported effect verdict. It splits into exactly three states that must not be conflated: *measured and unsupported* (retained evidence says the behavior is absent or diverges), *measured with another non-supported verdict*, and *not measured* (no qualified evidence at all). Only the last is "not yet qualified".
 
 Ungraded stock diagnostics with qualified repaired-probe and effect evidence: `cursor.reverse-wrap`. They have no stock outcome, so they are in neither the stock-inconclusive baseline nor the remaining counts above.
 
-The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 76 not-pinned-supported inconclusive cases are the 77 cases outside the 86 stock-supported plus 92 pinned-supported ones.
+The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is graded and separate from both remaining counts. The 1 unsupported plus the 75 not-pinned-supported inconclusive cases are the 76 cases outside the 86 stock-supported plus 93 pinned-supported ones.
 
 ### Ungraded diagnostic
 
@@ -103,6 +103,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `osc633` | 4 | v1 | passed | 69 | `9c814b13` | v62 | 4 | `8cf95ba4` |
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |
+| `osc5` | 1 | v1 | passed | 71 | `e52b99c9` | v64 | 4 | `7b96a31e` |
 | `kitty-animation` | 1 | v1 | passed | 70 | `9bc1fd9c` | v63 | 30 | `076d43e6` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
@@ -164,6 +165,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `osc633` | collected-run-id-recorded | `cb002bb5` | 161/93/1 | `cf7d8759` |
 | `static-images` | collected-run-id-recorded | `620df113` | 161/93/1 | `cf7d8759` |
 | `shell-integration-aggregates` | collected-raw-digest-recorded | raw `a554f4cf` | 161/93/1 | `cf7d8759` |
+| `osc5` | collected-run-id-recorded | `e9a88a43` | 160/94/1 | `cf7d8759` |
 | `kitty-animation` | collected-run-id-recorded | `6072cac8` | 161/93/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
@@ -236,6 +238,7 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc19-highlight-fg` | inconclusive | inconclusive | supported | stored-state + app-resolved-color + controlled-pixels | selection-colors | selection-colors: pinned-query-only-unset-default |
 | `extensions.osc2-title` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | osc-title | - |
 | `extensions.osc21-kitty-color` | inconclusive | supported | supported | stored-state | kcl | - |
+| `extensions.osc5-special-color` | inconclusive | supported | supported | stored-state | osc5 | - |
 | `extensions.osc633-a` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633 | osc633: pinned-inconclusive-by-design |
 | `extensions.osc633-b` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633 | osc633: pinned-inconclusive-by-design |
 | `extensions.osc633-c` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633 | osc633: pinned-inconclusive-by-design |

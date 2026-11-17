@@ -6,10 +6,10 @@ import { join } from 'node:path';
 import { osc5CaseIds } from './osc5-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '9c922a4a3857fb109ba1ef7978a35ae013a8e63f';
+export const measuredScriptsRevision = 'e52b99c9ac2624bb071d8079ef2195a183ce4fa4';
 /** The batch commit whose src/ tree the sidecar App was built from: the OSC 5 implementation landed there, and the measured run then exercised exactly that build. The retained
  *  source-snapshot manifest (context.sourceSnapshotManifestSha256) pins the precise measured tree besides these human-readable revisions. */
-export const measuredAppRevision = '9c922a4a3857fb109ba1ef7978a35ae013a8e63f';
+export const measuredAppRevision = 'e52b99c9ac2624bb071d8079ef2195a183ce4fa4';
 const scope = 'Pinned terminfo.dev@4.0.0 criterion for extensions.osc5-special-color (OSC 5;0;? BEL answered by one complete OSC 5;0;rgb:h{1,4}/h{1,4}/h{1,4} frame ended by BEL or ST; a query-only '
     + 'probe that can never return unsupported), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v6) and replayed '
     + 'byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent oracle written from rxvt\'s '
@@ -55,7 +55,7 @@ function validatePublication(dir, context, stock, measured, raw, receipt) {
         && stock.observations === raw.observations.length && stock.suiteComplete === raw.suiteComplete && stock.measuredAt === raw.measuredAt);
 }
 
-export function osc5Publication(dir) {
+export function osc5Publication(dir, { appRevision = measuredAppRevision, scriptsRevision = measuredScriptsRevision } = {}) {
     const context = json(dir, 'context.json'), stock = json(dir, 'summary.json');
     const measured = json(dir, 'osc5-observations.json'), raw = json(dir, 'raw.json'), receipt = json(dir, 'cell-receipt.json');
     validatePublication(dir, context, stock, measured, raw, receipt);
@@ -63,8 +63,8 @@ export function osc5Publication(dir) {
     const cases = measured.cases.map(item => publishedCase(item, raw, witness));
     if (JSON.stringify(cases.map(item => item.caseId)) !== JSON.stringify([...osc5CaseIds])) throw new Error('The published cases differ from the contracted cases.');
     const report = { schemaVersion: 1, suiteId: measured.suiteId, contractsVersion: measured.contractsVersion, runId: measured.runId, adapter: measured.adapter, scope, cases };
-    const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision: measuredAppRevision,
-        scriptsRevision: measuredScriptsRevision, context, receipt, stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash,
+    const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision,
+        scriptsRevision, context, receipt, stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash,
             sourceRevision: raw.sourceRevision, note: 'Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc5-special-color from inconclusive to supported.' } };
     return { summary, report };
 }
