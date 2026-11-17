@@ -3,6 +3,9 @@ import { test } from 'node:test';
 import { testWithPinnedCollector } from './real-bundle-test.mjs';
 import { adaptOsc5Collector, osc5AdapterId, osc5Seams } from './osc5-grading-collector.mjs';
 import { osc5CaseIds, osc5Contracts, osc5PinnedPattern, osc5PinnedQuery, replayOsc5Pinned } from './osc5-contracts.mjs';
+import { requirePinnedAgreement } from './graded-plan.mjs';
+import { syntheticOsc5Evidence } from './fixtures/osc5-evidence.mjs';
+import { buildOsc5GradingReport } from './osc5-grading.mjs';
 import { osc5RecordingContext } from './osc5-collector.mjs';
 
 /** A verbatim source: seams appear exactly once each, as plain text. */
@@ -77,6 +80,17 @@ testWithPinnedCollector('the real pinned bundle derives through every layer and 
             assert.equal(terminalContext.fedCount, 1);
             assert.equal(terminalContext.askedCount, 1);
             assert.deepEqual(terminal, replayOsc5Pinned(caseId, 'terminal', { replies: reply ?? '', barrier: da }), `terminal over ${JSON.stringify(reply)}`);
+            // deepEqual ignores object key order; the production pinned-agreement check serializes it.
+            assert.doesNotThrow(() => requirePinnedAgreement(contract, termless, replayOsc5Pinned(caseId, 'termless', { replies: reply ?? '' }), 'real-adapter'));
+            assert.doesNotThrow(() => requirePinnedAgreement(contract, terminal, replayOsc5Pinned(caseId, 'terminal', { replies: reply ?? '', barrier: da }), 'real-adapter'));
+            if (reply === null || reply === frames[4]) {
+                const evidence = syntheticOsc5Evidence({ mutate: (id, role, read) => role === 'pinned' ? { ...read, replies: exchange.replies } : null });
+                evidence.run.cases[0].pinned = { termless: { probeId: caseId, ...termless }, terminal: { probeId: caseId, ...terminal } };
+                const report = buildOsc5GradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter);
+                assert.equal(report.cases[0].conclusion.outcome, 'inconclusive');
+                assert.equal(report.cases[0].conclusion.reason, reply === null ? 'no-response' : 'invalid-reply');
+                assert.equal(report.cases[0].effectContract.outcome, 'unsupported');
+            }
             assert.notEqual(termless.observation.outcome, 'unsupported');
         }
         // The pinned request and frame pattern are exactly the contract's.

@@ -82,3 +82,6 @@ registered in the live inventory. Neither run claims binary-to-source attestatio
 
 The final Sonar cleanup splits an equivalent reply-terminator expression and removes an unused synthetic-test seed. It changes no fixture bytes, collector calls, reply framing, oracle or App input.
 Both retained reports and full receipts rederive unchanged through the current validators. The measured App/scripts identity remains `e52b99c9`, as recorded in the archive, rather than the later publication commit.
+
+A later replay fix also preserves the pinned helper's property order for inconclusive observations (`outcome`, `reason`, `evidence`), so silent and malformed replies survive the report builder's
+serialized equality check. Real-bundle tests exercise both paths and complete report derivation for those negative outcomes. The supported observations retained in both runs are unchanged.

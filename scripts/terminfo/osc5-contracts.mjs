@@ -79,7 +79,7 @@ function specialColorResult(response) {
             assertions: [{ kind: 'positive', expected: pinnedExpected, observed: match[0] }] };
     }
     const reason = pinnedPrefix.test(response) ? 'invalid-reply' : 'no-response';
-    return { pass: false, response, observation: { outcome: 'inconclusive', evidence: 'query', reason } };
+    return { pass: false, response, observation: { outcome: 'inconclusive', reason, evidence: 'query' } };
 }
 
 /** The pinned result of one path over the journaled bytes of the case's own exchange: `replies` (the captured reply text before the barrier) and `barrier`. */
