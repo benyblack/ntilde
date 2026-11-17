@@ -64,7 +64,9 @@ invariant changes.
   (`AllowTitleReport`, off by default, direct panes only) and passes the `TERM` it gave the pane's
   child (`TerminalPane.ChildTerminalType`, kept equal to the native PTY layer and SSH options by a
   test); VT never reads the process environment. `device.term-features` is an unverified
-  environment hint, not a query, and has no VT behaviour.
+  environment hint, not a query, and has no VT behaviour; the
+  [policy audit](qa/terminfo/2026-11-17-term-features-policy.md) records the explicit
+  no-declaration policy and its owning regressions.
 - **OSC cell-size reports keep their protocol units.** VT owns exact OSC 1337 ReportCellSize
   and OSC 776 `?` query framing. App supplies one atomic logical-cell/scale/font-ascent snapshot
   from the direct view. Headless and mux hosts without those facts stay silent. The read-only

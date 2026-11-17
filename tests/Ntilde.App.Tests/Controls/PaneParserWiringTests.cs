@@ -560,6 +560,24 @@ public class PaneParserWiringTests
     }
 
     /// <summary>
+    /// The native PTY layer never writes <c>TERM_FEATURES</c> on either spawn path: a child inherits the user's
+    /// environment plus only TERM, COLORTERM and TERM_PROGRAM, so Ntilde makes no iTerm2 feature-reporting
+    /// declaration and the <c>device.term-features</c> probe has nothing Ntilde-made to observe. A declaration
+    /// would need owning evidence for every advertised feature. Policy audit:
+    /// docs/qa/terminfo/2026-11-17-term-features-policy.md.
+    /// </summary>
+    [Fact]
+    public void Child_environment_never_declares_TERM_FEATURES()
+    {
+        string root = AppContext.BaseDirectory;
+        while (root is not null && !File.Exists(Path.Combine(root, "Ntilde.sln"))) root = Path.GetDirectoryName(root)!;
+        Assert.NotNull(root);
+        string native = File.ReadAllText(Path.Combine(root, "src", "Ntilde.App", "native", "src", "lib.rs"));
+        Assert.Equal(1, CountOccurrences(native, "cmd_builder.env(\"COLORTERM\", \"truecolor\");"));
+        Assert.Equal(0, CountOccurrences(native, "TERM_FEATURES"));
+    }
+
+    /// <summary>
     /// DECRQCRA reads the screen back, so a direct pane's parser answers it only while
     /// <c>TerminalSettings.AllowRectangleChecksumReport</c> is on: off by default, live-synced on every
     /// settings change, and never on a mux-backed parser (the daemon's parser owns that pane's replies).
