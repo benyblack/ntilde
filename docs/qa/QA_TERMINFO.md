@@ -1225,7 +1225,8 @@ The [device-query batch](terminfo/2026-11-15-device-queries-qualification.md) fi
 `CSI ? depth ; deepest # Q`) and the `CSI 20 t` / `CSI 21 t` title reports (off by default behind `AllowTitleReport`), then qualifies `device.xtgetxres`, `device.xtreportcolors`, `device.xtwinops-20` and
 `device.xtwinops-21` through a layered collector extension (`ntilde-owned-device-queries-grading-v1`) over the left/right-margin one, replaying the unchanged pinned code over the journaled raw replies of
 fenced exchanges beside an effect contract (`ntilde-device-query-report-effect-v1`) graded by an independent oracle written from xterm's text and source. Three pinned verdicts are supported; the
-XTREPORTCOLORS pinned pattern has no `?` marker and cannot match xterm's reply, so that verdict stays inconclusive beside a supported effect contract. `device.term-features` is documented only. Stock
+XTREPORTCOLORS pinned pattern has no `?` marker and cannot match xterm's reply, so that verdict stays inconclusive beside a supported effect contract. `device.term-features` is documented only; its
+[policy audit](terminfo/2026-11-17-term-features-policy.md) records the inapplicable pinned probe, the iTerm2 feature-reporting ownership and the explicit no-declaration policy. Stock
 grades are now 91/1/163. Query policy v4, receipt schema 61 and source policy v55 (367 files) bind it; earlier policies stay frozen.
 
 ### Xterm color-stack qualification
