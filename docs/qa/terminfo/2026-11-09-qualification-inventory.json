@@ -3772,28 +3772,28 @@
       "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-17-osc5-special-colors-reviewed/",
+      "publication": "2026-11-17-osc5-special-colors-stack-isolation/",
       "doc": "2026-11-17-osc5-special-colors-qualification.md",
       "caseCount": 1,
       "caseIds": [
         "extensions.osc5-special-color"
       ],
       "evidence": {
-        "files": 4,
-        "bytes": 8857234,
-        "sha256": "7b96a31eb1ed9d183c5307f78b4789ee9d64b278295bbd900a28bf4cf11468bf"
+        "files": 5,
+        "bytes": 14568532,
+        "sha256": "777185b75aa4facf1cd80fd9ffa0158598f4b4f3f99e3876923f35aafa744ab1"
       },
       "receipt": {
         "schemaVersion": 71,
-        "runId": "76c5a6a5341157e4f7683102cd91b9b1",
+        "runId": "5f5a5946b82d34456e8167ec967d1a70",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "72757034f796fdc2b9d0369ce30df3645b0d1802a9b552364ad9b72aefbbd1d2"
+          "sha256": "5cf0b86d592a4b159e29debbbf7395e68ebdda67f54479dcc7a4d36ceabe3e10"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
           "file": "osc5-observations.json",
-          "sha256": "3913134311e76c3da8a70149400e66d03b048fac252e9a9f24b8f8381f99a5f2",
+          "sha256": "aabe517672f091ff951e8e26509f5a961d67f4c165105e0705c501c7e66c74d3",
           "runFile": "osc5-run.json",
           "runSha256": "cec4d52b21d1c7d616584f51550927e38f1025fdd118f4c043d9387f6b6d6afc",
           "counts": {
@@ -3803,23 +3803,23 @@
         }
       },
       "run": {
-        "ownedRunId": "76c5a6a5341157e4f7683102cd91b9b1",
-        "measuredAt": "2026-11-17T08:45:28.628Z",
-        "appRevision": "e52b99c9ac2624bb071d8079ef2195a183ce4fa4",
+        "ownedRunId": "5f5a5946b82d34456e8167ec967d1a70",
+        "measuredAt": "2026-11-17T09:32:54.480Z",
+        "appRevision": "dc930315fa4bc7133d676ddc577b609d9c4f528e",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "e52b99c9ac2624bb071d8079ef2195a183ce4fa4",
+        "scriptsRevision": "dc930315fa4bc7133d676ddc577b609d9c4f528e",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "e79a5b84c544947c94a20d48ea91eb14e75748e17538ba00ef2b66136d74f613",
+        "collectorAdapterBundleSha256": "5eaa55ecbbdc377b0ab219bf604da2f03fd9c73cdfc84d6df4e48cd6933daa7a",
         "gradingAdapterId": "ntilde-owned-osc5-special-colors-grading-v1",
-        "gradingAdapterBundleSha256": "2199f93ebebcdd27bb06fa5f52a8ba99ed63f9382f68ece2ba1f70621115f587",
+        "gradingAdapterBundleSha256": "3ef9bd0fd0b2b2c98c3c5101da3dc4f47fb3ffc6ca3d20f586e4867fa3c6f657",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v64",
-        "sourceSnapshotManifestSha256": "925e4e941f389ccd79b4e8c896c20ea6f9a99c8e63935d44f39d804bba29f8f9"
+        "sourceSnapshotManifestSha256": "1754c7fda39a85809256c0c716b93eb237f7674f12e565c4611f1d32d6f4c1a2"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "e9a88a4341e1596cd2641c459575ed9e",
+        "runId": "7321591b0e1b9235abc4db60badcf86f",
         "counts": {
           "inconclusive": 160,
           "supported": 94,
@@ -3827,14 +3827,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "83fe47dcb4e955ef38ed018f3ff7054994dc5e988c362bd452433ed5ca578bd6",
+        "rawSha256": "1d0a0fb9b6e7a48e1af4059609e7f074e172879a3a202e5f59a182ce1c070bb0",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc5-special-color from inconclusive to supported."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/osc5-publication.test.mjs",
-        "testSha256": "a2a6957e5b3a1047948e1748209366f95fbb31706c9b667515c7c758f560fce1"
+        "testSha256": "b7cf0a4af5a462161caea2770e5f8033ce579e536aa29307159bc70151659d20"
       }
     },
     {
