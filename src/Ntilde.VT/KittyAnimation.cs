@@ -141,6 +141,20 @@ internal sealed class KittyAnimation
     }
 
     /// <summary>
+    /// Loading mode parked on the last frame resumes the moment a frame arrives: it is shown at once and its gap counts from
+    /// <paramref name="nowMs"/>, however late the next render is. Call it after settling the playhead to the same time.
+    /// </summary>
+    internal bool OnFrameAppended(long nowMs)
+    {
+        if (!_waiting || Current + 1 >= Frames.Count) return false;
+        int before = Displayed;
+        _waiting = false;
+        MoveTo(Current + 1);
+        FrameStartMs = nowMs;
+        return Displayed != before;
+    }
+
+    /// <summary>
     /// Whole cycles that elapsed since the current frame began leave the playhead where it is, so they are skipped in one step
     /// (a view resumed after hours does not replay them). Finite playback consumes the passes it skips and finishes below.
     /// </summary>
@@ -159,7 +173,7 @@ internal sealed class KittyAnimation
     {
         get
         {
-            if (State == KittyAnimationState.Stopped) return null;
+            if (State == KittyAnimationState.Stopped || CycleMs() == 0) return null; // all-gapless: the playhead cannot move, so nothing is due
             if (_waiting) return Current + 1 < Frames.Count ? FrameStartMs : null;
             if (State == KittyAnimationState.Loading && Current + 1 >= Frames.Count && Hold(Frames[Current]) == 0) return null;
             return FrameStartMs + Math.Max(1, Hold(Frames[Current]));

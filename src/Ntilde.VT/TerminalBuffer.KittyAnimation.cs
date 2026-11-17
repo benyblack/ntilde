@@ -33,6 +33,9 @@ public partial class TerminalBuffer
             KittyAnimation animation = asset.Animation ??= new KittyAnimation(asset.Handle);
             bool replacing = replaceIndex >= 0;
             if (!replacing && animation.Frames.Count >= KittyAnimation.MaxFrames) return KittyFrameStoreResult.TooManyFrames;
+            // Settle the playhead to now before the frame list or a gap changes, so the change cannot rewrite time already elapsed.
+            long now = KittyAnimationClock();
+            bool moved = animation.Advance(now);
             long resulting = asset.PixelCharge + frame.Charge - (replacing ? animation.Frames[replaceIndex].Charge : 0);
             if (resulting > MaxKittyImagePixelBytes) return KittyFrameStoreResult.NoSpace;
             if (!TryAdmitImageHandle(frame.Handle)) return KittyFrameStoreResult.Rejected;
@@ -41,8 +44,12 @@ public partial class TerminalBuffer
             if (!replacing)
             {
                 animation.Frames.Add(frame);
+                // A parked loading animation resumes from this arrival, not from whenever the next render happens.
+                moved |= animation.OnFrameAppended(now);
+                if (moved) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
                 return KittyFrameStoreResult.Stored;
             }
+            if (moved) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             KittyFrame old = animation.Frames[replaceIndex];
             animation.Frames[replaceIndex] = frame;
             if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
@@ -65,6 +72,8 @@ public partial class TerminalBuffer
             if (!_kittyImageAssets.Contains(asset)) return;
             KittyAnimation animation = asset.Animation ??= new KittyAnimation(asset.Handle);
             long now = KittyAnimationClock();
+            // Settle first: a gap, frame or state change applies from now on and does not reach back over elapsed time.
+            if (animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             if (control.GapFrame != 0 && control.Gap != 0) animation.Frames[(int)control.GapFrame - 1].GapMs = control.Gap;
             if (control.CurrentFrame != 0)
             {

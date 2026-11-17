@@ -363,8 +363,8 @@ public sealed class KittyAnimationTests
         Assert.False(h.Advance(100_000));                  // parked on the last frame for a long time
         h.Now = 100_000; h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 0, 255, 255));
         h.Replies.Clear();
-        Assert.True(h.Advance(100_000));                   // the new frame is shown at once
-        Assert.Equal(3, Index(h));
+        Assert.Equal(3, Index(h));                         // the new frame is shown at once, at its arrival
+        Assert.False(h.Advance(100_000));
         h.Now = 100_019; h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(255, 0, 255, 255));
         h.Replies.Clear();
         Assert.False(h.Advance(100_019));                  // the first new frame has been up for 19 ms of its 100
@@ -390,6 +390,49 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void A_gap_change_applies_from_now_and_cannot_rewrite_time_that_already_elapsed()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 255, 0, 255));
+        h.Send("a=a,i=1,r=1,z=100"); h.Replies.Clear();        // two 100 ms frames
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Now = 150;                                          // no render happened since t=0
+        h.Send("a=a,i=1,r=1,z=200"); h.Replies.Clear();       // the root gap grows to 200 ms
+        Assert.Equal(1, Index(h));                            // the root's first 100 ms had already passed: frame 2 is up
+        Assert.Same(h.FramePixels(1), h.Shown);
+        h.Advance(199);
+        Assert.Equal(1, Index(h));
+        h.Advance(200);                                       // frame 2 ran 100..200, then the root again
+        Assert.Equal(0, Index(h));
+    }
+
+    [Fact]
+    public void A_frame_added_while_parked_starts_its_clock_at_its_arrival_even_if_rendering_is_late()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=2"); h.Replies.Clear();
+        h.Advance(10_000);                                   // parked on the last frame
+        h.Now = 20_000; h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 0, 255, 255)); h.Replies.Clear();
+        Assert.Equal(3, Index(h));                            // shown at arrival, with no render in between
+        h.Now = 20_050; h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(255, 0, 255, 255)); h.Replies.Clear();
+        Assert.Equal(3, Index(h));                            // the first new frame has had 50 of its 100 ms
+        Assert.True(h.Advance(20_150));                        // a late render: its 100 ms ended at 20_100
+        Assert.Equal(4, Index(h));
+    }
+
+    [Fact]
+    public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=-1", Solid(0, 255, 0, 255));
+        h.Send("a=a,i=1,r=1,z=-1"); h.Replies.Clear();
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Advance(1_000);
+        Assert.Null(NextDue(h));
+        Assert.Single(h.Buffer.Images);                       // the image is placed, so only the gapless policy suppresses the timer
+    }
+
+    [Fact]
     public void An_animation_whose_frames_are_all_gapless_cannot_hang_or_change_the_display()
     {
         var h = new Harness();
@@ -412,8 +455,8 @@ public sealed class KittyAnimationTests
         Assert.Equal(2, Index(h));
         Assert.Null(NextDue(h));
         h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 0, 255, 255));
-        Assert.True(h.Advance(20_001));
-        Assert.Equal(3, Index(h));
+        Assert.Equal(3, Index(h));                         // resumed by the arrival itself
+        Assert.False(h.Advance(20_001));
     }
 
     private static long? NextDue(Harness h) { h.Buffer.AdvanceKittyAnimations(h.Now, out long? due); return due; }
