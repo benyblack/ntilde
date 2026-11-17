@@ -26,14 +26,24 @@ public static class PersistentImagePolicy
     /// </summary>
     public const int MultipartImagesVersion = 2;
 
+    /// <summary>
+    /// <see cref="MultipartImagesVersion"/> plus Kitty animation frames (#1017). A version of its own because a version-2 peer refuses animation in a
+    /// persistent session (<c>a=f</c> and <c>a=a</c> answer <c>ENOTSUP</c>): under one policy, one side would play an animation and the other would not,
+    /// and a snapshot carrying frames could not be restored by a peer that predates them.
+    /// </summary>
+    public const int AnimationImagesVersion = 3;
+
     /// <summary>The highest policy this build supports.</summary>
-    public const int EnabledVersion = MultipartImagesVersion;
+    public const int EnabledVersion = AnimationImagesVersion;
 
     /// <summary>Whether <paramref name="version"/> carries Kitty graphics and iTerm2 inline images.</summary>
     public static bool AllowsImages(int version) => version >= RetainedImagesVersion;
 
     /// <summary>Whether <paramref name="version"/> assembles iTerm2's multipart inline images.</summary>
     public static bool AllowsITerm2Multipart(int version) => version >= MultipartImagesVersion;
+
+    /// <summary>Whether <paramref name="version"/> retains Kitty animation frames in snapshots.</summary>
+    public static bool AllowsAnimation(int version) => version >= AnimationImagesVersion;
 
     /// <summary>Configures a persistent-session parser (daemon or client) for <paramref name="version"/>.</summary>
     public static void Apply(AnsiParser parser, int version)
@@ -44,5 +54,6 @@ public static class PersistentImagePolicy
         parser.RetainImageSources = images;
         parser.AllowNativeKittyGraphics = images;
         parser.AllowITerm2Multipart = AllowsITerm2Multipart(version);
+        parser.RetainedAnimation = AllowsAnimation(version);
     }
 }

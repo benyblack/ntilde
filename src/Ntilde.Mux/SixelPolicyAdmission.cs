@@ -43,9 +43,12 @@ internal static class ImagePolicyAdmission
     /// <summary>Refuses a snapshot whose images the session's policy does not carry, before any callback sees it.</summary>
     internal static void RequireClientSnapshot(TerminalStateSnapshot snapshot, int sessionPolicy)
     {
-        if (PersistentImagePolicy.AllowsImages(sessionPolicy)) return;
-        if (snapshot.KittyImages is { Count: > 0 } || snapshot.KittyPlacements is { Count: > 0 } || snapshot.ITermImages is { Count: > 0 })
+        if (!PersistentImagePolicy.AllowsImages(sessionPolicy)
+            && (snapshot.KittyImages is { Count: > 0 } || snapshot.KittyPlacements is { Count: > 0 } || snapshot.ITermImages is { Count: > 0 }))
             throw new MuxProtocolException(MuxErrorCodes.VersionMismatch, "A snapshot carries images its session's image policy does not allow.");
+        // A snapshot with frames is only restorable under a policy that retains them: a peer whose policy predates animation would show a still image.
+        if (!PersistentImagePolicy.AllowsAnimation(sessionPolicy) && snapshot.KittyImages is { } kitty && kitty.Exists(image => image?.Animation is not null))
+            throw new MuxProtocolException(MuxErrorCodes.VersionMismatch, "A snapshot carries animation its session's image policy does not allow.");
     }
 }
 

@@ -84,6 +84,46 @@ public sealed class ImagePolicyClientTests
     }
 
     [Fact]
+    public async Task A_snapshot_with_animation_is_refused_for_a_session_that_predates_it_and_accepted_under_policy_three()
+    {
+        foreach ((int policy, bool accepted) in new[] { (PersistentImagePolicy.MultipartImagesVersion, false), (PersistentImagePolicy.AnimationImagesVersion, true) })
+        {
+            using var fake = FakeMuxServerEnd.Create();
+            Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, Ct);
+            MuxRequest hello = await fake.ReadRequestAsync();
+            fake.Reply(hello.Id, new WelcomeResult { Version = 2, MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, MuxJsonContext.Default.WelcomeResult);
+            using var client = await connect;
+            Guid id = Guid.NewGuid();
+            using var session = client.OpenSession(id, requiredImagePolicy: policy);
+            int delivered = 0;
+            session.SnapshotReceived += _ => delivered++;
+            Task attach = session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
+            MuxRequest request = await fake.ReadRequestAsync();
+            TerminalStateSnapshot state = TerminalStateSerializer.FromBytes(FakeMuxServerEnd.SnapshotJson());
+            state.KittyImages = [new() { Id = 1, Format = 32, RawWidth = 1, RawHeight = 1, Width = 1, Height = 1, Data = [1, 2, 3, 255],
+                Animation = new() { State = 1, Frames = [new() { Gap = 100 }, new() { Gap = 100, Data = KittyFrameCodecProbe.OnePixel }] } }];
+            fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, 0, TerminalStateSerializer.ToBytes(state)));
+
+            if (accepted)
+            {
+                await attach;
+                Assert.Equal(1, delivered);
+            }
+            else
+            {
+                Assert.Equal(MuxErrorCodes.VersionMismatch, (await Assert.ThrowsAsync<MuxProtocolException>(() => attach)).Code);
+                Assert.Equal(0, delivered);
+            }
+        }
+    }
+
+    /// <summary>The packed form of one opaque pixel, written out so the test needs no VT internals (a literal of one pixel).</summary>
+    private static class KittyFrameCodecProbe
+    {
+        internal static readonly byte[] OnePixel = [0, 1, 2, 3, 255];
+    }
+
+    [Fact]
     public void The_image_policy_fields_are_omitted_at_zero_and_named_otherwise()
     {
         var id = Guid.Parse("00000000-0000-0000-0000-000000000001");

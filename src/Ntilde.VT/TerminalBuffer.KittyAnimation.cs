@@ -61,10 +61,12 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
-    /// A fresh copy of frame <paramref name="index"/>'s straight-alpha RGBA (0 is the root), or null when it is not available. A later frame keeps its
-    /// pixels; the root's are read back from its decoded handle by <paramref name="decoder"/> under the lock, so the handle cannot be retired mid-read.
+    /// A fresh copy of frame <paramref name="index"/>'s straight-alpha RGBA (0 is the root), or null when it is not available. In an ordinary tab a frame keeps
+    /// its pixels and the root's are read back from its decoded handle by <paramref name="decoder"/> under the lock, so the handle cannot be retired mid-read.
+    /// Where frames are retained for snapshots (<paramref name="fromSources"/>, persistent sessions) no decoder is consulted: a frame's pixels are its packed
+    /// retained source and the root's are its retained image bytes, so the daemon and every client decide alike and a source the budget evicted leaves the frame unavailable.
     /// </summary>
-    internal byte[]? ReadKittyFramePixels(KittyImageAsset asset, int index, IImageDecoder? decoder)
+    internal byte[]? ReadKittyFramePixels(KittyImageAsset asset, int index, IImageDecoder? decoder, bool fromSources = false)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         try
@@ -72,6 +74,7 @@ public partial class TerminalBuffer
             if (!_kittyImageAssets.Contains(asset)) return null;
             KittyFrame? frame = asset.Animation is { } animation && index >= 0 && index < animation.Frames.Count ? animation.Frames[index] : null;
             if (frame?.Rgba is { } retained) return (byte[])retained.Clone();
+            if (fromSources) return ReadKittyFramePixelsFromSources(asset, index, frame);
             if (index != 0 || decoder is null) return null;
             object root = frame?.Handle ?? asset.Handle;
             return decoder.TryReadPixels(root, out byte[] rgba, out int width, out int height) && width == asset.PixelWidth && height == asset.PixelHeight
@@ -80,12 +83,39 @@ public partial class TerminalBuffer
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
     }
 
+    private static byte[]? ReadKittyFramePixelsFromSources(KittyImageAsset asset, int index, KittyFrame? frame)
+    {
+        // A frame with a source of its own (a later frame, or a root that was edited) is only what that source still holds: once evicted its pixels are
+        // gone, and the retained image bytes must not stand in for an edit.
+        if (frame?.Source is { } own)
+            return own.Data is { } packed && KittyFrameCodec.TryDecode(packed, asset.PixelWidth * asset.PixelHeight, out byte[] pixels) ? pixels : null;
+        if (index != 0 || asset.Source?.Data is not { } data || asset.Encoding is not { } encoding) return null;
+        return RootPixelsFromRetainedBytes(asset, data, encoding);
+    }
+
+    /// <summary>The root image's RGBA from the bytes it was sent as: raw pixels directly, a PNG through <see cref="PngPixelReader"/>; any other container is not read here.</summary>
+    private static byte[]? RootPixelsFromRetainedBytes(KittyImageAsset asset, byte[] data, KittyImageEncoding encoding)
+    {
+        if (RetainedKittyPixels(data, encoding) is not { } bytes) return null;
+        if (!IsRaw(encoding))
+            return PngPixelReader.TryRead(bytes, Math.Max(asset.PixelWidth, asset.PixelHeight), out int width, out int height, out byte[] png) && width == asset.PixelWidth && height == asset.PixelHeight ? png : null;
+        int bytesPerPixel = RawBytesPerPixel(encoding), pixels = asset.PixelWidth * asset.PixelHeight;
+        if (encoding.RawWidth != asset.PixelWidth || encoding.RawHeight != asset.PixelHeight || bytes.LongLength != (long)pixels * bytesPerPixel) return null;
+        var rgba = new byte[pixels * 4];
+        for (int i = 0; i < pixels; i++)
+        {
+            Array.Copy(bytes, i * bytesPerPixel, rgba, i * 4, 3);
+            rgba[i * 4 + 3] = bytesPerPixel == 4 ? bytes[i * 4 + 3] : (byte)255;
+        }
+        return rgba;
+    }
+
     /// <summary>
     /// Appends <paramref name="frame"/>, or replaces frame <paramref name="replaceIndex"/> when it is
     /// nonnegative. Quota pressure from the new bytes evicts other assets exactly as a new image would;
     /// a frame that cannot fit even then is refused and nothing changes.
     /// </summary>
-    internal KittyFrameStoreResult StoreKittyFrame(KittyImageAsset asset, KittyFrame frame, int replaceIndex)
+    internal KittyFrameStoreResult StoreKittyFrame(KittyImageAsset asset, KittyFrame frame, int replaceIndex, byte[]? packed = null)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         try
@@ -103,6 +133,14 @@ public partial class TerminalBuffer
             if (resulting > MaxKittyImagePixelBytes) return KittyFrameStoreResult.NoSpace;
             if (!TryAdmitImageHandle(frame.Handle)) return KittyFrameStoreResult.Rejected;
             List<KittyImageAsset> victims = KittyQuotaVictims(asset, resulting);
+            // Where frames are retained for snapshots, the frame's packed pixels are charged to the image-source budget only after everything this frame
+            // replaces or evicts has released its bytes, so the budget never evicts a surviving image's bytes to make room for a moment (as StoreKittyImage keeps).
+            if (packed is not null)
+            {
+                foreach (KittyImageAsset victim in victims) ReleaseKittySources(victim);
+                if (replacing) animation.Frames[replaceIndex].Source?.Release();
+                frame.Source = ImageSources.Retain(packed, 4L * asset.PixelWidth * asset.PixelHeight);
+            }
 
             // Publish the frame's ownership before any other asset is freed: a host decoder that shares an opaque handle cannot then
             // see it retired while the frame already owns it (the order StoreKittyImage keeps for whole images).
