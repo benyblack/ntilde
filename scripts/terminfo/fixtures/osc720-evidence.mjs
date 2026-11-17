@@ -98,6 +98,7 @@ export function syntheticOsc720Evidence({ runId = 'a'.repeat(32), behavior = 'ig
         run.experiments.push({ caseId: contract.caseId, feeds: planFeeds(contract), barriers: planFeeds(contract).map(() => barrier), reads, ...(actions.length ? { actions } : {}) });
     }
     const bare = run.experiments.find(item => item.caseId === `${osc720CaseId}/pinned-bare`);
+    if (bare === undefined) throw new Error('The synthetic run has no pinned-bare experiment.');
     const [before, after] = bare.reads.map(entry => entry.facts);
     run.pinned = { caseId: osc720CaseId, termless: replayOsc720TermlessStatic(before.rows, before, after), terminal: replayOsc720TerminalStatic() };
     frames.push(frameOf(base, frames.length, 'ovu-finish', { ...blank, generation: generation + 1 }));
