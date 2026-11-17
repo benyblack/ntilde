@@ -219,10 +219,10 @@ export function makeOsc3008Experiments(runId) {
             `\x1b]3007;start=x${ST}`, `\x1b]30080;start=x${ST}`, `\x1b]133;start=x${ST}`, `\x1b]633;start=x${ST}`, read('ignored'), end(a), read('closed')]),
         experiment(fixture, 'separate-from-shell-state', 'control', [`\x1b]133;A${BEL}`, `\x1b]133;B${BEL}`, start(a, ['type=shell', 'cwd=/ctx/not-the-cwd', 'comm=title-bait']), read('input-window'),
             `\x1b]133;C${BEL}`, `\x1b]133;D;0${BEL}`, read('finished'), end(a), read('closed')]),
-        experiment(fixture, 'reset-resilience', 'required', [start(a, ['type=session']), start(b, ['type=shell']), '\x1b[!p', read('after-soft-reset'), end(a), read('closed')]),
-        experiment(fixture, 'end-ends-subcontexts', 'policy', [start(a), start(b), start(c), end(b), read('b-ended'), end(a), read('closed')]),
+        experiment(fixture, 'reset-resilience', 'required', [start(a, ['type=session']), start(b, ['type=shell']), '\x1b[!p', read('after-soft-reset'), end(b), end(a), read('closed')]),
+        experiment(fixture, 'end-ends-subcontexts', 'policy', [start(a), start(b), start(c), end(b), read('b-ended'), end(c), end(b), end(a), read('closed')]),
         experiment(fixture, 'depth', 'policy', [...Array.from({ length: 17 }, (_, index) => start(id(`d${index}`))), read('full'), start(id('d15'), ['pid=999']), read('updated-at-depth'),
-            end(id('d0')), read('closed')]),
+            end(id('d0')), read('closed'), ...Array.from({ length: 17 }, (_, index) => end(id(`d${16 - index}`))), read('cleaned')]),
         experiment(fixture, 'repeated-field', 'policy', [start(d, ['user=first', 'user=', 'user=last', 'pid=1', 'pid=oops']), read('repeated'), end(d), read('closed')]),
         experiment(fixture, 'bare-backslash', 'policy', [start(d, ['comm=bad\\q', 'user=kept']), start('bad\\id'), read('invalid-escape'), end(d), read('closed')]),
     ];
