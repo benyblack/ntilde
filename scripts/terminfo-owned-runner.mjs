@@ -4397,7 +4397,8 @@ async function answerPersistentRequest(run, request, budget, { owner, worker, da
     const [proofs, tty] = [run.proofs, request.tty];
     if (request.kind === 'kan-relaunch') {
         if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
-        await relaunchPersistentApp(run);
+        run.relaunchInFlight = relaunchPersistentApp(run);
+        await run.relaunchInFlight;
         return {};
     }
     if (request.kind.startsWith('kan-')) {
@@ -4501,6 +4502,7 @@ async function relaunchPersistentApp(run) {
     run.relaunching = true;
     try {
         await terminateLaunchedApp(previous);
+        if (run.stopping) throw new Error('The run stopped before the App was started again.');
         for (const [what, pid] of [['shell', run.identities.worker.pid], ['multiplexer daemon', run.identities.daemon.pid]]) {
             if (!workerExists(pid)) throw new Error(`The ${what} ended with the App.`);
         }
@@ -4549,7 +4551,7 @@ async function persistentAnimationMain(args, executable, snapshot, collectionSco
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
         run = preparePersistentRun(args, executable, snapshot, lease, output, collectionScope);
-        Object.assign(run, { done, resolve: resolveDone, reject: rejectDone });
+        Object.assign(run, { done, resolve: resolveDone, reject: error => { run.stopping = true; rejectDone(error); } });
         Object.defineProperty(run, 'interruption', { get: () => interruption });
         if (interruption) throw interruption;
         const outcome = await runPersistentAnimation(run);
@@ -4571,6 +4573,9 @@ async function runPersistentAnimation(run) {
     try { evidence = await collectPersistentAnimation(run, server); }
     catch (error) { failure = error; }
     clearTimeout(run.deadline);
+    // A relaunch still in flight must finish (or give up) before cleanup, or its new App could outlive the cleanup that targets the old one.
+    run.stopping = true;
+    await run.relaunchInFlight?.catch(() => {});
     run.preserveScratch = true;
     const cleanup = await captureOwnedCleanup(() => cleanupOwnedRun({ lease: run.lease, workerIdentity: run.identities.worker, daemonIdentity: run.identities.daemon, daemonProof: run.daemonProof,
         executable: run.executable, appData: run.appData, runId: run.runId, app: run.app, logFd: run.logFd, server, output: run.output, proofs: run.proofs, completed: run.completed,

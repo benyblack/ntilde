@@ -219,3 +219,15 @@ test('the common-core driver acquires before creating output and persists every 
     assert.ok(/markerKinds: appId === 'ntilde' \? \['owner', 'worker'\] : \['worker'\]/.test(driver) && driver.includes("'--ntilde-terminfo-worker=' + runId"),
         'the driver records only the markers it puts on its processes, and the worker command line carries its marker');
 });
+
+test('a relaunch in flight can neither start a new App after the run stopped nor outlive the cleanup that targets the old one', () => {
+    const runner = readFileSync(real('../terminfo-owned-runner.mjs'), 'utf8');
+    const at = text => { const index = runner.indexOf(text); assert.ok(index > 0, text); return index; };
+    const relaunch = runner.slice(at('async function relaunchPersistentApp'), at('/** Start the disposable App and wait'));
+    assert.ok(relaunch.indexOf('await terminateLaunchedApp(previous)') < relaunch.indexOf('if (run.stopping) throw') && relaunch.indexOf('if (run.stopping) throw') < relaunch.indexOf('startPersistentApp(run)'),
+        'the run must still be live after the old App is gone and before the new one starts');
+    const settle = runner.slice(at('async function runPersistentAnimation'));
+    assert.ok(settle.indexOf('run.stopping = true') < settle.indexOf('await run.relaunchInFlight') && settle.indexOf('await run.relaunchInFlight') < settle.indexOf('cleanupOwnedRun('),
+        'cleanup waits for a relaunch in flight, after the run is marked stopping');
+    assert.ok(runner.includes('reject: error => { run.stopping = true; rejectDone(error); }'), 'a failed or interrupted run is marked stopping');
+});
