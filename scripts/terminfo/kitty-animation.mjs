@@ -150,12 +150,19 @@ class AnimationReport extends StaticImageReport {
         return { ...facts, actionTime: Date.parse(facts.action.ownership.at), frameTime: Date.parse(frame.ownership.at) };
     }
     /** Wall-clock facts: when a command could have taken effect, and the span the paired captures covered. */
-    timingFacts(entry, stage, index, { actionTime, frameTime }) {
+    timingFacts(entry, stage, index, { action, actionTime, frameTime }) {
         const span = animationSpanOf(this.frames[index]);
         checkImages(frameTime <= span.start && this.lastEnd <= actionTime);
         if (stage.waitMs !== undefined) checkImages(actionTime - this.lastEnd >= stage.waitMs);
+        const previousEnd = this.lastEnd;
         this.lastEnd = span.end;
         const caseFacts = this.facts.get(entry.caseId) ?? {};
+        // The new App was started, and its pane showed the restored screen, within this window: a playhead it restarted could have begun anywhere in it.
+        if (stage.relaunch) {
+            const { relaunch } = action.ownership;
+            checkImages(Date.parse(relaunch.startedAt) >= previousEnd && Date.parse(relaunch.at) <= actionTime);
+            caseFacts.relaunch = { earliest: Date.parse(relaunch.startedAt), latest: Date.parse(relaunch.at) };
+        }
         if (stage.reply === 'build') caseFacts.build = { earliest: actionTime, latest: frameTime };
         if (stage.reply === 'start') caseFacts.start = { earliest: actionTime, latest: frameTime };
         if (stage.reply === 'stop') caseFacts.stop = { earliest: actionTime, latest: frameTime };

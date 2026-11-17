@@ -50,7 +50,10 @@ function plannedTiming(stage, startedAt, clock) {
         const centre = startedAt + stage.targetMs, span = [centre - 600, centre + 600];
         return { actionAt: span[0] - 1000, readAt: span[0] - 200, span };
     }
-    const actionAt = clock + (stage?.waitMs ?? 100);
+    // A relaunch quits the App and starts it again before the stage is admitted: it begins at the stage's relaunchAtMs into the running timeline when it has one, and the
+    // App is back about 2.5 seconds later; otherwise right after the previous read.
+    const begin = stage?.relaunch && stage.relaunchAtMs !== undefined && startedAt !== undefined ? startedAt + stage.relaunchAtMs : undefined;
+    const actionAt = begin === undefined ? clock + (stage?.waitMs ?? 100) : begin + 2500;
     return { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
 }
 
@@ -66,8 +69,8 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     const baseOwnership = imageOwnership(initial.rows, initial.cols, runId);
     // A restore run (version 3) lives in a persistent tab: the worker is the multiplexer daemon's child, and every relaunch stage brings a new App process (and pane).
     const firstApp = baseOwnership.app.pid, daemonRecord = { pid: 700, ppid: firstApp, uid: baseOwnership.app.uid, tty: '??', executable: baseOwnership.app.executable, ...daemon };
-    let appPid = baseOwnership.app.pid, currentPane = paneId;
-    const stamp = at => ({ ...structuredClone(baseOwnership), app: { ...structuredClone(baseOwnership.app), pid: appPid }, ...(version === currentAnimationVersion ? {} : { worker: { ...structuredClone(baseOwnership.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) }), at: iso(at) });
+    let appPid = baseOwnership.app.pid, currentPane = paneId, relaunchInfo;
+    const stamp = at => ({ ...structuredClone(baseOwnership), app: { ...structuredClone(baseOwnership.app), pid: appPid }, ...(version === currentAnimationVersion ? {} : { worker: { ...structuredClone(baseOwnership.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) }), ...(relaunchInfo ? { relaunch: structuredClone(relaunchInfo) } : {}), at: iso(at) });
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
         const other = pairDiffer?.(entry);
         const pixels = [appearance, other ?? appearance].map((shown, side) => {
@@ -87,9 +90,13 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
         if (entry.kind === 'read' && !states.has(entry.caseId)) states.set(entry.caseId, { imageId: 4000 + states.size });
         const state = states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, runId, initial.cursorVisible, version);
         const item = cases.find(value => value.id === entry.caseId), stage = item?.stages.find(value => value.id === entry.stageId);
-        if (stage?.relaunch && !keepApp) { appPid += 1; daemonRecord.ppid = 1; currentPane = relaunchAt?.paneId ?? `${paneId.slice(0, -2)}${String(appPid).slice(-2)}`; }
         let plan = plannedTiming(stage, startedAt.get(entry.caseId), clock);
         plan = timing?.(entry, plan, { startedAt: startedAt.get(entry.caseId) }) ?? plan;
+        if (stage?.relaunch && !keepApp) {
+            const from = appPid;
+            appPid += 1; daemonRecord.ppid = 1; currentPane = relaunchAt?.paneId ?? `${paneId.slice(0, -2)}${String(appPid).slice(-2)}`;
+            relaunchInfo = { from, to: appPid, startedAt: iso(Math.max(clock, plan.actionAt - 2200)), at: iso(plan.actionAt - 50) };
+        }
         if (stage?.reply === 'start') startedAt.set(entry.caseId, plan.actionAt);
         const action = { index: actions.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
             imageId: state.imageId ?? null, commandHex: Buffer.from(expected.command).toString('hex'),

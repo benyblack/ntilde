@@ -94,6 +94,10 @@ function runningTiming(stage, facts) {
     const possible = framesPossibleAt(facts.start, facts.capture);
     if (possible.length !== 1) return timingNo('capture span straddles a frame boundary: ' + possible.join('/'));
     if (stage.appearance === 'timeline') return timingOk;
+    // After a relaunch a restored playhead and one the new App restarted must predict different frames here, or this read cannot tell a restore from a restart.
+    if (facts.relaunch && framesPossibleAt(facts.relaunch, facts.capture).includes(stage.appearance)) {
+        return timingNo(`a playhead restarted by the relaunch could show the ${stage.appearance} frame here as well`);
+    }
     return possible[0] === stage.appearance ? timingOk : timingNo(`read landed in the ${possible[0]} window, not the planned ${stage.appearance} window`);
 }
 /** The one frame the timeline allows for a stage whose frame depends on when it was read; undefined when the capture span could show more than one (the stage is then inconclusive). */

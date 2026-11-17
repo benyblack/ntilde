@@ -144,6 +144,9 @@ export function validateImageOwnership(actual, original, geometry) {
 export function validateEpochChange(actual, previous) {
     checkImages(actual?.app && previous?.app && actual.app.pid !== previous.app.pid && actual.app.uid === previous.app.uid && actual.app.executable === previous.app.executable);
     checkImages(actual.tty === previous.tty && previous.daemon !== undefined && actual.daemon !== undefined);
+    // The parent's own record of this relaunch must link the two App processes: the one the previous facts name, and the one these name.
+    checkImages(actual.relaunch?.from === previous.app.pid && actual.relaunch.to === actual.app.pid && Number.isFinite(Date.parse(actual.relaunch.startedAt))
+        && Date.parse(actual.relaunch.startedAt) <= Date.parse(actual.relaunch.at) && Date.parse(actual.relaunch.at) <= Date.parse(actual.at));
     checkImages(['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual.worker[key] === previous.worker[key]));
     // The daemon is the same process, but its parent is not: the App that started it was its parent until that App went away, then it belongs to init.
     checkImages(['pid', 'uid', 'tty', 'executable'].every(key => actual.daemon[key] === previous.daemon[key]));

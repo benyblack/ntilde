@@ -20,6 +20,8 @@ export const animationAppliedMarginMs = 250;
 // appearance: 'absent', a frame whose solid color must fill the placement, or a composed frame (overRoot, overEdit) whose color the protocol's
 // own blend formula gives (see kitty-animation-inputs.mjs).
 // expect: the ordered correlated replies the stage's command produces ('placed' is the a=T reply, which echoes its placement id; a=d success is silent).
+// relaunchAtMs: where in the running timeline the relaunch begins (the App is back about 2-3 s later, inside the second frame's window, so a playhead the new App restarted would
+// show different frames from a restored one at the later reads).
 // relaunch: the parent quits the App and starts it again on the same private root before this stage is admitted; the stage reads what the reattached pane shows.
 // appearance 'timeline' (a relaunch stage whose frame depends on when the App came back): the frame the independent timeline gives for the capture span.
 // clock: 'static' (no running animation expected to move), 'running' (elapsed time since a=a s=3 selects the frame),
@@ -54,7 +56,7 @@ const reattach = (appearance, extra = {}) => stage('reattach', appearance, { rel
 const restoreCases = Object.freeze([
     Object.freeze({ id: 'kitty.animation.restore-playing', stages: Object.freeze([stage('blank', 'absent'), build,
         stage('start', 'root', { clock: 'running', reply: 'start', targetMs: 1000, expect: replies('ok') }),
-        reattach('timeline', { clock: 'running' }),
+        reattach('timeline', { clock: 'running', relaunchAtMs: 4000 }),
         stage('third', 'third', { clock: 'running', targetMs: 12500 }),
         stage('loop', 'root', { clock: 'running', targetMs: 17500 }), clear]) }),
     Object.freeze({ id: 'kitty.animation.restore-stopped', stages: Object.freeze([stage('blank', 'absent'), build,

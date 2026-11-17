@@ -4406,7 +4406,7 @@ async function answerPersistentRequest(run, request, budget, { owner, worker, da
         const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
         if (!matchesRecordedWorker(worker, run.identities.worker, workerCommand, run.runId)) throw new Error('Recorded animation worker identity or marker changed.');
         return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, daemon: daemon.record, tty, at: new Date().toISOString(),
-            terminalOutput: readOwnedOutputMode(tty, budget()) });
+            terminalOutput: readOwnedOutputMode(tty, budget()), ...(run.relaunches?.length ? { relaunch: run.relaunches.at(-1) } : {}) });
     }
     switch (request.kind) {
         case 'prove':
@@ -4506,9 +4506,9 @@ async function relaunchPersistentApp(run) {
         for (const [what, pid] of [['shell', run.identities.worker.pid], ['multiplexer daemon', run.identities.daemon.pid]]) {
             if (!workerExists(pid)) throw new Error(`The ${what} ended with the App.`);
         }
-        const next = startPersistentApp(run);
+        const startedAt = new Date().toISOString(), next = startPersistentApp(run);
         await waitForReattachedPane(run);
-        run.relaunches.push({ from: previous.pid, to: next.pid, appBirth: processBirth(next.pid), at: new Date().toISOString() });
+        run.relaunches.push({ from: previous.pid, to: next.pid, appBirth: processBirth(next.pid), startedAt, at: new Date().toISOString() });
     } finally { run.relaunching = false; }
 }
 

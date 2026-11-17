@@ -303,8 +303,28 @@ test('only a declared relaunch stage may change the App process, and the worker,
     refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.worker = { ...frame.ownership.worker, pid: 4242 }; });
     refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.app = { ...frame.ownership.app, uid: 9999 }; });
     refuses(frames => { const [frame] = afterRelaunch(frames); delete frame.ownership.daemon; });
+    // The parent's relaunch record must link the previous App process to this one, in order.
+    refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.relaunch = { ...frame.ownership.relaunch, from: 1 }; });
+    refuses(frames => { const [frame] = afterRelaunch(frames); delete frame.ownership.relaunch; });
+    refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.relaunch = { ...frame.ownership.relaunch, startedAt: frame.ownership.at, at: new Date(Date.parse(frame.ownership.at) - 1000).toISOString() }; });
     // A declared relaunch that never changed the App process is not restore evidence: uninterrupted playback must not qualify.
     refuses(() => {}, { keepApp: true });
     // A direct-tab (version 2) journal never admits a changed App process.
     withJournal({}, ({ build, frames }) => { for (const frame of frames.filter(value => value.index > 4)) frame.ownership.app = { ...frame.ownership.app, pid: 99999 }; assert.throws(() => build(frames)); });
+});
+
+test('a read that a restarted playhead would also pass cannot stand for a restore: an early relaunch makes it inconclusive', () => {
+    // The App is back after about 2.6 s: a playhead restarted then predicts the same frames at 12.5 s and 17.5 s as the restored one, so those reads prove nothing about restoration.
+    const early = (entry, plan) => entry.caseId === playing && entry.stageId === 'reattach' ? { ...plan, actionAt: plan.actionAt - 3900, readAt: plan.readAt - 3900, span: plan.span.map(value => value - 3900) } : plan;
+    withRestore({ timing: early }, ({ build }) => {
+        const report = build(), third = report.observations.find(item => item.featureId === playing + '.third');
+        assert.equal(third.result, 'inconclusive'); assert.match(third.inconclusiveReason, /restarted by the relaunch could show the third frame/);
+        assert.equal(report.observations.find(item => item.featureId === playing + '.reattach').result, 'passed');
+        assert.equal(report.caseResults.find(item => item.caseId === playing).result, 'inconclusive');
+    });
+    // A relaunch that takes about three seconds separates them: a restart then shows the second frame at 12.5 s, the restored playhead the third.
+    withRestore({ paint: (entry, appearance) => entry.caseId === playing && entry.stageId === 'third' ? 'second' : appearance }, ({ build }) => {
+        const third = build().observations.find(item => item.featureId === playing + '.third');
+        assert.equal(third.result, 'failed'); assert.equal(third.timing.valid, true);
+    });
 });
