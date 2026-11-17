@@ -250,6 +250,7 @@ namespace Ntilde.Shell
         }
 
         // Mouse event handlers
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "A linear wheel router (mouse report, alternate scroll, scrollback); the generated-input guards from #999 are two necessary early-outs on that fixed order. Splitting it would hide the route precedence.")]
         protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
         {
             if (!CanApplyGeneratedInput) { e.Handled = true; return; }
