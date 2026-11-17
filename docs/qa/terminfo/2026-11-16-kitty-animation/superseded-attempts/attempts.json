@@ -77,6 +77,15 @@
         "animation-observations.json": "5828982536208dfe927c7d61ba50b3d528973554a880bdad7c8e97c2105726d3",
         "cell-receipt.json": "6c2049bc860f704a57dcf9580b10f56244cdfadc67cdbc931b1a96374b2b6bf7"
       }
+    },
+    {
+      "runId": "a3bc9c2e7381e740e3a9dc8d946e889e",
+      "scriptsRevision": "efed4bf8",
+      "reason": "A fifth complete 18/18 run (effect supported, receipt schema 70) on the App built from efed4bf8. Superseded, not failed: the last review rounds changed the production playhead again (a frame refused by the quotas before anything is inflated or composed, skipped playback cycles leaving the visible frame stepping would leave, a gap change applying from now without backdating later frames, and no wake-ups when fewer than two frames are ever shown), so the App was rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "a5fe00edbfc4f0a18c83590e63648db3b167606f11a1a43803a45b0f51f9ccf0",
+        "cell-receipt.json": "b9dabcb5349f09fce564085bb2f3a149cbc785e3fb721d6874d82d873ab7a530"
+      }
     }
   ]
 }
