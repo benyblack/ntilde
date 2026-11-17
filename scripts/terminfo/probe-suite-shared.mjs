@@ -281,7 +281,7 @@ export function verifySuitePinnedReplays({ label, contract, recorded, exchange, 
     requirePinned(contract, terminal, replayTerminal({ replies, barrier: exchange.barrier }), label);
     if (replayModule) {
         const context = recordingContextOf(contract, exchange);
-        requireReplay(contract, runTermless(contract.caseId, context), termless);
+        requireReplay(contract, runTermless(replayModule, contract.caseId, context), termless);
         if (context.fedCount !== contract.pinnedFeeds.length || context.askedCount !== 0) fail(`Pinned ${contract.caseId} replay made a different number of calls.`);
     }
     return { termless, terminal };

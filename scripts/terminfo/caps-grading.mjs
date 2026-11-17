@@ -59,8 +59,8 @@ const verifyPinnedReplays = (contract, recorded, exchange, { replayModule = null
     replayTermless: ({ replies } = {}) => replayCapsPinned(contract.caseId, 'termless', { replies }),
     replayTerminal: ({ replies, barrier } = {}) => replayCapsPinned(contract.caseId, 'terminal', { replies, barrier }),
     recordingContextOf: capsRecordingContext,
-    runTermless: (probeId, ctx) => replayModule.ntildeRunCapsTermless(probeId, ctx),
-    runTerminal: (probeId, ctx) => replayModule.ntildeRunCapsTerminal(probeId, ctx),
+    runTermless: (module, probeId, ctx) => module.ntildeRunCapsTermless(probeId, ctx),
+    runTerminal: (module, probeId, ctx) => module.ntildeRunCapsTerminal(probeId, ctx),
 });
 const resultOf = suitePinnedResult;
 

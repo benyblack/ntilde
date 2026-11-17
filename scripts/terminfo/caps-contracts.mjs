@@ -55,8 +55,12 @@ const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.
 
 /** The pinned request (BEL-terminated, exactly as registered), and the frame pattern the pinned code searches the captured text for (text escapes, like the bundle spells them). */
 export const capsPinnedQuery = `${esc}]1337;RequestCapabilities${bel}`;
-export const capsPinnedPattern = /\x1b\]1337;Capabilities=[^\x07\x1b]*(?:\x07|\x1b\\)/;
-const pinnedPrefix = /\x1b\]1337;Capabilities=/;
+// The compiled source must stay byte-identical to the pinned bundle's pattern source (the served recording
+// context compares them), so the escape spellings are written as escaped backslashes rather than \xNN escapes.
+const prefixSource = '\\x1b\\]1337;Capabilities=';
+const fullSource = `${prefixSource}[^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)`;
+export const capsPinnedPattern = new RegExp(fullSource);
+const pinnedPrefix = new RegExp(prefixSource);
 const pinnedExpected = 'Complete OSC 1337 Capabilities reply';
 
 /** The exact calls each pinned path makes, in order. `replies` names which journaled bytes the captured call returns. */
@@ -129,27 +133,39 @@ const appearanceScope = 'the iTerm2 feature-reporting declaration (OSC 1337 Requ
 
 // ---------- state, seed and grading ----------
 
-const groupOf = (screen, replies) => ({ screen, ink: selectiveEraseInk(screen), cursor: [screen.cursorRow, screen.cursorCol], cursorVisible: screen.cursorVisible,
-    cursorMode: screen.cursorMode, rows: screen.rows, cols: screen.cols, margins: [screen.bufferState.scrollTop, screen.bufferState.scrollBottom],
-    origin: screen.bufferState.originMode, alternate: screen.bufferState.alternateScreen, buffer: screen.bufferState,
-    horizontalMargins: screen.horizontalMargins, replies });
-/** Everything an exchange must leave unchanged. */
-const stateKey = state => JSON.stringify([state.ink, state.cursor, state.cursorVisible, state.cursorMode, state.buffer, state.horizontalMargins]);
+/** One journaled observation group: the full screen beside the ink, cursor, geometry, margins, modes and reply
+ *  facts every exchange must leave unchanged. Built from the device-query seed's fixture facts. */
+const groupOf = (screen, replies) => ({
+    screen, replies,
+    ink: selectiveEraseInk(screen),
+    at: [screen.cursorRow, screen.cursorCol],
+    cursorVisible, cursorMode: screen.cursorMode,
+    size: [screen.rows, screen.cols],
+    bands: [screen.bufferState.scrollTop, screen.bufferState.scrollBottom],
+    origin: screen.bufferState.originMode,
+    alternate: screen.bufferState.alternateScreen,
+    buffer: screen.bufferState,
+    horizontalMargins: screen.horizontalMargins,
+});
+const cursorVisible = screen => screen.cursorVisible;
+/** Everything an exchange must leave unchanged: the ink projection, the cursor facts, the geometry, the buffer state and the horizontal margins. */
+const stateKey = state => JSON.stringify([state.ink, state.at, state.cursorVisible, state.cursorMode, state.buffer, state.horizontalMargins]);
 const printable = raw => (raw === null ? null : raw.replaceAll(esc, String.raw`\e`).replaceAll(bel, String.raw`\a`));
 
 /** Whether the initial read holds the contracted seed: geometry, nonce at home, the attributed cells, margins and modes. */
 function seedOk(state, nonce) {
     const { seedCells, seedMargins } = devqFixture;
-    const rowCount = (cells, row) => cells.filter(cell => cell.row === row).length;
-    const cellOk = spec => {
+    const perRow = row => state.ink.filter(cell => cell.row === row).length;
+    const holds = seedCells.every(spec => {
         const cell = state.ink.find(item => item.row === spec.row && item.col === spec.col);
         return cell !== undefined && cell.char === spec.char && cell.bold === (spec.bold ?? false)
             && (spec.fgIndex === undefined || cell.fgIndex === spec.fgIndex) && (spec.underline === undefined || cell.underline === spec.underline);
-    };
-    return state.rows >= capsMinimum.rows && state.cols >= capsMinimum.cols && state.screen.lines[0] === nonce && state.cursor.every(value => value === 0)
-        && state.margins[0] === seedMargins[0] && state.margins[1] === seedMargins[1] && state.origin === false && state.alternate === true
-        && [1, 3].every(row => rowCount(state.ink, row) === rowCount(seedCells, row)) && seedCells.every(cellOk);
+    });
+    return state.size[0] >= capsMinimum.rows && state.size[1] >= capsMinimum.cols && state.screen.lines[0] === nonce && state.at.every(value => value === 0)
+        && state.bands[0] === seedMargins[0] && state.bands[1] === seedMargins[1] && state.origin === false && state.alternate === true
+        && perRow(1) === perRowAt(seedCells, 1) && perRow(3) === perRowAt(seedCells, 3) && holds;
 }
+const perRowAt = (cells, row) => cells.filter(cell => cell.row === row).length;
 
 const inconclusive = note => ({ outcome: 'inconclusive', note });
 const unsupported = note => ({ outcome: 'unsupported', note });
@@ -186,7 +202,7 @@ function briefCase(item, observation) {
             received: state.replies.map(printable), matches: JSON.stringify(state.replies) === JSON.stringify(group.demand),
             unchanged: stateKey(state) === stateKey(observation.initial) }];
     }));
-    const { rows, cols } = observation.initial, script = item.pinnedScript;
+    const [rows, cols] = observation.initial.size, script = item.pinnedScript;
     return { geometry: { rows, cols }, effectContract: capsEffectContractId, pinnedScript: { termless: script.termless.map(call => call.map(printable)), terminal: script.terminal.map(call => call.map(printable)) },
         seed: { nonce: observation.nonce, margins: observation.initial.margins, origin: observation.initial.origin, alternate: observation.initial.alternate,
             cells: seedOk(observation.initial, observation.nonce) }, groups };
