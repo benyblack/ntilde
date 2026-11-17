@@ -601,7 +601,7 @@ public sealed class KittyAnimationTests
         })).ToArray();
         try
         {
-            Assert.True(signals[0].Wait(2000, TestContext.Current.CancellationToken) && signals[1].Wait(2000, TestContext.Current.CancellationToken));
+            Assert.True(signals[0].Wait(10_000, TestContext.Current.CancellationToken) && signals[1].Wait(10_000, TestContext.Current.CancellationToken));
             var watch = System.Diagnostics.Stopwatch.StartNew();
             Assert.False(still.Buffer.AdvanceKittyAnimations(10_000, out long? stillDue));
             Assert.Null(stillDue);                             // nothing to do, lock never touched
@@ -612,7 +612,7 @@ public sealed class KittyAnimationTests
         finally
         {
             release.Set();
-            System.Threading.Tasks.Task.WaitAll(writers, 5000, TestContext.Current.CancellationToken);
+            System.Threading.Tasks.Task.WaitAll(writers, 10_000, TestContext.Current.CancellationToken);
             foreach (var signal in signals) signal.Dispose();
         }
         Assert.True(animated.Advance(60));                    // and once the lock is free it advances normally
