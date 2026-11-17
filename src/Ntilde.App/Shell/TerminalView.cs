@@ -310,7 +310,11 @@ namespace Ntilde.Shell
             var source = _buffer;
             Dispatcher.UIThread.Post(() =>
             {
-                if (ReferenceEquals(_buffer, source)) UpdatePointerShape();
+                if (_retired || !ReferenceEquals(_buffer, source)) return;
+                // The old screen's link is no longer under this pointer. Its override must not
+                // mask the incoming screen's program request until the mouse moves again.
+                ClearHoveredLink();
+                UpdatePointerShape();
             });
             // CRITICAL: Clear the row picture cache on every screen switch.
             // AltScreen rows are reused objects whose revision counters can cycle back to

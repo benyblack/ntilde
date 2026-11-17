@@ -76,4 +76,27 @@ public class TerminalViewPointerShapeTests
         Assert.Equal("Arrow", view.AppliedPointerCursor);
         view.Retire();
     }
+    [AvaloniaFact]
+    public void ScreenSwitchWithdrawsThePreviousScreensLinkOverride()
+    {
+        var buffer = new TerminalBuffer(40, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]8;;https://example.invalid/\x07LINK\x1b]8;;\x07");
+        var view = new TerminalView();
+        view.SetBuffer(buffer); view.SetMetricsForTest(8, 16);
+        view.RequestPointerShape("text", false);
+        view.RequestPointerShape("crosshair", true);
+        view.UpdateHoveredLink(new Point(4, 8));
+        Assert.True(view.PointerShapeOverriddenByLink);
+        Assert.Equal("Hand", view.AppliedPointerCursor);
+        parser.Process("\x1b[?1049h"); Dispatcher.UIThread.RunJobs();
+        Assert.False(view.PointerShapeOverriddenByLink);
+        Assert.Equal("crosshair", view.RequestedPointerShape);
+        Assert.Equal("Cross", view.AppliedPointerCursor);
+        parser.Process("\x1b[?1049l"); Dispatcher.UIThread.RunJobs();
+        Assert.False(view.PointerShapeOverriddenByLink);
+        Assert.Equal("text", view.RequestedPointerShape);
+        Assert.Equal("Ibeam", view.AppliedPointerCursor);
+        view.Retire();
+    }
 }
