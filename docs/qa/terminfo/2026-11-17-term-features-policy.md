@@ -56,15 +56,25 @@ block and the Unix `CommandBuilder` spawn path; the SSH options set `TERM` only)
 sets or clears `TERM_FEATURES`. The VT answers only the implemented OSC 1337 forms —
 `ReportCellSize`, `File=` inline images and the multipart transfer — and every other
 `1337;` payload, including `Capabilities` in any spelling, is ignored without a reply
-(regression-tested beside an answered `ReportCellSize` control). A user-exported
-`TERM_FEATURES` that a child inherits is the user's declaration, not one Ntilde made or can
-honor; it is not overridden, cleared or reported.
+(regression-tested beside an answered `ReportCellSize` control). An inherited
+`TERM_FEATURES` is never Ntilde's declaration. It is most often an outer terminal's
+advertisement leaking inward — Ntilde itself can run inside a terminal that implements the
+protocol, and both spawn paths inherit that value — or a user export; a child cannot
+attribute the value to its author. Because the child's actual terminal is the enclosing
+Ntilde pane, a leaked value can claim features that pane does not provide, and programs may
+enable behavior Ntilde cannot honor. Ntilde currently neither sets, clears nor reports the
+variable: clearing inherited values is a behavior change that belongs to the future
+declaration policy (applied across the PTY, SSH and mux spawn paths), not to this audit.
+The source-scan regression pins only that Ntilde never writes the variable; it does not
+endorse a leaked advertisement.
 
 The disposition is therefore inapplicable/deferred rather than a measured unsupported
 behavior: the pinned probe emits no request to answer and observes no Ntilde-made
 declaration. Implementing the protocol later would need, at minimum: the iTerm2 `Capabilities`
 reply contract with the exact `{FeatureString}` code table, a child-environment declaration
-policy applied consistently across the PTY, SSH and mux spawn paths, owning evidence for
+policy applied consistently across the PTY, SSH and mux spawn paths — including an explicit
+decision on whether inherited `TERM_FEATURES` values are cleared, so a child cannot observe
+an outer terminal's advertisement as if it described this terminal — owning evidence for
 every advertised feature, and a new owned run. Setting the variable in the meantime cannot
 produce a measured pass, and deriving a value from `TERM` would fabricate a declaration.
 
