@@ -15,7 +15,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const canonical = value => {
     if (Array.isArray(value)) return value.map(canonical);
     if (value === null || typeof value !== 'object') return value;
-    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+    return Object.fromEntries(Object.keys(value).sort((a, b) => a.localeCompare(b)).map(key => [key, canonical(value[key])]));
 };
 const sameContexts = (a, b) => same(canonical(a), canonical(b));
 const check = (condition, message) => { if (!condition) throw new Error(message); };

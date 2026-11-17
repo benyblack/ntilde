@@ -213,13 +213,7 @@ namespace Ntilde.VT
         /// <summary>1..64 printable ASCII characters (32..126). The id is an identity: it is never trimmed or normalised.</summary>
         internal static bool IsContextId(string id)
         {
-            if (id.Length is 0 or > ContextIdMaxChars) return false;
-            foreach (char c in id)
-            {
-                if (c < 0x20 || c > 0x7e) return false;
-            }
-
-            return true;
+            return id.Length is not (0 or > ContextIdMaxChars) && id.All(c => c >= 0x20 && c <= 0x7e);
         }
 
         private static string? BoundedText(string value, string? previous, bool allowEmpty = false)
@@ -233,18 +227,11 @@ namespace Ntilde.VT
         {
             if (value.Length == 0) return allowEmpty;
             if (value.Length > ContextFieldMaxChars) return false;
-            for (int i = 0; i < value.Length; i++)
+
+            // EnumerateRunes yields U+FFFD for a lone surrogate, which is refused with every other control or replacement character.
+            foreach (Rune rune in value.EnumerateRunes())
             {
-                char c = value[i];
-                if (c < 0x20 || c is >= '\u007f' and <= '\u009f' || c == '\ufffd') return false;
-                if (char.IsHighSurrogate(c) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1]))
-                {
-                    i++;
-                }
-                else if (char.IsSurrogate(c))
-                {
-                    return false;
-                }
+                if (rune.Value < 0x20 || rune.Value is >= 0x7f and <= 0x9f || rune.Value == 0xfffd) return false;
             }
 
             return true;
@@ -266,10 +253,7 @@ namespace Ntilde.VT
         private static string? UnsignedDecimal(string value, string? previous)
         {
             if (value.Length is 0 or > ContextMaxUnsignedDecimalDigits) return previous;
-            foreach (char c in value)
-            {
-                if (!char.IsAsciiDigit(c)) return previous;
-            }
+            if (!value.All(char.IsAsciiDigit)) return previous;
 
             return ulong.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out _) ? value : previous;
         }
@@ -297,23 +281,23 @@ namespace Ntilde.VT
             if (text.IndexOf('\\') < 0) return true;
 
             var builder = new StringBuilder(text.Length);
-            for (int i = 0; i < text.Length; i++)
+            int index = 0;
+            while (index < text.Length)
             {
-                char c = text[i];
-                if (c != '\\')
+                if (text[index] != '\\')
                 {
-                    builder.Append(c);
+                    builder.Append(text[index++]);
                     continue;
                 }
 
-                if (!TryReadContextEscape(text, i, out char decoded))
+                if (!TryReadContextEscape(text, index, out char decoded))
                 {
                     value = string.Empty;
                     return false;
                 }
 
                 builder.Append(decoded);
-                i += 3;
+                index += 4;
             }
 
             value = builder.ToString();

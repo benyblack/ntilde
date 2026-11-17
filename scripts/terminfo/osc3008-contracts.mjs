@@ -63,18 +63,10 @@ const isControl = code => code < 0x20 || (code >= 0x7f && code <= 0x9f) || code 
 function isText(value, allowEmpty = false) {
     if (value.length === 0) return allowEmpty;
     if (value.length > osc3008Limits.fieldChars) return false;
-    for (let index = 0; index < value.length; index++) {
-        const code = value.charCodeAt(index);
-        if (isControl(code)) return false;
-        if (code >= 0xd800 && code <= 0xdbff) {
-            const next = value.charCodeAt(index + 1);
-            if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
-            index++;
-        } else if (code >= 0xdc00 && code <= 0xdfff) return false;
-    }
-    return true;
+    // A string is well formed when no code unit is a lone surrogate (an invalid UTF-8 decode leaves U+FFFD instead, which isControl refuses).
+    return !value.split('').some(char => isControl(char.codePointAt(0))) && value.isWellFormed();
 }
-const isId = id => id.length >= 1 && id.length <= osc3008Limits.idChars && [...id].every(char => char.charCodeAt(0) >= 0x20 && char.charCodeAt(0) <= 0x7e);
+const isId = id => id.length >= 1 && id.length <= osc3008Limits.idChars && [...id].every(char => char.codePointAt(0) >= 0x20 && char.codePointAt(0) <= 0x7e);
 const isId128 = value => value.length >= 32 && value.length <= 36 && [...value].every(char => isHex(char) || char === '-');
 const isUint64 = value => value.length >= 1 && value.length <= 20 && [...value].every(isDigit) && BigInt(value) <= 18446744073709551615n;
 const isSignal = value => value.length >= 4 && value.length <= 19 && value.startsWith('SIG') && [...value.slice(3)].every(char => (char >= 'A' && char <= 'Z') || isDigit(char) || char === '+');
@@ -128,27 +120,30 @@ function payloadsOf(feed) {
     return payloads;
 }
 
+/** A start: the earlier contexts are kept and a later one discarded once the stack is full; an update flushes the old metadata and ends every sub-context. */
+function applyStart(state, parsed, index) {
+    if (index < 0 && state.stack.length >= osc3008Limits.depth) return;
+    if (index >= 0) state.stack.splice(index);
+    state.stack.push({ id: parsed.id, ...parsed.fields });
+}
+
+/** An end of an open context closes it and every sub-context, and records it with its valid end metadata. */
+function applyEnd(state, parsed, index) {
+    if (index < 0) return;
+    const { type } = state.stack[index];
+    state.stack.splice(index);
+    state.ended.push({ id: parsed.id, ...(type === undefined ? {} : { type }), ...parsed.fields });
+    if (state.ended.length > osc3008Limits.ended) state.ended.shift();
+}
+
 /** The contexts the specification (plus the recorded policies) predicts after every feed so far. Terminal reset sequences never touch them. */
 export function simulateContexts(feeds) {
-    const stack = [], ended = [];
-    for (const feed of feeds) {
-        for (const payload of payloadsOf(feed)) {
-            const parsed = parseSequence(payload);
-            if (parsed === null) continue;
-            const index = stack.findIndex(item => item.id === parsed.id);
-            if (parsed.operation === 'start') {
-                if (index < 0 && stack.length >= osc3008Limits.depth) continue; // the earlier contexts are kept, the later one is discarded
-                if (index >= 0) stack.splice(index); // an update flushes the old metadata and ends every sub-context
-                stack.push({ id: parsed.id, ...parsed.fields });
-            } else if (index >= 0) {
-                const { type } = stack[index];
-                stack.splice(index);
-                ended.push({ id: parsed.id, ...(type === undefined ? {} : { type }), ...parsed.fields });
-                if (ended.length > osc3008Limits.ended) ended.shift();
-            }
-        }
+    const state = { stack: [], ended: [] };
+    for (const parsed of feeds.flatMap(feed => payloadsOf(feed)).map(parseSequence).filter(item => item !== null)) {
+        const index = state.stack.findIndex(item => item.id === parsed.id);
+        (parsed.operation === 'start' ? applyStart : applyEnd)(state, parsed, index);
     }
-    return { stack, ended };
+    return state;
 }
 
 /** The OSC bodies the shell-lifecycle model never needs: the context sequences, and the foreign spellings the negative controls send. None changes stored text, the cursor or shell state. */
@@ -162,15 +157,17 @@ export function withoutContextSequences(feed) {
         const stop = [bell, st].filter(value => value >= 0).sort((a, b) => a - b)[0];
         check(stop !== undefined, 'Unterminated OSC sequence.');
         const inert = inertOscPrefixes.some(prefix => remaining.slice(from + 2, stop).startsWith(prefix));
-        result += remaining.slice(0, inert ? from : stop + (stop === st ? ST.length : BEL.length));
-        remaining = remaining.slice(stop + (stop === st ? ST.length : BEL.length));
+        const after = stop + (stop === st ? ST.length : BEL.length);
+        result += remaining.slice(0, inert ? from : after);
+        remaining = remaining.slice(after);
     }
     return (result + remaining).replaceAll('\x1b[!p', '');
 }
 
 // ---------- the plan ----------
 
-const sequence = (operation, id, fields, terminator) => `${OSC}${operation}=${id}${fields.map(field => `;${field}`).join('')}${terminator}`;
+const joined = fields => fields.map(field => ';' + field).join('');
+const sequence = (operation, id, fields, terminator) => `${OSC}${operation}=${id}${joined(fields)}${terminator}`;
 const start = (id, fields = [], terminator = ST) => sequence('start', id, fields, terminator);
 const end = (id, fields = [], terminator = ST) => sequence('end', id, fields, terminator);
 const read = label => ({ read: label });
@@ -211,7 +208,7 @@ export function makeOsc3008Experiments(runId) {
             'cmdline=', `hostname=${longText('h', 255)}`, 'pid=18446744073709551615', 'pidfdid=18446744073709551616']), read('fields'),
             start(b, ['type=vm', 'vm=guest', 'machineid=3deb5353-d3ba-43d0-8201-c136a47ead7b', 'bootid=ABCDEFabcdef01234567890123456789', 'targetuser=root', 'targethost=h.example', 'sessionid=7']), read('typed'),
             end(b), end(a), read('closed')]),
-        experiment(fixture, 'escapes', 'required', [start(a, ['cwd=/a\\x3bb\\x5cc', 'cmdline=echo \\x3b done', 'user=zoë', 'comm=日本語']), read('escaped'), end(a), read('closed')]),
+        experiment(fixture, 'escapes', 'required', [start(a, [String.raw`cwd=/a\x3bb\x5cc`, String.raw`cmdline=echo \x3b done`, 'user=zoë', 'comm=日本語']), read('escaped'), end(a), read('closed')]),
         experiment(fixture, 'end-fields', 'required', [start(a, ['type=command']), end(a, ['exit=crash', 'status=139', 'signal=SIGSEGV', 'user=ignored', 'pid=9']), read('crash'),
             start(b, ['type=command']), end(b, ['exit=exploded', 'status=256', 'signal=segv']), read('invalid-fields'),
             start(c, ['type=command']), end(c, ['exit=success', 'status=0']), read('success')], { compareEnded: 'last' }),
@@ -224,7 +221,7 @@ export function makeOsc3008Experiments(runId) {
         experiment(fixture, 'depth', 'policy', [...Array.from({ length: 17 }, (_, index) => start(id(`d${index}`))), read('full'), start(id('d15'), ['pid=999']), read('updated-at-depth'),
             end(id('d0')), read('closed'), ...Array.from({ length: 17 }, (_, index) => end(id(`d${16 - index}`))), read('cleaned')]),
         experiment(fixture, 'repeated-field', 'policy', [start(d, ['user=first', 'user=', 'user=last', 'pid=1', 'pid=oops']), read('repeated'), end(d), read('closed')]),
-        experiment(fixture, 'bare-backslash', 'policy', [start(d, ['comm=bad\\q', 'user=kept']), start('bad\\id'), read('invalid-escape'), end(d), read('closed')]),
+        experiment(fixture, 'bare-backslash', 'policy', [start(d, [String.raw`comm=bad\q`, 'user=kept']), start(String.raw`bad\id`), read('invalid-escape'), end(d), read('closed')]),
     ];
 }
 
