@@ -1325,7 +1325,7 @@ set/read group against the other service's measured default. Names, rxvt OSC 106
 (a render-snapshot test pins the non-application). The pinned probe (`OSC 5;0;? BEL`, query-only, never unsupported) is replayed byte-exactly on both paths over the journaled raw reply of its own fenced exchange
 through a layered collector extension (`ntilde-owned-osc5-special-colors-grading-v1`), beside an effect contract (`ntilde-osc5-special-colors-effect-v1`) graded by an independent oracle written from rxvt's
 special-color text. Both pinned paths, the stock grade and the effect contract are **supported**: the stock counts move from 93/1/161 to 94/1/160. Query policy v6 (the osc5 witness joins the exact-query ledger).
-The reviewed run uses receipt schema 71 and source policy v64 (427 files), after integrating Kitty animation; the original v63/schema-70 evidence remains retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc5-special-colors-qualification.md).
+The integrated run uses receipt schema 72 and source policy v65 (439 files), combining OSC 5, Kitty animation and OSC cell-size while all earlier graphs and publications remain retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc5-special-colors-qualification.md).
 ### Exact OSC cell-size reports
 
 The [cell-size batch](terminfo/2026-11-17-osc-cell-size-integrated-qualification.md) implements and independently qualifies

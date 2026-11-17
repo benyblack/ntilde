@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import { osc5CaseIds } from './osc5-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'dc930315fa4bc7133d676ddc577b609d9c4f528e';
+export const measuredScriptsRevision = '0f5de80be98f5c68e473694e549ae626eb0760bc';
 /** The measured App build revision. The retained selected-source manifest independently pins the measured scripts; these human-readable labels are not binary-to-source attestation. */
-export const measuredAppRevision = 'dc930315fa4bc7133d676ddc577b609d9c4f528e';
+export const measuredAppRevision = '0f5de80be98f5c68e473694e549ae626eb0760bc';
 const scope = 'Pinned terminfo.dev@4.0.0 criterion for extensions.osc5-special-color (OSC 5;0;? BEL answered by one complete OSC 5;0;rgb:h{1,4}/h{1,4}/h{1,4} frame ended by BEL or ST; a query-only '
     + 'probe that can never return unsupported), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v6) and replayed '
     + 'byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent oracle written from rxvt\'s '

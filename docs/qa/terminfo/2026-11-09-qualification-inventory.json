@@ -3774,28 +3774,28 @@
       "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-17-osc5-special-colors-stack-isolation/",
+      "publication": "2026-11-17-osc5-special-colors-integrated/",
       "doc": "2026-11-17-osc5-special-colors-qualification.md",
       "caseCount": 1,
       "caseIds": [
         "extensions.osc5-special-color"
       ],
       "evidence": {
-        "files": 5,
-        "bytes": 14568532,
-        "sha256": "777185b75aa4facf1cd80fd9ffa0158598f4b4f3f99e3876923f35aafa744ab1"
+        "files": 4,
+        "bytes": 8942677,
+        "sha256": "9b62b03808ed6aa82464758f9cc1fc953feabc4b26cbd0722b483c07ef158641"
       },
       "receipt": {
-        "schemaVersion": 71,
-        "runId": "5f5a5946b82d34456e8167ec967d1a70",
+        "schemaVersion": 72,
+        "runId": "936ecccbe4972797ce8f810896e380c1",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "5cf0b86d592a4b159e29debbbf7395e68ebdda67f54479dcc7a4d36ceabe3e10"
+          "sha256": "4ff4cc4ab2d62900cdda4b26d382eb7526af17868e023f8c67013c5fe34dc0ad"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
           "file": "osc5-observations.json",
-          "sha256": "aabe517672f091ff951e8e26509f5a961d67f4c165105e0705c501c7e66c74d3",
+          "sha256": "4e97c43a8fa23c095ab255223cee0d971b3e68b6e3db2a5e9175b0b45796ce42",
           "runFile": "osc5-run.json",
           "runSha256": "cec4d52b21d1c7d616584f51550927e38f1025fdd118f4c043d9387f6b6d6afc",
           "counts": {
@@ -3805,23 +3805,23 @@
         }
       },
       "run": {
-        "ownedRunId": "5f5a5946b82d34456e8167ec967d1a70",
-        "measuredAt": "2026-11-17T09:32:54.480Z",
-        "appRevision": "dc930315fa4bc7133d676ddc577b609d9c4f528e",
+        "ownedRunId": "936ecccbe4972797ce8f810896e380c1",
+        "measuredAt": "2026-11-17T10:01:39.917Z",
+        "appRevision": "0f5de80be98f5c68e473694e549ae626eb0760bc",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "dc930315fa4bc7133d676ddc577b609d9c4f528e",
+        "scriptsRevision": "0f5de80be98f5c68e473694e549ae626eb0760bc",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "5eaa55ecbbdc377b0ab219bf604da2f03fd9c73cdfc84d6df4e48cd6933daa7a",
+        "collectorAdapterBundleSha256": "de6041336e84d5a7ed980836d9ea78526bf71d2b67972552e2870f856e04af59",
         "gradingAdapterId": "ntilde-owned-osc5-special-colors-grading-v1",
-        "gradingAdapterBundleSha256": "3ef9bd0fd0b2b2c98c3c5101da3dc4f47fb3ffc6ca3d20f586e4867fa3c6f657",
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v64",
-        "sourceSnapshotManifestSha256": "1754c7fda39a85809256c0c716b93eb237f7674f12e565c4611f1d32d6f4c1a2"
+        "gradingAdapterBundleSha256": "1c9017556aa2f36bb058d40390e80bf79c62a5e18e740ee735673f0f752b678c",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v65",
+        "sourceSnapshotManifestSha256": "c8374d107116825dbe4eae3b51621950094a18c1f3e4cead1c827dd91b0478cf"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "7321591b0e1b9235abc4db60badcf86f",
+        "runId": "f5aea47d148021cfcee80c883d6e48af",
         "counts": {
           "inconclusive": 160,
           "supported": 94,
@@ -3829,14 +3829,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "1d0a0fb9b6e7a48e1af4059609e7f074e172879a3a202e5f59a182ce1c070bb0",
+        "rawSha256": "a432d21618f9109ca95f24b9cbfae3d671e4ef2f94cea778c64fe14608cd3a84",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc5-special-color from inconclusive to supported."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/osc5-publication.test.mjs",
-        "testSha256": "b7cf0a4af5a462161caea2770e5f8033ce579e536aa29307159bc70151659d20"
+        "testSha256": "a8479f0f11800880bc7de6153a594bb279322a3e0acba6c1f8c88c7fe07a65ae"
       }
     },
     {

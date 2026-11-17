@@ -2,8 +2,8 @@
 
 Qualifies one pinned terminfo.dev@4.0.0 case (bundle SHA-256 `aa5f2bf9…e1f6`, probeHash `16a690f34c0e`): `extensions.osc5-special-color`, whose exact request is `OSC 5;0;? BEL`. Like the
 [kitty color-control batch](2026-11-15-kitty-color-control-qualification.md), **this batch adds production code**: main did not answer the request (the [exact query audit](exact-query-audit.md) recorded
-matched silence), so a qualification had nothing to measure. The VT now implements rxvt's special-color protocol, and the batch measures it. The batch is restacked on the merged static-image and
-aggregate batches (live source policy v64, receipt schema 71; the first run remains retained at v63/schema 70).
+matched silence), so a qualification had nothing to measure. The VT now implements rxvt's special-color protocol, and the batch measures it. The batch is restacked on the merged static-image, aggregate, Kitty animation and
+OSC cell-size batches (live source policy v65, receipt schema 72; every earlier v63/v64 publication remains retained).
 
 ## What the pinned probe can say
 
@@ -23,7 +23,7 @@ corroborated by the exact-query witness `q07.extensions.osc5-special-color` unde
 |---|---|---|---|---|
 | `extensions.osc5-special-color` | **supported** / **supported** | **supported** (was inconclusive: no reply) | matched a complete `rgb:` frame | **supported** (3 controls and 15 protocol groups matched; 5 policy groups, all matched Ntilde's choices) |
 
-The stock collector (`7321591b0e1b9235abc4db60badcf86f`) in owned run `5f5a5946b82d34456e8167ec967d1a70` grades 94 supported / 1 unsupported / 160 inconclusive (`suiteComplete=false`), 255 graded cases.
+The stock collector (`f5aea47d148021cfcee80c883d6e48af`) in owned run `936ecccbe4972797ce8f810896e380c1` grades 94 supported / 1 unsupported / 160 inconclusive (`suiteComplete=false`), 255 graded cases.
 The frozen November 9 baseline is 86 / 1 / 168, also 255 cases. Eight cases have since moved from inconclusive to supported: OSC 5 plus the separately implemented OSC 99 notification, Kitty OSC 21,
 DECRQCRA, UTF-8 mouse, window title/icon reports and XTGETXRES cases. This batch newly implements OSC 5 only; those seven other changes are not attributed to it. The frozen baseline stays unchanged.
 No Core point is added.
@@ -39,7 +39,7 @@ tests](../../../tests/Ntilde.VT.Tests/Osc5SpecialColorTests.cs)). It follows rxv
 - the five slots live in their own resource set: nothing here touches the OSC 4 palette, the dynamic colors OSC 10/11/12/17/19 or the kitty OSC 21 keys, and neither do those sequences touch the special
   colors (each direction is a deciding isolation group of its own);
 - an unset slot reports the default foreground, this App's analog of rxvt's per-color X resource default;
-- every read-direction group pins the resolved-color binding (palette, theme and render state): a collateral mutation of any unrelated color inside the exchange is rejected by the grader, and the set-direction groups pin everything except the declared setup fields;
+- every read-direction group pins the resolved-color binding (palette, theme and render state): a collateral mutation of any unrelated color inside the exchange is rejected by the grader, and the set-direction groups permit only their exact declared setup changes;
 
 Choices recorded as non-deciding policy: selector names (rxvt also accepts names such as `bold`) are not modeled — an unmodeled selector changes nothing and stays silent, while valid pairs in the same
 sequence still apply; malformed pairs are ignored without disturbing the reply framing; a sequence over 32768 characters is dropped whole; a sequence with no query is silent; and the App has no
@@ -60,14 +60,14 @@ Windows/Linux or common-harness claim; no stock score beyond this run's recorded
 
 ## Identities
 
-App version 0.14.0, Release sidecar from `dc930315fa4bc7133d676ddc577b609d9c4f528e` (including the xterm palette-stack isolation fix; the selected source snapshot pins the measured script bytes independently). Owned run `5f5a5946b82d34456e8167ec967d1a70`,
-measured 2026-11-17, macOS, Node v24.22.2. Source policy `readonly-owned-source-graph-v64` (427 files), receipt schema 71, query policy `owned-exact-query-paired-raw-state-v6`. The build is not
+App version 0.14.0, Release sidecar from `0f5de80be98f5c68e473694e549ae626eb0760bc` (including the xterm palette-stack isolation fix; the selected source snapshot pins the measured script bytes independently). Owned run `936ecccbe4972797ce8f810896e380c1`,
+measured 2026-11-17, macOS, Node v24.22.2. Source policy `readonly-owned-source-graph-v65` (439 files), receipt schema 72, query policy `owned-exact-query-paired-raw-state-v6`. The build is not
 binary-to-source attestation.
 
 ## Evidence and rederivation
 
-The retained [archive](2026-11-17-osc5-special-colors-stack-isolation/owned-run.zip) ([manifest](2026-11-17-osc5-special-colors-stack-isolation/manifest.json)), [summary](2026-11-17-osc5-special-colors-stack-isolation/summary.json) and
-[report](2026-11-17-osc5-special-colors-stack-isolation/report.json) rederive through:
+The retained [archive](2026-11-17-osc5-special-colors-integrated/owned-run.zip) ([manifest](2026-11-17-osc5-special-colors-integrated/manifest.json)), [summary](2026-11-17-osc5-special-colors-integrated/summary.json) and
+[report](2026-11-17-osc5-special-colors-integrated/report.json) rederive through:
 
 ```sh
 node --test scripts/terminfo/osc5-publication.test.mjs
@@ -77,7 +77,9 @@ node scripts/terminfo-inventory.mjs --check
 The [first run](2026-11-17-osc5-special-colors/owned-run.zip), its summary, report and manifest remain unchanged: owned ID `1eda9658848990fce76b888d41b7bb4f`, stock ID
 `fd5b6501307a54ce3dddd81b1bbab3c6`, App revision `9c922a4a3857fb109ba1ef7978a35ae013a8e63f`, source policy v63 and receipt schema 70. The [first reviewed run](2026-11-17-osc5-special-colors-reviewed/owned-run.zip)
 remains unchanged too: owned ID `76c5a6a5341157e4f7683102cd91b9b1`, stock ID `e9a88a4341e1596cd2641c459575ed9e`, revision `e52b99c9ac2624bb071d8079ef2195a183ce4fa4`, policy v64/schema 71.
-All three full reports and receipts independently rederive through the current trusted validators; only the newest run is registered in the live inventory. No run claims binary-to-source attestation.
+The [stack-isolation run](2026-11-17-osc5-special-colors-stack-isolation/owned-run.zip) is also unchanged: owned ID `5f5a5946b82d34456e8167ec967d1a70`, stock ID
+`7321591b0e1b9235abc4db60badcf86f`, revision `dc930315fa4bc7133d676ddc577b609d9c4f528e`, policy v64/schema 71.
+All four full reports and receipts independently rederive through the current trusted validators; only the newest run is registered in the live inventory. No run claims binary-to-source attestation.
 
 The current App includes all review fixes: special-color-only updates preserve row revisions; set-direction isolation permits only the exact setup mutation; finish clears OSC 5 overrides; and an earlier
 special-color baseline survives a later legacy-baseline failure. Xterm palette pops now retain live special colors while restoring dynamic colors and the palette. Separate owning VT regressions cover
@@ -91,3 +93,7 @@ revision identifies the measured inputs, rather than the later publication commi
 One [refused startup](2026-11-17-osc5-special-colors-stack-isolation/refused-render-timer.zip) is retained and digest-bound in the manifest. The App aborted before collection when Avalonia's native
 render timer returned `-6661`; its journal is empty and it carries no grade or receipt. After verified cleanup and a display-wake preflight under the desktop lease, the retry completed. The publication
 test verifies both the refusal and the successful run; no failure is promoted to an unavailable or supported outcome.
+
+The newest run remeasures after merging OSC cell-size support from main `54b8d64c`. Source policy v65 and receipt schema 72 combine OSC 5, cell-size and Kitty animation while retaining each exact historical
+source graph and collection descriptor. In the same complete receipt, both cell-size effects remain supported while their pinned callbacks remain inconclusive by design; they add no OSC 5 or stock points.
+The required real-bundle CI lane now also executes the OSC 5 negative-replay regression with missing preparation treated as failure.

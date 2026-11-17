@@ -12,6 +12,7 @@ import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const publications = [
+    { directory: '2026-11-17-osc5-special-colors-integrated', manifestHash: 'befd236942de735468e0ac9ab1789c052d9549b311a46c336cb6be9cf397320e', revision: '0f5de80be98f5c68e473694e549ae626eb0760bc', schema: 72, policy: 65 },
     { directory: '2026-11-17-osc5-special-colors-stack-isolation', manifestHash: 'cace6fd43bb0ca338022b161d8c7b5152d43555cf7f98786bbbd7c252b6e5635', revision: 'dc930315fa4bc7133d676ddc577b609d9c4f528e', schema: 71, policy: 64 },
     { directory: '2026-11-17-osc5-special-colors', manifestHash: '7991c411846088023ff0e08d870a63fe846aee73344da2f4cd62140f48ebbc84', revision: '9c922a4a3857fb109ba1ef7978a35ae013a8e63f', schema: 70, policy: 63 },
     { directory: '2026-11-17-osc5-special-colors-reviewed', manifestHash: 'ba2da13503cc0ad3479f7be4f959443593268e1ce12ad1cbbbd26efffcce75ea', revision: 'e52b99c9ac2624bb071d8079ef2195a183ce4fa4', schema: 71, policy: 64 },
