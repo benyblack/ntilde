@@ -117,4 +117,18 @@ public sealed class KittyAnimationRenderTests
         using (var frame = rig.Window.CaptureRenderedFrame()) Assert.NotNull(frame);
         Assert.False(rig.View.KittyAnimationWakeArmedForTest);
     }
+
+    [AvaloniaFact]
+    public void A_wake_up_requests_no_repaint_inside_a_synchronized_output_batch()
+    {
+        using var rig = new Rig();
+        Build(rig);
+        Assert.True(rig.View.OnKittyAnimationWake());
+        rig.Parser.Process("\x1b[?2026h");
+        Assert.True(rig.Buffer.IsSynchronizedOutput);
+        Assert.False(rig.View.OnKittyAnimationWake());          // held until the batch ends
+        rig.Parser.Process("\x1b[?2026l");
+        Assert.False(rig.Buffer.IsSynchronizedOutput);
+        Assert.True(rig.View.OnKittyAnimationWake());
+    }
 }

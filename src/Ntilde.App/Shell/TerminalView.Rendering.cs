@@ -119,11 +119,19 @@ namespace Ntilde.Shell
             if (_kittyAnimationWake is not null && _kittyAnimationWakeDue > now && _kittyAnimationWakeDue <= at) return;
             _kittyAnimationWake?.Dispose();
             _kittyAnimationWakeDue = at;
-            _kittyAnimationWake = DispatcherTimer.RunOnce(() =>
-            {
-                _kittyAnimationWake = null;
-                InvalidateVisual();
-            }, TimeSpan.FromMilliseconds(Math.Max(1, at - now)), DispatcherPriority.Render);
+            _kittyAnimationWake = DispatcherTimer.RunOnce(() => OnKittyAnimationWake(), TimeSpan.FromMilliseconds(Math.Max(1, at - now)), DispatcherPriority.Render);
+        }
+
+        /// <summary>
+        /// The animation's next change is due. A synchronized-output batch (<c>CSI ? 2026 h</c>) holds repaints until it ends, and the repaint it ends
+        /// with arms the next wake, so nothing is requested while one is open. True when a repaint was requested.
+        /// </summary>
+        internal bool OnKittyAnimationWake()
+        {
+            _kittyAnimationWake = null;
+            if (_retired || _buffer?.IsSynchronizedOutput == true) return false;
+            InvalidateVisual();
+            return true;
         }
 
         internal bool KittyAnimationWakeArmedForTest => _kittyAnimationWake is not null;
