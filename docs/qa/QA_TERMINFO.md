@@ -876,7 +876,12 @@ actual outcomes, including eight earlier complete runs of the three-case suite a
 The [2026-11-17 persistent-tab animation qualification](terminfo/2026-11-17-kitty-animation-persistent-qualification.md)
 (#1025) measures the same animation suite in a live persistent (`KeepOnClose`) tab: effect supported (24/24 stages), pinned callbacks inconclusive by design, no stock run and no Core,
 stock or common-harness change. It uses `--scope persistent-animation`, a separate collection with its own receipt, because the worker is the multiplexer daemon's child and the full
-collection is not claimed for persistent tabs (the ownership proof is extended, not relaxed). Reattach or restart (snapshot restore) is not measured.
+collection is not claimed for persistent tabs (the ownership proof is extended, not relaxed). Reattach or restart (snapshot restore) is measured by the next batch.
+
+The [2026-11-17 persistent restore qualification](terminfo/2026-11-17-kitty-animation-restore-qualification.md)
+(#1030) measures that restore: `--scope persistent-restore` kills the App while the daemon and shell keep running, starts it again on the same private root, and reads the reattached pane
+(a running animation continuing from its original start, a stopped one staying stopped, edited frames surviving). Ownership is held per App process, and a read that a playhead restarted by the new App would also pass is
+inconclusive, not passed. Effect supported (22/22), pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change; a graceful quit is not measured.
 
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
