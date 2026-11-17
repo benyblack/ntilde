@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Ntilde.VT;
 
@@ -211,7 +212,8 @@ internal sealed class KittyAnimation
     {
         get
         {
-            if (State == KittyAnimationState.Stopped || CycleMs() == 0) return null; // all-gapless: the playhead cannot move, so nothing is due
+            // Nothing is due when the display cannot change: stopped, or fewer than two frames that are ever shown (a lone root, or all gapless).
+            if (State == KittyAnimationState.Stopped || CycleMs() == 0 || Frames.Count(frame => Hold(frame) > 0) < 2) return null;
             if (_waiting) return Current + 1 < Frames.Count ? FrameStartMs : null;
             if (State == KittyAnimationState.Loading && Current + 1 >= Frames.Count && Hold(Frames[Current]) == 0) return null;
             return FrameStartMs + Math.Max(1, Hold(Frames[Current]));

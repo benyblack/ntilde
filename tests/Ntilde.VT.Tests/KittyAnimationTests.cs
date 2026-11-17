@@ -695,6 +695,18 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void A_lone_root_frame_set_running_never_requests_wake_ups_or_changes()
+    {
+        var h = new Harness();                                  // the root only: transmitted and placed, never given another frame
+        object root = h.Shown;
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        Assert.Equal(KittyAnimationState.Running, h.Buffer.FindKittyImage(1, 0)!.Animation!.State);
+        Assert.False(h.Advance(5_000));
+        Assert.Same(root, h.Shown);
+        Assert.Null(NextDue(h));                                // nothing on screen can change, so nothing is redrawn about 25 times a second
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();
