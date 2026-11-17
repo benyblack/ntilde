@@ -7,8 +7,23 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v64';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v65';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
+// Frozen forks are selected only by valid own-family source digests and absence of every other family's marker.
+const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
+const familyMarker = (context, prefix) => Object.keys(context).some(key => key.startsWith(prefix) && key.endsWith('Sha256'));
+const ownDigest = (context, key) => Object.hasOwn(context, key) && graphDigest(context[key]);
+const policyIs = (context, version) => context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v' + version;
+export const isCellSizePolicy63 = context => policyIs(context, 63) && ownDigest(context, 'cellSizeContractsSourceSha256')
+    && !familyMarker(context, 'kittyAnimation') && !familyMarker(context, 'osc5');
+export const isKittyAnimationPolicy63 = context => policyIs(context, 63) && ownDigest(context, 'kittyAnimationInputsSourceSha256')
+    && !familyMarker(context, 'cellSize') && !familyMarker(context, 'osc5');
+export const isOsc5Policy63 = context => policyIs(context, 63) && ownDigest(context, 'osc5ContractsSourceSha256')
+    && !familyMarker(context, 'cellSize') && !familyMarker(context, 'kittyAnimation');
+export const isCellSizeAnimationPolicy64 = context => policyIs(context, 64) && ownDigest(context, 'cellSizeContractsSourceSha256')
+    && ownDigest(context, 'kittyAnimationInputsSourceSha256') && !familyMarker(context, 'osc5');
+export const isOsc5AnimationPolicy64 = context => policyIs(context, 64) && ownDigest(context, 'osc5ContractsSourceSha256')
+    && ownDigest(context, 'kittyAnimationInputsSourceSha256') && !familyMarker(context, 'cellSize');
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
     "runnerSourceSha256": "terminfo-owned.mjs",
@@ -228,7 +243,15 @@ export const capturedV18SourceFiles = Object.freeze({
     sgrPaletteReceiptSourceSha256: "sgr-palette-receipt.mjs",
 });
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
+export const cellSizeReferencePaths = Object.freeze({
+    "cell-size-parser.cs": "src/Ntilde.VT/AnsiParser.CellSizeReports.cs",
+    "cell-size-metrics.cs": "src/Ntilde.VT/CellSizeReportMetrics.cs",
+    "cell-size-framing.cs": "src/Ntilde.VT/AnsiParser.cs",
+    "cell-size-font.cs": "src/Ntilde.App/Shell/TerminalView.Fonts.cs",
+    "cell-size-observer-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneCellGeometry.cs"
+});
 export function ownedSourcePath(root, file) {
+    if (Object.hasOwn(cellSizeReferencePaths, file)) return join(root, cellSizeReferencePaths[file]);
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
     if (Object.hasOwn(insertReplaceReferencePaths, file)) return join(root, insertReplaceReferencePaths[file]);
@@ -810,6 +833,29 @@ export const capturedV70SourceFiles = Object.freeze({
     kittyAnimationReceiptSourceSha256: 'kitty-animation-receipt.mjs',
 });
 
+// Frozen pre-integration OSC cell-size fork, measured under the same v63 policy.
+export const capturedCellSizeForkV70Files = Object.freeze({
+    ...capturedV69SourceFiles,
+    cellSizeContractsSourceSha256: "cell-size-contracts.mjs",
+    cellSizeFrameSourceSha256: "cell-size-frame.mjs",
+    cellSizeGradingCollectorSourceSha256: "cell-size-grading-collector.mjs",
+    cellSizeCollectorSourceSha256: "cell-size-collector.mjs",
+    cellSizeCaptureSourceSha256: "cell-size-capture.mjs",
+    cellSizeGradingSourceSha256: "cell-size-grading.mjs",
+    cellSizeReceiptSourceSha256: "cell-size-receipt.mjs",
+    cellSizeParserReferenceSha256: "cell-size-parser.cs",
+    cellSizeMetricsReferenceSha256: "cell-size-metrics.cs",
+    cellSizeFramingReferenceSha256: "cell-size-framing.cs",
+    cellSizeFontReferenceSha256: "cell-size-font.cs",
+    cellSizeGeometryContractReferenceSha256: "cell-size-observer-contract.cs",
+});
+
+// Combined graph: both previously measured forks remain immutable.
+export const capturedV71SourceFiles = Object.freeze({
+    ...capturedV70SourceFiles,
+    ...capturedCellSizeForkV70Files,
+});
+
 // The rxvt special-color batch adds its seven scripts to the integrated graph.
 export const capturedOsc5ForkV63Files = Object.freeze({
     ...capturedV69SourceFiles,
@@ -822,8 +868,7 @@ export const capturedOsc5ForkV63Files = Object.freeze({
     osc5ReceiptSourceSha256: 'osc5-receipt.mjs',
 });
 
-// Live v64 combines the frozen animation and OSC 5 branches.
-export const capturedV71SourceFiles = Object.freeze({
+export const capturedOsc5ForkV64Files = Object.freeze({
     ...capturedV70SourceFiles,
     osc5ReportSourceSha256: 'osc5-report.mjs',
     osc5ContractsSourceSha256: 'osc5-contracts.mjs',
@@ -834,11 +879,23 @@ export const capturedV71SourceFiles = Object.freeze({
     osc5ReceiptSourceSha256: 'osc5-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v71 inventory and manifest environment pin before trusting any captured source. */
+// Live v65 integrates all three measured families; frozen graphs above remain independent.
+export const capturedV72SourceFiles = Object.freeze({
+    ...capturedV71SourceFiles,
+    osc5ReportSourceSha256: 'osc5-report.mjs',
+    osc5ContractsSourceSha256: 'osc5-contracts.mjs',
+    osc5CaptureSourceSha256: 'osc5-capture.mjs',
+    osc5CollectorSourceSha256: 'osc5-collector.mjs',
+    osc5GradingSourceSha256: 'osc5-grading.mjs',
+    osc5GradingCollectorSourceSha256: 'osc5-grading-collector.mjs',
+    osc5ReceiptSourceSha256: 'osc5-receipt.mjs',
+});
+
+/** Bind the private temporary root, exact v72 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV71SourceFiles)) throw new Error('Invalid current v71 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV72SourceFiles)) throw new Error('Invalid current v72 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

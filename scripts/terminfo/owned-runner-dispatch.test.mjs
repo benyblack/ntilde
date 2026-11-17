@@ -47,3 +47,8 @@ test('maximum and far larger inputs are rejected without hanging (a super-linear
         }
     }
 });
+
+test('cell-size lifecycle requests reach the untranslated owner observation dispatcher', () => {
+    for (const kind of ['csz-start', 'csz-bind', 'csz-read', 'csz-finish']) assert.equal(untranslatedCellKind(kind), true, kind);
+    for (const kind of ['csz-startx', 'csz-read\n', 'csz-finish-extra', 'csz-apply']) assert.equal(untranslatedCellKind(kind), false, kind);
+});

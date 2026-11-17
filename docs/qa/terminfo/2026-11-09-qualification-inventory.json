@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 142,
-    "suiteClaims": 144,
+    "uniqueBenchmarkIds": 144,
+    "suiteClaims": 146,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 140,
+    "effectSupportedIds": 142,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 94,
@@ -67,6 +67,7 @@
       "extensions.osc133-b",
       "extensions.osc133-c",
       "extensions.osc133-d",
+      "extensions.osc1337-cellsize",
       "extensions.osc17-highlight-bg",
       "extensions.osc19-highlight-fg",
       "extensions.osc633-a",
@@ -74,6 +75,7 @@
       "extensions.osc633-c",
       "extensions.osc633-d",
       "extensions.osc7-cwd",
+      "extensions.osc776-cell-size",
       "extensions.osc777-notify",
       "extensions.osc9-progress",
       "extensions.reflow",
@@ -101,7 +103,7 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.sixel"
     ],
-    "effectSupportedOfStockInconclusive": 139,
+    "effectSupportedOfStockInconclusive": 141,
     "effectUnsupportedOfStockInconclusive": 1,
     "pinnedSupportedOfStockInconclusive": 93,
     "ungradedStockIdsWithEvidence": [
@@ -116,10 +118,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 29,
+      "effectUnqualified": 27,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 27,
+      "effectNotMeasured": 25,
       "notPinnedSupported": 75
     }
   },
@@ -3903,6 +3905,77 @@
         "command": "node --test scripts/terminfo/kitty-animation-publication.test.mjs",
         "testSha256": "a35af54bcb087531e8ebb0ac6dd090ecdbacefc7c1ad5b9c29a57f25782410b6"
       }
+    },
+    {
+      "suite": "cell-size",
+      "suiteId": "ntilde-owned-osc-cell-size-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-17-osc-cell-size-integrated/",
+      "doc": "2026-11-17-osc-cell-size-integrated-qualification.md",
+      "caseCount": 2,
+      "caseIds": [
+        "extensions.osc1337-cellsize",
+        "extensions.osc776-cell-size"
+      ],
+      "evidence": {
+        "files": 5,
+        "bytes": 16289014,
+        "sha256": "09930f53a7d8ab62a7a2bfac573987f14dbaef85789f035c39f875e4a6ec2d00"
+      },
+      "receipt": {
+        "schemaVersion": 71,
+        "runId": "4b63f57a61d3905acb38ac6a8738696f",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "50f0abda4168cde8194443919175b8900bb48c3fa91ea31a59b55d3a001a862f"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc-cell-size-v1",
+          "file": "cell-size-observations.json",
+          "sha256": "2b250be0477f0067e83ea6c57929a40595f631711a99c3c3f7a26c050bf32179",
+          "runFile": "cell-size-run.json",
+          "runSha256": "45ebf24685a34827924fa7b7cd3ddf2fc51f2d24f01325ee22dabbda99737c28",
+          "counts": {
+            "inconclusive": 2
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "4b63f57a61d3905acb38ac6a8738696f",
+        "measuredAt": "2026-11-17T08:49:04.096Z",
+        "appRevision": "8da07482a849946cf213d1d4b6781759bde1c56f",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "8da07482a849946cf213d1d4b6781759bde1c56f",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "6836a7f7fd4723d98c7edcfa72d1f8cf1cceafafb7e262afd46dfc0445992754",
+        "gradingAdapterId": "ntilde-owned-osc-cell-size-grading-v1",
+        "gradingAdapterBundleSha256": "339d844bf5e53dd2966bfd7d02205835f6176e0c6f98a4fcdd15284a6757f91d",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v64",
+        "sourceSnapshotManifestSha256": "555706bebfe1aed48bcd008c3acdbe4ade2843a4b99fdfaeb82bdc1cf966f1cc"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "380108a115315b8081925a89475ac439",
+        "counts": {
+          "inconclusive": 161,
+          "supported": 93,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "86fbddddad9f199a85e755e894d5c4b3e088c2431e3d2ce1f77db4a4ee6ead0c",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock grades collected in this same scoped run. Omitted notification suites retain their separate pinned predecessor receipt; combined evidence is not a fresh complete default run."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/cell-size-integrated-publication.test.mjs",
+        "testSha256": "1c4b6ed47cab53da1418d1107956d1261c15b69870c884891b43ea8ee2e1ba54"
+      }
     }
   ],
   "benchmark": [
@@ -6764,6 +6837,58 @@
       ]
     },
     {
+      "id": "extensions.osc1337-cellsize",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "cell-size",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "cell-size",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc1337-cellsize",
+          "suite": "cell-size",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "unchanged-pinned-query"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-effect-supported",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": null
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
       "id": "extensions.osc17-highlight-bg",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -7267,6 +7392,58 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc776-cell-size",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "cell-size",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "cell-size",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc776-cell-size",
+          "suite": "cell-size",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "unchanged-pinned-query"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-effect-supported",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": null
+          },
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
         }
       ]
     },

@@ -18,6 +18,8 @@ public sealed record PaneMetadataResult
     [JsonPropertyName("displayTitle")] public required string DisplayTitle { get; init; }
     [JsonPropertyName("buffer")] public required PaneBufferMetadata Buffer { get; init; }
     [JsonPropertyName("presentation")] public required PanePresentationMetadata Presentation { get; init; }
+    [JsonPropertyName("cellGeometry"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PaneCellGeometry? CellGeometry { get; init; }
 }
 
 /// <summary>One complete active viewport's stored links and raw shell anchors, captured under the buffer read lock.</summary>

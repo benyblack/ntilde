@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "appRevision": "8da07482a849946cf213d1d4b6781759bde1c56f",
+  "scriptsRevision": "8da07482a849946cf213d1d4b6781759bde1c56f",
+  "configuration": "Release",
+  "assemblyInformationalVersion": "0.14.0+8da07482a849946cf213d1d4b6781759bde1c56f",
+  "buildCommand": "scripts/build.sh build src/Ntilde.App -c Release --output /Users/behnam/.ntilde-qa-sidecars/issue-993-cell-size-integrated/Release/net10.0",
+  "sourcePolicy": "readonly-owned-source-graph-v64",
+  "receiptSchema": 71,
+  "sourceInputCount": 432,
+  "files": {
+    "Ntilde": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "Ntilde.dll": "2786ae945dc2677114218f12d1a82b24df9c6d75ea3dc34c63c2d85225ef8f77",
+    "Ntilde.VT.dll": "bf8fdf5ef094f0e57715570bc3e69bbf82f69e1aaa888895dfbf0fc17b3752cd",
+    "Ntilde.AgentHost.Contracts.dll": "062021cfaf48b2fff5189bb42b699eeeb962e09e0bf0d31fa8bd81ee7b598c7c",
+    "Ntilde.Rendering.dll": "17f52931815025c91a0de8a15cacdba7dfb460f7dddbf0ce251a94c879c7c786"
+  }
+}

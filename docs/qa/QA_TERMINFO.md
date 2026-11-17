@@ -1326,3 +1326,13 @@ set/read group against the other service's measured default. Names, rxvt OSC 106
 through a layered collector extension (`ntilde-owned-osc5-special-colors-grading-v1`), beside an effect contract (`ntilde-osc5-special-colors-effect-v1`) graded by an independent oracle written from rxvt's
 special-color text. Both pinned paths, the stock grade and the effect contract are **supported**: the stock counts move from 93/1/161 to 94/1/160. Query policy v6 (the osc5 witness joins the exact-query ledger).
 The reviewed run uses receipt schema 71 and source policy v64 (427 files), after integrating Kitty animation; the original v63/schema-70 evidence remains retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc5-special-colors-qualification.md).
+### Exact OSC cell-size reports
+
+The [cell-size batch](terminfo/2026-11-17-osc-cell-size-integrated-qualification.md) implements and independently qualifies
+`extensions.osc1337-cellsize` and `extensions.osc776-cell-size` as two separate protocols. Both owned effects are **supported**:
+the observed 8.5 × 18.5 DIP view at backing scale 2 returns iTerm2 height/width/scale `18.5;8.5;2` and urxvt pixel width/height/ascent
+`17;37;29`, with exact BEL/ST behavior, positive CSI controls, unsupported-form silence and unchanged state. The frozen iTerm2
+two-field matcher rejects the modern scale field, while the frozen urxvt request omits the documented `;?`; both pinned and stock
+outcomes remain **inconclusive**. The fresh stock total stays 93 supported / 161 inconclusive / 1 unsupported. Receipt71/source-policy64
+bind 432 inputs, including the integrated animation family, independent geometry and all 19 exchanges. The inventory adds two effect-supported IDs, with no pinned/Core/Modern
+or common-harness score increase. The retained scoped run is combined evidence with the separately pinned notification predecessor.

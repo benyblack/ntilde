@@ -1,0 +1,466 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc-cell-size-v1",
+  "contractsVersion": 1,
+  "runId": "4b63f57a61d3905acb38ac6a8738696f",
+  "adapter": {
+    "id": "ntilde-owned-osc-cell-size-grading-v1",
+    "bundleSha256": "339d844bf5e53dd2966bfd7d02205835f6176e0c6f98a4fcdd15284a6757f91d",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Exact OSC 1337 ReportCellSize and OSC 776 question-mark query effects in a disposable direct-local macOS pane, graded from paired raw replies and independently observed view dimensions, font ascent, effective render scale and display backing scale. The unchanged pinned two-value OSC 1337 criterion and bare OSC 776 request retain their own results. Completed DA barriers, CSI 16 t delivery controls, BEL/ST framing, unsupported-form controls, unchanged stored state and restoration are required. No resize is needed for the cell-size experiment. No rendered-pixel, physical-input, remote/mux, Windows/Linux, frozen Core/Modern or common-harness score claim.",
+  "cases": [
+    {
+      "caseId": "extensions.osc1337-cellsize",
+      "pinned": {
+        "termless": {
+          "probeId": "extensions.osc1337-cellsize",
+          "pass": false,
+          "response": "\u001b]1337;ReportCellSize=18.5;8.5;2\u001b\\",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "invalid-reply",
+            "evidence": "query"
+          }
+        },
+        "terminal": {
+          "probeId": "extensions.osc1337-cellsize",
+          "pass": false,
+          "response": "\u001b]1337;ReportCellSize=18.5;8.5;2\u001b\\\u001b[?62;4;22c",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "invalid-reply",
+            "evidence": "query"
+          }
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "unchanged-pinned-query",
+        "evidence": "owned-raw-replies-and-unchanged-state"
+      },
+      "effectContract": {
+        "id": "ntilde-osc-cell-size-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "validity": [
+          {
+            "id": "positive-before",
+            "held": true
+          },
+          {
+            "id": "positive-after",
+            "held": true
+          }
+        ],
+        "required": [
+          {
+            "id": "documented-bel",
+            "held": true
+          },
+          {
+            "id": "documented-st",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-0",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-1",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-2",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-3",
+            "held": true
+          }
+        ]
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "observed": {
+        "geometry": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "exchanges": [
+          {
+            "id": "positive-before",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 2,
+            "report": {
+              "replies": [
+                "\u001b[6;37;17t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "request": "\u001b]1337;ReportCellSize\u0007",
+            "protocol": "iterm",
+            "snapshot": 3,
+            "report": {
+              "replies": [
+                "\u001b]1337;ReportCellSize=18.5;8.5;2\u001b\\"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-bel",
+            "role": "required",
+            "request": "\u001b]1337;ReportCellSize\u0007",
+            "protocol": "iterm",
+            "terminator": "\u0007",
+            "snapshot": 4,
+            "report": {
+              "replies": [
+                "\u001b]1337;ReportCellSize=18.5;8.5;2\u001b\\"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-st",
+            "role": "required",
+            "request": "\u001b]1337;ReportCellSize\u001b\\",
+            "protocol": "iterm",
+            "terminator": "\u001b\\",
+            "snapshot": 5,
+            "report": {
+              "replies": [
+                "\u001b]1337;ReportCellSize=18.5;8.5;2\u001b\\"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-0",
+            "role": "required",
+            "request": "\u001b]1337;ReportCellSize;\u0007",
+            "protocol": "silence",
+            "snapshot": 6,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-1",
+            "role": "required",
+            "request": "\u001b]1337;ReportCellSize=?\u0007",
+            "protocol": "silence",
+            "snapshot": 7,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-2",
+            "role": "required",
+            "request": "\u001b]1337;ReportCellSize=17;8;2\u0007",
+            "protocol": "silence",
+            "snapshot": 8,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-3",
+            "role": "required",
+            "request": "\u001b]1337;reportcellsize\u0007",
+            "protocol": "silence",
+            "snapshot": 9,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "positive-after",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 10,
+            "report": {
+              "replies": [
+                "\u001b[6;37;17t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          }
+        ]
+      },
+      "stock": {
+        "featureId": "extensions.osc1337-cellsize",
+        "outcome": "inconclusive",
+        "reason": "invalid-reply",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc1337-cellsize"
+      }
+    },
+    {
+      "caseId": "extensions.osc776-cell-size",
+      "pinned": {
+        "termless": {
+          "probeId": "extensions.osc776-cell-size",
+          "pass": false,
+          "response": "",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "no-response",
+            "evidence": "query"
+          }
+        },
+        "terminal": {
+          "probeId": "extensions.osc776-cell-size",
+          "pass": false,
+          "response": "\u001b[?62;4;22c",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "no-response",
+            "evidence": "query"
+          }
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "unchanged-pinned-query",
+        "evidence": "owned-raw-replies-and-unchanged-state"
+      },
+      "effectContract": {
+        "id": "ntilde-osc-cell-size-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "validity": [
+          {
+            "id": "positive-before",
+            "held": true
+          },
+          {
+            "id": "positive-after",
+            "held": true
+          }
+        ],
+        "required": [
+          {
+            "id": "documented-bel",
+            "held": true
+          },
+          {
+            "id": "documented-st",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-0",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-1",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-2",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-3",
+            "held": true
+          },
+          {
+            "id": "unsupported-form-4",
+            "held": true
+          }
+        ]
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-effect-supported"
+      },
+      "observed": {
+        "geometry": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "exchanges": [
+          {
+            "id": "positive-before",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 11,
+            "report": {
+              "replies": [
+                "\u001b[6;37;17t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "request": "\u001b]776\u0007",
+            "protocol": "silence",
+            "snapshot": 12,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-bel",
+            "role": "required",
+            "request": "\u001b]776;?\u0007",
+            "protocol": "urxvt",
+            "terminator": "\u0007",
+            "snapshot": 13,
+            "report": {
+              "replies": [
+                "\u001b]776;17;37;29\u0007"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-st",
+            "role": "required",
+            "request": "\u001b]776;?\u001b\\",
+            "protocol": "urxvt",
+            "terminator": "\u001b\\",
+            "snapshot": 14,
+            "report": {
+              "replies": [
+                "\u001b]776;17;37;29\u001b\\"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-0",
+            "role": "required",
+            "request": "\u001b]776\u0007",
+            "protocol": "silence",
+            "snapshot": 15,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-1",
+            "role": "required",
+            "request": "\u001b]776;\u0007",
+            "protocol": "silence",
+            "snapshot": 16,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-2",
+            "role": "required",
+            "request": "\u001b]776;??\u0007",
+            "protocol": "silence",
+            "snapshot": 17,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-3",
+            "role": "required",
+            "request": "\u001b]776;?;1\u0007",
+            "protocol": "silence",
+            "snapshot": 18,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unsupported-form-4",
+            "role": "required",
+            "request": "\u001b]776;17;35;25\u0007",
+            "protocol": "silence",
+            "snapshot": 19,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "positive-after",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 20,
+            "report": {
+              "replies": [
+                "\u001b[6;37;17t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          }
+        ]
+      },
+      "stock": {
+        "featureId": "extensions.osc776-cell-size",
+        "outcome": "inconclusive",
+        "reason": "no-response",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc776-cell-size"
+      }
+    }
+  ]
+}

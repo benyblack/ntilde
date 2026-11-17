@@ -142,7 +142,7 @@ public sealed class VtTools
         // Classify DCS representations from untouched input before alias normalization.
         string original = sequence.TrimStart();
         // Real ESC bytes or an escape notation mean exact bytes, not a readable spelling with formatting spaces.
-        bool rawBytes = original.Contains('\u001b') || original.Contains("\\x1b", System.StringComparison.OrdinalIgnoreCase)
+        bool rawBytes = original.Contains('\u001b') || original.Contains('\u009d') || original.Contains("\\x1b", System.StringComparison.OrdinalIgnoreCase)
             || original.Contains("\\e", System.StringComparison.OrdinalIgnoreCase);
         DcsInputRepresentation dcsRepresentation = ClassifyDcsInput(original);
 
@@ -371,9 +371,16 @@ public sealed class VtTools
         if (upper.StartsWith("ESC]", System.StringComparison.Ordinal)) oscBody = s.Substring(4);
         else if (upper.StartsWith("ESC ]", System.StringComparison.Ordinal)) oscBody = s.Substring(5);
         else if (upper.StartsWith("OSC", System.StringComparison.Ordinal)) oscBody = s.Substring(3);
+        else if (s.StartsWith('\u009d')) oscBody = s.Substring(1);
         if (oscBody is not null)
         {
             string body = oscBody.Trim().TrimStart(' ');
+            // Validate framing before alias normalization can mix literal and printable escapes.
+            string? exactBody = GetOscCatalogPayload(original, body, rawBytes);
+            string exactKey = "OSC:" + exactBody?.Replace(';', ':');
+            if (!rawBytes) exactKey = exactKey.Replace(' ', ':');
+            if (exactBody is not null && !exactBody.Contains(':') && ContractSequenceTable.TryGetValue(exactKey, out var exactDescription))
+                return $"OSC {exactBody}: {exactDescription}";
             // Leading numeric code up to ';' or space.
             int i = 0;
             while (i < body.Length && char.IsDigit(body[i])) i++;
@@ -417,6 +424,44 @@ public sealed class VtTools
         if (sequence.StartsWith("ESCP", StringComparison.Ordinal)) return 4;
         if (sequence.StartsWith("ESC P", StringComparison.Ordinal)) return 5;
         return sequence.StartsWith('\u0090') ? 1 : 0;
+    }
+
+    private static string? GetOscCatalogPayload(string original, string abstractBody, bool rawBytes)
+    {
+        // Only the explicit abstract catalog spelling may omit framing.
+        if (!rawBytes && original.StartsWith("OSC", StringComparison.OrdinalIgnoreCase)) return abstractBody;
+        string? framed;
+        if (OscIntroducerLength(original) > 0) framed = original;
+        else if (original.StartsWith("\\x1b", StringComparison.OrdinalIgnoreCase) || original.StartsWith("\\e", StringComparison.OrdinalIgnoreCase))
+        {
+            if (original.Any(char.IsControl)) return null;
+            framed = original.Replace("\\x1b", "\x1b", StringComparison.OrdinalIgnoreCase)
+                .Replace("\\e", "\x1b", StringComparison.OrdinalIgnoreCase)
+                .Replace("\\x07", "\x07", StringComparison.OrdinalIgnoreCase)
+                .Replace("\\a", "\x07", StringComparison.OrdinalIgnoreCase);
+        }
+        else if (!rawBytes) framed = TextualOscFraming(original);
+        else return null;
+        if (framed is null) return null;
+        int open = OscIntroducerLength(framed);
+        if (open == 0) return null;
+        int close = framed.EndsWith('\x07') ? 1 : TerminatorLength(framed);
+        return close > 0 && framed.Length >= open + close ? framed[open..^close] : null;
+    }
+
+    private static int OscIntroducerLength(string framed)
+    {
+        if (framed.StartsWith("\x1b]", StringComparison.Ordinal)) return 2;
+        return framed.StartsWith('\u009d') ? 1 : 0;
+    }
+
+    private static string? TextualOscFraming(string original)
+    {
+        int open;
+        if (original.StartsWith("ESC ]", StringComparison.OrdinalIgnoreCase)) open = 5;
+        else if (original.StartsWith("ESC]", StringComparison.OrdinalIgnoreCase)) open = 4;
+        else return null;
+        return original.EndsWith("ESC\\", StringComparison.Ordinal) ? "\x1b]" + original[open..^4] + "\x1b\\" : null;
     }
 
     private enum DcsInputRepresentation { Other, Raw, Escaped, Textual, Abstract }

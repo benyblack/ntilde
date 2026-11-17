@@ -7,6 +7,7 @@ import { animationInputs, buildAnimationReport, ownedAnimationPolicy, animationP
 import { checkImages, validateImageOwnership } from './static-images.mjs';
 import { journal, json, present, read } from './static-images-receipt.mjs';
 import { pngHash } from './pixels-capture.mjs';
+import { isCellSizePolicy63 } from './owned-sources.mjs';
 
 const policyNumber = context => Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0);
 const files = ['animation-snapshots.jsonl', 'animation-actions.jsonl', 'animation-observations.json', 'animation-unavailable.json',
@@ -15,7 +16,7 @@ const nonces = frames => frames.filter(frame => frame.capture).map(frame => fram
 
 /** Declared by the source policy, by any marker, or by retained artifacts: no field-stripping downgrade. */
 export function includesAnimationEvidence(output, evidence, context, proof) {
-    return (policyNumber(context) >= 63 && !isOsc5ForkScope(context)) || context.animationSuiteId !== undefined || context.ownedAnimationPolicy !== undefined
+    return (policyNumber(context) >= 63 && !isCellSizePolicy63(context) && !isOsc5ForkScope(context)) || context.animationSuiteId !== undefined || context.ownedAnimationPolicy !== undefined
         || evidence.animationEvidence !== undefined || Object.keys(context).some(key => key.startsWith('kittyAnimation') && key.endsWith('SourceSha256'))
         || proof.proofs?.some(value => value.kittyAnimation !== undefined) === true || files.some(file => present(join(output, file)));
 }

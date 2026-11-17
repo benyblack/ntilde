@@ -28,7 +28,7 @@ test('the suffix is required whenever the policy, a declaration or an artifact n
     const first = `readonly-owned-source-graph-v${osc5FirstPolicy}`, before = `readonly-owned-source-graph-v${osc5FirstPolicy - 1}`;
     assert.equal(includesOsc5Evidence(f.output, f.evidence, f.context), true);
     assert.equal(includesOsc5Evidence(empty, {}, { sourceSnapshotPolicy: first }), true, 'the first special-color policy always carries the suffix');
-    assert.equal(includesOsc5Evidence(empty, {}, { sourceSnapshotPolicy: before }), false, 'the previous policy does not');
+    assert.equal(includesOsc5Evidence(empty, {}, { sourceSnapshotPolicy: before, cellSizeContractsSourceSha256: 'a'.repeat(64), kittyAnimationInputsSourceSha256: 'b'.repeat(64) }), false, 'the previous policy does not');
     assert.equal(includesOsc5Evidence(empty, {}, earlier), false);
     assert.equal(includesOsc5Evidence(empty, {}, { ...earlier, osc5SuiteId: 'x' }), true);
     assert.equal(includesOsc5Evidence(empty, { osc5Evidence: {} }, earlier), true);

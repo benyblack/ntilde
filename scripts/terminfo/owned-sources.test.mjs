@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV71SourceFiles, capturedOsc5ForkV63Files, capturedOsc633ForkV61Files, capturedV69SourceFiles, capturedV68SourceFiles, capturedV67SourceFiles, capturedV66SourceFiles, capturedV65SourceFiles, capturedV64SourceFiles, capturedV63SourceFiles, capturedV62SourceFiles, capturedV61SourceFiles, capturedV60SourceFiles, capturedV59SourceFiles, capturedV57SourceFiles, capturedV58SourceFiles, capturedV55SourceFiles, capturedV54SourceFiles, capturedV53SourceFiles, capturedV56SourceFiles, capturedV52SourceFiles, capturedV51SourceFiles, capturedV50SourceFiles, capturedV49SourceFiles, capturedV48SourceFiles, capturedV47SourceFiles, capturedV46SourceFiles, capturedV45SourceFiles, capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, oscTitleReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure, capturedV70SourceFiles } from './owned-sources.mjs';
+import { capturedV72SourceFiles, capturedOsc5ForkV63Files, capturedOsc5ForkV64Files, capturedV71SourceFiles, capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedOsc633ForkV61Files, capturedV69SourceFiles, capturedV68SourceFiles, capturedV67SourceFiles, capturedV66SourceFiles, capturedV65SourceFiles, capturedV64SourceFiles, capturedV63SourceFiles, capturedV62SourceFiles, capturedV61SourceFiles, capturedV60SourceFiles, capturedV59SourceFiles, capturedV57SourceFiles, capturedV58SourceFiles, capturedV55SourceFiles, capturedV54SourceFiles, capturedV53SourceFiles, capturedV56SourceFiles, capturedV52SourceFiles, capturedV51SourceFiles, capturedV50SourceFiles, capturedV49SourceFiles, capturedV48SourceFiles, capturedV47SourceFiles, capturedV46SourceFiles, capturedV45SourceFiles, capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, oscTitleReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,13 +17,21 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 427 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 427); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 439 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 439); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
-for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
+for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs', 'clipboard-pane-session.cs', 'core-icon-window.cs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
     assert.throws(() => assertOwnedSourcesUnchanged(f.root, f.context), /Owned source changed before completion/);
 }));
+
+test('cell-size metric producer and independent observer retain their existing fixed aliases', () => {
+    const root = fileURLToPath(new URL('../../', import.meta.url));
+    assert.equal(capturedV70SourceFiles.privateClipboardInput8SourceSha256, 'clipboard-pane-session.cs');
+    assert.equal(capturedV70SourceFiles.coreIconWindowSourceSha256, 'core-icon-window.cs');
+    assert.equal(ownedSourcePath(root, 'clipboard-pane-session.cs'), join(root, 'src/Ntilde.App/Controls/TerminalPane.Session.cs'));
+    assert.equal(ownedSourcePath(root, 'core-icon-window.cs'), join(root, 'src/Ntilde.App/MainWindow.AgentMetadata.cs'));
+});
 
 test('future measured inputs cannot change the historical published v8 source scope', async () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-source-unit-'));
@@ -93,8 +101,20 @@ test('the two retained v61 scopes stay distinct and the integrated graph preserv
     assert.deepEqual(Object.values(capturedV69SourceFiles).slice(407), ['osc633-contracts.mjs', 'osc633-collector.mjs', 'osc633-grading.mjs', 'osc633-grading-collector.mjs', 'osc633-receipt.mjs', 'collection-scope.mjs']);
 });
 
+test('the OSC cell-size graph adds its seven measured scripts and five additional C# references without changing the integrated predecessor', () => {
+    assert.deepEqual(Object.keys(capturedCellSizeForkV70Files).slice(0, 413), Object.keys(capturedV69SourceFiles));
+    assert.equal(Object.keys(capturedV69SourceFiles).length, 413);
+    assert.equal(Object.keys(capturedCellSizeForkV70Files).length, 425);
+    assert.deepEqual(Object.values(capturedCellSizeForkV70Files).slice(413, 420), [
+        'cell-size-contracts.mjs', 'cell-size-frame.mjs', 'cell-size-grading-collector.mjs', 'cell-size-collector.mjs',
+        'cell-size-capture.mjs', 'cell-size-grading.mjs', 'cell-size-receipt.mjs',
+    ]);
+    assert.ok(Object.values(capturedCellSizeForkV70Files).slice(420).every(file => file.startsWith('cell-size-') && file.endsWith('.cs')));
+    const paths = Object.values(ownedSourceFiles).map(file => ownedSourcePath('/synthetic-root', file));
+    assert.equal(new Set(paths).size, paths.length, 'one captured alias per actual source path');
+});
+
 test('private v70 fixed420 source scope adds the seven Kitty animation scripts to the frozen v69 fixed413 scope', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV71SourceFiles);
     assert.equal(Object.keys(capturedV70SourceFiles).length, 420);
     assert.deepEqual(Object.keys(capturedV70SourceFiles).slice(0, 413), Object.keys(capturedV69SourceFiles));
     assert.deepEqual(Object.values(capturedV70SourceFiles).slice(413), ['kitty-animation-inputs.mjs', 'kitty-animation-cases.mjs', 'kitty-animation-oracle.mjs',
@@ -271,10 +291,11 @@ test('private v57 fixed336 source scope adds the six modifyOtherKeys scripts to 
 });
 
 
-test('live v71 fixed427 combines the frozen animation and OSC 5 v63 graphs', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV71SourceFiles);
-    assert.equal(Object.keys(capturedV71SourceFiles).length, 427);
+test('live v72 fixed439 integrates both v64 forks without changing either frozen graph', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV72SourceFiles);
+    assert.equal(Object.keys(capturedV72SourceFiles).length, 439);
+    assert.equal(Object.keys(capturedV71SourceFiles).length, 432);
+    assert.equal(Object.keys(capturedOsc5ForkV64Files).length, 427);
     assert.equal(Object.keys(capturedOsc5ForkV63Files).length, 420);
-    assert.notDeepEqual(capturedOsc5ForkV63Files, capturedV70SourceFiles);
-    assert.deepEqual(capturedV71SourceFiles, { ...capturedV70SourceFiles, ...capturedOsc5ForkV63Files });
+    assert.deepEqual(capturedV72SourceFiles, { ...capturedV71SourceFiles, ...capturedOsc5ForkV64Files });
 });

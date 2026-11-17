@@ -39,6 +39,16 @@ public partial class MainWindow
             WorkingDirectory = pane.CurrentWorkingDirectory,
             DisplayTitle = pane.GetBaseTabTitle(),
             Buffer = buffer,
+            CellGeometry = new PaneCellGeometry
+            {
+                ViewRows = pane.TermView.Rows,
+                ViewCols = pane.TermView.Cols,
+                CellWidthDip = pane.TermView.Metrics.CellWidth,
+                CellHeightDip = pane.TermView.Metrics.CellHeight,
+                FontAscentDip = pane.TermView.Metrics.Ascent,
+                RenderScaling = pane.TermView.EffectiveRenderScaling,
+                BackingScale = RenderScaling,
+            },
             Presentation = new PanePresentationMetadata
             {
                 WindowActive = IsActive,

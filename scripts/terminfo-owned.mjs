@@ -53,8 +53,16 @@ const sgrRgbReferencePaths = Object.freeze({
     "sgr-rgb-draw-operation.cs": "src/Ntilde.App/Shell/TerminalDrawOperation.cs",
     "sgr-rgb-render-snapshots.cs": "src/Ntilde.VT/RenderSnapshots.cs"
 });
+const cellSizeReferencePaths = Object.freeze({
+    "cell-size-parser.cs": "src/Ntilde.VT/AnsiParser.CellSizeReports.cs",
+    "cell-size-metrics.cs": "src/Ntilde.VT/CellSizeReportMetrics.cs",
+    "cell-size-framing.cs": "src/Ntilde.VT/AnsiParser.cs",
+    "cell-size-font.cs": "src/Ntilde.App/Shell/TerminalView.Fonts.cs",
+    "cell-size-observer-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneCellGeometry.cs"
+});
 /** Map admitted reference aliases or established script basenames without reading or executing them. */
 function pathFor(root, file) {
+    if (Object.hasOwn(cellSizeReferencePaths, file)) return join(root, cellSizeReferencePaths[file]);
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
     if (Object.hasOwn(insertReplaceReferencePaths, file)) return join(root, insertReplaceReferencePaths[file]);
@@ -63,7 +71,7 @@ function pathFor(root, file) {
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
     return join(root, 'scripts', relative);
 }
-const policy = 'readonly-owned-source-graph-v64';
+const policy = 'readonly-owned-source-graph-v65';
 // The desktop lease helper is the second reviewed pure bootstrap dependency (BCL imports only). It lives outside the measured
 // source graph, so the policy above does not change for it; its exact bytes are pinned here and loaded only when the runner asks for the lease.
 const desktopLockSha256 = '96076ef3a4afb7cc5c1bef8c6ac6f22ee86745270637e40b4792d58ce34dd9cf';
@@ -109,7 +117,7 @@ async function capture(root) {
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
     for (const [key, file] of Object.entries(inventory)) {
         if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)
-            && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(insertReplaceReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file))) throw new Error('Invalid source inventory entry.');
+            && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(insertReplaceReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file) && !Object.hasOwn(cellSizeReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);
         if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular source file.');
         const bytes = file === 'owned-source-inventory.json' ? input : readFileSync(source);
