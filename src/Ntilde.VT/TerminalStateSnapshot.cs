@@ -195,6 +195,50 @@ namespace Ntilde.VT
         /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
         [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? SourceOrder { get; set; }
+
+        /// <summary>
+        /// The frames and playback state of an animated image (persistent image policy 3, #1017); absent for a still image, so a snapshot of one is
+        /// byte-for-byte what it was before animation was carried. A session whose policy predates frames refuses a snapshot that has it.
+        /// </summary>
+        [JsonPropertyName("animation"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TerminalKittyAnimationState? Animation { get; set; }
+    }
+
+    /// <summary>The playback state and frames of one retained Kitty image.</summary>
+    public sealed class TerminalKittyAnimationState
+    {
+        /// <summary>Kitty <c>a=a,s=</c>: 1 stopped, 2 loading (run, waiting for more frames), 3 running.</summary>
+        [JsonPropertyName("state")] public int State { get; set; }
+        /// <summary>Zero-based frame the playhead is in.</summary>
+        [JsonPropertyName("current")] public int Current { get; set; }
+        /// <summary>Zero-based frame whose pixels are shown.</summary>
+        [JsonPropertyName("displayed")] public int Displayed { get; set; }
+        /// <summary>Passes left after the current one; negative is infinite.</summary>
+        [JsonPropertyName("loops")] public int LoopsRemaining { get; set; }
+        /// <summary>Milliseconds the current frame had been up when the snapshot was taken; the restoring side resumes the clock from it.</summary>
+        [JsonPropertyName("elapsed_ms")] public long ElapsedMs { get; set; }
+        /// <summary>Loading mode, parked on the last frame until another arrives.</summary>
+        [JsonPropertyName("waiting"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool Waiting { get; set; }
+        /// <summary>Every frame, the root first.</summary>
+        [JsonPropertyName("frames")] public List<TerminalKittyFrameState> Frames { get; set; } = [];
+    }
+
+    /// <summary>One frame of a retained Kitty animation.</summary>
+    public sealed class TerminalKittyFrameState
+    {
+        /// <summary>Milliseconds the frame is shown; negative is gapless, zero uses the default.</summary>
+        [JsonPropertyName("gap")] public int Gap { get; set; }
+        /// <summary>
+        /// The root frame only: its pixels were replaced by an edit (<c>a=f,r=1</c>) and are carried in <see cref="Data"/>. An unedited root is the
+        /// image's own bytes and carries none.
+        /// </summary>
+        [JsonPropertyName("edited"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool Edited { get; set; }
+        /// <summary>
+        /// The frame's pixels packed by the VT frame codec; empty when the source budget evicted them (the frame still holds its gap and place, and draws nothing).
+        /// </summary>
+        [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
+        /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
+        [JsonPropertyName("src"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? SourceOrder { get; set; }
     }
 
     /// <summary>A placement of a retained Kitty image, in the same coordinates as SIXEL placements.</summary>

@@ -70,7 +70,7 @@ public sealed class PngPixelReaderTests
     }
 
     /// <summary>One image of <paramref name="channels"/> samples per pixel, filtered row by row (filter = row index mod 5) and optionally Adam7 interlaced.</summary>
-    private static byte[] Encode(int width, int height, int colorType, int depth, bool interlace, int[][] pixels, byte[]? palette = null, byte[]? trns = null, int? filterOverride = null)
+    internal static byte[] Encode(int width, int height, int colorType, int depth, bool interlace, int[][] pixels, byte[]? palette = null, byte[]? trns = null, int? filterOverride = null)
     {
         int channels = colorType switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, _ => 4 }, bpp = Math.Max(1, channels * depth / 8);
         var raw = new MemoryStream();
@@ -108,7 +108,7 @@ public sealed class PngPixelReaderTests
 
     private static byte Scale(int sample, int depth) => depth switch { 8 => (byte)sample, 16 => (byte)(sample >> 8), _ => (byte)((sample * 255 + ((1 << depth) - 1) / 2) / ((1 << depth) - 1)) };
 
-    private static int[][] Samples(int width, int height, int channels, int depth, int seed)
+    internal static int[][] Samples(int width, int height, int channels, int depth, int seed)
     {
         var random = new Random(seed);
         int max = (1 << depth) - 1;

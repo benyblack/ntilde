@@ -1,0 +1,317 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using Xunit;
+
+namespace Ntilde.VT.Tests;
+
+/// <summary>
+/// Kitty animation where images are retained for snapshots (persistent image policy 3, #1017): the headless daemon has no image decoder while its clients do,
+/// so both must accept, refuse and charge the same frames from the same bytes, and a snapshot must carry the frames and the playhead.
+/// </summary>
+public sealed class PersistentKittyAnimationTests
+{
+    private sealed record Pixels(byte[] Rgba, int Width, int Height);
+
+    /// <summary>Hands back inspectable handles and counts every pixel read-back: a persistent session must never need one.</summary>
+    private sealed class ClientDecoder : IImageDecoder
+    {
+        internal int ReadBacks;
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight)
+        {
+            pixelWidth = pixelHeight = 0;
+            if (!PngPixelReader.TryRead(imageData, 4096, out pixelWidth, out pixelHeight, out byte[] rgba)) return null;
+            return new Pixels(rgba, pixelWidth, pixelHeight);
+        }
+
+        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+
+        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
+        {
+            (pixelWidth, pixelHeight) = (width, height);
+            var rgba = new byte[width * height * 4];
+            for (int i = 0; i < width * height; i++)
+            {
+                Array.Copy(data, i * bytesPerPixel, rgba, i * 4, 3);
+                rgba[i * 4 + 3] = bytesPerPixel == 4 ? data[i * bytesPerPixel + 3] : (byte)255;
+            }
+            return new Pixels(rgba, width, height);
+        }
+
+        public bool TryReadPixels(object handle, out byte[] rgba, out int pixelWidth, out int pixelHeight)
+        {
+            ReadBacks++;
+            (rgba, pixelWidth, pixelHeight) = ([], 0, 0);
+            return false;
+        }
+    }
+
+    private sealed class Side
+    {
+        internal readonly TerminalBuffer Buffer;
+        internal readonly AnsiParser Parser;
+        internal readonly List<string> Replies = [];
+        internal long Now { get; set; }
+        internal Side(IImageDecoder? decoder, int policy = PersistentImagePolicy.AnimationImagesVersion, ImageSourceBudget? budget = null)
+        {
+            Buffer = new TerminalBuffer(40, 20) { ImageSources = budget ?? new ImageSourceBudget() };
+            Parser = new AnsiParser(Buffer, forceConPtyFiltering: false) { ImageDecoder = decoder, CellWidth = 8, CellHeight = 16 };
+            PersistentImagePolicy.Apply(Parser, policy);
+            Parser.OnResponse = Replies.Add;
+            Buffer.KittyAnimationClock = () => Now;
+        }
+
+        internal void Send(string text) => Parser.Process(text);
+        internal KittyImageAsset Asset(uint id = 1) => Buffer.FindKittyImage(id, 0)!;
+        internal KittyAnimation Animation(uint id = 1) => Asset(id).Animation!;
+    }
+
+    private static string Kitty(string controls, string payload = "") => $"\x1b_G{controls};{payload}\x1b\\";
+    private static string B64(params byte[] bytes) => Convert.ToBase64String(bytes);
+    private static string Solid(byte r, byte g, byte b, byte a, int pixels) => B64(Enumerable.Range(0, pixels).SelectMany(_ => new[] { r, g, b, a }).ToArray());
+    private static string Png(int width, int height, int[][] pixels) => Convert.ToBase64String(PngPixelReaderTests.Encode(width, height, 6, 8, false, pixels));
+
+    /// <summary>A root, a raw frame, a PNG frame composed over the root, an edit of the root, a frame built on that edit, then playback.</summary>
+    private static string Traffic() =>
+        Kitty("a=T,f=32,s=2,v=1,i=1,p=1,c=2,r=1,C=1", B64(255, 0, 0, 255, 0, 0, 255, 255))                      // root: red | blue
+        + Kitty("a=f,f=32,s=2,v=1,i=1,z=100", Solid(0, 255, 0, 255, 2))                                           // frame 2: green
+        + Kitty("a=f,f=100,i=1,x=1,c=1,z=120", Png(1, 1, [[255, 255, 255, 128]]))                                 // frame 3: half-white PNG over the root's right pixel
+        + Kitty("a=f,f=32,s=2,v=1,i=1,r=1", Solid(9, 8, 7, 255, 2))                                               // the root is edited
+        + Kitty("a=f,f=32,s=1,v=1,i=1,x=1,c=1,z=130", Solid(1, 2, 3, 255, 1))                                     // frame 4: built on the edited root
+        + Kitty("a=a,i=1,s=3,v=1") + Kitty("a=a,i=1,c=2");
+
+    [Fact]
+    public void A_daemon_without_a_decoder_and_a_client_with_one_decide_alike_and_never_read_a_decoder_back()
+    {
+        var daemon = new Side(decoder: null);
+        var decoder = new ClientDecoder();
+        var client = new Side(decoder);
+        daemon.Send(Traffic());
+        client.Send(Traffic());
+
+        Assert.All(daemon.Replies, reply => Assert.EndsWith(";OK\x1b\\", reply, StringComparison.Ordinal));
+        Assert.Equal(daemon.Replies, client.Replies);
+        Assert.Equal(7, daemon.Replies.Count);
+        Assert.Equal(0, decoder.ReadBacks);                                                                       // pixels came from retained sources, not from a decoder
+        Assert.Equal(daemon.Asset().PixelCharge, client.Asset().PixelCharge);
+        Assert.Equal(4, daemon.Animation().Frames.Count);                                                          // the root edit replaces frame 1, it adds none
+        Assert.Equal(daemon.Animation().Frames.Select(f => (f.GapMs, f.Charge)), client.Animation().Frames.Select(f => (f.GapMs, f.Charge)));
+        Assert.Equal(Json(daemon), Json(client));                                                                  // the same frames, packed bytes and playhead
+        // The client decoded what it displays; the daemon did not.
+        Assert.IsType<Pixels>(client.Asset().Handle);
+        Assert.IsType<UndecodedImage>(daemon.Asset().Handle);
+    }
+
+    [Fact]
+    public void Frames_are_composed_from_retained_sources_with_the_pixels_the_protocol_gives()
+    {
+        var side = new Side(decoder: null);
+        side.Send(Traffic());
+        byte[] Frame(int index) => KittyFrameCodec.TryDecode(side.Animation().Frames[index].Source!.Data!, 2, out byte[] rgba) ? rgba : throw new Xunit.Sdk.XunitException("unpackable");
+        Assert.Equal(new byte[] { 0, 255, 0, 255, 0, 255, 0, 255 }, Frame(1));
+        // Half-transparent white over the opaque blue right pixel; the left pixel keeps the root's red.
+        byte[] over = Frame(2);
+        Assert.Equal(new byte[] { 255, 0, 0, 255 }, over[..4]);
+        Assert.InRange(over[4], 127, 129); Assert.InRange(over[5], 127, 129); Assert.Equal(255, over[6]); Assert.Equal(255, over[7]);
+        // The edited root, and a frame built on that edit rather than on the original root.
+        Assert.Equal(new byte[] { 9, 8, 7, 255, 9, 8, 7, 255 }, Frame(0));
+        Assert.Equal(new byte[] { 9, 8, 7, 255, 1, 2, 3, 255 }, Frame(3));
+        Assert.Null(side.Animation().Frames[2].Rgba);                                                              // no second copy kept in memory
+    }
+
+    [Fact]
+    public void A_container_frame_that_is_not_a_PNG_is_unsupported_and_changes_nothing()
+    {
+        var side = new Side(decoder: null);
+        side.Send(Kitty("a=T,f=32,s=2,v=1,i=1,p=1", B64(1, 2, 3, 255, 4, 5, 6, 255)));
+        side.Replies.Clear();
+        side.Send(Kitty("a=f,f=100,i=1", B64([.. "GIF89a"u8, 1, 0, 1, 0])));
+        Assert.Contains(";ENOTSUP:", Assert.Single(side.Replies));
+        side.Send(Kitty("a=f,f=100,i=1", B64(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13)));       // a truncated PNG
+        Assert.Contains(";EINVAL:", side.Replies[^1]);
+        Assert.Null(side.Asset().Animation);
+    }
+
+    [Fact]
+    public void A_session_below_policy_three_still_refuses_animation_and_does_not_advertise_it()
+    {
+        var side = new Side(decoder: null, policy: PersistentImagePolicy.MultipartImagesVersion);
+        side.Send(Kitty("a=T,f=32,s=1,v=1,i=1,p=1", B64(1, 2, 3, 255)));
+        side.Replies.Clear();
+        side.Send(Kitty("a=f,f=32,s=1,v=1,i=1", B64(1, 2, 3, 255)));
+        Assert.Contains(";ENOTSUP:", side.Replies[0]);
+        side.Send(Kitty("a=a,i=1,s=3"));
+        Assert.Contains(";ENOTSUP:", side.Replies[1]);
+        side.Send(Kitty("a=q,i=31,e=f,s=1,v=1,t=d,f=24", "AAAA"));
+        Assert.EndsWith(";ERR\x1b\\", side.Replies[2], StringComparison.Ordinal);
+        Assert.False(PersistentImagePolicy.AllowsAnimation(PersistentImagePolicy.MultipartImagesVersion));
+        Assert.True(PersistentImagePolicy.AllowsAnimation(PersistentImagePolicy.AnimationImagesVersion));
+        Assert.Equal(PersistentImagePolicy.AnimationImagesVersion, PersistentImagePolicy.EnabledVersion);
+        var current = new Side(decoder: null);
+        current.Send(Kitty("a=q,i=31,e=f,s=1,v=1,t=d,f=24", "AAAA"));
+        Assert.EndsWith(";OK\x1b\\", current.Replies[0], StringComparison.Ordinal);
+    }
+
+    private static TerminalStateSnapshot Export(Side side)
+    {
+        TerminalStateSnapshot snapshot = side.Buffer.ExportState(int.MaxValue);
+        snapshot.Parser = side.Parser.ExportState();
+        return TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(snapshot));
+    }
+
+    private static Side Restore(TerminalStateSnapshot snapshot, IImageDecoder? decoder, long now, ImageSourceBudget? budget = null)
+    {
+        var restored = new Side(decoder, budget: budget) { Now = now };
+        TerminalStateTransfer.Restore(restored.Buffer, restored.Parser, TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(snapshot)));
+        return restored;
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_snapshot_carries_the_frames_and_the_playhead_and_a_restore_resumes_them(bool withDecoder)
+    {
+        var source = new Side(new ClientDecoder());
+        source.Send(Traffic());
+        source.Now = 250;                                                                                              // the current frame has been up 250 ms
+        TerminalStateSnapshot snapshot = Export(source);
+        TerminalKittyAnimationState animation = Assert.Single(snapshot.KittyImages!).Animation!;
+        Assert.Equal((int)KittyAnimationState.Running, animation.State);
+        Assert.Equal(4, animation.Frames.Count);
+        Assert.Equal(250, animation.ElapsedMs);
+        Assert.True(animation.Frames[0].Edited);
+        Assert.All(animation.Frames, frame => Assert.NotEmpty(frame.Data));
+
+        Side restored = Restore(snapshot, withDecoder ? new ClientDecoder() : null, now: 1000);
+        Assert.Equal(source.Asset().PixelCharge, restored.Asset().PixelCharge);
+        Assert.Equal(source.Animation().Frames.Select(f => (f.GapMs, f.Charge)), restored.Animation().Frames.Select(f => (f.GapMs, f.Charge)));
+        Assert.Equal((source.Animation().State, source.Animation().Current, source.Animation().Displayed), (restored.Animation().State, restored.Animation().Current, restored.Animation().Displayed));
+        Assert.Equal(Json(source), Json(restored));                                                                    // nothing lost, and the clock resumed at 250 ms in
+        Assert.True(restored.Buffer.HasKittyAnimations);
+        TerminalImage placed = Assert.Single(restored.Buffer.Images);
+        Assert.Same(restored.Animation().Frames[restored.Animation().Displayed].Handle, placed.ImageHandle);
+        foreach (KittyFrame frame in restored.Animation().Frames)
+        {
+            if (!withDecoder) { Assert.IsType<UndecodedImage>(frame.Handle); continue; }
+            var pixels = Assert.IsType<Pixels>(frame.Handle);
+            int index = restored.Animation().Frames.IndexOf(frame);
+            Assert.True(KittyFrameCodec.TryDecode(source.Animation().Frames[index].Source!.Data!, 2, out byte[] expected));
+            Assert.Equal(expected, pixels.Rgba);
+        }
+    }
+
+    [Fact]
+    public void A_restored_session_keeps_deciding_like_the_one_it_came_from()
+    {
+        var source = new Side(decoder: null);
+        source.Send(Traffic());
+        Side restored = Restore(Export(source), new ClientDecoder(), now: 0);
+        source.Replies.Clear();
+        // New frames built on a PNG frame, on the edited root and on a frame the source composed: all from the sources a snapshot carried.
+        string more = Kitty("a=f,f=32,s=1,v=1,i=1,c=3,x=0,z=50", Solid(5, 5, 5, 255, 1)) + Kitty("a=f,f=32,s=1,v=1,i=1,c=1,x=1", Solid(6, 6, 6, 255, 1))
+            + Kitty("a=f,f=32,s=2,v=1,i=1,r=2", Solid(7, 7, 7, 255, 2)) + Kitty("a=a,i=1,c=5");
+        source.Send(more);
+        restored.Send(more);
+        Assert.Equal(source.Replies, restored.Replies);
+        Assert.All(restored.Replies, reply => Assert.EndsWith(";OK\x1b\\", reply, StringComparison.Ordinal));
+        Assert.Equal(Json(source), Json(restored));
+        Assert.Equal(source.Asset().PixelCharge, restored.Asset().PixelCharge);
+    }
+
+    [Fact]
+    public void The_source_budget_evicts_frame_pixels_identically_on_every_side_and_an_evicted_base_is_refused_alike()
+    {
+        var daemon = new Side(decoder: null, budget: new ImageSourceBudget(maxSources: 3));
+        var client = new Side(new ClientDecoder(), budget: new ImageSourceBudget(maxSources: 3));
+        daemon.Send(Traffic());
+        client.Send(Traffic());
+        Assert.Equal(daemon.Replies, client.Replies);
+        Assert.Equal(Json(daemon), Json(client));
+        TerminalKittyAnimationState animation = Assert.Single(daemon.Buffer.ExportState(int.MaxValue).KittyImages!).Animation!;
+        Assert.Contains(animation.Frames, frame => frame.Data.Length == 0);                                            // something was evicted...
+        Assert.Contains(animation.Frames, frame => frame.Data.Length != 0);                                            // ...and something was kept
+        Assert.Equal(daemon.Asset().PixelCharge, client.Asset().PixelCharge);                                          // eviction frees bytes, not the charge
+        daemon.Replies.Clear(); client.Replies.Clear();
+        string builds = string.Concat(Enumerable.Range(1, animation.Frames.Count).Select(n => Kitty($"a=f,f=32,s=1,v=1,i=1,c={n}", Solid(1, 1, 1, 255, 1))));
+        daemon.Send(builds);
+        client.Send(builds);
+        Assert.Equal(daemon.Replies, client.Replies);
+        Assert.Contains(daemon.Replies, reply => reply.Contains(";ENOTSUP:", StringComparison.Ordinal));               // an evicted base is unavailable on both
+        // A restore reproduces the evicted state too: the same frames are gone, the same ones remain.
+        Side restored = Restore(Export(client), new ClientDecoder(), now: 0, new ImageSourceBudget(maxSources: 3));
+        Assert.Equal(Json(client), Json(restored));
+    }
+
+    [Fact]
+    public void Deleting_the_image_releases_every_frame_source_and_a_replacement_releases_the_replaced_frame()
+    {
+        var side = new Side(new ClientDecoder());
+        side.Send(Traffic());
+        Assert.Equal(1 + 4, side.Buffer.ImageSources.Count);                                                           // the root image bytes and four frame sources
+        side.Send(Kitty("a=f,f=32,s=2,v=1,i=1,r=2", Solid(4, 4, 4, 255, 2)));                                          // replaces frame 2
+        Assert.Equal(1 + 4, side.Buffer.ImageSources.Count);
+        side.Send(Kitty("a=d,d=I,i=1"));
+        Assert.Equal(0, side.Buffer.ImageSources.Count);
+        Assert.Equal(0, side.Buffer.ImageSources.RetainedBytes);
+    }
+
+    private static object[] Case(string description, Action<TerminalKittyAnimationState> corrupt) => [description, corrupt];
+
+    public static IEnumerable<object[]> Corruptions() =>
+    [
+        Case("a frame that is not a packing of the image", a => a.Frames[1].Data = [1, 2, 3]),
+        Case("a frame of the wrong size", a => a.Frames[2].Data = KittyFrameCodec.Encode(new byte[4 * 3])),
+        Case("no frames", a => a.Frames = []),
+        Case("too many frames", a => a.Frames = Enumerable.Range(0, KittyAnimation.MaxFrames + 1).Select(_ => new TerminalKittyFrameState()).ToList()),
+        Case("a playhead past the frames", a => a.Current = 99),
+        Case("a displayed frame past the frames", a => a.Displayed = -1),
+        Case("an unknown state", a => a.State = 9),
+        Case("negative elapsed time", a => a.ElapsedMs = -1),
+        Case("loops below infinite", a => a.LoopsRemaining = -2),
+        Case("pixels on an unedited root", a => a.Frames[0].Edited = false),
+        Case("an edited later frame", a => a.Frames[2].Edited = true),
+    ];
+
+    [Theory]
+    [MemberData(nameof(Corruptions))]
+    public void A_crafted_animation_snapshot_is_refused_before_it_restores_anything(string description, Action<TerminalKittyAnimationState> corrupt)
+    {
+        var source = new Side(decoder: null);
+        source.Send(Traffic());
+        TerminalStateSnapshot snapshot = Export(source);
+        corrupt(snapshot.KittyImages![0].Animation!);
+        var target = new Side(decoder: null);
+        Assert.ThrowsAny<Exception>(() => TerminalStateTransfer.Restore(target.Buffer, target.Parser, snapshot));
+        Assert.True(target.Buffer.Images.Count == 0 && !target.Buffer.HasKittyAnimations, description);
+    }
+
+    [Fact]
+    public void Frames_that_would_pass_the_per_screen_pixel_quota_are_refused_in_a_snapshot()
+    {
+        var source = new Side(decoder: null);
+        source.Send(Kitty("a=T,f=32,s=2,v=1,i=1,p=1", B64(1, 2, 3, 255, 4, 5, 6, 255)) + Kitty("a=f,f=32,s=2,v=1,i=1", Solid(1, 1, 1, 255, 2)));
+        TerminalStateSnapshot snapshot = Export(source);
+        TerminalKittyImageState image = snapshot.KittyImages![0];
+        (image.Width, image.Height) = (2000, 2000);                                                                    // 16 MB root plus 31 frames of 32 MB each is far over 64 MiB
+        image.Animation!.Frames = Enumerable.Range(0, 32).Select(_ => new TerminalKittyFrameState()).ToList();
+        var target = new Side(decoder: null);
+        Assert.ThrowsAny<Exception>(() => TerminalStateTransfer.Restore(target.Buffer, target.Parser, snapshot));
+    }
+
+    [Fact]
+    public void A_still_images_snapshot_is_unchanged_by_animation_support()
+    {
+        var side = new Side(decoder: null);
+        side.Send(Kitty("a=T,f=32,s=2,v=1,i=1,p=1", B64(1, 2, 3, 255, 4, 5, 6, 255)));
+        string json = Json(side);
+        Assert.DoesNotContain("animation", json, StringComparison.Ordinal);
+        Assert.Null(Assert.Single(side.Buffer.ExportState(int.MaxValue).KittyImages!).Animation);
+    }
+
+    private static string Json(Side side)
+    {
+        TerminalStateSnapshot snapshot = side.Buffer.ExportState(int.MaxValue);
+        return JsonSerializer.Serialize(new { snapshot.KittyImages, snapshot.KittyPlacements });
+    }
+}

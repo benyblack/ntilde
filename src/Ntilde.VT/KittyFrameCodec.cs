@@ -47,6 +47,23 @@ internal static class KittyFrameCodec
         return length;
     }
 
+    /// <summary>Whether <paramref name="packed"/> is a well-formed packing of exactly <paramref name="pixelCount"/> pixels, checked without building them.</summary>
+    internal static bool IsValid(ReadOnlySpan<byte> packed, int pixelCount)
+    {
+        if (pixelCount <= 0) return false;
+        int at = 0;
+        long written = 0;
+        while (at < packed.Length)
+        {
+            int control = packed[at++];
+            int count = control < 128 ? control + 1 : control - 128 + MinRun, bytes = control < 128 ? count * 4 : 4;
+            if (written + count > pixelCount || at + bytes > packed.Length) return false;
+            at += bytes;
+            written += count;
+        }
+        return written == pixelCount;
+    }
+
     /// <summary>True with exactly <paramref name="pixelCount"/> pixels when <paramref name="packed"/> is a well-formed packing of that many; never reads or writes past it.</summary>
     internal static bool TryDecode(ReadOnlySpan<byte> packed, int pixelCount, out byte[] rgba)
     {

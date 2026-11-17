@@ -144,6 +144,16 @@ namespace Ntilde.VT
         public bool RetainImageSources { get; set; }
 
         /// <summary>
+        /// Where images are retained for snapshots (<see cref="RetainImageSources"/>), whether Kitty animation frames are too (persistent image policy 3,
+        /// #1017). The daemon has no image decoder while its clients do, so a frame's pixels then come from retained sources and
+        /// <see cref="PngPixelReader"/>, never from a host decoder: every side makes the same decision from the same bytes.
+        /// </summary>
+        public bool RetainedAnimation { get; set; }
+
+        /// <summary>Frames are retained for snapshots and their pixels never come from a decoder.</summary>
+        private bool PersistentFrames => RetainImageSources && RetainedAnimation;
+
+        /// <summary>
         /// Routes internal native sessions through bounded admission; public legacy sessions retain their decoder path.
         /// </summary>
         private void HandleSixel(string dcs)
