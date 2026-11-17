@@ -51,8 +51,8 @@ public partial class TerminalBuffer
             KittyImageAsset? old = id == 0 ? null : FindKittyImage(id, 0);
             if (id == 0 && number != 0) id = AllocateKittyImageId();
             List<KittyImageAsset> victims = KittyQuotaVictims(old, (long)pixelWidth * pixelHeight * 4);
-            old?.Source?.Release();
-            foreach (KittyImageAsset victim in victims) victim.Source?.Release();
+            if (old is not null) ReleaseKittySources(old);
+            foreach (KittyImageAsset victim in victims) ReleaseKittySources(victim);
             ImageSource? source = sent is null ? null : ImageSources.Retain(sent.Bytes, sent.InflationCost);
             var asset = new KittyImageAsset(id, number, _isAltScreen, handle, pixelWidth, pixelHeight) { Source = source, Encoding = sent?.Encoding };
             // Publish the new ownership before retiring the old one: even a host decoder
@@ -200,11 +200,19 @@ public partial class TerminalBuffer
         }
         _kittyImageAssets.Remove(asset);
         _hasKittyAnimations = _kittyImageAssets.Any(item => item.Animation is not null);
-        asset.Source?.Release();
+        ReleaseKittySources(asset);
         RetireUnstoredKittyHandle(asset.Handle);
         if (asset.Animation is { } animation)
             foreach (KittyFrame frame in animation.Frames.Where(frame => !ReferenceEquals(frame.Handle, asset.Handle)))
                 RetireUnstoredKittyHandle(frame.Handle);
+    }
+
+    /// <summary>Drops the retained bytes of an asset and of every animation frame it holds.</summary>
+    private static void ReleaseKittySources(KittyImageAsset asset)
+    {
+        asset.Source?.Release();
+        if (asset.Animation is { } animation)
+            foreach (KittyFrame frame in animation.Frames) frame.Source?.Release();
     }
 
     private bool IsRetainedKittyHandle(object handle) => _kittyImageAssets.Any(asset => asset.OwnsHandle(handle));

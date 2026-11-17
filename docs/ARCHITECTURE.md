@@ -542,7 +542,9 @@ client configure their parsers with `PersistentImagePolicy.Apply`, so all of the
 place every image alike; native Kitty APC is trusted under it, since a per-window
 setting cannot apply to a shared stream. Policy 2 adds iTerm2's multipart form
 (`MultipartFile`/`FilePart`/`FileEnd`), which policy-1 peers ignore; a policy-1
-session therefore ignores it on every side (`AllowITerm2Multipart`). `readScreen` leaves Kitty and iTerm2 images
+session therefore ignores it on every side (`AllowITerm2Multipart`). Policy 3 (#1017) adds Kitty animation: frames are kept packed in the shared
+image-source budget, read without any decoder (`PngPixelReader`) so the daemon and every client decide alike, and carried in snapshots with the playhead; below policy 3 animation
+is refused (`ENOTSUP`, probes `ERR`), because a peer that predates frames could not restore a snapshot that carries them. `readScreen` leaves Kitty and iTerm2 images
 out of its reply, and Kitty `t=f` stays unavailable in persistent panes. Visible
 consequences: a valid header with a corrupt body reserves its cells and gets `OK`,
 and a format the probe cannot size is refused even where Skia could decode it.

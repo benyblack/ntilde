@@ -96,8 +96,10 @@ internal static class TerminalStateAssert
         AssertEqual($"{where} current hyperlink", ea.CurrentHyperlinkId, ec.CurrentHyperlinkId);
 
         // Retained Kitty and iTerm2 images (#838), by value: their bytes, sizes and placements.
-        AssertEqual($"{where} kitty images", System.Text.Json.JsonSerializer.Serialize(ea.KittyImages),
-            System.Text.Json.JsonSerializer.Serialize(ec.KittyImages));
+        // An animation's elapsed time is read off each side's own clock, so two sides never agree on it to the millisecond; everything else (frames, gaps,
+        // packed pixels, playhead) must match exactly.
+        AssertEqual($"{where} kitty images", WithoutElapsed(System.Text.Json.JsonSerializer.Serialize(ea.KittyImages)),
+            WithoutElapsed(System.Text.Json.JsonSerializer.Serialize(ec.KittyImages)));
         AssertEqual($"{where} kitty placements", System.Text.Json.JsonSerializer.Serialize(ea.KittyPlacements),
             System.Text.Json.JsonSerializer.Serialize(ec.KittyPlacements));
         AssertEqual($"{where} iterm2 images", System.Text.Json.JsonSerializer.Serialize(ea.ITermImages),
@@ -253,4 +255,6 @@ internal static class TerminalStateAssert
 
         return sb.ToString();
     }
+
+    private static string WithoutElapsed(string json) => System.Text.RegularExpressions.Regex.Replace(json, "\"elapsed_ms\":\\d+", "\"elapsed_ms\":0");
 }

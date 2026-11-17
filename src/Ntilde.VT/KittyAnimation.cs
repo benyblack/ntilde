@@ -21,6 +21,11 @@ internal sealed class KittyFrame(object handle, byte[]? rgba, int gapMs, long ch
     internal int GapMs { get; set; } = gapMs;
     /// <summary>Retained bytes charged to the screen pixel quota (handle pixels plus <see cref="Rgba"/>).</summary>
     internal long Charge { get; } = charge;
+    /// <summary>
+    /// Where frames are retained for snapshots (persistent sessions) the frame's pixels, packed by <see cref="KittyFrameCodec"/>, as an entry of the shared
+    /// image-source budget: evicted with it, and null here when this frame keeps its <see cref="Rgba"/> in memory instead.
+    /// </summary>
+    internal ImageSource? Source { get; set; }
 }
 
 /// <summary>
@@ -46,6 +51,15 @@ internal sealed class KittyAnimation
     internal long FrameStartMs { get; private set; }
     /// <summary>Loading mode is parked on the last frame until another one is appended.</summary>
     private bool _waiting;
+    internal bool Waiting => _waiting;
+
+    /// <summary>Sets the frames and playhead exactly as a snapshot carried them (#1017); the caller has validated every index.</summary>
+    internal void Restore(List<KittyFrame> frames, KittyAnimationState state, int current, int displayed, int loopsRemaining, long frameStartMs, bool waiting)
+    {
+        Frames.Clear();
+        Frames.AddRange(frames);
+        (State, Current, Displayed, LoopsRemaining, FrameStartMs, _waiting) = (state, current, displayed, loopsRemaining, frameStartMs, waiting);
+    }
 
     internal long ExtraCharge
     {

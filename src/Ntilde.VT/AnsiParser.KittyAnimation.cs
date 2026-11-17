@@ -38,7 +38,7 @@ public partial class AnsiParser
         if (room != KittyFrameStoreResult.Stored) return KittyFrameStatus(room);
         if (!TryReadKittyFrameData(asset, ref request, out byte[] data, out error)) return error;
         byte[] canvas = BuildKittyFrameCanvas(asset, request, data);
-        if (canvas.Length == 0) return request.CanvasFrame == 1 ? "ENOTSUP:Root frame pixels are unavailable" : "ENOENT:Frame not found";
+        if (canvas.Length == 0) return request.CanvasFrame == 1 ? "ENOTSUP:Root frame pixels are unavailable" : "ENOTSUP:Base frame pixels are unavailable";
         return StoreKittyFrame(asset, request, canvas);
     }
 
@@ -102,25 +102,42 @@ public partial class AnsiParser
 
     /// <summary>
     /// A container (PNG) frame: its size is read from the header before anything is decoded, so a frame that cannot fit the image costs no bitmap,
-    /// then it is decoded and read back as straight-alpha RGBA, which is what composition draws.
+    /// then it is read as straight-alpha RGBA, which is what composition draws. In an ordinary tab a host decoder reads it; where frames are
+    /// retained for snapshots (a persistent session) <see cref="PngPixelReader"/> does, so a daemon with no decoder decides as its clients do.
     /// </summary>
     private bool TryDecodeKittyContainerFrame(KittyImageAsset asset, ref KittyFrameRequest request, byte[] payload, out byte[] data, out string error)
     {
         data = Array.Empty<byte>();
-        if (ImageDecoder is not { } decoder) return Refuse(out error, "ENOTSUP:Container frames need an image decoder");
-        if (!ImageHeaderProbe.TryGetSize(payload, out _, out int width, out int height) || width <= 0 || height <= 0)
+        if (!ImageHeaderProbe.TryGetSize(payload, out ImageContainerFormat container, out int width, out int height) || width <= 0 || height <= 0)
             return Refuse(out error, "EINVAL:Invalid frame image data");
         KittyFrameRect rect = request.Rect with { Width = width, Height = height };
         if ((long)rect.X + width > asset.PixelWidth || (long)rect.Y + height > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image");
+        byte[] rgba;
+        if (PersistentFrames)
+        {
+            if (container != ImageContainerFormat.Png) return Refuse(out error, "ENOTSUP:Only PNG container frames are supported where frames are retained for snapshots");
+            if (!PngPixelReader.TryRead(payload, Math.Max(asset.PixelWidth, asset.PixelHeight), out int readWidth, out int readHeight, out rgba) || (readWidth, readHeight) != (width, height))
+                return Refuse(out error, "EINVAL:Invalid frame image data");
+        }
+        else if (!TryReadDecodedKittyFrame(payload, width, height, out rgba, out error)) return false;
+        request = request with { Rect = rect };
+        data = rgba;
+        error = "";
+        return true;
+    }
+
+    /// <summary>The pixels of a container frame as the host decoder reads them back; the decoded bitmap is released at once, since only its pixels are used.</summary>
+    private bool TryReadDecodedKittyFrame(byte[] payload, int width, int height, out byte[] rgba, out string error)
+    {
+        rgba = [];
+        if (ImageDecoder is not { } decoder) return Refuse(out error, "ENOTSUP:Container frames need an image decoder");
         object? handle = decoder.DecodeImageBytes(payload, out _, out _);
         if (handle is null) return Refuse(out error, "EINVAL:Invalid frame image data");
-        bool read = decoder.TryReadPixels(handle, out byte[] rgba, out int readWidth, out int readHeight);
-        _buffer.ReleaseRejectedImageHandle(handle); // only its pixels are used and it was never admitted: release it now, not at a renderer drain
+        bool read = decoder.TryReadPixels(handle, out rgba, out int readWidth, out int readHeight);
+        _buffer.ReleaseRejectedImageHandle(handle); // it was never admitted: release it now, not at a renderer drain
         if (!read) return Refuse(out error, "ENOTSUP:This decoder cannot expose frame pixels");
         if (readWidth != width || readHeight != height || rgba.LongLength != (long)width * height * 4)
             return Refuse(out error, "EINVAL:Frame data does not match its dimensions");
-        request = request with { Rect = rect };
-        data = rgba;
         error = "";
         return true;
     }
@@ -131,7 +148,7 @@ public partial class AnsiParser
         byte[] canvas;
         if (request.CanvasFrame != 0)
         {
-            byte[]? basePixels = _buffer.ReadKittyFramePixels(asset, (int)request.CanvasFrame - 1, ImageDecoder);
+            byte[]? basePixels = _buffer.ReadKittyFramePixels(asset, (int)request.CanvasFrame - 1, ImageDecoder, PersistentFrames);
             if (basePixels is null) return Array.Empty<byte>();
             canvas = basePixels;
         }
@@ -149,14 +166,17 @@ public partial class AnsiParser
             decoder.DecodeRawImage(canvas, 4, asset.PixelWidth, asset.PixelHeight, out w, out h), asset.PixelWidth, asset.PixelHeight);
         int gapMs = request.Gap;
         if (gapMs == 0) gapMs = request.Editing ? EditedKittyFrameGap(asset, request.Edit) : KittyAnimation.DefaultGapMs;
-        var frame = new KittyFrame(handle, canvas, gapMs, charge);
-        KittyFrameStoreResult stored = _buffer.StoreKittyFrame(asset, frame, replaceIndex);
+        // Where frames are retained for snapshots, the frame's pixels live only as its packed retained source (evictable with the rest of the budget).
+        byte[]? packed = PersistentFrames ? KittyFrameCodec.Encode(canvas) : null;
+        byte[]? kept = PersistentFrames ? null : canvas;
+        var frame = new KittyFrame(handle, kept, gapMs, charge);
+        KittyFrameStoreResult stored = _buffer.StoreKittyFrame(asset, frame, replaceIndex, packed);
         if (stored == KittyFrameStoreResult.Rejected)
         {
             // A decoder handed back a handle the buffer cannot admit: keep the frame undecoded, as a whole image is, rather than refusing it.
             _buffer.RetireUnstoredKittyHandle(handle);
             handle = new UndecodedImage(asset.PixelWidth, asset.PixelHeight);
-            stored = _buffer.StoreKittyFrame(asset, new KittyFrame(handle, canvas, gapMs, frame.Charge), replaceIndex);
+            stored = _buffer.StoreKittyFrame(asset, new KittyFrame(handle, kept, gapMs, frame.Charge), replaceIndex, packed);
         }
         if (stored != KittyFrameStoreResult.Stored) _buffer.RetireUnstoredKittyHandle(handle);
         return KittyFrameStatus(stored);

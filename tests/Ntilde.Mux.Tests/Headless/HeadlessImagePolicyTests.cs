@@ -96,6 +96,65 @@ public sealed class HeadlessImagePolicyTests
         TerminalStateAssert.AssertEquivalent("[text client]", host.Mux(id).Buffer, host.Mux(id).Parser, model.Buffer, model.Parser);
     }
 
+    /// <summary>A root, a raw frame, a frame built on the root, then playback and a chosen frame: the same bytes a direct pane would get.</summary>
+    private static readonly string AnimationCommands =
+        Kitty("a=T,i=1,f=32,s=2,v=1,p=1,c=2,r=1,C=1", Convert.ToBase64String([255, 0, 0, 255, 0, 0, 255, 255]))
+        + Kitty("a=f,i=1,f=32,s=2,v=1,z=100", Convert.ToBase64String([0, 255, 0, 255, 0, 255, 0, 255]))
+        + Kitty("a=f,i=1,f=32,s=1,v=1,x=1,c=1,z=120", Convert.ToBase64String([9, 8, 7, 255]))
+        + Kitty("a=a,i=1,c=3");
+
+    [Fact]
+    public async Task Every_client_of_a_policy_three_session_holds_the_same_animation_across_a_chunked_transfer_and_a_reattach()
+    {
+        using var host = new MuxTestHost();
+        var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+        MuxClient first = await host.ConnectClientAsync(options);
+        int policy = PersistentImagePolicy.AnimationImagesVersion;
+        Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = policy }, Ct);
+        ClientPaneModel firstPane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: policy);
+
+        // The root and the first frame arrive before the second pane attaches; the rest after it.
+        host.Fake(id).Emit(AnimationCommands[..AnimationCommands.IndexOf("\x1b_Ga=f,i=1,f=32,s=1", StringComparison.Ordinal)]);
+        await host.SettleAsync(id, first);
+        MuxClient second = await host.ConnectClientAsync(options);
+        ClientPaneModel secondPane = await MuxTestHost.AttachPaneAsync(second, id, imagePolicy: policy);
+        host.Fake(id).Emit(AnimationCommands[AnimationCommands.IndexOf("\x1b_Ga=f,i=1,f=32,s=1", StringComparison.Ordinal)..]);
+        await host.SettleAsync(id, first, second);
+
+        string daemon = Frames(host.Mux(id).Buffer);
+        Assert.Contains("\"frames\":[", daemon, StringComparison.Ordinal);
+        Assert.Equal(daemon, Frames(firstPane.Buffer));
+        Assert.Equal(daemon, Frames(secondPane.Buffer));
+        host.AssertPaneMatchesMux(id, firstPane, "attached throughout");
+        host.AssertPaneMatchesMux(id, secondPane, "attached between the frames");
+
+        // A later client gets the frames and the playhead from the snapshot alone.
+        MuxClient third = await host.ConnectClientAsync(options);
+        ClientPaneModel thirdPane = await MuxTestHost.AttachPaneAsync(third, id, imagePolicy: policy);
+        await host.SettleAsync(id, third);
+        Assert.Equal(daemon, Frames(thirdPane.Buffer));
+        host.AssertPaneMatchesMux(id, thirdPane, "reattached");
+        Assert.True(thirdPane.Buffer.HasKittyAnimations);
+    }
+
+    [Fact]
+    public async Task A_policy_two_session_still_refuses_animation_and_its_snapshot_carries_none()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession(PersistentImagePolicy.MultipartImagesVersion, conPtyFiltering: false);
+        using (mux)
+        {
+            fake.Emit(AnimationCommands);
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count >= 4, "the replies reached the child writer");
+            Assert.Contains("ENOTSUP", fake.SentInput.ToArray()[1], StringComparison.Ordinal);
+            Assert.Null(mux.Buffer.ExportState(int.MaxValue).KittyImages!.Single().Animation);
+        }
+    }
+
+    /// <summary>The exported frames, without the elapsed time each side reads off its own clock.</summary>
+    private static string Frames(TerminalBuffer buffer) => System.Text.RegularExpressions.Regex.Replace(
+        System.Text.Json.JsonSerializer.Serialize(buffer.ExportState(int.MaxValue).KittyImages), "\"elapsed_ms\":\\d+", "\"elapsed_ms\":0");
+
     [Fact]
     public async Task Every_client_places_the_same_image_when_one_attaches_between_multipart_parts()
     {
