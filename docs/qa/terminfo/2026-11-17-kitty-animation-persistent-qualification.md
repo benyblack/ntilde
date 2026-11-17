@@ -1,0 +1,70 @@
+# Kitty animation in a live persistent tab, measured on the desktop (2026-11-17)
+
+Issue [#1025](https://github.com/benyblack/ntilde/issues/1025), follow-up to [#1017](kitty-image-lifecycle.md) (animation in persistent sessions) and [#1015](2026-11-16-kitty-animation-qualification.md),
+parent [#770](https://github.com/benyblack/ntilde/issues/770). #1017 shipped animation in persistent (mux-backed) sessions with deterministic tests only. This note measures the same owned
+animation suite (`ntilde-owned-kitty-animation-v2`) in a **live persistent tab** on a real desktop, for the same case `extensions.kitty-graphics.animation` (bundle SHA-256
+`aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6`). No production code changed. The case stays outside the frozen Core catalogue, so no Core percentage changes.
+
+## Result
+
+| Case | Pinned termless | Pinned terminal | Effect contract in a persistent tab | Stock grade |
+|---|---|---|---|---|
+| `extensions.kitty-graphics.animation` | inconclusive by design | inconclusive by design | **supported** (`ntilde-kitty-animation-persistent-playback-effect-v1`) | none (no stock collector ran in this run) |
+
+The results stay separate. Both pinned callbacks are replayed from the retained pinned bundle and stay inconclusive whatever the App declares; the divergence is recorded as
+`pinned-inconclusive-by-design`. This run has no stock collector, so it reports no stock grade and does not touch the direct-tab publication's stock result (161 inconclusive / 93 supported / 1 unsupported).
+
+All 24 stages passed, the same four cases as the direct-tab run (stationary control, playback, stop-freeze, PNG and root-based frames), with every write acknowledged `OK` through the
+daemon and the client, source-derived frame colors at the controlled anchor, unchanged surroundings and a blank target after each clear. Thirteen validity controls held: the nine of the
+direct-tab publication (receipt binds the report, raw reader healthy, state restored, matching controlled background, fresh paired fences, blank-before controls, acknowledgement separate
+from pixels, every timed read inside its window, carrier policy) and four persistent ones (below).
+
+## Wall-clock evidence
+
+Elapsed time is the App's own monotonic clock, as in the direct tab. Measured against the bracket in which `a=a,s=3` could have taken effect (15 ms wide), the playback captures covered
+7.47-7.53 s (second frame window 5-10 s), 12.45-12.51 s (third, 10-15 s) and 17.46-17.52 s (root again, 15-20 s). In `stop-freeze` the stop took effect at 6.24-6.25 s, inside the second
+frame, and a capture 12.35 s after the start still showed the second frame, where a running animation would have shown the third.
+
+## What makes it a persistent tab
+
+The owned runner measured direct tabs only: it proves the worker is a direct child of the App. With `SessionPersistence` `KeepOnClose` the App starts the multiplexer daemon detached
+(`Ntilde mux serve`, parent PID 1) and the daemon hosts the shell, so the worker's parent is the daemon. A first attempt confirmed it: the App exited at once with "Worker is not a direct
+child of the owned app". The ownership proof was extended, not relaxed (`scripts/terminfo/ownership.mjs`):
+
+- the daemon is the launched executable running `mux serve` (the path is matched whole, so spaces are safe),
+- its environment carries this run's private app-data root and run identity (`ps eww`; a value is matched as a whole, never split),
+- it advertises itself through a descriptor inside that private root, and started no earlier than the owned App,
+- the worker is its direct child, and every observed ownership fact in the retained journal carries the daemon record
+  (`validateImageOwnership` refuses a frame under any other parent, and a direct run cannot gain or drop the record alone).
+
+Cleanup stops the daemon: `mux kill-server` first, then SIGTERM/SIGKILL only while a re-read of its command line and environment still proves it is this run's. Candidates come from the recorded
+identity and from a scan of this user's processes (not the descriptor, so a daemon interrupted before publishing one is found too), and a scan that still finds one afterwards, or fails,
+fails the cleanup and keeps the desktop lease. The four persistent validity controls are: tab configured persistent, worker hosted by the daemon (never a direct child), daemon is the launched
+executable serving the private root, daemon stopped before the receipt.
+
+## Why a separate collection, not the full one
+
+The full owned collection runs about 60 suites in one worker and produces one receipt. Running it in a persistent tab was tried and is **not** supported: once the ownership proof passed,
+the first suite reported unexpected input once, and in another run the Resize suite failed because the agent observer refused the read after the first resize. Both are properties of the
+full collection in a persistent tab ([QA_TERMINFO.md](../QA_TERMINFO.md) already says persistent panes answer some probes differently by design), outside this issue. The persistent run is therefore its own
+collection (`--scope persistent-animation`): only the animation carrier runs, with its own receipt (`persistent-animation-receipt.json`) binding the one retained report, the ownership proof
+and the context. It reuses the carrier, observer, cases, oracle and report builder unchanged, and the launcher's captured source graph (source policy v66, no new measured file).
+
+## Limits
+
+One live persistent tab, one desktop (macOS), one App build (App and scripts revision `b4bf3c83`), one image size, one gap length and one PNG encoding. Not measured: a **reattach or restart**
+(restoring a tab from a snapshot is still covered by deterministic tests only), a second client, remote persistent sessions, other platforms, a non-PNG root, `a=c`, frame-rate or
+display-refresh cadence. The full collection in a persistent tab is not claimed. No stock grade, Core score or common-harness comparison changes.
+
+## Retained evidence and reproduction
+
+`2026-11-17-kitty-animation-persistent/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy, and the generated `summary.json` and
+`report.json`. The run is `837ce74a65b6330700d2b37772cf31a1`. `kitty-animation-persistent-publication.test.mjs` rederives the receipt binding, settings, measured sources (against the
+retained manifest), daemon lineage and the whole carrier report from its journals, and refuses a downgraded, stripped or foreign run. Collect with the persistent scope under the shared
+desktop lock, then assemble:
+
+```sh
+node scripts/terminfo-owned.mjs --executable <abs>/Ntilde --app-version 0.14.0 --scope persistent-animation
+node scripts/terminfo/kitty-animation-persistent-assemble.mjs artifacts/terminfo/owned-<run> docs/qa/terminfo/2026-11-17-kitty-animation-persistent <pinned bundle .gz>
+node --test scripts/terminfo/kitty-animation-persistent-publication.test.mjs
+```

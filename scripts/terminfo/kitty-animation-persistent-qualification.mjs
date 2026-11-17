@@ -23,8 +23,8 @@ export const persistentAnimationReceiptSuiteId = 'ntilde-owned-kitty-animation-p
 export { pinnedBundleArchive, kittyAnimationQualificationIds, upstreamBundleSha256, pinnedSpanDigests };
 // Measured on the committed tree named here: the Release sidecar was built from the App at this commit and the measured scripts are its tree
 // (later commits are publication, docs, test pins and merges of main only).
-export const measuredAppRevision = 'PENDING';
-export const measuredScriptsRevision = 'PENDING';
+export const measuredAppRevision = 'b4bf3c838a46d5a154c9b783ab546d729bee170d';
+export const measuredScriptsRevision = 'b4bf3c838a46d5a154c9b783ab546d729bee170d';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error(`persistent kitty animation qualification: ${message}`); };

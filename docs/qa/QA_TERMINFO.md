@@ -54,7 +54,7 @@ tab, wait for shell startup prompts to finish, and do not type during collection
 answer some probes differently by design: they refuse non-Sixel images, so the
 Kitty graphics query replies `ERR` (#838), and they report OSC 5522 MIME
 clipboard mode as unrecognized. Turn persistence off for the measured tab, or
-record that the tab was persistent.
+record that the tab was persistent. The one supported persistent collection is `--scope persistent-animation` (animation suite only).
 
 Find the **running app's** version in About or its build metadata. A sidecar can
 be older than the checkout; do not substitute the current Git revision or an
@@ -872,6 +872,11 @@ qualifies `extensions.kitty-graphics.animation` with a new owned suite, [`ntilde
 against retained wall-clock brackets. The effect contract is supported (24/24 stages) while both pinned callbacks stay
 inconclusive by design and the stock grade stays inconclusive; Core scores do not change. Thirteen superseded runs are retained with their
 actual outcomes, including eight earlier complete runs of the three-case suite and one of the four-case suite on the Apps before review, CI, the merge with main and the #1015 extension. Persistent sessions still refuse animation (#1017).
+
+The [2026-11-17 persistent-tab animation qualification](terminfo/2026-11-17-kitty-animation-persistent-qualification.md)
+(#1025) measures the same animation suite in a live persistent (`KeepOnClose`) tab: effect supported (24/24 stages), pinned callbacks inconclusive by design, no stock run and no Core,
+stock or common-harness change. It uses `--scope persistent-animation`, a separate collection with its own receipt, because the worker is the multiplexer daemon's child and the full
+collection is not claimed for persistent tabs (the ownership proof is extended, not relaxed). Reattach or restart (snapshot restore) is not measured.
 
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
