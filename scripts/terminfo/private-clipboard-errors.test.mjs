@@ -96,7 +96,7 @@ for (const newline of ['\n', '\r\n']) for (const primary of [new Error('original
         done: Promise.reject(primary), server: { once() {}, listen(_socket, resolve) { resolve(); } }, config: { socket: '/synthetic' },
         privateClipboardState: undefined, queryState: undefined, retainPrivateClipboardJournal() {}, retainQueryJournal() {},
         retainPrivateClipboardAbort: async () => {}, retainOwnedFailure: () => wrapped,
-        cleanupOwnedRun: async () => { throw cleanup; }, output: '/synthetic', workerIdentity: undefined, runId: 'a'.repeat(32),
+        cleanupOwnedRun: async () => { throw cleanup; }, output: '/synthetic', workerIdentity: undefined, daemonIdentity: undefined, daemonProof: undefined, executable: '/synthetic', appData: '/synthetic', runId: 'a'.repeat(32),
         app: undefined, proofs: [], completed: false, scratch: '/synthetic', collectionScope: undefined, preserveScratch: false, lease: { noteLaunchAttempt() {} },
     };
     const helperStart = actualSource.indexOf('async function captureOwnedCleanup('), helperEnd = actualSource.indexOf('/** Preserve only', helperStart);
@@ -117,7 +117,7 @@ for (const [label, primary] of [['Error', new Error('original operation failed')
         config: { socket: '/synthetic' }, privateClipboardState: { observer: {} }, queryState: undefined,
         retainPrivateClipboardJournal() {}, retainQueryJournal() {}, retainPrivateClipboardAbort: async () => { throw retention; },
         retainOwnedFailure: (_output, reason) => { retained = new Error('retained failure', { cause: reason }); return retained; },
-        cleanupOwnedRun: async () => { cleaned = true; throw undefined; }, output: '/synthetic', workerIdentity: undefined,
+        cleanupOwnedRun: async () => { cleaned = true; throw undefined; }, output: '/synthetic', workerIdentity: undefined, daemonIdentity: undefined, daemonProof: undefined, executable: '/synthetic', appData: '/synthetic',
         runId: 'a'.repeat(32), app: undefined, proofs: [], completed: false, scratch: '/synthetic', collectionScope: undefined, preserveScratch: false, lease: { noteLaunchAttempt() {} } };
     const helperStart = source.indexOf('async function captureOwnedCleanup('), helperEnd = source.indexOf('/** Preserve only', helperStart);
     const run = new AsyncFunction(...Object.keys(dependencies), source.slice(helperStart, helperEnd) + source.slice(start, end));

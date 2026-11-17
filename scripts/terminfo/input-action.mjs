@@ -2,14 +2,14 @@ import { execFileSync } from 'node:child_process';
 import { realpathSync, statSync } from 'node:fs';
 import { agentRequest, observerEndpoint } from './agent-observer.mjs';
 import { ownedInputRequest } from './input-request.mjs';
-import { assertProcessOwnership, matchesRecordedWorker, processRecord } from './ownership.mjs';
+import { assertProcessOwnership, matchesRecordedWorker, processRecord, readPersistentDaemon } from './ownership.mjs';
 import { readOwnedOutputMode } from './terminal-output.mjs';
 const commandFor = (pid, timeout) => execFileSync('/bin/ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8', timeout, maxBuffer: 16384 });
 
 /** Preserve dispatch facts even if post-action ownership/observation fails. Never retry. */
 export async function generateOwnedInput(config, event, budget, {
     record = processRecord, command = commandFor, canonical = realpathSync, image = statSync,
-    endpoint = observerEndpoint, read = agentRequest, rpc = ownedInputRequest, outputMode = readOwnedOutputMode,
+    endpoint = observerEndpoint, read = agentRequest, rpc = ownedInputRequest, outputMode = readOwnedOutputMode, daemonOf = readPersistentDaemon,
 } = {}) {
     const attempt = { paneId: config.paneId, runId: config.runId, request: { ...structuredClone(event), paneId: config.paneId },
         rpcStarted: false, app: null, before: null, after: null, postVerified: false };
@@ -21,7 +21,8 @@ export async function generateOwnedInput(config, event, budget, {
         const appCommand = command(config.app.pid, budget()), workerCommand = command(config.workerPid, budget());
         assertProcessOwnership({ app: { ...app, executable: canonical(app.executable) }, worker,
             ownerPid: config.app.pid, executable: config.executable, uid: config.uid, runId: config.runId,
-            appCommand, tty: config.tty });
+            appCommand, tty: config.tty,
+            ...(config.persistent === true ? { daemon: daemonOf(worker.ppid, config.app.pid, config.appData, budget()), appData: config.appData } : {}) });
         if (!matchesRecordedWorker(worker, config.workerIdentity, workerCommand, config.runId)) throw new Error('Owned input recorded worker identity changed.');
         const { sessions } = await read(endpoint(config.appData, config.app.pid), 'listSessions', {}, budget());
         const pane = sessions?.[0];

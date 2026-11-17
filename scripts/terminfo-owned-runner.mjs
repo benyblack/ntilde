@@ -124,7 +124,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
-import { legacyScope, osc633Scope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
+import { legacyScope, osc633Scope, persistentScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -209,7 +209,7 @@ import { buildSelectionColorsGradingReport, selectionColorsCounts } from './term
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
-import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists } from './terminfo/ownership.mjs';
+import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists, readPersistentDaemon, persistentDaemonIdentity, terminateRecordedDaemon } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
 import { savedSuiteId, ownedSavedPolicy } from './terminfo/saved-cases.mjs';
@@ -384,9 +384,15 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
         writeJson(join(output, file), { ...observer.lastAttempt, error: observer.failure(error) });
 }
 
+/** The fixed collection selection the arguments name: the default full selection, the OSC 633 scope, or the full selection in a persistent tab. */
+function scopeOf(args) {
+    if (args.length !== 6) return legacyScope;
+    return args[5] === 'persistent' ? persistentScope : osc633Scope;
+}
+
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || args[5] !== 'osc633'))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -1945,7 +1951,7 @@ async function terminateLaunchedApp(app) {
     });
 }
 
-async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }) {
+async function cleanupOwnedRun({ lease, workerIdentity, daemonIdentity, daemonProof, executable, appData, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }) {
     let workerError;
     try { await terminateRecordedWorker(workerIdentity, runId); }
     catch (error) { workerError = error; }
@@ -1953,6 +1959,10 @@ async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, serve
     let appError;
     try { await terminateLaunchedApp(app); }
     catch (error) { appError = error; }
+    // A persistent tab's multiplexer daemon outlives both by design: stop it through its private root, only while it is verifiably this run's.
+    let daemonError;
+    try { await terminateRecordedDaemon(daemonIdentity, { executable, appData, runId }); }
+    catch (error) { daemonError = error; }
     if (logFd !== undefined) closeSync(logFd);
     await new Promise(resolve => server.close(() => resolve()));
     // Parent shutdown can reap an already-exited worker that was a zombie.
@@ -1960,15 +1970,15 @@ async function cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, serve
     // Cleanup is verified only when both terminations succeeded AND no process carrying this lease's run markers survives; a
     // failed scan is a failure. A failed termination never reaches the scan, so a changed command line cannot hide a live process.
     let survivorError;
-    if (!workerError && !appError) {
+    if (!workerError && !appError && !daemonError) {
         try { await lease.verifyCleanup(); }
         catch (error) { survivorError = error; }
     }
-    const cleanupError = workerError ?? appError ?? survivorError;
+    const cleanupError = workerError ?? appError ?? daemonError ?? survivorError;
     const cleanup = cleanupError
         ? { cleanupError: cleanupError.message, retainedFixture: scratch }
         : { cleanedUpAt: new Date().toISOString() };
-    writeJson(join(output, 'ownership-proof.json'), { proofs, completed, ...(collectionScope ? { collectionScope } : {}), ...cleanup });
+    writeJson(join(output, 'ownership-proof.json'), { proofs, completed, ...(collectionScope ? { collectionScope } : {}), ...(daemonProof ? { persistentDaemon: daemonProof } : {}), ...cleanup });
     if (cleanupError) throw cleanupError;
 }
 
@@ -1983,7 +1993,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -1998,7 +2008,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
-    const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
+    const collectionScope = scopeOf(args);
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
     let resolveDone;
@@ -2196,7 +2206,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const profileId = randomUUID();
         const settings = {
             Profiles: [{ Id: profileId, Name: profileName, Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
-            DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Always', PaneClosePolicy: 'Always',
+            DefaultProfileId: profileId, SessionPersistence: collectionScope.persistence ?? 'Off', ShellExitPolicy: 'Always', PaneClosePolicy: 'Always',
             QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: true, AllowRectangleChecksumReport: true, AllowTitleReport: true,
             MinimumContrast: 1, EnableLigatures: false,
             BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
@@ -2212,6 +2222,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
 
         let app;
         let workerIdentity;
+        let daemonIdentity;
+        let daemonProof;
         let cellObserver;
         let sgrObserver;
         let gradingObserver;
@@ -2617,7 +2629,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: 'NTILDE_RZ_' + runId, expectedPaneId: cellObserver.paneId,
                     performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
                         paneId: resizeState.observer.paneId, uid: process.getuid(),
-                        workerPid: resizeState.workerPid, tty: resizeState.tty }, rows, cols, actionBudget) });
+                        workerPid: resizeState.workerPid, tty: resizeState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, rows, cols, actionBudget) });
                 proofs[0].resize.actions = resizeState.observer.actions;
             }
             const state = resizeState;
@@ -2667,7 +2679,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: 'NTILDE_RF_' + runId, expectedPaneId: cellObserver.paneId,
                     performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
                         paneId: reflowState.observer.paneId, uid: process.getuid(),
-                        workerPid: reflowState.workerPid, tty: reflowState.tty }, rows, cols, actionBudget) });
+                        workerPid: reflowState.workerPid, tty: reflowState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, rows, cols, actionBudget) });
                 proofs[0].asciiReflow.actions = reflowState.observer.actions;
             }
             const state = reflowState;
@@ -3084,7 +3096,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: 'NTILDE_IN_' + runId, expectedPaneId: cellObserver.paneId,
                     performInput: (event, actionBudget) => generateOwnedInput({ app, appData, executable, image, profileName, runId,
                         paneId: inputState.observer.paneId, uid: process.getuid(),
-                        workerPid: inputState.workerPid, workerIdentity, tty: inputState.tty }, event, actionBudget) });
+                        workerPid: inputState.workerPid, workerIdentity, tty: inputState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, event, actionBudget) });
                 proofs[0].input.actions = inputState.observer.actions;
             }
             const state = inputState;
@@ -3171,7 +3183,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             const appCommand = execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
             const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
             assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker,
-                ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: state.tty, appCommand });
+                ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: state.tty, appCommand, daemon: daemonFor(worker, budget), appData });
             if (!matchesRecordedWorker(worker, workerIdentity, workerCommand, runId)) throw new Error('Recorded query worker identity or marker changed.');
             return { app: owner, worker, tty: state.tty, appCommand, workerCommand,
                 terminalOutput: readOwnedOutputMode(state.tty, budget()), at: new Date().toISOString() };
@@ -3686,7 +3698,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         expectedPaneId: cellObserver.paneId, expectedOriginal: { rows: cellObserver.baseline.rows, cols: cellObserver.baseline.cols },
                         performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
                             paneId: coreWrapState.observer.paneId, uid: process.getuid(),
-                            workerPid: coreWrapState.workerPid, tty: coreWrapState.tty }, rows, cols, actionBudget) });
+                            workerPid: coreWrapState.workerPid, tty: coreWrapState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, rows, cols, actionBudget) });
                 }
                 const state = coreWrapState;
                 if (state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Core wrap worker changed.');
@@ -3807,6 +3819,13 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             return observeCells(request, budget);
         };
         /** Retain the first measured lineage and PTY without storing the run capability. */
+        /** In a persistent collection the worker's parent is the multiplexer daemon: read its facts, and pin the first one this run sees as the only daemon it may use. */
+        const daemonFor = (worker, budget) => {
+            if (collectionScope.persistence !== 'KeepOnClose') return undefined;
+            const daemon = readPersistentDaemon(worker.ppid, app.pid, appData, budget());
+            if (daemonIdentity && daemonIdentity.pid !== daemon.record.pid) throw new Error('Another multiplexer daemon tried to use this run.');
+            return daemon;
+        };
         const retainFirstProof = (owner, worker, tty, budget) => {
             if (proofs.length !== 0) return;
             proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
@@ -3903,11 +3922,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     const queryTimeout = createProcessBudget(4000);
                     const owner = processRecord(app.pid, queryTimeout());
                     const worker = processRecord(request.workerPid, queryTimeout());
+                    const daemon = daemonFor(worker, queryTimeout);
                     assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker,
                         ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: request.tty,
-                        appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
+                        appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }),
+                        daemon, appData });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
+                    if (daemon) {
+                        daemonIdentity ??= persistentDaemonIdentity(daemon);
+                        daemonProof ??= { identity: daemonIdentity, command: daemon.text.split(/\s+/).slice(0, 3).join(' '), birth: daemon.birth, appBirth: daemon.appBirth, descriptor: daemon.descriptor };
+                    }
                     const observation = await routeOwnedObservation(request, queryTimeout, owner, worker);
                     if (observation) { socket.end(JSON.stringify(observation) + '\n'); return; }
                     socket.end(JSON.stringify(controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
@@ -4175,7 +4200,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;
-            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }));
+            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, daemonIdentity, daemonProof, executable, appData, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }));
             preserveScratch = cleanupOutcome.failed;
         }
         throwOwnedRunFailures(runOutcome, cleanupOutcome);

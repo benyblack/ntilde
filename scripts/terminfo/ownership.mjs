@@ -1,5 +1,6 @@
-import { execFileSync } from 'node:child_process';
-import { fstatSync, lstatSync, realpathSync, statSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fstatSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { createConnection } from 'node:net';
 import { isatty } from 'node:tty';
 
@@ -44,9 +45,68 @@ export function parseProcessRecord(text, pid = '?') {
     return { pid: Number(fields[0]), ppid: Number(fields[1]), uid: Number(fields[2]), tty: fields[3], executable };
 }
 
-export function assertProcessOwnership({ app, worker, ownerPid, executable, uid, runId, appCommand, tty }) {
+/**
+ * Environment of a user-owned process as `ps eww` prints it after the command line. A name is read only from an exact
+ * whitespace-delimited `NAME=value` token, and only when exactly one such token exists, so a path with spaces or a repeated
+ * name fails closed instead of being guessed.
+ */
+export function environmentValue(text, name) {
+    const prefix = name + '=';
+    const matches = text.split(/\s+/).filter(token => token.startsWith(prefix));
+    return matches.length === 1 ? matches[0].slice(prefix.length) : undefined;
+}
+
+const daemonBirthMs = birth => Date.parse(birth + ' UTC');
+
+/**
+ * Read the facts that identify the multiplexer daemon hosting a persistent collection's worker: its process record, command line and
+ * environment, both start times and the descriptor it wrote inside the run's private app-data root. Observations only; the verdict is
+ * assertPersistentDaemon's.
+ */
+export function readPersistentDaemon(daemonPid, appPid, appData, timeout = 2000, {
+    record = processRecord, birth = processBirth, canonical = realpathSync, run = execFileSync, status = lstatSync, read = readFileSync,
+} = {}) {
+    const daemon = record(daemonPid, timeout);
+    const text = run('/bin/ps', ['eww', '-p', String(daemonPid), '-o', 'command='], { encoding: 'utf8', timeout, maxBuffer: 262144 }).trim();
+    const path = join(appData, 'mux', 'mux-endpoint.json');
+    const stat = status(path);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('The multiplexer descriptor is not a regular file.');
+    const descriptor = JSON.parse(read(path, 'utf8'));
+    return { record: { ...daemon, executable: canonical(daemon.executable) }, text, birth: birth(daemonPid, timeout), appBirth: birth(appPid, timeout),
+        descriptor: { pid: descriptor.Pid, processName: descriptor.ProcessName, endpoint: descriptor.Endpoint } };
+}
+
+/**
+ * A persistent collection's worker is a child of the multiplexer daemon, which the App starts detached, so the worker is never the App's
+ * own child. The same owner is proved instead by everything a foreign daemon could not have: the exact launched executable running
+ * `mux serve`, started no earlier than the owned App, with this run's private app-data root and run identity in its environment, and
+ * advertising itself through a descriptor inside that private root.
+ */
+export function assertPersistentDaemon({ app, worker, daemon, executable, uid, runId, appData }) {
+    const tokens = daemon.text.split(/\s+/);
+    if (worker.ppid !== daemon.record.pid) throw new Error('Worker is not a direct child of the owned multiplexer daemon.');
+    if (daemon.record.uid !== uid || app.uid !== uid) throw new Error('Multiplexer daemon belongs to another user.');
+    if (daemon.record.executable !== executable || tokens[0] !== daemon.record.executable || tokens[1] !== 'mux' || tokens[2] !== 'serve'
+        || tokens.length < 4) {
+        throw new Error('Multiplexer daemon is not the launched executable serving.');
+    }
+    if (environmentValue(daemon.text, 'NTILDE_APPDATA_ROOT') !== appData || environmentValue(daemon.text, 'TERMINFO_RUN_ID') !== runId) {
+        throw new Error('Multiplexer daemon environment differs from this run.');
+    }
+    const { descriptor } = daemon;
+    if (descriptor.pid !== daemon.record.pid || typeof descriptor.endpoint !== 'string' || !descriptor.endpoint.startsWith(appData + '/')) {
+        throw new Error('Multiplexer descriptor does not name this daemon inside the private app-data root.');
+    }
+    const [started, appStarted] = [daemonBirthMs(daemon.birth), daemonBirthMs(daemon.appBirth)];
+    if (!Number.isFinite(started) || !Number.isFinite(appStarted) || started < appStarted) throw new Error('Multiplexer daemon predates the owned app.');
+}
+
+export function assertProcessOwnership({ app, worker, ownerPid, executable, uid, runId, appCommand, tty, daemon, appData }) {
     if (!/^[a-f0-9]{32}$/.test(runId)) throw new Error('Invalid launch run ID.');
-    if (app.pid !== ownerPid || worker.ppid !== app.pid) throw new Error('Worker is not a direct child of the owned app.');
+    if (app.pid !== ownerPid) throw new Error('Worker is not a direct child of the owned app.');
+    if (daemon === undefined) {
+        if (worker.ppid !== app.pid) throw new Error('Worker is not a direct child of the owned app.');
+    } else assertPersistentDaemon({ app, worker, daemon, executable, uid, runId, appData });
     if (app.uid !== uid || worker.uid !== uid) throw new Error('App or worker belongs to another user.');
     if (app.executable !== executable) throw new Error('App executable differs from the launched executable.');
     if (!appCommand.split(/\s+/).includes(`--ntilde-terminfo-owner=${runId}`)) throw new Error('App has no matching run marker.');
@@ -223,10 +283,66 @@ export async function verifyNtildeOutput(config, out) {
     const command = execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], {
         encoding: 'utf8', timeout: 2000, maxBuffer: 16384,
     });
+    const daemon = config.collectionScope?.persistence === 'KeepOnClose' ? readPersistentDaemon(worker.ppid, app.pid, config.appData) : undefined;
     assertProcessOwnership({ app: { ...app, executable: realpathSync(app.executable) }, worker,
         ownerPid: receipt.ownerPid, executable: config.executable, uid: process.getuid(),
-        runId: config.runId, appCommand: command, tty });
+        runId: config.runId, appCommand: command, tty, daemon, appData: config.appData });
     if (config.privateClipboard === true && (receipt.privateClipboard !== true || typeof receipt.originalTerminalState !== 'string')) throw new Error('Missing original private terminal state.');
     return { ...binding, ownerPid: app.pid, workerPid: worker.pid, launchRunId: config.runId,
         ...(config.privateClipboard === true ? { originalTerminalState: receipt.originalTerminalState } : {}) };
+}
+
+/** The daemon facts a cleanup must re-verify before signalling: no pid is ever signalled on its number alone. */
+export function persistentDaemonIdentity(daemon) {
+    return { pid: daemon.record.pid, uid: daemon.record.uid, executable: daemon.record.executable };
+}
+
+function currentDaemon(recorded, { executable, appData, runId }, timeout = 500) {
+    const record = processRecord(recorded.pid, timeout);
+    const text = execFileSync('/bin/ps', ['eww', '-p', String(recorded.pid), '-o', 'command='], { encoding: 'utf8', timeout, maxBuffer: 262144 }).trim();
+    const tokens = text.split(/\s+/);
+    return record.uid === recorded.uid && record.executable === recorded.executable && recorded.executable === executable
+        && tokens[0] === recorded.executable && tokens[1] === 'mux' && tokens[2] === 'serve'
+        && environmentValue(text, 'NTILDE_APPDATA_ROOT') === appData && environmentValue(text, 'TERMINFO_RUN_ID') === runId;
+}
+
+function verifyRecordedDaemon(recorded, context) {
+    if (!workerExists(recorded.pid)) return false;
+    try {
+        if (!currentDaemon(recorded, context)) throw new Error('Multiplexer daemon identity changed; refusing to signal an unverified process.');
+        return true;
+    } catch (error) {
+        if (!workerExists(recorded.pid)) return false;
+        throw error;
+    }
+}
+
+async function daemonExits(pid, milliseconds) {
+    const deadline = performance.now() + milliseconds;
+    while (workerExists(pid)) {
+        if (performance.now() >= deadline) return false;
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return true;
+}
+
+/**
+ * Stop the multiplexer daemon a persistent collection started. It outlives the App and the worker by design, so the owned cleanup asks
+ * it to shut down through its own private root and then signals it only while it is still verifiably this run's daemon.
+ */
+export async function terminateRecordedDaemon(recorded, context, { stop = spawnSync } = {}) {
+    if (!recorded || !verifyRecordedDaemon(recorded, context)) return;
+    stop(context.executable, ['mux', 'kill-server', '--force'], { env: { ...process.env, NTILDE_APPDATA_ROOT: context.appData },
+        timeout: 15000, stdio: 'ignore', windowsHide: true });
+    if (await daemonExits(recorded.pid, 5000)) return;
+    for (const signal of ['SIGTERM', 'SIGKILL']) {
+        if (!verifyRecordedDaemon(recorded, context)) return;
+        try { process.kill(recorded.pid, signal); }
+        catch (error) {
+            if (error.code === 'ESRCH') return;
+            throw error;
+        }
+        if (await daemonExits(recorded.pid, 2000)) return;
+    }
+    throw new Error(`Owned multiplexer daemon ${recorded.pid} did not exit after SIGKILL.`);
 }
