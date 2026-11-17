@@ -30,6 +30,26 @@
         "animation-raw-failure.json": "720d3414d121024e1a1b8651e3f9893b834b8d3e80860f99b6dad06e05dc8942",
         "animation-failed-observation.json": "9ea59a0eee6a6de0af591621be043e0ed89b48903db31219c026d554b2d9cada"
       }
+    },
+    {
+      "runId": "c14fff8234ded3203aba2b8450b66cc4",
+      "scriptsRevision": "c9875876",
+      "reason": "A complete 18/18 run (effect supported, receipt schema 70) on the App built from 479a5465. Superseded, not failed: review of the playhead found five defects (finite-loop count, catch-up after a long gap, loading resume timing, trailing gapless frame, wake-up on retire), fixed in b4bcba0d, so the changed App was rebuilt and the whole collection repeated. The retained report and receipt are the earlier verdict; the full archive (sha256 below) is in the history of commit 2838dbd9.",
+      "retainedFiles": {
+        "animation-observations.json": "1842b5c1e2a51ba4f3bdb2053f7bbe07270d62f8ea9a52d0c1b7510f0e0a0581",
+        "cell-receipt.json": "7f4bb45b525d78a03cbab42061a76f2810778f72721aa19c276e6a4674b4f5b7"
+      },
+      "archiveSha256": "cfb76fa297679fc75636136398b7c58d0df256f9fe4e64dfa33cdee886443cf5",
+      "archiveCommit": "2838dbd9"
+    },
+    {
+      "runId": "d8dcf8c4f24d194b8b8ff254aa167a71",
+      "scriptsRevision": "b4bcba0d",
+      "reason": "The disposable App (rebuilt after the review fixes) aborted before collection (SIGABRT, Avalonia RenderTimer error -6661) while the desktop session was locked and the display unavailable. Nothing was measured; the cause is the environment. The collection was repeated after waking the display.",
+      "retainedFiles": {
+        "app-output.log": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
+        "failure.json": "9e2fa8c7da713e8ce9e8153e387368c94153f1aae2a70e2bc49888d1a1283dd9"
+      }
     }
   ]
 }

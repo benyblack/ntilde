@@ -188,8 +188,8 @@ test('a retained pixel, input, journal line or directory member that changed is 
 
 test('the superseded collection attempts are retained with their actual failures and none carries a grade', () => {
     const { attempts } = JSON.parse(readFileSync(join(dir, 'superseded-attempts', 'attempts.json')));
-    assert.equal(attempts.length, 3);
-    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32]);
+    assert.equal(attempts.length, 5);
+    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32]);
     assert.ok(attempts.every(item => item.runId !== original.animationEvidence.runId && item.reason.length > 40));
     for (const item of attempts) {
         assert.deepEqual(readdirSync(join(dir, 'superseded-attempts', item.runId)).sort(), Object.keys(item.retainedFiles).sort());
@@ -197,4 +197,9 @@ test('the superseded collection attempts are retained with their actual failures
     }
     assert.match(attempts[0].reason, /RenderTimer error -6661/);
     assert.match(attempts[2].reason, /i=<id>,p=1;OK/);
+    // The earlier complete run is retained as superseded evidence, not as the published verdict: its App was replaced after review.
+    assert.match(attempts[3].reason, /Superseded, not failed/);
+    assert.equal(attempts[3].archiveSha256.length, 64);
+    assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[3].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
+    assert.match(attempts[4].reason, /RenderTimer error -6661/);
 });

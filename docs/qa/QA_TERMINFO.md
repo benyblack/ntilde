@@ -870,8 +870,8 @@ The [2026-11-16 Kitty animation qualification](terminfo/2026-11-16-kitty-animati
 qualifies `extensions.kitty-graphics.animation` with a new owned suite, [`ntilde-owned-kitty-animation-v1`](terminfo/kitty-animation-model.md)
 (source policy v63, receipt schema 70): three cases of three solid frames held 5 s each, read by paired offscreen captures
 against retained wall-clock brackets. The effect contract is supported (18/18 stages) while both pinned callbacks stay
-inconclusive by design and the stock grade stays inconclusive; Core scores do not change. Three superseded attempts are retained with their
-actual failures.
+inconclusive by design and the stock grade stays inconclusive; Core scores do not change. Five superseded runs are retained with their
+actual outcomes, including an earlier complete run on the App before review fixes.
 
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and

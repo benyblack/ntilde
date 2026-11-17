@@ -34,14 +34,14 @@ fences never reused from the input or static-image phases, blank-before controls
 ## What the wall-clock evidence shows
 
 Frames advance with the App's own monotonic clock; the suite does not synthesize presentation time. The collector waited so each paired capture would land mid-window.
-Measured against the bracket in which `a=a,s=3` could have taken effect (about 50 ms wide), the playback captures covered 7.44-7.59 s (second frame window 5-10 s),
-12.30-12.47 s (third, 10-15 s) and 17.36-17.54 s (root again, 15-20 s). In `stop-freeze` the stop took effect at 6.27 s, inside the second frame, and a capture
-12.4-12.6 s after the start still showed the second frame, where a running animation would have shown the third. The stationary control's capture began more than one
+Measured against the bracket in which `a=a,s=3` could have taken effect (about 50 ms wide), the playback captures covered 7.45-7.63 s (second frame window 5-10 s),
+12.37-12.52 s (third, 10-15 s) and 17.45-17.58 s (root again, 15-20 s). In `stop-freeze` the stop took effect at 6.31 s, inside the second frame, and a capture
+12.5-12.7 s after the start still showed the second frame, where a running animation would have shown the third. The stationary control's capture began more than one
 root gap after the frame was built and still showed the root.
 
 ## Limits
 
-This is playback by elapsed time on one App build (App revision `479a5465`, scripts revision `c9875876`), one desktop, one image size and one gap length. It is
+This is playback by elapsed time on one App build (App and scripts revision `b4bcba0d`), one desktop, one image size and one gap length. It is
 not a frame-rate or display-refresh claim, and says nothing about PNG frames, building on or editing the root frame, `a=c` composition, persistent-session or snapshot
 replay (which keep the root frame only), remote/mux, other platforms or the common-harness comparison. Those production limits are listed in the
 [lifecycle contract](kitty-image-lifecycle.md), and `a=q,e=c` answers `ERR`.
@@ -49,11 +49,13 @@ replay (which keep the root frame only), remote/mux, other platforms or the comm
 ## Retained evidence and superseded attempts
 
 `2026-11-16-kitty-animation/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy, and the generated
-`summary.json` and `report.json`. The run is `c14fff8234ded3203aba2b8450b66cc4` (stock collector run `9a342488d04142df17ae8a64bf6efb7d`), source policy v63,
+`summary.json` and `report.json`. The run is `204458814fedd2be7247939f8cf8d5b8` (stock collector run `4fc65ae11f335fe244ff2fc5e5c4b057`), source policy v63,
 receipt schema 70, collected with the v3 `osc633` scope whose predecessor archive is the existing pinned full run. `kitty-animation-publication.test.mjs` rederives the complete
 receipt and the projection from the archive and refuses an altered binding, journal line, pixel, input or marker.
 
-Three earlier attempts are retained under `superseded-attempts/` with their real failures; none produced a grade: the display was unavailable so the App aborted
+Five earlier runs are retained under `superseded-attempts/` with their real outcomes. Three failed without a grade: the display was unavailable so the App aborted
 before collecting (Avalonia RenderTimer error -6661); the observer's prior-challenge allowance covered the input phase only; and the expected `a=T` reply
-shape omitted the placement id the App correctly echoes (`i=<id>,p=1;OK`). The last two were fixes to the measuring scripts, so the published run is a fresh collection on the
-final committed scripts.
+shape omitted the placement id the App correctly echoes (`i=<id>,p=1;OK`). A fourth, complete 18/18 run on the App built from `479a5465`
+is kept as superseded rather than failed: review of the playhead found five defects (finite-loop count, catch-up after a long gap, loading resume timing, a trailing gapless frame
+and the wake-up on retire), so after fixing them in `b4bcba0d` the App was rebuilt and the whole collection repeated; the first attempt of that repeat hit the locked-display abort again.
+The published run is therefore a fresh collection on the final App and scripts, and none of the review fixes changed a measured verdict.
