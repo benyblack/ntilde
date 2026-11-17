@@ -38,6 +38,11 @@ const noticeReply = `${esc}]99;i=ntilde-query-audit:p=?;o=always:p=title,body${s
 const xtgetxresReply = `${esc}P1+R7465726d4e616d65=787465726D2D323536636F6C6F72${st}`;
 const xtreportcolorsReply = `${esc}[?0;0#Q`;
 
+/** The shape query policy v6 owes the rxvt special-color request: one complete reply `OSC 5 ; 0 ; rgb:rrrr/gggg/bbbb ST` with one to four lowercase hex digits per channel. The value is the
+ * host theme's own foreground (this suite begins with RIS, which clears every override), which the witness model cannot name, so the witness decides the exact framing and shape; the special-color layer's
+ * effect contract measures exact values against colors it sets itself. */
+const osc5SpecialColorShape = new RegExp(String.raw`^<ESC>\]5;0;rgb:[0-9a-f]{1,4}/[0-9a-f]{1,4}/[0-9a-f]{1,4}(?:<BEL>|<ESC>\\)$`.replaceAll('<ESC>', String.fromCodePoint(27)).replaceAll('<BEL>', String.fromCodePoint(7)));
+
 /** The shape query policy v5 owes the kitty OSC 21 foreground request: one complete reply `OSC 21 ; foreground=rgb:rr/gg/bb ST` with 8-bit lowercase channels. The value is the
  * host theme's own foreground (this suite begins with RIS, which clears every override), which the witness model cannot name, so the witness decides the exact framing and shape;
  * the kitty color-control layer's effect contract measures exact values against colors it sets itself. */
@@ -48,8 +53,9 @@ const kittyForegroundShape = new RegExp(String.raw`^<ESC>\]21;foreground=rgb:[0-
 const checksumReply = `${esc}P1!~FFB2${st}`;
 
 /** The optional context flags, each exactly `true` or absent: `checksumReport` (a run whose initial settings turn the off-by-default
- * DECRQCRA report on) and `marginsReport` (a run of the query policy that expects the DECRQSS s reply, which is unconditional) and `noticeReport` (query policy v3, which also expects the OSC 99 capability reply). */
-const contextFlags = ['checksumReport', 'marginsReport', 'noticeReport', 'deviceReport', 'colorReport'];
+ * DECRQCRA report on) and `marginsReport` (a run of the query policy that expects the DECRQSS s reply, which is unconditional), `noticeReport` (query policy v3, which also expects the OSC 99 capability reply),
+ * `deviceReport` (query policy v4) and `colorReport` (query policy v5) and `specialColorReport` (query policy v6, which also expects the rxvt special-color reply). */
+const contextFlags = ['checksumReport', 'marginsReport', 'noticeReport', 'deviceReport', 'colorReport', 'specialColorReport'];
 /** Observed geometry and absolute one-based margins plus the optional flags above. Without them (every run before they existed) the
  * context is exactly the four numbers. */
 export function queryWitnessContext(value) {
@@ -80,6 +86,7 @@ export function queryWitnessPlan(context) {
             if (id === 'editing.decrqcra' && c.checksumReport) return entry(`q07.${id}`, id, request, 'positive-reply', checksumReply);
             if (id === 'extensions.osc99-kitty-notify' && c.noticeReport) return entry(`q07.${id}`, id, request, 'positive-reply', noticeReply);
             if (id === 'extensions.osc21-kitty-color' && c.colorReport) return entry(`q07.${id}`, id, request, 'positive-reply', '', kittyForegroundShape);
+            if (id === 'extensions.osc5-special-color' && c.specialColorReport) return entry(`q07.${id}`, id, request, 'positive-reply', '', osc5SpecialColorShape);
             if (id === 'device.xtgetxres' && c.deviceReport) return entry(`q07.${id}`, id, request, 'positive-reply', xtgetxresReply);
             if (id === 'device.xtreportcolors' && c.deviceReport) return entry(`q07.${id}`, id, request, 'positive-reply', xtreportcolorsReply);
             return entry(`q07.${id}`, id, request, 'silence', '');

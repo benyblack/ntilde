@@ -1,6 +1,7 @@
 // A narrowly selected owned collection. It is not a full-run receipt: the
 // omitted, time-consuming notification suites remain in their own historical
 // receipts and are independently rederived by the publication.
+import { isOsc5Policy63, isOsc5AnimationPolicy64, isCellSizeAnimationPolicy64 } from './owned-sources.mjs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { lstatSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -30,18 +31,34 @@ export const legacyScopeV3 = Object.freeze({ ...integratedLegacyScope, id: 'owne
 // Both names designate the same frozen v2 objects used by the two branches.
 export const osc633ScopeV2 = integratedOsc633Scope;
 export const legacyScopeV2 = integratedLegacyScope;
-export const osc633Scope = Object.freeze({ ...osc633ScopeV3, id: 'owned-osc633-without-notification-suites-v4' });
-export const legacyScope = Object.freeze({ ...legacyScopeV3, id: 'owned-pre-osc633-full-selection-v4' });
+export const osc633ScopeV4 = Object.freeze({ ...osc633ScopeV3, id: 'owned-osc633-without-notification-suites-v4' });
+export const legacyScopeV4 = Object.freeze({ ...legacyScopeV3, id: 'owned-pre-osc633-full-selection-v4' });
+
+export const osc5Osc633ScopeV4 = Object.freeze({ ...osc633ScopeV4, deadlineMs: 600000 });
+export const osc5LegacyScopeV4 = Object.freeze({ ...legacyScopeV4, deadlineMs: 600000 });
+export const osc633Scope = Object.freeze({ ...osc633ScopeV4, id: 'owned-osc633-without-notification-suites-v5', deadlineMs: 600000 });
+export const legacyScope = Object.freeze({ ...legacyScopeV4, id: 'owned-pre-osc633-full-selection-v5', deadlineMs: 600000 });
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
-export const isLegacyScope = value => same(value, legacyScope) || same(value, legacyScopeV3) || same(value, integratedLegacyScope) || same(value, historicLegacyScope);
+export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV4) || same(value, osc5Osc633ScopeV4) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
+export const isLegacyScope = value => same(value, legacyScope) || same(value, legacyScopeV4) || same(value, osc5LegacyScopeV4) || same(value, legacyScopeV3) || same(value, integratedLegacyScope) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
-const policyForScope = scope => {
-    if (isHistoricOsc633Scope(scope)) return 'readonly-owned-source-graph-v61';
-    if (same(scope, integratedOsc633Scope) || same(scope, integratedLegacyScope)) return 'readonly-owned-source-graph-v62';
-    if (same(scope, osc633ScopeV3) || same(scope, legacyScopeV3)) return 'readonly-owned-source-graph-v63';
-    return 'readonly-owned-source-graph-v64';
+export const isOsc5ForkScope = context => isOsc5Policy63(context) && same(context.collectionScope, legacyScopeV2);
+export const isOsc5V64Scope = context => isOsc5AnimationPolicy64(context)
+    && (same(context.collectionScope, osc5LegacyScopeV4) || same(context.collectionScope, osc5Osc633ScopeV4));
+export const isCellSizeV64Scope = context => isCellSizeAnimationPolicy64(context)
+    && (same(context.collectionScope, legacyScopeV4) || same(context.collectionScope, osc633ScopeV4));
+const scopePolicyOk = context => {
+    const scope = context.collectionScope, policy = context.sourceSnapshotPolicy;
+    if (isHistoricOsc633Scope(scope)) return policy === 'readonly-owned-source-graph-v61';
+    if (same(scope, integratedOsc633Scope) || same(scope, integratedLegacyScope)) {
+        const laterFamily = Object.keys(context).some(key => key.startsWith('osc5') || key.startsWith('cellSize') || key.startsWith('kittyAnimation'));
+        return (policy === 'readonly-owned-source-graph-v62' && !laterFamily) || isOsc5ForkScope(context);
+    }
+    if (same(scope, osc633ScopeV3) || same(scope, legacyScopeV3)) return policy === 'readonly-owned-source-graph-v63';
+    if (same(scope, osc633ScopeV4) || same(scope, legacyScopeV4)) return isCellSizeV64Scope(context);
+    if (same(scope, osc5Osc633ScopeV4) || same(scope, osc5LegacyScopeV4)) return isOsc5V64Scope(context);
+    return policy === 'readonly-owned-source-graph-v65';
 };
 const omittedArtifacts = Object.freeze([
     'osn-observations.json', 'osn-run.json', 'osn-snapshots.jsonl', 'osn-unavailable.json', 'osn-focus.json', 'osn-failed-observation.json',
@@ -58,17 +75,22 @@ export function validateCollectionScope(output, evidence, context, proof) {
         || ['collector-pxm.mjs', 'pxm-run.json', 'pxm-observations.json', 'pxm-unavailable.json'].some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined))) {
         throw new Error('Invalid or incomplete scoped collection declaration.');
     }
+    if (isOsc5ForkScope(context) && (evidence.animationEvidence !== undefined
+        || Object.keys(context).some(key => key.startsWith('kittyAnimation') || key === 'animationSuiteId' || key === 'ownedAnimationPolicy')
+        || ['animation-snapshots.jsonl', 'animation-actions.jsonl', 'animation-observations.json', 'animation-unavailable.json'].some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined))) {
+        throw new Error('Invalid or incomplete scoped collection declaration.');
+    }
     if (isLegacyScope(context.collectionScope) && isLegacyScope(proof.collectionScope)) {
         const markers = ['osc633AdapterId', 'osc633SuiteId', 'osc633BundleSha256', 'osc633ContractsVersion'];
         const files = ['collector-vs633.mjs', 'vs633-snapshots.jsonl', 'vs633-run.json', 'vs633-observations.json', 'vs633-unavailable.json', 'vs633-failed-observation.json'];
-        if (context.sourceSnapshotPolicy !== policyForScope(context.collectionScope) || evidence.osc633Evidence !== undefined
+        if (!scopePolicyOk(context) || evidence.osc633Evidence !== undefined
             || markers.some(key => context[key] !== undefined) || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined)) {
             throw new Error('Invalid or incomplete scoped collection declaration.');
         }
         return true;
     }
     if (!isOsc633Scope(context.collectionScope) || !isOsc633Scope(proof.collectionScope)
-        || context.sourceSnapshotPolicy !== policyForScope(context.collectionScope)
+        || !scopePolicyOk(context)
         || context.osc633SuiteId !== 'ntilde-owned-osc633-graded-v1' || evidence.osc633Evidence === undefined
         || evidence.osc9Evidence !== undefined || evidence.notifyEvidence !== undefined
         || omittedArtifacts.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined)) {

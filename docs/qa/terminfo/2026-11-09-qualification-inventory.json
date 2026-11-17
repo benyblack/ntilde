@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 143,
-    "suiteClaims": 145,
+    "uniqueBenchmarkIds": 144,
+    "suiteClaims": 146,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 141,
+    "effectSupportedIds": 142,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 1,
-    "pinnedAndEffectSupportedIds": 93,
+    "pinnedAndEffectSupportedIds": 94,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -103,13 +103,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.sixel"
     ],
-    "effectSupportedOfStockInconclusive": 140,
+    "effectSupportedOfStockInconclusive": 141,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 92,
+    "pinnedSupportedOfStockInconclusive": 93,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 93,
+    "pinnedSupportedIds": 94,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -118,11 +118,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 28,
+      "effectUnqualified": 27,
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 26,
-      "notPinnedSupported": 76
+      "effectNotMeasured": 25,
+      "notPinnedSupported": 75
     }
   },
   "suites": [
@@ -3770,6 +3770,76 @@
       }
     },
     {
+      "suite": "osc5",
+      "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-17-osc5-special-colors-integrated/",
+      "doc": "2026-11-17-osc5-special-colors-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc5-special-color"
+      ],
+      "evidence": {
+        "files": 4,
+        "bytes": 8942677,
+        "sha256": "9b62b03808ed6aa82464758f9cc1fc953feabc4b26cbd0722b483c07ef158641"
+      },
+      "receipt": {
+        "schemaVersion": 72,
+        "runId": "936ecccbe4972797ce8f810896e380c1",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "4ff4cc4ab2d62900cdda4b26d382eb7526af17868e023f8c67013c5fe34dc0ad"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
+          "file": "osc5-observations.json",
+          "sha256": "4e97c43a8fa23c095ab255223cee0d971b3e68b6e3db2a5e9175b0b45796ce42",
+          "runFile": "osc5-run.json",
+          "runSha256": "cec4d52b21d1c7d616584f51550927e38f1025fdd118f4c043d9387f6b6d6afc",
+          "counts": {
+            "supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "936ecccbe4972797ce8f810896e380c1",
+        "measuredAt": "2026-11-17T10:01:39.917Z",
+        "appRevision": "0f5de80be98f5c68e473694e549ae626eb0760bc",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "0f5de80be98f5c68e473694e549ae626eb0760bc",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "de6041336e84d5a7ed980836d9ea78526bf71d2b67972552e2870f856e04af59",
+        "gradingAdapterId": "ntilde-owned-osc5-special-colors-grading-v1",
+        "gradingAdapterBundleSha256": "1c9017556aa2f36bb058d40390e80bf79c62a5e18e740ee735673f0f752b678c",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v65",
+        "sourceSnapshotManifestSha256": "c8374d107116825dbe4eae3b51621950094a18c1f3e4cead1c827dd91b0478cf"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "f5aea47d148021cfcee80c883d6e48af",
+        "counts": {
+          "inconclusive": 160,
+          "supported": 94,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "a432d21618f9109ca95f24b9cbfae3d671e4ef2f94cea778c64fe14608cd3a84",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc5-special-color from inconclusive to supported."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc5-publication.test.mjs",
+        "testSha256": "a8479f0f11800880bc7de6153a594bb279322a3e0acba6c1f8c88c7fe07a65ae"
+      }
+    },
+    {
       "suite": "kitty-animation",
       "suiteId": "ntilde-owned-kitty-animation-qualification-v2",
       "contractsVersion": 2,
@@ -6999,6 +7069,52 @@
         {
           "id": "extensions.osc21-kitty-color",
           "suite": "kcl",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc5-special-color",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "osc5",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc5",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc5-special-color",
+          "suite": "osc5",
           "status": "qualified",
           "pinned": {
             "verdict": "supported",

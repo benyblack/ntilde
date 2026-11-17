@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "6095804cad3b95a3dd0ff49c8b0b98746cbf38d2564506b028c9099a8125acdc"
+  },
+  "attempts": [
+    {
+      "file": "refused-render-timer.zip",
+      "sha256": "9e6af752f2a2b6fe17b185a4460c95a71fc85219f2e5acf1f3351bd9181344a1",
+      "ownedRunId": "cb9dd3ee63683807613a7897026e547d",
+      "status": "refused-before-collection",
+      "error": "Owned app exited before collection (SIGABRT)."
+    }
+  ]
+}

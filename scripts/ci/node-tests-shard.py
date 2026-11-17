@@ -57,6 +57,7 @@ ELSEWHERE = {
     "kcl-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "devq-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "cell-size-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
+    "osc5-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "mex-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "query-publication.test.mjs": "ci.yml query_publication_guards",
     "ownership.test.mjs": "ci.yml private_clipboard_owned",

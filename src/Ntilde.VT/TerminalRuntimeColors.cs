@@ -14,7 +14,19 @@ public sealed class TerminalColorOverrides
     [JsonPropertyName("selection_fg")] public uint? SelectionForeground { get; set; }
     [JsonPropertyName("palette")] public uint?[] Palette { get; set; } = new uint?[256];
 
+    /// <summary>
+    /// rxvt's five special colors (OSC 5): bold, underline, blink, reverse and italic. They are a distinct
+    /// resource set from the palette and the dynamic colors: an unset slot follows the default foreground,
+    /// and the App renders attribute emphasis as flags, so a stored special color is never render-applied.
+    /// </summary>
+    public const int SpecialColorCount = 5;
+
+    [JsonPropertyName("special")] public uint?[] SpecialColors { get; set; } = new uint?[SpecialColorCount];
+
     internal bool HasSameColors(TerminalColorOverrides other) =>
+        HasSameRenderColors(other) && SpecialColors.AsSpan().SequenceEqual(other.SpecialColors);
+
+    internal bool HasSameRenderColors(TerminalColorOverrides other) =>
         Foreground == other.Foreground && Background == other.Background && Cursor == other.Cursor &&
         SelectionBackground == other.SelectionBackground && SelectionForeground == other.SelectionForeground &&
         Palette.AsSpan().SequenceEqual(other.Palette);
@@ -26,7 +38,8 @@ public sealed class TerminalColorOverrides
         Cursor = Cursor,
         SelectionBackground = SelectionBackground,
         SelectionForeground = SelectionForeground,
-        Palette = (uint?[])Palette.Clone()
+        Palette = (uint?[])Palette.Clone(),
+        SpecialColors = (uint?[])SpecialColors.Clone()
     };
 }
 
@@ -57,6 +70,7 @@ public sealed class TerminalRuntimeColors
     public int XtermLast { get; set; }
 
     internal bool HasXtermState => XtermSlots is not null || XtermUsed != 0 || XtermLast != 0;
+
 
     internal TerminalRuntimeColors Clone() => new()
     {
@@ -109,5 +123,8 @@ public sealed class TerminalRuntimeColors
         StateTransferValidation.RequirePresent(frame.Palette, "runtime palette");
         if (frame.Palette.Length != 256)
             throw StateTransferValidation.Reject("runtime palette", "must contain exactly 256 entries");
+        StateTransferValidation.RequirePresent(frame.SpecialColors, "runtime special colors");
+        if (frame.SpecialColors.Length != TerminalColorOverrides.SpecialColorCount)
+            throw StateTransferValidation.Reject("runtime special colors", $"must contain exactly {TerminalColorOverrides.SpecialColorCount} entries");
     }
 }

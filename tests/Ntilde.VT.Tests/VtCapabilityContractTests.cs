@@ -80,6 +80,7 @@ public sealed class VtCapabilityContractTests
             ["color-stack-push"] = AssertRuntimeColorStack,
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["kitty-color-control"] = AssertKittyColorControl,
+            ["osc5-special-color"] = AssertOsc5SpecialColor,
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
             ["alternate-scroll"] = AssertAlternateScroll,
@@ -93,6 +94,15 @@ public sealed class VtCapabilityContractTests
             ["iterm2-cell-size"] = () => AssertOscCellSize("\x1b]1337;ReportCellSize\a", "\x1b]1337;ReportCellSize=18;8;2\x1b\\"),
             ["urxvt-cell-size"] = () => AssertOscCellSize("\x1b]776;?\a", "\x1b]776;16;36;26\a"),
         };
+
+    [Fact]
+    public void Partial_osc5_special_color_catalogue_entry_has_an_executable_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "OSC:5");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("osc5-special-color", capability.ContractCase);
+        ContractCases["osc5-special-color"]();
+    }
 
     private static readonly Dictionary<string, string> ContractSequences =
         new(StringComparer.Ordinal)
@@ -648,6 +658,16 @@ public sealed class VtCapabilityContractTests
         parser.OnResponse = replies.Add;
         parser.Process("\u001b]21;foreground=#123456;foreground=?\u001b\\");
         Assert.Equal(new[] { "\u001b]21;foreground=rgb:12/34/56\u001b\\" }, replies);
+    }
+
+    /// <summary>rxvt OSC 5 sets and queries the bold special color in its own resource set, one standard frame per query.</summary>
+    private static void AssertOsc5SpecialColor()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(12, 8));
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process("\u001b]5;0;#123456;0;?\u001b\\");
+        Assert.Equal(new[] { "\u001b]5;0;rgb:1212/3434/5656\u001b\\" }, replies);
     }
 
     private static void AssertColorSchemeQuery()

@@ -373,6 +373,7 @@ jobs:
           scripts/terminfo/devq-grading-collector.test.mjs
           scripts/terminfo/mex-grading-collector.test.mjs
           scripts/terminfo/cell-size-grading-collector.test.mjs
+          scripts/terminfo/osc5-grading-collector.test.mjs
 
   private_clipboard_owned:
     name: Owned private clipboard controls (${{ matrix.os }})

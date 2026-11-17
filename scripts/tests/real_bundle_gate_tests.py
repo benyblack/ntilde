@@ -21,7 +21,7 @@ def validate(text):
     assert 'continue-on-error' not in lane
     assert "node-version: '24'" in lane
     assert "NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED: '1'" in lane
-    for name in ('kcl', 'devq', 'mex', 'cell-size'):
+    for name in ('kcl', 'devq', 'mex', 'cell-size', 'osc5'):
         assert f'scripts/terminfo/{name}-grading-collector.test.mjs' in lane
     assert re.search(r'^    needs: \[[^\]]*\bterminfo_real_bundle\b', rollup, re.M)
     assert 'replay: ${{ needs.terminfo_real_bundle.result }}' in rollup
@@ -40,6 +40,7 @@ def main():
     real = WORKFLOW.read_text()
     validate(real)
     mutants = [
+        real.replace('          scripts/terminfo/osc5-grading-collector.test.mjs\n', ''),
         real.replace('  terminfo_real_bundle:\n', '  terminfo_real_bundle:\n    if: false\n'),
         real.replace("NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED: '1'", "NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED: '0'"),
         real.replace(', terminfo_real_bundle, analyzers]', ', analyzers]'),
@@ -53,7 +54,7 @@ def main():
         except AssertionError:
             continue
         raise AssertionError('weakened real-bundle gate was accepted')
-    print('real-bundle required lane, five result states and five wiring refusals passed')
+    print('real-bundle required lane, five result states and six wiring refusals passed')
 
 
 if __name__ == '__main__':

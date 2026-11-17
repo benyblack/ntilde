@@ -1,5 +1,6 @@
 import { lstatSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { isOsc5ForkScope } from './collection-scope.mjs';
 import { snapshotHash } from './agent-observer.mjs';
 import { animationSuiteIds, animationCasesByVersion } from './kitty-animation-cases.mjs';
 import { animationInputs, buildAnimationReport, ownedAnimationPolicies, animationVersionOfPolicy } from './kitty-animation.mjs';
@@ -15,7 +16,7 @@ const nonces = frames => frames.filter(frame => frame.capture).map(frame => fram
 
 /** Declared by the source policy, by any marker, or by retained artifacts: no field-stripping downgrade. */
 export function includesAnimationEvidence(output, evidence, context, proof) {
-    return (policyNumber(context) >= 63 && !isCellSizePolicy63(context)) || context.animationSuiteId !== undefined || context.ownedAnimationPolicy !== undefined
+    return (policyNumber(context) >= 63 && !isCellSizePolicy63(context) && !isOsc5ForkScope(context)) || context.animationSuiteId !== undefined || context.ownedAnimationPolicy !== undefined
         || evidence.animationEvidence !== undefined || Object.keys(context).some(key => key.startsWith('kittyAnimation') && key.endsWith('SourceSha256'))
         || proof.proofs?.some(value => value.kittyAnimation !== undefined) === true || files.some(file => present(join(output, file)));
 }
