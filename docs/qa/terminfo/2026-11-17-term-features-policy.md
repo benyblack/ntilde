@@ -100,7 +100,7 @@ NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED=1 node --test scripts/terminfo/term-feature
 node --test scripts/terminfo/devq-publication.test.mjs
 node scripts/terminfo-inventory.mjs --check
 scripts/build.sh test tests/Ntilde.VT.Tests --filter FullyQualifiedName~ITerm2CapabilitiesPolicyTests
-scripts/build.sh test tests/Ntilde.App.Tests --filter "FullyQualifiedName~PaneParserWiringTests&Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot"
+scripts/build.sh test tests/Ntilde.App.Tests --no-build --blame-hang-timeout 5m --filter "FullyQualifiedName~PaneParserWiringTests&Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot"
 ```
 
 The pinned result stays inconclusive; no separately graded effect or divergence is created.
