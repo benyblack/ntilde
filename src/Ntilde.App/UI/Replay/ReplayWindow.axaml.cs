@@ -25,9 +25,6 @@ namespace Ntilde.UI.Replay
         private CancellationTokenSource? _playbackCts;
         private readonly PlaybackSessionGate _playbackSessionGate = new();
         private TerminalBuffer? _buffer;
-        // Kitty animations in a recording follow recorded time, not the wall clock: the clock is the offset of the last replayed event,
-        // and the playheads hold while playback is stopped (so pause, speed changes and seeks cannot desynchronise them).
-        private long _animationClockMs;
         private AnsiParser? _parser;
         private readonly TerminalStateSnapshot? _initialReplayState;
         private string? _filePath;
@@ -82,7 +79,8 @@ namespace Ntilde.UI.Replay
                 _buffer.Theme = theme;
                 _buffer.UpdateThemeColors(defaultTheme);
             }
-            _buffer.KittyAnimationClock = () => Volatile.Read(ref _animationClockMs);
+            // A replay shows an animated Kitty image as its root frame and never plays it: the playhead follows a wall clock, while a recording has its
+            // own time (pause, speed changes and seeks would leave it out of step), and the replay snapshots keep the root frame only.
             _buffer.KittyAnimationPaused = true;
             _parser = new AnsiParser(_buffer);
             // Replays of sessions that drew inline images must render the same way live panes do.
@@ -179,8 +177,6 @@ namespace Ntilde.UI.Replay
             if (_viewModel == null || _filePath == null) return;
 
             _playbackCts?.Cancel();
-            Volatile.Write(ref _animationClockMs, _viewModel.CurrentTimeMs);
-            if (_buffer is not null) _buffer.KittyAnimationPaused = false;
             _viewModel.IsPlaying = true;
             this.FindControl<Button>("BtnPlayPause")!.Content = "⏸";
             _playbackCts = new CancellationTokenSource();
@@ -194,7 +190,6 @@ namespace Ntilde.UI.Replay
             if (_viewModel == null) return;
 
             _viewModel.IsPlaying = false;
-            if (_buffer is not null) _buffer.KittyAnimationPaused = true;
             this.FindControl<Button>("BtnPlayPause")!.Content = "▶";
             _playbackSessionGate.InvalidateCurrentSession();
             _playbackCts?.Cancel();
@@ -313,7 +308,6 @@ namespace Ntilde.UI.Replay
                     else if (initialState is not null) TerminalStateTransfer.Restore(buffer, parser, initialState);
                     else return;
                     _displayedTimeMs = appliedTime;
-                    Volatile.Write(ref _animationClockMs, appliedTime);
                     viewModel.CurrentTimeMs = appliedTime;
                     applied = true;
                 }, cancellationToken);
@@ -364,7 +358,6 @@ namespace Ntilde.UI.Replay
                     onSnapshotCallback: null,
                     onTimeUpdate: async (timeMs) =>
                     {
-                        Volatile.Write(ref _animationClockMs, timeMs);
                         if (_isUserScrubbing) return;
                         // Throttle UI updates or just post
                         await Dispatcher.UIThread.InvokeAsync(() =>
