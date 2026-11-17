@@ -29,6 +29,75 @@ public class PaneParserWiringTests
 {
     private static int HandlerCount(Delegate? handler) => handler?.GetInvocationList().Length ?? 0;
 
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Parser_replacement_withdraws_both_pointer_requests_and_queued_callbacks(bool muxBacked)
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        var oldParser = pane.Parser!;
+        oldParser.Process("\x1b]22;text\a\x1b[?1049h\x1b]22;crosshair\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Cross", pane.TermView.AppliedPointerCursor);
+        oldParser.OnPointerShapeRequested?.Invoke("pointer", true); // queued before replacement
+        oldParser.OnPointerShapeReset?.Invoke();
+        pane.CreateAndWireParser(muxBacked: muxBacked);
+        Assert.Null(pane.TermView.RequestedPointerShape);
+        Assert.Equal("Arrow", pane.TermView.AppliedPointerCursor);
+        pane.Parser!.Process("\x1b]22;text\a");
+        oldParser.OnPointerShapeRequested?.Invoke("crosshair", true); // late old output
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(muxBacked ? null : "text", pane.TermView.RequestedPointerShape);
+        Assert.Equal(muxBacked ? "Arrow" : "Ibeam", pane.TermView.AppliedPointerCursor);
+        pane.Parser.Process("\x1b[?1049l");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Null(pane.TermView.RequestedPointerShape); // main request also withdrawn
+        Assert.Equal("Arrow", pane.TermView.AppliedPointerCursor);
+    }
+
+    [AvaloniaFact]
+    public void Session_exit_withdraws_pointer_requests_and_invalidates_pending_and_late_callbacks()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        var parser = pane.Parser!;
+        parser.Process("\x1b]22;text\a\x1b[?1049h\x1b]22;crosshair\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Cross", pane.TermView.AppliedPointerCursor);
+        parser.OnPointerShapeRequested?.Invoke("pointer", true);
+        pane.HandleSessionExitForTesting(0);
+        parser.OnPointerShapeRequested?.Invoke("text", true);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Null(pane.TermView.RequestedPointerShape);
+        Assert.Equal("Arrow", pane.TermView.AppliedPointerCursor);
+        parser.Process("\x1b[?1049l");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Null(pane.TermView.RequestedPointerShape);
+        Assert.Equal("Arrow", pane.TermView.AppliedPointerCursor);
+    }
+
+    [AvaloniaFact]
+    public void Reconnect_withdraws_pointer_requests_even_before_a_replacement_can_start()
+    {
+        using var pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(pane);
+        pane.SessionFactory = new RecordingSessionFactory(new FakeTerminalSession());
+        pane.CreateAndWireParser();
+        var parser = pane.Parser!;
+        parser.Process("\x1b]22;crosshair\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Cross", pane.TermView.AppliedPointerCursor);
+        parser.OnPointerShapeRequested?.Invoke("pointer", false);
+        pane.Reconnect();
+        parser.OnPointerShapeRequested?.Invoke("text", false);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Null(pane.TermView.RequestedPointerShape);
+        Assert.Equal("Arrow", pane.TermView.AppliedPointerCursor);
+    }
+
+
+
     /// Every parser hook the pane wires, with its current handler count.
     private static (string Name, int Count)[] HookCounts(AnsiParser parser) =>
     [
