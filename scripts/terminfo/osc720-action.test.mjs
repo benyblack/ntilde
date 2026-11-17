@@ -9,7 +9,7 @@ test('one wheel notch is requested through the owned input path and recorded com
     const seen = [];
     const record = await runViewAction({ action: 'scroll-up', config: { id: 1 }, budget: () => 4000, input: async (config, event, budget) => { seen.push([config, event, budget()]); return attempt(event); } });
     assert.equal(osc720WheelNotches, 1);
-    assert.deepEqual(seen, [[{ id: 1 }, { kind: 'mouseWheel', wheelDelta: 1 }, 4000]]);
+    assert.deepEqual(seen, [[{ id: 1 }, { kind: 'mouseWheel', wheelDelta: 1, column: 1, row: 1 }, 4000]]);
     assert.equal(record.notches.length, 1);
     assert.deepEqual(Object.keys(record.notches[0]), ['request', 'eventDispatched', 'handled', 'boundary', 'observationAvailable', 'postVerified', 'observedAt']);
     assert.equal(record.notches[0].request.wheelDelta, 1);

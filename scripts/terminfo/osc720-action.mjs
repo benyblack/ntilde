@@ -4,6 +4,8 @@
 import { generateOwnedInput } from './input-action.mjs';
 
 export const osc720WheelNotches = 1;
+/** The generated pointer event needs a viewport cell; the first cell is inside every grid. */
+export const osc720WheelEvent = Object.freeze({ kind: 'mouseWheel', wheelDelta: 1, column: 1, row: 1 });
 const compact = attempt => ({ request: attempt.request, eventDispatched: attempt.app?.eventDispatched === true, handled: attempt.app?.handled === true,
     boundary: attempt.app?.boundary ?? null, observationAvailable: attempt.app?.observationAvailable === true, postVerified: attempt.postVerified === true, observedAt: attempt.observedAt ?? null });
 
@@ -11,6 +13,6 @@ const compact = attempt => ({ request: attempt.request, eventDispatched: attempt
 export async function runViewAction({ action, config, budget, input = generateOwnedInput, now = Date.now }) {
     if (action !== 'scroll-up') throw new Error('Invalid OSC 720 action.');
     const startedAt = new Date(now()).toISOString(), notches = [];
-    for (let index = 0; index < osc720WheelNotches; index++) notches.push(compact(await input(config, { kind: 'mouseWheel', wheelDelta: 1 }, budget))); // NOSONAR serial by design: each notch is a verified, never-retried action
+    for (let index = 0; index < osc720WheelNotches; index++) notches.push(compact(await input(config, { ...osc720WheelEvent }, budget))); // NOSONAR serial by design: each notch is a verified, never-retried action
     return { action, notches, startedAt, finishedAt: new Date(now()).toISOString() };
 }

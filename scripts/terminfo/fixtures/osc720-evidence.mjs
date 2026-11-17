@@ -49,7 +49,7 @@ function frameOf(base, index, kind, state) {
     return { index, kind, paneId: osc720PaneId, barrier: index === 0 ? null : barrier, before, sha256, after: structuredClone(before), afterSha256: sha256, caseId: null, stageId: null };
 }
 
-const wheelRecord = () => ({ action: 'scroll-up', ok: true, ownerPid: 4242, notches: [{ request: { kind: 'mouseWheel', wheelDelta: 1, paneId: osc720PaneId }, eventDispatched: true, handled: true,
+const wheelRecord = () => ({ action: 'scroll-up', ok: true, ownerPid: 4242, notches: [{ request: { kind: 'mouseWheel', wheelDelta: 1, column: 1, row: 1, paneId: osc720PaneId }, eventDispatched: true, handled: true,
     boundary: 'avalonia-routed', observationAvailable: true, postVerified: true, observedAt: '2026-11-17T12:00:00.000Z' }], startedAt: '2026-11-17T12:00:00.000Z', finishedAt: '2026-11-17T12:00:01.500Z' });
 
 /** The model App applying one probe. `behavior` is 'ignore' (Ntilde) or 'rxvt' (the reference text). */
