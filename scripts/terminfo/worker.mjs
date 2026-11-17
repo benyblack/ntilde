@@ -507,8 +507,8 @@ try {
                 gradingModule: await import(pathToFileURL(config.pxmBundle).href) });
             writeFileSync(join(config.output, 'pxm-run.json'), JSON.stringify(pxmRun) + '\n', { flag: 'wx', mode: 0o600 });
         }
-        await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
-        await collectAnimation({ config, fence, owner });
+        const imagesResult = await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
+        await collectAnimation({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' && imagesResult?.status === 'unavailable' });
         await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
         if (config.privateClipboard === true) fence.retireInput();
         else restore();

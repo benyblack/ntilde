@@ -112,21 +112,24 @@ test('bleed outside the target envelope is a failure whatever the timing', () =>
     });
 });
 
-test('a capture pair that straddles a frame boundary is inconclusive for a moving stage and refused for a static one', () => {
-    withJournal({ pairDiffer: entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second' ? 'third' : undefined }, ({ build }) => {
-        const report = build(), second = report.observations.find(item => item.featureId === 'kitty.animation.playback.second');
-        assert.equal(second.result, 'inconclusive'); assert.equal(second.timing.valid, false);
-        assert.match(second.inconclusiveReason, /paired captures differ/);
-        const third = report.observations.find(item => item.featureId === 'kitty.animation.playback.third');
+test('a differing capture pair is inconclusive where a boundary could fall inside the span and a failure where only one frame can be on screen', () => {
+    const differ = entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second' ? 'third' : undefined;
+    // Valid timing (one frame only): the pair cannot legitimately differ, so the inconsistency fails the stage.
+    withJournal({ pairDiffer: differ }, ({ build }) => {
+        const second = build().observations.find(item => item.featureId === 'kitty.animation.playback.second');
+        assert.equal(second.timing.valid, true); assert.equal(second.result, 'failed');
+        assert.match(second.assertions.map(item => item.description).join('|'), /paired captures show one frame/);
+        const third = build().observations.find(item => item.featureId === 'kitty.animation.playback.third');
         assert.equal(third.result, 'inconclusive'); assert.match(third.inconclusiveReason, /requires passed prior witness/);
+    });
+    // Timing that straddles the second/third boundary: a differing pair is exactly what a correct animation shows there.
+    withJournal({ pairDiffer: differ, timing: (entry, plan) => entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second'
+        ? { actionAt: plan.actionAt + 2400, readAt: plan.readAt + 2400, span: plan.span.map(value => value + 2400) } : plan }, ({ build }) => {
+        const second = build().observations.find(item => item.featureId === 'kitty.animation.playback.second');
+        assert.equal(second.result, 'inconclusive'); assert.equal(second.timing.valid, false); assert.match(second.inconclusiveReason, /straddles/);
     });
     withJournal({ pairDiffer: entry => entry.kind === 'read' && entry.stageId === 'build' && entry.caseId === 'kitty.animation.playback' ? 'second' : undefined }, ({ build }) => {
         assert.throws(() => build());
-    });
-    withJournal({ bleed: entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second',
-        pairDiffer: entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second' ? 'third' : undefined }, ({ build }) => {
-        const second = build().observations.find(item => item.featureId === 'kitty.animation.playback.second');
-        assert.equal(second.result, 'failed', 'bleed still fails whatever the pair did');
     });
 });
 

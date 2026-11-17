@@ -142,12 +142,19 @@ test('prior challenges from both earlier phases are admitted although they excee
     assert.ok(priors(inputPriorCaptureCap + imagePlan.length + 1).length > inputPriorCaptureCap, 'the old input-only cap would have refused this');
 });
 
-test('a pair that straddles a frame boundary does not abort a running stage and is graded inconclusive', async () => fixture(async f => {
+test('a differing pair does not abort a running stage; with the timing allowing one frame only it is graded a failure', async () => fixture(async f => {
     await collectAnimation(f); assert.equal(f.observer.restored, true);
     const second = f.observer.report.observations.find(value => value.featureId === 'kitty.animation.playback.second');
-    assert.equal(second.result, 'inconclusive'); assert.match(second.inconclusiveReason, /paired captures differ/);
+    assert.equal(second.result, 'failed'); assert.equal(second.timing.valid, true);
     assert.equal(f.observer.frames.find(frame => frame.stageId === 'second' && frame.caseId === 'kitty.animation.playback').pixels.map(pixel => pixel.sha256).filter((value, index, all) => all.indexOf(value) === index).length, 2);
 }, { differStage: 'second' }));
 test('the same difference in a static stage still aborts the collection', async () => fixture(async f => {
     await assert.rejects(collectAnimation(f)); assert.equal(f.observer.restored, false);
 }, { differStage: 'build' }));
+test('the original fence is handed over after kan-start when neither earlier collector installed a reader, and only then', async () => {
+    for (const [detachFence, expected] of [[true, 1], [false, 0]]) await fixture(async f => {
+        let detached = 0;
+        await collectAnimation({ ...f, fence: { detachInput() { detached++; assert.ok(f.calls.some(call => call.kind === 'kan-start')); } }, detachFence });
+        assert.equal(detached, expected); assert.equal(f.observer.restored, true);
+    });
+});

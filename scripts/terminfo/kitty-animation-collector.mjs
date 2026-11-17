@@ -25,13 +25,15 @@ export function animationWait(stage, { now, previousEnd, startAdmitted, lastRead
 }
 
 /** One exclusive byte reader after the static-image reader is sealed; no retries or native input. */
-export async function collectAnimation({ config, owner, fence, input = process.stdin, output = process.stdout, sleep = delay, now = Date.now }) {
+export async function collectAnimation({ config, owner, fence, detachFence = false, input = process.stdin, output = process.stdout, sleep = delay, now = Date.now }) {
     let initial;
     try { initial = await owner('kan-start'); }
     catch (error) {
         if (['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)) return { status: 'unavailable', reason: error.code };
         throw error;
     }
+    // When neither earlier collector installed its reader the original fence still holds stdin; hand it over now that this suite really starts.
+    if (detachFence) fence.detachInput();
     checkImages(Array.isArray(initial.priorChallenges) && initial.priorChallenges.length <= animationPriorCap && typeof initial.screen?.cursorVisible === 'boolean');
     const prior = new Set(initial.priorChallenges);
     const capture = rawInputCapture(input, output, 4500, used => {

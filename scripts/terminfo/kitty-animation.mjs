@@ -141,9 +141,10 @@ class AnimationReport extends StaticImageReport {
         const item = animationCases.find(value => value.id === entry.caseId), stage = stageOfEntry(entry);
         const reply = animationReply(replyBytes.toString('ascii'), stage, context.state.imageId);
         const facts = this.timingFacts(entry, stage, index, context);
-        // A pair that differs means the frame changed between its two captures: legitimate near a boundary, but then no single frame is observed.
+        // A pair that differs means the frame changed between its two captures. Independent timing decides what that means: where a boundary could fall
+        // inside the span it is legitimate and the stage is inconclusive; where only one frame can be on screen it is an inconsistency and fails.
         const pairStable = this.frames[index].pixels[0].sha256 === this.frames[index].pixels[1].sha256;
-        const timing = pairStable ? evaluateAnimationTiming(stage, facts) : { valid: false, reason: 'paired captures differ: the frame changed between them' };
+        const timing = evaluateAnimationTiming(stage, facts);
         const inspect = observed => inspectAnimationPixels({ baseline: this.boundPixel.image, observed: observed.image, grid: observed.details.grid,
             anchor: animationAnchor, cells: animationCellEnvelope, appearance: stage.appearance });
         const pixel = inspect(pixels[0]);
@@ -152,7 +153,7 @@ class AnimationReport extends StaticImageReport {
         const other = pairStable ? pixel : inspect(pixels[1]);
         checkImages(other.controls[0].passed);
         const bleed = { ...pixel.controls[1], passed: pixel.controls[1].passed && other.controls[1].passed };
-        const assertions = [...pixel.assertions, bleed];
+        const assertions = [...pixel.assertions, ...(pairStable || !timing.valid ? [] : [{ description: 'paired captures show one frame inside a window only one frame can occupy', passed: false }]), bleed];
         this.observations.push({ featureId: item.id + '.' + stage.id, ...this.gradeStage(item, stage, reply, assertions, timing), snapshot: index,
             actionIndex: context.action.index, reply, assertions, classification: pixel.classification, measurement: pixel.measurement,
             timing: { clock: stage.clock, valid: timing.valid, reason: timing.reason, facts } });

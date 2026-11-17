@@ -33,6 +33,8 @@ The expected frame is derived from the protocol and the retained wall-clock fact
   or a late read makes the stage **inconclusive**, never failed. A stopped hold counts only if the stop landed inside the
   planned window and a running animation could not still show that frame at the capture. `stopped-hold` requires the capture to
   begin at least one root gap after the build took effect.
+- **Differing capture pairs.** The two captures of a pair may differ only for a moving or frozen stage. Where independent timing says a boundary could fall inside
+  the span the stage is inconclusive; where it says only one frame can be on screen, a differing pair is an inconsistency and fails. A static stage must be identical.
 - **Grading.** Stage results are passed, failed or inconclusive. A negative or missing reply, and bleed outside the envelope,
   fail regardless of timing; a pixel mismatch fails only with valid timing and passed witnesses. A case fails if any stage
   fails and is inconclusive if any stage is.
