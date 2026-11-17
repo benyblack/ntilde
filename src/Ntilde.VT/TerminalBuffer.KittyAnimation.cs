@@ -145,18 +145,18 @@ public partial class TerminalBuffer
         nextDueMs = null;
         if (KittyAnimationPaused || !_hasKittyAnimations) return false;
         // The render path calls this: it must never queue behind sustained output as a waiting writer. If the lock is busy, try again next frame.
-        bool lockTaken = false, changed;
-        if (!Lock.IsWriteLockHeld)
+        bool changed;
+        if (Lock.IsWriteLockHeld) changed = AdvanceKittyAnimationsLocked(nowMs, firstVisibleLine, out nextDueMs);   // the caller already owns the lock
+        else if (Lock.TryEnterWriteLock(0))
         {
-            if (!Lock.TryEnterWriteLock(0))
-            {
-                nextDueMs = nowMs + AnimationLockRetryMs;
-                return false;
-            }
-            lockTaken = true;
+            try { changed = AdvanceKittyAnimationsLocked(nowMs, firstVisibleLine, out nextDueMs); }
+            finally { Lock.ExitWriteLock(); }
         }
-        try { changed = AdvanceKittyAnimationsLocked(nowMs, firstVisibleLine, out nextDueMs); }
-        finally { if (lockTaken) Lock.ExitWriteLock(); }
+        else
+        {
+            nextDueMs = nowMs + AnimationLockRetryMs;
+            return false;
+        }
         // A caller inside a frame passes false: the frame it is drawing already shows the new pixels.
         if (changed && invalidate) Invalidate();
         return changed;
