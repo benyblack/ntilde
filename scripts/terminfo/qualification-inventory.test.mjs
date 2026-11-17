@@ -303,7 +303,34 @@ test('extensions.reflow selects the fresh supported effect while preserving its 
     assert.equal(historical.cases[0].effectContract.outcome, 'unsupported');
 });
 
-test('fixing the measured reflow mismatch adds one effect-supported id without changing unique ids or stock and pinned scores', () => {
+test('OSC cell-size qualification adds two effect-supported ids while preserving pinned and stock outcomes', () => {
+    const stored = committed();
+    const ids = ['extensions.osc1337-cellsize', 'extensions.osc776-cell-size'];
+    const suite = stored.suites.find(entry => entry.suite === 'cell-size');
+    assert.deepEqual(suite.caseIds, ids);
+    assert.equal(suite.caseCount, 2);
+    assert.equal(suite.rederivation.status, 'passed');
+    assert.equal(suite.publication, '2026-11-17-osc-cell-size-integrated/');
+    assert.equal(suite.rederivation.command, 'node --test scripts/terminfo/cell-size-integrated-publication.test.mjs');
+    assert.equal(suite.receipt.schemaVersion, 71);
+    assert.equal(suite.run.sourceSnapshotPolicy, 'readonly-owned-source-graph-v64');
+    assert.equal(suite.run.appRevision, '8da07482a849946cf213d1d4b6781759bde1c56f');
+    assert.equal(suite.run.scriptsRevision, '8da07482a849946cf213d1d4b6781759bde1c56f');
+    assert.ok('cell-size-publication.test.mjs' in nonInventoryPublicationTests);
+    for (const id of ids) {
+        const item = row(stored, id);
+        assert.equal(item.effect.verdict, 'supported');
+        assert.equal(item.pinned.best, 'inconclusive');
+        assert.equal(item.stockOutcome, 'inconclusive');
+    }
+    const before = totalsOf(stored.benchmark.filter(item => !ids.includes(item.id)), baseline());
+    assert.equal(stored.totals.uniqueBenchmarkIds, before.uniqueBenchmarkIds + 2);
+    assert.equal(stored.totals.suiteClaims, before.suiteClaims + 2);
+    assert.equal(stored.totals.effectSupportedIds, before.effectSupportedIds + 2);
+    assert.equal(stored.totals.pinnedSupportedIds, before.pinnedSupportedIds);
+});
+
+test('current effect totals preserve the separate unsupported and measured-other claims without inflating pinned scores', () => {
     const stored = committed(), { totals } = stored;
     // The OSC 633 implementation remeasurement turned its four ids from effect-unsupported to effect-supported (pinned stays inconclusive). The static-image qualification (#987)
     // then measured extensions.sixel effect-unsupported (native-size defect #851), the only measured-unsupported id, and extensions.iterm2-images effect-supported.
@@ -317,15 +344,15 @@ test('fixing the measured reflow mismatch adds one effect-supported id without c
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
     assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + totals.effectUnsupportedIds + totals.effectOtherIds);
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
-    assert.equal(totals.effectSupportedIds, 139);
+    assert.equal(totals.effectSupportedIds, 141);
     assert.equal(totals.pinnedSupportedIds, 93);
     assert.equal(totals.pinnedAndEffectSupportedIds, 93);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 46);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 138);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 48);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 140);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 92);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 30, effectMeasuredUnsupported: 1, effectMeasuredOther: 1, effectNotMeasured: 28, notPinnedSupported: 76 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 28, effectMeasuredUnsupported: 1, effectMeasuredOther: 1, effectNotMeasured: 26, notPinnedSupported: 76 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -422,7 +449,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.sixel`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 1 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 28 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 26 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -438,7 +465,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // 240 KiB: the modifyOtherKeys suite entry (receipt schema 56, its receipt and run bindings) joins the merged inventory.
     // 288 KiB: the selection-colors suite entry (receipt schema 60, four effect-supported ids) joins the merged inventory.
     // 336 KiB: the truecolor projection and four OSC 633 cases add their receipt bindings.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 336 * 1024, 'the generated files stay reviewable');
+    // 344 KiB: the two exact OSC cell-size cases add their source-bound run and receipt.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 344 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {

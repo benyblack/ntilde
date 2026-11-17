@@ -418,5 +418,17 @@
     "kittyAnimationSuiteSourceSha256": "kitty-animation.mjs",
     "kittyAnimationCaptureSourceSha256": "kitty-animation-capture.mjs",
     "kittyAnimationCollectorSourceSha256": "kitty-animation-collector.mjs",
-    "kittyAnimationReceiptSourceSha256": "kitty-animation-receipt.mjs"
+    "kittyAnimationReceiptSourceSha256": "kitty-animation-receipt.mjs",
+    "cellSizeContractsSourceSha256": "cell-size-contracts.mjs",
+    "cellSizeFrameSourceSha256": "cell-size-frame.mjs",
+    "cellSizeGradingCollectorSourceSha256": "cell-size-grading-collector.mjs",
+    "cellSizeCollectorSourceSha256": "cell-size-collector.mjs",
+    "cellSizeCaptureSourceSha256": "cell-size-capture.mjs",
+    "cellSizeGradingSourceSha256": "cell-size-grading.mjs",
+    "cellSizeReceiptSourceSha256": "cell-size-receipt.mjs",
+    "cellSizeParserReferenceSha256": "cell-size-parser.cs",
+    "cellSizeMetricsReferenceSha256": "cell-size-metrics.cs",
+    "cellSizeFramingReferenceSha256": "cell-size-framing.cs",
+    "cellSizeFontReferenceSha256": "cell-size-font.cs",
+    "cellSizeGeometryContractReferenceSha256": "cell-size-observer-contract.cs"
 }
