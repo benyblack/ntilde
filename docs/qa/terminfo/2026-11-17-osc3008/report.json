@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-osc3008-graded-v1",
   "contractsVersion": 1,
-  "runId": "e8e16d88461607069d1dbae74441d4ee",
+  "runId": "34dd71da0b96927426033d07458e20de",
   "adapter": {
     "id": "ntilde-owned-osc3008-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "335adac8b5c80e0cea7627412969f72c7fce7788890859a47e9c9816b0cbee97",
+    "bundleSha256": "bec120b8f067bbe62421e682c597326926078ffcbff3421977b10c571fef3134",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 extensions.osc3008-context (no termless function; the terminal path writes ESC[1;1H ESC[2K and OSC 3008;type=test BEL, queries the cursor and returns unmeasuredCellResult, inconclusive by construction; the payload is not a UAPI.15 start or end) replayed byte-exactly over the journaled cursor, with the unchanged pinned code re-run from the retained derived bundle, and preserved. Beside it a separately identified effect contract graded by an independent oracle written from UAPI.15 v1.0 over paired complete stored cells, pane metadata (including the untrusted stored context stack and the ended-record ring) and session status: start and end, nesting, the specification example, an update flushing metadata and ending sub-contexts, BEL and ST terminators, id bounds, field validity, escapes, end metadata, a soft reset leaving the stack alone, and negative controls (the pinned payload, foreign spellings, OSC 133/633 not creating a context and a context not moving the title, working directory or shell state). Stack depth, the ended ring, end-ends-sub-contexts, repeated fields and bare backslashes are policy groups that never decide. Stored untrusted metadata in a disposable direct-local App only: no presentation, command-assist or agent use, no hangup, RIS, alternate-screen or real-emitter claim, no remote/mux, other platforms, common-harness or stock-score claim; the ended ring and original null title/working directory are not restored.",
@@ -301,8 +301,8 @@
                     0,
                     0
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -382,8 +382,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -400,7 +400,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ],
                   "ended": []
@@ -408,7 +408,7 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ],
                   "ended": []
@@ -463,8 +463,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -482,7 +482,7 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
@@ -490,7 +490,7 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -552,8 +552,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -584,7 +584,7 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
@@ -605,7 +605,7 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -659,8 +659,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -678,7 +678,7 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
@@ -690,7 +690,7 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
@@ -756,8 +756,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -774,24 +774,24 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session",
                       "user": "u-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell",
                       "cwd": "/ctx/shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "cmdline": "echo hi"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
@@ -802,24 +802,24 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session",
                       "user": "u-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell",
                       "cwd": "/ctx/shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "cmdline": "echo hi"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
@@ -877,8 +877,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -895,14 +895,14 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app",
                       "comm": "updated"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
@@ -913,14 +913,14 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app",
                       "comm": "updated"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
@@ -978,8 +978,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -997,14 +997,14 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     }
                   ]
@@ -1013,14 +1013,14 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     }
                   ]
@@ -1083,8 +1083,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -1101,24 +1101,24 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     }
                   ]
@@ -1126,24 +1126,24 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     }
                   ]
@@ -1198,8 +1198,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -1216,24 +1216,24 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     }
                   ]
@@ -1241,24 +1241,24 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     }
                   ]
@@ -1313,8 +1313,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -1332,22 +1332,22 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -1356,22 +1356,22 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -1434,8 +1434,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -1452,7 +1452,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
@@ -1460,22 +1460,22 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -1483,7 +1483,7 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
@@ -1491,22 +1491,22 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -1561,8 +1561,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -1580,29 +1580,29 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
@@ -1610,29 +1610,29 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -1694,8 +1694,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -1712,7 +1712,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "user": "lennart",
                       "cwd": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
@@ -1723,36 +1723,36 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "user": "lennart",
                       "hostname": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
@@ -1763,29 +1763,29 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -1839,8 +1839,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -1857,7 +1857,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "user": "lennart",
                       "cwd": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
@@ -1866,7 +1866,7 @@
                       "pid": "18446744073709551615"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm",
                       "vm": "guest",
                       "machineId": "3deb5353-d3ba-43d0-8201-c136a47ead7b",
@@ -1878,36 +1878,36 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "user": "lennart",
                       "hostname": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
@@ -1916,7 +1916,7 @@
                       "cmdline": ""
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm",
                       "machineId": "3deb5353-d3ba-43d0-8201-c136a47ead7b",
                       "bootId": "ABCDEFabcdef01234567890123456789",
@@ -1928,29 +1928,29 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
                       "id": "bed86fab93af4328bbed0a1224af6d40",
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -2004,8 +2004,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -2027,29 +2027,29 @@
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -2062,29 +2062,29 @@
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -2147,8 +2147,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -2165,7 +2165,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "cwd": "/a;b\\c",
                       "cmdline": "echo ; done",
                       "user": "zoë",
@@ -2178,29 +2178,29 @@
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -2208,7 +2208,7 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "user": "zoë",
                       "comm": "日本語",
                       "cwd": "/a;b\\c",
@@ -2221,29 +2221,29 @@
                       "type": "container"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -2298,8 +2298,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -2317,33 +2317,33 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
@@ -2351,33 +2351,33 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "app"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -2439,8 +2439,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -2458,32 +2458,32 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
@@ -2495,32 +2495,32 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
@@ -2578,8 +2578,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -2597,35 +2597,35 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     }
                   ]
@@ -2634,35 +2634,35 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     }
                   ]
@@ -2717,8 +2717,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -2739,32 +2739,32 @@
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
@@ -2778,32 +2778,32 @@
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
@@ -2868,8 +2868,8 @@
                     0,
                     0
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -2886,7 +2886,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ],
                   "ended": [
@@ -2894,32 +2894,32 @@
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
@@ -2929,7 +2929,7 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ],
                   "ended": [
@@ -2937,32 +2937,32 @@
                       "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
@@ -3019,8 +3019,8 @@
                     0,
                     0
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -3038,38 +3038,38 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
@@ -3077,38 +3077,38 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -3179,8 +3179,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -3197,7 +3197,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "cwd": "/ctx/not-the-cwd",
                       "comm": "title-bait"
@@ -3205,45 +3205,45 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "comm": "title-bait",
                       "cwd": "/ctx/not-the-cwd"
@@ -3251,38 +3251,38 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -3336,8 +3336,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -3354,7 +3354,7 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "cwd": "/ctx/not-the-cwd",
                       "comm": "title-bait"
@@ -3362,45 +3362,45 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell",
                       "comm": "title-bait",
                       "cwd": "/ctx/not-the-cwd"
@@ -3408,38 +3408,38 @@
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -3493,8 +3493,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -3512,38 +3512,38 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -3552,38 +3552,38 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -3646,8 +3646,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -3664,48 +3664,48 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -3713,48 +3713,48 @@
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "vm"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     }
                   ]
@@ -3809,8 +3809,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -3828,38 +3828,38 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     }
                   ]
@@ -3868,38 +3868,38 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     }
                   ]
@@ -3962,8 +3962,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -3980,88 +3980,88 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "command",
                       "exit": "crash",
                       "status": "139",
                       "signal": "SIGSEGV"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     }
                   ]
                 }
@@ -4115,8 +4115,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -4134,35 +4134,35 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
@@ -4170,35 +4170,35 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -4260,8 +4260,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -4278,170 +4278,170 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d1"
+                      "id": "ctx-34dd71da-d1"
                     },
                     {
-                      "id": "ctx-e8e16d88-d2"
+                      "id": "ctx-34dd71da-d2"
                     },
                     {
-                      "id": "ctx-e8e16d88-d3"
+                      "id": "ctx-34dd71da-d3"
                     },
                     {
-                      "id": "ctx-e8e16d88-d4"
+                      "id": "ctx-34dd71da-d4"
                     },
                     {
-                      "id": "ctx-e8e16d88-d5"
+                      "id": "ctx-34dd71da-d5"
                     },
                     {
-                      "id": "ctx-e8e16d88-d6"
+                      "id": "ctx-34dd71da-d6"
                     },
                     {
-                      "id": "ctx-e8e16d88-d7"
+                      "id": "ctx-34dd71da-d7"
                     },
                     {
-                      "id": "ctx-e8e16d88-d8"
+                      "id": "ctx-34dd71da-d8"
                     },
                     {
-                      "id": "ctx-e8e16d88-d9"
+                      "id": "ctx-34dd71da-d9"
                     },
                     {
-                      "id": "ctx-e8e16d88-d10"
+                      "id": "ctx-34dd71da-d10"
                     },
                     {
-                      "id": "ctx-e8e16d88-d11"
+                      "id": "ctx-34dd71da-d11"
                     },
                     {
-                      "id": "ctx-e8e16d88-d12"
+                      "id": "ctx-34dd71da-d12"
                     },
                     {
-                      "id": "ctx-e8e16d88-d13"
+                      "id": "ctx-34dd71da-d13"
                     },
                     {
-                      "id": "ctx-e8e16d88-d14"
+                      "id": "ctx-34dd71da-d14"
                     },
                     {
-                      "id": "ctx-e8e16d88-d15"
+                      "id": "ctx-34dd71da-d15"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d1"
+                      "id": "ctx-34dd71da-d1"
                     },
                     {
-                      "id": "ctx-e8e16d88-d2"
+                      "id": "ctx-34dd71da-d2"
                     },
                     {
-                      "id": "ctx-e8e16d88-d3"
+                      "id": "ctx-34dd71da-d3"
                     },
                     {
-                      "id": "ctx-e8e16d88-d4"
+                      "id": "ctx-34dd71da-d4"
                     },
                     {
-                      "id": "ctx-e8e16d88-d5"
+                      "id": "ctx-34dd71da-d5"
                     },
                     {
-                      "id": "ctx-e8e16d88-d6"
+                      "id": "ctx-34dd71da-d6"
                     },
                     {
-                      "id": "ctx-e8e16d88-d7"
+                      "id": "ctx-34dd71da-d7"
                     },
                     {
-                      "id": "ctx-e8e16d88-d8"
+                      "id": "ctx-34dd71da-d8"
                     },
                     {
-                      "id": "ctx-e8e16d88-d9"
+                      "id": "ctx-34dd71da-d9"
                     },
                     {
-                      "id": "ctx-e8e16d88-d10"
+                      "id": "ctx-34dd71da-d10"
                     },
                     {
-                      "id": "ctx-e8e16d88-d11"
+                      "id": "ctx-34dd71da-d11"
                     },
                     {
-                      "id": "ctx-e8e16d88-d12"
+                      "id": "ctx-34dd71da-d12"
                     },
                     {
-                      "id": "ctx-e8e16d88-d13"
+                      "id": "ctx-34dd71da-d13"
                     },
                     {
-                      "id": "ctx-e8e16d88-d14"
+                      "id": "ctx-34dd71da-d14"
                     },
                     {
-                      "id": "ctx-e8e16d88-d15"
+                      "id": "ctx-34dd71da-d15"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -4495,8 +4495,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -4513,172 +4513,172 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d1"
+                      "id": "ctx-34dd71da-d1"
                     },
                     {
-                      "id": "ctx-e8e16d88-d2"
+                      "id": "ctx-34dd71da-d2"
                     },
                     {
-                      "id": "ctx-e8e16d88-d3"
+                      "id": "ctx-34dd71da-d3"
                     },
                     {
-                      "id": "ctx-e8e16d88-d4"
+                      "id": "ctx-34dd71da-d4"
                     },
                     {
-                      "id": "ctx-e8e16d88-d5"
+                      "id": "ctx-34dd71da-d5"
                     },
                     {
-                      "id": "ctx-e8e16d88-d6"
+                      "id": "ctx-34dd71da-d6"
                     },
                     {
-                      "id": "ctx-e8e16d88-d7"
+                      "id": "ctx-34dd71da-d7"
                     },
                     {
-                      "id": "ctx-e8e16d88-d8"
+                      "id": "ctx-34dd71da-d8"
                     },
                     {
-                      "id": "ctx-e8e16d88-d9"
+                      "id": "ctx-34dd71da-d9"
                     },
                     {
-                      "id": "ctx-e8e16d88-d10"
+                      "id": "ctx-34dd71da-d10"
                     },
                     {
-                      "id": "ctx-e8e16d88-d11"
+                      "id": "ctx-34dd71da-d11"
                     },
                     {
-                      "id": "ctx-e8e16d88-d12"
+                      "id": "ctx-34dd71da-d12"
                     },
                     {
-                      "id": "ctx-e8e16d88-d13"
+                      "id": "ctx-34dd71da-d13"
                     },
                     {
-                      "id": "ctx-e8e16d88-d14"
+                      "id": "ctx-34dd71da-d14"
                     },
                     {
-                      "id": "ctx-e8e16d88-d15",
+                      "id": "ctx-34dd71da-d15",
                       "pid": "999"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d1"
+                      "id": "ctx-34dd71da-d1"
                     },
                     {
-                      "id": "ctx-e8e16d88-d2"
+                      "id": "ctx-34dd71da-d2"
                     },
                     {
-                      "id": "ctx-e8e16d88-d3"
+                      "id": "ctx-34dd71da-d3"
                     },
                     {
-                      "id": "ctx-e8e16d88-d4"
+                      "id": "ctx-34dd71da-d4"
                     },
                     {
-                      "id": "ctx-e8e16d88-d5"
+                      "id": "ctx-34dd71da-d5"
                     },
                     {
-                      "id": "ctx-e8e16d88-d6"
+                      "id": "ctx-34dd71da-d6"
                     },
                     {
-                      "id": "ctx-e8e16d88-d7"
+                      "id": "ctx-34dd71da-d7"
                     },
                     {
-                      "id": "ctx-e8e16d88-d8"
+                      "id": "ctx-34dd71da-d8"
                     },
                     {
-                      "id": "ctx-e8e16d88-d9"
+                      "id": "ctx-34dd71da-d9"
                     },
                     {
-                      "id": "ctx-e8e16d88-d10"
+                      "id": "ctx-34dd71da-d10"
                     },
                     {
-                      "id": "ctx-e8e16d88-d11"
+                      "id": "ctx-34dd71da-d11"
                     },
                     {
-                      "id": "ctx-e8e16d88-d12"
+                      "id": "ctx-34dd71da-d12"
                     },
                     {
-                      "id": "ctx-e8e16d88-d13"
+                      "id": "ctx-34dd71da-d13"
                     },
                     {
-                      "id": "ctx-e8e16d88-d14"
+                      "id": "ctx-34dd71da-d14"
                     },
                     {
-                      "id": "ctx-e8e16d88-d15",
+                      "id": "ctx-34dd71da-d15",
                       "pid": "999"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "command"
                     },
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     }
                   ]
                 }
@@ -4732,8 +4732,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -4751,34 +4751,34 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     }
                   ]
                 },
@@ -4786,34 +4786,34 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     }
                   ]
                 }
@@ -4867,8 +4867,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -4886,34 +4886,34 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     }
                   ]
                 },
@@ -4921,34 +4921,34 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     }
                   ]
                 }
@@ -5010,8 +5010,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -5028,82 +5028,82 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d",
+                      "id": "ctx-34dd71da-d",
                       "user": "last",
                       "pid": "1"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d",
+                      "id": "ctx-34dd71da-d",
                       "user": "last",
                       "pid": "1"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-c",
+                      "id": "ctx-34dd71da-c",
                       "type": "command",
                       "exit": "success",
                       "status": "0"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     }
                   ]
                 }
@@ -5157,8 +5157,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -5176,31 +5176,31 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     }
                   ]
                 },
@@ -5208,31 +5208,31 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     }
                   ]
                 }
@@ -5294,8 +5294,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -5312,74 +5312,74 @@
                 "expected": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d",
+                      "id": "ctx-34dd71da-d",
                       "user": "kept"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     }
                   ]
                 },
                 "observed": {
                   "stack": [
                     {
-                      "id": "ctx-e8e16d88-d",
+                      "id": "ctx-34dd71da-d",
                       "user": "kept"
                     }
                   ],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     }
                   ]
                 }
@@ -5433,8 +5433,8 @@
                     9,
                     42
                   ],
-                  "title": "SH-base-e8e16d88",
-                  "displayTitle": "SH-base-e8e16d88",
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
                   "cwd": "/ntilde-qa/osc133-base",
                   "links": 0,
                   "alternateScreen": false,
@@ -5452,31 +5452,31 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     }
                   ]
                 },
@@ -5484,31 +5484,31 @@
                   "stack": [],
                   "ended": [
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-b",
+                      "id": "ctx-34dd71da-b",
                       "type": "shell"
                     },
                     {
-                      "id": "ctx-e8e16d88-a",
+                      "id": "ctx-34dd71da-a",
                       "type": "session"
                     },
                     {
-                      "id": "ctx-e8e16d88-b"
+                      "id": "ctx-34dd71da-b"
                     },
                     {
-                      "id": "ctx-e8e16d88-a"
+                      "id": "ctx-34dd71da-a"
                     },
                     {
-                      "id": "ctx-e8e16d88-d0"
+                      "id": "ctx-34dd71da-d0"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     },
                     {
-                      "id": "ctx-e8e16d88-d"
+                      "id": "ctx-34dd71da-d"
                     }
                   ]
                 }

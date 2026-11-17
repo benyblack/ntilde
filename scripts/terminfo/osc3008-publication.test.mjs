@@ -17,9 +17,9 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained OSC 3008 run independently rederives the receipt, paired journal and publication', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '80bafa19e5d349b147141eb9a08719f00869af73adaa8e9218e697b956ae0a1d');
+    assert.equal(hash(manifestBytes), 'd6ad75e5ecef35d26d5f1bcaa3b0451a45b8c22d32b4f87d34ee6956dc635a8d');
     const manifest = JSON.parse(manifestBytes);
-    assert.deepEqual(Object.keys(manifest.archives), ['owned-run.zip']);
+    assert.deepEqual(Object.keys(manifest.archives), ['owned-run.zip', 'superseded/attempt-1-pre-merge.zip']);
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-osc3008-publication-'));
     try {
@@ -38,6 +38,7 @@ test('retained OSC 3008 run independently rederives the receipt, paired journal 
         assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
         assert.equal(schemaVersion, 73); assert.equal(fixtureRemoved, true);
+        assert.equal(original.runId, '34dd71da0b96927426033d07458e20de');
         assert.equal(projected.summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v66');
         assert.deepEqual(original.collectionScope.omittedSuites, ['osc9', 'notify']);
         assert.deepEqual(original.osc3008Evidence.counts, { 'inconclusive/supported': 1 });
@@ -59,5 +60,20 @@ test('retained OSC 3008 run independently rederives the receipt, paired journal 
         // Every observed context was reported as untrusted data, and the run ended with an empty stack (the ended ring is not restorable).
         assert.ok(frames.every(frame => frame.before.metadata.buffer.contexts.untrusted === true));
         assert.deepEqual(frames.at(-1).before.metadata.buffer.contexts.stack, []);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the superseded pre-merge run is retained with its own cleanup and outcome', () => {
+    const manifest = JSON.parse(read('manifest.json')), name = 'superseded/attempt-1-pre-merge.zip';
+    const root = mkdtempSync(join(tmpdir(), 'nt-osc3008-superseded-'));
+    try {
+        extractOwnedArchive(dir, { archives: { 'owned-run.zip': manifest.archives[name] } }, root, join(dir, name));
+        const receipt = JSON.parse(readFileSync(join(root, 'cell-receipt.json')));
+        const proof = JSON.parse(readFileSync(join(root, 'ownership-proof.json')));
+        assert.equal(receipt.runId, 'e8e16d88461607069d1dbae74441d4ee'); assert.equal(receipt.fixtureRemoved, true);
+        assert.equal(proof.completed, true); assert.ok(proof.cleanedUpAt); assert.equal(proof.cleanupError, undefined);
+        assert.deepEqual(receipt.osc3008Evidence.counts, { 'inconclusive/supported': 1 });
+        // The two runs are different observations of the same contract on different Apps: neither stands in for the other.
+        assert.notEqual(receipt.runId, JSON.parse(readFileSync(join(dir, 'summary.json'))).ownedRunId);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
