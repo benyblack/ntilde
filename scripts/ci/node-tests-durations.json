@@ -231,7 +231,6 @@
     "scripts/terminfo/osc720-action.test.mjs": 0.1,
     "scripts/terminfo/osc720-collector.test.mjs": 3.0,
     "scripts/terminfo/osc720-contracts.test.mjs": 0.1,
-    "scripts/terminfo/osc720-grading-collector.test.mjs": 6.0,
     "scripts/terminfo/osc720-grading.test.mjs": 0.5,
     "scripts/terminfo/osc720-publication.test.mjs": 54.0,
     "scripts/terminfo/osc720-receipt.test.mjs": 150.0,
