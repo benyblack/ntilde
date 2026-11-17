@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { adaptCellSizeCollector, cellSizeAdapterId } from './cell-size-grading-collector.mjs';
 import { cellSizeSuiteId, cellSizeVersion } from './cell-size-contracts.mjs';
 import { buildCellSizeReport, cellSizeCounts } from './cell-size-grading.mjs';
+import { isKittyAnimationPolicy63 } from './owned-sources.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const artifacts = ['collector-cell-size.mjs', 'cell-size-run.json', 'cell-size-snapshots.jsonl', 'cell-size-observations.json'];
@@ -11,8 +12,9 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const check = value => { if (!value) throw new Error('Invalid or incomplete OSC cell-size receipt.'); };
 const policyNumber = context => Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0);
 export function includesCellSizeEvidence(output, evidence, context) {
-    return policyNumber(context) >= 63 || evidence.cellSizeEvidence !== undefined
+    return (policyNumber(context) >= 63 && !isKittyAnimationPolicy63(context)) || evidence.cellSizeEvidence !== undefined
         || ['cellSizeAdapterId', 'cellSizeSuiteId', 'cellSizeBundleSha256', 'cellSizeContractsVersion'].some(key => context[key] !== undefined)
+        || Object.keys(context).some(key => key.startsWith('cellSize') && key.endsWith('Sha256'))
         || artifacts.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined);
 }
 const bytes = (output, file) => {

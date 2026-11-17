@@ -1,0 +1,1351 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-kitty-animation-qualification-v1",
+  "carrierSuiteId": "ntilde-owned-kitty-animation-v1",
+  "contractsVersion": 1,
+  "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "pinnedSpans": {
+      "helper": "e337ddbb1f81a40c2c6f997912e6f53aa9a86fa4d0cfde2705dbdb0b6b9899bb",
+      "extensions.kitty-graphics.animation": "4932e05f5f45fe474ebf7df9adf6eb248c04ebe5145b0b5c19fb51a5c72ea25f"
+    }
+  },
+  "scope": "One exact pinned terminfo.dev@4.0.0 case, extensions.kitty-graphics.animation. Both pinned callbacks (termless and terminal) are replayed from the retained pinned bundle and are always inconclusive. One separately identified effect contract composes the owned Kitty animation carrier: a retained 16x16 raw RGBA image with three solid frames held 5 s each, a stationary control, playback, loop and stop-freeze, over paired original offscreen PNGs, complete cell/mode reads, fresh raw fences and retained wall-clock brackets. Protocol acknowledgement and painted pixels are separate facts, and elapsed time is the App's own monotonic clock observed on a real desktop, not a synthetic presentation time. One image size, one gap length and the production frame subset only: no frame-rate or display-refresh cadence, PNG frames, root-frame composition, a=c, snapshot/persistent-session replay, remote/mux, other platforms, common-harness or stock-score claim.",
+  "cases": [
+    {
+      "caseId": "extensions.kitty-graphics.animation",
+      "pinnedCriterion": {
+        "termless": "Declared Kitty graphics capability does not establish timed animation playback (always inconclusive, evidence legacy)",
+        "terminal": "No timed frame playback or pixel readback for Kitty animation (always inconclusive, evidence none)"
+      },
+      "pinned": {
+        "pass": false,
+        "note": "Declared Kitty graphics capability does not establish timed animation playback",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "Declared Kitty graphics capability does not establish timed animation playback"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":true}",
+          "note": "Declared Kitty graphics capability does not establish timed animation playback",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "declaredFalseResponse": "{\"declared\":false}"
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No timed frame playback or pixel readback for Kitty animation",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No timed frame playback or pixel readback for Kitty animation"
+          }
+        }
+      },
+      "effectContract": {
+        "id": "ntilde-kitty-animation-playback-effect-v1",
+        "version": 1,
+        "statement": "A retained 16x16 raw RGBA image with two further frames added by a=f (z=5000 ms each, root gap 5000 ms) shows its root frame, stays on it past that gap while stopped, then after a=a,s=3 shows the second frame, the third frame and the root frame again at the times its gaps give (measured by paired offscreen captures against the App's wall clock), and after a=a,s=1 stays frozen on the frame it was showing past a hold that would have advanced it; every write is acknowledged OK and every cleared target is blank again.",
+        "primary": "https://sw.kovidgoyal.net/kitty/graphics-protocol/#animation",
+        "carrierCases": [
+          "kitty.animation.stopped-hold",
+          "kitty.animation.playback",
+          "kitty.animation.stop-freeze"
+        ],
+        "validity": [
+          {
+            "name": "receipt-binds-animation-report",
+            "held": true,
+            "detail": "the complete receipt binds this exact report and records fixture removal"
+          },
+          {
+            "name": "carrier-policy",
+            "held": true,
+            "detail": "the retained report is the paired raw render policy v1 animation report of this run"
+          },
+          {
+            "name": "raw-reader-healthy",
+            "held": true,
+            "detail": "the exclusive raw reader sealed without failure over every admitted write"
+          },
+          {
+            "name": "state-restored",
+            "held": true,
+            "detail": "the final paired state is bound to the initial state after every write"
+          },
+          {
+            "name": "controlled-background",
+            "held": true,
+            "detail": "every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme"
+          },
+          {
+            "name": "fresh-paired-fences",
+            "held": true,
+            "detail": "every capture carries its own unpredictable paired challenges, none reused from the earlier phases or another capture"
+          },
+          {
+            "name": "blank-before-controls",
+            "held": true,
+            "detail": "every case began from an independently blank, unchanged-surroundings target"
+          },
+          {
+            "name": "acknowledgement-separate-from-pixels",
+            "held": true,
+            "detail": "every write was acknowledged by its raw fence while pixel assertions were graded separately"
+          },
+          {
+            "name": "wall-clock-windows-valid",
+            "held": true,
+            "detail": "every timed read landed wholly inside its planned frame window, measured against retained wall-clock brackets rather than synthetic presentation time"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "carrierCases": [
+          {
+            "caseId": "kitty.animation.stopped-hold",
+            "result": "passed"
+          },
+          {
+            "caseId": "kitty.animation.playback",
+            "result": "passed"
+          },
+          {
+            "caseId": "kitty.animation.stop-freeze",
+            "result": "passed"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "caseId": "kitty.animation.stopped-hold",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.animation.stopped-hold.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1794899005244,
+                    "end": 1794899005301
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.animation.stopped-hold.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK",
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stopped-hold.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899005309,
+                    "latest": 1794899005330
+                  },
+                  "capture": {
+                    "start": 1794899005333,
+                    "end": 1794899005389
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.stopped-hold.hold",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stopped-hold.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.stopped-hold.build",
+                  "snapshot": 3,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "frozen",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899005309,
+                    "latest": 1794899005330
+                  },
+                  "capture": {
+                    "start": 1794899011420,
+                    "end": 1794899011485
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.stopped-hold.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stopped-hold.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.stopped-hold.hold",
+                  "snapshot": 4,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899005309,
+                    "latest": 1794899005330
+                  },
+                  "capture": {
+                    "start": 1794899011509,
+                    "end": 1794899011565
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "kitty.animation.playback",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.animation.playback.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1794899011667,
+                    "end": 1794899011723
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.animation.playback.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK",
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.playback.blank",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899011731,
+                    "latest": 1794899011746
+                  },
+                  "capture": {
+                    "start": 1794899011749,
+                    "end": 1794899011809
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.playback.start",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.playback.blank",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.playback.build",
+                  "snapshot": 8,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "running",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899011731,
+                    "latest": 1794899011746
+                  },
+                  "start": {
+                    "earliest": 1794899011819,
+                    "latest": 1794899011830
+                  },
+                  "capture": {
+                    "start": 1794899011833,
+                    "end": 1794899011889
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.playback.second",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the second frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.playback.blank",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.playback.start",
+                  "snapshot": 9,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "second",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "running",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899011731,
+                    "latest": 1794899011746
+                  },
+                  "start": {
+                    "earliest": 1794899011819,
+                    "latest": 1794899011830
+                  },
+                  "capture": {
+                    "start": 1794899019366,
+                    "end": 1794899019464
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.playback.third",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the third frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.playback.blank",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.playback.second",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "third",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "running",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899011731,
+                    "latest": 1794899011746
+                  },
+                  "start": {
+                    "earliest": 1794899011819,
+                    "latest": 1794899011830
+                  },
+                  "capture": {
+                    "start": 1794899024248,
+                    "end": 1794899024340
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.playback.loop",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.playback.blank",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.playback.third",
+                  "snapshot": 11,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "running",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899011731,
+                    "latest": 1794899011746
+                  },
+                  "start": {
+                    "earliest": 1794899011819,
+                    "latest": 1794899011830
+                  },
+                  "capture": {
+                    "start": 1794899029288,
+                    "end": 1794899029436
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.playback.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.playback.blank",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.playback.loop",
+                  "snapshot": 12,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899011731,
+                    "latest": 1794899011746
+                  },
+                  "start": {
+                    "earliest": 1794899011819,
+                    "latest": 1794899011830
+                  },
+                  "capture": {
+                    "start": 1794899029512,
+                    "end": 1794899029741
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "kitty.animation.stop-freeze",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.animation.stop-freeze.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1794899030102,
+                    "end": 1794899030353
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.animation.stop-freeze.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK",
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stop-freeze.blank",
+                  "snapshot": 15,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899030389,
+                    "latest": 1794899030412
+                  },
+                  "capture": {
+                    "start": 1794899030426,
+                    "end": 1794899030582
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.stop-freeze.start",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stop-freeze.blank",
+                  "snapshot": 15,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.stop-freeze.build",
+                  "snapshot": 16,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "running",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899030389,
+                    "latest": 1794899030412
+                  },
+                  "start": {
+                    "earliest": 1794899030643,
+                    "latest": 1794899030659
+                  },
+                  "capture": {
+                    "start": 1794899030746,
+                    "end": 1794899030928
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.stop-freeze.second",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the second frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stop-freeze.blank",
+                  "snapshot": 15,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.stop-freeze.start",
+                  "snapshot": 17,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "second",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "running",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899030389,
+                    "latest": 1794899030412
+                  },
+                  "start": {
+                    "earliest": 1794899030643,
+                    "latest": 1794899030659
+                  },
+                  "capture": {
+                    "start": 1794899036674,
+                    "end": 1794899036828
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.stop-freeze.stop",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the second frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stop-freeze.blank",
+                  "snapshot": 15,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.stop-freeze.second",
+                  "snapshot": 18,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "second",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "frozen",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899030389,
+                    "latest": 1794899030412
+                  },
+                  "start": {
+                    "earliest": 1794899030643,
+                    "latest": 1794899030659
+                  },
+                  "stop": {
+                    "earliest": 1794899036859,
+                    "latest": 1794899036877
+                  },
+                  "capture": {
+                    "start": 1794899036921,
+                    "end": 1794899037066
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.stop-freeze.hold",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the second frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stop-freeze.blank",
+                  "snapshot": 15,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.stop-freeze.stop",
+                  "snapshot": 19,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "second",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "frozen",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899030389,
+                    "latest": 1794899030412
+                  },
+                  "start": {
+                    "earliest": 1794899030643,
+                    "latest": 1794899030659
+                  },
+                  "stop": {
+                    "earliest": 1794899036859,
+                    "latest": 1794899036877
+                  },
+                  "capture": {
+                    "start": 1794899043176,
+                    "end": 1794899043289
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.stop-freeze.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.stop-freeze.blank",
+                  "snapshot": 15,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.stop-freeze.hold",
+                  "snapshot": 20,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794899030389,
+                    "latest": 1794899030412
+                  },
+                  "start": {
+                    "earliest": 1794899030643,
+                    "latest": 1794899030659
+                  },
+                  "stop": {
+                    "earliest": 1794899036859,
+                    "latest": 1794899036877
+                  },
+                  "capture": {
+                    "start": 1794899043401,
+                    "end": 1794899043552
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        }
+      ],
+      "stock": {
+        "featureId": "extensions.kitty-graphics.animation",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No timed frame playback or pixel readback for Kitty animation",
+        "rawReplyRef": "extensions.kitty-graphics.animation"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "pinned-callbacks-preserved-plus-owned-wall-clock-pixel-effect-v1",
+        "evidence": "owned-controlled-pixels-paired-raw-render",
+        "note": "Declared Kitty graphics capability does not establish timed animation playback"
+      }
+    }
+  ]
+}

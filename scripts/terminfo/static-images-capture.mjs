@@ -1,17 +1,18 @@
-import { randomInt } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest } from './agent-observer.mjs';
-import { inputPriorCaptureCap } from './input-plan.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
-import { staticImageCases } from './static-images-cases.mjs';
-import { checkImages, imagePlan, imageAction, imageReply, imageBoundScreen, imageInputs, buildStaticImageReport, validateImageOwnership,
+import { checkImages, imageBoundScreen, staticImageSuite, validateImageOwnership,
     imageRawReplies, validateImageCapture, stableImageContext, pristineImageBaseline } from './static-images.mjs';
 
-/** No new action surface: worker emits bytes only after each parent ownership admission. */
+/**
+ * No new action surface: worker emits bytes only after each parent ownership admission. The observer is shared by every image-carrier suite:
+ * `suite` names its plan, kind prefix, retained directories and how replies and per-case state are read (the static-image suite by default).
+ */
 export class OwnedStaticImageObserver {
-    constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, ...options }) {
-        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap);
+    constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, suite = staticImageSuite, now = Date.now, ...options }) {
+        checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= suite.priorCap);
+        this.suite = suite; this.now = now;
         this.output = output; this.runId = options.nonce.slice(11); this.priorChallenges = [...priorChallenges];
         this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.frames = []; this.actions = []; this.states = new Map();
         this.next = 0; this.phase = 'start'; this.totalPixels = 0;
@@ -21,52 +22,53 @@ export class OwnedStaticImageObserver {
     get paneId() { return this.before.paneId; }
     get restored() { return this.phase === 'complete' && !this.failed; }
     action() {
-        const entry = imagePlan[this.next]; checkImages(entry);
-        if (entry.kind === 'read' && !this.states.has(entry.caseId)) {
-            let number;
-            do { number = randomInt(1, 0x100000000); } while ([...this.states.values()].some(value => value.number === number));
-            this.states.set(entry.caseId, { number, firstId: null, ids: [] });
-        }
-        const state = this.states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, this.runId, this.baseline.cursorVisible);
-        return { index: this.actions.length, kind: 'images-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
-            number: state.number ?? null, firstId: state.firstId ?? null, commandHex: Buffer.from(expected.command).toString('hex'),
+        const entry = this.suite.plan[this.next]; checkImages(entry);
+        if (entry.kind === 'read' && !this.states.has(entry.caseId)) this.states.set(entry.caseId, this.suite.newState(this.states));
+        const state = this.states.get(entry.caseId) ?? {}, expected = this.suite.action(entry, state, this.runId, this.baseline.cursorVisible);
+        return { index: this.actions.length, kind: this.suite.prefix + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
+            ...this.suite.actionFacts(state), commandHex: Buffer.from(expected.command).toString('hex'),
             commandSha256: pngHash(Buffer.from(expected.command)), skipReason: expected.skipReason };
     }
     async capture(budget) {
         const screen = await this.before.capture(budget); this.after.paneId ??= this.paneId;
         if (this.phase === 'start' && (screen.rows < 8 || screen.cols < 60)) throw Object.assign(new Error('Image fixture geometry unavailable.'), { code: 'imageGeometryUnavailable' });
         const endpoint = (this.before.endpoint ?? observerEndpoint)(this.before.appData, this.before.ownerPid);
+        const startMs = this.now();
         const first = await this.capturePixel(screen, endpoint, 0, budget);
         const second = await this.capturePixel(screen, endpoint, 1, budget);
+        const endMs = this.now();
         const pixels = [first, second], afterScreen = await this.after.capture(budget);
-        checkImages(snapshotHash(screen) === snapshotHash(afterScreen) && first.sha256 === second.sha256
+        // A suite whose frame moves may see a boundary fall between the two captures; every other pair must be identical.
+        const mayDiffer = this.phase === 'capture' && this.suite.pairMayDiffer(this.suite.plan[this.next]);
+        checkImages(snapshotHash(screen) === snapshotHash(afterScreen) && (mayDiffer || first.sha256 === second.sha256)
             && snapshotHash(first.renderDetails) === snapshotHash(second.renderDetails)
             && snapshotHash(first.imageDetails) === snapshotHash(second.imageDetails));
-        return { screen, afterScreen, sha256: snapshotHash(screen), afterSha256: snapshotHash(afterScreen), pixels };
+        return { screen, afterScreen, sha256: snapshotHash(screen), afterSha256: snapshotHash(afterScreen), pixels,
+            ...(this.suite.recordSpan ? { pairSpan: { startMs, endMs } } : {}) };
     }
     async capturePixel(screen, endpoint, side, budget) {
             const capture = await this.captureRpc(endpoint, this.paneId, 0, budget());
-            const kind = this.phase === 'start' ? 'images-start' : 'images-' + imagePlan[this.next].kind;
-            const { bytes, image, details, imageDetails } = validateImageCapture(capture, screen, kind);
+            const kind = this.suite.prefix + (this.phase === 'start' ? 'start' : this.suite.plan[this.next].kind);
+            const { bytes, image, details, imageDetails } = validateImageCapture(capture, screen, this.suite.captureKind(kind));
             if (this.phase === 'start' && image.width * image.height * 62 > totalPixelLimit)
                 throw Object.assign(new Error('Image paired-capture budget unavailable.'), { code: 'imageGeometryUnavailable' });
             this.totalPixels += image.width * image.height; checkImages(this.totalPixels <= totalPixelLimit);
             const context = stableImageContext(details); this.context ??= context; checkImages(context === this.context);
-            const file = `image-pixels/frame-${String(this.frames.length).padStart(3, '0')}-${side}.png`;
+            const file = `${this.suite.pixelDir}/frame-${String(this.frames.length).padStart(3, '0')}-${side}.png`;
             const pixel = { file, sha256: pngHash(bytes), byteCount: bytes.length, width: capture.width, height: capture.height,
                 rows: capture.rows, cols: capture.cols, mode: capture.mode, scale: capture.scale, downscaled: false,
                 inlineOmitted: false, presentationTimeMs: 0, renderDetails: details, imageDetails };
-            if (!this.frames.length && side === 0) mkdirSync(join(this.output, 'image-pixels'), { mode: 0o700 });
+            if (!this.frames.length && side === 0) mkdirSync(join(this.output, this.suite.pixelDir), { mode: 0o700 });
             writeFileSync(join(this.output, file), bytes, { flag: 'wx', mode: 0o600 }); return pixel;
     }
     validateRequest(request) {
         checkImages(!this.busy && !this.failed && !this.restored);
         checkImages(Object.keys(request).every(key => ['kind', 'caseId', 'stageId', 'capture', 'captureStatus', 'tty', 'barrier', 'token', 'runId', 'workerPid'].includes(key)));
-        let entry = imagePlan[this.next], kind = entry?.kind;
+        let entry = this.suite.plan[this.next], kind = entry?.kind;
         if (this.phase === 'start') entry = { kind: 'start' };
         if (['start', 'admit', 'seal'].includes(this.phase)) kind = this.phase;
         if (this.phase === 'seal') entry = {};
-        checkImages(request.kind === 'images-' + kind && request.caseId === entry.caseId && request.stageId === entry.stageId);
+        checkImages(request.kind === this.suite.prefix + kind && request.caseId === entry.caseId && request.stageId === entry.stageId);
         return entry;
     }
     admit(ownership) {
@@ -77,19 +79,14 @@ export class OwnedStaticImageObserver {
     sealCapture(request, ownership) {
         validateImageOwnership(ownership, this.frames[0].ownership, this.baseline);
         this.seal = { ...structuredClone(request.captureStatus), ownership: structuredClone(ownership) };
-        this.report = buildStaticImageReport(this.frames, this.actions, this.seal, this.runId, this.output, this.priorChallenges);
+        this.report = this.suite.buildReport(this.frames, this.actions, this.seal, this.runId, this.output, this.priorChallenges);
         this.phase = 'complete'; return { sealed: true };
     }
     acceptRaw(request, entry) {
         const argb = entry.kind === 'finish' ? this.initialBackground : 0xff101010;
         const { replyBytes: reply } = imageRawReplies(request.capture, this.used, argb);
         if (entry.kind !== 'read' || this.actions.at(-1).skipReason) { checkImages(reply.length === 0); return; }
-        const item = staticImageCases.find(value => value.id === entry.caseId), stage = item.stages.find(value => value.id === entry.stageId);
-        const state = this.states.get(entry.caseId), result = imageReply(reply.toString('ascii'), item, stage, state);
-        if (result.id !== null) {
-            state.ids.push(result.id);
-            if (['store', 'store-first'].includes(stage.id)) state.firstId = result.id;
-        }
+        this.suite.acceptReply(reply, entry, this.states);
     }
     acceptPair(pair, entry) {
         if (entry.kind !== 'read') checkImages(pair.pixels.every(value => value.imageDetails.totalPlacements === 0));
@@ -103,8 +100,8 @@ export class OwnedStaticImageObserver {
         this.baseline = pair.screen; this.bound = imageBoundScreen(pair.screen, this.runId);
         this.initialBackground = pair.pixels[0].renderDetails.theme.backgroundArgb;
         this.initialDetails = pair.pixels[0].renderDetails;
-        mkdirSync(join(this.output, 'image-inputs'), { mode: 0o700 });
-        for (const input of imageInputs()) writeFileSync(join(this.output, input.file), input.bytes, { flag: 'wx', mode: 0o600 });
+        mkdirSync(join(this.output, this.suite.inputDir), { mode: 0o700 });
+        for (const input of this.suite.inputs()) writeFileSync(join(this.output, input.file), input.bytes, { flag: 'wx', mode: 0o600 });
     }
     async handle(request, budget, ownership) {
         const entry = this.validateRequest(request);
@@ -122,7 +119,7 @@ export class OwnedStaticImageObserver {
                 ownership: structuredClone(ownership),
                 actionIndex: this.phase === 'start' ? null : this.actions.at(-1).index, capture: structuredClone(request.capture ?? null) });
             if (this.phase === 'start') this.phase = 'admit';
-            else { this.next++; this.phase = this.next === imagePlan.length ? 'seal' : 'admit'; }
+            else { this.next++; this.phase = this.next === this.suite.plan.length ? 'seal' : 'admit'; }
             return { paneId: this.paneId, screen: pair.screen, priorChallenges: this.priorChallenges };
         } catch (error) { this.failed = true; this.lastAttempt.error = String(error.message ?? error); throw error; }
         finally { this.busy = false; }

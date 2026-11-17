@@ -7,8 +7,17 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v63';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v64';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
+// Two independently measured v63 graphs preceded integration. Only exact own-key
+// graph declarations select a fork; missing, null or opposite markers never do.
+const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
+export const isCellSizePolicy63 = context => context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v63'
+    && Object.hasOwn(context, 'cellSizeContractsSourceSha256') && graphDigest(context.cellSizeContractsSourceSha256)
+    && !Object.hasOwn(context, 'kittyAnimationInputsSourceSha256');
+export const isKittyAnimationPolicy63 = context => context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v63'
+    && Object.hasOwn(context, 'kittyAnimationInputsSourceSha256') && graphDigest(context.kittyAnimationInputsSourceSha256)
+    && !Object.hasOwn(context, 'cellSizeContractsSourceSha256');
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
     "runnerSourceSha256": "terminfo-owned.mjs",
@@ -806,7 +815,20 @@ export const capturedV69SourceFiles = Object.freeze({
     collectionScopeSourceSha256: 'collection-scope.mjs',
 });
 
+// Integrated v63 adds the Kitty animation measurement suite to the frozen v69 scope.
 export const capturedV70SourceFiles = Object.freeze({
+    ...capturedV69SourceFiles,
+    kittyAnimationInputsSourceSha256: 'kitty-animation-inputs.mjs',
+    kittyAnimationCasesSourceSha256: 'kitty-animation-cases.mjs',
+    kittyAnimationOracleSourceSha256: 'kitty-animation-oracle.mjs',
+    kittyAnimationSuiteSourceSha256: 'kitty-animation.mjs',
+    kittyAnimationCaptureSourceSha256: 'kitty-animation-capture.mjs',
+    kittyAnimationCollectorSourceSha256: 'kitty-animation-collector.mjs',
+    kittyAnimationReceiptSourceSha256: 'kitty-animation-receipt.mjs',
+});
+
+// Frozen pre-integration OSC cell-size fork, measured under the same v63 policy.
+export const capturedCellSizeForkV70Files = Object.freeze({
     ...capturedV69SourceFiles,
     cellSizeContractsSourceSha256: "cell-size-contracts.mjs",
     cellSizeFrameSourceSha256: "cell-size-frame.mjs",
@@ -822,11 +844,17 @@ export const capturedV70SourceFiles = Object.freeze({
     cellSizeGeometryContractReferenceSha256: "cell-size-observer-contract.cs",
 });
 
-/** Bind the private temporary root, exact v70 inventory and manifest environment pin before trusting any captured source. */
+// Combined graph: both previously measured forks remain immutable.
+export const capturedV71SourceFiles = Object.freeze({
+    ...capturedV70SourceFiles,
+    ...capturedCellSizeForkV70Files,
+});
+
+/** Bind the private temporary root, exact v71 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV70SourceFiles)) throw new Error('Invalid current v70 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV71SourceFiles)) throw new Error('Invalid current v71 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

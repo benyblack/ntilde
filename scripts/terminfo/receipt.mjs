@@ -61,6 +61,7 @@ import { includesLrMarginsEvidence, checkLrMarginsEvidence } from './lr-margins-
 import { includesRoutedInputEvidence, checkRoutedInputEvidence } from './routed-input-receipt.mjs';
 import { includesColorResetEvidence, checkColorResetEvidence } from './color-reset-receipt.mjs';
 import { includesStaticImageEvidence, checkStaticImageEvidence } from './static-images-receipt.mjs';
+import { includesAnimationEvidence, checkAnimationEvidence } from './kitty-animation-receipt.mjs';
 import { includesSavedEvidence, checkSavedEvidence } from './saved-receipt.mjs';
 import { includesResizeEvidence, checkResizeEvidence } from './resize-receipt.mjs';
 import { createHash } from 'node:crypto';
@@ -240,11 +241,16 @@ const receiptSuffixOrder = Object.freeze([
     'includesOsc633',
     'includesScopedCollection',
     'includesCellSize',
+    'includesAnimation',
 ]);
 
 /** Select the newest required schema from admitted declarations; private evidence cannot fall back to any frozen legacy version. */
 function ownedReceiptVersion(context, suffixes) {
     if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v61' && isHistoricOsc633Scope(context.collectionScope)) return 68;
+    // Both independently published v63 forks used70. Their validators still run;
+    // appending a second suffix must not renumber either historical receipt.
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v63') return 70;
+    if (context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v64') return 71;
     let schemaVersion = 1;
     if (context.pixelSuiteId) schemaVersion = 2;
     if (context.colorSuiteId) schemaVersion = 3;
@@ -321,12 +327,14 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesColorReset = includesColorResetEvidence(output, evidence, context);
     const includesQueries = includesQueryEvidence(output, evidence, context, proof) || includesPrivateClipboard;
     const includesImages = includesStaticImageEvidence(output, evidence, context, proof) || includesQueries;
+    // Independent of the later suites on purpose: earlier receipts that predate the animation suite must still rederive.
+    const includesAnimation = includesAnimationEvidence(output, evidence, context, proof);
     const includesInput = includesInputEvidence(output, evidence, context, proof) || includesImages;
     const includesMetadata = includesMetadataEvidence(output, evidence, context, proof) || includesInput;
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc633, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesModifyOtherKeys, includesOsc9, includesAsciiReflow, includesNotify, includesSelectionColors, includesDevq, includesXcs, includesXss, includesXsv, includesMex, includesKcl, includesPxm, includesScopedCollection, includesCellSize };
+        includesInput, includesImages, includesAnimation, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc633, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesModifyOtherKeys, includesOsc9, includesAsciiReflow, includesNotify, includesSelectionColors, includesDevq, includesXcs, includesXss, includesXsv, includesMex, includesKcl, includesPxm, includesScopedCollection, includesCellSize };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -338,6 +346,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesMetadata) checkMetadataEvidence(output, evidence.metadataEvidence, runId, context, proof);
     if (suffixes.includesInput) checkInputEvidence(output, evidence.inputEvidence, runId, context, proof);
     if (suffixes.includesImages) checkStaticImageEvidence(output, evidence.staticImageEvidence, runId, context, proof);
+    if (suffixes.includesAnimation) checkAnimationEvidence(output, evidence.animationEvidence, runId, context, proof);
     if (suffixes.includesQueries) checkQueryEvidence(output, evidence.queryEvidence, runId, context, proof, evidence);
     if (suffixes.includesPrivateClipboard) checkPrivateClipboardEvidence(output, evidence.privateClipboardEvidence, runId, context, proof, evidence);
     if (suffixes.includesAsciiSgr) checkAsciiSgrEvidence(output, evidence, runId, context);

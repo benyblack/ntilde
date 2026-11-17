@@ -32,6 +32,7 @@ export function legacyPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc(?:133|633|78|9)|title-stack|osc-title)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|pxm)-[a-z-]+\.mjs';\n/gm, ''));
@@ -42,6 +43,7 @@ export function routedPrefixSource(bytes) {
     return Buffer.from(bytes.toString().replaceAll('\r\n', '\n')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-wrap-[a-z-]+|core-sgr-raster(?:-receipt)?|core-reverse-wide(?:-receipt)?)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-text-cursor(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }

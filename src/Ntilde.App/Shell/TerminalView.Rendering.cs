@@ -96,6 +96,56 @@ namespace Ntilde.Shell
             }
         }
 
+        private IDisposable? _kittyAnimationWake;
+        private long _kittyAnimationWakeDue;
+
+        /// <summary>
+        /// Moves running Kitty animations to the frame the clock is in before this frame snapshots the
+        /// buffer, then arms one wake-up for the next change. Nothing is armed while no animation with
+        /// a placement is running, so a still image costs no timer. Elapsed time, not the number of
+        /// frames drawn, selects the frame.
+        /// </summary>
+        private void AdvanceKittyAnimations(TerminalBuffer buffer, bool schedule)
+        {
+            // Advancing is a pure function of the clock, so doing it for an offscreen capture (AgentHost live capture, PNG export) shows exactly what the
+            // live view would show at that instant and consumes nothing a later live frame would not have consumed: the capture sees time, it changes none.
+            // A buffer that never animates (or a held one) costs no lock and no clock read on this hot path.
+            if (buffer.KittyAnimationPaused || !buffer.HasKittyAnimations) return;
+            long now = buffer.KittyAnimationClock();
+            // Only a placement in the rows on screen asks to be woken: an animated image scrolled into history costs no redraws.
+            int firstVisibleLine;
+            buffer.Lock.EnterReadLock();
+            try { firstVisibleLine = Math.Max(0, buffer.InternalTotalLines - buffer.Rows - ScrollOffset); }
+            finally { buffer.Lock.ExitReadLock(); }
+            buffer.AdvanceKittyAnimations(now, out long? due, invalidate: false, firstVisibleLine: firstVisibleLine);
+            // A retired view arms nothing, whatever a render it still receives finds running.
+            if (!schedule || _retired || due is not { } at) return;
+            if (_kittyAnimationWake is not null && _kittyAnimationWakeDue > now && _kittyAnimationWakeDue <= at) return;
+            _kittyAnimationWake?.Dispose();
+            _kittyAnimationWakeDue = at;
+            _kittyAnimationWake = DispatcherTimer.RunOnce(() => OnKittyAnimationWake(), TimeSpan.FromMilliseconds(Math.Max(1, at - now)), DispatcherPriority.Render);
+        }
+
+        /// <summary>
+        /// The animation's next change is due. A synchronized-output batch (<c>CSI ? 2026 h</c>) holds repaints until it ends, and the repaint it ends
+        /// with arms the next wake, so nothing is requested while one is open. True when a repaint was requested.
+        /// </summary>
+        internal bool OnKittyAnimationWake()
+        {
+            _kittyAnimationWake = null;
+            if (_retired || _buffer?.IsSynchronizedOutput == true) return false;
+            InvalidateVisual();
+            return true;
+        }
+
+        internal bool KittyAnimationWakeArmedForTest => _kittyAnimationWake is not null;
+
+        private void CancelKittyAnimationWake()
+        {
+            _kittyAnimationWake?.Dispose();
+            _kittyAnimationWake = null;
+        }
+
         public override void Render(DrawingContext context)
         {
             var buffer = _buffer; // Capture local reference to prevent it becoming null mid-render (race condition)
@@ -108,6 +158,7 @@ namespace Ntilde.Shell
             }
 
             DisposeRetiredImageBitmaps();
+            AdvanceKittyAnimations(buffer, schedule: _offscreenRenderDepth == 0);
 
             // Failsafe: Ensure we have fonts, but even if we don't, we should draw a background
             // to avoid "white panes"

@@ -5,7 +5,7 @@ import { rawInputCapture } from './input-bytes.mjs';
 import { inputPriorCaptureCap } from './input-plan.mjs';
 import { imagePlan, imageRestore, imageModeQueries, checkImages } from './static-images.mjs';
 
-const write = (output, bytes) => new Promise((resolve, reject) => {
+export const write = (output, bytes) => new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => finish(new Error('Image fixture write timed out.')), 1000);
     const finish = error => {

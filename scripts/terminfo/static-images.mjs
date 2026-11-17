@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { snapshotHash, screenSnapshot } from './agent-observer.mjs';
@@ -142,8 +143,10 @@ export function buildStaticImageReport(frames, actions, seal, runId, output, pri
         initialSnapshot: 0, restoredSnapshot: 30, snapshots: frames, actions, seal,
         caseResults: builder.caseResults(), observations: builder.observations };
 }
-class StaticImageReport {
-    constructor(frames, actions, runId, output, priorChallenges) {
+/** Frame, action, pixel and seal validation shared by every image-carrier suite; a suite supplies its plan, prefixes and state through `suite`. */
+export class StaticImageReport {
+    constructor(frames, actions, runId, output, priorChallenges, suite = staticImageSuite) {
+        this.suite = suite;
         this.frames = frames; this.actions = actions; this.runId = runId; this.output = output;
         this.initial = frames[0].screen; this.paneId = frames[0].paneId; this.bound = imageBoundScreen(this.initial, runId);
         checkImages(pristineImageBaseline(this.initial) && this.initial.rows >= 8 && this.initial.cols >= 60);
@@ -151,22 +154,22 @@ class StaticImageReport {
     }
     validateFrame(frame, index, entry) {
         validateImageOwnership(frame.ownership, this.frames[0].ownership, this.initial);
-        checkImages(frame.index === index && frame.kind === 'images-' + entry.kind && frame.paneId === this.paneId
+        checkImages(frame.index === index && frame.kind === this.suite.prefix + entry.kind && frame.paneId === this.paneId
             && frame.caseId === (entry.caseId ?? null) && frame.stageId === (entry.stageId ?? null));
         for (const screen of [frame.screen, frame.afterScreen]) screenSnapshot(screen, false, true, true, true, true);
         const expectedScreen = ['start', 'finish'].includes(entry.kind) ? this.initial : this.bound;
         checkImages(frame.sha256 === snapshotHash(frame.screen) && frame.afterSha256 === snapshotHash(frame.afterScreen)
             && snapshotHash(frame.screen) === snapshotHash(expectedScreen) && snapshotHash(frame.afterScreen) === snapshotHash(expectedScreen));
     }
-    readPixels(frame, index) {
+    readPixels(frame, index, entry) {
         checkImages(frame.pixels?.length === 2);
         const pixels = frame.pixels.map((pixel, side) => {
-            checkImages(pixel.file === `image-pixels/frame-${String(index).padStart(3, '0')}-${side}.png`);
-            const value = retainedImagePixel(this.output, pixel, frame.screen, frame.kind); this.total += value.image.width * value.image.height;
+            checkImages(pixel.file === `${this.suite.pixelDir}/frame-${String(index).padStart(3, '0')}-${side}.png`);
+            const value = this.suite.retainPixel(this.output, pixel, frame.screen, frame.kind); this.total += value.image.width * value.image.height;
             const stable = stableImageContext(value.details); this.context ??= stable; checkImages(stable === this.context);
             return value;
         });
-        checkImages(this.total <= totalPixelLimit && frame.pixels[0].sha256 === frame.pixels[1].sha256
+        checkImages(this.total <= totalPixelLimit && (this.suite.pairMayDiffer(entry) || frame.pixels[0].sha256 === frame.pixels[1].sha256)
             && snapshotHash(frame.pixels[0].renderDetails) === snapshotHash(frame.pixels[1].renderDetails)
             && snapshotHash(frame.pixels[0].imageDetails) === snapshotHash(frame.pixels[1].imageDetails));
         return pixels;
@@ -178,18 +181,14 @@ class StaticImageReport {
         checkImages(this.lastTime <= actionTime && actionTime <= frameTime); this.lastTime = frameTime;
         checkImages(action.index === index - 1 && frame.actionIndex === action.index && action.kind === frame.kind
             && action.caseId === frame.caseId && action.stageId === frame.stageId);
-        if (entry.kind === 'read' && !this.states.has(entry.caseId)) {
-            checkImages(Number.isSafeInteger(action.number) && action.number >= 1 && action.number <= 0xffffffff
-                && ![...this.states.values()].some(value => value.number === action.number));
-            this.states.set(entry.caseId, { number: action.number, firstId: null, ids: [] });
-        }
-        const state = this.states.get(entry.caseId) ?? {}, expected = imageAction(entry, state, this.runId, this.initial.cursorVisible);
+        if (entry.kind === 'read' && !this.states.has(entry.caseId)) this.states.set(entry.caseId, this.suite.registerState(action, this.states));
+        const state = this.states.get(entry.caseId) ?? {}, expected = this.suite.action(entry, state, this.runId, this.initial.cursorVisible);
         checkImages(action.commandHex === Buffer.from(expected.command).toString('hex') && action.commandSha256 === pngHash(Buffer.from(expected.command))
-            && action.skipReason === expected.skipReason && action.number === (state.number ?? null) && action.firstId === (state.firstId ?? null));
+            && action.skipReason === expected.skipReason && this.suite.factsMatch(action, state));
         return { action, state, expected };
     }
     readReply(frame) {
-        const argb = frame.kind === 'images-finish' ? this.initialBackground : 0xff101010;
+        const argb = frame.kind === this.suite.prefix + 'finish' ? this.initialBackground : 0xff101010;
         const { replyBytes, backgroundQuery } = imageRawReplies(frame.capture, this.used, argb);
         this.backgrounds.push({ snapshot: frame.index, argb, query: backgroundQuery });
         return replyBytes;
@@ -247,29 +246,57 @@ class StaticImageReport {
         });
     }
     processFrame(frame, index) {
-        const entry = index ? imagePlan[index - 1] : { kind: 'start' };
-        this.validateFrame(frame, index, entry); const pixels = this.readPixels(frame, index);
+        const entry = index ? this.suite.plan[index - 1] : { kind: 'start' };
+        this.validateFrame(frame, index, entry); const pixels = this.readPixels(frame, index, entry);
         if (!index) {
             checkImages(frame.capture === null && frame.actionIndex === null); this.initialPixel = frame.pixels[0].sha256;
             this.initialBackground = pixels[0].details.theme.backgroundArgb;
             checkImages(pixels[0].imageDetails.totalPlacements === 0);
-            this.lastTime = Date.parse(frame.ownership.at); return;
+            this.lastTime = Date.parse(frame.ownership.at); this.initialFrameFacts(frame); return;
         }
         const facts = this.validateAction(frame, index, entry), replyBytes = this.readReply(frame);
         if (entry.kind !== 'read') this.checkControl(entry, frame, pixels, replyBytes);
         else this.observe(entry, index, pixels, replyBytes, facts);
     }
+    /** Hook: a suite that records more than the shared facts reads them from the initial frame here. */
+    initialFrameFacts() { /* none in the shared base */ }
     checkSeal(seal) {
         const last = this.frames.at(-1).capture;
         validateImageOwnership(seal?.ownership, this.frames[0].ownership, this.initial);
         checkImages(this.lastTime <= Date.parse(seal.ownership.at));
-        checkImages(seal?.failed === false && seal.disposed === true && seal.attempts === 30 && seal.lastAttempt?.completed === true
+        checkImages(seal?.failed === false && seal.disposed === true && seal.attempts === this.suite.plan.length && seal.lastAttempt?.completed === true
         && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
         && seal.lastAttempt.hex === last.hex + Buffer.from(last.barrier).toString('hex')
         && snapshotHash(seal.lastAttempt.nonces) === snapshotHash(last.nonces));
-        for (const input of imageInputs()) {
+        for (const input of this.suite.inputs()) {
             const stat = lstatSync(join(this.output, input.file)); checkImages(stat.isFile() && !stat.isSymbolicLink() && stat.size === input.bytes.length);
             checkImages(pngHash(readFileSync(join(this.output, input.file))) === input.sha256);
         }
     }
 }
+
+function acceptStaticReply(reply, entry, states) {
+    const item = staticImageCases.find(value => value.id === entry.caseId), stage = item.stages.find(value => value.id === entry.stageId);
+    const state = states.get(entry.caseId), result = imageReply(reply.toString('ascii'), item, stage, state);
+    if (result.id === null) return;
+    state.ids.push(result.id);
+    if (['store', 'store-first'].includes(stage.id)) state.firstId = result.id;
+}
+/** What the shared observer and report need to know about the static-image suite; another image-carrier suite supplies its own. */
+export const staticImageSuite = Object.freeze({
+    plan: imagePlan, prefix: 'images-', pixelDir: 'image-pixels', inputDir: 'image-inputs', priorCap: inputPriorCaptureCap, recordSpan: false,
+    inputs: imageInputs, action: imageAction, buildReport: buildStaticImageReport, retainPixel: retainedImagePixel, acceptReply: acceptStaticReply,
+    captureKind: kind => kind, pairMayDiffer: () => false,
+    newState(states) {
+        let number;
+        do { number = randomInt(1, 0x100000000); } while ([...states.values()].some(value => value.number === number));
+        return { number, firstId: null, ids: [] };
+    },
+    actionFacts: state => ({ number: state.number ?? null, firstId: state.firstId ?? null }),
+    registerState(action, states) {
+        checkImages(Number.isSafeInteger(action.number) && action.number >= 1 && action.number <= 0xffffffff
+            && ![...states.values()].some(value => value.number === action.number));
+        return { number: action.number, firstId: null, ids: [] };
+    },
+    factsMatch: (action, state) => action.number === (state.number ?? null) && action.firstId === (state.firstId ?? null),
+});

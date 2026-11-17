@@ -142,7 +142,7 @@ public sealed class VtTools
         // Classify DCS representations from untouched input before alias normalization.
         string original = sequence.TrimStart();
         // Real ESC bytes or an escape notation mean exact bytes, not a readable spelling with formatting spaces.
-        bool rawBytes = original.Contains('\u001b') || original.Contains("\\x1b", System.StringComparison.OrdinalIgnoreCase)
+        bool rawBytes = original.Contains('\u001b') || original.Contains('\u009d') || original.Contains("\\x1b", System.StringComparison.OrdinalIgnoreCase)
             || original.Contains("\\e", System.StringComparison.OrdinalIgnoreCase);
         DcsInputRepresentation dcsRepresentation = ClassifyDcsInput(original);
 
@@ -371,6 +371,7 @@ public sealed class VtTools
         if (upper.StartsWith("ESC]", System.StringComparison.Ordinal)) oscBody = s.Substring(4);
         else if (upper.StartsWith("ESC ]", System.StringComparison.Ordinal)) oscBody = s.Substring(5);
         else if (upper.StartsWith("OSC", System.StringComparison.Ordinal)) oscBody = s.Substring(3);
+        else if (s.StartsWith('\u009d')) oscBody = s.Substring(1);
         if (oscBody is not null)
         {
             string body = oscBody.Trim().TrimStart(' ');
@@ -430,7 +431,7 @@ public sealed class VtTools
         // Only the explicit abstract catalog spelling may omit framing.
         if (!rawBytes && original.StartsWith("OSC", StringComparison.OrdinalIgnoreCase)) return abstractBody;
         string? framed;
-        if (original.StartsWith("\x1b]", StringComparison.Ordinal)) framed = original;
+        if (OscIntroducerLength(original) > 0) framed = original;
         else if (original.StartsWith("\\x1b", StringComparison.OrdinalIgnoreCase) || original.StartsWith("\\e", StringComparison.OrdinalIgnoreCase))
         {
             if (original.Any(char.IsControl)) return null;
@@ -441,9 +442,17 @@ public sealed class VtTools
         }
         else if (!rawBytes) framed = TextualOscFraming(original);
         else return null;
-        if (framed is null || !framed.StartsWith("\x1b]", StringComparison.Ordinal)) return null;
+        if (framed is null) return null;
+        int open = OscIntroducerLength(framed);
+        if (open == 0) return null;
         int close = framed.EndsWith('\x07') ? 1 : TerminatorLength(framed);
-        return close > 0 && framed.Length >= 2 + close ? framed[2..^close] : null;
+        return close > 0 && framed.Length >= open + close ? framed[open..^close] : null;
+    }
+
+    private static int OscIntroducerLength(string framed)
+    {
+        if (framed.StartsWith("\x1b]", StringComparison.Ordinal)) return 2;
+        return framed.StartsWith('\u009d') ? 1 : 0;
     }
 
     private static string? TextualOscFraming(string original)

@@ -14,7 +14,7 @@ const expressions = literals.map(literal => new RegExp(literal.slice(1, -1)));
 const alternatives = literal => [...literal.matchAll(/\(\?:([^()]*)\)/g)].map(match => match[1].split('|'));
 
 test('the runner dispatches request kinds through three anchored expressions and one prefix set', () => {
-    assert.equal(literals.length, 3, 'images, resize and input; the untranslated cell suites use the prefix set');
+    assert.equal(literals.length, 3, 'images (static-image and animation), resize and input; the untranslated cell suites use the prefix set');
     assert.ok(literals.every(literal => literal.startsWith('/^') && literal.endsWith('$/')));
 });
 
@@ -34,6 +34,7 @@ test('the dispatch accepts exactly prefix-suffix pairs and rejects near misses',
     for (const prefix of untranslatedCellPrefixes) for (const suffix of untranslatedCellSteps) assert.ok(untranslatedCellKind(`${prefix}-${suffix}`), `${prefix}-${suffix}`);
     for (const miss of ['cell-apply', 'cell-start\n', 'cell-startx', 'xcell-start', 'cell-', '-start', 'cell-start-start', 'scrl', 'CELL-START', ' cell-start', 'cell-start ', '', undefined]) assert.equal(untranslatedCellKind(miss), false, JSON.stringify(miss));
     assert.ok(images.test('images-seal') && !images.test('images-control') && !images.test('image-start'));
+    assert.ok(images.test('kan-seal') && images.test('kan-admit') && !images.test('kan-control') && !images.test('kans-start') && !images.test('kan-start\n'));
     assert.ok(resize.test('resize-abort') && !resize.test('resize-seal') && !resize.test('resize-start\n'));
     assert.ok(input.test('input-control') && !input.test('input-finish2') && !input.test('inputs-start'));
 });

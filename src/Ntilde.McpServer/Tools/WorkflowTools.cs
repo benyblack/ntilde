@@ -140,6 +140,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/TerminalCapabilities.cs",
             "src/Ntilde.VT/AnsiParser.KittyGraphics.cs",
             "src/Ntilde.VT/AnsiParser.KittyLifecycle.cs",
+            "src/Ntilde.VT/AnsiParser.KittyAnimation.cs",
             "src/Ntilde.VT/AnsiParser.StateTransfer.cs",
             "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs",
             "tests/Ntilde.VT.Tests/CsiParamClampTests.cs" }),
