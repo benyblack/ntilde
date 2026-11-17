@@ -114,6 +114,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'query-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
     'reset-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
     'insert-replace-publication-projection.test.mjs': 'unit test of the projection of the registered insert-replace suite',
+    'kitty-animation-persistent-publication.test.mjs': 'second measurement of the already registered extensions.kitty-graphics.animation, in a live persistent tab by its own receipt (no stock run); it adds no benchmark-suite claim or id',
     'common-core-publication.test.mjs': 'common-harness comparison, a different evidence class from owned effect contracts',
     'core-erase-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
     'core-reverse-wide-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',

@@ -10,7 +10,7 @@ export function terminalFence(input, output, timeoutMs = 1000) {
         pending?.finish(error);
     };
     const receive = chunk => {
-        if (!pending) return fail(new Error('Unexpected input during cell collection.'));
+        if (!pending) return fail(new Error('Unexpected input during cell collection. Bytes: ' + chunk.subarray(0, 32).toString('hex')));
         const limit = pending.expected ? 512 : 128;
         if (pending.bytes.length + chunk.length > limit) return fail(new Error('Invalid or oversized barrier response.'));
         pending.bytes += chunk.toString('latin1');

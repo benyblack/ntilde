@@ -1,0 +1,68 @@
+{
+  "proofs": [
+    {
+      "privateClipboard": {
+        "policy": "private-app-storage-parent-transactions-v1",
+        "appBirth": "Tue Nov 17 15:45:51 2026",
+        "workerBirth": "Tue Nov 17 15:45:52 2026",
+        "outputDevice": {
+          "dev": "1018044615",
+          "rdev": "268435457",
+          "ino": "138473"
+        },
+        "originalTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600"
+      },
+      "app": {
+        "pid": 80090,
+        "ppid": 80085,
+        "uid": 501,
+        "tty": "??",
+        "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde"
+      },
+      "worker": {
+        "pid": 80118,
+        "ppid": 80091,
+        "uid": 501,
+        "tty": "ttys001",
+        "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+      },
+      "tty": "/dev/ttys001",
+      "at": "2026-11-17T15:45:52.772Z",
+      "kittyAnimation": {
+        "policy": "owned-kitty-animation-paired-raw-render-v2",
+        "actions": []
+      },
+      "terminalOutput": {
+        "tool": "/bin/stty",
+        "outputProcessing": false,
+        "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;",
+        "verifiedAt": "2026-11-17T15:45:52.826Z"
+      }
+    }
+  ],
+  "completed": false,
+  "collectionScope": {
+    "id": "owned-kitty-animation-persistent-v1",
+    "persistence": "KeepOnClose",
+    "suites": [
+      "kitty-animation"
+    ],
+    "deadlineMs": 300000
+  },
+  "persistentDaemon": {
+    "identity": {
+      "pid": 80091,
+      "uid": 501,
+      "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde"
+    },
+    "command": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde mux serve",
+    "birth": "Tue Nov 17 15:45:52 2026",
+    "appBirth": "Tue Nov 17 15:45:51 2026",
+    "descriptor": {
+      "pid": 80091,
+      "processName": "Ntilde",
+      "endpoint": "/Users/behnam/.ntilde-qa/nt-NLbbpU/appdata/mux/mux.sock"
+    }
+  },
+  "cleanedUpAt": "2026-11-17T15:45:53.254Z"
+}
