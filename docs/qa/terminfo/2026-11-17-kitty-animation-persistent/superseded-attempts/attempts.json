@@ -201,6 +201,31 @@
           "bytes": 112466
         }
       ]
+    },
+    {
+      "attempt": "owned-JYQcC1",
+      "runId": "6cd71813dc53d39b04328c3a1592b095",
+      "scripts": "39fac4de",
+      "collection": "persistent-animation scope",
+      "outcome": "24/24 passed",
+      "reason": "A complete run on the scripts after the Sonar and CodeRabbit fixes (source policy v66), published second. Merging main (the OSC 720 batch: source policy v67, receipt 74, changes to the runner, worker and launcher) changed the measured graph, so it is superseded by a fresh run on the merged tree.",
+      "files": [
+        {
+          "file": "owned-JYQcC1/animation-observations.json",
+          "sha256": "1252e35e5db95f68f445f9910295ae0a7069fab719babbf488fdee9b4977363e",
+          "bytes": 977862
+        },
+        {
+          "file": "owned-JYQcC1/persistent-animation-receipt.json",
+          "sha256": "a81a66221ea4cfcc8edd4a602a5783c403feaf2b5eec69d5bf154576174cd011",
+          "bytes": 914
+        },
+        {
+          "file": "owned-JYQcC1/ownership-proof.json",
+          "sha256": "419a014846e23e7a2904b659d67f9634270708445e0a4fc950ccfc266f7692e3",
+          "bytes": 112443
+        }
+      ]
     }
   ]
 }

@@ -52,7 +52,7 @@ test('the owned run independently re-derives its receipt, lineage, report and th
     assert.equal(verified.receipt.suiteId, persistentAnimationReceiptSuiteId);
     assert.deepEqual(verified.receipt.collectionScope, persistentAnimationScope);
     assert.equal(verified.receipt.fixtureRemoved, true);
-    assert.equal(verified.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v66');
+    assert.equal(verified.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v67');
     assert.equal(verified.context.ownedAnimationPolicy, kittyAnimationCarrierPolicy);
     const projected = await persistentAnimationQualification(root, { appRevision: measuredAppRevision, scriptsRevision: measuredScriptsRevision }, read(pinnedBundleArchive));
     assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
@@ -154,8 +154,8 @@ test('every persistent control is checked, and a violated one is refused by the 
 test('every development and measurement attempt is retained with its real outcome, and none of them is the published run', () => {
     const attempts = JSON.parse(read('superseded-attempts/attempts.json')), published = JSON.parse(read('summary.json')).ownedRunId;
     assert.equal(attempts.schemaVersion, 1);
-    assert.equal(attempts.attempts.length, 8);
-    assert.deepEqual(attempts.attempts.map(item => item.outcome), ['no evidence', 'no evidence', 'no evidence', 'no evidence', 'no evidence', 'no evidence', '24/24 passed', '24/24 passed']);
+    assert.equal(attempts.attempts.length, 9);
+    assert.deepEqual(attempts.attempts.map(item => item.outcome), ['no evidence', 'no evidence', 'no evidence', 'no evidence', 'no evidence', 'no evidence', '24/24 passed', '24/24 passed', '24/24 passed']);
     for (const item of attempts.attempts) {
         assert.notEqual(item.runId, published);
         assert.ok(item.reason.length > 20 && item.scripts.length > 0 && item.files.length >= 2, item.attempt);
