@@ -43,6 +43,13 @@
       "scriptsCommit": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
       "failedAt": null,
       "reason": "A complete, successful run (owned run c3a92cc0b2e369916ccd75a6374bbf74, stock collector run 88bce0cebbabf15faab519e0fc1d75f5) on the tree before PR 1016 (Kitty animation PNG frames) merged: effect unsupported, every control held, receipt 73. Superseded only by the remeasurement on the merged tree, which gave the identical conclusion; it is kept as a complete run, not a failure."
+    },
+    {
+      "file": "superseded/attempt-7.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "f538abb9de3ef72d7dbd0ae649d85db6c832e244",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run 7b3a588563d29ef1fa74ce9d9260e62c, stock collector run 19ab1c7fe2cee695151b967daf6fe5c7) whose grading compared only the screen text between the two reads of an experiment. Codex review showed that would credit a view move that also changed attributes, cursor mode or terminal modes; the grading now compares the complete stored screen except the separately measured history, and the run was repeated. Same conclusion; kept as a complete run."
     }
   ]
 }

@@ -16,9 +16,9 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), 'c65bfd281b88d18bf2244ca14d73ce85ad647eec07d3fb70512688079eda134a');
+    assert.equal(hash(manifestBytes), 'b94864d4783e3f6162bf9b7f1d3cd6f1cd5bdcabd96a583beae37fe6b257b783');
     const manifest = JSON.parse(manifestBytes);
-    assert.equal(Object.keys(manifest.archives).length, 7, 'the final run, five retained failed attempts and the earlier complete run');
+    assert.equal(Object.keys(manifest.archives).length, 8, 'the final run, five retained failed attempts and two earlier complete runs');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-osc720-publication-'));
     try {
