@@ -43,7 +43,7 @@ export function makeOsc22Experiments(runId) {
 }
 
 /** Only for the existing stored-state oracle: pointer requests are not text/cursor mutations. */
-export const withoutPointerSequences = text => text.replace(/\x1b\]22;[^\x07\x1b]*(?:\x07|\x1b\\)/g, '');
+export const withoutPointerSequences = text => text.replace(/\x1b\]22;[^\x07\x1b]*(?:\x07|\x1b\\)/g, ''); // NOSONAR - the stored-state oracle must remove literal OSC ESC/BEL/ST framing bytes
 
 export function replayOsc22PinnedStatic(cursor) {
     const position = [cursor[0] + 1, cursor[1] + 1];

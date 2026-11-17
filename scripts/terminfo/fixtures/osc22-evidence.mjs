@@ -28,7 +28,7 @@ export function syntheticOsc22Evidence({ runId = 'a'.repeat(32), adjust = null, 
         const feeds = [], reads = [];
         for (const step of contract.plan) {
             if (step.feed !== undefined) { feeds.push(step.feed); continue; }
-            const state = simulateOsc133(feeds.map(withoutPointerSequences), fixture);
+            const state = simulateOsc133(feeds.map(feed => withoutPointerSequences(feed)), fixture);
             const pointer = structuredClone(contract.expected);
             adjust?.(contract.name, pointer);
             const screen = expectedOsc133Screen(bound, state);

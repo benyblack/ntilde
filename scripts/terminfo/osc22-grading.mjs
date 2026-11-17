@@ -71,7 +71,9 @@ function grade(experiments) {
     ];
     const required = reads.filter(({ experiment }) => experiment.role !== 'control')
         .map(({ experiment, read }) => ({ id: experiment.name, held: matched(read) }));
-    return { outcome: !validity.every(item => item.held) ? 'inconclusive' : required.every(item => item.held) ? 'supported' : 'unsupported', validity, required };
+    let outcome = 'inconclusive';
+    if (validity.every(item => item.held)) outcome = required.every(item => item.held) ? 'supported' : 'unsupported';
+    return { outcome, validity, required };
 }
 
 /** The pinned terminal path rebuilt from its journaled cursor alone: the verdict depends on no observation. */
