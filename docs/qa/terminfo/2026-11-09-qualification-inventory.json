@@ -3769,9 +3769,9 @@
     },
     {
       "suite": "kitty-animation",
-      "suiteId": "ntilde-owned-kitty-animation-qualification-v1",
-      "contractsVersion": 1,
-      "liveContractsVersion": 1,
+      "suiteId": "ntilde-owned-kitty-animation-qualification-v2",
+      "contractsVersion": 2,
+      "liveContractsVersion": 2,
       "publication": "2026-11-16-kitty-animation/",
       "doc": "2026-11-16-kitty-animation-qualification.md",
       "caseCount": 1,
@@ -3779,44 +3779,44 @@
         "extensions.kitty-graphics.animation"
       ],
       "evidence": {
-        "files": 30,
-        "bytes": 22010958,
-        "sha256": "076d43e6ca380a9e1496802323444a90c7c07f0c15321c963f9e93aa4dd0cb57"
+        "files": 32,
+        "bytes": 22881648,
+        "sha256": "14b132a3d6119642eb628e5e7eb2ebed600b33c317c55d643f571ccdba9ebe75"
       },
       "receipt": {
         "schemaVersion": 70,
-        "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+        "runId": "dfe73776db79207ba766b2486324a681",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "dee2e8d7d85dfddf0ffe1eb9de563db454b8de18af01470064e7cc5e650c8fd2"
+          "sha256": "cf9a251d8c8a3138675ef72b35955d2e4d0f292a9345e87be37ef7a4b6c17646"
         },
         "suiteEvidence": {
-          "suiteId": "ntilde-owned-kitty-animation-v1",
+          "suiteId": "ntilde-owned-kitty-animation-v2",
           "file": "animation-observations.json",
-          "sha256": "2441ef5f19d827872afddaaae9d3fd0a10264c94eebecfc3e9b449846ebf0f20",
+          "sha256": "6ccfe9d0448baa0244e58543693ed7a903034c6958ac359b35a2a7bc6e917878",
           "counts": {
-            "passed": 18
+            "passed": 24
           }
         }
       },
       "run": {
-        "ownedRunId": "f8738a9e6d01cff70a5029fa1e5f9197",
-        "measuredAt": "2026-11-17T07:04:34.986Z",
-        "appRevision": "9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e",
+        "ownedRunId": "dfe73776db79207ba766b2486324a681",
+        "measuredAt": "2026-11-17T08:32:42.434Z",
+        "appRevision": "4f4b294e202216d76c0cf07fe1dad6f824f6a947",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e",
+        "scriptsRevision": "4f4b294e202216d76c0cf07fe1dad6f824f6a947",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "2a95777a05e00170c5a03c634d18ac4ad05bf10d6a648706b964c9ef56d52ba4",
+        "collectorAdapterBundleSha256": "e11b9a6b5920f9bf0a739f3271cf5cf78d52805e3ea9f50ac326d75d3fcc8062",
         "gradingAdapterId": "ntilde-owned-macos-v1",
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v63",
-        "sourceSnapshotManifestSha256": "74b848b978b9ab2b7d5de250518472912395586f0b85c62a804a18e923a74ebe"
+        "sourceSnapshotManifestSha256": "49d78774e5cd515e226b0fc85c332c6747f5e3a4e66f9239df4caf295d50e4ce"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "6072cac853bc179316a1c853dd80d981",
+        "runId": "9398a85c0197804c15eab8de2ac02d5a",
         "counts": {
           "inconclusive": 161,
           "supported": 93,
@@ -3824,14 +3824,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "f64f0f0d2557c27baae2d648ff013f2c378a10cbf1e6b6d10d60a047434f765e",
+        "rawSha256": "c0724c435bbbeac28537fbf672696fea5c123e8c7f30daf40acedf7e8df0dfb6",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/kitty-animation-publication.test.mjs",
-        "testSha256": "a35af54bcb087531e8ebb0ac6dd090ecdbacefc7c1ad5b9c29a57f25782410b6"
+        "testSha256": "6156cba1846e3486ac539db1fb92d6839331574c41c377bb04bfcf0245960548"
       }
     }
   ],

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "suiteId": "ntilde-owned-kitty-animation-qualification-v1",
-  "carrierSuiteId": "ntilde-owned-kitty-animation-v1",
-  "contractsVersion": 1,
-  "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+  "suiteId": "ntilde-owned-kitty-animation-qualification-v2",
+  "carrierSuiteId": "ntilde-owned-kitty-animation-v2",
+  "contractsVersion": 2,
+  "runId": "dfe73776db79207ba766b2486324a681",
   "adapter": {
     "id": "ntilde-owned-macos-v1",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
@@ -12,7 +12,7 @@
       "extensions.kitty-graphics.animation": "4932e05f5f45fe474ebf7df9adf6eb248c04ebe5145b0b5c19fb51a5c72ea25f"
     }
   },
-  "scope": "One exact pinned terminfo.dev@4.0.0 case, extensions.kitty-graphics.animation. Both pinned callbacks (termless and terminal) are replayed from the retained pinned bundle and are always inconclusive. One separately identified effect contract composes the owned Kitty animation carrier: a retained 16x16 raw RGBA image with three solid frames held 5 s each, a stationary control, playback, loop and stop-freeze, over paired original offscreen PNGs, complete cell/mode reads, fresh raw fences and retained wall-clock brackets. Protocol acknowledgement and painted pixels are separate facts, and elapsed time is the App's own monotonic clock observed on a real desktop, not a synthetic presentation time. One image size, one gap length and the production frame subset only: no frame-rate or display-refresh cadence, PNG frames, root-frame composition, a=c, snapshot/persistent-session replay, remote/mux, other platforms, common-harness or stock-score claim.",
+  "scope": "One exact pinned terminfo.dev@4.0.0 case, extensions.kitty-graphics.animation. Both pinned callbacks (termless and terminal) are replayed from the retained pinned bundle and are always inconclusive. One separately identified effect contract composes the owned Kitty animation carrier: a retained 16x16 raw RGBA image with three solid frames held 5 s each, a stationary control, playback, loop and stop-freeze, plus half-transparent PNG frames and the root frame as a base and an edit target (chosen with a=a,c=, so no elapsed time is involved), over paired original offscreen PNGs, complete cell/mode reads, fresh raw fences and retained wall-clock brackets. Protocol acknowledgement and painted pixels are separate facts, and elapsed time is the App's own monotonic clock observed on a real desktop, not a synthetic presentation time. One image size, one gap length and one PNG encoding (8-bit RGBA, non-interlaced): no frame-rate or display-refresh cadence, other container formats or PNG encodings, a=c, snapshot/persistent-session replay, remote/mux, other platforms, common-harness or stock-score claim.",
   "cases": [
     {
       "caseId": "extensions.kitty-graphics.animation",
@@ -53,14 +53,15 @@
         }
       },
       "effectContract": {
-        "id": "ntilde-kitty-animation-playback-effect-v1",
-        "version": 1,
-        "statement": "A retained 16x16 raw RGBA image with two further frames added by a=f (z=5000 ms each, root gap 5000 ms) shows its root frame, stays on it past that gap while stopped, then after a=a,s=3 shows the second frame, the third frame and the root frame again at the times its gaps give (measured by paired offscreen captures against the App's wall clock), and after a=a,s=1 stays frozen on the frame it was showing past a hold that would have advanced it; every write is acknowledged OK and every cleared target is blank again.",
+        "id": "ntilde-kitty-animation-playback-effect-v2",
+        "version": 2,
+        "statement": "A retained 16x16 raw RGBA image with two further frames added by a=f (z=5000 ms each, root gap 5000 ms) shows its root frame, stays on it past that gap while stopped, then after a=a,s=3 shows the second frame, the third frame and the root frame again at the times its gaps give (measured by paired offscreen captures against the App's wall clock), and after a=a,s=1 stays frozen on the frame it was showing past a hold that would have advanced it. A half-transparent PNG frame (a=f,f=100) built over the root frame (c=1) shows the protocol's straight-alpha blend of the two when chosen with a=a,c=; after the root is edited (a=f,r=1) and shown again, a second PNG frame built over it shows the blend of the edited pixels instead of the original. Every write is acknowledged OK and every cleared target is blank again.",
         "primary": "https://sw.kovidgoyal.net/kitty/graphics-protocol/#animation",
         "carrierCases": [
           "kitty.animation.stopped-hold",
           "kitty.animation.playback",
-          "kitty.animation.stop-freeze"
+          "kitty.animation.stop-freeze",
+          "kitty.animation.png-and-root-frames"
         ],
         "validity": [
           {
@@ -71,7 +72,7 @@
           {
             "name": "carrier-policy",
             "held": true,
-            "detail": "the retained report is the paired raw render policy v1 animation report of this run"
+            "detail": "the retained report is the paired raw render policy v2 animation report of this run"
           },
           {
             "name": "raw-reader-healthy",
@@ -124,6 +125,10 @@
           {
             "caseId": "kitty.animation.stop-freeze",
             "result": "passed"
+          },
+          {
+            "caseId": "kitty.animation.png-and-root-frames",
+            "result": "passed"
           }
         ]
       },
@@ -162,8 +167,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794899005244,
-                    "end": 1794899005301
+                    "start": 1794904316015,
+                    "end": 1794904316083
                   }
                 }
               },
@@ -219,12 +224,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899005309,
-                    "latest": 1794899005330
+                    "earliest": 1794904316091,
+                    "latest": 1794904316103
                   },
                   "capture": {
-                    "start": 1794899005333,
-                    "end": 1794899005389
+                    "start": 1794904316105,
+                    "end": 1794904316160
                   }
                 }
               },
@@ -286,12 +291,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899005309,
-                    "latest": 1794899005330
+                    "earliest": 1794904316091,
+                    "latest": 1794904316103
                   },
                   "capture": {
-                    "start": 1794899011420,
-                    "end": 1794899011485
+                    "start": 1794904322183,
+                    "end": 1794904322243
                   }
                 }
               },
@@ -353,12 +358,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899005309,
-                    "latest": 1794899005330
+                    "earliest": 1794904316091,
+                    "latest": 1794904316103
                   },
                   "capture": {
-                    "start": 1794899011509,
-                    "end": 1794899011565
+                    "start": 1794904322264,
+                    "end": 1794904322320
                   }
                 }
               },
@@ -408,8 +413,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794899011667,
-                    "end": 1794899011723
+                    "start": 1794904322404,
+                    "end": 1794904322460
                   }
                 }
               },
@@ -465,12 +470,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899011731,
-                    "latest": 1794899011746
+                    "earliest": 1794904322467,
+                    "latest": 1794904322475
                   },
                   "capture": {
-                    "start": 1794899011749,
-                    "end": 1794899011809
+                    "start": 1794904322477,
+                    "end": 1794904322531
                   }
                 }
               },
@@ -534,16 +539,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899011731,
-                    "latest": 1794899011746
+                    "earliest": 1794904322467,
+                    "latest": 1794904322475
                   },
                   "start": {
-                    "earliest": 1794899011819,
-                    "latest": 1794899011830
+                    "earliest": 1794904322537,
+                    "latest": 1794904322545
                   },
                   "capture": {
-                    "start": 1794899011833,
-                    "end": 1794899011889
+                    "start": 1794904322547,
+                    "end": 1794904322602
                   }
                 }
               },
@@ -605,16 +610,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899011731,
-                    "latest": 1794899011746
+                    "earliest": 1794904322467,
+                    "latest": 1794904322475
                   },
                   "start": {
-                    "earliest": 1794899011819,
-                    "latest": 1794899011830
+                    "earliest": 1794904322537,
+                    "latest": 1794904322545
                   },
                   "capture": {
-                    "start": 1794899019366,
-                    "end": 1794899019464
+                    "start": 1794904330026,
+                    "end": 1794904330101
                   }
                 }
               },
@@ -676,16 +681,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899011731,
-                    "latest": 1794899011746
+                    "earliest": 1794904322467,
+                    "latest": 1794904322475
                   },
                   "start": {
-                    "earliest": 1794899011819,
-                    "latest": 1794899011830
+                    "earliest": 1794904322537,
+                    "latest": 1794904322545
                   },
                   "capture": {
-                    "start": 1794899024248,
-                    "end": 1794899024340
+                    "start": 1794904335007,
+                    "end": 1794904335086
                   }
                 }
               },
@@ -747,16 +752,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899011731,
-                    "latest": 1794899011746
+                    "earliest": 1794904322467,
+                    "latest": 1794904322475
                   },
                   "start": {
-                    "earliest": 1794899011819,
-                    "latest": 1794899011830
+                    "earliest": 1794904322537,
+                    "latest": 1794904322545
                   },
                   "capture": {
-                    "start": 1794899029288,
-                    "end": 1794899029436
+                    "start": 1794904340001,
+                    "end": 1794904340084
                   }
                 }
               },
@@ -818,16 +823,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899011731,
-                    "latest": 1794899011746
+                    "earliest": 1794904322467,
+                    "latest": 1794904322475
                   },
                   "start": {
-                    "earliest": 1794899011819,
-                    "latest": 1794899011830
+                    "earliest": 1794904322537,
+                    "latest": 1794904322545
                   },
                   "capture": {
-                    "start": 1794899029512,
-                    "end": 1794899029741
+                    "start": 1794904340104,
+                    "end": 1794904340158
                   }
                 }
               },
@@ -877,8 +882,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794899030102,
-                    "end": 1794899030353
+                    "start": 1794904340252,
+                    "end": 1794904340308
                   }
                 }
               },
@@ -934,12 +939,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899030389,
-                    "latest": 1794899030412
+                    "earliest": 1794904340317,
+                    "latest": 1794904340325
                   },
                   "capture": {
-                    "start": 1794899030426,
-                    "end": 1794899030582
+                    "start": 1794904340327,
+                    "end": 1794904340382
                   }
                 }
               },
@@ -1003,16 +1008,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899030389,
-                    "latest": 1794899030412
+                    "earliest": 1794904340317,
+                    "latest": 1794904340325
                   },
                   "start": {
-                    "earliest": 1794899030643,
-                    "latest": 1794899030659
+                    "earliest": 1794904340389,
+                    "latest": 1794904340395
                   },
                   "capture": {
-                    "start": 1794899030746,
-                    "end": 1794899030928
+                    "start": 1794904340397,
+                    "end": 1794904340452
                   }
                 }
               },
@@ -1074,16 +1079,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899030389,
-                    "latest": 1794899030412
+                    "earliest": 1794904340317,
+                    "latest": 1794904340325
                   },
                   "start": {
-                    "earliest": 1794899030643,
-                    "latest": 1794899030659
+                    "earliest": 1794904340389,
+                    "latest": 1794904340395
                   },
                   "capture": {
-                    "start": 1794899036674,
-                    "end": 1794899036828
+                    "start": 1794904346583,
+                    "end": 1794904346649
                   }
                 }
               },
@@ -1147,20 +1152,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899030389,
-                    "latest": 1794899030412
+                    "earliest": 1794904340317,
+                    "latest": 1794904340325
                   },
                   "start": {
-                    "earliest": 1794899030643,
-                    "latest": 1794899030659
+                    "earliest": 1794904340389,
+                    "latest": 1794904340395
                   },
                   "stop": {
-                    "earliest": 1794899036859,
-                    "latest": 1794899036877
+                    "earliest": 1794904346657,
+                    "latest": 1794904346664
                   },
                   "capture": {
-                    "start": 1794899036921,
-                    "end": 1794899037066
+                    "start": 1794904346666,
+                    "end": 1794904346719
                   }
                 }
               },
@@ -1222,20 +1227,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899030389,
-                    "latest": 1794899030412
+                    "earliest": 1794904340317,
+                    "latest": 1794904340325
                   },
                   "start": {
-                    "earliest": 1794899030643,
-                    "latest": 1794899030659
+                    "earliest": 1794904340389,
+                    "latest": 1794904340395
                   },
                   "stop": {
-                    "earliest": 1794899036859,
-                    "latest": 1794899036877
+                    "earliest": 1794904346657,
+                    "latest": 1794904346664
                   },
                   "capture": {
-                    "start": 1794899043176,
-                    "end": 1794899043289
+                    "start": 1794904352751,
+                    "end": 1794904352817
                   }
                 }
               },
@@ -1297,20 +1302,406 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794899030389,
-                    "latest": 1794899030412
+                    "earliest": 1794904340317,
+                    "latest": 1794904340325
                   },
                   "start": {
-                    "earliest": 1794899030643,
-                    "latest": 1794899030659
+                    "earliest": 1794904340389,
+                    "latest": 1794904340395
                   },
                   "stop": {
-                    "earliest": 1794899036859,
-                    "latest": 1794899036877
+                    "earliest": 1794904346657,
+                    "latest": 1794904346664
                   },
                   "capture": {
-                    "start": 1794899043401,
-                    "end": 1794899043552
+                    "start": 1794904352838,
+                    "end": 1794904352891
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "kitty.animation.png-and-root-frames",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.animation.png-and-root-frames.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1794904352983,
+                    "end": 1794904353037
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.animation.png-and-root-frames.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.blank",
+                  "snapshot": 23,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794904353051,
+                    "latest": 1794904353075
+                  },
+                  "capture": {
+                    "start": 1794904353077,
+                    "end": 1794904353132
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.png-and-root-frames.show",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the overRoot frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.blank",
+                  "snapshot": 23,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.build",
+                  "snapshot": 24,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "overRoot",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794904353051,
+                    "latest": 1794904353075
+                  },
+                  "capture": {
+                    "start": 1794904353149,
+                    "end": 1794904353203
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.png-and-root-frames.edit",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the third frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.blank",
+                  "snapshot": 23,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.show",
+                  "snapshot": 25,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "third",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794904353051,
+                    "latest": 1794904353075
+                  },
+                  "capture": {
+                    "start": 1794904353223,
+                    "end": 1794904353280
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.png-and-root-frames.compose",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the overEdit frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.blank",
+                  "snapshot": 23,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.edit",
+                  "snapshot": 26,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "overEdit",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794904353051,
+                    "latest": 1794904353075
+                  },
+                  "capture": {
+                    "start": 1794904353298,
+                    "end": 1794904353351
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.png-and-root-frames.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.blank",
+                  "snapshot": 23,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.png-and-root-frames.compose",
+                  "snapshot": 27,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1794904353051,
+                    "latest": 1794904353075
+                  },
+                  "capture": {
+                    "start": 1794904353366,
+                    "end": 1794904353420
                   }
                 }
               },

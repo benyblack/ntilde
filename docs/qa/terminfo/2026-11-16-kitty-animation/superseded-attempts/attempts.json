@@ -104,6 +104,15 @@
         "animation-observations.json": "2c971860bd89d023470f7f67a70815107c6fe07abf420f896e6b3a1057a10af5",
         "cell-receipt.json": "3bf3e2dd2f0bf6e36e3124011b6e206efd6205b15b7cfe799ab49d08f94cd135"
       }
+    },
+    {
+      "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+      "scriptsRevision": "9bc1fd9c",
+      "reason": "An eighth complete 18/18 run (effect supported, receipt schema 70, suite ntilde-owned-kitty-animation-v1 with three cases) on the App built from 9bc1fd9c, the run #1013 merged. Superseded, not failed: #1015 added PNG frames and the root frame as a base and edit target, and a fourth carrier case measuring them, so the suite, policy and effect contract moved to v2 and the whole collection was repeated on the new App and scripts. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "2441ef5f19d827872afddaaae9d3fd0a10264c94eebecfc3e9b449846ebf0f20",
+        "cell-receipt.json": "0ae8767f4ffa0828e16c912d925c6ad030f3d64614179e1621a787923e0c40f9"
+      }
     }
   ]
 }

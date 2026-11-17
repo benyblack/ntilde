@@ -9,6 +9,7 @@ import { completeOwnedReceipt } from './receipt.mjs';
 import { checkAnimationEvidence } from './kitty-animation-receipt.mjs';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 import { animationHoldMs } from './kitty-animation-cases.mjs';
+import { animationAppearanceColor, animationPngPins } from './kitty-animation-inputs.mjs';
 import { caseOutcome, gradeEffect, kittyAnimationCarrierPolicy, kittyAnimationCarrierSuiteId, kittyAnimationQualification, kittyAnimationQualificationIds,
     kittyAnimationQualificationSuiteId, measuredAppRevision, measuredScriptsRevision, pinnedBundleArchive, pinnedSpanDigests, replayPinnedAnimationProbe, validityControls } from './kitty-animation-qualification.mjs';
 
@@ -91,8 +92,8 @@ test('the effect result, the pinned divergence and the unchanged stock grade sta
     assert.equal(item.conclusion.outcome, 'supported');
     assert.ok(item.effectContract.validity.length >= 9 && item.effectContract.validity.every(value => value.held));
     assert.deepEqual(summary.carrier.caseResults.map(value => [value.caseId, value.result]),
-        [['kitty.animation.stopped-hold', 'passed'], ['kitty.animation.playback', 'passed'], ['kitty.animation.stop-freeze', 'passed']]);
-    assert.deepEqual(summary.carrier.counts, { passed: 18 });
+        [['kitty.animation.stopped-hold', 'passed'], ['kitty.animation.playback', 'passed'], ['kitty.animation.stop-freeze', 'passed'], ['kitty.animation.png-and-root-frames', 'passed']]);
+    assert.deepEqual(summary.carrier.counts, { passed: 24 });
     assert.deepEqual(summary.stockCollector.counts, { inconclusive: 161, supported: 93, unsupported: 1 });
     assert.equal(summary.stockCollector.suiteComplete, false);
 });
@@ -115,10 +116,23 @@ test('the retained wall-clock evidence puts every timed read inside its planned 
     assert.ok(report.observations.every(value => value.reply.passed === true));
 });
 
+test('PNG frames and the root frame as a base and edit target are shown as the blends the protocol gives, chosen without elapsed time', () => {
+    const report = retained(), stage = id => report.observations.find(value => value.featureId === 'kitty.animation.png-and-root-frames.' + id);
+    for (const [id, frame] of [['build', 'root'], ['show', 'overRoot'], ['edit', 'third'], ['compose', 'overEdit']]) {
+        const value = stage(id);
+        assert.equal(value.result, 'passed'); assert.equal(value.classification.frameId, frame); assert.equal(value.timing.clock, 'static'); assert.ok(value.reply.passed);
+    }
+    // The composed colors are the protocol's straight-alpha blends of the independently encoded PNG inputs, not whatever the App drew.
+    assert.deepEqual(animationAppearanceColor('overRoot'), { color: [127, 128, 0, 255], tolerance: 2 });
+    assert.deepEqual(animationAppearanceColor('overEdit'), { color: [128, 0, 127, 255], tolerance: 2 });
+    assert.equal(report.inputs.filter(item => item.file.endsWith('.png')).length, 2);
+    assert.deepEqual(report.inputs.filter(item => item.file.endsWith('.png')).map(item => item.sha256), [animationPngPins.overRoot, animationPngPins.overEdit]);
+});
+
 test('only the one requested case is qualified; the claim stays bounded', () => {
     const report = JSON.parse(read('report.json'));
     assert.equal(report.cases.length, 1);
-    for (const limit of ['PNG frames', 'root-frame composition', 'a=c', 'persistent-session', 'frame-rate or display-refresh cadence', 'common-harness or stock-score claim'])
+    for (const limit of ['other container formats or PNG encodings', 'a=c', 'persistent-session', 'frame-rate or display-refresh cadence', 'common-harness or stock-score claim'])
         assert.ok(report.scope.includes(limit), limit);
     assert.match(report.cases[0].effectContract.statement, /past a hold that would have advanced it/);
 });
@@ -191,8 +205,8 @@ test('a retained pixel, input, journal line or directory member that changed is 
 
 test('the superseded collection attempts are retained with their actual failures and none carries a grade', () => {
     const { attempts } = JSON.parse(readFileSync(join(dir, 'superseded-attempts', 'attempts.json')));
-    assert.equal(attempts.length, 11);
-    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]);
+    assert.equal(attempts.length, 12);
+    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]);
     assert.ok(attempts.every(item => item.runId !== original.animationEvidence.runId && item.reason.length > 40));
     for (const item of attempts) {
         assert.deepEqual(readdirSync(join(dir, 'superseded-attempts', item.runId)).sort(), Object.keys(item.retainedFiles).sort());
@@ -211,6 +225,8 @@ test('the superseded collection attempts are retained with their actual failures
     assert.match(attempts[8].reason, /Superseded, not failed/);
     assert.match(attempts[9].reason, /Superseded, not failed/);
     assert.match(attempts[10].reason, /Superseded, not failed/);
+    assert.match(attempts[11].reason, /Superseded, not failed/);
+    assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[11].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[10].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[9].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[8].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
