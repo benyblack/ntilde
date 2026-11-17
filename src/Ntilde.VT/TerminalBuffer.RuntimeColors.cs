@@ -22,7 +22,7 @@ public partial class TerminalBuffer
         var current = state.Current;
         bool empty = state.Stack.Length == 0 && !state.HasXtermState && current.Foreground is null && current.Background is null &&
             current.Cursor is null && current.SelectionBackground is null && current.SelectionForeground is null &&
-            current.Palette.All(color => color is null);
+            current.Palette.All(color => color is null) && current.SpecialColors.All(color => color is null);
         return empty ? null : state.Clone();
     }
 
@@ -114,7 +114,11 @@ public partial class TerminalBuffer
         var state = _runtimeColors;
         int target = slot <= 0 ? state.XtermUsed - 1 : slot - 1;
         if (target is < 0 or >= TerminalRuntimeColors.MaxXtermSlots || state.XtermSlots?[target] is not { } frame) return;
-        var next = state.WithColors(frame, state.Stack);
+        // The xterm palette stack covers dynamic colors and palette entries, not rxvt's OSC 5 resources.
+        // Published arrays are immutable; keep the live special slots while restoring the saved render colors.
+        var restored = frame.Clone();
+        restored.SpecialColors = state.Current.SpecialColors;
+        var next = state.WithColors(restored, state.Stack);
         next.XtermSlots = state.XtermSlots;
         next.XtermUsed = target;
         next.XtermLast = state.XtermLast;
@@ -130,7 +134,7 @@ public partial class TerminalBuffer
 
     private void PublishRuntimeColors(TerminalRuntimeColors next)
     {
-        bool changed = !_runtimeColors.Current.HasSameColors(next.Current);
+        bool changed = !_runtimeColors.Current.HasSameRenderColors(next.Current);
         Volatile.Write(ref _runtimeColors, next);
         if (!changed) return;
         _runtimeTheme = null;

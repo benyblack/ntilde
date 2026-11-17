@@ -1,3 +1,4 @@
+import { isOsc5ForkScope, isOsc5V64Scope } from './collection-scope.mjs';
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,7 +13,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const check = value => { if (!value) throw new Error('Invalid or incomplete OSC cell-size receipt.'); };
 const policyNumber = context => Number(/^readonly-owned-source-graph-v(\d+)$/.exec(context.sourceSnapshotPolicy ?? '')?.[1] ?? 0);
 export function includesCellSizeEvidence(output, evidence, context) {
-    return (policyNumber(context) >= 63 && !isKittyAnimationPolicy63(context)) || evidence.cellSizeEvidence !== undefined
+    return (policyNumber(context) >= 63 && !isKittyAnimationPolicy63(context) && !isOsc5ForkScope(context) && !isOsc5V64Scope(context)) || evidence.cellSizeEvidence !== undefined
         || ['cellSizeAdapterId', 'cellSizeSuiteId', 'cellSizeBundleSha256', 'cellSizeContractsVersion'].some(key => context[key] !== undefined)
         || Object.keys(context).some(key => key.startsWith('cellSize') && key.endsWith('Sha256'))
         || artifacts.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined);
