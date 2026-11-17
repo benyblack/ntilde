@@ -648,6 +648,25 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void Skipping_whole_cycles_leaves_the_same_visible_frame_as_stepping_through_them_even_around_a_gapless_frame()
+    {
+        Harness Build()
+        {
+            var h = new Harness();
+            h.Send("a=f,i=1,f=32,s=2,v=1,z=-1", Solid(0, 255, 0, 255));      // a gapless second frame
+            h.Send("a=a,i=1,r=1,z=100"); h.Replies.Clear();
+            h.Now = 0; h.Send("a=a,i=1,c=2,s=3,v=3"); h.Replies.Clear();    // positioned on the gapless frame, two passes
+            return h;
+        }
+        var direct = Build(); direct.Advance(100);
+        var stepped = Build(); stepped.Advance(0); stepped.Advance(100);
+        var a = direct.Buffer.FindKittyImage(1, 0)!.Animation!; var b = stepped.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal((a.State, a.Current, a.Displayed, a.LoopsRemaining), (b.State, b.Current, b.Displayed, b.LoopsRemaining));
+        Assert.Equal(0, a.Displayed);                                          // the gapless frame is never the one on screen
+        Assert.Same(direct.FramePixels(0), direct.Shown);
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();

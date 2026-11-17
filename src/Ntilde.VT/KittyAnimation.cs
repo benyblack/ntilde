@@ -185,6 +185,19 @@ internal sealed class KittyAnimation
         if (LoopsRemaining >= 0) whole = Math.Min(whole, LoopsRemaining);
         FrameStartMs += whole * cycle;
         if (LoopsRemaining >= 0) LoopsRemaining -= (int)whole;
+        // The skipped cycles passed through every visible frame, so what is on screen is the last visible frame at or before the playhead,
+        // exactly as stepping through them one by one would have left it (a gapless frame is never displayed).
+        Displayed = NearestVisibleAtOrBefore(Current);
+    }
+
+    private int NearestVisibleAtOrBefore(int index)
+    {
+        for (int back = 0; back < Frames.Count; back++)
+        {
+            int candidate = ((index - back) % Frames.Count + Frames.Count) % Frames.Count;
+            if (Hold(Frames[candidate]) > 0) return candidate;
+        }
+        return index;
     }
 
     /// <summary>When the next frame change is due, or null when nothing is running.</summary>
