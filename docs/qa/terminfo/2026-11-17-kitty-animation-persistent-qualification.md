@@ -60,7 +60,7 @@ display-refresh cadence. The full collection in a persistent tab is not claimed.
 
 `2026-11-17-kitty-animation-persistent/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy, the generated `summary.json` and
 `report.json`, and `superseded-attempts/` with `attempts.json` (each attempt, its scripts commit, outcome and reason, and the SHA-256 of each retained file). The published run is
-`6cd71813dc53d39b04328c3a1592b095`, measured on the scripts and App of commit `39fac4de`.
+`6cd71813dc53d39b04328c3a1592b095`, measured on the scripts and App of commit `39fac4de`: the assembler checks that commit against the run's recorded digests for the scripts, while the App revision is operator-supplied (a built binary's digest cannot name a commit).
 
 Eight earlier attempts are retained with their real outcomes. Six produced no evidence: a temporary persistence switch on the full collection (the direct-child ownership proof cannot hold),
 the daemon descriptor read with the wrong field casing, unexpected input in the first suite, Resize failing after the first resize, a missing proof slot in the first dedicated runner, and the
