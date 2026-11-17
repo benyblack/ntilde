@@ -36,7 +36,8 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?osc(?:22|720)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc(?:133|633|78|9)|title-stack|osc-title)-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size)-[a-z-]+\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:xcs|xss|xsv|mex|kcl|osc5|osc3008|osc720|osc22|caps|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -47,7 +48,8 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?osc(?:22|720)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-text-cursor(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size)-[a-z-]+\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:xcs|xss|xsv|mex|kcl|osc5|osc3008|osc720|osc22|caps|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -983,7 +985,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc22 = false, osc720 = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc22 = false, osc720 = false, caps = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -1031,13 +1033,16 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (osc3008) {
             await addOsc3008Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
+        if (caps) {
+            await addCapsEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
         if (osc720) {
             await addOsc720Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
         if (osc22) {
             await addOsc22Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc720 || osc22) writerFor(output)('context.json', context);
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc720 || osc22 || caps) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1232,6 +1237,27 @@ async function addOsc3008Evidence({ output, write, context, evidence, lrMarginsB
     evidence.osc3008Evidence = { runId: context.runId, suiteId: osc3008SuiteId, file: 'ocx-observations.json', sha256: hash(readFileSync(join(output, 'ocx-observations.json'))),
         runFile: 'ocx-run.json', runSha256: hash(readFileSync(join(output, 'ocx-run.json'))), adapterBundleSha256: hash(osc3008Bytes),
         contractsVersion: osc3008ContractsVersion, counts: osc3008Counts(osc3008Report), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in iTerm2 feature-reporting suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */
+async function addCapsEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticCapsEvidence } = await import('./caps-evidence.mjs');
+    const { buildCapsGradingReport } = await import('../caps-grading.mjs');
+    const { capsCounts } = await import('../caps-receipt.mjs');
+    const { adaptCapsCollector, capsAdapterId } = await import('../caps-grading-collector.mjs');
+    const { capsSuiteId, capsContractsVersion } = await import('../caps-contracts.mjs');
+    const capsBytes = Buffer.from(adaptCapsCollector(lrMarginsBytes.toString()));
+    const caps = syntheticCapsEvidence({ runId: context.runId, bundleSha256: hash(capsBytes) });
+    caps.adapter = { ...caps.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const capsReport = buildCapsGradingReport(caps.frames, caps.run, context.runId, caps.adapter);
+    write('caps-observations.json', capsReport);
+    write('caps-run.json', caps.run);
+    writeFileSync(join(output, 'caps-snapshots.jsonl'), caps.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-caps.mjs'), capsBytes);
+    Object.assign(context, { capsAdapterId, capsSuiteId, capsBundleSha256: hash(capsBytes), capsContractsVersion });
+    evidence.capsEvidence = { runId: context.runId, suiteId: capsSuiteId, file: 'caps-observations.json', sha256: hash(readFileSync(join(output, 'caps-observations.json'))),
+        runFile: 'caps-run.json', runSha256: hash(readFileSync(join(output, 'caps-run.json'))), adapterBundleSha256: hash(capsBytes),
+        contractsVersion: capsContractsVersion, counts: capsCounts(capsReport), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Synthetic OSC 22 receipt evidence, not a runtime measurement. */

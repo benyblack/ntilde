@@ -58,6 +58,7 @@ import { collectXssGrading } from './xss-collector.mjs';
 import { collectXsvGrading } from './xsv-collector.mjs';
 import { collectKclGrading } from './kcl-collector.mjs';
 import { collectOsc5Grading } from './osc5-collector.mjs';
+import { collectCapsGrading } from './caps-collector.mjs';
 import { collectOsc3008 } from './osc3008-collector.mjs';
 import { collectOsc720 } from './osc720-collector.mjs';
 import { collectOsc22 } from './osc22-collector.mjs';
@@ -516,6 +517,12 @@ try {
             if (createHash('sha256').update(osc3008Source).digest('hex') !== config.osc3008BundleSha256) throw new Error('Local OSC 3008 adapter bundle changed.');
             const osc3008Result = await collectOsc3008({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc3008Bundle).href) });
             if (osc3008Result.status === 'complete') writeFileSync(join(config.output, 'ocx-run.json'), JSON.stringify(osc3008Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered iTerm2 feature-reporting qualification follows the OSC 3008 suite on the same exclusively owned fence; it changes no color and leaves the baseline title written.
+        const capsSource = readFileSync(config.capsBundle);
+        if (createHash('sha256').update(capsSource).digest('hex') !== config.capsBundleSha256) throw new Error('Local feature-reporting adapter bundle changed.');
+        const capsModule = await import(pathToFileURL(config.capsBundle).href);
+        const capsRun = await collectCapsGrading({ config, fence, owner, gradingModule: capsModule });
+        writeFileSync(join(config.output, 'caps-run.json'), JSON.stringify(capsRun) + '\n', { flag: 'wx', mode: 0o600 });
             // The layered rxvt OSC 720 qualification follows the OSC 3008 suite on the same fence. A typed refusal of its first observation is retained by the parent as its typed
             // marker (written before it answers), so the worker writes nothing and the run continues. It leaves no history, the live view and the blank baseline screen.
             const osc720Source = readFileSync(config.osc720Bundle);

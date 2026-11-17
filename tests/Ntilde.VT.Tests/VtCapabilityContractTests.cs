@@ -38,6 +38,26 @@ public sealed class VtCapabilityContractTests
         Assert.Equal(expected, Assert.Single(responses));
     }
 
+    /// <summary>
+    /// Pins the iTerm2 feature-reporting reply: the declared code string is transcribed literally
+    /// (specification table order), without a host OSC 52 answer the <c>Cw</c> code is omitted, and
+    /// with one it is declared — the same gate as XTGETTCAP <c>Ms</c>.
+    /// </summary>
+    private static void AssertOscCapabilities(string request, string expectedWithoutClipboardWrite, string expectedWithClipboardWrite)
+    {
+        var responses = new List<string>();
+        var parser = new AnsiParser(new TerminalBuffer(80, 24));
+        parser.OnResponse = responses.Add;
+        parser.Process(request);
+        Assert.Equal(expectedWithoutClipboardWrite, Assert.Single(responses));
+
+        var accepting = new AnsiParser(new TerminalBuffer(80, 24)) { ClipboardWriteAvailable = () => true };
+        var acceptingResponses = new List<string>();
+        accepting.OnResponse = acceptingResponses.Add;
+        accepting.Process(request);
+        Assert.Equal(expectedWithClipboardWrite, Assert.Single(acceptingResponses));
+    }
+
     private static readonly Dictionary<string, Action> ContractCases =
         new(StringComparer.Ordinal)
         {
@@ -95,6 +115,7 @@ public sealed class VtCapabilityContractTests
             ["modify-other-keys-query"] = AssertModifyOtherKeysQuery,
             ["iterm2-cell-size"] = () => AssertOscCellSize("\x1b]1337;ReportCellSize\a", "\x1b]1337;ReportCellSize=18;8;2\x1b\\"),
             ["urxvt-cell-size"] = () => AssertOscCellSize("\x1b]776;?\a", "\x1b]776;16;36;26\a"),
+            ["iterm2-capabilities"] = () => AssertOscCapabilities("\x1b]1337;RequestCapabilities\a", "\x1b]1337;Capabilities=T3LrMSc7UTs3BFGsGoSyHNoP\x1b\\", "\x1b]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\x1b\\"),
         };
 
     [Fact]
@@ -169,6 +190,7 @@ public sealed class VtCapabilityContractTests
             ["modify-other-keys-query"] = "\x1b[>4;2m\x1b[?4mA",
             ["iterm2-cell-size"] = "\x1b]1337;ReportCellSize\aA",
             ["urxvt-cell-size"] = "\x1b]776;?\x1b\\A",
+            ["iterm2-capabilities"] = "\x1b]1337;RequestCapabilities\aA",
         };
 
     /// <summary>Pins the advertised partial text contract without claiming image-plane erasure or protected-cell support.</summary>

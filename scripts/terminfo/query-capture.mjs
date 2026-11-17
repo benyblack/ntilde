@@ -5,11 +5,11 @@ import { queryAction, queryBinding, queryBound, checkQueries as check,
     queryPlan, queryPrior, queryPriorCounts, queryScreen, validateQueryOwnership, pristineQuery, buildQueryReport, queryContext } from './queries.mjs';
 
 export class OwnedQueryObserver {
-    #binding; #attest; #readers; #prior; #used; #initial; #baseline; #expected; #checksumReport; #marginsReport; #noticeReport; #deviceReport; #colorReport; #specialColorReport;
+    #binding; #attest; #readers; #prior; #used; #initial; #baseline; #expected; #checksumReport; #marginsReport; #noticeReport; #deviceReport; #colorReport; #specialColorReport; #capabilitiesReport;
     #actions = []; #frames = []; #pending; #seal; #report; #failed = false; #busy = false; #attempt; #failure;
     constructor(options) {
-        const { binding, attest, rpc, endpoint, appData, priorChallenges = [], checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false } = options;
-        check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean' && typeof noticeReport === 'boolean' && typeof deviceReport === 'boolean' && typeof colorReport === 'boolean' && typeof specialColorReport === 'boolean'); this.#deviceReport = deviceReport; this.#colorReport = colorReport; this.#specialColorReport = specialColorReport; this.#checksumReport = checksumReport; this.#marginsReport = marginsReport; this.#noticeReport = noticeReport;
+        const { binding, attest, rpc, endpoint, appData, priorChallenges = [], checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false, capabilitiesReport = false } = options;
+        check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean' && typeof noticeReport === 'boolean' && typeof deviceReport === 'boolean' && typeof colorReport === 'boolean' && typeof specialColorReport === 'boolean' && typeof capabilitiesReport === 'boolean'); this.#deviceReport = deviceReport; this.#colorReport = colorReport; this.#specialColorReport = specialColorReport; this.#capabilitiesReport = capabilitiesReport; this.#checksumReport = checksumReport; this.#marginsReport = marginsReport; this.#noticeReport = noticeReport;
         this.#binding = queryBinding(binding); this.#prior = queryPrior(priorChallenges);
         check(queryPriorCounts.includes(this.#prior.length) && typeof attest === 'function'); this.#attest = attest; this.#used = new Set(this.#prior);
         const facts = { appData, ownerPid: this.#binding.ownerPid, profileName: this.#binding.profileName,
@@ -68,7 +68,7 @@ export class OwnedQueryObserver {
         check(this.#pending?.index === index && index === this.#frames.length);
         const entry = queryPlan[index], before = this.#pending.before.screen;
         this.#pending.capture = capture;
-        const comparison = inspectQueryWitness(queryContext(before, this.#checksumReport, this.#marginsReport, this.#noticeReport, this.#deviceReport, this.#colorReport, this.#specialColorReport), entry.id ?? queryPlan[1].id, capture);
+        const comparison = inspectQueryWitness(queryContext(before, this.#checksumReport, this.#marginsReport, this.#noticeReport, this.#deviceReport, this.#colorReport, this.#specialColorReport, this.#capabilitiesReport), entry.id ?? queryPlan[1].id, capture);
         const nonceKey = comparison.orderingNonces.join(','); check(!this.#used.has(nonceKey)); this.#used.add(nonceKey);
         if (entry.kind !== 'query') {
             check(capture.byteLength === 0);
@@ -82,7 +82,7 @@ export class OwnedQueryObserver {
         check(this.#frames.length === 44 && !this.#pending && !this.#seal);
         this.#seal = { status, ownership: structuredClone(await this.#attest(budget)) };
         const input = { binding: this.#binding, priorChallenges: this.#prior, initial: this.#initial,
-            actions: this.#actions, frames: this.#frames, seal: this.#seal, ...(this.#checksumReport ? { checksumReport: true } : {}), ...(this.#marginsReport ? { marginsReport: true } : {}), ...(this.#noticeReport ? { noticeReport: true } : {}), ...(this.#deviceReport ? { deviceReport: true } : {}), ...(this.#colorReport ? { colorReport: true } : {}), ...(this.#specialColorReport ? { specialColorReport: true } : {}) };
+            actions: this.#actions, frames: this.#frames, seal: this.#seal, ...(this.#checksumReport ? { checksumReport: true } : {}), ...(this.#marginsReport ? { marginsReport: true } : {}), ...(this.#noticeReport ? { noticeReport: true } : {}), ...(this.#deviceReport ? { deviceReport: true } : {}), ...(this.#colorReport ? { colorReport: true } : {}), ...(this.#specialColorReport ? { specialColorReport: true } : {}), ...(this.#capabilitiesReport ? { capabilitiesReport: true } : {}) };
         this.#report = buildQueryReport(input);
         check(snapshotHash(this.#report.readerCounts) === snapshotHash(this.#readers.map(reader => reader.snapshots)));
         return { sealed: true };

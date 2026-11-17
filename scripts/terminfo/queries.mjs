@@ -22,13 +22,18 @@ export const deviceQueryPolicy = 'owned-exact-query-paired-raw-state-v4';
 /** v5 additionally owes the kitty OSC 21 foreground reply, a framed `rgb:rr/gg/bb` value the App answers since it implements the kitty
  * color-control protocol; every v1 to v4 run keeps the silence expectation. */
 export const colorQueryPolicy = 'owned-exact-query-paired-raw-state-v5';
-/** v6 (the policy new runs record) additionally owes the rxvt special-color reply to q07.extensions.osc5-special-color, one complete
+/** v6 additionally owes the rxvt special-color reply to q07.extensions.osc5-special-color, one complete
  * `OSC 5;0;rgb:rrrr/gggg/bbbb` frame the App answers since it implements the special-color protocol; every v1 to v5 run keeps the silence expectation. */
-export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v6';
-export const queryPolicies = Object.freeze([legacyQueryPolicy, marginsQueryPolicy, noticeQueryPolicy, deviceQueryPolicy, colorQueryPolicy, ownedQueryPolicy]);
-/** The policy a run's markers imply: v6 with the special-color marker, v5 with the color marker, v4 with the device marker, v3 with the notice marker, v2 with the margins marker only, v1 otherwise. */
-export function queryPolicyFor(marginsReport, noticeReport, deviceReport = false, colorReport = false, specialColorReport = false) {
-    if (specialColorReport) return ownedQueryPolicy;
+export const specialColorQueryPolicy = 'owned-exact-query-paired-raw-state-v6';
+/** v7 (the policy new runs record) additionally owes the iTerm2 feature-reporting reply to q07.extensions.osc1337-capabilities, the exact
+ * `OSC 1337 ; Capabilities = T3CwLrMSc7UTs3BFGsGoSyHNoP ST` literal the App answers since it implements the reply (the Cw code is declared
+ * because a direct pane's host accepts OSC 52 writes by default); every v1 to v6 run keeps the silence expectation. */
+export const ownedQueryPolicy = 'owned-exact-query-paired-raw-state-v7';
+export const queryPolicies = Object.freeze([legacyQueryPolicy, marginsQueryPolicy, noticeQueryPolicy, deviceQueryPolicy, colorQueryPolicy, specialColorQueryPolicy, ownedQueryPolicy]);
+/** The policy a run's markers imply: v7 with the capabilities marker, v6 with the special-color marker, v5 with the color marker, v4 with the device marker, v3 with the notice marker, v2 with the margins marker only, v1 otherwise. */
+export function queryPolicyFor(marginsReport, noticeReport, deviceReport = false, colorReport = false, specialColorReport = false, capabilitiesReport = false) {
+    if (capabilitiesReport) return ownedQueryPolicy;
+    if (specialColorReport) return specialColorQueryPolicy;
     if (colorReport) return colorQueryPolicy;
     if (deviceReport) return deviceQueryPolicy;
     if (noticeReport) return noticeQueryPolicy;
@@ -133,12 +138,12 @@ function inspectCapture(capture, context, id, used) {
 }
 /** The witness context of one query frame; `checksumReport` only when the run turned the off-by-default DECRQCRA report on and
  * `marginsReport` only under the v2 and v3 query policies and `noticeReport` only under v3. */
-export const queryContext = (screen, checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false) => ({ rows: screen.rows, cols: screen.cols, top: screen.bufferState.scrollTop + 1,
-    bottom: screen.bufferState.scrollBottom + 1, ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}), ...(noticeReport ? { noticeReport: true } : {}), ...(deviceReport ? { deviceReport: true } : {}), ...(colorReport ? { colorReport: true } : {}), ...(specialColorReport ? { specialColorReport: true } : {}) });
+export const queryContext = (screen, checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false, capabilitiesReport = false) => ({ rows: screen.rows, cols: screen.cols, top: screen.bufferState.scrollTop + 1,
+    bottom: screen.bufferState.scrollBottom + 1, ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}), ...(noticeReport ? { noticeReport: true } : {}), ...(deviceReport ? { deviceReport: true } : {}), ...(colorReport ? { colorReport: true } : {}), ...(specialColorReport ? { specialColorReport: true } : {}), ...(capabilitiesReport ? { capabilitiesReport: true } : {}) });
 export function buildQueryReport(input) {
-    const { binding: supplied, priorChallenges, initial, actions, frames, seal, checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false } = structuredClone(input);
-    check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean' && typeof noticeReport === 'boolean' && typeof deviceReport === 'boolean' && typeof colorReport === 'boolean' && typeof specialColorReport === 'boolean'
-        && (!noticeReport || marginsReport) && (!deviceReport || noticeReport) && (!colorReport || deviceReport) && (!specialColorReport || colorReport));
+    const { binding: supplied, priorChallenges, initial, actions, frames, seal, checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false, capabilitiesReport = false } = structuredClone(input);
+    check(typeof checksumReport === 'boolean' && typeof marginsReport === 'boolean' && typeof noticeReport === 'boolean' && typeof deviceReport === 'boolean' && typeof colorReport === 'boolean' && typeof specialColorReport === 'boolean' && typeof capabilitiesReport === 'boolean'
+        && (!noticeReport || marginsReport) && (!deviceReport || noticeReport) && (!colorReport || deviceReport) && (!specialColorReport || colorReport) && (!capabilitiesReport || specialColorReport));
     const binding = queryBinding(supplied), prior = queryPrior(priorChallenges), clock = { time: -Infinity };
     check(queryPriorCounts.includes(prior.length) && actions?.length === 44 && frames?.length === 44);
     const baseline = validateSample(initial.before, binding, null, clock), original = initial.before.beforeOwnership;
@@ -151,7 +156,7 @@ export function buildQueryReport(input) {
         const before = validateSample(frame.before, binding, original, clock);
         const after = validateSample(frame.after, binding, original, clock);
         check(snapshotHash(before) === snapshotHash(expected));
-        const comparison = inspectCapture(frame.capture, queryContext(before, checksumReport, marginsReport, noticeReport, deviceReport, colorReport, specialColorReport), entry.id ?? fixed[0].id, used);
+        const comparison = inspectCapture(frame.capture, queryContext(before, checksumReport, marginsReport, noticeReport, deviceReport, colorReport, specialColorReport, capabilitiesReport), entry.id ?? fixed[0].id, used);
         if (entry.kind === 'query') observations.push(comparison);
         else {
             check(frame.capture.byteLength === 0);
@@ -167,13 +172,14 @@ export function buildQueryReport(input) {
         && status.lastAttempt?.completed === true && status.lastAttempt.fenceRequested === true && status.lastAttempt.error === null
         && status.lastAttempt.hex === final.hex + Buffer.from(final.barrier).toString('hex')
         && snapshotHash(status.lastAttempt.nonces) === snapshotHash(final.nonces));
-    return { schemaVersion: 1, suiteId: querySuiteId, policy: queryPolicyFor(marginsReport, noticeReport, deviceReport, colorReport, specialColorReport), runId: binding.runId, binding, priorChallenges: prior, readerCounts: counts,
+    return { schemaVersion: 1, suiteId: querySuiteId, policy: queryPolicyFor(marginsReport, noticeReport, deviceReport, colorReport, specialColorReport, capabilitiesReport), runId: binding.runId, binding, priorChallenges: prior, readerCounts: counts,
         ...(checksumReport ? { checksumReport: 'AllowRectangleChecksumReport on in the initial settings: q07.editing.decrqcra owes the DECRQCRA reply' } : {}),
         ...(marginsReport ? { marginsReport: 'query policy v2: q12.decrqss.horizontal-margins owes the DECRQSS s reply, ESC P 1 $ r 1 ; cols s ESC \\' } : {}),
         ...(noticeReport ? { noticeReport: 'query policy v3: q07.extensions.osc99-kitty-notify owes the OSC 99 capability reply, ESC ] 99 ; i=ntilde-query-audit:p=? ; o=always:p=title,body ESC \\' } : {}),
         ...(deviceReport ? { deviceReport: 'query policy v4: q07.device.xtgetxres owes DCS 1 + R 7465726d4e616d65 = 787465726D2D323536636F6C6F72 ST and q07.device.xtreportcolors owes CSI ? 0 ; 0 # Q (this suite begins with RIS, which clears the xterm palette stack); q07.device.xtwinops-20 and q07.device.xtwinops-21 keep the silence expectation although the run turns AllowTitleReport on (their title and icon are the device-query suite run baseline, which this witness model cannot name), so they record a mismatch whose retained actual reply is that baseline label' } : {}),
         ...(colorReport ? { colorReport: 'query policy v5: q07.extensions.osc21-kitty-color owes one framed OSC 21 reply whose foreground value is rgb:rr/gg/bb (8-bit channels, ST-terminated); the host theme foreground is the run\'s own, so the witness checks the exact shape, while the effect contract in the kitty color-control layer measures exact values' } : {}),
         ...(specialColorReport ? { specialColorReport: 'query policy v6: q07.extensions.osc5-special-color owes one complete OSC 5;0;rgb:hhhh/hhhh/hhhh frame (one to four hex digits per channel, BEL or ST-terminated); the host theme foreground is the run\'s own, so the witness checks the exact shape, while the effect contract in the special-color layer measures exact values' } : {}),
+        ...(capabilitiesReport ? { capabilitiesReport: 'query policy v7: q07.extensions.osc1337-capabilities owes the exact ESC ] 1337 ; Capabilities = T3CwLrMSc7UTs3BFGsGoSyHNoP ST reply (the Cw code is declared because the direct pane\'s host accepts OSC 52 writes by default); the declaration and its per-code evidence live in iterm-feature-reporting.md and the capabilities layer\'s effect contract' } : {}),
         unobservedState: ['reverseVideo'],
         scope: 'Exact original query spellings and exposed cells/attributes/cursor/modes/margins/history. Reverse-video memory and appearance are unobserved; no preservation claim. Contract matches include explicit negative replies and observed silence; no feature-support score, hidden parser/title/native-state or physical-geometry claim.',
         observations, initial, actions, frames, seal };

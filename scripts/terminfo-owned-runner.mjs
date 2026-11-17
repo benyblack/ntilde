@@ -188,6 +188,11 @@ import { osc5ContractsVersion, osc5NoncePrefix, osc5Prefix, osc5SuiteId } from '
 import { buildOsc5GradingReport } from './terminfo/osc5-grading.mjs';
 import { osc5Counts } from './terminfo/osc5-receipt.mjs';
 import { Osc5Observer } from './terminfo/osc5-capture.mjs';
+import { adaptCapsCollector, capsAdapterId } from './terminfo/caps-grading-collector.mjs';
+import { capsContractsVersion, capsNoncePrefix, capsPrefix, capsSuiteId } from './terminfo/caps-contracts.mjs';
+import { buildCapsGradingReport } from './terminfo/caps-grading.mjs';
+import { capsCounts } from './terminfo/caps-receipt.mjs';
+import { CapsObserver } from './terminfo/caps-capture.mjs';
 import { adaptOsc720Collector, osc720AdapterId } from './terminfo/osc720-grading-collector.mjs';
 import { osc720CaseIds, osc720ContractsVersion, osc720Prefix, osc720SuiteId } from './terminfo/osc720-contracts.mjs';
 import { buildOsc720Report, matchesOsc720Baseline, osc720Counts, osc720ObserverPlan } from './terminfo/osc720-grading.mjs';
@@ -1739,6 +1744,31 @@ async function retainOsc22Evidence(output, runId, osc22Bundle, upstream, unavail
         contractsVersion: osc22ContractsVersion, counts: osc22Counts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered iTerm2 feature-reporting grading extension over the left/right-margin one (a sibling of the special-color, OSC 720, OSC 22, cell-size and OSC 3008 layers). */
+function prepareCapsCollector(tool, lrMarginsBundle, output) {
+    const adapted = adaptCapsCollector(readFileSync(lrMarginsBundle));
+    const capsBundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-caps-${capsBundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== capsBundleSha256) throw new Error('Derived feature-reporting bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-caps.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, capsBundleSha256 };
+}
+
+/** Re-derive the feature-reporting report parent-side from the paired journal and the worker's run log, replaying both pinned paths from the retained derived bundle. */
+async function retainCapsEvidence(output, runId, capsBundle, upstream) {
+    const runBytes = readFileSync(join(output, 'caps-run.json'));
+    const frames = readFileSync(join(output, 'caps-snapshots.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapterBytes = readFileSync(join(output, 'collector-caps.mjs'));
+    const adapter = { id: capsAdapterId, derivedFromAdapterId: lrMarginsAdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    const replayModule = await import(pathToFileURL(capsBundle).href);
+    const report = buildCapsGradingReport(frames, JSON.parse(runBytes), runId, adapter, { replayModule });
+    writeJson(join(output, 'caps-observations.json'), report);
+    return { runId, suiteId: capsSuiteId, file: 'caps-observations.json', sha256: hash(readFileSync(join(output, 'caps-observations.json'))),
+        runFile: 'caps-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: capsContractsVersion, counts: capsCounts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Derive and lock the layered XTGETTCAP grading extension over the title/icon-stack one. */
 function prepareXtgettcapCollector(tool, titleStackBundle, output) {
     const adapted = adaptXtgettcapCollector(readFileSync(titleStackBundle));
@@ -2520,6 +2550,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             xsv: 'layered versioned collector extension; pinned modes.xtsave (CSI ? 7 s) and modes.xtrestore (CSI ? 7 r), both always inconclusive by construction (they measure DA1 and cursor responsiveness, never saved-mode state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read and preserved, beside the separately identified effect contract ntilde-xterm-saved-modes-effect-v1 graded by an independent oracle written from xterm\'s control sequence text: silence of both sequences, and after restores the stored DECAWM (also as a pending wrap after a character in the last column), DECOM, DECLRMM and DECTCEM state, each mode returning to its saved value in both polarities, only the listed modes restored, a list restoring together, a second save replacing the first, neither sequence being SCOSC, SCORC or DECSTBM, each exchange leaving the complete screen, cursor, margins, insert mode and active screen unchanged; values the text does not list, a repeated restore, the ?1048 cursor save and the cursor move of a restored ?6 are policy groups that never decide; stored state, no rendering, no claim for the input-side, mouse, alternate-screen, reverse-wrap or sixel modes and no stock-grade claim.',
             kcl: 'layered versioned collector extension; pinned extensions.osc21-kitty-color (OSC 21;foreground=? ST, a query-only probe the stock collector also grades), both pinned paths replayed byte-exactly over the journaled raw replies of their own fenced exchange, beside the separately identified effect contract ntilde-kitty-color-control-effect-v1 graded by an independent oracle written from kitty\'s color-control protocol text: exact 8-bit rgb replies for foreground, background, cursor, the selection colors and palette entries set by other sequences (OSC 4, 10, 11, 12, 17, 19), each key alone and together in request order, ST-terminated replies to BEL requests, set-then-query and the numeric encodings read back through the oracle\'s own parser and through OSC 10/4 replies, a bare key restoring the baseline reply, unknown keys as Base64 unknown fields, every exchange leaving the complete screen, cursor, margins, modes and active screen unchanged; color names, alpha, the empty (dynamic) value, cursor_text, oversize sequences and the field cap are policy groups that never decide; raw replies and state, no rendering or painted-pixel claim.',
             osc22: 'bounded basic OSC 22 setters: requested shape and actual Avalonia Cursor kind via paired metadata; pinned terminal CPR-only inconclusive retained; no native pointer-image, full Kitty, mux/replay or stock-score claim',
+            caps: 'layered versioned collector extension; pinned extensions.osc1337-capabilities (OSC 1337 ; RequestCapabilities BEL, a query-only probe the stock collector also grades whose valid pattern accepts any feature string), both pinned paths replayed byte-exactly over the journaled raw replies of their own fenced exchange, beside the separately identified effect contract ntilde-osc1337-capabilities-effect-v1 graded by an independent literal written from the iTerm2 feature-reporting specification code table over this terminal implemented, tested capabilities: the exact pinned request, the same request ended by ST answered by the same ST-terminated reply, two requests answered by two identical replies in request order, and silence for an unsolicited Capabilities assignment, a bare or query Capabilities form, a suffixed or wrong-case request and another OSC, with the exact request still answered after them; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged; the measured run direct pane accepts OSC 52 writes under its default initial settings so the declaration includes Cw, a host that cannot answer omits it (policy, unit-tested, not measured here); Aw, Uw and the measured-unsupported Sx stay undeclared; the per-code behavior of every declared capability is owned by that capability own implementations and tests; raw replies and state, no rendering or painted-pixel claim.',
             osc3008: 'layered versioned collector extension; pinned extensions.osc3008-context (no termless function; the terminal path writes two strings, ESC[1;1H ESC[2K and OSC 3008;type=test BEL, then asks for the cursor position and returns unmeasuredCellResult, inconclusive by construction; the payload is not a UAPI.15 start or end) replayed byte-exactly over the journaled cursor, with the unchanged pinned code re-run from the retained derived bundle, and preserved, beside the separately identified effect contract ntilde-osc3008-context-effect-v1 graded by an independent oracle written from UAPI.15 v1.0 over paired complete stored cells, pane metadata (including the untrusted stored context stack and ended records) and session status: start and end of one and nested contexts, the specification example, an update flushing metadata and ending sub-contexts, BEL and ST terminators, id bounds, field validity (unknown and invalid fields ignored, ABNF bounds, escapes), end metadata, a soft terminal reset leaving the stack alone, and negative controls (the pinned payload, foreign spellings, OSC 133/633 not creating a context and a context not changing title, working directory or shell state); the stack depth, the ended-record ring, end-ends-sub-contexts, repeated fields and bare backslashes are policy groups that never decide; stored untrusted metadata only: no presentation (breadcrumbs, tinting, actions), command-assist or agent use, no hangup, RIS or alternate-screen claim, no real-program emission, remote/mux, Windows/Linux or stock-grade claim',
             osc5: 'layered versioned collector extension; pinned extensions.osc5-special-color (OSC 5;0;? BEL, a query-only probe the stock collector also grades), both pinned paths replayed byte-exactly over the journaled raw replies of their own fenced exchange, beside the separately identified effect contract ntilde-osc5-special-colors-effect-v1 graded by an independent oracle written from rxvt\'s special-color text: chained numeric selector/value pairs (0 bold, 1 underline, 2 blink, 3 reverse, 4 italic) over a five-slot resource set separate from the OSC 4 palette, the OSC 10-19 dynamic colors and the kitty OSC 21 keys (pinned by within-exchange reply equalities), per-slot and bare OSC 105 resets, the numeric encodings, reply order and the ST terminator; numeric selectors 0-4 only, ignored unmodeled selectors, malformed pairs, the oversize cap, set-only silence and the default-foreground slot default are policy groups that never decide; raw replies and state, no rendering or painted-pixel claim.',
             osc720: 'layered versioned collector extension; pinned extensions.osc720-scroll-up (the bare OSC 720 BEL, which has no `;` and which rxvt-unicode therefore does not dispatch): the terminal path (two writes and a cursor query, always inconclusive) and the termless function (30 fed lines, two scrollback reads, replayed unchanged over a parent-built scrollback context mapped from the App view position) preserved, beside a separately identified effect contract graded from the App view scroll position, stored history, cursor and screen with wheel and ED 3 observer controls; no stock grades.',
@@ -2605,6 +2636,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'ovu-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ocx-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'ptr-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'caps-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'crst-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         for (const prefix of [...Object.keys(detailSpecs), 'pixel', 'color', ...Object.keys(editingSpecs), 'resize', 'saved', 'metadata', 'input', 'image', 'query'])
             writeFileSync(join(output, `${prefix}-snapshots.jsonl`), '', { flag: 'wx', mode: 0o600 });
@@ -2985,6 +3017,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             }
         };
         let osc3008State;
+        let capsObserver;
         const recordOsc3008Unavailable = reason => {
             writeJson(join(output, 'ocx-unavailable.json'), { schemaVersion: 1, runId, suiteId: osc3008SuiteId, status: 'unavailable', reason, plannedCases: 1 });
             osc3008State.unavailable = true;
@@ -3019,6 +3052,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 if (initialMetadataRefusal(request, error, state.observer)) recordOsc3008Unavailable(error.code);
                 throw metadataFailure(request, error, state.observer);
             }
+        };
+        /** The feature-reporting suite follows the OSC 3008 suite; a report read also journals the raw reply list bound to its barrier. */
+        const observeCaps = async (request, budget) => {
+            // The feature-reporting suite binds its own nonce against the pane; it does not depend on the OSC 3008 suite's outcome.
+            capsObserver ??= new CapsObserver({ appData, ownerPid: app.pid, profileName,
+                nonce: `${capsNoncePrefix}${runId}`, expectedPaneId: cellObserver.paneId });
+            const result = await capsObserver.handle(request, budget);
+            appendFileSync(join(output, 'caps-snapshots.jsonl'), JSON.stringify(capsObserver.frames.at(-1)) + '\n');
+            return result;
         };
         let osc22State;
         const recordOsc22Unavailable = reason => {
@@ -3474,6 +3516,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (prefix === osc133Prefix) return observeOsc133(request, budget);
             if (prefix === osc633Prefix) return observeOsc633(request, budget);
             if (prefix === osc3008Prefix) return observeOsc3008(request, budget);
+            if (prefix === capsPrefix) return observeCaps(request, budget);
             if (prefix === osc22Prefix) return observeOsc22(request, budget);
             if (prefix === osc78Prefix) return observeOsc78(request, budget);
             if (prefix === titleStackPrefix) return observeTitleStack(request, budget);
