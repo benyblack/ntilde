@@ -43,6 +43,9 @@ docs/qa/terminfo/2026-11-04-input-observations.json text eol=lf
 # by this one and kept only as the record of which files carry digests.
 docs/qa/terminfo/**/*.json text eol=lf
 
+# The Kitty animation publication retains superseded runs' App output as text and pins each file by raw SHA-256.
+docs/qa/terminfo/2026-11-16-kitty-animation/superseded-attempts/**/*.txt text eol=lf
+
 # The remote shell-integration snippets (V2 Phase 2b) are pasted onto a remote POSIX host, so a CRLF
 # working tree would put `$'\r': command not found` on every line of the file the user just wrote.
 # `*.sh` above already covers most of them. `RemoteShellIntegrationSnippets.Read` normalizes as
