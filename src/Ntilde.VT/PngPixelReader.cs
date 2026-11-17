@@ -49,37 +49,63 @@ internal static class PngPixelReader
         return true;
     }
 
+    /// <summary>What reading the chunks has gathered so far.</summary>
+    private sealed class Chunks
+    {
+        internal Header Header;
+        internal bool HaveHeader, Ended, HaveData;
+        internal readonly Ancillary Ancillary = new();
+        internal readonly System.Buffers.ArrayBufferWriter<byte> Idat = new();
+    }
+
     private static bool TryReadChunks(ReadOnlySpan<byte> png, int maxDimension, out Header header, out Ancillary ancillary, out byte[] compressed)
     {
-        header = default;
-        ancillary = new Ancillary();
-        compressed = [];
+        var state = new Chunks();
+        (header, ancillary, compressed) = (default, state.Ancillary, []);
         if (!png.StartsWith(Signature)) return false;
-        var idat = new MemoryStream();
-        bool haveHeader = false, ended = false, haveData = false;
         int position = Signature.Length;
-        while (position + 12 <= png.Length && !ended)
-        {
-            uint length = BinaryPrimitives.ReadUInt32BigEndian(png[position..]);
-            if (length > int.MaxValue || position + 12L + length > png.Length) return false;
-            ReadOnlySpan<byte> type = png.Slice(position + 4, 4), data = png.Slice(position + 8, (int)length);
-            if (BinaryPrimitives.ReadUInt32BigEndian(png[(position + 8 + (int)length)..]) != Crc(png.Slice(position + 4, 4 + (int)length))) return false;
-            position += 12 + (int)length;
-            if (type.SequenceEqual("IHDR"u8))
-            {
-                if (haveHeader || !TryReadHeader(data, maxDimension, out header)) return false;
-                haveHeader = true;
-            }
-            else if (!haveHeader) return false;
-            else if (type.SequenceEqual("PLTE"u8)) { if (!TryReadPalette(data, header, ancillary)) return false; }
-            else if (type.SequenceEqual("tRNS"u8)) { if (!TryReadTransparency(data, header, ancillary)) return false; }
-            else if (type.SequenceEqual("IDAT"u8)) { idat.Write(data); haveData = true; }
-            else if (type.SequenceEqual("IEND"u8)) ended = true;
-            else if ((type[0] & 0x20) == 0) return false; // an unknown critical chunk
-        }
-        if (!haveHeader || !haveData || !ended || (header.ColorType == 3 && ancillary.Palette.Length == 0)) return false;
-        compressed = idat.ToArray();
+        while (position + 12 <= png.Length && !state.Ended)
+            if (!TryReadChunk(png, ref position, maxDimension, state)) return false;
+        header = state.Header;
+        if (!state.HaveHeader || !state.HaveData || !state.Ended || (header.ColorType == 3 && ancillary.Palette.Length == 0)) return false;
+        compressed = state.Idat.WrittenSpan.ToArray();
         return true;
+    }
+
+    /// <summary>One chunk: its length is bounded by what remains, its CRC checked, then it is applied.</summary>
+    private static bool TryReadChunk(ReadOnlySpan<byte> png, ref int position, int maxDimension, Chunks state)
+    {
+        uint length = BinaryPrimitives.ReadUInt32BigEndian(png[position..]);
+        if (length > int.MaxValue || position + 12L + length > png.Length) return false;
+        ReadOnlySpan<byte> type = png.Slice(position + 4, 4), data = png.Slice(position + 8, (int)length);
+        if (BinaryPrimitives.ReadUInt32BigEndian(png[(position + 8 + (int)length)..]) != Crc(png.Slice(position + 4, 4 + (int)length))) return false;
+        position += 12 + (int)length;
+        return ApplyChunk(type, data, maxDimension, state);
+    }
+
+    private static bool ApplyChunk(ReadOnlySpan<byte> type, ReadOnlySpan<byte> data, int maxDimension, Chunks state)
+    {
+        if (type.SequenceEqual("IHDR"u8))
+        {
+            if (state.HaveHeader || !TryReadHeader(data, maxDimension, out state.Header)) return false;
+            state.HaveHeader = true;
+            return true;
+        }
+        if (!state.HaveHeader) return false;
+        if (type.SequenceEqual("PLTE"u8)) return TryReadPalette(data, state.Header, state.Ancillary);
+        if (type.SequenceEqual("tRNS"u8)) return TryReadTransparency(data, state.Header, state.Ancillary);
+        if (type.SequenceEqual("IDAT"u8))
+        {
+            System.Buffers.BuffersExtensions.Write(state.Idat, data);
+            state.HaveData = true;
+            return true;
+        }
+        if (type.SequenceEqual("IEND"u8))
+        {
+            state.Ended = true;
+            return true;
+        }
+        return (type[0] & 0x20) != 0; // an unknown critical chunk is refused, an ancillary one skipped
     }
 
     private static bool TryReadHeader(ReadOnlySpan<byte> data, int maxDimension, out Header header)
@@ -174,15 +200,24 @@ internal static class PngPixelReader
         for (int row = 0; row < height; row++)
         {
             byte filter = data[offset++];
-            ReadOnlySpan<byte> source = data.AsSpan(offset, rowBytes);
-            offset += rowBytes;
-            Span<byte> current = pass.AsSpan(row * rowBytes, rowBytes);
-            ReadOnlySpan<byte> previous = row == 0 ? [] : pass.AsSpan((row - 1) * rowBytes, rowBytes);
             if (filter > 4) return false;
-            for (int i = 0; i < rowBytes; i++) current[i] = Reverse(filter, source[i], i >= bpp ? current[i - bpp] : (byte)0, previous.IsEmpty ? (byte)0 : previous[i],
-                i >= bpp && !previous.IsEmpty ? previous[i - bpp] : (byte)0);
+            UnfilterRow(filter, data.AsSpan(offset, rowBytes), pass, row, rowBytes, bpp);
+            offset += rowBytes;
         }
         return true;
+    }
+
+    private static void UnfilterRow(byte filter, ReadOnlySpan<byte> source, byte[] pass, int row, int rowBytes, int bpp)
+    {
+        Span<byte> current = pass.AsSpan(row * rowBytes, rowBytes);
+        ReadOnlySpan<byte> previous = row == 0 ? default : pass.AsSpan((row - 1) * rowBytes, rowBytes);
+        for (int i = 0; i < rowBytes; i++)
+        {
+            byte left = i >= bpp ? current[i - bpp] : (byte)0;
+            byte up = previous.IsEmpty ? (byte)0 : previous[i];
+            byte upLeft = i >= bpp && !previous.IsEmpty ? previous[i - bpp] : (byte)0;
+            current[i] = Reverse(filter, source[i], left, up, upLeft);
+        }
     }
 
     private static byte Reverse(byte filter, byte value, byte left, byte up, byte upLeft) => filter switch
@@ -197,7 +232,8 @@ internal static class PngPixelReader
     private static int Paeth(int a, int b, int c)
     {
         int p = a + b - c, pa = Math.Abs(p - a), pb = Math.Abs(p - b), pc = Math.Abs(p - c);
-        return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+        if (pa <= pb && pa <= pc) return a;
+        return pb <= pc ? b : c;
     }
 
     /// <summary>Places one Adam7 pass's pixels into the full-width raster, bit-exactly for sub-byte depths.</summary>

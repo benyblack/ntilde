@@ -214,39 +214,53 @@ public partial class TerminalBuffer
     {
         long pixels = (long)state.Width * state.Height, charge = pixels * 4;
         if (state.Animation?.Frames is { } frames)
-            for (int i = 0; i < frames.Count; i++) charge += pixels * (i > 0 ? 8 : frames[i]?.Edited == true ? 4 : 0);
+            for (int i = 0; i < frames.Count; i++) charge += pixels * KittyFrameChargeUnits(i, frames[i]?.Edited == true);
         return charge;
+    }
+
+    /// <summary>Pixel multiples a frame is charged: 8 for a later frame (decoded pixels plus the retained copy), 4 for an edited root (only the copy is new), 0 for an unedited root.</summary>
+    private static int KittyFrameChargeUnits(int index, bool rootEdited)
+    {
+        if (index > 0) return 8;
+        return rootEdited ? 4 : 0;
     }
 
     private static void ValidateKittyImage(TerminalKittyImageState? image, ref long inflated)
     {
         var state = StateTransferValidation.RequirePresent(image, KittyImageWhat);
         ValidateKittyImageBytes(state, ref inflated);
-        if (state.Animation is not null) ValidateKittyAnimation(state, ref inflated);
+        if (state.Animation is { } animation) ValidateKittyAnimation(state, animation, ref inflated);
     }
 
     /// <summary>The frames and playback state of an animated image: counts, indices and every packed frame checked against the image's own size, inflating nothing.</summary>
-    private static void ValidateKittyAnimation(TerminalKittyImageState state, ref long inflated)
+    private static void ValidateKittyAnimation(TerminalKittyImageState state, TerminalKittyAnimationState animation, ref long inflated)
     {
-        TerminalKittyAnimationState animation = state.Animation!;
         List<TerminalKittyFrameState> frames = StateTransferValidation.RequirePresent(animation.Frames, "Kitty animation frames");
         if (frames.Count is < 1 or > KittyAnimation.MaxFrames) throw StateTransferValidation.Reject(KittyImageWhat, "an animation has between one and the maximum number of frames");
         RequirePixelSize(state.Width, state.Height, KittyImageWhat);
-        if (animation.State is < 1 or > 3 || animation.Current < 0 || animation.Current >= frames.Count || animation.Displayed < 0 || animation.Displayed >= frames.Count
-            || animation.LoopsRemaining < -1 || animation.ElapsedMs is < 0 or > MaxKittyAnimationElapsedMs)
-            throw StateTransferValidation.Reject(KittyImageWhat, "animation playback state out of range");
+        ValidateKittyPlayhead(animation, frames.Count);
         int pixels = state.Width * state.Height;
-        for (int i = 0; i < frames.Count; i++)
-        {
-            TerminalKittyFrameState frame = StateTransferValidation.RequirePresent(frames[i], "Kitty animation frame");
-            byte[] data = StateTransferValidation.RequirePresent(frame.Data, "Kitty animation frame data");
-            if (i > 0 && frame.Edited) throw StateTransferValidation.Reject(KittyImageWhat, "only the root frame can be edited");
-            if (i == 0 && !frame.Edited && data.Length != 0) throw StateTransferValidation.Reject(KittyImageWhat, "an unedited root frame carries no pixels of its own");
-            if (data.Length == 0) continue;
-            if (!KittyFrameCodec.IsValid(data, pixels)) throw StateTransferValidation.Reject(KittyImageWhat, "an animation frame is not a packing of the image's size");
-            inflated += 4L * pixels;
-            if (inflated > MaxSnapshotInflatedBytes) throw StateTransferValidation.Reject(KittyImagesWhat, "animation frames inflate past the snapshot limit");
-        }
+        for (int i = 0; i < frames.Count; i++) ValidateKittyFrame(frames[i], i, pixels, ref inflated);
+    }
+
+    private static void ValidateKittyPlayhead(TerminalKittyAnimationState animation, int frameCount)
+    {
+        bool inRange = animation.State is >= 1 and <= 3
+            && animation.Current >= 0 && animation.Current < frameCount && animation.Displayed >= 0 && animation.Displayed < frameCount
+            && animation.LoopsRemaining >= -1 && animation.ElapsedMs is >= 0 and <= MaxKittyAnimationElapsedMs;
+        if (!inRange) throw StateTransferValidation.Reject(KittyImageWhat, "animation playback state out of range");
+    }
+
+    private static void ValidateKittyFrame(TerminalKittyFrameState? candidate, int index, int pixels, ref long inflated)
+    {
+        TerminalKittyFrameState frame = StateTransferValidation.RequirePresent(candidate, "Kitty animation frame");
+        byte[] data = StateTransferValidation.RequirePresent(frame.Data, "Kitty animation frame data");
+        if (index > 0 && frame.Edited) throw StateTransferValidation.Reject(KittyImageWhat, "only the root frame can be edited");
+        if (index == 0 && !frame.Edited && data.Length != 0) throw StateTransferValidation.Reject(KittyImageWhat, "an unedited root frame carries no pixels of its own");
+        if (data.Length == 0) return;
+        if (!KittyFrameCodec.IsValid(data, pixels)) throw StateTransferValidation.Reject(KittyImageWhat, "an animation frame is not a packing of the image's size");
+        inflated += 4L * pixels;
+        if (inflated > MaxSnapshotInflatedBytes) throw StateTransferValidation.Reject(KittyImagesWhat, "animation frames inflate past the snapshot limit");
     }
 
     private static void ValidateKittyImageBytes(TerminalKittyImageState state, ref long inflated)
@@ -489,32 +503,56 @@ public partial class TerminalBuffer
         var kitty = new ImageSource[kittyStates.Count];
         var iterm = new ImageSource?[itermStates.Count];
         var frames = kittyStates.Select(state => new ImageSource?[state.Animation?.Frames.Count ?? 0]).ToArray();
-        // One list in the exported eviction order, whatever the kind: a frame's packed pixels are entries of the same budget as the image bytes.
-        var frameEntries = kittyStates.SelectMany((state, i) => (state.Animation?.Frames ?? []).Select((frame, f) => (Order: frame.SourceOrder, Sequence: 0, Kind: 2, Index: i, Frame: f)))
-            .Where(entry => entry.Frame > 0 || kittyStates[entry.Index].Animation!.Frames[0].Edited)
-            .Select((entry, n) => entry with { Sequence = kittyStates.Count + itermStates.Count + n });
-        var retention = kittyStates.Select((state, i) => (Order: state.SourceOrder, Sequence: i, Kind: 0, Index: i, Frame: 0))
-            .Concat(itermStates.Select((state, i) => (Order: state.SourceOrder, Sequence: kittyStates.Count + i, Kind: 1, Index: i, Frame: 0))
-                .Where(entry => itermImages[entry.Index] is not null))
-            .Concat(frameEntries)
-            .OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
-        foreach (var entry in retention)
+        foreach (RetentionEntry entry in ImportRetentionOrder(kittyStates, itermStates, itermImages))
         {
-            if (entry.Kind == 2)
+            switch (entry.Kind)
             {
-                TerminalKittyImageState owner = kittyStates[entry.Index];
-                byte[] packed = owner.Animation!.Frames[entry.Frame].Data;
-                frames[entry.Index][entry.Frame] = packed.Length == 0 ? ImageSources.Evicted() : ImageSources.RetainCopy(packed, 4L * owner.Width * owner.Height);
-                continue;
+                case RetentionKind.KittyFrame:
+                    frames[entry.Index][entry.Frame] = RetainImportedFrame(kittyStates[entry.Index], entry.Frame);
+                    break;
+                case RetentionKind.KittyImage:
+                    kitty[entry.Index] = RetainImportedBytes(kittyStates[entry.Index].Data, ImportedInflationCost(kittyStates[entry.Index]));
+                    break;
+                default:
+                    iterm[entry.Index] = RetainImportedBytes(itermStates[entry.Index].Data, 0);
+                    break;
             }
-            byte[] data = entry.Kind == 0 ? kittyStates[entry.Index].Data : itermStates[entry.Index].Data;
-            ImageSource source = data.Length == 0 ? ImageSources.Evicted()
-                : ImageSources.RetainCopy(data, entry.Kind == 0 ? ImportedInflationCost(kittyStates[entry.Index]) : 0);
-            if (entry.Kind == 0) kitty[entry.Index] = source;
-            else iterm[entry.Index] = source;
         }
         return (kitty, iterm, frames);
     }
+
+    private enum RetentionKind { KittyImage, ITermImage, KittyFrame }
+
+    private readonly record struct RetentionEntry(int? Order, int Sequence, RetentionKind Kind, int Index, int Frame);
+
+    /// <summary>
+    /// Every source to retain, in the exported eviction order whatever the kind: a frame's packed pixels are entries of the same budget as the image bytes.
+    /// A surviving-placement-less iTerm2 image is left out, and so is an unedited root frame (it is the image's own bytes).
+    /// </summary>
+    private static IEnumerable<RetentionEntry> ImportRetentionOrder(List<TerminalKittyImageState> kittyStates, List<TerminalITermImageState> itermStates,
+        TerminalImage?[] itermImages)
+    {
+        var entries = new List<RetentionEntry>();
+        for (int i = 0; i < kittyStates.Count; i++) entries.Add(new(kittyStates[i].SourceOrder, i, RetentionKind.KittyImage, i, 0));
+        for (int i = 0; i < itermStates.Count; i++)
+            if (itermImages[i] is not null) entries.Add(new(itermStates[i].SourceOrder, kittyStates.Count + i, RetentionKind.ITermImage, i, 0));
+        int sequence = kittyStates.Count + itermStates.Count;
+        for (int i = 0; i < kittyStates.Count; i++)
+        {
+            if (kittyStates[i].Animation is not { } animation) continue;
+            for (int f = 0; f < animation.Frames.Count; f++)
+                if (f > 0 || animation.Frames[0].Edited) entries.Add(new(animation.Frames[f].SourceOrder, sequence++, RetentionKind.KittyFrame, i, f));
+        }
+        return entries.OrderBy(entry => entry.Order ?? int.MaxValue).ThenBy(entry => entry.Sequence);
+    }
+
+    private ImageSource RetainImportedFrame(TerminalKittyImageState owner, int frame)
+    {
+        byte[] packed = owner.Animation?.Frames[frame].Data ?? [];
+        return packed.Length == 0 ? ImageSources.Evicted() : ImageSources.RetainCopy(packed, 4L * owner.Width * owner.Height);
+    }
+
+    private ImageSource RetainImportedBytes(byte[] data, long inflationCost) => data.Length == 0 ? ImageSources.Evicted() : ImageSources.RetainCopy(data, inflationCost);
 
     /// <summary>
     /// What validating an imported Kitty image inflated, charged to <see cref="ImageSources"/> as live
@@ -557,7 +595,7 @@ public partial class TerminalBuffer
         {
             bool unedited = i == 0 && !state.Frames[i].Edited;
             object handle = unedited ? asset.Handle : new UndecodedImage(asset.PixelWidth, asset.PixelHeight);
-            long charge = pixels * (i > 0 ? 8 : unedited ? 0 : 4);
+            long charge = pixels * KittyFrameChargeUnits(i, rootEdited: !unedited);
             frames.Add(new KittyFrame(handle, null, state.Frames[i].Gap, charge) { Source = unedited ? null : sources[i] });
         }
         asset.Animation = new KittyAnimation(asset.Handle);
