@@ -68,6 +68,15 @@
         "animation-observations.json": "471a52006ea1ca1407e16ba8e2f77d19ec7298d6b8f4670ddb16a32921f6b5f9",
         "cell-receipt.json": "dd4bcb7f67f1d25b5f283771f57a8893aea2cd5347741a57012a3bdd86724f41"
       }
+    },
+    {
+      "runId": "35968b7e4d2299810d5cd3f91b37ab17",
+      "scriptsRevision": "a706d8a1",
+      "reason": "A fourth complete 18/18 run (effect supported, receipt schema 70) on the App built from a706d8a1. Superseded, not failed: further review rounds changed the production and measuring code again (a held host never advances by time and replay windows hold animations, wake-ups only for placements in the visible rows and not inside synchronized output, refused frames decoded no bitmap, no lock or clock on the render path of a buffer that never animates and a non-blocking advance otherwise, differing capture pairs graded against independent timing, the fence handed over when both earlier collectors were unavailable), so the App and scripts were rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "5828982536208dfe927c7d61ba50b3d528973554a880bdad7c8e97c2105726d3",
+        "cell-receipt.json": "6c2049bc860f704a57dcf9580b10f56244cdfadc67cdbc931b1a96374b2b6bf7"
+      }
     }
   ]
 }
