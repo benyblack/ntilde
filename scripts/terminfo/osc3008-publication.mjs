@@ -6,9 +6,9 @@ import { osc3008CaseIds } from './osc3008-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 /** The scripts revision the measured run's private source snapshot was built from. The retained selected-source manifest independently pins the measured scripts; these labels are not binary-to-source attestation. */
-export const measuredScriptsRevision = '0000000000000000000000000000000000000000';
+export const measuredScriptsRevision = '9fa0fef7557483f8ef6ac02088f01f0d3248d763';
 /** The measured App build revision. */
-export const measuredAppRevision = '0000000000000000000000000000000000000000';
+export const measuredAppRevision = '9fa0fef7557483f8ef6ac02088f01f0d3248d763';
 const scope = 'Pinned terminfo.dev@4.0.0 extensions.osc3008-context (no termless function; the terminal path writes ESC[1;1H ESC[2K and OSC 3008;type=test BEL, queries the cursor and returns '
     + 'unmeasuredCellResult, inconclusive by construction; the payload is not a UAPI.15 start or end) replayed byte-exactly over the journaled cursor, with the unchanged pinned code re-run from '
     + 'the retained derived bundle, and preserved. Beside it a separately identified effect contract graded by an independent oracle written from UAPI.15 v1.0 over paired complete stored '
@@ -27,7 +27,8 @@ function stockObservation(raw, caseId) {
 export function osc3008Publication(dir, { appRevision = measuredAppRevision, scriptsRevision = measuredScriptsRevision, publicationScope = scope } = {}) {
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
     const measured = json(dir, 'ocx-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json');
-    const cases = measured.cases.map(item => ({ caseId: item.caseId, pinned: item.pinned, contractResult: item.contractResult, effectContract: item.effectContract,
+    const cases = measured.cases.map(item => ({ caseId: item.caseId,
+        pinned: { pass: item.pinned.terminal.pass, note: item.pinned.terminal.note, observation: item.pinned.terminal.observation, ...item.pinned }, contractResult: item.contractResult, effectContract: item.effectContract,
         experiments: item.experiments, stock: stockObservation(raw, item.caseId), ...(item.divergence === undefined ? {} : { divergence: item.divergence }),
         conclusion: { ...item.conclusion, evidence: 'owned-pane-metadata-and-session-status' } }));
     if (JSON.stringify(cases.map(item => item.caseId)) !== JSON.stringify([...osc3008CaseIds])) throw new Error('Unexpected OSC 3008 cases.');
