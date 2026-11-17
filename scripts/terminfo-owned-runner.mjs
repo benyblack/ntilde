@@ -4260,7 +4260,7 @@ function persistentAnimationHandlers({ run, proofs, observeAnimation, state }) {
     const retainFirstProof = (owner, worker, tty, budget) => {
         if (proofs.length === 0) proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
             workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) },
-            app: owner, worker, tty, at: new Date().toISOString() });
+            app: owner, worker, tty, at: new Date().toISOString(), kittyAnimation: { policy: ownedAnimationPolicy } });
     };
     return {
         prove(request, budget, owner, worker) {
