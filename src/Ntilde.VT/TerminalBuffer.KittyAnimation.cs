@@ -27,6 +27,35 @@ public partial class TerminalBuffer
     internal static int KittyFrameCount(KittyImageAsset asset) => asset.Animation?.Frames.Count ?? 1;
 
     /// <summary>
+    /// Whether a frame of <paramref name="charge"/> bytes would fit, answered before any pixels are decoded so a refused upload costs no bitmap.
+    /// Stored means it fits now; <see cref="StoreKittyFrame"/> repeats the check under the same lock when it commits.
+    /// </summary>
+    internal KittyFrameStoreResult CheckKittyFrameRoom(KittyImageAsset asset, int replaceIndex, long charge)
+    {
+        bool lockTaken = EnterWriteLockIfNeeded(), moved = false;
+        try
+        {
+            if (!_kittyImageAssets.Contains(asset)) return KittyFrameStoreResult.ImageGone;
+            // Settle first, as every command does: even a refused frame leaves the display where elapsed time puts it.
+            if (asset.Animation is { } animation && !KittyAnimationPaused && animation.Advance(KittyAnimationClock()))
+            {
+                ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+                moved = true;
+            }
+            bool replacing = replaceIndex >= 0;
+            int frames = KittyFrameCount(asset);
+            if (!replacing && frames >= KittyAnimation.MaxFrames) return KittyFrameStoreResult.TooManyFrames;
+            long replaced = replacing ? asset.Animation?.Frames[replaceIndex].Charge ?? 0 : 0;
+            return asset.PixelCharge + charge - replaced > MaxKittyImagePixelBytes ? KittyFrameStoreResult.NoSpace : KittyFrameStoreResult.Stored;
+        }
+        finally
+        {
+            ExitWriteLockIfNeeded(Lock, lockTaken);
+            if (moved) Invalidate();
+        }
+    }
+
+    /// <summary>
     /// Appends <paramref name="frame"/>, or replaces frame <paramref name="replaceIndex"/> when it is
     /// nonnegative. Quota pressure from the new bytes evicts other assets exactly as a new image would;
     /// a frame that cannot fit even then is refused and nothing changes.

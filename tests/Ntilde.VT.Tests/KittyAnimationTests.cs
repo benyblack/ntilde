@@ -555,6 +555,34 @@ public sealed class KittyAnimationTests
         Assert.NotNull(anywhere);                                          // no viewport given: any placement counts
     }
 
+    private sealed class CountingDecoder : IImageDecoder
+    {
+        internal int Decodes;
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
+        {
+            Decodes++;
+            (pixelWidth, pixelHeight) = (width, height);
+            return new object();
+        }
+    }
+
+    [Fact]
+    public void A_frame_the_quotas_will_refuse_is_refused_before_any_bitmap_is_decoded()
+    {
+        var h = new Harness();
+        for (int i = 2; i <= KittyAnimation.MaxFrames; i++) h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(1, 1, 1, 255));
+        h.Replies.Clear();
+        var counting = new CountingDecoder();
+        h.Parser.ImageDecoder = counting;
+        for (int attempt = 0; attempt < 3; attempt++) h.Send("a=f,i=1,f=32,s=2,v=1", Solid(2, 2, 2, 255));
+        Assert.Equal(3, h.Replies.Count(reply => reply.Contains(";ENOSPC:", StringComparison.Ordinal)));
+        Assert.Equal(0, counting.Decodes);                      // nothing was decoded, so nothing waits in the retirement queue
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Empty(retired);
+    }
+
     [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {

@@ -101,12 +101,16 @@ public partial class AnsiParser
     /// <summary>Decodes the composed pixels and stores them as a new frame or in place of the edited one.</summary>
     private string StoreKittyFrame(KittyImageAsset asset, KittyFrameRequest request, byte[] canvas)
     {
+        int replaceIndex = request.Editing ? (int)request.Edit - 1 : -1;
+        long charge = (long)asset.PixelWidth * asset.PixelHeight * 4 + canvas.Length;
+        // A frame the quotas will refuse is refused before it is decoded: a hidden pane must not build a bitmap per rejected upload.
+        KittyFrameStoreResult room = _buffer.CheckKittyFrameRoom(asset, replaceIndex, charge);
+        if (room != KittyFrameStoreResult.Stored) return KittyFrameStatus(room);
         object handle = DecodeOrPlaceholder((IImageDecoder decoder, out int w, out int h) =>
             decoder.DecodeRawImage(canvas, 4, asset.PixelWidth, asset.PixelHeight, out w, out h), asset.PixelWidth, asset.PixelHeight);
         int gapMs = request.Gap;
         if (gapMs == 0) gapMs = request.Editing ? EditedKittyFrameGap(asset, request.Edit) : KittyAnimation.DefaultGapMs;
-        var frame = new KittyFrame(handle, canvas, gapMs, (long)asset.PixelWidth * asset.PixelHeight * 4 + canvas.Length);
-        int replaceIndex = request.Editing ? (int)request.Edit - 1 : -1;
+        var frame = new KittyFrame(handle, canvas, gapMs, charge);
         KittyFrameStoreResult stored = _buffer.StoreKittyFrame(asset, frame, replaceIndex);
         if (stored == KittyFrameStoreResult.Rejected)
         {
@@ -116,15 +120,17 @@ public partial class AnsiParser
             stored = _buffer.StoreKittyFrame(asset, new KittyFrame(handle, canvas, gapMs, frame.Charge), replaceIndex);
         }
         if (stored != KittyFrameStoreResult.Stored) _buffer.RetireUnstoredKittyHandle(handle);
-        return stored switch
-        {
-            KittyFrameStoreResult.Stored => "OK",
-            KittyFrameStoreResult.ImageGone => "ENOENT:Image not found",
-            KittyFrameStoreResult.TooManyFrames => "ENOSPC:Too many animation frames",
-            KittyFrameStoreResult.NoSpace => "ENOSPC:Animation frame storage exceeded",
-            _ => "EINVAL:Frame could not be stored"
-        };
+        return KittyFrameStatus(stored);
     }
+
+    private static string KittyFrameStatus(KittyFrameStoreResult result) => result switch
+    {
+        KittyFrameStoreResult.Stored => "OK",
+        KittyFrameStoreResult.ImageGone => "ENOENT:Image not found",
+        KittyFrameStoreResult.TooManyFrames => "ENOSPC:Too many animation frames",
+        KittyFrameStoreResult.NoSpace => "ENOSPC:Animation frame storage exceeded",
+        _ => "EINVAL:Frame could not be stored"
+    };
 
     private static int EditedKittyFrameGap(KittyImageAsset asset, uint frameNumber)
     {
