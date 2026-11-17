@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildOsc720Report, classifyOsc720, osc720Counts, replayOsc720TermlessStatic } from './osc720-grading.mjs';
+import { buildOsc720Report, classifyOsc720, osc720Counts, replayOsc720TermlessStatic, screenProjectionSha256 } from './osc720-grading.mjs';
 import { osc720CaseId, osc720Experiments, osc720Pinned } from './osc720-contracts.mjs';
 import { syntheticHistory, syntheticOsc720Evidence } from './fixtures/osc720-evidence.mjs';
 
@@ -73,6 +73,21 @@ test('the pinned termless replay follows the pinned guard and criterion', () => 
     assert.equal(replayOsc720TermlessStatic(24, facts(0), facts(5)).observation.outcome, 'supported');
     assert.equal(replayOsc720TermlessStatic(24, facts(0), facts(0)).observation.outcome, 'unsupported');
     assert.equal(osc720Pinned.termless.feeds.length, 31);
+});
+
+test('a view move that also changes any other stored screen state is not credited as a clean effect', () => {
+    const corrupted = syntheticOsc720Evidence({ behavior: 'rxvt', adjust: (contract, label, state) => { if (contract.name === 'count-3' && label === 'after') state.cursorStyle = 1; return state; } });
+    const report = build(corrupted);
+    assert.equal(named(report, 'count-3').observed.kind, 'other');
+    assert.notEqual(report.cases[0].effectContract.outcome, 'supported');
+    const { screen } = build(syntheticOsc720Evidence()).snapshots[2].before;
+    const sha = screenProjectionSha256(screen);
+    for (const change of [s => { s.cursorMode.blink = !s.cursorMode.blink; }, s => { s.bufferState.originMode = !s.bufferState.originMode; }, s => { s.lines[0] = 'x'; }, s => { s.cursorRow += 1; }]) {
+        const copy = structuredClone(screen); change(copy);
+        assert.notEqual(screenProjectionSha256(copy), sha);
+    }
+    const history = structuredClone(screen); history.history = { startLine: 0, totalLines: 0, lines: [] }; history.bufferState.scrollbackLines = 0;
+    assert.equal(screenProjectionSha256(history), sha, 'history and its count are measured separately');
 });
 
 test('every refusal boundary rejects tampered or incomplete evidence', () => {

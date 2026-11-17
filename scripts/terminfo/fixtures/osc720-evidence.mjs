@@ -28,6 +28,7 @@ function stateScreen(base, state) {
     screen.lines = Array.from({ length: colEditRows }, (_, row) => state.lines[row] ?? '');
     screen.cursorRow = state.cursor[0]; screen.cursorCol = state.cursor[1];
     screen.bufferState = { ...screen.bufferState, scrollbackLines: state.scrollback };
+    if (state.cursorStyle !== undefined) screen.cursorMode = { ...screen.cursorMode, style: state.cursorStyle };
     screen.history = { startLine: 0, totalLines: state.scrollback, lines: Array.from({ length: state.scrollback }, (_, index) => `scroll-${index}`) };
     return screen;
 }

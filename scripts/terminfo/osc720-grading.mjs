@@ -85,10 +85,18 @@ export function classifyOsc720(before, after) {
     return { kind, delta, screenSame, historySame };
 }
 
+/** The complete stored screen except the quantities this qualification measures separately (retained history and its count): cells, attributes, cursor and its mode, margins, modes and colors. */
+export function screenProjectionSha256(screen) {
+    const projection = structuredClone(screen);
+    delete projection.history;
+    projection.bufferState.scrollbackLines = null;
+    return snapshotHash(projection);
+}
+
 function readRecord(label, kind, snapshot, frameIndex) {
     const facts = exposeOsc720Facts(snapshot);
     return { label, kind, snapshot: frameIndex, scrollOffset: facts.viewport.scrollOffset, maxScrollOffset: facts.viewport.maxScrollOffset, scrollbackLines: facts.scrollbackLines,
-        historyGeneration: facts.historyGeneration, rowsEvicted: facts.rowsEvicted, cursor: facts.cursor, screenSha256: snapshotHash(snapshot.screen.lines), historySha256: snapshotHash(snapshot.screen.history),
+        historyGeneration: facts.historyGeneration, rowsEvicted: facts.rowsEvicted, cursor: facts.cursor, screenSha256: screenProjectionSha256(snapshot.screen), historySha256: snapshotHash(snapshot.screen.history),
         pinnedTextVisible: snapshot.screen.lines.some(line => line.startsWith('scroll-29')), rows: facts.rows };
 }
 

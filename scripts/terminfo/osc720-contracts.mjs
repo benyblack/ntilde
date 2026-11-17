@@ -85,7 +85,7 @@ export function osc720Experiments(runId) {
     const fixture = osc720Fixture(runId);
     const probes = experimentSpecs.map(spec => {
         const [name, role, setup, probe, expected] = spec;
-        return { caseId: `${osc720CaseId}/${name}`, owner: osc720CaseId, name, role, setup, probe, expected, plan: planOf(fixture, spec) };
+        return { caseId: `${osc720CaseId}/${String(name)}`, owner: osc720CaseId, name, role, setup, probe, expected, plan: planOf(fixture, spec) };
     });
     const wheelControl = { caseId: `${osc720CaseId}/wheel-control`, owner: osc720CaseId, name: 'wheel-control', role: 'control', setup: live, probe: null, expected: wheel,
         plan: [{ feed: fixture.reset }, { feed: fixture.filler }, { feed: fixture.pinnedFeed }, { read: 'before', kind: 'setup' },
