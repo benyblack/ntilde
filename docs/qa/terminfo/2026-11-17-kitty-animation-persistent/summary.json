@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "ownedRunId": "837ce74a65b6330700d2b37772cf31a1",
-  "appRevision": "b4bf3c838a46d5a154c9b783ab546d729bee170d",
-  "scriptsRevision": "b4bf3c838a46d5a154c9b783ab546d729bee170d",
+  "ownedRunId": "6cd71813dc53d39b04328c3a1592b095",
+  "appRevision": "39fac4de7ec4a09d8ae3ae6236abdf29e6d29b9f",
+  "scriptsRevision": "39fac4de7ec4a09d8ae3ae6236abdf29e6d29b9f",
   "context": {
     "adapter": "ntilde-owned-kitty-animation-persistent-adapter-v1",
     "collectionScope": {
@@ -16,12 +16,12 @@
     "appVersion": "0.14.0",
     "appVersionSource": "operator supplied; not independently verified",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-v66",
-    "sourceSnapshotManifestSha256": "3b4f992c7bf73948eb4af3f41bbffc9229b62afbc8fc2b4bbd113a696bc101ce",
-    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-UJQmQq",
-    "runnerSourceSha256": "f0f2b754a07af70cbf61fd8561f54eb78443f822390f8f8567c076cf06dd5cc4",
+    "sourceSnapshotManifestSha256": "ebbfd282c66483951cd6a78e31164a802b14ca86c3233487d53861a15176adb0",
+    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-cwE0l9",
+    "runnerSourceSha256": "66959c761bfcfea8f55ea1c540fa9b0b2272bd168b4dfd93bbcbccb89149160d",
     "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
-    "ownershipSourceSha256": "9de104ea6e77a3385b1ac959db9ca922e6dbfe363de1bffab2a9c20fabfe7d3d",
-    "workerSourceSha256": "2d5391c38ec062f339f2743fde03c136bbe00b89b3a04b55b7aef1905034a540",
+    "ownershipSourceSha256": "6fdb3c44e6193ed65b1358a978ea779c4258af5a255c4da64bf42fac7c77748b",
+    "workerSourceSha256": "1741b9c4df89247a3f164b4a3b09244cdab823e3f9482923e5a4f0a60ace6fd3",
     "runtimeSourceSha256": "f73e78b2d390507c5f70d36c86fcb940b889c557a0f7127f60f67dc8ccf5e776",
     "observerSourceSha256": "a30878543e62be867dacc9c56b222ed18860772acb986fca49fd86fe62595664",
     "cellSuiteSourceSha256": "b2e9ff3e0add1d470fb09cc78aaec0851bef1c0f3625a1998c459cc8a9b7191e",
@@ -462,21 +462,21 @@
     "osc3008GradingSourceSha256": "e6d1068e7af451226c9249443b92a00c64fd87eb0126455bdba27edf021ef6aa",
     "osc3008GradingCollectorSourceSha256": "818f6471585269c5f346340026d2c7c770ec5455801b984ce7cde4c7065e920f",
     "osc3008ReceiptSourceSha256": "48a592a4c6e7e02f4f42244b171da31960ec5797caa0a8960dd6098b2be825a4",
-    "initialSettingsSha256": "5850725cefc470919da93226e435dcdcd0716bf9b9a8d859376426ff1b3354d0",
+    "initialSettingsSha256": "f08b344420cedb246cce0d91031d4047fdb7d711413b063dd3377c60562ba6c6",
     "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "e2b9dba27869b0d10d65c34b974caeaf1e42cf544f53165bc4783738447c6a6d",
+    "assemblySha256": "a00e3e2b3c5e463eeb58bd4192406d7ac8a558ecc3e2757ce0f84415c77a0d37",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-17T16:14:06.283Z",
-    "runId": "837ce74a65b6330700d2b37772cf31a1",
+    "startedAt": "2026-11-17T17:15:14.526Z",
+    "runId": "6cd71813dc53d39b04328c3a1592b095",
     "animationSuiteId": "ntilde-owned-kitty-animation-v2",
     "ownedAnimationPolicy": "owned-kitty-animation-paired-raw-render-v2",
-    "ownerPid": 48273
+    "ownerPid": 16429
   },
   "receipt": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-kitty-animation-persistent-receipt-v1",
-    "runId": "837ce74a65b6330700d2b37772cf31a1",
+    "runId": "6cd71813dc53d39b04328c3a1592b095",
     "collectionScope": {
       "id": "owned-kitty-animation-persistent-v1",
       "persistence": "KeepOnClose",
@@ -486,41 +486,41 @@
       "deadlineMs": 300000
     },
     "animationEvidence": {
-      "runId": "837ce74a65b6330700d2b37772cf31a1",
+      "runId": "6cd71813dc53d39b04328c3a1592b095",
       "suiteId": "ntilde-owned-kitty-animation-v2",
       "file": "animation-observations.json",
-      "sha256": "6d4dedd3c71d8ba255811e8996e4b7374cb8d10561e2d42e8f23dc095becc946",
+      "sha256": "1252e35e5db95f68f445f9910295ae0a7069fab719babbf488fdee9b4977363e",
       "counts": {
         "passed": 24
       },
       "provisionalUntil": "cell-receipt.json"
     },
-    "ownershipProofSha256": "932f1e5edcccbf3938eb45adca8b2d6d258c453c59c449d2d753065d14e7934e",
-    "contextSha256": "981f9c596f89062467a8028311a3eead5ed70b626662e534d032e14d863a28a4",
+    "ownershipProofSha256": "419a014846e23e7a2904b659d67f9634270708445e0a4fc950ccfc266f7692e3",
+    "contextSha256": "8e798c7756a29c653f86430fc590765690fc8217477bb534b43e3ee46dd572f1",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-17T16:14:49.633Z"
+    "completedAt": "2026-11-17T17:16:12.402Z"
   },
   "daemon": {
     "identity": {
-      "pid": 48279,
+      "pid": 16573,
       "uid": 501,
       "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde"
     },
-    "appData": "/Users/behnam/.ntilde-qa/nt-1SNpej/appdata",
+    "appData": "/Users/behnam/.ntilde-qa/nt-RDSVMV/appdata",
     "command": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-measure-1025/artifacts/sidecar-kpm/Ntilde mux serve",
-    "birth": "Tue Nov 17 16:14:07 2026",
-    "appBirth": "Tue Nov 17 16:14:06 2026",
+    "birth": "Tue Nov 17 17:15:16 2026",
+    "appBirth": "Tue Nov 17 17:15:14 2026",
     "descriptor": {
-      "pid": 48279,
+      "pid": 16573,
       "processName": "Ntilde",
-      "endpoint": "/Users/behnam/.ntilde-qa/nt-1SNpej/appdata/mux/mux.sock"
+      "endpoint": "/Users/behnam/.ntilde-qa/nt-RDSVMV/appdata/mux/mux.sock"
     }
   },
   "carrier": {
     "suiteId": "ntilde-owned-kitty-animation-v2",
     "policy": "owned-kitty-animation-paired-raw-render-v2",
     "file": "animation-observations.json",
-    "sha256": "6d4dedd3c71d8ba255811e8996e4b7374cb8d10561e2d42e8f23dc095becc946",
+    "sha256": "1252e35e5db95f68f445f9910295ae0a7069fab719babbf488fdee9b4977363e",
     "counts": {
       "passed": 24
     },

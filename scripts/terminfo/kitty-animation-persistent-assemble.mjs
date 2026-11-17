@@ -34,7 +34,8 @@ function checkScriptsRevision(directory, revision) {
     const context = JSON.parse(readFileSync(join(directory, 'context.json')));
     for (const [key, file] of Object.entries(retainedInventory(directory, context))) {
         const path = relative('', ownedSourcePath('', file)).split('\\').join('/');
-        const bytes = execFileSync('git', ['show', `${revision}:${path}`], { maxBuffer: 64 * 1024 * 1024 });
+        // --filters yields the working-tree form (CRLF where .gitattributes says so), which is what the launcher captured.
+        const bytes = execFileSync('git', ['cat-file', '--filters', `${revision}:${path}`], { maxBuffer: 64 * 1024 * 1024 });
         if (sha(bytes) !== context[key]) throw new Error(`${path} at ${revision} is not the file this run measured`);
     }
 }

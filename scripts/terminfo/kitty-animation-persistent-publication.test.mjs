@@ -150,3 +150,23 @@ test('every persistent control is checked, and a violated one is refused by the 
     moved.frames[0].ownership.worker.ppid = moved.frames[0].ownership.app.pid;
     assert.equal(persistentControls(moved).find(value => value.name === 'worker-hosted-by-daemon').held, false);
 });
+
+test('every development and measurement attempt is retained with its real outcome, and none of them is the published run', () => {
+    const attempts = JSON.parse(read('superseded-attempts/attempts.json')), published = JSON.parse(read('summary.json')).ownedRunId;
+    assert.equal(attempts.schemaVersion, 1);
+    assert.equal(attempts.attempts.length, 8);
+    assert.deepEqual(attempts.attempts.map(item => item.outcome), ['no evidence', 'no evidence', 'no evidence', 'no evidence', 'no evidence', 'no evidence', '24/24 passed', '24/24 passed']);
+    for (const item of attempts.attempts) {
+        assert.notEqual(item.runId, published);
+        assert.ok(item.reason.length > 20 && item.scripts.length > 0 && item.files.length >= 2, item.attempt);
+        for (const file of item.files) {
+            const bytes = read(join('superseded-attempts', file.file));
+            assert.equal(hash(bytes), file.sha256, file.file);
+            assert.equal(bytes.length, file.bytes, file.file);
+        }
+        const names = item.files.map(file => file.file.split('/')[1]);
+        assert.ok(item.outcome === 'no evidence' ? names.includes('failure.json') : names.includes('animation-observations.json'), item.attempt);
+    }
+    const complete = attempts.attempts.filter(item => item.outcome !== 'no evidence');
+    assert.ok(complete.every(item => JSON.parse(read(join('superseded-attempts', item.files.find(file => file.file.endsWith('animation-observations.json')).file))).observations.length === 24));
+});

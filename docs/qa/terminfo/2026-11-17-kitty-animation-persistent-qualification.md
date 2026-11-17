@@ -21,9 +21,9 @@ from pixels, every timed read inside its window, carrier policy) and four persis
 
 ## Wall-clock evidence
 
-Elapsed time is the App's own monotonic clock, as in the direct tab. Measured against the bracket in which `a=a,s=3` could have taken effect (15 ms wide), the playback captures covered
-7.47-7.53 s (second frame window 5-10 s), 12.45-12.51 s (third, 10-15 s) and 17.46-17.52 s (root again, 15-20 s). In `stop-freeze` the stop took effect at 6.24-6.25 s, inside the second
-frame, and a capture 12.35 s after the start still showed the second frame, where a running animation would have shown the third.
+Elapsed time is the App's own monotonic clock, as in the direct tab. Measured against the bracket in which `a=a,s=3` could have taken effect (45 ms wide), the playback
+captures covered 7.59-8.02 s (second frame window 5-10 s), 12.04-12.61 s (third, 10-15 s) and 17.10-17.25 s (root again, 15-20 s). In `stop-freeze` the stop took effect at
+6.21-6.31 s, inside the second frame, and a capture 12.71 s after the start still showed the second frame, where a running animation would have shown the third.
 
 ## What makes it a persistent tab
 
@@ -52,19 +52,29 @@ and the context. It reuses the carrier, observer, cases, oracle and report build
 
 ## Limits
 
-One live persistent tab, one desktop (macOS), one App build (App and scripts revision `b4bf3c83`), one image size, one gap length and one PNG encoding. Not measured: a **reattach or restart**
+One live persistent tab, one desktop (macOS), one App build (App and scripts revision `39fac4de`), one image size, one gap length and one PNG encoding. Not measured: a **reattach or restart**
 (restoring a tab from a snapshot is still covered by deterministic tests only), a second client, remote persistent sessions, other platforms, a non-PNG root, `a=c`, frame-rate or
 display-refresh cadence. The full collection in a persistent tab is not claimed. No stock grade, Core score or common-harness comparison changes.
 
-## Retained evidence and reproduction
+## Retained evidence and superseded attempts
 
-`2026-11-17-kitty-animation-persistent/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy, and the generated `summary.json` and
-`report.json`. The run is `837ce74a65b6330700d2b37772cf31a1`. `kitty-animation-persistent-publication.test.mjs` rederives the receipt binding, settings, measured sources (against the
-retained manifest), daemon lineage and the whole carrier report from its journals, and refuses a downgraded, stripped or foreign run. Collect with the persistent scope under the shared
-desktop lock, then assemble:
+`2026-11-17-kitty-animation-persistent/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy, the generated `summary.json` and
+`report.json`, and `superseded-attempts/` with `attempts.json` (each attempt, its scripts commit, outcome and reason, and the SHA-256 of each retained file). The published run is
+`6cd71813dc53d39b04328c3a1592b095`, measured on the scripts and App of commit `39fac4de`.
+
+Eight earlier attempts are retained with their real outcomes. Six produced no evidence: a temporary persistence switch on the full collection (the direct-child ownership proof cannot hold),
+the daemon descriptor read with the wrong field casing, unexpected input in the first suite, Resize failing after the first resize, a missing proof slot in the first dedicated runner, and the
+shared image-ownership check still requiring a direct parent. Two are complete 24/24 runs that were superseded because later review changed measured files: one before the first Codex round's
+fixes (`a9081b65`) and the run first published (`b4bf3c83`), superseded after Sonar and CodeRabbit comments on the pull request led to edits of measured scripts (an unsorted comparison in the verifier,
+smells in the daemon cleanup, scratch removal when preparation fails). The raw directories of the six no-evidence attempts (about 30 MB each for the full-collection ones) are not kept; their
+failure, worker error and ownership proof are.
+
+`kitty-animation-persistent-publication.test.mjs` rederives the receipt binding, settings, measured sources (against the retained manifest), daemon lineage and the whole carrier report from its
+journals, refuses a downgraded, stripped or foreign run, and re-checks every retained attempt file against `attempts.json`. The assembler stages and verifies everything first, refuses an occupied destination
+and requires the scripts revision to be the commit whose files the run's digests name. Collect with the persistent scope under the shared desktop lock, then assemble:
 
 ```sh
 node scripts/terminfo-owned.mjs --executable <abs>/Ntilde --app-version 0.14.0 --scope persistent-animation
-node scripts/terminfo/kitty-animation-persistent-assemble.mjs artifacts/terminfo/owned-<run> docs/qa/terminfo/2026-11-17-kitty-animation-persistent <pinned bundle .gz>
+node scripts/terminfo/kitty-animation-persistent-assemble.mjs artifacts/terminfo/owned-<run> docs/qa/terminfo/2026-11-17-kitty-animation-persistent <pinned bundle .gz> <app commit> <scripts commit>
 node --test scripts/terminfo/kitty-animation-persistent-publication.test.mjs
 ```
