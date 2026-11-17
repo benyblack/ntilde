@@ -181,7 +181,7 @@ test('a collateral color mutation inside any group is rejected, even when the sp
         return { screen: { ...read.screen, colorBinding: { ...read.screen.colorBinding, ansiPaletteArgb: palette } } };
     }));
     assert.equal(recolored.outcome, 'unsupported');
-    assert.match(recolored.note, /must not touch any color outside its own five slots/);
+    assert.match(recolored.note, /changed the palette, the theme or the render state/);
 });
 
 test('the grader refuses a revision it does not know and missing captures', () => {

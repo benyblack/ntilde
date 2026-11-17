@@ -36,7 +36,8 @@ tests](../../../tests/Ntilde.VT.Tests/Osc5SpecialColorTests.cs)). It follows rxv
 - `OSC 105 [; c …]` resets the listed special colors to their defaults; bare `OSC 105` resets all five;
 - the five slots live in their own resource set: nothing here touches the OSC 4 palette, the dynamic colors OSC 10/11/12/17/19 or the kitty OSC 21 keys, and neither do those sequences touch the special
   colors (each direction is a deciding isolation group of its own);
-- an unset slot reports the default foreground, this App's analog of rxvt's per-color X resource default.
+- an unset slot reports the default foreground, this App's analog of rxvt's per-color X resource default;
+- every read-direction group pins the resolved-color binding (palette, theme and render state): a collateral mutation of any unrelated color inside the exchange is rejected by the grader, and the set-direction groups pin everything except the declared setup fields;
 
 Choices recorded as non-deciding policy: selector names (rxvt also accepts names such as `bold`) are not modeled — an unmodeled selector changes nothing and stays silent, while valid pairs in the same
 sequence still apply; malformed pairs are ignored without disturbing the reply framing; a sequence over 32768 characters is dropped whole; a sequence with no query is silent; and the App has no
