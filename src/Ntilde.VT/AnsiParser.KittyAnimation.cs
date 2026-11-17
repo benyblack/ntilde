@@ -57,7 +57,15 @@ public partial class AnsiParser
         bool editing = editFrame != 0;
         int gapMs = gap != 0 ? gap : editing ? asset.Animation!.Frames[(int)editFrame - 1].GapMs : KittyAnimation.DefaultGapMs;
         var frame = new KittyFrame(handle, canvas, gapMs, (long)asset.PixelWidth * asset.PixelHeight * 4 + canvas.Length);
-        KittyFrameStoreResult stored = _buffer.StoreKittyFrame(asset, frame, editing ? (int)editFrame - 1 : -1);
+        int replaceIndex = editing ? (int)editFrame - 1 : -1;
+        KittyFrameStoreResult stored = _buffer.StoreKittyFrame(asset, frame, replaceIndex);
+        if (stored == KittyFrameStoreResult.Rejected)
+        {
+            // A decoder handed back a handle the buffer cannot admit: keep the frame undecoded, as a whole image is, rather than refusing it.
+            _buffer.RetireUnstoredKittyHandle(handle);
+            handle = new UndecodedImage(asset.PixelWidth, asset.PixelHeight);
+            stored = _buffer.StoreKittyFrame(asset, new KittyFrame(handle, canvas, gapMs, frame.Charge), replaceIndex);
+        }
         if (stored != KittyFrameStoreResult.Stored) _buffer.RetireUnstoredKittyHandle(handle);
         return stored switch
         {

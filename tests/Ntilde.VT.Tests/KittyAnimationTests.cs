@@ -434,6 +434,48 @@ public sealed class KittyAnimationTests
         Assert.Same(h.FramePixels(10), h.Shown);
     }
 
+    private sealed class RejectedHandleDecoder(object handle) : IImageDecoder
+    {
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
+        {
+            (pixelWidth, pixelHeight) = (width, height);
+            return handle;
+        }
+    }
+
+    [Fact]
+    public void A_frame_whose_decoder_handle_cannot_be_admitted_is_kept_undecoded_like_a_whole_image()
+    {
+        var h = new Harness();
+        object spent = new();
+        h.Buffer.ReleaseRejectedImageHandle(spent);           // a handle the buffer has already handed off: it cannot be admitted again
+        h.Parser.ImageDecoder = new RejectedHandleDecoder(spent);
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 255, 0, 255));
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(2, animation.Frames.Count);
+        Assert.IsType<UndecodedImage>(animation.Frames[1].Handle);
+        Assert.NotSame(spent, animation.Frames[1].Handle);
+        Assert.Equal(100, animation.Frames[1].GapMs);
+    }
+
+    [Fact]
+    public void Making_room_for_a_frame_stores_it_first_and_evicts_only_unplaced_older_assets()
+    {
+        var h = new Harness(width: 1000, height: 1000);       // 4 MB root
+        for (int id = 2; id <= 15; id++) h.Send($"a=t,f=32,s=1000,v=1000,i={id}", Solid(1, 2, 3, 255, 1000 * 1000));
+        h.Replies.Clear();
+        Assert.NotNull(h.Buffer.FindKittyImage(2, 0));         // 14 further 4 MB images fit beside the root: 60 MB of 64
+        h.Send("a=f,i=1,f=32,s=1000,v=1000,z=100", Solid(5, 5, 5, 255, 1000 * 1000));   // +8 MB: must evict at least two
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(2, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+        Assert.Null(h.Buffer.FindKittyImage(2, 0));            // the oldest unplaced asset went first
+        Assert.NotNull(h.Buffer.FindKittyImage(15, 0));        // the newest survived
+        Assert.Single(h.Buffer.Images);                        // the animated image's placement is untouched
+    }
+
     [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {

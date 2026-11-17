@@ -49,7 +49,7 @@ export function syntheticAnimationCapture(screen, appearance, { bleed = false } 
 
 /**
  * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
- * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
+ * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry, side) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
  */
 export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer } = {}) {
     const bound = animationBoundScreen(initial, runId), frames = [], actions = [], states = new Map();
@@ -60,7 +60,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
         const other = pairDiffer?.(entry);
         const pixels = [appearance, other ?? appearance].map((shown, side) => {
-            const capture = syntheticAnimationCapture(screen, shown, { bleed: bleed?.(entry) === true });
+            const capture = syntheticAnimationCapture(screen, shown, { bleed: bleed?.(entry, side) === true });
             const bytes = Buffer.from(capture.pngBase64, 'base64'), { pngBase64, ...facts } = capture;
             const file = `${animationPixelPrefix}/frame-${String(frames.length).padStart(3, '0')}-${side}.png`;
             writeFileSync(join(output, file), bytes); return { ...structuredClone(facts), file, sha256: pngHash(bytes) };

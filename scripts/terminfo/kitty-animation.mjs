@@ -173,10 +173,15 @@ class AnimationReport {
         const { facts } = this.timingFacts(entry, stage, index, context);
         // A pair that differs means the frame changed between its two captures: legitimate near a boundary, but then no single frame is observed.
         const timing = this.pairStable ? evaluateAnimationTiming(stage, facts) : { valid: false, reason: 'paired captures differ: the frame changed between them' };
-        const pixel = inspectAnimationPixels({ baseline: this.boundPixel.image, observed: pixels[0].image, grid: pixels[0].details.grid,
+        const inspect = observed => inspectAnimationPixels({ baseline: this.boundPixel.image, observed: observed.image, grid: observed.details.grid,
             anchor: animationAnchor, cells: animationCellEnvelope, appearance: stage.appearance });
+        const pixel = inspect(pixels[0]);
         checkImages(pixel.controls[0].passed);
-        const assertions = [...pixel.assertions, pixel.controls[1]];
+        // Bleed is timing-independent, so a pair that differs must be clean in both members.
+        const other = this.pairStable ? pixel : inspect(pixels[1]);
+        checkImages(other.controls[0].passed);
+        const bleed = { ...pixel.controls[1], passed: pixel.controls[1].passed && other.controls[1].passed };
+        const assertions = [...pixel.assertions, bleed];
         const grade = this.gradeStage(item, stage, reply, assertions, timing);
         this.observations.push({ featureId: item.id + '.' + stage.id, ...grade, snapshot: index, actionIndex: context.action.index,
             reply, assertions, classification: pixel.classification, measurement: pixel.measurement,

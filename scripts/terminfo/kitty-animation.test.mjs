@@ -130,6 +130,14 @@ test('a capture pair that straddles a frame boundary is inconclusive for a movin
     });
 });
 
+test('bleed in either member of a differing pair fails the stage', () => {
+    for (const side of [0, 1]) withJournal({ bleed: (entry, at) => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second' && at === side,
+        pairDiffer: entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second' ? 'third' : undefined }, ({ build }) => {
+        const second = build().observations.find(item => item.featureId === 'kitty.animation.playback.second');
+        assert.equal(second.result, 'failed', `bleed in capture ${side}`); assert.equal(second.assertions.at(-1).passed, false);
+    });
+});
+
 test('tampering with the journal, actions, timing, replies or seal is refused', () => {
     withJournal({}, ({ build, frames, actions, seal, output }) => {
         const clone = value => structuredClone(value);

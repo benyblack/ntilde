@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Ntilde.VT;
@@ -40,19 +41,25 @@ public partial class TerminalBuffer
             long resulting = asset.PixelCharge + frame.Charge - (replacing ? animation.Frames[replaceIndex].Charge : 0);
             if (resulting > MaxKittyImagePixelBytes) return KittyFrameStoreResult.NoSpace;
             if (!TryAdmitImageHandle(frame.Handle)) return KittyFrameStoreResult.Rejected;
-            foreach (KittyImageAsset victim in KittyQuotaVictims(asset, resulting)) FreeKittyImage(victim);
+            List<KittyImageAsset> victims = KittyQuotaVictims(asset, resulting);
 
+            // Publish the frame's ownership before any other asset is freed: a host decoder that shares an opaque handle cannot then
+            // see it retired while the frame already owns it (the order StoreKittyImage keeps for whole images).
+            KittyFrame? old = null;
             if (!replacing)
             {
                 animation.Frames.Add(frame);
                 // A parked loading animation resumes from this arrival, not from whenever the next render happens.
                 if (animation.OnFrameAppended(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
-                return KittyFrameStoreResult.Stored;
             }
-            KittyFrame old = animation.Frames[replaceIndex];
-            animation.Frames[replaceIndex] = frame;
-            if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
-            RetireUnstoredKittyHandle(old.Handle); // no placement or asset references it any more
+            else
+            {
+                old = animation.Frames[replaceIndex];
+                animation.Frames[replaceIndex] = frame;
+                if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
+            }
+            foreach (KittyImageAsset victim in victims) FreeKittyImage(victim);
+            if (old is not null) RetireUnstoredKittyHandle(old.Handle); // no placement or asset references it any more
             return KittyFrameStoreResult.Stored;
         }
         finally
