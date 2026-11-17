@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemon, environmentValue, readPersistentDaemon, terminateRecordedDaemon } from './ownership.mjs';
+import { assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemons, environmentHas, isDaemonCommand, readPersistentDaemon, terminateRecordedDaemon } from './ownership.mjs';
 
 const runId = 'a'.repeat(32), appData = '/private/ntilde-qa/nt-abc123/appdata', executable = '/sidecar/Ntilde';
 const daemonFacts = () => ({
@@ -15,11 +15,33 @@ const persistentProof = () => ({
     daemon: daemonFacts(), appData,
 });
 
-test('environmentValue reads one exact NAME=value token and nothing ambiguous', () => {
-    assert.equal(environmentValue('cmd A=1 B=2', 'A'), '1');
-    assert.equal(environmentValue('cmd A=1 A=2', 'A'), undefined);
-    assert.equal(environmentValue('cmd XA=1', 'A'), undefined);
-    assert.equal(environmentValue('cmd', 'A'), undefined);
+test('environmentHas matches one exact NAME=value assignment as a whole, spaces included', () => {
+    assert.equal(environmentHas('cmd A=1 B=2', 'A', '1'), true);
+    assert.equal(environmentHas('cmd A=1 A=1', 'A', '1'), false);
+    assert.equal(environmentHas('cmd A=12', 'A', '1'), false);
+    assert.equal(environmentHas('cmd XA=1', 'A', '1'), false);
+    assert.equal(environmentHas('cmd', 'A', '1'), false);
+    assert.equal(environmentHas('cmd A=/Users/some one/x B=2', 'A', '/Users/some one/x'), true);
+    assert.equal(environmentHas('cmd A=/Users/some one/x', 'A', '/Users/some one/x'), true);
+    assert.equal(environmentHas('cmd A=/Users/some one/xy B=2', 'A', '/Users/some one/x'), false);
+});
+
+test('isDaemonCommand requires the exact launched executable (spaces included) serving', () => {
+    assert.equal(isDaemonCommand('/a b/Ntilde mux serve --x', '/a b/Ntilde'), true);
+    assert.equal(isDaemonCommand('/a b/Ntilde mux serve', '/a b/Ntilde'), true);
+    assert.equal(isDaemonCommand('/a b/Ntilde mux servers', '/a b/Ntilde'), false);
+    assert.equal(isDaemonCommand('/a b/Ntilde mux ls', '/a b/Ntilde'), false);
+    assert.equal(isDaemonCommand('/a b/NtildeX mux serve', '/a b/Ntilde'), false);
+});
+
+test('the daemon of a sidecar whose path contains spaces is accepted', () => {
+    const spaced = '/Users/some one/sidecar/Ntilde', proof = persistentProof(), root = '/Users/some one/.ntilde-qa/nt-abc/appdata';
+    proof.executable = proof.app.executable = proof.daemon.record.executable = spaced;
+    proof.appCommand = `${spaced} --ntilde-terminfo-owner=${runId}`;
+    proof.appData = root;
+    proof.daemon.text = `${spaced} mux serve NTILDE_APPDATA_ROOT=${root} TERMINFO_RUN_ID=${runId} HOME=/Users/some one`;
+    proof.daemon.descriptor.endpoint = root + '/mux/sock';
+    assert.doesNotThrow(() => assertProcessOwnership(proof));
 });
 
 test('accepts the worker of the owned multiplexer daemon', () => {
@@ -37,7 +59,7 @@ for (const [name, change, message] of [
     ['a daemon of another user', p => { p.daemon.record.uid = 502; }, /another user/],
     ['another executable', p => { p.daemon.record.executable = '/other/Ntilde'; }, /launched executable/],
     ['a command that is not mux serve', p => { p.daemon.text = p.daemon.text.replace('mux serve', 'mux ls'); }, /launched executable/],
-    ['no serve arguments', p => { p.daemon.text = `${executable} mux`; }, /launched executable/],
+    ['no serve arguments', p => { p.daemon.text = `${executable} mux NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId}`; }, /launched executable/],
     ['another app-data root', p => { p.daemon.text = p.daemon.text.replace(appData, '/private/ntilde-qa/nt-other/appdata'); }, /environment differs/],
     ['another run identity', p => { p.daemon.text = p.daemon.text.replace(runId, 'b'.repeat(32)); }, /environment differs/],
     ['a repeated root', p => { p.daemon.text += ' NTILDE_APPDATA_ROOT=' + appData; }, /environment differs/],
@@ -76,27 +98,36 @@ test('readPersistentDaemon returns the daemon facts and the descriptor it wrote'
     assert.equal(facts2.appBirth, 'Tue Nov 17 16:07:29 2026');
 });
 
-test('cleanup treats an absent daemon as already stopped and never asks it to stop', async () => {
+const context = { executable, appData, runId };
+test('cleanup asks for nothing when no daemon is recorded and none is found', async () => {
     let asked = false;
-    await terminateRecordedDaemon(undefined, { executable, appData, runId }, { stop: () => { asked = true; } });
-    await terminateRecordedDaemon({ pid: 2 ** 22 + 12345, uid: 501, executable }, { executable, appData, runId }, { stop: () => { asked = true; } });
+    await terminateRecordedDaemon(undefined, context, { stop: () => { asked = true; }, discover: () => [] });
+    await terminateRecordedDaemon({ pid: 2 ** 22 + 12345, uid: 501, executable }, context, { stop: () => { asked = true; }, discover: () => [] });
     assert.equal(asked, false);
 });
 
 test('cleanup refuses to signal a live process that is not this run\'s daemon', async () => {
     let asked = false;
     await assert.rejects(terminateRecordedDaemon({ pid: process.pid, uid: process.getuid(), executable: process.execPath }, { executable: process.execPath, appData, runId },
-        { stop: () => { asked = true; } }), /identity changed/);
+        { stop: () => { asked = true; }, discover: () => [] }), /identity changed/);
     assert.equal(asked, false);
 });
 
-test('a daemon is discovered only from the private root\'s own descriptor, and an absent or malformed one is no candidate', () => {
-    const record = pid => {
-        if (!Number.isSafeInteger(pid)) throw new Error('Invalid process ID.');
-        return { pid, ppid: 1, uid: 501, tty: '??', executable };
-    };
-    assert.deepEqual(discoverPersistentDaemon(appData, executable, { read: () => JSON.stringify({ pid: 300 }), record }), { pid: 300, uid: 501, executable });
-    assert.equal(discoverPersistentDaemon(appData, executable, { read: () => { throw new Error('ENOENT'); }, record }), undefined);
-    assert.equal(discoverPersistentDaemon(appData, executable, { read: () => 'not json', record }), undefined);
-    assert.equal(discoverPersistentDaemon(appData, executable, { read: () => JSON.stringify({ pid: 'x' }), record }), undefined);
+test('cleanup fails when a scan still finds a daemon after every candidate was handled', async () => {
+    await assert.rejects(terminateRecordedDaemon(undefined, context, { stop: () => {}, discover: () => [{ pid: 2 ** 22 + 777, uid: 501, executable }] }), /survived cleanup/);
+});
+
+test('a daemon that never published its descriptor is still found by its environment', () => {
+    const listing = [`  300   501 ${executable} mux serve NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId} HOME=/Users/test`,
+        `  301   501 ${executable} --ntilde-terminfo-owner=${runId} NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId}`,
+        `  302   502 ${executable} mux serve NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId}`,
+        `  303   501 ${executable} mux serve NTILDE_APPDATA_ROOT=/other/appdata TERMINFO_RUN_ID=${runId}`,
+        `  304   501 ${executable} mux serve NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${'b'.repeat(32)}`,
+        '  not a process line'].join('\n');
+    assert.deepEqual(discoverPersistentDaemons(context, { run: () => listing, uid: 501 }), [{ pid: 300, uid: 501, executable }]);
+});
+
+test('a failed process scan is a failed cleanup, never an empty result', async () => {
+    assert.throws(() => discoverPersistentDaemons(context, { run: () => { throw new Error('ps failed'); } }), /ps failed/);
+    await assert.rejects(terminateRecordedDaemon(undefined, context, { stop: () => {}, discover: () => { throw new Error('ps failed'); } }), /ps failed/);
 });

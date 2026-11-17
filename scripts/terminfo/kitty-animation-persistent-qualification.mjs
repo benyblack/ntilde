@@ -47,10 +47,19 @@ function checkRetainedDirectories(dir, frames) {
     }
 }
 
-/** The measured source bytes retained beside the run are exactly the ones its context names. */
+/**
+ * The measured sources are the launcher's captured set: the retained manifest is the one the context names (by digest), under the context's own policy,
+ * covers exactly the policy's inventory, and each retained source is the file that manifest and the context both digest.
+ */
 function checkSources(dir, context) {
-    const inventory = retainedInventory(dir, context);
-    for (const [key, file] of Object.entries(inventory)) check(sha(read(dir, join('sources', file))) === context[key], `retained source ${file} differs from the measured digest`);
+    const inventory = retainedInventory(dir, context), manifestBytes = read(dir, 'source-snapshot.json'), manifest = JSON.parse(manifestBytes);
+    check(sha(manifestBytes) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === context.sourceSnapshotPolicy,
+        'the retained source manifest is not the one the run names');
+    check(snapshotHash(Object.keys(manifest.hashes ?? {}).sort()) === snapshotHash(Object.keys(inventory).sort()), 'the source manifest does not cover the policy inventory');
+    for (const [key, file] of Object.entries(inventory)) {
+        const digest = sha(read(dir, join('sources', file)));
+        check(digest === context[key] && digest === manifest.hashes[key], `retained source ${file} differs from the measured digest`);
+    }
 }
 
 /** The recorded multiplexer daemon is the executable serving the run's private root, started after the App, and the worker's parent. */

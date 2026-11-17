@@ -209,7 +209,7 @@ import { buildSelectionColorsGradingReport, selectionColorsCounts } from './term
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
-import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists, readPersistentDaemon, persistentDaemonIdentity, terminateRecordedDaemon, discoverPersistentDaemon } from './terminfo/ownership.mjs';
+import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists, readPersistentDaemon, persistentDaemonIdentity, terminateRecordedDaemon } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
 import { savedSuiteId, ownedSavedPolicy } from './terminfo/saved-cases.mjs';
@@ -2026,7 +2026,7 @@ async function cleanupOwnedRun({ lease, workerIdentity, daemonIdentity, daemonPr
     catch (error) { appError = error; }
     // A persistent tab's multiplexer daemon outlives both by design: stop it through its private root, only while it is verifiably this run's.
     let daemonError;
-    try { await terminateRecordedDaemon(daemonIdentity ?? (collectionScope?.persistence === 'KeepOnClose' ? discoverPersistentDaemon(appData, executable) : undefined), { executable, appData, runId }); }
+    try { if (collectionScope?.persistence === 'KeepOnClose') await terminateRecordedDaemon(daemonIdentity, { executable, appData, runId }); }
     catch (error) { daemonError = error; }
     if (logFd !== undefined) closeSync(logFd);
     await new Promise(resolve => server.close(() => resolve()));

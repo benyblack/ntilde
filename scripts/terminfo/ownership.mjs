@@ -46,14 +46,20 @@ export function parseProcessRecord(text, pid = '?') {
 }
 
 /**
- * Environment of a user-owned process as `ps eww` prints it after the command line. A name is read only from an exact
- * whitespace-delimited `NAME=value` token, and only when exactly one such token exists, so a path with spaces or a repeated
- * name fails closed instead of being guessed.
+ * Whether a user-owned process's `ps eww` text (command line, then environment) carries exactly one `NAME=` assignment and it is `NAME=value`.
+ * The value is matched as a whole against the known expected one, so a path with spaces is neither split nor guessed.
  */
-export function environmentValue(text, name) {
-    const prefix = name + '=';
-    const matches = text.split(/\s+/).filter(token => token.startsWith(prefix));
-    return matches.length === 1 ? matches[0].slice(prefix.length) : undefined;
+export function environmentHas(text, name, value) {
+    const needle = ` ${name}=`, first = text.indexOf(needle);
+    if (first < 0 || text.indexOf(needle, first + 1) >= 0) return false;
+    const end = first + needle.length + value.length;
+    return text.startsWith(value, first + needle.length) && (end === text.length || text[end] === ' ');
+}
+
+/** Whether the command line is exactly the launched executable (spaces included) serving: `<executable> mux serve`, then arguments or the environment. */
+export function isDaemonCommand(text, executable) {
+    const prefix = `${executable} mux serve`;
+    return text.startsWith(prefix) && (text.length === prefix.length || text[prefix.length] === ' ');
 }
 
 const daemonBirthMs = birth => Date.parse(birth + ' UTC');
@@ -83,14 +89,10 @@ export function readPersistentDaemon(daemonPid, appPid, appData, timeout = 2000,
  * advertising itself through a descriptor inside that private root.
  */
 export function assertPersistentDaemon({ app, worker, daemon, executable, uid, runId, appData }) {
-    const tokens = daemon.text.split(/\s+/);
     if (worker.ppid !== daemon.record.pid) throw new Error('Worker is not a direct child of the owned multiplexer daemon.');
     if (daemon.record.uid !== uid || app.uid !== uid) throw new Error('Multiplexer daemon belongs to another user.');
-    if (daemon.record.executable !== executable || tokens[0] !== daemon.record.executable || tokens[1] !== 'mux' || tokens[2] !== 'serve'
-        || tokens.length < 4) {
-        throw new Error('Multiplexer daemon is not the launched executable serving.');
-    }
-    if (environmentValue(daemon.text, 'NTILDE_APPDATA_ROOT') !== appData || environmentValue(daemon.text, 'TERMINFO_RUN_ID') !== runId) {
+    if (daemon.record.executable !== executable || !isDaemonCommand(daemon.text, executable)) throw new Error('Multiplexer daemon is not the launched executable serving.');
+    if (!environmentHas(daemon.text, 'NTILDE_APPDATA_ROOT', appData) || !environmentHas(daemon.text, 'TERMINFO_RUN_ID', runId)) {
         throw new Error('Multiplexer daemon environment differs from this run.');
     }
     const { descriptor } = daemon;
@@ -292,30 +294,35 @@ export async function verifyNtildeOutput(config, out) {
         ...(config.privateClipboard === true ? { originalTerminalState: receipt.originalTerminalState } : {}) };
 }
 
-/**
- * The daemon a persistent run's private root advertises, for a cleanup whose proof failed before any daemon was recorded. It is only a
- * candidate: terminateRecordedDaemon still requires the launched executable, `mux serve`, this root and this run in its environment.
- */
-export function discoverPersistentDaemon(appData, executable, { read = readFileSync, record = processRecord } = {}) {
-    try {
-        const { pid } = JSON.parse(read(join(appData, 'mux', 'mux-endpoint.json'), 'utf8'));
-        const current = record(pid, 500);
-        return { pid: current.pid, uid: current.uid, executable: current.executable === executable ? current.executable : realpathSync(current.executable) };
-    } catch { return undefined; }
-}
-
-/** The daemon facts a cleanup must re-verify before signalling: no pid is ever signalled on its number alone. */
+/** The facts a cleanup must re-verify before signalling: no pid is ever signalled on its number alone. */
 export function persistentDaemonIdentity(daemon) {
     return { pid: daemon.record.pid, uid: daemon.record.uid, executable: daemon.record.executable };
 }
 
-function currentDaemon(recorded, { executable, appData, runId }, timeout = 500) {
+/** Whether a command-plus-environment text is this run's daemon: the launched executable serving, with this root and this run in its environment. */
+function isRunDaemon(text, { executable, appData, runId }) {
+    return isDaemonCommand(text, executable) && environmentHas(text, 'NTILDE_APPDATA_ROOT', appData) && environmentHas(text, 'TERMINFO_RUN_ID', runId);
+}
+
+/**
+ * Every process of this user that is this run's daemon, found by scanning command lines and environments. The descriptor is not consulted:
+ * a daemon interrupted before it published one, or one whose record was never taken, is found the same way. A failed scan throws, so cleanup
+ * is never reported verified without having looked.
+ */
+export function discoverPersistentDaemons(context, { run = execFileSync, uid = process.getuid() } = {}) {
+    const listing = run('/bin/ps', ['-axww', '-E', '-o', 'pid=,uid=,command='], { encoding: 'utf8', timeout: 10000, maxBuffer: 64 * 1024 * 1024 });
+    const found = [];
+    for (const line of listing.split('\n')) {
+        const match = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
+        if (match && Number(match[2]) === uid && isRunDaemon(match[3], context)) found.push({ pid: Number(match[1]), uid, executable: context.executable });
+    }
+    return found;
+}
+
+function currentDaemon(recorded, context, timeout = 500) {
     const record = processRecord(recorded.pid, timeout);
     const text = execFileSync('/bin/ps', ['eww', '-p', String(recorded.pid), '-o', 'command='], { encoding: 'utf8', timeout, maxBuffer: 262144 }).trim();
-    const tokens = text.split(/\s+/);
-    return record.uid === recorded.uid && record.executable === recorded.executable && recorded.executable === executable
-        && tokens[0] === recorded.executable && tokens[1] === 'mux' && tokens[2] === 'serve'
-        && environmentValue(text, 'NTILDE_APPDATA_ROOT') === appData && environmentValue(text, 'TERMINFO_RUN_ID') === runId;
+    return record.uid === recorded.uid && record.executable === recorded.executable && recorded.executable === context.executable && isRunDaemon(text, context);
 }
 
 function verifyRecordedDaemon(recorded, context) {
@@ -338,12 +345,8 @@ async function daemonExits(pid, milliseconds) {
     return true;
 }
 
-/**
- * Stop the multiplexer daemon a persistent collection started. It outlives the App and the worker by design, so the owned cleanup asks
- * it to shut down through its own private root and then signals it only while it is still verifiably this run's daemon.
- */
-export async function terminateRecordedDaemon(recorded, context, { stop = spawnSync } = {}) {
-    if (!recorded || !verifyRecordedDaemon(recorded, context)) return;
+async function stopDaemon(recorded, context, stop) {
+    if (!verifyRecordedDaemon(recorded, context)) return;
     stop(context.executable, ['mux', 'kill-server', '--force'], { env: { ...process.env, NTILDE_APPDATA_ROOT: context.appData },
         timeout: 15000, stdio: 'ignore', windowsHide: true });
     if (await daemonExits(recorded.pid, 5000)) return;
@@ -357,4 +360,17 @@ export async function terminateRecordedDaemon(recorded, context, { stop = spawnS
         if (await daemonExits(recorded.pid, 2000)) return;
     }
     throw new Error(`Owned multiplexer daemon ${recorded.pid} did not exit after SIGKILL.`);
+}
+
+/**
+ * Stop the multiplexer daemon(s) a persistent collection started. A daemon outlives the App and the worker by design, so the owned cleanup
+ * asks each one to shut down through its own private root and then signals it only while it is still verifiably this run's. The recorded
+ * identity and a scan of this user's processes name the candidates; a scan that still finds one afterwards fails the cleanup.
+ */
+export async function terminateRecordedDaemon(recorded, context, { stop = spawnSync, discover = discoverPersistentDaemons } = {}) {
+    const candidates = new Map(discover(context).map(daemon => [daemon.pid, daemon]));
+    if (recorded) candidates.set(recorded.pid, recorded);
+    for (const daemon of candidates.values()) await stopDaemon(daemon, context, stop);
+    const survivors = discover(context);
+    if (survivors.length > 0) throw new Error(`Owned multiplexer daemon ${survivors[0].pid} survived cleanup.`);
 }
