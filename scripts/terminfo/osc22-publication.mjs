@@ -6,9 +6,9 @@ import { osc22CaseIds } from './osc22-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 /** The scripts revision the measured run's private source snapshot was built from. The retained selected-source manifest independently pins the measured scripts; these labels are not binary-to-source attestation. */
-export const measuredScriptsRevision = 'MEASUREMENT_PENDING';
+export const measuredScriptsRevision = 'bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e';
 /** The measured App build revision. */
-export const measuredAppRevision = 'MEASUREMENT_PENDING';
+export const measuredAppRevision = 'bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e';
 const scope = 'Pinned terminfo.dev@4.0.0 extensions.osc22-pointer terminal path (no termless function) sends two exact writes then asks for CPR and always remains inconclusive. '
     + 'Separate ntilde-osc22-app-cursor-effect-v1 grades the main-screen requested shape and actual Avalonia Cursor object kind for pointer, text, crosshair, default and empty reset, '
     + 'BEL/ST and optional equals, with text delivery and invalid/advanced-form controls, complete stored-state checks and restoration. No native pointer image or location, full Kitty stacks/queries/other shapes, '

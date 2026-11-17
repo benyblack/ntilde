@@ -46,3 +46,5 @@ bytes execute separately, with the pinned result retained beside the effect grad
 Per-screen/reset/hover behavior has owning unit tests; that is distinct from the
 bounded main-screen runtime claim. No physical/native pointer, SSH, mux, replay,
 stock, frozen Core/Modern or public-comparison score is inferred from it.
+
+Fresh measurement, identities, attempts and scope: [OSC 22 qualification](2026-11-17-osc22-qualification.md).

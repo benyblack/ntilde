@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "runId": "6a6b07d5362038927fc8eb5c06bd2871",
+      "appRevision": "3096b8609ce1fe1bfbbb4386a54653443433a409",
+      "scriptsRevision": "3096b8609ce1fe1bfbbb4386a54653443433a409",
+      "archive": "superseded/attempt-1.zip",
+      "log": "collection-logs.zip:attempt-1.log",
+      "disposition": "failed-not-admitted",
+      "reason": "Unknown owner request at OSC22 start: generic lifecycle-prefix admission lacked ptr. No OSC22 observations or cleanup receipt. Verified disposable teardown and lease release retained."
+    },
+    {
+      "attempt": 2,
+      "runId": "a188ef080019680287f85cab559f5adf",
+      "appRevision": "3096b8609ce1fe1bfbbb4386a54653443433a409",
+      "scriptsRevision": "3c139127c367919458713b29e641c91c859fb831",
+      "archive": "superseded/attempt-2-pre-hover-fix.zip",
+      "log": "collection-logs.zip:attempt-2.log",
+      "disposition": "superseded-pre-hover-fix",
+      "reason": "Supported basic main-screen effect on the earlier App, with complete cleanup receipt. Preserved as historical evidence after the App screen-switch stale-hover fix; not the final App measurement."
+    },
+    {
+      "attempt": 3,
+      "runId": "95db74fe99675694c4197ccfca70df84",
+      "appRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
+      "scriptsRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
+      "archive": "owned-run.zip",
+      "log": "collection-logs.zip:attempt-3.log",
+      "disposition": "admitted",
+      "reason": "Fresh App after clearing stale link hover on screen switches; complete paired journal, unchanged main-screen effect contract, prepared restoration and cleanup receipt75. Pinned inconclusive / separate App Cursor-kind effect supported."
+    }
+  ]
+}

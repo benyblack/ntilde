@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 146,
-    "suiteClaims": 148,
+    "uniqueBenchmarkIds": 147,
+    "suiteClaims": 149,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 143,
+    "effectSupportedIds": 144,
     "effectUnsupportedIds": 2,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 94,
@@ -70,6 +70,7 @@
       "extensions.osc1337-cellsize",
       "extensions.osc17-highlight-bg",
       "extensions.osc19-highlight-fg",
+      "extensions.osc22-pointer",
       "extensions.osc3008-context",
       "extensions.osc633-a",
       "extensions.osc633-b",
@@ -105,7 +106,7 @@
       "extensions.osc720-scroll-up",
       "extensions.sixel"
     ],
-    "effectSupportedOfStockInconclusive": 142,
+    "effectSupportedOfStockInconclusive": 143,
     "effectUnsupportedOfStockInconclusive": 2,
     "pinnedSupportedOfStockInconclusive": 93,
     "ungradedStockIdsWithEvidence": [
@@ -120,10 +121,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 26,
+      "effectUnqualified": 25,
       "effectMeasuredUnsupported": 2,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 23,
+      "effectNotMeasured": 22,
       "notPinnedSupported": 75
     }
   },
@@ -3912,6 +3913,76 @@
       }
     },
     {
+      "suite": "osc22",
+      "suiteId": "ntilde-owned-osc22-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-17-osc22/",
+      "doc": "2026-11-17-osc22-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc22-pointer"
+      ],
+      "evidence": {
+        "files": 10,
+        "bytes": 48756285,
+        "sha256": "5e50a4b7fb90ec27d31c2c1c78063802c00373e685ecd21cb4a9463572925b57"
+      },
+      "receipt": {
+        "schemaVersion": 75,
+        "runId": "95db74fe99675694c4197ccfca70df84",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "3855942cc91ddab4f7828d893c1ce4e7be928d8cdad95232029ebd7ee9754c3e"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc22-graded-v1",
+          "file": "ptr-observations.json",
+          "sha256": "b2f5fef7f9550eb8b6c6861e4a8093c4c8c9eebb299e6f8da84e92753be219b0",
+          "runFile": "ptr-run.json",
+          "runSha256": "38df8de0ffc09e4ffca3aa3bb5b148aef67ec4d120b4c43a07fe8a66d3a5630b",
+          "counts": {
+            "inconclusive/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "95db74fe99675694c4197ccfca70df84",
+        "measuredAt": "2026-11-17T16:38:25.763Z",
+        "appRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
+        "appVersion": "0.14.0+bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "42563a407c832133d6708b92636462df9e0a0ccb2247a41482ff575661b47908",
+        "gradingAdapterId": "ntilde-owned-osc22-grading-v1",
+        "gradingAdapterBundleSha256": "2a6c1f0dbd9403b62af181efc1718288cc6eefe2ab4cacecace7ba287624022f",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v68",
+        "sourceSnapshotManifestSha256": "3f97a900a18306f6aba808ef3a86d31d458f502a4534ad7bb7e055fb638e2b80"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "f233e092560533a5a0ce16b99b50b92b",
+        "counts": {
+          "inconclusive": 160,
+          "supported": 94,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "b005151cf4db37404a8270367e291ed4380975d741f07abeb715d9d66b72e2ec",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc22-publication.test.mjs",
+        "testSha256": "8c206db414f02e22d43c3d4be7858d92f2fdf928fcdab521c6506540f3cb3f31"
+      }
+    },
+    {
       "suite": "kitty-animation",
       "suiteId": "ntilde-owned-kitty-animation-qualification-v2",
       "contractsVersion": 2,
@@ -7228,6 +7299,58 @@
             "stored-state"
           ],
           "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc22-pointer",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc22",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc22",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc22-pointer",
+          "suite": "osc22",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor response does not measure OSC 22 pointer shape"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-terminal-unmeasured-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Cursor response does not measure OSC 22 pointer shape"
+          },
+          "measuredLayers": [
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "owned-pane-metadata-and-session-status"
         }
       ]
     },
