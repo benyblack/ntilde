@@ -650,16 +650,23 @@ public sealed class KittyAnimationTests
     [Fact]
     public void Skipping_whole_cycles_leaves_the_same_visible_frame_as_stepping_through_them_even_around_a_gapless_frame()
     {
-        Harness Build()
+        Harness Build(string controls)
         {
             var h = new Harness();
             h.Send("a=f,i=1,f=32,s=2,v=1,z=-1", Solid(0, 255, 0, 255));      // a gapless second frame
             h.Send("a=a,i=1,r=1,z=100"); h.Replies.Clear();
-            h.Now = 0; h.Send("a=a,i=1,c=2,s=3,v=3"); h.Replies.Clear();    // positioned on the gapless frame, two passes
+            h.Now = 0; h.Send(controls); h.Replies.Clear();                   // positioned on the gapless frame
             return h;
         }
-        var direct = Build(); direct.Advance(100);
-        var stepped = Build(); stepped.Advance(0); stepped.Advance(100);
+        foreach (string controls in new[] { "a=a,i=1,c=2,s=3,v=3", "a=a,i=1,c=2,s=3,v=2" })      // two passes, then one pass: nothing left to skip
+        {
+            var one = Build(controls); one.Advance(100);
+            var two = Build(controls); two.Advance(0); two.Advance(100);
+            var x = one.Buffer.FindKittyImage(1, 0)!.Animation!; var y = two.Buffer.FindKittyImage(1, 0)!.Animation!;
+            Assert.Equal((x.State, x.Current, x.Displayed, x.LoopsRemaining), (y.State, y.Current, y.Displayed, y.LoopsRemaining));
+        }
+        var direct = Build("a=a,i=1,c=2,s=3,v=3"); direct.Advance(100);
+        var stepped = Build("a=a,i=1,c=2,s=3,v=3"); stepped.Advance(0); stepped.Advance(100);
         var a = direct.Buffer.FindKittyImage(1, 0)!.Animation!; var b = stepped.Buffer.FindKittyImage(1, 0)!.Animation!;
         Assert.Equal((a.State, a.Current, a.Displayed, a.LoopsRemaining), (b.State, b.Current, b.Displayed, b.LoopsRemaining));
         Assert.Equal(0, a.Displayed);                                          // the gapless frame is never the one on screen

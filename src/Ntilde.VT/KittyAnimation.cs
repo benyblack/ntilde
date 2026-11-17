@@ -187,8 +187,8 @@ internal sealed class KittyAnimation
     {
         if (State != KittyAnimationState.Running) return;
         long cycle = CycleMs(), whole = (nowMs - FrameStartMs) / cycle;
-        if (whole <= 0) return;
         if (LoopsRemaining >= 0) whole = Math.Min(whole, LoopsRemaining);
+        if (whole <= 0) return;                    // nothing to skip (including finite playback with no passes left): stepping decides
         FrameStartMs += whole * cycle;
         if (LoopsRemaining >= 0) LoopsRemaining -= (int)whole;
         // The skipped cycles passed through every visible frame, so what is on screen is the last visible frame at or before the playhead,
