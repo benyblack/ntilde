@@ -107,6 +107,8 @@ namespace Ntilde.Shell
         /// </summary>
         private void AdvanceKittyAnimations(TerminalBuffer buffer, bool schedule)
         {
+            // Advancing is a pure function of the clock, so doing it for an offscreen capture (AgentHost live capture, PNG export) shows exactly what the
+            // live view would show at that instant and consumes nothing a later live frame would not have consumed: the capture sees time, it changes none.
             // A buffer that never animates (or a held one) costs no lock and no clock read on this hot path.
             if (buffer.KittyAnimationPaused || !buffer.HasKittyAnimations) return;
             long now = buffer.KittyAnimationClock();

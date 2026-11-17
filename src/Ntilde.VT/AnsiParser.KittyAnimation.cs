@@ -32,6 +32,9 @@ public partial class AnsiParser
         if (asset is null) return "ENOENT:Image not found";
         id = asset.Id;
         if (!TryReadKittyFrameRequest(asset, out KittyFrameRequest request, out string error)) return error;
+        // A frame the quotas will refuse is refused before its payload is inflated, composed or decoded: a rejected upload costs no canvas and no bitmap.
+        KittyFrameStoreResult room = _buffer.CheckKittyFrameRoom(asset, request.Editing ? (int)request.Edit - 1 : -1, KittyFrameCharge(asset));
+        if (room != KittyFrameStoreResult.Stored) return KittyFrameStatus(room);
         if (!TryReadKittyFrameData(request, out byte[] data, out error)) return error;
         byte[] canvas = BuildKittyFrameCanvas(asset, request, data);
         if (canvas.Length == 0) return "ENOENT:Frame not found";
@@ -102,10 +105,7 @@ public partial class AnsiParser
     private string StoreKittyFrame(KittyImageAsset asset, KittyFrameRequest request, byte[] canvas)
     {
         int replaceIndex = request.Editing ? (int)request.Edit - 1 : -1;
-        long charge = (long)asset.PixelWidth * asset.PixelHeight * 4 + canvas.Length;
-        // A frame the quotas will refuse is refused before it is decoded: a hidden pane must not build a bitmap per rejected upload.
-        KittyFrameStoreResult room = _buffer.CheckKittyFrameRoom(asset, replaceIndex, charge);
-        if (room != KittyFrameStoreResult.Stored) return KittyFrameStatus(room);
+        long charge = KittyFrameCharge(asset);
         object handle = DecodeOrPlaceholder((IImageDecoder decoder, out int w, out int h) =>
             decoder.DecodeRawImage(canvas, 4, asset.PixelWidth, asset.PixelHeight, out w, out h), asset.PixelWidth, asset.PixelHeight);
         int gapMs = request.Gap;
@@ -122,6 +122,9 @@ public partial class AnsiParser
         if (stored != KittyFrameStoreResult.Stored) _buffer.RetireUnstoredKittyHandle(handle);
         return KittyFrameStatus(stored);
     }
+
+    /// <summary>What a frame of this image costs against the quota: its decoded pixels plus the RGBA kept for later composition.</summary>
+    private static long KittyFrameCharge(KittyImageAsset asset) => 8L * asset.PixelWidth * asset.PixelHeight;
 
     private static string KittyFrameStatus(KittyFrameStoreResult result) => result switch
     {

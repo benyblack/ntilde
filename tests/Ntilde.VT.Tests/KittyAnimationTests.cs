@@ -577,7 +577,8 @@ public sealed class KittyAnimationTests
         var counting = new CountingDecoder();
         h.Parser.ImageDecoder = counting;
         for (int attempt = 0; attempt < 3; attempt++) h.Send("a=f,i=1,f=32,s=2,v=1", Solid(2, 2, 2, 255));
-        Assert.Equal(3, h.Replies.Count(reply => reply.Contains(";ENOSPC:", StringComparison.Ordinal)));
+        h.Send("a=f,i=1,f=32,s=2,v=1", Solid(2, 2, 2, 255, 1));       // a malformed payload is refused for the quota first: nothing is inflated or composed for it
+        Assert.Equal(4, h.Replies.Count(reply => reply.Contains(";ENOSPC:", StringComparison.Ordinal)));
         Assert.Equal(0, counting.Decodes);                      // nothing was decoded, so nothing waits in the retirement queue
         var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
         Assert.Empty(retired);
@@ -627,6 +628,23 @@ public sealed class KittyAnimationTests
         h.Send("a=d,d=I,i=1"); h.Replies.Clear();
         Assert.False(h.Buffer.HasKittyAnimations);
         Assert.False(h.Buffer.AdvanceKittyAnimations(1_000, out long? due)); Assert.Null(due);
+    }
+
+    [Fact]
+    public void Advancing_is_a_pure_function_of_time_so_extra_offscreen_advances_change_nothing()
+    {
+        foreach (string controls in new[] { "a=a,i=1,s=3", "a=a,i=1,s=3,v=3", "a=a,i=1,s=2" })
+        {
+            var direct = ThreeFrames();
+            direct.Now = 0; direct.Send(controls); direct.Replies.Clear();
+            var stepped = ThreeFrames();
+            stepped.Now = 0; stepped.Send(controls); stepped.Replies.Clear();
+            foreach (long at in new long[] { 10, 49, 50, 51, 149, 150, 349, 350, 351, 700, 701, 5_000 }) stepped.Advance(at);   // captures and renders in between
+            direct.Advance(5_000);
+            var a = direct.Buffer.FindKittyImage(1, 0)!.Animation!; var b = stepped.Buffer.FindKittyImage(1, 0)!.Animation!;
+            Assert.Equal((a.State, a.Current, a.Displayed, a.LoopsRemaining), (b.State, b.Current, b.Displayed, b.LoopsRemaining));
+            Assert.Equal(direct.Buffer.Images.Count, stepped.Buffer.Images.Count);
+        }
     }
 
     [Fact]
