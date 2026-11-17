@@ -78,6 +78,8 @@ namespace Ntilde.Controls
 
             if (session is MuxClientSession) UnregisterRemoteMuxSession(); // its shell ended: nothing left to browse
             LastExitCode = code;
+            // The child's end is the TTY hangup that UAPI.15 says must drop every context; reset sequences deliberately do not.
+            Parser?.ResetContexts();
             _kittyClipboard?.Reset();
             PrivateClipboardQa.Interrupt(this);
             if (Buffer != null) Buffer.Modes.IsClipboardPasteMode = false;

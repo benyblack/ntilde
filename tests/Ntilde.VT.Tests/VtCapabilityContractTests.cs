@@ -81,6 +81,7 @@ public sealed class VtCapabilityContractTests
             ["color-stack-pop"] = AssertRuntimeColorStack,
             ["kitty-color-control"] = AssertKittyColorControl,
             ["osc5-special-color"] = AssertOsc5SpecialColor,
+            ["osc3008-context"] = AssertOsc3008Context,
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
             ["alternate-scroll"] = AssertAlternateScroll,
@@ -102,6 +103,15 @@ public sealed class VtCapabilityContractTests
         Assert.Equal(VtSupport.Partial, capability.Support);
         Assert.Equal("osc5-special-color", capability.ContractCase);
         ContractCases["osc5-special-color"]();
+    }
+
+    [Fact]
+    public void Partial_osc3008_context_catalogue_entry_has_an_executable_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "OSC:3008");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("osc3008-context", capability.ContractCase);
+        ContractCases["osc3008-context"]();
     }
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -668,6 +678,20 @@ public sealed class VtCapabilityContractTests
         parser.OnResponse = replies.Add;
         parser.Process("\u001b]5;0;#123456;0;?\u001b\\");
         Assert.Equal(new[] { "\u001b]5;0;rgb:1212/3434/5656\u001b\\" }, replies);
+    }
+
+    /// <summary>OSC 3008 opens a context with its metadata and the matching end closes it; nothing is ever sent back.</summary>
+    private static void AssertOsc3008Context()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(12, 8));
+        var replies = new List<string>();
+        parser.OnResponse = replies.Add;
+        parser.Process("\u001b]3008;start=ctx;type=shell;user=u\u001b\\");
+        var context = Assert.Single(parser.ContextStack);
+        Assert.Equal(("ctx", "shell", "u"), (context.Id, context.Type, context.User));
+        parser.Process("\u001b]3008;end=ctx\u001b\\");
+        Assert.Empty(parser.ContextStack);
+        Assert.Empty(replies);
     }
 
     private static void AssertColorSchemeQuery()

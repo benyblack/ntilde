@@ -85,6 +85,22 @@ public class PaneParserWiringTests
     }
 
     [AvaloniaFact]
+    public void Session_exit_is_the_hangup_that_drops_osc3008_contexts_but_a_terminal_reset_does_not()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        pane.Parser!.Process("\x1b]3008;start=s;type=session\x1b\\\x1b]3008;start=c;type=command\x1b\\\x1b]3008;end=c\x1b\\");
+        pane.Parser.Process("\x1bc\x1b[!p");
+        Assert.Equal("s", Assert.Single(pane.Parser.ContextStack).Id);
+        Assert.Single(pane.Parser.EndedContexts);
+
+        pane.HandleSessionExitForTesting(0);
+
+        Assert.Empty(pane.Parser.ContextStack);
+        Assert.Empty(pane.Parser.EndedContexts);
+    }
+
+    [AvaloniaFact]
     public void RewiringTheParser_ReplacesItRatherThanReusingIt()
     {
         using var pane = new TerminalPane();

@@ -40,6 +40,8 @@ namespace Ntilde.VT
                 IconName = _iconName,
                 TitleStack = ExportTitleStack(),
                 PendingNotifications = ExportPendingOsc99(),
+                ContextStack = ExportContextStack(),
+                EndedContexts = ExportEndedContexts(),
                 PendingTextLength = _textBuffer.Length,
             };
 
@@ -65,6 +67,9 @@ namespace Ntilde.VT
             // The snapshot's unfinished OSC 99 notifications replace any this parser already holds: they belong to the output the import replaces and
             // must not merge with later chunks of a notification that reuses their id.
             ImportPendingOsc99(state.PendingNotifications);
+
+            // Contexts are replaced the same way: the import replaces the output they described.
+            ImportContexts(state.ContextStack, state.EndedContexts);
 
             _state = (State)state.State;
 
@@ -217,6 +222,7 @@ namespace Ntilde.VT
 
             ValidateITerm2Multipart(state.ITerm2Multipart);
             ValidatePendingOsc99(state.PendingNotifications);
+            ValidateContexts(state.ContextStack, state.EndedContexts);
             StateTransferValidation.RequirePresent(state.Charsets, "parser charset designations");
             if (state.TitleStack is { } titleStack)
             {
