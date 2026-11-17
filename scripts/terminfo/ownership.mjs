@@ -73,7 +73,7 @@ export function readPersistentDaemon(daemonPid, appPid, appData, timeout = 2000,
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('The multiplexer descriptor is not a regular file.');
     const descriptor = JSON.parse(read(path, 'utf8'));
     return { record: { ...daemon, executable: canonical(daemon.executable) }, text, birth: birth(daemonPid, timeout), appBirth: birth(appPid, timeout),
-        descriptor: { pid: descriptor.Pid, processName: descriptor.ProcessName, endpoint: descriptor.Endpoint } };
+        descriptor: { pid: descriptor.pid, processName: descriptor.processName, endpoint: descriptor.endpoint } };
 }
 
 /**
@@ -290,6 +290,18 @@ export async function verifyNtildeOutput(config, out) {
     if (config.privateClipboard === true && (receipt.privateClipboard !== true || typeof receipt.originalTerminalState !== 'string')) throw new Error('Missing original private terminal state.');
     return { ...binding, ownerPid: app.pid, workerPid: worker.pid, launchRunId: config.runId,
         ...(config.privateClipboard === true ? { originalTerminalState: receipt.originalTerminalState } : {}) };
+}
+
+/**
+ * The daemon a persistent run's private root advertises, for a cleanup whose proof failed before any daemon was recorded. It is only a
+ * candidate: terminateRecordedDaemon still requires the launched executable, `mux serve`, this root and this run in its environment.
+ */
+export function discoverPersistentDaemon(appData, executable, { read = readFileSync, record = processRecord } = {}) {
+    try {
+        const { pid } = JSON.parse(read(join(appData, 'mux', 'mux-endpoint.json'), 'utf8'));
+        const current = record(pid, 500);
+        return { pid: current.pid, uid: current.uid, executable: current.executable === executable ? current.executable : realpathSync(current.executable) };
+    } catch { return undefined; }
 }
 
 /** The daemon facts a cleanup must re-verify before signalling: no pid is ever signalled on its number alone. */
