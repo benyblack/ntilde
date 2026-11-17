@@ -667,6 +667,27 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void Shortening_the_active_frames_gap_below_its_elapsed_time_ends_it_now_without_backdating_its_successors()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 255, 0, 255));
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(0, 0, 255, 255));
+        h.Send("a=a,i=1,r=1,z=1000"); h.Replies.Clear();            // gaps 1000 / 100 / 100
+        h.Now = 0; h.Send("a=a,i=1,s=3,v=2"); h.Replies.Clear();    // one pass
+        h.Now = 900; h.Send("a=a,i=1,r=1,z=10"); h.Replies.Clear(); // the root has been up 900 ms; its gap shrinks to 10, with no render in between
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(KittyAnimationState.Running, animation.State);
+        Assert.Equal(0, animation.Current);                          // the change applies from now: the root ends at 900, not retroactively
+        h.Advance(900);
+        Assert.Equal(1, Index(h));                                    // frame 2 starts now and still has its full 100 ms
+        Assert.Equal(KittyAnimationState.Running, animation.State);
+        h.Advance(999);
+        Assert.Equal(1, Index(h));
+        h.Advance(1000);
+        Assert.Equal(2, Index(h));
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();

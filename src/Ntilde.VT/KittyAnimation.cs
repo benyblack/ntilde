@@ -129,6 +129,12 @@ internal sealed class KittyAnimation
         return Displayed != before;
     }
 
+    /// <summary>
+    /// The current frame's gap just changed: it applies from now on and cannot reach back, so a gap shortened below the time already spent
+    /// ends the frame now (its successors start now) instead of being counted from the frame's old start.
+    /// </summary>
+    internal void RebaseCurrentGap(long nowMs) => FrameStartMs = Math.Max(FrameStartMs, nowMs - Hold(Frames[Current]));
+
     /// <summary>A frame arrived while parked: it is shown now and its gap counts from now, not from the old timeline.</summary>
     private bool ResumeParked(long nowMs)
     {

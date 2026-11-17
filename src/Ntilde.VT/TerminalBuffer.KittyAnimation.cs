@@ -102,6 +102,7 @@ public partial class TerminalBuffer
                 old = animation.Frames[replaceIndex];
                 animation.Frames[replaceIndex] = frame;
                 if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
+                if (replaceIndex == animation.Current && !KittyAnimationPaused) animation.RebaseCurrentGap(now);
             }
             foreach (KittyImageAsset victim in victims) FreeKittyImage(victim);
             if (old is not null) RetireUnstoredKittyHandle(old.Handle); // no placement or asset references it any more
@@ -126,7 +127,11 @@ public partial class TerminalBuffer
             long now = KittyAnimationClock();
             // Settle first: a gap, frame or state change applies from now on and does not reach back over elapsed time.
             if (!KittyAnimationPaused && animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
-            if (control.GapFrame != 0 && control.Gap != 0) animation.Frames[(int)control.GapFrame - 1].GapMs = control.Gap;
+            if (control.GapFrame != 0 && control.Gap != 0)
+            {
+                animation.Frames[(int)control.GapFrame - 1].GapMs = control.Gap;
+                if ((int)control.GapFrame - 1 == animation.Current && !KittyAnimationPaused) animation.RebaseCurrentGap(now);
+            }
             if (control.CurrentFrame != 0)
             {
                 animation.SetCurrent((int)control.CurrentFrame - 1, now);
