@@ -175,13 +175,15 @@ test('the runner takes the lease before any output, App or window action, and re
     const runner = readFileSync(real('../terminfo-owned-runner.mjs'), 'utf8');
     const at = text => { const index = runner.indexOf(text); assert.ok(index > 0, text); return index; };
     assert.ok(at('lease = await acquireDesktopLease(() => interruption);') < at("output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-')"));
-    assert.ok(at('lease = await acquireDesktopLease(() => interruption);') < at('app = spawn(executable'));
-    assert.ok(at('lease.noteLaunchAttempt();') < at('app = spawn(executable'));
+    assert.ok(at('lease = await acquireDesktopLease(() => interruption);') < at('app = launchOwnedApp(lease, executable'));
+    assert.ok(at('lease.noteLaunchAttempt();') < at('return spawn(executable'), 'the launch intent is persisted before the App can exist');
+    assert.equal(runner.match(/app = launchOwnedApp\(/g).length, 2, 'the full and the persistent-animation collections both launch through the one guarded function');
+    assert.ok(at('lease = await acquireDesktopLease(() => interruption);') < runner.lastIndexOf('app = launchOwnedApp(lease, executable'));
     assert.ok(at('const runId = lease.leaseId;') > at('lease = await acquireDesktopLease(() => interruption);'));
     const cleanup = runner.slice(at('async function cleanupOwnedRun'), at('function retainPreparationFailure'));
-    assert.ok(cleanup.includes('await lease.verifyCleanup()') && cleanup.includes('workerError ?? appError ?? survivorError'));
-    assert.ok(cleanup.indexOf('if (!workerError && !appError)') > 0 && cleanup.indexOf('if (!workerError && !appError)') < cleanup.indexOf('await lease.verifyCleanup()'),
-        'a failed worker or App termination never reaches the scan that could mark cleanup verified');
+    assert.ok(cleanup.includes('await lease.verifyCleanup()') && cleanup.includes('workerError ?? appError ?? daemonError ?? survivorError'));
+    assert.ok(cleanup.indexOf('if (!workerError && !appError && !daemonError)') > 0 && cleanup.indexOf('if (!workerError && !appError && !daemonError)') < cleanup.indexOf('await lease.verifyCleanup()'),
+        'a failed worker, App or multiplexer daemon termination never reaches the scan that could mark cleanup verified');
     assert.ok(runner.includes("process.on('SIGHUP', onHup)") && runner.includes("process.removeListener('SIGHUP', onHup)") && /\['SIGINT', 'SIGTERM', 'SIGHUP'\]\.includes\(process\.env\.NTILDE_TERMINFO_PENDING_SIGNAL\)/.test(runner));
     assert.equal(runner.match(/\bspawn\(/g).length, 1, 'one App spawn site, and it is the guarded one');
     assert.ok(!/process\.env\.[A-Z_]*(?:LOCK|LEASE)/.test(runner) && !/process\.env\[[^\]]*(?:LOCK|LEASE)/.test(runner), 'no environment value can stand in for the lease');

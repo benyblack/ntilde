@@ -8,7 +8,7 @@ import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
 import { collectOsc633 } from './osc633-collector.mjs';
-import { isLegacyScope, isOsc633Scope } from './collection-scope.mjs';
+import { isLegacyScope, isOsc633Scope, isPersistentAnimationScope } from './collection-scope.mjs';
 import { collectOsc78 } from './osc78-collector.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -99,13 +99,8 @@ function retainedFailure(error, depth = 0) {
     return error instanceof AggregateError ? text + '\n' + error.errors.slice(0, 8)
         .map((value, index) => '[' + index + '] ' + retainedFailure(value, depth + 1)).join('\n') : text;
 }
-let config;
-try {
-    assertPrivateFile(process.argv[2]);
-    config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-    if (config.collectionScope !== undefined && !isOsc633Scope(config.collectionScope) && !isLegacyScope(config.collectionScope)) throw new Error('Unknown owned collection scope.');
-    // Establish the real process/PTY relation before loading the probe engine.
-    const binding = await verifyNtildeOutput(config, process.stdout);
+/** The full owned collection: every suite in order on one fence, then the stock probe engine, then the completion request. */
+async function runFullCollection(config, binding) {
     const fence = terminalFence(process.stdin, process.stdout);
     let restoreOutput;
     const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
@@ -547,6 +542,44 @@ try {
     run.collectorAdapter = { id: adapterId, bundleSha256: config.adapterBundleSha256, upstreamBundleSha256: config.upstreamBundleSha256 };
     writeFileSync(join(config.output, 'raw.json'), JSON.stringify(run) + '\n', { flag: 'wx', mode: 0o600 });
     await requestOwner(config, 'done', { tty: `/dev/${processRecord(process.pid).tty}` });
+}
+
+/**
+ * The persistent-tab animation collection: the worker runs inside the multiplexer daemon, proves that relation to the parent, then plays only
+ * the Kitty animation suite. No stock probe engine runs and no other suite's evidence exists.
+ */
+async function runPersistentAnimation(config, binding) {
+    const fence = terminalFence(process.stdin, process.stdout);
+    let restoreOutput;
+    const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
+        () => restoreOwnedTerminalState(binding.tabTty, binding.originalTerminalState)]);
+    let primary, failed = false, restoreFailure, restoreFailed = false;
+    try {
+        restoreOutput = prepareOwnedOutput(binding.tabTty);
+        await requestOwner(config, 'raw-output', { tty: binding.tabTty });
+        const owner = (kind, barrier = null, extra = {}) => requestOwner(config, kind, { ...extra, tty: binding.tabTty, barrier });
+        await collectAnimation({ config, fence, owner, detachFence: true });
+        fence.retireInput();
+    } catch (error) { primary = error; failed = true; }
+    finally {
+        try { restore(); }
+        catch (error) { restoreFailure = error; restoreFailed = true; }
+    }
+    if (failed && restoreFailed) throw new AggregateError([primary, restoreFailure], 'Owned collection and terminal restoration failed.');
+    if (restoreFailed) throw restoreFailure;
+    if (failed) throw primary;
+    await requestOwner(config, 'done', { tty: `/dev/${processRecord(process.pid).tty}` });
+}
+
+let config;
+try {
+    assertPrivateFile(process.argv[2]);
+    config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+    if (config.collectionScope !== undefined && !isOsc633Scope(config.collectionScope) && !isLegacyScope(config.collectionScope) && !isPersistentAnimationScope(config.collectionScope)) throw new Error('Unknown owned collection scope.');
+    // Establish the real process/PTY relation before loading the probe engine.
+    const binding = await verifyNtildeOutput(config, process.stdout);
+    if (isPersistentAnimationScope(config.collectionScope)) await runPersistentAnimation(config, binding);
+    else await runFullCollection(config, binding);
 } catch (error) {
     if (config) {
         writeFileSync(join(config.output, 'worker-error.txt'), retainedFailure(error).slice(0, 65536) + '\n', { flag: 'wx', mode: 0o600 });

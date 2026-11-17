@@ -124,7 +124,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
-import { legacyScope, osc633Scope, persistentScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
+import { legacyScope, osc633Scope, persistentAnimationScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -384,15 +384,9 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
         writeJson(join(output, file), { ...observer.lastAttempt, error: observer.failure(error) });
 }
 
-/** The fixed collection selection the arguments name: the default full selection, the OSC 633 scope, or the full selection in a persistent tab. */
-function scopeOf(args) {
-    if (args.length !== 6) return legacyScope;
-    return args[5] === 'persistent' ? persistentScope : osc633Scope;
-}
-
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -533,24 +527,89 @@ function collectionSummary(output, appVersion) {
         adapter: raw.collectorAdapter, observations: raw.observations.length, counts, reasons, rawSha256: hash(readFileSync(rawPath)) };
 }
 
+/** The private settings of an owned collection: one disposable profile running the worker, with Observe and Act access and no unrelated UI. */
+function ownedSettings({ profileId, profileName, command, scratch, persistence }) {
+    return {
+        Profiles: [{ Id: profileId, Name: profileName, Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
+        DefaultProfileId: profileId, SessionPersistence: persistence, ShellExitPolicy: 'Always', PaneClosePolicy: 'Always',
+        QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: true, AllowRectangleChecksumReport: true, AllowTitleReport: true,
+        MinimumContrast: 1, EnableLigatures: false,
+        BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
+        Osc9NotificationsEnabled: true, Osc9ProgressReportingEnabled: true, TabStripOrientation: 'Horizontal',
+        CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false,
+        CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: true, AgentAccessActEnabled: true,
+    };
+}
+
 /** Archive exact executed adapter and source/input bytes before publishing their digests. */
 function retainCollectorEvidence(output, bundle, expectedDigest, ownerModule, workerScript) {
     const bundleBytes = readFileSync(bundle);
     if (hash(bundleBytes) !== expectedDigest) throw new Error('Derived adapter changed before evidence retention.');
     writeFileSync(join(output, 'collector-adapter.mjs'), bundleBytes, { flag: 'wx', mode: 0o600 });
-    const sourceDirectory = join(output, 'sources');
-    mkdirSync(sourceDirectory, { mode: 0o700 });
-    const sources = Object.fromEntries(Object.entries(ownedSourceFiles).map(([key, file]) => [key,
-        ownedSourcePath(sourceRepo, file)]));
+    const { sources, digests } = retainSourceCopies(output);
     if (sources.ownershipSourceSha256 !== ownerModule || sources.workerSourceSha256 !== workerScript)
         throw new Error('Executed worker or ownership source differs from the retained inventory.');
+    return digests;
+}
+
+/** Copy every measured source file into the run's evidence and name its digest; returns the paths read and the digests by inventory field. */
+function retainSourceCopies(output) {
+    const sourceDirectory = join(output, 'sources');
+    mkdirSync(sourceDirectory, { mode: 0o700 });
+    const sources = Object.fromEntries(Object.entries(ownedSourceFiles).map(([key, file]) => [key, ownedSourcePath(sourceRepo, file)]));
     const digests = {};
     for (const [field, path] of Object.entries(sources)) {
         const bytes = readFileSync(path);
         writeFileSync(join(sourceDirectory, ownedSourceFiles[field]), bytes, { flag: 'wx', mode: 0o600 });
         digests[field] = hash(bytes);
     }
-    return digests;
+    return { sources, digests };
+}
+
+/**
+ * One image-carrier suite's observer: created on first use from the previous suite's evidence, bound to the proved worker and PTY, and
+ * journaled as it goes. `carrier` names the suite's state, proof slot, retained files, plan size and prerequisite; `environment` is the
+ * run's App, profile, output, proofs and (when a cell suite ran first) the reference pane the carrier must agree with.
+ */
+async function observeImageCarrierIn(environment, carrier, request, budget, ownership) {
+    const { appData, app, profileName, output, runId, proofs, reference } = environment;
+    carrier.require();
+    let state = carrier.state();
+    if (!state) {
+        const priorChallenges = carrier.priorFrames().filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
+        state = carrier.setState({ workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
+            observer: new carrier.Observer({ appData, ownerPid: app.pid, profileName, output,
+                nonce: 'NTILDE_IMG_' + runId, expectedPaneId: reference?.paneId, priorChallenges }) });
+        proofs[0][carrier.proof].actions = state.observer.actions;
+    }
+    if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error(carrier.label + ' fixture ownership changed.');
+    try {
+        const result = await state.observer.handle(request, budget, ownership);
+        if (request.kind === carrier.prefix + 'start') {
+            if (reference && (result.screen.rows !== reference.baseline.rows || result.screen.cols !== reference.baseline.cols)) throw new Error(carrier.label + ' fixture geometry changed.');
+            proofs[0][carrier.proof].paneId = state.observer.paneId;
+            proofs[0][carrier.proof].geometry = { rows: result.screen.rows, cols: result.screen.cols };
+        }
+        if (request.kind === carrier.prefix + 'seal') proofs[0][carrier.proof].seal = state.observer.seal;
+        return result;
+    } catch (error) {
+        const initial = request.kind === carrier.prefix + 'start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
+            && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length
+            && !existsSync(join(output, carrier.pixelDir)) && !existsSync(join(output, carrier.inputDir));
+        if (initial) {
+            const file = carrier.file + '-unavailable.json';
+            writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: carrier.suiteId, status: 'unavailable',
+                reason: error.code, fixtureStarted: false, plannedExperiments: carrier.planned.experiments, plannedStages: carrier.planned.stages });
+            state.unavailable = { runId, suiteId: carrier.suiteId, file, sha256: hash(readFileSync(join(output, file))),
+                status: 'unavailable', reason: error.code, counts: {} };
+        } else if (state.observer.lastAttempt) writeJson(join(output, carrier.file + '-failed-observation.json'), state.observer.lastAttempt);
+        throw error;
+    } finally {
+        for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, carrier.file + '-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+        state.recordedFrames = state.observer.frames.length;
+        for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, carrier.file + '-actions.jsonl'), JSON.stringify(action) + '\n');
+        state.recordedActions = state.observer.actions.length;
+    }
 }
 
 /** Retain a restored suite report as provisional evidence until the shared cleanup receipt exists. */
@@ -1937,6 +1996,12 @@ async function retainGradingEvidence(output, runId, gradingBundle, upstream) {
         contractsVersion: asciiSgrContractsVersion, counts, provisionalUntil: 'cell-receipt.json' };
 }
 
+/** The one place an owned App is started: the launch intent is persisted in the lease first, so a failed write stops the launch. */
+function launchOwnedApp(lease, executable, runId, env, logFd) {
+    lease.noteLaunchAttempt();
+    return spawn(executable, [`--ntilde-terminfo-owner=${runId}`, `--ntilde-terminfo-private-clipboard=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
+}
+
 async function terminateLaunchedApp(app) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
     app.kill('SIGTERM');
@@ -1993,7 +2058,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2008,7 +2073,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
-    const collectionScope = scopeOf(args);
+    if (args[5] === 'persistent-animation') return persistentAnimationMain(args, executable, snapshot);
+    const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
     let resolveDone;
@@ -2204,16 +2270,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const command = join(scratch, 'worker.sh');
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
-        const settings = {
-            Profiles: [{ Id: profileId, Name: profileName, Command: command, Arguments: '', StartingDirectory: scratch, Type: 0 }],
-            DefaultProfileId: profileId, SessionPersistence: collectionScope.persistence ?? 'Off', ShellExitPolicy: 'Always', PaneClosePolicy: 'Always',
-            QuakeModeEnabled: false, AutomaticUpdateChecks: false, AllowOsc52ClipboardWrite: true, AllowRectangleChecksumReport: true, AllowTitleReport: true,
-            MinimumContrast: 1, EnableLigatures: false,
-            BellAudioEnabled: false, BellVisualEnabled: false, SmoothScrolling: false,
-            Osc9NotificationsEnabled: true, Osc9ProgressReportingEnabled: true, TabStripOrientation: 'Horizontal',
-            CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false,
-            CommandAssistPowerShellIntegrationEnabled: false, AgentAccessObserveEnabled: true, AgentAccessActEnabled: true,
-        };
+        const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
@@ -2222,8 +2279,6 @@ The collector extension and its digest are recorded; this is not stock CLI data.
 
         let app;
         let workerIdentity;
-        let daemonIdentity;
-        let daemonProof;
         let cellObserver;
         let sgrObserver;
         let gradingObserver;
@@ -2629,7 +2684,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: 'NTILDE_RZ_' + runId, expectedPaneId: cellObserver.paneId,
                     performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
                         paneId: resizeState.observer.paneId, uid: process.getuid(),
-                        workerPid: resizeState.workerPid, tty: resizeState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, rows, cols, actionBudget) });
+                        workerPid: resizeState.workerPid, tty: resizeState.tty }, rows, cols, actionBudget) });
                 proofs[0].resize.actions = resizeState.observer.actions;
             }
             const state = resizeState;
@@ -2679,7 +2734,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: 'NTILDE_RF_' + runId, expectedPaneId: cellObserver.paneId,
                     performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
                         paneId: reflowState.observer.paneId, uid: process.getuid(),
-                        workerPid: reflowState.workerPid, tty: reflowState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, rows, cols, actionBudget) });
+                        workerPid: reflowState.workerPid, tty: reflowState.tty }, rows, cols, actionBudget) });
                 proofs[0].asciiReflow.actions = reflowState.observer.actions;
             }
             const state = reflowState;
@@ -3096,7 +3151,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     nonce: 'NTILDE_IN_' + runId, expectedPaneId: cellObserver.paneId,
                     performInput: (event, actionBudget) => generateOwnedInput({ app, appData, executable, image, profileName, runId,
                         paneId: inputState.observer.paneId, uid: process.getuid(),
-                        workerPid: inputState.workerPid, workerIdentity, tty: inputState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, event, actionBudget) });
+                        workerPid: inputState.workerPid, workerIdentity, tty: inputState.tty }, event, actionBudget) });
                 proofs[0].input.actions = inputState.observer.actions;
             }
             const state = inputState;
@@ -3123,49 +3178,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 state.recordedActions = state.observer.actions.length;
             }
         };
-        /**
-         * One image-carrier suite's observer: created on first use from the previous suite's evidence, bound to the proved worker and PTY, and
-         * journaled as it goes. `carrier` names the suite's state, proof slot, retained files, plan size and prerequisite.
-         */
-        const observeImageCarrier = async (carrier, request, budget, ownership) => {
-            carrier.require();
-            let state = carrier.state();
-            if (!state) {
-                const priorChallenges = carrier.priorFrames().filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
-                state = carrier.setState({ workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
-                    observer: new carrier.Observer({ appData, ownerPid: app.pid, profileName, output,
-                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) });
-                proofs[0][carrier.proof].actions = state.observer.actions;
-            }
-            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error(carrier.label + ' fixture ownership changed.');
-            try {
-                const result = await state.observer.handle(request, budget, ownership);
-                if (request.kind === carrier.prefix + 'start') {
-                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error(carrier.label + ' fixture geometry changed.');
-                    proofs[0][carrier.proof].paneId = state.observer.paneId;
-                    proofs[0][carrier.proof].geometry = { rows: result.screen.rows, cols: result.screen.cols };
-                }
-                if (request.kind === carrier.prefix + 'seal') proofs[0][carrier.proof].seal = state.observer.seal;
-                return result;
-            } catch (error) {
-                const initial = request.kind === carrier.prefix + 'start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
-                    && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length
-                    && !existsSync(join(output, carrier.pixelDir)) && !existsSync(join(output, carrier.inputDir));
-                if (initial) {
-                    const file = carrier.file + '-unavailable.json';
-                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: carrier.suiteId, status: 'unavailable',
-                        reason: error.code, fixtureStarted: false, plannedExperiments: carrier.planned.experiments, plannedStages: carrier.planned.stages });
-                    state.unavailable = { runId, suiteId: carrier.suiteId, file, sha256: hash(readFileSync(join(output, file))),
-                        status: 'unavailable', reason: error.code, counts: {} };
-                } else if (state.observer.lastAttempt) writeJson(join(output, carrier.file + '-failed-observation.json'), state.observer.lastAttempt);
-                throw error;
-            } finally {
-                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, carrier.file + '-snapshots.jsonl'), JSON.stringify(frame) + '\n');
-                state.recordedFrames = state.observer.frames.length;
-                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, carrier.file + '-actions.jsonl'), JSON.stringify(action) + '\n');
-                state.recordedActions = state.observer.actions.length;
-            }
-        };
+        const imageEnvironment = { appData, profileName, runId, proofs, get app() { return app; }, get output() { return output; }, get reference() { return cellObserver; } };
+        const observeImageCarrier = (carrier, request, budget, ownership) => observeImageCarrierIn(imageEnvironment, carrier, request, budget, ownership);
         const staticImageCarrier = { label: 'Image', prefix: 'images-', proof: 'staticImages', file: 'image', suiteId: staticImageSuiteId, Observer: OwnedStaticImageObserver,
             pixelDir: 'image-pixels', inputDir: 'image-inputs', planned: { experiments: 5, stages: 23 },
             require: () => requireInputCompletion(inputState), state: () => staticImageState, setState: value => (staticImageState = value),
@@ -3183,7 +3197,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             const appCommand = execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
             const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
             assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker,
-                ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: state.tty, appCommand, daemon: daemonFor(worker, budget), appData });
+                ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: state.tty, appCommand });
             if (!matchesRecordedWorker(worker, workerIdentity, workerCommand, runId)) throw new Error('Recorded query worker identity or marker changed.');
             return { app: owner, worker, tty: state.tty, appCommand, workerCommand,
                 terminalOutput: readOwnedOutputMode(state.tty, budget()), at: new Date().toISOString() };
@@ -3698,7 +3712,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                         expectedPaneId: cellObserver.paneId, expectedOriginal: { rows: cellObserver.baseline.rows, cols: cellObserver.baseline.cols },
                         performResize: (rows, cols, actionBudget) => resizeOwnedPane({ app, appData, executable, runId,
                             paneId: coreWrapState.observer.paneId, uid: process.getuid(),
-                            workerPid: coreWrapState.workerPid, tty: coreWrapState.tty, persistent: collectionScope.persistence === 'KeepOnClose' }, rows, cols, actionBudget) });
+                            workerPid: coreWrapState.workerPid, tty: coreWrapState.tty }, rows, cols, actionBudget) });
                 }
                 const state = coreWrapState;
                 if (state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Core wrap worker changed.');
@@ -3819,13 +3833,6 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             return observeCells(request, budget);
         };
         /** Retain the first measured lineage and PTY without storing the run capability. */
-        /** In a persistent collection the worker's parent is the multiplexer daemon: read its facts, and pin the first one this run sees as the only daemon it may use. */
-        const daemonFor = (worker, budget) => {
-            if (collectionScope.persistence !== 'KeepOnClose') return undefined;
-            const daemon = readPersistentDaemon(worker.ppid, app.pid, appData, budget());
-            if (daemonIdentity && daemonIdentity.pid !== daemon.record.pid) throw new Error('Another multiplexer daemon tried to use this run.');
-            return daemon;
-        };
         const retainFirstProof = (owner, worker, tty, budget) => {
             if (proofs.length !== 0) return;
             proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
@@ -3922,17 +3929,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     const queryTimeout = createProcessBudget(4000);
                     const owner = processRecord(app.pid, queryTimeout());
                     const worker = processRecord(request.workerPid, queryTimeout());
-                    const daemon = daemonFor(worker, queryTimeout);
                     assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker,
                         ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: request.tty,
-                        appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }),
-                        daemon, appData });
+                        appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: queryTimeout(), maxBuffer: 16384 }) });
                     if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
                     workerIdentity ??= worker;
-                    if (daemon) {
-                        daemonIdentity ??= persistentDaemonIdentity(daemon);
-                        daemonProof ??= { identity: daemonIdentity, command: daemon.text.split(/\s+/).slice(0, 3).join(' '), birth: daemon.birth, appBirth: daemon.appBirth, descriptor: daemon.descriptor };
-                    }
                     const observation = await routeOwnedObservation(request, queryTimeout, owner, worker);
                     if (observation) { socket.end(JSON.stringify(observation) + '\n'); return; }
                     socket.end(JSON.stringify(controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
@@ -3962,8 +3963,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY',
                 'TERMINFO_CAPTURE_DIRECTORY', 'TERMINFO_CLIPBOARD_FIXTURE_RECEIPT', 'TERMINFO_RUNTIME_PROVENANCE']) delete env[name];
             logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
-            lease.noteLaunchAttempt(); // persisted in the lease before the App can exist; a failed write stops the launch
-            app = spawn(executable, [`--ntilde-terminfo-owner=${runId}`, `--ntilde-terminfo-private-clipboard=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
+            app = launchOwnedApp(lease, executable, runId, env, logFd);
             app.once('error', rejectDone);
             app.once('exit', (code, signal) => { if (!completed) rejectDone(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
             context.ownerPid = app.pid;
@@ -4200,7 +4200,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         } finally {
             clearTimeout(deadline);
             preserveScratch = true;
-            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, daemonIdentity, daemonProof, executable, appData, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }));
+            cleanupOutcome = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }));
             preserveScratch = cleanupOutcome.failed;
         }
         throwOwnedRunFailures(runOutcome, cleanupOutcome);
@@ -4231,6 +4231,191 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, osc5Evidence, osc3008Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
+}
+
+
+/** Fixed identity of the persistent-tab animation collection: its receipt, adapter and the one suite it carries. */
+const persistentAnimationAdapterId = 'ntilde-owned-kitty-animation-persistent-adapter-v1';
+export const persistentAnimationReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-receipt-v1';
+
+/**
+ * The receipt of a persistent-tab animation collection. It binds the one retained suite report, the ownership proof (which records the
+ * multiplexer daemon) and the context to this run after cleanup is verified; the publication re-derives the report from the retained journals.
+ */
+function completePersistentAnimationReceipt(output, scratch, evidence) {
+    const proofBytes = readFileSync(join(output, 'ownership-proof.json')), proof = JSON.parse(proofBytes);
+    if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || !proof.persistentDaemon || existsSync(scratch)) throw new Error('Persistent animation evidence has no completed cleanup.');
+    const contextBytes = readFileSync(join(output, 'context.json')), context = JSON.parse(contextBytes);
+    const binding = evidence.animationEvidence;
+    if (binding?.runId !== context.runId || binding.suiteId !== animationSuiteId || binding.file !== 'animation-observations.json'
+        || hash(readFileSync(join(output, binding.file))) !== binding.sha256) throw new Error('Invalid persistent animation receipt binding.');
+    const receipt = { schemaVersion: 1, suiteId: persistentAnimationReceiptSuiteId, runId: context.runId, collectionScope: context.collectionScope,
+        animationEvidence: binding, ownershipProofSha256: hash(proofBytes), contextSha256: hash(contextBytes), fixtureRemoved: true, completedAt: new Date().toISOString() };
+    writeFileSync(join(output, 'persistent-animation-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+    return receipt;
+}
+
+/** One owner request of the persistent animation collection, after its lineage (App, daemon, worker) is proved. */
+function persistentAnimationHandlers({ run, proofs, observeAnimation, state }) {
+    const retainFirstProof = (owner, worker, tty, budget) => {
+        if (proofs.length === 0) proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
+            workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) },
+            app: owner, worker, tty, at: new Date().toISOString() });
+    };
+    return {
+        prove(request, budget, owner, worker) {
+            retainFirstProof(owner, worker, request.tty, budget);
+            return { privateClipboard: true, originalTerminalState: proofs[0].privateClipboard.originalTerminalState };
+        },
+        'raw-output'(request, budget) {
+            if (state.outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
+            proofs[0].terminalOutput = { ...readOwnedOutputMode(request.tty, budget()), verifiedAt: new Date().toISOString() };
+            state.outputModeVerified = true;
+            return {};
+        },
+        done(request, budget) {
+            requireAnimationCompletion(state.animation());
+            const original = proofs[0].privateClipboard.originalTerminalState;
+            if (readOwnedTerminalState(request.tty, budget()) !== original) throw new Error('Original private kernel mode was not restored.');
+            Object.assign(proofs[0].privateClipboard, { restoredTerminalState: original, restoredAt: new Date().toISOString() });
+            state.completed = true;
+            run.resolve();
+            return {};
+        },
+        failed(request) { run.reject(new Error(request.error ?? 'Worker failed.')); return {}; },
+        observe: observeAnimation,
+    };
+}
+
+/**
+ * Collect only the Kitty animation suite in a persistent (mux-backed, KeepOnClose) tab. The App starts the multiplexer daemon, which
+ * hosts the worker, so ownership is proved through that daemon (ownership.mjs) and cleanup stops it. No other owned suite runs and the
+ * full collection's receipt is not produced: this run has its own, narrower receipt.
+ */
+async function persistentAnimationMain(args, executable, snapshot) {
+    const collectionScope = persistentAnimationScope;
+    let resolveDone, rejectDone, interruption, scratch, output, lease, app, logFd, deadline, preserveScratch = false;
+    const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
+    done.catch(() => {});
+    const interrupted = signal => { interruption ??= new Error(`Interrupted by ${signal}.`); process.exitCode = 1; rejectDone(interruption); };
+    const handlers = ['SIGINT', 'SIGTERM', 'SIGHUP'].map(signal => [signal, () => interrupted(signal)]);
+    for (const [signal, handler] of handlers) process.on(signal, handler);
+    if (['SIGINT', 'SIGTERM', 'SIGHUP'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
+    try {
+        lease = await acquireDesktopLease(() => interruption);
+        output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
+        writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
+        scratch = createPrivateScratch();
+        if (interruption) throw interruption;
+        const appData = join(scratch, 'appdata');
+        mkdirSync(appData, { mode: 0o700 });
+        const runId = lease.leaseId, token = randomBytes(32).toString('hex'), profileName = `terminfo disposable worker ${runId}`;
+        const configPath = join(scratch, 'worker.json'), command = join(scratch, 'worker.sh'), socketPath = join(scratch, 'owner.sock');
+        writeJson(configPath, { privateClipboard: true, runId, token, appData, output, executable, collectionScope, profileName, socket: socketPath });
+        writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs'))} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
+        const settings = ownedSettings({ profileId: randomUUID(), profileName, command, scratch, persistence: collectionScope.persistence });
+        writeJson(join(appData, 'settings.json'), settings);
+        writeJson(join(output, 'initial-settings.json'), settings);
+        const { digests } = retainSourceCopies(output);
+        const image = statSync(executable), proofs = [], state = { outputModeVerified: false, completed: false, animationState: undefined, animation: () => state.animationState };
+        let workerIdentity, daemonIdentity, daemonProof;
+        const context = { adapter: persistentAnimationAdapterId, collectionScope, appVersion: args[3], appVersionSource: 'operator supplied; not independently verified',
+            sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshot.sha256, sourceSnapshotRoot: sourceRepo, ...digests,
+            initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))), executable, executableSha256: hash(readFileSync(executable)),
+            assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
+            nodeVersion: process.version, startedAt: new Date().toISOString(), runId, animationSuiteId, ownedAnimationPolicy };
+        const animationCarrier = { label: 'Animation', prefix: 'kan-', proof: 'kittyAnimation', file: 'animation', suiteId: animationSuiteId, Observer: OwnedAnimationObserver,
+            pixelDir: 'animation-pixels', inputDir: 'animation-inputs', planned: { experiments: animationCases.length, stages: animationPlannedStages },
+            require() {}, state: () => state.animationState, setState: value => (state.animationState = value), priorFrames: () => [] };
+        const environment = { appData, profileName, runId, proofs, get app() { return app; }, get output() { return output; }, reference: undefined };
+        const owned = persistentAnimationHandlers({ run: { resolve: () => resolveDone(), reject: error => rejectDone(error) }, proofs, state,
+            observeAnimation: (request, budget, ownership) => {
+                if (!state.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
+                return observeImageCarrierIn(environment, animationCarrier, request, budget, ownership);
+            } });
+        const server = createServer(socket => {
+            let buffer = '';
+            socket.setTimeout(5000, () => socket.destroy());
+            socket.on('error', () => {});
+            socket.on('data', async chunk => {
+                buffer += chunk;
+                if (buffer.length > 8192) return socket.destroy();
+                if (!buffer.includes('\n')) return;
+                socket.removeAllListeners('data');
+                try {
+                    const request = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
+                    if (typeof request.token !== 'string' || request.token.length !== token.length
+                        || !timingSafeEqual(Buffer.from(request.token), Buffer.from(token)) || request.runId !== runId) throw new Error('Invalid run capability.');
+                    if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
+                    assertExecutableUnchanged(executable, image);
+                    const budget = createProcessBudget(4000), owner = processRecord(app.pid, budget()), worker = processRecord(request.workerPid, budget());
+                    const daemon = readPersistentDaemon(worker.ppid, app.pid, appData, budget());
+                    if (daemonIdentity && daemonIdentity.pid !== daemon.record.pid) throw new Error('Another multiplexer daemon tried to use this run.');
+                    assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker, ownerPid: app.pid, executable, uid: process.getuid(), runId,
+                        tty: request.tty, daemon, appData, appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 }) });
+                    if (workerIdentity && workerIdentity.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
+                    workerIdentity ??= worker;
+                    daemonIdentity ??= persistentDaemonIdentity(daemon);
+                    daemonProof ??= { identity: daemonIdentity, command: daemon.text.split(/\s+/).slice(0, 3).join(' '), birth: daemon.birth, appBirth: daemon.appBirth, descriptor: daemon.descriptor };
+                    let result;
+                    if (request.kind.startsWith('kan-')) {
+                        const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
+                        if (!matchesRecordedWorker(worker, workerIdentity, workerCommand, runId)) throw new Error('Recorded animation worker identity or marker changed.');
+                        result = await owned.observe(request, budget, { app: owner, worker, tty: request.tty, at: new Date().toISOString(), terminalOutput: readOwnedOutputMode(request.tty, budget()) });
+                    } else if (Object.hasOwn(owned, request.kind) && request.kind !== 'observe') result = owned[request.kind](request, budget, owner, worker);
+                    else throw new Error('Unknown owner request.');
+                    socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');
+                } catch (error) { socket.end(JSON.stringify(ownerFailure(error, false)) + '\n'); }
+            });
+        });
+        try {
+            await Promise.race([done, new Promise((resolve, reject) => { server.once('error', reject); server.listen(socketPath, resolve); })]);
+            if (interruption) throw interruption;
+            chmodSync(socketPath, 0o600);
+            const env = { ...process.env, NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId, TERM_PROGRAM: 'Ntilde', TERM_PROGRAM_VERSION: args[3],
+                PATH: dirname(process.execPath) + ':' + process.env.PATH };
+            for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY']) delete env[name];
+            logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
+            app = launchOwnedApp(lease, executable, runId, env, logFd);
+            app.once('error', rejectDone);
+            app.once('exit', (code, signal) => { if (!state.completed) rejectDone(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
+            context.ownerPid = app.pid;
+            writeJson(join(output, 'context.json'), context);
+            deadline = setTimeout(() => rejectDone(new Error('Persistent animation collection exceeded 5 minutes.')), collectionScope.deadlineMs);
+            console.log(`Collecting in disposable Ntilde pid ${app.pid} (persistent tab); results: ${output}`);
+            await done;
+            assertOwnedSourcesUnchanged(sourceRepo, context);
+            if (state.animationState?.unavailable) throw new Error('Persistent animation fixture was unavailable: ' + state.animationState.unavailable.reason);
+            state.evidence = { animationEvidence: retainCellReport(output, state.animationState?.observer, runId, () => state.animationState.observer.report, 'animation-observations.json') };
+        } catch (error) { state.failure = error; }
+        finally {
+            clearTimeout(deadline);
+            preserveScratch = true;
+            state.cleanup = await captureOwnedCleanup(() => cleanupOwnedRun({ lease, workerIdentity, daemonIdentity, daemonProof, executable, appData, runId, app, logFd, server, output, proofs,
+                completed: state.completed, scratch, collectionScope }));
+            preserveScratch = state.cleanup.failed;
+        }
+        if (state.failure || state.cleanup.failed) {
+            if (state.failure) retainOwnedFailure(output, state.failure, undefined);
+            throwOwnedRunFailures({ failed: state.failure !== undefined, error: state.failure }, state.cleanup);
+        }
+        if (interruption) throw interruption;
+        rmSync(scratch, { recursive: true, force: true });
+        preserveScratch = false;
+        assertOwnedSourcesUnchanged(sourceRepo, context);
+        removeSourceSnapshot(sourceRepo);
+        const proofPath = join(output, 'ownership-proof.json'), proof = JSON.parse(readFileSync(proofPath));
+        proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
+        writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
+        const receipt = completePersistentAnimationReceipt(output, scratch, state.evidence);
+        console.log(JSON.stringify({ runId, output, counts: receipt.animationEvidence.counts }, null, 2));
+    } catch (error) {
+        retainPreparationFailure(output, error);
+        throw error;
+    } finally {
+        try { if (scratch && !preserveScratch) rmSync(scratch, { recursive: true, force: true }); }
+        finally { for (const [signal, handler] of handlers) process.removeListener(signal, handler); }
+    }
 }
 
 try {

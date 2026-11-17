@@ -38,13 +38,16 @@ export const osc5Osc633ScopeV4 = Object.freeze({ ...osc633ScopeV4, deadlineMs: 6
 export const osc5LegacyScopeV4 = Object.freeze({ ...legacyScopeV4, deadlineMs: 600000 });
 export const osc633Scope = Object.freeze({ ...osc633ScopeV4, id: 'owned-osc633-without-notification-suites-v5', deadlineMs: 600000 });
 export const legacyScope = Object.freeze({ ...legacyScopeV4, id: 'owned-pre-osc633-full-selection-v5', deadlineMs: 600000 });
-/** The same full selection, run in a persistent (mux-backed, KeepOnClose) tab: the worker is the multiplexer daemon's child (see ownership.mjs). */
-export const persistentScope = Object.freeze({ ...legacyScope, id: 'owned-persistent-full-selection-v1', persistence: 'KeepOnClose' });
+/**
+ * Not a full-run selection: the Kitty animation suite alone, collected in a persistent (mux-backed, KeepOnClose) tab whose worker is the
+ * multiplexer daemon's child. It has its own receipt (persistent-animation-receipt.json), so no full-receipt scope rule applies to it.
+ */
+export const persistentAnimationScope = Object.freeze({ id: 'owned-kitty-animation-persistent-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-animation']), deadlineMs: 300000 });
+export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope);
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV4) || same(value, osc5Osc633ScopeV4) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
-export const isPersistentScope = value => same(value, persistentScope);
-export const isLegacyScope = value => same(value, legacyScope) || isPersistentScope(value) || same(value, legacyScopeV4) || same(value, osc5LegacyScopeV4) || same(value, legacyScopeV3) || same(value, integratedLegacyScope) || same(value, historicLegacyScope);
+export const isLegacyScope = value => same(value, legacyScope) || same(value, legacyScopeV4) || same(value, osc5LegacyScopeV4) || same(value, legacyScopeV3) || same(value, integratedLegacyScope) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
 export const isOsc5ForkScope = context => isOsc5Policy63(context) && same(context.collectionScope, legacyScopeV2);
 export const isOsc5V64Scope = context => isOsc5AnimationPolicy64(context)
