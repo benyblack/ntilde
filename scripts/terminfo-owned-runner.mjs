@@ -4349,7 +4349,9 @@ function preparePersistentRun(args, executable, snapshot, lease, output) {
     const scratch = createPrivateScratch();
     try { return preparePersistentRunIn(scratch, args, executable, snapshot, lease, output); }
     catch (error) {
-        rmSync(scratch, { recursive: true, force: true });
+        // The scratch holds the run token: if it cannot be removed, keep both errors and say where it is.
+        try { rmSync(scratch, { recursive: true, force: true }); }
+        catch (cleanupError) { throw new AggregateError([error, cleanupError], `Persistent run preparation failed and its scratch directory ${scratch} remains.`); }
         throw error;
     }
 }

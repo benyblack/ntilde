@@ -14,6 +14,8 @@ import { retainedInventory } from './metadata-receipt.mjs';
 import { ownedSourcePath } from './owned-sources.mjs';
 import { measuredAppRevision, measuredScriptsRevision, persistentAnimationQualification, pinnedBundleArchive } from './kitty-animation-persistent-qualification.mjs';
 
+// Absolute executables (override with NTILDE_TERMINFO_GIT_EXECUTABLE / PYTHON): no PATH lookup decides what runs.
+const gitExecutable = process.env.NTILDE_TERMINFO_GIT_EXECUTABLE ?? '/usr/bin/git';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const [runArgument, publicationArgument, bundleArgument, appRevision, scriptsRevision] = process.argv.slice(2);
 if (!runArgument || !publicationArgument || !bundleArgument || !/^[a-f\d]{40}$/.test(appRevision ?? '') || !/^[a-f\d]{40}$/.test(scriptsRevision ?? '')) {
@@ -33,9 +35,9 @@ function filesOf(directory) {
 function checkScriptsRevision(directory, revision) {
     const context = JSON.parse(readFileSync(join(directory, 'context.json')));
     for (const [key, file] of Object.entries(retainedInventory(directory, context))) {
-        const path = relative('', ownedSourcePath('', file)).split('\\').join('/');
+        const path = relative('', ownedSourcePath('', file)).replaceAll('\\', '/');
         // --filters yields the working-tree form (CRLF where .gitattributes says so), which is what the launcher captured.
-        const bytes = execFileSync('git', ['cat-file', '--filters', `${revision}:${path}`], { maxBuffer: 64 * 1024 * 1024 });
+        const bytes = execFileSync(gitExecutable, ['cat-file', '--filters', `${revision}:${path}`], { maxBuffer: 64 * 1024 * 1024 });
         if (sha(bytes) !== context[key]) throw new Error(`${path} at ${revision} is not the file this run measured`);
     }
 }
@@ -51,7 +53,7 @@ with zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
   info=zipfile.ZipInfo(os.path.relpath(f,root),(2026,1,1,0,0,0)); info.compress_type=zipfile.ZIP_DEFLATED; info.external_attr=0o644<<16
   z.writestr(info,open(f,'rb').read(),compresslevel=9)
 `;
-    const zipped = spawnSync(process.env.PYTHON ?? 'python3', ['-c', script, run, archive, ...filesOf(run)], { encoding: 'utf8' });
+    const zipped = spawnSync(process.env.PYTHON ?? '/usr/bin/python3', ['-c', script, run, archive, ...filesOf(run)], { encoding: 'utf8' });
     if (zipped.status !== 0) throw new Error('archiving failed: ' + zipped.stderr);
     const bundle = readFileSync(resolve(bundleArgument));
     writeFileSync(join(stage, pinnedBundleArchive), bundle);

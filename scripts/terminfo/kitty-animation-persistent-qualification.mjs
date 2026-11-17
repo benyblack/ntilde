@@ -9,7 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { snapshotHash } from './agent-observer.mjs';
 import { persistentAnimationScope } from './collection-scope.mjs';
 import { animationInputs, buildAnimationReport } from './kitty-animation.mjs';
-import { effectContract, gradeEffect, kittyAnimationCarrierPolicy, kittyAnimationCarrierSuiteId, kittyAnimationQualificationIds, pinnedBundleArchive,
+import { effectContract, gradeEffect, kittyAnimationCarrierPolicy, kittyAnimationCarrierSuiteId, kittyAnimationQualificationIds,
     pinnedSpanDigests, replayPinnedAnimationProbe, upstreamBundleSha256, validityControls } from './kitty-animation-qualification.mjs';
 import { retainedInventory } from './metadata-receipt.mjs';
 import { pngHash } from './pixels-capture.mjs';
