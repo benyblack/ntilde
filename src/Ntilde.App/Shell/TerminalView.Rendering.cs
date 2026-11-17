@@ -107,6 +107,8 @@ namespace Ntilde.Shell
         /// </summary>
         private void AdvanceKittyAnimations(TerminalBuffer buffer, bool schedule)
         {
+            // A buffer that never animates (or a held one) costs no lock and no clock read on this hot path.
+            if (buffer.KittyAnimationPaused || !buffer.HasKittyAnimations) return;
             long now = buffer.KittyAnimationClock();
             // Only a placement in the rows on screen asks to be woken: an animated image scrolled into history costs no redraws.
             int firstVisibleLine;

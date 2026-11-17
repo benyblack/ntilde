@@ -23,6 +23,15 @@ public partial class TerminalBuffer
     /// </summary>
     public bool KittyAnimationPaused { get; set; }
 
+    // True while any retained image has been addressed by a frame or control command. Read without the lock, so a buffer that never animates
+    // costs the render path nothing (no lock, no clock).
+    private volatile bool _hasKittyAnimations;
+
+    /// <summary>Whether any retained image on either screen has an animation; false means rendering never needs to advance one.</summary>
+    public bool HasKittyAnimations => _hasKittyAnimations;
+
+    private const int AnimationLockRetryMs = 16;
+
     /// <summary>Frames in the image including the root (1 for a still image).</summary>
     internal static int KittyFrameCount(KittyImageAsset asset) => asset.Animation?.Frames.Count ?? 1;
 
@@ -67,6 +76,7 @@ public partial class TerminalBuffer
         {
             if (!_kittyImageAssets.Contains(asset)) return KittyFrameStoreResult.ImageGone;
             KittyAnimation animation = asset.Animation ??= new KittyAnimation(asset.Handle);
+            _hasKittyAnimations = true;
             // Settle the playhead to now before anything can refuse or change the frame list, so even a refused frame leaves the display
             // where elapsed time puts it and a change cannot rewrite time already elapsed.
             long now = KittyAnimationClock();
@@ -112,6 +122,7 @@ public partial class TerminalBuffer
         {
             if (!_kittyImageAssets.Contains(asset)) return;
             KittyAnimation animation = asset.Animation ??= new KittyAnimation(asset.Handle);
+            _hasKittyAnimations = true;
             long now = KittyAnimationClock();
             // Settle first: a gap, frame or state change applies from now on and does not reach back over elapsed time.
             if (!KittyAnimationPaused && animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
@@ -144,9 +155,18 @@ public partial class TerminalBuffer
     public bool AdvanceKittyAnimations(long nowMs, out long? nextDueMs, bool invalidate = true, int? firstVisibleLine = null)
     {
         nextDueMs = null;
-        if (KittyAnimationPaused) return false;
-        bool changed = false;
-        bool lockTaken = EnterWriteLockIfNeeded();
+        if (KittyAnimationPaused || !_hasKittyAnimations) return false;
+        // The render path calls this: it must never queue behind sustained output as a waiting writer. If the lock is busy, try again next frame.
+        bool lockTaken = false, changed = false;
+        if (!Lock.IsWriteLockHeld)
+        {
+            if (!Lock.TryEnterWriteLock(0))
+            {
+                nextDueMs = nowMs + AnimationLockRetryMs;
+                return false;
+            }
+            lockTaken = true;
+        }
         try
         {
             foreach (KittyImageAsset asset in _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen).ToArray())

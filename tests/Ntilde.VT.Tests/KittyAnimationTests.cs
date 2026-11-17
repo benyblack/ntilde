@@ -584,6 +584,52 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void Rendering_never_waits_for_the_write_lock_and_costs_nothing_without_animations()
+    {
+        var still = new Harness();                            // no frame or control command ever addressed this image
+        Assert.False(still.Buffer.HasKittyAnimations);
+        var animated = ThreeFrames();
+        animated.Now = 0; animated.Send("a=a,i=1,s=3"); animated.Replies.Clear();
+        Assert.True(animated.Buffer.HasKittyAnimations);
+        using var release = new System.Threading.ManualResetEventSlim();
+        var signals = new[] { new System.Threading.ManualResetEventSlim(), new System.Threading.ManualResetEventSlim() };
+        var writers = new[] { still.Buffer, animated.Buffer }.Select((buffer, index) => System.Threading.Tasks.Task.Run(() =>
+        {
+            buffer.Lock.EnterWriteLock();                      // sustained output holding the lock
+            try { signals[index].Set(); release.Wait(TestContext.Current.CancellationToken); }
+            finally { buffer.Lock.ExitWriteLock(); }
+        })).ToArray();
+        try
+        {
+            Assert.True(signals[0].Wait(2000, TestContext.Current.CancellationToken) && signals[1].Wait(2000, TestContext.Current.CancellationToken));
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            Assert.False(still.Buffer.AdvanceKittyAnimations(10_000, out long? stillDue));
+            Assert.Null(stillDue);                             // nothing to do, lock never touched
+            Assert.False(animated.Buffer.AdvanceKittyAnimations(10_000, out long? busyDue));
+            Assert.Equal(10_016, busyDue);                     // the lock was busy: skip this frame and ask for another
+            Assert.True(watch.ElapsedMilliseconds < 1000, "advancing must not block behind a writer");
+        }
+        finally
+        {
+            release.Set();
+            System.Threading.Tasks.Task.WaitAll(writers, 5000, TestContext.Current.CancellationToken);
+            foreach (var signal in signals) signal.Dispose();
+        }
+        Assert.True(animated.Advance(60));                    // and once the lock is free it advances normally
+        Assert.Equal(1, Index(animated));
+    }
+
+    [Fact]
+    public void The_animation_flag_clears_when_the_last_animated_image_is_gone()
+    {
+        var h = ThreeFrames();
+        Assert.True(h.Buffer.HasKittyAnimations);
+        h.Send("a=d,d=I,i=1"); h.Replies.Clear();
+        Assert.False(h.Buffer.HasKittyAnimations);
+        Assert.False(h.Buffer.AdvanceKittyAnimations(1_000, out long? due)); Assert.Null(due);
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();

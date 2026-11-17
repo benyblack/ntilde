@@ -199,6 +199,7 @@ public partial class TerminalBuffer
             _images.RemoveAt(i);
         }
         _kittyImageAssets.Remove(asset);
+        _hasKittyAnimations = _kittyImageAssets.Any(item => item.Animation is not null);
         asset.Source?.Release();
         RetireUnstoredKittyHandle(asset.Handle);
         if (asset.Animation is { } animation)
