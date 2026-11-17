@@ -41,7 +41,7 @@ public partial class TerminalBuffer
             // Settle the playhead to now before anything can refuse or change the frame list, so even a refused frame leaves the display
             // where elapsed time puts it and a change cannot rewrite time already elapsed.
             long now = KittyAnimationClock();
-            if (animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+            if (!KittyAnimationPaused && animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             bool replacing = replaceIndex >= 0;
             if (!replacing && animation.Frames.Count >= KittyAnimation.MaxFrames) return KittyFrameStoreResult.TooManyFrames;
             long resulting = asset.PixelCharge + frame.Charge - (replacing ? animation.Frames[replaceIndex].Charge : 0);
@@ -56,7 +56,7 @@ public partial class TerminalBuffer
             {
                 animation.Frames.Add(frame);
                 // A parked loading animation resumes from this arrival, not from whenever the next render happens.
-                if (animation.OnFrameAppended(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+                if (!KittyAnimationPaused && animation.OnFrameAppended(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             }
             else
             {
@@ -85,7 +85,7 @@ public partial class TerminalBuffer
             KittyAnimation animation = asset.Animation ??= new KittyAnimation(asset.Handle);
             long now = KittyAnimationClock();
             // Settle first: a gap, frame or state change applies from now on and does not reach back over elapsed time.
-            if (animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+            if (!KittyAnimationPaused && animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             if (control.GapFrame != 0 && control.Gap != 0) animation.Frames[(int)control.GapFrame - 1].GapMs = control.Gap;
             if (control.CurrentFrame != 0)
             {
@@ -108,10 +108,11 @@ public partial class TerminalBuffer
 
     /// <summary>
     /// Moves every running animation on the active screen to the frame <paramref name="nowMs"/> falls in.
-    /// <paramref name="nextDueMs"/> is the earliest later change among animations that have a placement
-    /// (nothing is gained by waking for one nobody can see), or null when none is pending.
+    /// <paramref name="nextDueMs"/> is the earliest later change among animations with a visible placement, or null when none is pending:
+    /// nothing is gained by waking for pixels nobody can see. <paramref name="firstVisibleLine"/> is the absolute line at the top of the viewport
+    /// (null counts any placement on the screen as visible).
     /// </summary>
-    public bool AdvanceKittyAnimations(long nowMs, out long? nextDueMs, bool invalidate = true)
+    public bool AdvanceKittyAnimations(long nowMs, out long? nextDueMs, bool invalidate = true, int? firstVisibleLine = null)
     {
         nextDueMs = null;
         if (KittyAnimationPaused) return false;
@@ -127,7 +128,7 @@ public partial class TerminalBuffer
                     ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
                     changed = true;
                 }
-                if (animation.NextDueMs is { } due && HasKittyPlacement(asset) && (nextDueMs is null || due < nextDueMs)) nextDueMs = due;
+                if (animation.NextDueMs is { } due && HasVisibleKittyPlacement(asset, firstVisibleLine) && (nextDueMs is null || due < nextDueMs)) nextDueMs = due;
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
@@ -135,6 +136,10 @@ public partial class TerminalBuffer
         if (changed && invalidate) Invalidate();
         return changed;
     }
+
+    private bool HasVisibleKittyPlacement(KittyImageAsset asset, int? firstVisibleLine) =>
+        _images.Any(image => ReferenceEquals(image.KittyAsset, asset)
+            && (firstVisibleLine is not { } top || (image.CellY + image.CellHeight > top && image.CellY < top + Rows)));
 
     /// <summary>Points the asset and every placement of it at <paramref name="frame"/>'s pixels.</summary>
     private void ShowKittyFrame(KittyImageAsset asset, KittyFrame frame)

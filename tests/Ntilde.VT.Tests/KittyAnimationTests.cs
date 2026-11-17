@@ -528,6 +528,34 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void A_paused_host_applies_commands_without_advancing_by_time()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Buffer.KittyAnimationPaused = true;
+        h.Now = 60; h.Send("a=a,i=1,r=1,z=200"); h.Replies.Clear();     // would settle to frame 2 first if time were followed
+        Assert.Equal(0, Index(h));
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(1, 2, 3, 255));        // nor does a new frame move the playhead
+        Assert.Equal(0, Index(h));
+        h.Send("a=a,i=1,c=3"); h.Replies.Clear();                           // an explicit current frame is not time-based and still applies
+        Assert.Equal(2, Index(h));
+    }
+
+    [Fact]
+    public void Wake_ups_are_requested_only_for_a_placement_in_the_visible_rows()
+    {
+        var h = ThreeFrames();
+        h.Now = 1000; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        var image = Assert.Single(h.Buffer.Images);
+        h.Buffer.AdvanceKittyAnimations(1000, out long? visible, firstVisibleLine: image.CellY);
+        Assert.NotNull(visible);                                           // the viewport shows the placement
+        h.Buffer.AdvanceKittyAnimations(1000, out long? scrolledAway, firstVisibleLine: image.CellY + image.CellHeight + 100);
+        Assert.Null(scrolledAway);                                         // it is below... above the viewport: no redraws for it
+        h.Buffer.AdvanceKittyAnimations(1000, out long? anywhere, firstVisibleLine: null);
+        Assert.NotNull(anywhere);                                          // no viewport given: any placement counts
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();

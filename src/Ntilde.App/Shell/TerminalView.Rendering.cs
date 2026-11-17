@@ -108,7 +108,12 @@ namespace Ntilde.Shell
         private void AdvanceKittyAnimations(TerminalBuffer buffer, bool schedule)
         {
             long now = buffer.KittyAnimationClock();
-            buffer.AdvanceKittyAnimations(now, out long? due, invalidate: false);
+            // Only a placement in the rows on screen asks to be woken: an animated image scrolled into history costs no redraws.
+            int firstVisibleLine;
+            buffer.Lock.EnterReadLock();
+            try { firstVisibleLine = Math.Max(0, buffer.InternalTotalLines - buffer.Rows - ScrollOffset); }
+            finally { buffer.Lock.ExitReadLock(); }
+            buffer.AdvanceKittyAnimations(now, out long? due, invalidate: false, firstVisibleLine: firstVisibleLine);
             // A retired view arms nothing, whatever a render it still receives finds running.
             if (!schedule || _retired || due is not { } at) return;
             if (_kittyAnimationWake is not null && _kittyAnimationWakeDue > now && _kittyAnimationWakeDue <= at) return;
