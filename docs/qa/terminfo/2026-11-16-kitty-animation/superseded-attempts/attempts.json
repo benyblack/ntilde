@@ -50,6 +50,15 @@
         "app-output.log": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
         "failure.json": "9e2fa8c7da713e8ce9e8153e387368c94153f1aae2a70e2bc49888d1a1283dd9"
       }
+    },
+    {
+      "runId": "204458814fedd2be7247939f8cf8d5b8",
+      "scriptsRevision": "b4bcba0d",
+      "reason": "A second complete 18/18 run (effect supported, receipt schema 70) on the App built from b4bcba0d. Superseded, not failed: further review rounds changed production code and the measuring scripts again (settling the playhead before gap or frame changes, arrival-anchored loading resume, wake-ups for an animation that cannot move, tolerated boundary-straddling capture pairs, eviction ordering, undecoded fallback for a rejected frame handle, bleed checks on both pair members, refusal in persistent sessions and parked-time rebasing), so the App and scripts were rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "bc260ba50b3f58c2664c3c5490e0a215787f5bd68d2d4ac72fce3222d7733fd1",
+        "cell-receipt.json": "be99620ba4540694b054bc6af5ae3bd4fcd558f18dc6c7919a43c17f1995925b"
+      }
     }
   ]
 }

@@ -14,9 +14,9 @@ export const kittyAnimationQualificationIds = Object.freeze(['extensions.kitty-g
 export const kittyAnimationCarrierSuiteId = 'ntilde-owned-kitty-animation-v1';
 export const kittyAnimationCarrierPolicy = 'owned-kitty-animation-paired-raw-render-v1';
 export const upstreamBundleSha256 = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
-// Measured on the committed tree at b4bcba0d: the Release sidecar was built from it and the measured scripts are its tree (later commits are publication, docs, test pins and merges of main only).
-export const measuredAppRevision = 'b4bcba0d5fab5ac9d45eced18099f2837b84a724';
-export const measuredScriptsRevision = 'b4bcba0d5fab5ac9d45eced18099f2837b84a724';
+// Measured on the committed tree at be8add66: the Release sidecar was built from it and the measured scripts are its tree (later commits are publication, docs, test pins and merges of main only).
+export const measuredAppRevision = 'be8add66e71df707a61c5fd27ca6ba7be3e533ff';
+export const measuredScriptsRevision = 'be8add66e71df707a61c5fd27ca6ba7be3e533ff';
 export const pinnedBundleArchive = 'terminfo-dev-4.0.0.bundle.mjs.gz';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
