@@ -52,3 +52,12 @@ test('changed cleanup, feed, pinned verdict or identities are refused', () => {
         assert.throws(() => derive(data));
     }
 });
+
+test('a read without an observable standard cursor cannot establish failure', () => {
+    const data = syntheticOsc22Evidence({ adjust(name, pointer) {
+        if (name === 'stock') pointer.controlCursor = 'other';
+    } });
+    const item = derive(data).cases[0];
+    assert.equal(item.effectContract.outcome, 'inconclusive');
+    assert.equal(item.divergence, undefined);
+});
