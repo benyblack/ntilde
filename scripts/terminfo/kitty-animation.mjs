@@ -22,6 +22,12 @@ export const animationPixelPrefix = 'animation-pixels';
 const framePixelFile = (index, side) => `${animationPixelPrefix}/frame-${String(index).padStart(3, '0')}-${side}.png`;
 const uint = value => Number.isSafeInteger(value) && value >= 1 && value <= 0xffffffff;
 
+/** A paired capture may differ only for a stage whose frame moves or is claimed frozen: a legitimate boundary can fall between the two. */
+export function animationPairMayDiffer(entry) {
+    const stage = entry?.kind === 'read' ? animationCases.find(item => item.id === entry.caseId)?.stages.find(item => item.id === entry.stageId) : null;
+    return stage !== undefined && stage !== null && stage.clock !== 'static';
+}
+
 /** Parent chooses each case's image id; replies must echo it exactly. */
 export function animationAction(entry, state, runId, initialCursorVisible) {
     if (entry.kind === 'bind' || entry.kind === 'restore') return { command: imageSetup(runId), skipReason: null };
@@ -106,7 +112,7 @@ class AnimationReport {
         checkImages(frame.sha256 === snapshotHash(frame.screen) && frame.afterSha256 === snapshotHash(frame.afterScreen)
             && snapshotHash(frame.screen) === snapshotHash(expectedScreen) && snapshotHash(frame.afterScreen) === snapshotHash(expectedScreen));
     }
-    readPixels(frame, index) {
+    readPixels(frame, index, entry) {
         checkImages(frame.pixels?.length === 2);
         const pixels = frame.pixels.map((pixel, side) => {
             checkImages(pixel.file === framePixelFile(index, side));
@@ -114,7 +120,7 @@ class AnimationReport {
             const stable = stableImageContext(value.details); this.context ??= stable; checkImages(stable === this.context);
             return value;
         });
-        checkImages(this.total <= totalPixelLimit && frame.pixels[0].sha256 === frame.pixels[1].sha256
+        checkImages(this.total <= totalPixelLimit && (animationPairMayDiffer(entry) || frame.pixels[0].sha256 === frame.pixels[1].sha256)
             && snapshotHash(frame.pixels[0].renderDetails) === snapshotHash(frame.pixels[1].renderDetails)
             && snapshotHash(frame.pixels[0].imageDetails) === snapshotHash(frame.pixels[1].imageDetails));
         return pixels;
@@ -165,7 +171,8 @@ class AnimationReport {
         const item = animationCases.find(value => value.id === entry.caseId), stage = item.stages.find(value => value.id === entry.stageId);
         const reply = animationReply(replyBytes.toString('ascii'), stage, context.state.imageId);
         const { facts } = this.timingFacts(entry, stage, index, context);
-        const timing = evaluateAnimationTiming(stage, facts);
+        // A pair that differs means the frame changed between its two captures: legitimate near a boundary, but then no single frame is observed.
+        const timing = this.pairStable ? evaluateAnimationTiming(stage, facts) : { valid: false, reason: 'paired captures differ: the frame changed between them' };
         const pixel = inspectAnimationPixels({ baseline: this.boundPixel.image, observed: pixels[0].image, grid: pixels[0].details.grid,
             anchor: animationAnchor, cells: animationCellEnvelope, appearance: stage.appearance });
         checkImages(pixel.controls[0].passed);
@@ -206,13 +213,14 @@ class AnimationReport {
     }
     processFrame(frame, index) {
         const entry = index ? animationPlan[index - 1] : { kind: 'start' };
-        this.validateFrame(frame, index, entry); const pixels = this.readPixels(frame, index);
+        this.validateFrame(frame, index, entry); const pixels = this.readPixels(frame, index, entry);
         if (!index) {
             checkImages(frame.capture === null && frame.actionIndex === null); this.initialPixel = frame.pixels[0].sha256;
             this.initialBackground = pixels[0].details.theme.backgroundArgb;
             checkImages(pixels[0].imageDetails.totalPlacements === 0);
             this.lastTime = Date.parse(frame.ownership.at); this.lastEnd = animationSpanOf(frame).end; return;
         }
+        this.pairStable = frame.pixels[0].sha256 === frame.pixels[1].sha256;
         const facts = this.validateAction(frame, index, entry), replyBytes = this.readReply(frame);
         if (entry.kind !== 'read') this.checkControl(entry, frame, pixels, replyBytes);
         else this.observe(entry, index, pixels, replyBytes, facts);

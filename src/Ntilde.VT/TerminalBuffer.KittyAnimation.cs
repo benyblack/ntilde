@@ -31,11 +31,12 @@ public partial class TerminalBuffer
         {
             if (!_kittyImageAssets.Contains(asset)) return KittyFrameStoreResult.ImageGone;
             KittyAnimation animation = asset.Animation ??= new KittyAnimation(asset.Handle);
+            // Settle the playhead to now before anything can refuse or change the frame list, so even a refused frame leaves the display
+            // where elapsed time puts it and a change cannot rewrite time already elapsed.
+            long now = KittyAnimationClock();
+            if (animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             bool replacing = replaceIndex >= 0;
             if (!replacing && animation.Frames.Count >= KittyAnimation.MaxFrames) return KittyFrameStoreResult.TooManyFrames;
-            // Settle the playhead to now before the frame list or a gap changes, so the change cannot rewrite time already elapsed.
-            long now = KittyAnimationClock();
-            bool moved = animation.Advance(now);
             long resulting = asset.PixelCharge + frame.Charge - (replacing ? animation.Frames[replaceIndex].Charge : 0);
             if (resulting > MaxKittyImagePixelBytes) return KittyFrameStoreResult.NoSpace;
             if (!TryAdmitImageHandle(frame.Handle)) return KittyFrameStoreResult.Rejected;
@@ -45,11 +46,9 @@ public partial class TerminalBuffer
             {
                 animation.Frames.Add(frame);
                 // A parked loading animation resumes from this arrival, not from whenever the next render happens.
-                moved |= animation.OnFrameAppended(now);
-                if (moved) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+                if (animation.OnFrameAppended(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
                 return KittyFrameStoreResult.Stored;
             }
-            if (moved) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
             KittyFrame old = animation.Frames[replaceIndex];
             animation.Frames[replaceIndex] = frame;
             if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);

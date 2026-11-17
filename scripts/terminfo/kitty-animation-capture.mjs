@@ -5,7 +5,7 @@ import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest 
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
 import { animationCases } from './kitty-animation-cases.mjs';
 import { checkImages, imageRawReplies, validateImageCapture, stableImageContext, pristineImageBaseline, validateImageOwnership } from './static-images.mjs';
-import { animationPlan, animationPriorCap, animationAction, animationReply, animationBoundScreen, animationInputs, animationPixelPrefix, buildAnimationReport, imageCaptureKind } from './kitty-animation.mjs';
+import { animationPlan, animationPairMayDiffer, animationPriorCap, animationAction, animationReply, animationBoundScreen, animationInputs, animationPixelPrefix, buildAnimationReport, imageCaptureKind } from './kitty-animation.mjs';
 
 /** No new action surface: the worker emits bytes only after each parent ownership admission. */
 export class OwnedAnimationObserver {
@@ -40,7 +40,8 @@ export class OwnedAnimationObserver {
         const second = await this.capturePixel(screen, endpoint, 1, budget);
         const endMs = this.now();
         const pixels = [first, second], afterScreen = await this.after.capture(budget);
-        checkImages(snapshotHash(screen) === snapshotHash(afterScreen) && first.sha256 === second.sha256
+        const mayDiffer = this.phase === 'capture' && animationPairMayDiffer(animationPlan[this.next]);
+        checkImages(snapshotHash(screen) === snapshotHash(afterScreen) && (mayDiffer || first.sha256 === second.sha256)
             && snapshotHash(first.renderDetails) === snapshotHash(second.renderDetails)
             && snapshotHash(first.imageDetails) === snapshotHash(second.imageDetails));
         return { screen, afterScreen, sha256: snapshotHash(screen), afterSha256: snapshotHash(afterScreen), pixels, pairSpan: { startMs, endMs } };

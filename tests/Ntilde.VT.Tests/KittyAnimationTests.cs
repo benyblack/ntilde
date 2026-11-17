@@ -421,6 +421,20 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void A_refused_frame_still_leaves_the_display_where_elapsed_time_puts_it()
+    {
+        var h = new Harness();
+        for (int i = 2; i <= KittyAnimation.MaxFrames; i++) h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(1, 1, 1, 255));
+        h.Replies.Clear();
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Now = 1000;                                          // no render since the start
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(2, 2, 2, 255));
+        Assert.Contains(";ENOSPC:", h.Reply());                // the 65th frame is refused...
+        Assert.Equal(10, Index(h));                            // ...but the playhead was settled first: root 40 ms, then nine 100 ms frames
+        Assert.Same(h.FramePixels(10), h.Shown);
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();

@@ -49,18 +49,19 @@ export function syntheticAnimationCapture(screen, appearance, { bleed = false } 
 
 /**
  * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
- * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry) -> boolean.
+ * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
  */
-export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed } = {}) {
+export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer } = {}) {
     const bound = animationBoundScreen(initial, runId), frames = [], actions = [], states = new Map();
     mkdirSync(join(output, animationPixelPrefix)); mkdirSync(join(output, 'animation-inputs'));
     for (const input of animationInputs()) writeFileSync(join(output, input.file), input.bytes);
     const baseOwnership = imageOwnership(initial.rows, initial.cols, runId);
     const stamp = at => ({ ...structuredClone(baseOwnership), at: iso(at) });
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
-        const capture = syntheticAnimationCapture(screen, appearance, { bleed: bleed?.(entry) === true });
-        const bytes = Buffer.from(capture.pngBase64, 'base64'), { pngBase64, ...facts } = capture;
-        const pixels = [0, 1].map(side => {
+        const other = pairDiffer?.(entry);
+        const pixels = [appearance, other ?? appearance].map((shown, side) => {
+            const capture = syntheticAnimationCapture(screen, shown, { bleed: bleed?.(entry) === true });
+            const bytes = Buffer.from(capture.pngBase64, 'base64'), { pngBase64, ...facts } = capture;
             const file = `${animationPixelPrefix}/frame-${String(frames.length).padStart(3, '0')}-${side}.png`;
             writeFileSync(join(output, file), bytes); return { ...structuredClone(facts), file, sha256: pngHash(bytes) };
         });

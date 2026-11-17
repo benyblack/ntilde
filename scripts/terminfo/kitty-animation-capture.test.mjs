@@ -21,9 +21,9 @@ class Input extends EventEmitter {
     pause() { this.paused = true; } resume() { this.paused = false; }
 }
 /** A virtual wall clock: writes, captures and the collector's sleeps advance it, so waits are exercised without real delay. */
-async function fixture(action, { badModes = false, badReply = false, changedWorker = false, late = false, captureCost = 450, mutateCapture } = {}) {
+async function fixture(action, { badModes = false, badReply = false, changedWorker = false, late = false, captureCost = 450, mutateCapture, differStage } = {}) {
     const directory = mkdtempSync(join(tmpdir(), 'nt-kan-capture-')), input = new Input(), calls = [], writes = [];
-    let clock = animationEpoch, screen = initialInputScreen(10, 60);
+    let clock = animationEpoch, screen = initialInputScreen(10, 60), pngCalls = 0;
     const baseline = structuredClone(screen), bound = animationBoundScreen(baseline, inputRunId), now = () => clock;
     const observer = new OwnedAnimationObserver({ output: directory, nonce: 'NTILDE_IMG_' + inputRunId, profileName: 'fixture', expectedPaneId: inputPaneId,
         priorChallenges: ['32768,32769'], endpoint: () => 'private', now,
@@ -34,8 +34,9 @@ async function fixture(action, { badModes = false, badReply = false, changedWork
         }, captureRpc: async () => {
             const entry = animationPlan[observer.next], spec = animationCases.find(value => value.id === entry?.caseId);
             const stage = observer.phase === 'capture' ? spec?.stages.find(value => value.id === entry?.stageId) : null;
-            clock += captureCost;
-            const value = syntheticAnimationCapture(screen, stage?.appearance ?? 'absent');
+            clock += captureCost; pngCalls++;
+            // The second capture of a pair shows another frame: an animation boundary fell between them.
+            const value = syntheticAnimationCapture(screen, differStage && stage?.id === differStage && pngCalls % 2 === 0 ? 'third' : stage?.appearance ?? 'absent');
             mutateCapture?.(value);
             return value;
         } });
@@ -140,3 +141,13 @@ test('prior challenges from both earlier phases are admitted although they excee
     assert.throws(() => make(priors(animationPriorCap + 1)));
     assert.ok(priors(inputPriorCaptureCap + imagePlan.length + 1).length > inputPriorCaptureCap, 'the old input-only cap would have refused this');
 });
+
+test('a pair that straddles a frame boundary does not abort a running stage and is graded inconclusive', async () => fixture(async f => {
+    await collectAnimation(f); assert.equal(f.observer.restored, true);
+    const second = f.observer.report.observations.find(value => value.featureId === 'kitty.animation.playback.second');
+    assert.equal(second.result, 'inconclusive'); assert.match(second.inconclusiveReason, /paired captures differ/);
+    assert.equal(f.observer.frames.find(frame => frame.stageId === 'second' && frame.caseId === 'kitty.animation.playback').pixels.map(pixel => pixel.sha256).filter((value, index, all) => all.indexOf(value) === index).length, 2);
+}, { differStage: 'second' }));
+test('the same difference in a static stage still aborts the collection', async () => fixture(async f => {
+    await assert.rejects(collectAnimation(f)); assert.equal(f.observer.restored, false);
+}, { differStage: 'build' }));

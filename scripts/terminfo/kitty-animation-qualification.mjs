@@ -84,7 +84,7 @@ const stageSummary = item => ({
 
 /** Validity controls over the whole carrier run: every one must hold before any animation verdict is reported. */
 export function validityControls(report, receipt, context, observationBytes) {
-    const binding = receipt.animationEvidence, captures = report.snapshots.filter(frame => frame.capture), nonces = captures.flatMap(frame => frame.capture.nonces);
+    const binding = receipt.animationEvidence, captures = report.snapshots.filter(frame => frame.capture);
     const pairs = captures.map(frame => frame.capture.nonces.join(',')), prior = new Set(report.priorChallenges);
     const stages = report.observations, blanks = stages.filter(item => item.featureId.endsWith('.blank'));
     const timed = stages.filter(item => item.timing.clock !== 'static');
@@ -100,7 +100,7 @@ export function validityControls(report, receipt, context, observationBytes) {
         ['controlled-background', report.backgroundControls.length === report.actions.length && report.backgroundControls.at(-1).snapshot === report.restoredSnapshot
             && report.backgroundControls.slice(0, -1).every(item => item.argb === 0xff101010 && same(item.query.channels16, [4112, 4112, 4112])),
             'every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme'],
-        ['fresh-paired-fences', captures.length === report.actions.length && nonces.length === new Set(nonces).size && pairs.length === new Set(pairs).size && pairs.every(pair => !prior.has(pair)),
+        ['fresh-paired-fences', captures.length === report.actions.length && pairs.length === new Set(pairs).size && pairs.every(pair => !prior.has(pair)),
             'every capture carries its own unpredictable paired challenges, none reused from the earlier phases or another capture'],
         ['blank-before-controls', blanks.length === 3 && blanks.every(item => item.result === 'passed' && item.assertions.length === 2 && item.assertions.every(value => value.passed)),
             'every case began from an independently blank, unchanged-surroundings target'],

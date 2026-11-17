@@ -112,6 +112,24 @@ test('bleed outside the target envelope is a failure whatever the timing', () =>
     });
 });
 
+test('a capture pair that straddles a frame boundary is inconclusive for a moving stage and refused for a static one', () => {
+    withJournal({ pairDiffer: entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second' ? 'third' : undefined }, ({ build }) => {
+        const report = build(), second = report.observations.find(item => item.featureId === 'kitty.animation.playback.second');
+        assert.equal(second.result, 'inconclusive'); assert.equal(second.timing.valid, false);
+        assert.match(second.inconclusiveReason, /paired captures differ/);
+        const third = report.observations.find(item => item.featureId === 'kitty.animation.playback.third');
+        assert.equal(third.result, 'inconclusive'); assert.match(third.inconclusiveReason, /requires passed prior witness/);
+    });
+    withJournal({ pairDiffer: entry => entry.kind === 'read' && entry.stageId === 'build' && entry.caseId === 'kitty.animation.playback' ? 'second' : undefined }, ({ build }) => {
+        assert.throws(() => build());
+    });
+    withJournal({ bleed: entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second',
+        pairDiffer: entry => entry.kind === 'read' && entry.caseId === 'kitty.animation.playback' && entry.stageId === 'second' ? 'third' : undefined }, ({ build }) => {
+        const second = build().observations.find(item => item.featureId === 'kitty.animation.playback.second');
+        assert.equal(second.result, 'failed', 'bleed still fails whatever the pair did');
+    });
+});
+
 test('tampering with the journal, actions, timing, replies or seal is refused', () => {
     withJournal({}, ({ build, frames, actions, seal, output }) => {
         const clone = value => structuredClone(value);

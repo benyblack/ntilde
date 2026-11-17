@@ -147,6 +147,9 @@ test('a changed or invalid validity control stops the projection', () => withCop
     assert.equal(validityControls(late, receipt, context, bytes).find(item => item.name === 'wall-clock-windows-valid').held, false);
     const reused = clone(report); reused.snapshots[3].capture.nonces = [...reused.snapshots[2].capture.nonces];
     assert.equal(validityControls(reused, receipt, context, bytes).find(item => item.name === 'fresh-paired-fences').held, false);
+    // Two captures may share one challenge number: the contract is unique pairs (the collector's rule), not unique numbers.
+    const sharedNumber = clone(report); sharedNumber.snapshots[3].capture.nonces = [sharedNumber.snapshots[2].capture.nonces[0], sharedNumber.snapshots[3].capture.nonces[1] === sharedNumber.snapshots[2].capture.nonces[0] ? 40000 : sharedNumber.snapshots[3].capture.nonces[1]];
+    assert.equal(validityControls(sharedNumber, receipt, context, bytes).find(item => item.name === 'fresh-paired-fences').held, true);
     const unacknowledged = clone(report); unacknowledged.observations[1].reply.passed = false;
     assert.equal(validityControls(unacknowledged, receipt, context, bytes).find(item => item.name === 'acknowledgement-separate-from-pixels').held, false);
     assert.equal(validityControls(report, receipt, context, Buffer.from(bytes.toString() + ' ')).find(item => item.name === 'receipt-binds-animation-report').held, false);
