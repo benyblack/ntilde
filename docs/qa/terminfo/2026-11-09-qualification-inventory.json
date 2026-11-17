@@ -3779,44 +3779,44 @@
         "extensions.kitty-graphics.animation"
       ],
       "evidence": {
-        "files": 20,
-        "bytes": 18041781,
-        "sha256": "7f9c0f5936f937ea4c30ef7d3973aa182a6a9059f2ffe3ef24c752eefe2eaf01"
+        "files": 22,
+        "bytes": 18881165,
+        "sha256": "10209b4d6e048dbd637dcfc18bb44f5aeea5dcc2cce06ab9886d25f15ac0a50a"
       },
       "receipt": {
         "schemaVersion": 70,
-        "runId": "6af0d336ed7f70743fa9d166fe7302fb",
+        "runId": "35968b7e4d2299810d5cd3f91b37ab17",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "eefb86ab9d63f2ccc2a317eb352c777171065450e53a6f4b86929140c1da9d2e"
+          "sha256": "bebdb14aaead9a92e292fd1a448f233143dbddfd11a6adb4852167ce0618fbe0"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-kitty-animation-v1",
           "file": "animation-observations.json",
-          "sha256": "471a52006ea1ca1407e16ba8e2f77d19ec7298d6b8f4670ddb16a32921f6b5f9",
+          "sha256": "5828982536208dfe927c7d61ba50b3d528973554a880bdad7c8e97c2105726d3",
           "counts": {
             "passed": 18
           }
         }
       },
       "run": {
-        "ownedRunId": "6af0d336ed7f70743fa9d166fe7302fb",
-        "measuredAt": "2026-11-17T00:59:15.248Z",
-        "appRevision": "be8add66e71df707a61c5fd27ca6ba7be3e533ff",
+        "ownedRunId": "35968b7e4d2299810d5cd3f91b37ab17",
+        "measuredAt": "2026-11-17T01:40:58.384Z",
+        "appRevision": "a706d8a1ef35fb40aff3debfb80c7dd1d86dba20",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "be8add66e71df707a61c5fd27ca6ba7be3e533ff",
+        "scriptsRevision": "a706d8a1ef35fb40aff3debfb80c7dd1d86dba20",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "dfb621244d19073969f910e32f8da5e5a7b9763263b40194bef91ca34eb6a0e4",
+        "collectorAdapterBundleSha256": "5dbcfc38fc87565c97de04973c87c0d2a1964f21b68e345a6182c477d434e09c",
         "gradingAdapterId": "ntilde-owned-macos-v1",
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v63",
-        "sourceSnapshotManifestSha256": "4d5e646fed96454b417f0326ce343799706bd4afea5a2bb9c527bf6ca87e2dd7"
+        "sourceSnapshotManifestSha256": "14a164c73565107585eab03c33e77e5c21ee71fce4e3ed7f738759587d0dfa66"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "ec19b3b6d10adb72766a45c34f02ec4a",
+        "runId": "6bbf7bd5820f7edc68de4153e1306eb4",
         "counts": {
           "inconclusive": 161,
           "supported": 93,
@@ -3824,14 +3824,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "08fa01efed30289d97e6d968b88a62f8b114ca960d9f293cbec1ca8b20926d23",
+        "rawSha256": "d6b0a810f2aee4e08b3691fe58c6c435bee27de5476f1ae07b107564abfaeef5",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/kitty-animation-publication.test.mjs",
-        "testSha256": "3f2c776cb23585f416e93724d7c4f2556051d2ed74a8fe6cb203ee90d91035a0"
+        "testSha256": "97b027aae0f849e40e24c2336099ed6517263d4ed339e57b12c4f7cbdf491d1c"
       }
     }
   ],

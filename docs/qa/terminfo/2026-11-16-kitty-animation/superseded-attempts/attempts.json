@@ -59,6 +59,15 @@
         "animation-observations.json": "bc260ba50b3f58c2664c3c5490e0a215787f5bd68d2d4ac72fce3222d7733fd1",
         "cell-receipt.json": "be99620ba4540694b054bc6af5ae3bd4fcd558f18dc6c7919a43c17f1995925b"
       }
+    },
+    {
+      "runId": "6af0d336ed7f70743fa9d166fe7302fb",
+      "scriptsRevision": "be8add66",
+      "reason": "A third complete 18/18 run (effect supported, receipt schema 70) on the App built from be8add66. Superseded, not failed: CI on the pull request then required fixes to the production and measuring code (SonarCloud complexity, ternary, parameter-count and duplication findings were resolved by sharing the static-image observer and report with this suite and splitting the playhead, frame transmit and compositor; the MCP parser topic gained the new parser file; crash logs were kept as text because *.log is git-ignored), so the App and scripts were rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "471a52006ea1ca1407e16ba8e2f77d19ec7298d6b8f4670ddb16a32921f6b5f9",
+        "cell-receipt.json": "dd4bcb7f67f1d25b5f283771f57a8893aea2cd5347741a57012a3bdd86724f41"
+      }
     }
   ]
 }

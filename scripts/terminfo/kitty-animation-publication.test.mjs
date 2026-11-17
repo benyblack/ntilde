@@ -191,8 +191,8 @@ test('a retained pixel, input, journal line or directory member that changed is 
 
 test('the superseded collection attempts are retained with their actual failures and none carries a grade', () => {
     const { attempts } = JSON.parse(readFileSync(join(dir, 'superseded-attempts', 'attempts.json')));
-    assert.equal(attempts.length, 6);
-    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32]);
+    assert.equal(attempts.length, 7);
+    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32, 32]);
     assert.ok(attempts.every(item => item.runId !== original.animationEvidence.runId && item.reason.length > 40));
     for (const item of attempts) {
         assert.deepEqual(readdirSync(join(dir, 'superseded-attempts', item.runId)).sort(), Object.keys(item.retainedFiles).sort());
@@ -206,5 +206,7 @@ test('the superseded collection attempts are retained with their actual failures
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[3].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.match(attempts[4].reason, /RenderTimer error -6661/);
     assert.match(attempts[5].reason, /Superseded, not failed/);
+    assert.match(attempts[6].reason, /Superseded, not failed/);
+    assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[6].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[5].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
 });
