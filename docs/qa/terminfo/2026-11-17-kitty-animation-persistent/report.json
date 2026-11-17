@@ -3,7 +3,7 @@
   "suiteId": "ntilde-owned-kitty-animation-persistent-qualification-v1",
   "carrierSuiteId": "ntilde-owned-kitty-animation-v2",
   "contractsVersion": 1,
-  "runId": "2ae8c7e42734ba719556582c1f5e750b",
+  "runId": "7462f86c6e54ea7671b53dd349286de2",
   "adapter": {
     "id": "ntilde-owned-kitty-animation-persistent-adapter-v1",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
@@ -183,8 +183,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794936243947,
-                    "end": 1794936244009
+                    "start": 1794937327366,
+                    "end": 1794937327440
                   }
                 }
               },
@@ -240,12 +240,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936244027,
-                    "latest": 1794936244047
+                    "earliest": 1794937327459,
+                    "latest": 1794937327484
                   },
                   "capture": {
-                    "start": 1794936244052,
-                    "end": 1794936244123
+                    "start": 1794937327490,
+                    "end": 1794937327573
                   }
                 }
               },
@@ -307,12 +307,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936244027,
-                    "latest": 1794936244047
+                    "earliest": 1794937327459,
+                    "latest": 1794937327484
                   },
                   "capture": {
-                    "start": 1794936250169,
-                    "end": 1794936250237
+                    "start": 1794937333615,
+                    "end": 1794937333682
                   }
                 }
               },
@@ -374,12 +374,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936244027,
-                    "latest": 1794936244047
+                    "earliest": 1794937327459,
+                    "latest": 1794937327484
                   },
                   "capture": {
-                    "start": 1794936250274,
-                    "end": 1794936250340
+                    "start": 1794937333724,
+                    "end": 1794937333789
                   }
                 }
               },
@@ -429,8 +429,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794936250482,
-                    "end": 1794936250541
+                    "start": 1794937333928,
+                    "end": 1794937333996
                   }
                 }
               },
@@ -486,12 +486,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936250560,
-                    "latest": 1794936250582
+                    "earliest": 1794937334014,
+                    "latest": 1794937334033
                   },
                   "capture": {
-                    "start": 1794936250586,
-                    "end": 1794936250649
+                    "start": 1794937334037,
+                    "end": 1794937334102
                   }
                 }
               },
@@ -555,16 +555,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936250560,
-                    "latest": 1794936250582
+                    "earliest": 1794937334014,
+                    "latest": 1794937334033
                   },
                   "start": {
-                    "earliest": 1794936250669,
-                    "latest": 1794936250686
+                    "earliest": 1794937334122,
+                    "latest": 1794937334137
                   },
                   "capture": {
-                    "start": 1794936250689,
-                    "end": 1794936250749
+                    "start": 1794937334140,
+                    "end": 1794937334202
                   }
                 }
               },
@@ -626,16 +626,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936250560,
-                    "latest": 1794936250582
+                    "earliest": 1794937334014,
+                    "latest": 1794937334033
                   },
                   "start": {
-                    "earliest": 1794936250669,
-                    "latest": 1794936250686
+                    "earliest": 1794937334122,
+                    "latest": 1794937334137
                   },
                   "capture": {
-                    "start": 1794936258145,
-                    "end": 1794936258203
+                    "start": 1794937341595,
+                    "end": 1794937341654
                   }
                 }
               },
@@ -697,16 +697,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936250560,
-                    "latest": 1794936250582
+                    "earliest": 1794937334014,
+                    "latest": 1794937334033
                   },
                   "start": {
-                    "earliest": 1794936250669,
-                    "latest": 1794936250686
+                    "earliest": 1794937334122,
+                    "latest": 1794937334137
                   },
                   "capture": {
-                    "start": 1794936263152,
-                    "end": 1794936263211
+                    "start": 1794937346602,
+                    "end": 1794937346658
                   }
                 }
               },
@@ -768,16 +768,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936250560,
-                    "latest": 1794936250582
+                    "earliest": 1794937334014,
+                    "latest": 1794937334033
                   },
                   "start": {
-                    "earliest": 1794936250669,
-                    "latest": 1794936250686
+                    "earliest": 1794937334122,
+                    "latest": 1794937334137
                   },
                   "capture": {
-                    "start": 1794936268164,
-                    "end": 1794936268225
+                    "start": 1794937351615,
+                    "end": 1794937351678
                   }
                 }
               },
@@ -839,16 +839,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936250560,
-                    "latest": 1794936250582
+                    "earliest": 1794937334014,
+                    "latest": 1794937334033
                   },
                   "start": {
-                    "earliest": 1794936250669,
-                    "latest": 1794936250686
+                    "earliest": 1794937334122,
+                    "latest": 1794937334137
                   },
                   "capture": {
-                    "start": 1794936268262,
-                    "end": 1794936268318
+                    "start": 1794937351714,
+                    "end": 1794937351771
                   }
                 }
               },
@@ -898,8 +898,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794936268439,
-                    "end": 1794936268496
+                    "start": 1794937351891,
+                    "end": 1794937351947
                   }
                 }
               },
@@ -955,12 +955,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936268512,
-                    "latest": 1794936268527
+                    "earliest": 1794937351985,
+                    "latest": 1794937351999
                   },
                   "capture": {
-                    "start": 1794936268530,
-                    "end": 1794936268587
+                    "start": 1794937352001,
+                    "end": 1794937352058
                   }
                 }
               },
@@ -1024,16 +1024,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936268512,
-                    "latest": 1794936268527
+                    "earliest": 1794937351985,
+                    "latest": 1794937351999
                   },
                   "start": {
-                    "earliest": 1794936268603,
-                    "latest": 1794936268618
+                    "earliest": 1794937352072,
+                    "latest": 1794937352085
                   },
                   "capture": {
-                    "start": 1794936268621,
-                    "end": 1794936268679
+                    "start": 1794937352088,
+                    "end": 1794937352144
                   }
                 }
               },
@@ -1095,16 +1095,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936268512,
-                    "latest": 1794936268527
+                    "earliest": 1794937351985,
+                    "latest": 1794937351999
                   },
                   "start": {
-                    "earliest": 1794936268603,
-                    "latest": 1794936268618
+                    "earliest": 1794937352072,
+                    "latest": 1794937352085
                   },
                   "capture": {
-                    "start": 1794936274828,
-                    "end": 1794936274995
+                    "start": 1794937358251,
+                    "end": 1794937358306
                   }
                 }
               },
@@ -1168,20 +1168,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936268512,
-                    "latest": 1794936268527
+                    "earliest": 1794937351985,
+                    "latest": 1794937351999
                   },
                   "start": {
-                    "earliest": 1794936268603,
-                    "latest": 1794936268618
+                    "earliest": 1794937352072,
+                    "latest": 1794937352085
                   },
                   "stop": {
-                    "earliest": 1794936275013,
-                    "latest": 1794936275031
+                    "earliest": 1794937358321,
+                    "latest": 1794937358335
                   },
                   "capture": {
-                    "start": 1794936275035,
-                    "end": 1794936275176
+                    "start": 1794937358337,
+                    "end": 1794937358393
                   }
                 }
               },
@@ -1243,20 +1243,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936268512,
-                    "latest": 1794936268527
+                    "earliest": 1794937351985,
+                    "latest": 1794937351999
                   },
                   "start": {
-                    "earliest": 1794936268603,
-                    "latest": 1794936268618
+                    "earliest": 1794937352072,
+                    "latest": 1794937352085
                   },
                   "stop": {
-                    "earliest": 1794936275013,
-                    "latest": 1794936275031
+                    "earliest": 1794937358321,
+                    "latest": 1794937358335
                   },
                   "capture": {
-                    "start": 1794936281221,
-                    "end": 1794936281359
+                    "start": 1794937364434,
+                    "end": 1794937364500
                   }
                 }
               },
@@ -1318,20 +1318,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936268512,
-                    "latest": 1794936268527
+                    "earliest": 1794937351985,
+                    "latest": 1794937351999
                   },
                   "start": {
-                    "earliest": 1794936268603,
-                    "latest": 1794936268618
+                    "earliest": 1794937352072,
+                    "latest": 1794937352085
                   },
                   "stop": {
-                    "earliest": 1794936275013,
-                    "latest": 1794936275031
+                    "earliest": 1794937358321,
+                    "latest": 1794937358335
                   },
                   "capture": {
-                    "start": 1794936281397,
-                    "end": 1794936281567
+                    "start": 1794937364541,
+                    "end": 1794937364603
                   }
                 }
               },
@@ -1381,8 +1381,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794936281792,
-                    "end": 1794936281958
+                    "start": 1794937364751,
+                    "end": 1794937364820
                   }
                 }
               },
@@ -1436,12 +1436,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936281975,
-                    "latest": 1794936281998
+                    "earliest": 1794937364840,
+                    "latest": 1794937364871
                   },
                   "capture": {
-                    "start": 1794936282001,
-                    "end": 1794936282169
+                    "start": 1794937364875,
+                    "end": 1794937364940
                   }
                 }
               },
@@ -1505,12 +1505,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936281975,
-                    "latest": 1794936281998
+                    "earliest": 1794937364840,
+                    "latest": 1794937364871
                   },
                   "capture": {
-                    "start": 1794936282206,
-                    "end": 1794936282359
+                    "start": 1794937364977,
+                    "end": 1794937365042
                   }
                 }
               },
@@ -1575,12 +1575,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936281975,
-                    "latest": 1794936281998
+                    "earliest": 1794937364840,
+                    "latest": 1794937364871
                   },
                   "capture": {
-                    "start": 1794936282389,
-                    "end": 1794936282560
+                    "start": 1794937365078,
+                    "end": 1794937365138
                   }
                 }
               },
@@ -1645,12 +1645,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936281975,
-                    "latest": 1794936281998
+                    "earliest": 1794937364840,
+                    "latest": 1794937364871
                   },
                   "capture": {
-                    "start": 1794936282595,
-                    "end": 1794936282746
+                    "start": 1794937365174,
+                    "end": 1794937365236
                   }
                 }
               },
@@ -1712,12 +1712,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794936281975,
-                    "latest": 1794936281998
+                    "earliest": 1794937364840,
+                    "latest": 1794937364871
                   },
                   "capture": {
-                    "start": 1794936282776,
-                    "end": 1794936282922
+                    "start": 1794937365273,
+                    "end": 1794937365334
                   }
                 }
               },

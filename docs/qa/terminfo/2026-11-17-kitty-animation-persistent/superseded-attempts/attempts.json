@@ -226,6 +226,31 @@
           "bytes": 112443
         }
       ]
+    },
+    {
+      "attempt": "owned-pTtP7e",
+      "runId": "2ae8c7e42734ba719556582c1f5e750b",
+      "scripts": "a844dbce",
+      "collection": "persistent-animation scope",
+      "outcome": "24/24 passed",
+      "reason": "A complete run on the merged tree (source policy v67), published third. A second review round (CodeRabbit: keep both errors when the scratch cleanup of a failed preparation fails; Sonar: absolute executables in the assembler, which is not measured) edited the measured runner, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-pTtP7e/animation-observations.json",
+          "sha256": "15a72cc9d1d92584abd4f693bc02722a222e38f8520651937a763ad7e3b1ca3a",
+          "bytes": 977933
+        },
+        {
+          "file": "owned-pTtP7e/persistent-animation-receipt.json",
+          "sha256": "91f5bb182bf0450b72054d0073fb7cf0f5ce0c0a2d09faf7fae7dae5b38e3605",
+          "bytes": 914
+        },
+        {
+          "file": "owned-pTtP7e/ownership-proof.json",
+          "sha256": "1b5a287cf9c082b2be40fc8b8423ae98dbcbe271f2fbe5f23c28ba4f64edf3db",
+          "bytes": 112488
+        }
+      ]
     }
   ]
 }
