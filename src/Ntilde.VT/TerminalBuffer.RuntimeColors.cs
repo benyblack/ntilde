@@ -22,7 +22,7 @@ public partial class TerminalBuffer
         var current = state.Current;
         bool empty = state.Stack.Length == 0 && !state.HasXtermState && current.Foreground is null && current.Background is null &&
             current.Cursor is null && current.SelectionBackground is null && current.SelectionForeground is null &&
-            current.Palette.All(color => color is null);
+            current.Palette.All(color => color is null) && current.SpecialColors.All(color => color is null);
         return empty ? null : state.Clone();
     }
 

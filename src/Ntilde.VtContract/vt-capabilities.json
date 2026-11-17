@@ -128,6 +128,15 @@
       "contractCase": "kitty-color-control"
     },
     {
+      "key": "OSC:5",
+      "mnemonic": "Special colors",
+      "support": "partial",
+      "description": "rxvt's special-color protocol over its own five-slot resource set (bold, underline, blink, reverse, italic): chained selector/value pairs set each color, a ? value reports it as one complete OSC 5;selector;rgb:rrrr/gggg/bbbb frame per query, and OSC 105 resets one listed selector or, bare, all five. Slots default to the default foreground. The colors are stored, queried and reset but never render-applied: attribute emphasis renders as flags, and rxvt's OSC 106 color-mode toggles are not modeled.",
+      "matrixFeature": "OSC 5/105 (special colors)",
+      "evidencePath": "tests/Ntilde.VT.Tests/Osc5SpecialColorTests.cs",
+      "contractCase": "osc5-special-color"
+    },
+    {
       "key": "DEC:5522",
       "mnemonic": "MIME clipboard paste notifications",
       "support": "supported",

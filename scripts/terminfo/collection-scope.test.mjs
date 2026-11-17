@@ -9,7 +9,7 @@ import { completeOwnedReceipt } from './receipt.mjs';
 
 test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v63', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
     const proof = { collectionScope: structuredClone(osc633Scope) };
     const evidence = { osc633Evidence: {} };
     try {
@@ -38,7 +38,7 @@ test('only the fixed scope is admitted by matching context, parent proof, policy
 
 test('the default selection preserves all prior suites and explicitly excludes only OSC 633', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62', collectionScope: structuredClone(legacyScope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v63', collectionScope: structuredClone(legacyScope) };
     const proof = { collectionScope: structuredClone(legacyScope) };
     try {
         assert.equal(isLegacyScope(context.collectionScope), true);

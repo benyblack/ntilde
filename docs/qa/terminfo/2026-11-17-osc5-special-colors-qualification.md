@@ -1,0 +1,72 @@
+# rxvt special-color qualification: OSC 5/105 (2026-11-17)
+
+Qualifies one pinned terminfo.dev@4.0.0 case (bundle SHA-256 `aa5f2bf9…e1f6`, probeHash `16a690f34c0e`): `extensions.osc5-special-color`, whose exact request is `OSC 5;0;? BEL`. Like the
+[kitty color-control batch](2026-11-15-kitty-color-control-qualification.md), **this batch adds production code**: main did not answer the request (the [exact query audit](exact-query-audit.md) recorded
+matched silence), so a qualification had nothing to measure. The VT now implements rxvt's special-color protocol, and the batch measures it. The batch is restacked on the merged static-image and
+aggregate batches (source policy v63, receipt schema 70).
+
+## What the pinned probe can say
+
+The pinned probe is a **query-only** probe registered through terminfo.dev's `oscSimpleQueryProbe` factory. It sends `OSC 5;0;? BEL` — selector **0** of rxvt's special-color table (colorBD, the bold
+color) — and is the one case of this batch whose verdict the unchanged pinned code can decide:
+
+- termless path: `feedCapture(OSC 5;0;? BEL)` over `oscReplyResult`; terminal path: `queryWithSentinelOutcome` with the pattern `ESC ] 5 ; 0 ; rgb : h{1,4} / h{1,4} / h{1,4} (BEL | ST)`, case-insensitive.
+- **supported** when the reply is one complete `OSC 5;0;rgb:…` frame ended by BEL or ST; **inconclusive** (`invalid-reply`) when the capture holds the `OSC 5;0;` prefix without a complete frame;
+  **inconclusive** (`no-response`) when nothing arrives. It can never return unsupported, and it does not test setting a color, the other selectors or any rendering.
+
+Both pinned paths are replayed byte-exactly over the journaled raw reply of the case's own fenced exchange. The pinned verdict is also the stock collector's grade in the same owned run and is
+corroborated by the exact-query witness `q07.extensions.osc5-special-color` under query policy v6.
+
+## Result
+
+| Case | Pinned termless / terminal paths | Stock grade (this run) | Exact-query witness | Effect contract (`ntilde-osc5-special-colors-effect-v1`) |
+|---|---|---|---|---|
+| `extensions.osc5-special-color` | **supported** / **supported** | **supported** (was inconclusive: no reply) | matched a complete `rgb:` frame | **supported** (2 controls and 15 protocol groups matched; 5 policy groups, all matched Ntilde's choices) |
+
+The stock collector in the same owned run (`d278a2269f111b4ab24e36e013bfaf17`) grades 94 supported / 1 unsupported / 160 inconclusive (`suiteComplete=false`). The frozen baseline counts are 93 / 1 / 162,
+so exactly one stock grade moves: `extensions.osc5-special-color`. The frozen stock baseline keeps its original grades. No Core point is added.
+
+## Production
+
+`OSC 5 ; c ; spec ; c ; spec ; … ST` sets, queries and resets rxvt's five special colors ([parser](../../../src/Ntilde.VT/AnsiParser.Colors.cs), [unit
+tests](../../../tests/Ntilde.VT.Tests/Osc5SpecialColorTests.cs)). It follows rxvt's special-color text:
+
+- selectors: the numeric special-color indices 0 (colorBD/bold), 1 (colorUL/underline), 2 (colorBL/blink), 3 (colorRV/reverse), 4 (colorIT/italic); the values are the numeric encodings the OSC 10 parser
+  accepts; a value `?` reports that slot as one complete `OSC 5;c;rgb:rrrr/gggg/bbbb` frame (sixteen-bit channels, always ST, echoing the selector);
+- `OSC 105 [; c …]` resets the listed special colors to their defaults; bare `OSC 105` resets all five;
+- the five slots live in their own resource set: nothing here touches the OSC 4 palette, the dynamic colors OSC 10/11/12/17/19 or the kitty OSC 21 keys, and neither do those sequences touch the special
+  colors (each direction is a deciding isolation group of its own);
+- an unset slot reports the default foreground, this App's analog of rxvt's per-color X resource default.
+
+Choices recorded as non-deciding policy: selector names (rxvt also accepts names such as `bold`) are not modeled — an unmodeled selector changes nothing and stays silent, while valid pairs in the same
+sequence still apply; malformed pairs are ignored without disturbing the reply framing; a sequence over 32768 characters is dropped whole; a sequence with no query is silent; and the App has no
+per-attribute color resources, so a stored special color is stored, queried and reset but **never render-applied** — rxvt's OSC 106 color-mode toggles are not modeled either. A render-snapshot test
+pins the non-application rather than assuming it.
+
+## What the effect contract decides
+
+The oracle is written from rxvt's special-color text, sharing no code with the parser. Every exchange is a fenced request of at most 128 bytes whose raw replies (or their explicit absence) are retained
+byte for byte, and every group must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged. The measured groups: the baseline readback of all five slots (the
+restoration oracle), the exact pinned request, a five-slot set read back per slot, set-then-query, the numeric encodings, BEL-terminated requests, two sequences in one request, per-selector and bare
+OSC 105 resets and restoration to the measured defaults; the cross-service set/read pairs that pin the resource separation; and the policy groups above.
+
+## Not claimed
+
+No rendering, painted-pixel or theme-application claim for the stored special colors; no rxvt color-mode (OSC 106) support; no selector names; no OSC 105 with selectors outside 0-4; no remote/mux,
+Windows/Linux or common-harness claim; no stock score beyond this run's recorded counts, and the frozen stock baseline keeps its original grades.
+
+## Identities
+
+App version 0.14.0, Release sidecar from `d5548908…80b4` (the merge that landed this batch's production commit; scripts and App revision are the same commit). Owned run `d278a2269f111b4ab24e36e013bfaf17`,
+measured 2026-11-17, macOS, Node v24.22.2. Source policy `readonly-owned-source-graph-v63` (420 files), receipt schema 70, query policy `owned-exact-query-paired-raw-state-v6`. The build is not
+binary-to-source attestation.
+
+## Evidence and rederivation
+
+The retained [archive](2026-11-17-osc5-special-colors/owned-run.zip) ([manifest](2026-11-17-osc5-special-colors/manifest.json)), [summary](2026-11-17-osc5-special-colors/summary.json) and
+[report](2026-11-17-osc5-special-colors/report.json) rederive through:
+
+```sh
+node --test scripts/terminfo/osc5-publication.test.mjs
+node scripts/terminfo-inventory.mjs --check
+```

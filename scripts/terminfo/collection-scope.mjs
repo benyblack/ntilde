@@ -28,7 +28,10 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, historicOsc633Scope);
 export const isLegacyScope = value => same(value, legacyScope) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
-const policyForScope = scope => isHistoricOsc633Scope(scope) ? 'readonly-owned-source-graph-v61' : 'readonly-owned-source-graph-v62';
+/** The source-snapshot policies under which each scope selection was actually collected: the v1 scopes are frozen at v61 (their archived receipts), the v2 scopes span the frozen v62 publications and
+ * the live v63. New runs always record the newest entry. */
+const allowedScopePolicies = scope => isHistoricOsc633Scope(scope) ? ['readonly-owned-source-graph-v61']
+    : ['readonly-owned-source-graph-v62', 'readonly-owned-source-graph-v63'];
 const omittedArtifacts = Object.freeze([
     'osn-observations.json', 'osn-run.json', 'osn-snapshots.jsonl', 'osn-unavailable.json', 'osn-focus.json', 'osn-failed-observation.json',
     'ntf-observations.json', 'ntf-run.json', 'ntf-snapshots.jsonl', 'ntf-unavailable.json', 'ntf-focus.json', 'ntf-failed-observation.json',
@@ -47,14 +50,14 @@ export function validateCollectionScope(output, evidence, context, proof) {
     if (isLegacyScope(context.collectionScope) && isLegacyScope(proof.collectionScope)) {
         const markers = ['osc633AdapterId', 'osc633SuiteId', 'osc633BundleSha256', 'osc633ContractsVersion'];
         const files = ['collector-vs633.mjs', 'vs633-snapshots.jsonl', 'vs633-run.json', 'vs633-observations.json', 'vs633-unavailable.json', 'vs633-failed-observation.json'];
-        if (context.sourceSnapshotPolicy !== policyForScope(context.collectionScope) || evidence.osc633Evidence !== undefined
+        if (!allowedScopePolicies(context.collectionScope).includes(context.sourceSnapshotPolicy) || evidence.osc633Evidence !== undefined
             || markers.some(key => context[key] !== undefined) || files.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined)) {
             throw new Error('Invalid or incomplete scoped collection declaration.');
         }
         return true;
     }
     if (!isOsc633Scope(context.collectionScope) || !isOsc633Scope(proof.collectionScope)
-        || context.sourceSnapshotPolicy !== policyForScope(context.collectionScope)
+        || !allowedScopePolicies(context.collectionScope).includes(context.sourceSnapshotPolicy)
         || context.osc633SuiteId !== 'ntilde-owned-osc633-graded-v1' || evidence.osc633Evidence === undefined
         || evidence.osc9Evidence !== undefined || evidence.notifyEvidence !== undefined
         || omittedArtifacts.some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined)) {

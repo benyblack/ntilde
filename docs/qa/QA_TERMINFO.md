@@ -1306,3 +1306,15 @@ the pinned inconclusive recorded as `pinned-inconclusive-by-design`; `extensions
 authoritative VS Code contract, which have no implemented publication yet, so its effect contract stays **inconclusive** with them recorded as required-and-pending (#983) — the
 inventory's first measured-other id, not a demonstrated failure. No production code changed, no stock grade moved (frozen baseline unchanged), and no Core, Modern or common-harness
 count moves; the sum of the marker publications is explicitly not an upstream supported verdict. See [the qualification page](terminfo/2026-11-16-shell-integration-aggregates-qualification.md).
+
+
+### OSC 5 special-color qualification
+
+The [OSC 5 batch](terminfo/2026-11-17-osc5-special-colors-qualification.md) implements and qualifies rxvt's special colors: `OSC 5 ; c ; spec` sets special color c (0 bold, 1 underline, 2 blink, 3 reverse, 4 italic)
+as chained numeric selector/value pairs, `OSC 5 ; c ; ?` reports one complete `OSC 5;c;rgb:rrrr/gggg/bbbb` frame per query (always ST, echoing the selector), and `OSC 105 [; c ...]` resets one listed selector or,
+bare, all five, to the default foreground. The five slots are a resource set of their own - separate from the OSC 4 palette, the OSC 10-19 dynamic colors and the kitty OSC 21 keys, each direction pinned by its own
+set/read group against the other service's measured default. Names, rxvt OSC 106 color-mode toggles and render application are recorded policy: the colors are stored, queried and reset but never render-applied
+(a render-snapshot test pins the non-application). The pinned probe (`OSC 5;0;? BEL`, query-only, never unsupported) is replayed byte-exactly on both paths over the journaled raw reply of its own fenced exchange
+through a layered collector extension (`ntilde-owned-osc5-special-colors-grading-v1`), beside an effect contract (`ntilde-osc5-special-colors-effect-v1`) graded by an independent oracle written from rxvt's
+special-color text. Both pinned paths, the stock grade and the effect contract are **supported**: the stock counts move from 93/1/161 to 94/1/160. Query policy v6 (the osc5 witness joins the exact-query ledger).
+Receipt schema 70 and source policy v63 (420 files) bind it. See [the qualification page](terminfo/2026-11-17-osc5-special-colors-qualification.md).
