@@ -71,6 +71,13 @@
       "scriptsCommit": "0c825f5a0f6c225cc4b881c9f31a9e67156469b4",
       "failedAt": null,
       "reason": "A complete, successful restacked run (owned run bb832e39430176c8f96f62d40ea4a5e6, stock collector run 54d8392084916c19f55245d2379b43d5, policy v67, receipt 74), identical conclusion. Review found the runner no longer retained a failed wheel attempt's request and ownership facts (that handler had been lost in the restack); it was restored and the run repeated. Kept as a complete run."
+    },
+    {
+      "file": "superseded/attempt-11.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "cefc06768a2d6efa076d9e128841c471b385ca60",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run 4889417f35fe10780c3385cb19e8a51d) whose pinned-bare experiment expected an erase. Review (CodeRabbit) checked rxvt-unicode's process_osc_seq: an OSC is dispatched only after a ';', so the bare ESC]720 BEL is not dispatched and has no effect; only the empty-count form ESC]720; (and ;0) reaches scr_erase_savelines. The contract now expects no effect for the bare form and adds the empty-count experiment; the run was repeated. Same unsupported conclusion; kept as a complete run."
     }
   ]
 }
