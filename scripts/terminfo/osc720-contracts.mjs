@@ -62,24 +62,25 @@ const eraseSaved = Object.freeze({ kind: 'erase-saved' });
 const wheel = Object.freeze({ kind: 'view-up-any' });
 
 // role: protocol = graded against the rxvt text; control = observer/validity control that gates the verdict; policy = none in this version.
+/** One experiment: its name (a string), role, setup, probe bytes and rxvt expectation. */
+const spec = (/** @type {string} */ name, role, setup, probe, expected) => ({ name, role, setup, probe, expected });
 const experimentSpecs = [
     // The pinned bare form: Pt absent is Pt = 0, which erases the saved lines in the reference implementation.
-    ['pinned-bare', 'protocol', live, osc720Bare, eraseSaved],
-    ['count-zero', 'protocol', live, withCount(0), eraseSaved],
-    ['count-3', 'protocol', live, withCount(3), viewUp(3)],
-    ['count-3-st', 'protocol', live, withCount(3, '\x1b\\'), viewUp(3)],
-    ['count-clamped', 'protocol', live, withCount(100000), viewUp(100000)],
-    ['count-2-from-scrolled', 'protocol', scrolled, withCount(2), viewUp(2)],
-    ['unmarked', 'control', live, '\x1b[0m', none],
-    ['ed3-control', 'control', live, '\x1b[3J', eraseSaved],
+    spec('pinned-bare', 'protocol', live, osc720Bare, eraseSaved),
+    spec('count-zero', 'protocol', live, withCount(0), eraseSaved),
+    spec('count-3', 'protocol', live, withCount(3), viewUp(3)),
+    spec('count-3-st', 'protocol', live, withCount(3, '\x1b\\'), viewUp(3)),
+    spec('count-clamped', 'protocol', live, withCount(100000), viewUp(100000)),
+    spec('count-2-from-scrolled', 'protocol', scrolled, withCount(2), viewUp(2)),
+    spec('unmarked', 'control', live, '\x1b[0m', none),
+    spec('ed3-control', 'control', live, '\x1b[3J', eraseSaved),
 ];
 
 /** Two notches back down: from any scrolled offset this experiment can reach (3, or 5 if a view move were implemented) the view returns to the live line before the next reset, so no experiment inherits a scrolled view. */
 const restoreView = Object.freeze([{ action: 'scroll-down' }, { action: 'scroll-down' }, { wait: osc720WheelSettleMs }]);
 
 /** The plan of one experiment: reset, the fixed history, an optional wheel scroll, the setup read, the probe, the effect read and, after a scroll, the restoration of the live view. */
-function planOf(fixture, spec) {
-    const [, , setup, probe] = spec;
+function planOf(fixture, { setup, probe }) {
     return [{ feed: fixture.reset }, { feed: fixture.filler }, { feed: fixture.pinnedFeed },
         ...(setup.scrolled ? [{ action: 'scroll-up' }, { wait: osc720WheelSettleMs }] : []),
         { read: 'before', kind: 'setup' }, { feed: probe }, { read: 'after', kind: 'effect' }, ...(setup.scrolled ? restoreView : [])];
@@ -88,10 +89,8 @@ function planOf(fixture, spec) {
 /** Every observation follows a distinct, observed setup; the wheel control is the only experiment that moves the view without a probe. */
 export function osc720Experiments(runId) {
     const fixture = osc720Fixture(runId);
-    const probes = experimentSpecs.map(spec => {
-        const [name, role, setup, probe, expected] = spec;
-        return { caseId: `${osc720CaseId}/${String(name)}`, owner: osc720CaseId, name, role, setup, probe, expected, plan: planOf(fixture, spec) };
-    });
+    const probes = experimentSpecs.map(item => ({ caseId: `${osc720CaseId}/${item.name}`, owner: osc720CaseId, name: item.name, role: item.role, setup: item.setup, probe: item.probe,
+        expected: item.expected, plan: planOf(fixture, item) }));
     const wheelControl = { caseId: `${osc720CaseId}/wheel-control`, owner: osc720CaseId, name: 'wheel-control', role: 'control', setup: live, probe: null, expected: wheel,
         plan: [{ feed: fixture.reset }, { feed: fixture.filler }, { feed: fixture.pinnedFeed }, { read: 'before', kind: 'setup' },
             { action: 'scroll-up' }, { wait: osc720WheelSettleMs }, { read: 'after', kind: 'effect' }, ...restoreView] };

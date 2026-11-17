@@ -3076,8 +3076,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         };
         /** The parent scrolls the disposable App's view up by one routed wheel notch between observations and retains exactly what it did: the observed view position is the evidence. */
         const performOsc720Action = async (request, budget) => {
-            const record = await runViewAction({ action: request.kind.slice(osc720Prefix.length + 1), budget: () => { try { return budget(); } catch { return 0; } },
-                config: { app, appData, executable, image, profileName, runId, paneId: osc720State.observer.paneId, uid: process.getuid(), workerPid: osc720State.workerPid, workerIdentity, tty: osc720State.tty } });
+            let record;
+            try {
+                record = await runViewAction({ action: request.kind.slice(osc720Prefix.length + 1), budget: () => { try { return budget(); } catch { return 0; } },
+                    config: { app, appData, executable, image, profileName, runId, paneId: osc720State.observer.paneId, uid: process.getuid(), workerPid: osc720State.workerPid, workerIdentity, tty: osc720State.tty } });
+            } catch (error) {
+                // The attempt (request, ownership proofs and the reason, including a dispatched event whose post-action proof failed) is retained even though the owner can only answer with a generic refusal.
+                writeJson(join(output, 'ovu-failed-action.json'), { schemaVersion: 1, runId, action: request.kind, error: String(error?.message ?? error), cause: String(error?.cause?.message ?? ''), attempt: error?.inputAttempt ?? null });
+                throw error;
+            }
             osc720ActionRecords.push(record);
             writeFileSync(join(output, 'ovu-actions.json'), JSON.stringify(osc720ActionRecords, null, 2) + '\n', { mode: 0o600 });
             return record;
