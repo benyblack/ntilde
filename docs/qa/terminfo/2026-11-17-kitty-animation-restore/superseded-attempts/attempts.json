@@ -101,6 +101,31 @@
           "bytes": 96967
         }
       ]
+    },
+    {
+      "attempt": "owned-7JpVzZ",
+      "runId": "4dd87225fece96be086e40bde582238f",
+      "scripts": "8fa2d38f",
+      "collection": "persistent-restore scope",
+      "outcome": "22/22 passed",
+      "reason": "A complete run (source policy v67) on the scripts after the review fixes, published first. Merging main (the OSC 22 collection: source policy v68 and changes to the shared image-carrier seal checks) changed the measured graph, so it is superseded by a fresh run on the merged tree.",
+      "files": [
+        {
+          "file": "owned-7JpVzZ/animation-observations.json",
+          "sha256": "7d2cec103a18085031a170a9f6c4f66204259f4c72641c0e043a417b54c4787d",
+          "bytes": 892733
+        },
+        {
+          "file": "owned-7JpVzZ/persistent-animation-receipt.json",
+          "sha256": "33cb8286bca9c334829569d4fc2c9ed8676d9f253848da6c39de8480c6f602f6",
+          "bytes": 969
+        },
+        {
+          "file": "owned-7JpVzZ/ownership-proof.json",
+          "sha256": "74412e10f5e6efd816dd45f62ba4194ff342eefa8fd6102f9537e39229ed8be0",
+          "bytes": 103534
+        }
+      ]
     }
   ]
 }

@@ -21,8 +21,8 @@ export const restoreReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-re
 export { pinnedBundleArchive, kittyAnimationQualificationIds, upstreamBundleSha256, pinnedSpanDigests } from './kitty-animation-qualification.mjs';
 // Measured on the committed tree named here: the Release sidecar was built from the App at this commit and the measured scripts are its tree
 // (later commits are publication, docs, test pins and merges of main only).
-export const measuredAppRevision = '8fa2d38f0b9f0ec1e1462578c56d19ef009c6e97';
-export const measuredScriptsRevision = '8fa2d38f0b9f0ec1e1462578c56d19ef009c6e97';
+export const measuredAppRevision = '601cd0514a515383b33a27435d5dcb2f3183a9fd';
+export const measuredScriptsRevision = '601cd0514a515383b33a27435d5dcb2f3183a9fd';
 
 const version = 3, relaunchCount = 3;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
