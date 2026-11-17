@@ -46,10 +46,30 @@
       "runId": "412aa71eeb2f93be09465d03b607eb56",
       "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
       "scriptsRevision": "750f137192ae07588c1e63f87073d5b297a972b3",
-      "archive": "owned-run.zip",
+      "archive": "superseded/attempt-5-before-ci-script-cleanup.zip",
       "log": "collection-logs.zip:attempt-5.log",
+      "disposition": "superseded-pre-ci-script-cleanup",
+      "reason": "Successful full owned run before CI-driven script-expression cleanup. Its OSC22 report, corrected OSC720 plan and original complete receipt/cleanup remain historical. The final scripts have a fresh run; no current-source equivalence is inferred from this earlier measurement."
+    },
+    {
+      "attempt": 6,
+      "runId": "80cf3172a34e097bca26458f2a35d785",
+      "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "scriptsRevision": "48018d169dc42d89e711a32aaf05d30cad04617b",
+      "archive": "superseded/attempt-6-before-session-lifecycle-fix.zip",
+      "log": "collection-logs.zip:attempt-6.log",
+      "disposition": "superseded-pre-session-lifecycle-fix",
+      "reason": "Successful full owned run after CI script-expression cleanup, before the App session pointer-lifetime review fix. Its complete original receipt, corrected OSC720 plan, OSC22 report and cleanup are historical. A rebuilt App and fresh measurement supply the final claim."
+    },
+    {
+      "attempt": 7,
+      "runId": "c04f7ec60715e65d20fc1dc52d27c060",
+      "appRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+      "scriptsRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+      "archive": "owned-run.zip",
+      "log": "collection-logs.zip:attempt-7.log",
       "disposition": "admitted",
-      "reason": "Fresh full owned run after corrected OSC720 predecessor and image grading moved outside the bounded owner RPC. Complete unchanged full grading and cleanup receipt75. Pinned inconclusive / separate App Cursor-kind effect supported."
+      "reason": "Fresh full owned run with corrected predecessor, deferred image grading, final CI script-expression cleanup and App session pointer-lifetime fix. Complete unchanged experiment plan, full grading, receipt75, cleanup and lease release. Pinned inconclusive / separate App Cursor-kind effect supported."
     }
   ]
 }

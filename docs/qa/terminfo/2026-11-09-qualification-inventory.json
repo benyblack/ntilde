@@ -3924,23 +3924,23 @@
         "extensions.osc22-pointer"
       ],
       "evidence": {
-        "files": 14,
-        "bytes": 81271877,
-        "sha256": "86a1a5d4f49b5f24af74046b9dd6be8d3b9f99c9190dff338aaa9e2af56d85ca"
+        "files": 20,
+        "bytes": 115098299,
+        "sha256": "8bc64de4cc247aa87fb2c1a5216a76763a44c7b042c1c2bfddc39f8a79f54846"
       },
       "receipt": {
         "schemaVersion": 75,
-        "runId": "412aa71eeb2f93be09465d03b607eb56",
+        "runId": "c04f7ec60715e65d20fc1dc52d27c060",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "22d6cdd1b1126b3f8ccbe2f5ac313e014a057121ae6482f8aa54e37dc2ae8f4f"
+          "sha256": "3b4791e385af5ff35f04935d7888506ae7c1be699d02e6dee374007848e14013"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-osc22-graded-v1",
           "file": "ptr-observations.json",
-          "sha256": "45ce176c1ff3b8ae74ee072038f766ad1e42854e56d9a579467208c22de75f4b",
+          "sha256": "4dd18e60d68aff3938a59d48f44f8c011fa14ea2738bd8ae388cdbfbf78e7b45",
           "runFile": "ptr-run.json",
-          "runSha256": "eee2d13dae34d6a0370d5f0c08ac7cce7f0b4dcb0a9bc557732a7377da9ff7bd",
+          "runSha256": "aaf82093ede476184ad7c0c33189cbfe245947581f34e8e1374bd8c5f4ea0106",
           "counts": {
             "inconclusive/supported": 1
           },
@@ -3948,23 +3948,23 @@
         }
       },
       "run": {
-        "ownedRunId": "412aa71eeb2f93be09465d03b607eb56",
-        "measuredAt": "2026-11-17T17:45:33.708Z",
-        "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
-        "appVersion": "0.14.0+2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+        "ownedRunId": "c04f7ec60715e65d20fc1dc52d27c060",
+        "measuredAt": "2026-11-17T18:13:12.948Z",
+        "appRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+        "appVersion": "0.14.0+de218cd705ad8516d61f598fe29fa88648311702",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "750f137192ae07588c1e63f87073d5b297a972b3",
+        "scriptsRevision": "de218cd705ad8516d61f598fe29fa88648311702",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "0c7421c37170ffe7d1004291e06199cc079578e5e1784b0fc47017281412de0d",
+        "collectorAdapterBundleSha256": "2e8a6f3bdce2273c1ce442c8b7c04ffd85e7a9d72cb2c890ece1002316897678",
         "gradingAdapterId": "ntilde-owned-osc22-grading-v1",
-        "gradingAdapterBundleSha256": "191f03faf26dc27448fb1fba9f0e20ff44c6642b898c459a902fdd50c113b13c",
+        "gradingAdapterBundleSha256": "d45d320e63bf81c75d3ef3cdc575e6556cf076221b4f84387cd6e67345f6c802",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v68",
-        "sourceSnapshotManifestSha256": "f9f6c8bb6da6028317b60f03ae9e8ec0b1ac6932274be946effa76f34dd24fe2"
+        "sourceSnapshotManifestSha256": "a4a07200ab16e5e6fa78816239170fcb1acad0c5b172a6f821b0860fdc021aeb"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "226b5d78c567debadd6a7e5af09d60ce",
+        "runId": "fcb8b6a5a55b0750bc21e616cb2cd9ac",
         "counts": {
           "inconclusive": 160,
           "supported": 94,
@@ -3972,14 +3972,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "eeb2fe3a8ada8345be09a64d4263996202846f32a6f53d762176d417d040ef4f",
+        "rawSha256": "d9c0782e25e197664dffb7b92f52f3979affbd936eeb7b64f4c6602e03209a77",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/osc22-publication.test.mjs",
-        "testSha256": "f9a8fc07f7356ab699eb43bbf82060a6e84c6a94e0e73f90db86eb968fcd8dc9"
+        "testSha256": "9d01c12be3c4e321e128c5fdf2dab7c29b9ee05c45a81aa5dbabc62f9dc01c44"
       }
     },
     {

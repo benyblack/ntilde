@@ -1,21 +1,27 @@
 {
   "schemaVersion": 1,
-  "runId": "412aa71eeb2f93be09465d03b607eb56",
+  "runId": "c04f7ec60715e65d20fc1dc52d27c060",
   "archives": {
-    "owned-run.zip": "b0ea6c53eacf4ccce08223cd5e7f7a9af7edd32f53d200868993a193b5a0c955",
+    "owned-run.zip": "8d97ed84c6ad67af0e125bd7581bd113b82a566c8c55cb33f94af1c025836b37",
     "superseded/attempt-1.zip": "ec8c1b8a6898d8574362549f4ddc48a33befc655b4eccdf624922c68f41d2214",
     "superseded/attempt-2-pre-hover-fix.zip": "45fe400971397c22c98e400dfbe8eb387591358b53624a120423c6b593000c92",
-    "collection-logs.zip": "6be3cdfa6d41202e84ec98603666e21fa25665df0b0f3e5e414d3ad216190d78",
+    "collection-logs.zip": "fdb1b8115a1c70cac2e053747e28857451ae98ffc67275645b905dd66fe113f4",
     "superseded/attempt-3-before-corrected-predecessor.zip": "37234c769654851c3ec8bccdd73b78b3f5d92c8b3363927c66b23bacfc8d2ab3",
-    "superseded/attempt-4-animation-rpc-failure.zip": "41b41fa8ad3e2f39453ec9515f7b6015602133b046b2c962b96b0738c6768951"
+    "superseded/attempt-4-animation-rpc-failure.zip": "41b41fa8ad3e2f39453ec9515f7b6015602133b046b2c962b96b0738c6768951",
+    "superseded/attempt-5-before-ci-script-cleanup.zip": "b0ea6c53eacf4ccce08223cd5e7f7a9af7edd32f53d200868993a193b5a0c955",
+    "superseded/attempt-6-before-session-lifecycle-fix.zip": "ed29a0f74272e1dfec474043d8e7305187efd2157c7da93df9f98079b8604818"
   },
   "files": {
-    "report.json": "46d10c9849121d4187a1d3ec52a5c005379178c7ac7e73d20033f8fd1a2f2733",
-    "summary.json": "db7f38e3de6613223e990b1c2397b911a9b5b875cfc8003db2c2d304856fbe5d",
-    "attempts.json": "f9a268e2beca0b06479f0dd3a760e1040ed2add07141f04ebdca0318845d40d6",
+    "report.json": "4f1f8a7ffd27249f452c8d6b035b71732db3195c302310457fafda102c2e2ec5",
+    "summary.json": "6efc5b36f3844a919ada221c5d722919ba6c3cacc5f92333953bc85dc943140c",
+    "attempts.json": "86cc836366e6c28e4f781545dfe43023cfdc408ac67548257712cc70642d576f",
     "superseded/attempt-2-summary.json": "ab7bf868fa623252c9a0af4ff88f2f1cf267df76d6ef8739224f721fd17895fb",
     "superseded/attempt-2-report.json": "de52441f3fa3742e34db30aee650f7d5d6cb4ec0a130ac8a9661234ab9d72b2b",
     "superseded/attempt-3-summary.json": "6ce9a60c7b5a8136d4c2108fc4421f0dc4cf1116bb1d6cab05dedc937725fb73",
-    "superseded/attempt-3-report.json": "6594d62b86f08cebe9aa1c64dc8efee6d5a17812cf4e0630137f543ec846fc86"
+    "superseded/attempt-3-report.json": "6594d62b86f08cebe9aa1c64dc8efee6d5a17812cf4e0630137f543ec846fc86",
+    "superseded/attempt-5-summary.json": "db7f38e3de6613223e990b1c2397b911a9b5b875cfc8003db2c2d304856fbe5d",
+    "superseded/attempt-5-report.json": "46d10c9849121d4187a1d3ec52a5c005379178c7ac7e73d20033f8fd1a2f2733",
+    "superseded/attempt-6-summary.json": "591dc286a50b1e50f405d5282c31c6e310f5355b99fe5b05cc7c70ce6b903df2",
+    "superseded/attempt-6-report.json": "c42b9963d647243e27854a01f39958a07cf0c07406d77a8cadc7ac5ffb3f9f6c"
   }
 }
