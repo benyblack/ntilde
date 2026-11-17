@@ -3,12 +3,12 @@ import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { inputPriorCaptureCap } from './input-plan.mjs';
 import { animationCases, animationCommand, animationExpectedReplies, animationSuiteId, animationAnchor, animationCellEnvelope, animationHoldMs } from './kitty-animation-cases.mjs';
-import { animationFrameInput, animationFrameIds } from './kitty-animation-inputs.mjs';
+import { animationFrameInput, animationFrameIds, animationPngIds, animationPngInput } from './kitty-animation-inputs.mjs';
 import { inspectAnimationPixels, evaluateAnimationTiming } from './kitty-animation-oracle.mjs';
 import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, StaticImageReport, validateImageCapture } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
 
-export const ownedAnimationPolicy = 'owned-kitty-animation-paired-raw-render-v1';
+export const ownedAnimationPolicy = 'owned-kitty-animation-paired-raw-render-v2';
 export const animationPlan = Object.freeze([
     { kind: 'bind' }, ...animationCases.flatMap(item => [...item.stages.map(stage => ({ kind: 'read', caseId: item.id, stageId: stage.id })),
         { kind: 'restore', caseId: item.id }]), { kind: 'finish' },
@@ -50,7 +50,7 @@ export function parseAnimationReplies(raw, imageId) {
 }
 /** Missing or error replies are semantic negatives; extra, reordered-id or malformed bytes are invalid. */
 export function animationReply(raw, stage, imageId) {
-    const expected = parseAnimationReplies(animationExpectedReplies(stage.id, imageId).join(''), imageId), parsed = parseAnimationReplies(raw, imageId);
+    const expected = parseAnimationReplies(animationExpectedReplies(stage, imageId).join(''), imageId), parsed = parseAnimationReplies(raw, imageId);
     checkImages(parsed.length <= expected.length && parsed.every((reply, index) => reply.placement === expected[index].placement));
     const statuses = parsed.map(reply => reply.status);
     if (!expected.length) return { passed: true, statuses };
@@ -59,10 +59,13 @@ export function animationReply(raw, stage, imageId) {
 
 export function animationBoundScreen(initial, runId) { return imageBoundScreen(initial, runId); }
 export function animationInputs() {
-    return animationFrameIds.map(frameId => {
+    return [...animationFrameIds.map(frameId => {
         const input = animationFrameInput(frameId);
         return { file: `animation-inputs/${frameId}.rgba`, bytes: input.bytes, sha256: input.sha256 };
-    });
+    }), ...animationPngIds.map(pngId => {
+        const input = animationPngInput(pngId);
+        return { file: `animation-inputs/${pngId}.png`, bytes: input.bytes, sha256: input.sha256 };
+    })];
 }
 /** The shared image-capture validator keys its original-theme rule on the carrier's start/finish kinds. */
 export const imageCaptureKind = kind => kind.replace(/^kan-/, 'images-');
@@ -86,7 +89,7 @@ export function buildAnimationReport(frames, actions, seal, runId, output, prior
     frames.forEach((frame, index) => builder.processFrame(frame, index));
     builder.checkSeal(seal);
     return { schemaVersion: 1, suiteId: animationSuiteId, runId, policy: ownedAnimationPolicy,
-        scope: 'Three bounded Kitty animation cases; independently captured raw replies, paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. '
+        scope: 'Four bounded Kitty animation cases (a stationary control, playback, stop-freeze, and PNG and root-based frames); independently captured raw replies, paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. '
             + 'Elapsed-time claims are bounded to this App build and run: no display-refresh cadence, other platform, frame-rate, snapshot/persistent-session or stock-grade claim.',
         holdMs: animationHoldMs, inputs: animationInputs().map(({ bytes, ...value }) => ({ ...value, byteCount: bytes.length })), priorChallenges,
         queriedPrivateModes: [5, 66, 9, 1000, 1002, 1003, 1006], kittyKeyboardFlags: 0, backgroundControls: builder.backgrounds,

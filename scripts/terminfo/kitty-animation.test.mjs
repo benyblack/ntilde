@@ -18,29 +18,29 @@ const results = report => Object.fromEntries(report.observations.map(item => [it
 const stageOf = (caseId, id) => animationCases.find(item => item.id === caseId).stages.find(stage => stage.id === id);
 
 test('the plan covers every stage once, bounded by the capture budget', () => {
-    assert.equal(animationPlan.length, 23); assert.equal(animationActionCount, 23); assert.equal(animationPlannedStages, 18);
-    assert.equal(animationPlan.filter(entry => entry.kind === 'read').length, 18);
+    assert.equal(animationPlan.length, 30); assert.equal(animationActionCount, 30); assert.equal(animationPlannedStages, 24);
+    assert.equal(animationPlan.filter(entry => entry.kind === 'read').length, 24);
     assert.ok((animationActionCount + 1) * 2 <= 64);
 });
 
 test('a faithful playback run grades every stage passed, with timing facts and valid windows retained', () => {
     withJournal({}, ({ build, frames }) => {
         const report = build();
-        assert.equal(report.suiteId, 'ntilde-owned-kitty-animation-v1'); assert.equal(report.observations.length, 18);
+        assert.equal(report.suiteId, 'ntilde-owned-kitty-animation-v2'); assert.equal(report.observations.length, 24);
         assert.ok(report.observations.every(item => item.result === 'passed'), JSON.stringify(report.observations.filter(item => item.result !== 'passed').map(item => [item.featureId, item.inconclusiveReason])));
-        assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
+        assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed', 'passed', 'passed']);
         const second = report.observations.find(item => item.featureId === 'kitty.animation.playback.second');
         assert.equal(second.timing.valid, true); assert.equal(second.classification.frameId, 'second');
         assert.match(report.scope, /no display-refresh cadence, other platform, frame-rate/);
-        assert.equal(report.inputs.length, 3); assert.equal(frames.length, 24);
+        assert.equal(report.inputs.length, 5); assert.equal(frames.length, 31);
     });
 });
 
 test('an App that rejects animation frames fails every case through its negative replies without inventing playback failures', () => {
     // a=T succeeds and the root shows, but a=f and a=a are refused; nothing ever advances.
-    const paint = (entry, appearance) => entry.kind === 'read' && ['second', 'third'].includes(entry.stageId) ? 'root' : appearance;
+    const paint = (entry, appearance) => entry.kind === 'read' && ['second', 'third', 'show', 'edit', 'compose'].includes(entry.stageId) ? 'root' : appearance;
     const reply = (entry, raw) => {
-        if (!['build', 'start', 'stop'].includes(entry.stageId)) return raw;
+        if (!['build', 'start', 'stop', 'show', 'edit', 'compose'].includes(entry.stageId)) return raw;
         const parts = raw.split('\x1b\\').filter(Boolean).map(part => part + '\x1b\\');
         return entry.stageId === 'build' ? parts[0] + parts.slice(1).map(part => part.replace(';OK', ';ENOTSUP:Graphics action not supported')).join('')
             : parts.map(part => part.replace(';OK', ';ENOTSUP:Graphics action not supported')).join('');
@@ -51,7 +51,7 @@ test('an App that rejects animation frames fails every case through its negative
         assert.equal(value['kitty.animation.playback.start'], 'failed');
         assert.equal(value['kitty.animation.playback.second'], 'inconclusive', 'a pixel mismatch behind failed witnesses is not claimed');
         assert.match(report.observations.find(item => item.featureId === 'kitty.animation.playback.second').inconclusiveReason, /requires passed prior witness/);
-        assert.deepEqual(report.caseResults.map(item => item.result), ['failed', 'failed', 'failed']);
+        assert.deepEqual(report.caseResults.map(item => item.result), ['failed', 'failed', 'failed', 'failed']);
         assert.equal(report.observations.find(item => item.featureId === 'kitty.animation.playback.build').reply.statuses.join(), 'OK,ENOTSUP:Graphics action not supported,ENOTSUP:Graphics action not supported,ENOTSUP:Graphics action not supported');
     });
 });
@@ -64,6 +64,27 @@ test('frames accepted but never advancing fails the later stages on their own ti
         assert.equal(value['kitty.animation.playback.second'], 'failed');
         assert.equal(value['kitty.animation.stop-freeze.second'], 'failed');
         assert.equal(value['kitty.animation.stopped-hold.hold'], 'passed', 'stationary controls hold for a terminal that never animates');
+    });
+});
+
+test('an App that ignores the root as a base or an edit target fails the PNG and root frames case on its own pixels', () => {
+    const png = 'kitty.animation.png-and-root-frames';
+    // The PNG frame is composed over a transparent canvas (c=1 ignored): the shown frame is the unblended green instead of the olive blend.
+    withJournal({ paint: (entry, appearance) => entry.caseId === png && entry.stageId === 'show' ? 'second' : appearance }, ({ build }) => {
+        const report = build(), value = results(report);
+        assert.equal(value[png + '.show'], 'failed');
+        assert.equal(value[png + '.edit'], 'inconclusive', 'later stages are not claimed behind a failed witness');
+        assert.equal(report.caseResults.find(item => item.caseId === png).result, 'failed');
+        assert.equal(value['kitty.animation.playback.second'], 'passed', 'the playback cases are graded on their own evidence');
+    });
+    // A root edit that does not take effect: the root still shows red after the edit, so the compose stage cannot stand for the edited base either.
+    withJournal({ paint: (entry, appearance) => entry.caseId === png && entry.stageId === 'edit' ? 'root' : appearance }, ({ build }) => {
+        const value = results(build());
+        assert.equal(value[png + '.show'], 'passed'); assert.equal(value[png + '.edit'], 'failed'); assert.equal(value[png + '.compose'], 'inconclusive');
+    });
+    // A frame built on the original root instead of the edited one shows the red-over-red blend, which is not the purple the edited base gives.
+    withJournal({ paint: (entry, appearance) => entry.caseId === png && entry.stageId === 'compose' ? 'root' : appearance }, ({ build }) => {
+        assert.equal(results(build())[png + '.compose'], 'failed');
     });
 });
 
@@ -179,5 +200,11 @@ test('replies: exact correlated framing with the a=T placement echo; missing or 
     assert.deepEqual(animationReply('', stageOf('kitty.animation.playback', 'second'), 7), { passed: true, statuses: [] });
     assert.throws(() => animationReply(ok(7), stageOf('kitty.animation.playback', 'second'), 7));
     assert.deepEqual(parseAnimationReplies(placed(7) + ok(7), 7), [{ status: 'OK', placement: 1 }, { status: 'OK', placement: null }]);
-    assert.equal(animationInputs().length, 3); assert.ok(animationEpoch > 0);
+    assert.equal(animationInputs().length, 5); assert.ok(animationEpoch > 0);
+    assert.deepEqual(animationInputs().map(item => item.file.split('.').pop()), ['rgba', 'rgba', 'rgba', 'png', 'png']);
+    const png = stageOf('kitty.animation.png-and-root-frames', 'build'), edit = stageOf('kitty.animation.png-and-root-frames', 'edit');
+    assert.deepEqual(animationReply(placed(7) + ok(7), png, 7), { passed: true, statuses: ['OK', 'OK'] });
+    assert.equal(animationReply(placed(7) + error(7), png, 7).passed, false);
+    assert.deepEqual(animationReply(ok(7).repeat(2), edit, 7), { passed: true, statuses: ['OK', 'OK'] });
+    assert.throws(() => animationReply(ok(7).repeat(3), edit, 7));
 });

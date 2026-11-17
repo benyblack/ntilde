@@ -89,7 +89,7 @@ export const benchmarkSuites = Object.freeze([
     // `carrierSuites` makes its claims transitive: a carrier whose own rederivation fails lends no verdict to them.
     { ...directory('shell-integration-aggregates', '2026-11-16-shell-integration-aggregates', '2026-11-16-shell-integration-aggregates-qualification.md'), module: 'shell-integration-aggregates-contracts.mjs', exports: ['aggregatesSuiteId', 'aggregatesVersion', 'aggregateCaseIds'], carrierSuites: ['osc133', 'osc633'], receiptSuiteId: 'ntilde-owned-osc633-graded-v1', test: 'shell-integration-aggregates-publication.test.mjs' },
     // Kitty graphics animation: the pinned callbacks replayed (always inconclusive), one effect contract composed from the owned animation carrier of the same run.
-    { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v1', test: 'kitty-animation-publication.test.mjs' },
+    { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v2', test: 'kitty-animation-publication.test.mjs' },
 ]);
 
 /**
