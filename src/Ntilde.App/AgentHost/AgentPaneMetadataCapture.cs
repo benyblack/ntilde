@@ -61,13 +61,30 @@ internal static class AgentPaneMetadataCapture
     {
         Stack = parser.ContextStack.Select(c => new PaneContext
         {
-            Id = c.Id, Type = c.Type, User = c.User, Hostname = c.Hostname, MachineId = c.MachineId, BootId = c.BootId,
-            Pid = c.Pid, PidFdId = c.PidFdId, Comm = c.Comm, Cwd = c.Cwd, CmdLine = c.CmdLine, Vm = c.Vm,
-            Container = c.Container, TargetUser = c.TargetUser, TargetHost = c.TargetHost, SessionId = c.SessionId,
+            Id = c.Id,
+            Type = c.Type,
+            User = c.User,
+            Hostname = c.Hostname,
+            MachineId = c.MachineId,
+            BootId = c.BootId,
+            Pid = c.Pid,
+            PidFdId = c.PidFdId,
+            Comm = c.Comm,
+            Cwd = c.Cwd,
+            CmdLine = c.CmdLine,
+            Vm = c.Vm,
+            Container = c.Container,
+            TargetUser = c.TargetUser,
+            TargetHost = c.TargetHost,
+            SessionId = c.SessionId,
         }).ToArray(),
         Ended = parser.EndedContexts.Select(e => new PaneEndedContext
         {
-            Id = e.Id, Type = e.Type, Exit = e.Exit, Status = e.Status, Signal = e.Signal,
+            Id = e.Id,
+            Type = e.Type,
+            Exit = e.Exit,
+            Status = e.Status,
+            Signal = e.Signal,
         }).ToArray(),
     };
 
