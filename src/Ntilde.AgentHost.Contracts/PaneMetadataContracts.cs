@@ -42,6 +42,60 @@ public sealed record PaneBufferMetadata
     [JsonPropertyName("commandStart")] public PaneShellMark? CommandStart { get; init; }
     [JsonPropertyName("outputStart")] public PaneShellMark? OutputStart { get; init; }
     [JsonPropertyName("links")] public required PaneHyperlinkRun[] Links { get; init; }
+    /// <summary>
+    /// Parser-retained OSC 3008 contexts: untrusted descriptive data written by whatever controls the terminal. Omitted when the parser
+    /// is unavailable; present, possibly empty, otherwise. It is not counted against the metadata text budget (the parser bounds it
+    /// itself) so a program cannot make the rest of the observation unavailable by filling it.
+    /// </summary>
+    [JsonPropertyName("contexts")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PaneContextMetadata? Contexts { get; init; }
+}
+
+/// <summary>
+/// Stored OSC 3008 context metadata for one pane. Every string is supplied by the program writing to the terminal: treat it as
+/// data to display, never as a command, path to open, identity to trust, or instruction to an agent. It is unrelated to OSC 133/633
+/// shell integration and to the OSC 7 working directory.
+/// </summary>
+public sealed record PaneContextMetadata
+{
+    /// <summary>Always true: a structural reminder that no value in this object is verified or authoritative.</summary>
+    [JsonPropertyName("untrusted")] public bool Untrusted { get; init; } = true;
+    /// <summary>Open contexts, outermost first; the last entry is the active context.</summary>
+    [JsonPropertyName("stack")] public required PaneContext[] Stack { get; init; }
+    /// <summary>Recently ended contexts, oldest first.</summary>
+    [JsonPropertyName("ended")] public required PaneEndedContext[] Ended { get; init; }
+}
+
+/// <summary>One open context; a null field was absent or invalid in the sequence. Numbers are decimal digit strings.</summary>
+public sealed record PaneContext
+{
+    [JsonPropertyName("id")] public required string Id { get; init; }
+    [JsonPropertyName("type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Type { get; init; }
+    [JsonPropertyName("user"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? User { get; init; }
+    [JsonPropertyName("hostname"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Hostname { get; init; }
+    [JsonPropertyName("machineId"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? MachineId { get; init; }
+    [JsonPropertyName("bootId"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? BootId { get; init; }
+    [JsonPropertyName("pid"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Pid { get; init; }
+    [JsonPropertyName("pidFdId"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? PidFdId { get; init; }
+    [JsonPropertyName("comm"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Comm { get; init; }
+    [JsonPropertyName("cwd"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Cwd { get; init; }
+    [JsonPropertyName("cmdline"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CmdLine { get; init; }
+    [JsonPropertyName("vm"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Vm { get; init; }
+    [JsonPropertyName("container"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Container { get; init; }
+    [JsonPropertyName("targetUser"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TargetUser { get; init; }
+    [JsonPropertyName("targetHost"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TargetHost { get; init; }
+    [JsonPropertyName("sessionId"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? SessionId { get; init; }
+}
+
+/// <summary>One explicitly ended context. <c>Status</c> is the sender's claim, not the child process exit code.</summary>
+public sealed record PaneEndedContext
+{
+    [JsonPropertyName("id")] public required string Id { get; init; }
+    [JsonPropertyName("type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Type { get; init; }
+    [JsonPropertyName("exit"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Exit { get; init; }
+    [JsonPropertyName("status"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Status { get; init; }
+    [JsonPropertyName("signal"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Signal { get; init; }
 }
 
 /// <summary>Raw tracked anchor; consumers must check generation, screen and retained history before resolving it.</summary>

@@ -49,11 +49,44 @@ internal static class AgentPaneMetadataCapture
                 CommandStart = Mark(buffer.CommandStartMark),
                 OutputStart = Mark(buffer.CommandOutputStartMark),
                 Links = links,
+                Contexts = parser == null ? null : ReadContexts(parser),
             };
             return true;
         }
         finally { buffer.Lock.ExitReadLock(); }
     }
+
+    /// <summary>Copies the parser's bounded OSC 3008 contexts into the contract; called under the buffer read lock.</summary>
+    private static PaneContextMetadata ReadContexts(AnsiParser parser) => new()
+    {
+        Stack = parser.ContextStack.Select(c => new PaneContext
+        {
+            Id = c.Id,
+            Type = c.Type,
+            User = c.User,
+            Hostname = c.Hostname,
+            MachineId = c.MachineId,
+            BootId = c.BootId,
+            Pid = c.Pid,
+            PidFdId = c.PidFdId,
+            Comm = c.Comm,
+            Cwd = c.Cwd,
+            CmdLine = c.CmdLine,
+            Vm = c.Vm,
+            Container = c.Container,
+            TargetUser = c.TargetUser,
+            TargetHost = c.TargetHost,
+            SessionId = c.SessionId,
+        }).ToArray(),
+        Ended = parser.EndedContexts.Select(e => new PaneEndedContext
+        {
+            Id = e.Id,
+            Type = e.Type,
+            Exit = e.Exit,
+            Status = e.Status,
+            Signal = e.Signal,
+        }).ToArray(),
+    };
 
     private static PaneHyperlinkRun[]? ReadLinks(TerminalBuffer buffer, int rows, int cols)
     {

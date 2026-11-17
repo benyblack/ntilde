@@ -35,9 +35,24 @@ function links(values, rows, cols) {
         return { row: value.row, col: value.col, length: value.length, identity: value.identity, uri, id };
     });
 }
+// OSC 3008 contexts are untrusted, parser-bounded descriptive data (at most 16 open, 8 ended): bounded strings only, never interpreted here.
+const contextTextFields = ['type', 'user', 'hostname', 'machineId', 'bootId', 'pid', 'pidFdId', 'comm', 'cwd', 'cmdline', 'vm', 'container', 'targetUser', 'targetHost', 'sessionId'];
+const endedTextFields = ['type', 'exit', 'status', 'signal'];
+function contextRecord(value, fieldNames) {
+    shape(value, ['id'], fieldNames);
+    check(typeof value.id === 'string' && value.id.length >= 1 && value.id.length <= 64);
+    const record = { id: value.id };
+    for (const name of fieldNames) if (value[name] !== undefined) record[name] = text(value[name], 255);
+    return record;
+}
+function contexts(value) {
+    shape(value, ['untrusted', 'stack', 'ended']);
+    check(value.untrusted === true && Array.isArray(value.stack) && value.stack.length <= 16 && Array.isArray(value.ended) && value.ended.length <= 8);
+    return { untrusted: true, stack: value.stack.map(item => contextRecord(item, contextTextFields)), ended: value.ended.map(item => contextRecord(item, endedTextFields)) };
+}
 function buffer(value) {
     shape(value, ['rows', 'cols', 'cursorRow', 'cursorCol', 'alternateScreen', 'scrollbackLines',
-        'historyGeneration', 'rowsEvicted', 'acceptingCommandInput', 'links'], ['commandStart', 'outputStart', 'requestedIconName']);
+        'historyGeneration', 'rowsEvicted', 'acceptingCommandInput', 'links'], ['commandStart', 'outputStart', 'requestedIconName', 'contexts']);
     check(integer(value.rows, 3, 128) && integer(value.cols, 48, 256) && value.rows * value.cols <= 8192
         && integer(value.cursorRow, 0, value.rows - 1) && integer(value.cursorCol, 0, value.cols - 1)
         && integer(value.scrollbackLines, 0) && integer(value.historyGeneration, 0) && integer(value.rowsEvicted, 0));
@@ -47,7 +62,9 @@ function buffer(value) {
         acceptingCommandInput: flag(value.acceptingCommandInput), commandStart: mark(value.commandStart),
         outputStart: mark(value.outputStart), links: links(value.links, value.rows, value.cols),
         // The raw OSC 0/1 icon name, retained only when the App reported it (older retained frames never carried it).
-        ...(value.requestedIconName == null ? {} : { requestedIconName: text(value.requestedIconName) }) };
+        ...(value.requestedIconName == null ? {} : { requestedIconName: text(value.requestedIconName) }),
+        // The untrusted OSC 3008 contexts, retained only when the App reported them (older retained frames never carried them).
+        ...(value.contexts == null ? {} : { contexts: contexts(value.contexts) }) };
 }
 function progressBar(value) {
     if (value == null) return null;

@@ -21,7 +21,7 @@ def validate(text):
     assert 'continue-on-error' not in lane
     assert "node-version: '24'" in lane
     assert "NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED: '1'" in lane
-    for name in ('kcl', 'devq', 'mex', 'cell-size', 'osc5'):
+    for name in ('kcl', 'devq', 'mex', 'cell-size', 'osc5', 'osc3008'):
         assert f'scripts/terminfo/{name}-grading-collector.test.mjs' in lane
     assert re.search(r'^    needs: \[[^\]]*\bterminfo_real_bundle\b', rollup, re.M)
     assert 'replay: ${{ needs.terminfo_real_bundle.result }}' in rollup

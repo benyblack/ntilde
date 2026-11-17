@@ -954,6 +954,8 @@ public sealed class HeadlessTerminalSession : IDisposable
             Volatile.Write(ref _exitCode, code ?? _session.ExitCode ?? -1);
             Interlocked.Exchange(ref _exitedAtMs, Environment.TickCount64); // before _exited: a reaper that sees the exit sees its time
             Volatile.Write(ref _exited, 1);
+            // The child's end is the TTY hangup that UAPI.15 (OSC 3008) says must drop every context; this parser is the authoritative one for a persistent session.
+            _parser.ResetContexts();
             if (_subscribers.Count > 0)
             {
                 if (Volatile.Read(ref _killRequested) != 0) SendKilled();

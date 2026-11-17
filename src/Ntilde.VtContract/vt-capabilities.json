@@ -137,6 +137,15 @@
       "contractCase": "osc5-special-color"
     },
     {
+      "key": "OSC:3008",
+      "mnemonic": "Context signalling",
+      "support": "partial",
+      "description": "UAPI.15 hierarchical contexts: OSC 3008;start=<id> opens, updates or returns to a context and OSC 3008;end=<id> closes it, with the specification's metadata fields. The parser keeps a bounded stack of 16 contexts and the last 8 ended ones as untrusted descriptive data exposed through read-only pane metadata; invalid fields are ignored, over-long ones discarded, resets leave the stack alone and the child's exit drops it. The metadata drives no presentation (breadcrumbs, tinting, kill or new-shell actions), no command assist and no agent prompt, and OSC 133/633 prompt state neither creates nor updates a context.",
+      "matrixFeature": "OSC 3008 (context signalling)",
+      "evidencePath": "tests/Ntilde.VT.Tests/Osc3008ContextTests.cs",
+      "contractCase": "osc3008-context"
+    },
+    {
       "key": "DEC:5522",
       "mnemonic": "MIME clipboard paste notifications",
       "support": "supported",
