@@ -303,6 +303,8 @@ test('only a declared relaunch stage may change the App process, and the worker,
     refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.worker = { ...frame.ownership.worker, pid: 4242 }; });
     refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.app = { ...frame.ownership.app, uid: 9999 }; });
     refuses(frames => { const [frame] = afterRelaunch(frames); delete frame.ownership.daemon; });
+    // A declared relaunch that never changed the App process is not restore evidence: uninterrupted playback must not qualify.
+    refuses(() => {}, { keepApp: true });
     // A direct-tab (version 2) journal never admits a changed App process.
     withJournal({}, ({ build, frames }) => { for (const frame of frames.filter(value => value.index > 4)) frame.ownership.app = { ...frame.ownership.app, pid: 99999 }; assert.throws(() => build(frames)); });
 });

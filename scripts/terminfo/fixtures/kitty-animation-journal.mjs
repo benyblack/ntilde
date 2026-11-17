@@ -58,7 +58,7 @@ function plannedTiming(stage, startedAt, clock) {
  * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
  * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry, side) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
  */
-export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer, version = currentAnimationVersion, relaunchAt, daemon } = {}) {
+export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer, version = currentAnimationVersion, relaunchAt, daemon, keepApp } = {}) {
     const bound = animationBoundScreen(initial, runId), frames = [], actions = [], states = new Map();
     const { plan: animationPlan } = animationSuites[version], cases = animationCasesByVersion[version], animationActionCount = animationPlan.length;
     mkdirSync(join(output, animationPixelPrefix)); mkdirSync(join(output, 'animation-inputs'));
@@ -87,7 +87,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
         if (entry.kind === 'read' && !states.has(entry.caseId)) states.set(entry.caseId, { imageId: 4000 + states.size });
         const state = states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, runId, initial.cursorVisible, version);
         const item = cases.find(value => value.id === entry.caseId), stage = item?.stages.find(value => value.id === entry.stageId);
-        if (stage?.relaunch) { appPid += 1; daemonRecord.ppid = 1; currentPane = relaunchAt?.paneId ?? `${paneId.slice(0, -2)}${String(appPid).slice(-2)}`; }
+        if (stage?.relaunch && !keepApp) { appPid += 1; daemonRecord.ppid = 1; currentPane = relaunchAt?.paneId ?? `${paneId.slice(0, -2)}${String(appPid).slice(-2)}`; }
         let plan = plannedTiming(stage, startedAt.get(entry.caseId), clock);
         plan = timing?.(entry, plan, { startedAt: startedAt.get(entry.caseId) }) ?? plan;
         if (stage?.reply === 'start') startedAt.set(entry.caseId, plan.actionAt);

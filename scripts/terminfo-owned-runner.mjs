@@ -4481,8 +4481,12 @@ function startPersistentApp(run) {
 /** The App's agent endpoint answers with this run's one local pane: the previous session was reattached or a fresh one spawned (the next lineage proof tells which). */
 async function waitForReattachedPane(run, deadline = Date.now() + 60000) {
     // The endpoint descriptor still names the previous App until the new one publishes its own, so the lookup itself may throw: that only means "not yet".
-    const sessions = await Promise.resolve().then(() => agentRequest(observerEndpoint(run.appData, run.app.pid), 'listSessions', {}, 2000)).then(value => value.sessions, () => undefined);
-    if (sessions?.length === 1 && sessions[0].kind === 'local' && !sessions[0].windowless && sessions[0].profileName === run.profileName) return;
+    const endpoint = () => observerEndpoint(run.appData, run.app.pid);
+    const sessions = await Promise.resolve().then(() => agentRequest(endpoint(), 'listSessions', {}, 2000)).then(value => value.sessions, () => undefined);
+    // The pane exists before its session attaches: wait until it shows the restored screen (the label line the carrier bound before the relaunch), so the first read sees the snapshot.
+    const restored = sessions?.length === 1 && sessions[0].kind === 'local' && !sessions[0].windowless && sessions[0].profileName === run.profileName
+        && await agentRequest(endpoint(), 'readScreen', { paneId: sessions[0].paneId }, 2000).then(screen => screen.lines?.[0] === 'NTILDE_IMG_' + run.runId, () => false);
+    if (restored) return;
     if (Date.now() > deadline) throw new Error('The relaunched App did not show the persistent pane.');
     await new Promise(resolve => setTimeout(resolve, 250));
     await waitForReattachedPane(run, deadline);

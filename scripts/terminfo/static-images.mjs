@@ -172,8 +172,10 @@ export class StaticImageReport {
     }
     /** The ownership every later fact is compared with: the first of the current App process; it changes only at a stage the suite declares a relaunch. */
     adoptEpoch(frame, entry) {
-        if (frame.ownership?.app?.pid === this.epoch.app.pid) return;
-        checkImages(this.suite.relaunches?.(entry) === true);
+        // A declared relaunch must bring a new App process (otherwise an uninterrupted run would stand for a restore), and nothing else may.
+        const changed = frame.ownership?.app?.pid !== this.epoch.app.pid;
+        checkImages(changed === (this.suite.relaunches?.(entry) === true));
+        if (!changed) return;
         validateEpochChange(frame.ownership, this.epoch);
         this.epoch = frame.ownership; this.paneId = frame.paneId;
     }

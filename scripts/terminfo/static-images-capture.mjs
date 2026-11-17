@@ -76,8 +76,9 @@ export class OwnedStaticImageObserver {
      * are then bound to that process and forget the old pane (the new pane's id is learned at the first capture).
      */
     adoptOwnership(ownership, entry) {
-        if (ownership?.app?.pid !== this.epoch.app.pid) {
-            checkImages(this.suite.relaunches?.(entry) === true);
+        const changed = ownership?.app?.pid !== this.epoch.app.pid;
+        checkImages(changed === (this.suite.relaunches?.(entry) === true)); // a declared relaunch must bring a new App process, and nothing else may
+        if (changed) {
             validateEpochChange(ownership, this.epoch);
             this.epoch = ownership;
             for (const observer of [this.before, this.after]) Object.assign(observer, { ownerPid: ownership.app.pid, paneId: undefined });
