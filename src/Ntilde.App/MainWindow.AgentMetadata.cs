@@ -42,6 +42,12 @@ public partial class MainWindow
             WorkingDirectory = pane.CurrentWorkingDirectory,
             DisplayTitle = pane.GetBaseTabTitle(),
             Buffer = buffer,
+            PointerShape = new PanePointerShape
+            {
+                Requested = pane.TermView.RequestedPointerShape,
+                ControlCursor = pane.TermView.AppliedPointerCursor,
+                LinkOverride = pane.TermView.PointerShapeOverriddenByLink,
+            },
             CellGeometry = new PaneCellGeometry
             {
                 ViewRows = pane.TermView.Rows,
@@ -73,7 +79,7 @@ public partial class MainWindow
             },
         };
         var fields = new[] { result.OscTitle, result.WorkingDirectory, buffer.RequestedIconName, result.DisplayTitle, result.Presentation.TabText,
-            result.Presentation.ToastTitle, result.Presentation.ToastMessage }
+            result.Presentation.ToastTitle, result.Presentation.ToastMessage, result.PointerShape?.Requested, result.PointerShape?.ControlCursor }
             .Concat(buffer.Links.SelectMany(link => new[] { link.Uri, link.Id }));
         return AgentPaneMetadataCapture.TextFits(fields) ? result : null;
     }

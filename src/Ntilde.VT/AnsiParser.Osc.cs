@@ -87,6 +87,10 @@ namespace Ntilde.VT
                     }
                     break;
 
+                case "22":
+                    HandlePointerShape(data);
+                    break;
+
                 case "8":
                     SetHyperlink(data);
                     break;

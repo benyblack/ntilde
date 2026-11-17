@@ -188,7 +188,7 @@ export async function terminateRecordedWorker(recorded, runId) {
  */
 /** The observation kinds (`<prefix>-<operation>`) whose answers may carry complete screens and metadata: they get the 512 KiB response cap, every other kind 16 KiB. */
 const largeResponsePrefixes = new Set(['cell', 'sgr', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing', 'history', 'resize', 'saved', 'metadata', 'input', 'images',
-    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'csz', 'xcs', 'xss', 'xsv', 'kcl', 'ocx', 'cw', 'irm', 'kan', 'ovu']);
+    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'csz', 'xcs', 'xss', 'xsv', 'kcl', 'ocx', 'cw', 'irm', 'kan', 'ovu', 'ptr']);
 function largeResponsePrefix(kind) {
     return typeof kind === 'string' && kind.includes('-') && largeResponsePrefixes.has(kind.slice(0, kind.indexOf('-')));
 }
@@ -198,7 +198,7 @@ function preservedOwnerCode(kind, code) {
     const geometry = { 'resize-start': 'resizeGeometryUnavailable', 'input-start': 'inputGeometryUnavailable',
         'images-start': 'imageGeometryUnavailable', 'kan-start': 'imageGeometryUnavailable', 'saved-start': 'savedGeometryUnavailable' };
     if (geometry[kind] === code && code !== undefined) return true;
-    return ['metadata-start', 'shi-start', 'vsc-start', 'lnk-start', 'tst-start', 'ost-start', 'osn-start', 'ntf-start', 'ocx-start', 'ovu-start'].includes(kind)
+    return ['metadata-start', 'shi-start', 'vsc-start', 'lnk-start', 'tst-start', 'ost-start', 'osn-start', 'ntf-start', 'ocx-start', 'ovu-start', 'ptr-start'].includes(kind)
         && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(code);
 }
 

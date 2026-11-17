@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "runId": "6a6b07d5362038927fc8eb5c06bd2871",
+      "appRevision": "3096b8609ce1fe1bfbbb4386a54653443433a409",
+      "scriptsRevision": "3096b8609ce1fe1bfbbb4386a54653443433a409",
+      "archive": "superseded/attempt-1.zip",
+      "log": "collection-logs.zip:attempt-1.log",
+      "disposition": "failed-not-admitted",
+      "reason": "Unknown owner request at OSC22 start: generic lifecycle-prefix admission lacked ptr. No OSC22 observations or cleanup receipt. Verified disposable teardown and lease release retained."
+    },
+    {
+      "attempt": 2,
+      "runId": "a188ef080019680287f85cab559f5adf",
+      "appRevision": "3096b8609ce1fe1bfbbb4386a54653443433a409",
+      "scriptsRevision": "3c139127c367919458713b29e641c91c859fb831",
+      "archive": "superseded/attempt-2-pre-hover-fix.zip",
+      "log": "collection-logs.zip:attempt-2.log",
+      "disposition": "superseded-pre-hover-fix",
+      "reason": "Supported basic main-screen effect on the earlier App, with complete cleanup receipt. Preserved as historical evidence after the App screen-switch stale-hover fix; not the final App measurement. Its older OSC720 plan is rejected by the current full-receipt rederivation; only its independently rebuilt OSC22 report remains historical evidence."
+    },
+    {
+      "attempt": 3,
+      "runId": "95db74fe99675694c4197ccfca70df84",
+      "appRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
+      "scriptsRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
+      "archive": "superseded/attempt-3-before-corrected-predecessor.zip",
+      "log": "collection-logs.zip:attempt-3.log",
+      "disposition": "superseded-pre-corrected-predecessor",
+      "reason": "Earlier successful main-screen OSC22 measurement before the corrected OSC720 predecessor. Current full-receipt rederivation rejects its old OSC720 plan. Its OSC22 journal/report and original cleanup remain retained as historical evidence."
+    },
+    {
+      "attempt": 4,
+      "runId": "72b465974ad2e13e4b0a1113444f8063",
+      "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "scriptsRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "archive": "superseded/attempt-4-animation-rpc-failure.zip",
+      "log": "collection-logs.zip:attempt-4.log",
+      "disposition": "failed-not-admitted",
+      "reason": "Owner RPC expired during synchronous animation report grading after all raw frames and the raw-reader seal. No receipt or admitted OSC22 effect. Complete raw attempt, primary failure, verified cleanup and lease release retained. No deadline was raised."
+    },
+    {
+      "attempt": 5,
+      "runId": "412aa71eeb2f93be09465d03b607eb56",
+      "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "scriptsRevision": "750f137192ae07588c1e63f87073d5b297a972b3",
+      "archive": "superseded/attempt-5-before-ci-script-cleanup.zip",
+      "log": "collection-logs.zip:attempt-5.log",
+      "disposition": "superseded-pre-ci-script-cleanup",
+      "reason": "Successful full owned run before CI-driven script-expression cleanup. Its OSC22 report, corrected OSC720 plan and original complete receipt/cleanup remain historical. The final scripts have a fresh run; no current-source equivalence is inferred from this earlier measurement."
+    },
+    {
+      "attempt": 6,
+      "runId": "80cf3172a34e097bca26458f2a35d785",
+      "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "scriptsRevision": "48018d169dc42d89e711a32aaf05d30cad04617b",
+      "archive": "superseded/attempt-6-before-session-lifecycle-fix.zip",
+      "log": "collection-logs.zip:attempt-6.log",
+      "disposition": "superseded-pre-session-lifecycle-fix",
+      "reason": "Successful full owned run after CI script-expression cleanup, before the App session pointer-lifetime review fix. Its complete original receipt, corrected OSC720 plan, OSC22 report and cleanup are historical. A rebuilt App and fresh measurement supply the final claim."
+    },
+    {
+      "attempt": 7,
+      "runId": "c04f7ec60715e65d20fc1dc52d27c060",
+      "appRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+      "scriptsRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+      "archive": "superseded/attempt-7-before-persistent-integration.zip",
+      "log": "collection-logs.zip:attempt-7.log",
+      "disposition": "superseded-pre-persistent-integration",
+      "reason": "Successful fresh rebuilt-App measurement with the session pointer-lifetime fix. While CI was finishing, PR1028 merged shared runner/worker changes into main. This original receipt, OSC22 report and cleanup remain historical; a fresh integrated-script run supplies the final admission."
+    },
+    {
+      "attempt": 8,
+      "runId": "b70c675d73b252ff1bedfcfc0fe4aff4",
+      "appRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+      "scriptsRevision": "7f809a6f7b54fb76fa6a39588700a5286850c0d1",
+      "archive": "owned-run.zip",
+      "log": "collection-logs.zip:attempt-8.log",
+      "disposition": "admitted",
+      "reason": "Fresh full owned run after integrating merged persistent-animation main2f6d8ff1 with OSC22 and deferred full-path image grading. App source remains identical to de218cd. Complete experiment plan, full grading, receipt75, cleanup and lease release. Pinned inconclusive / separate App Cursor-kind effect supported."
+    }
+  ]
+}

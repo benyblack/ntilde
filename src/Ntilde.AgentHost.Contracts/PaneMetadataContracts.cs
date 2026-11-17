@@ -20,8 +20,19 @@ public sealed record PaneMetadataResult
     [JsonPropertyName("presentation")] public required PanePresentationMetadata Presentation { get; init; }
     [JsonPropertyName("cellGeometry"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PaneCellGeometry? CellGeometry { get; init; }
+    /// <summary>App request and actual Avalonia Cursor property; not the native pointer image.</summary>
+    [JsonPropertyName("pointerShape"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PanePointerShape? PointerShape { get; init; }
     [JsonPropertyName("viewport"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PaneViewportMetadata? Viewport { get; init; }
+}
+
+/// <summary>Bounded direct-view pointer facts, observed on the UI dispatcher.</summary>
+public sealed record PanePointerShape
+{
+    [JsonPropertyName("requested")] public string? Requested { get; init; }
+    [JsonPropertyName("controlCursor")] public required string ControlCursor { get; init; }
+    [JsonPropertyName("linkOverride")] public required bool LinkOverride { get; init; }
 }
 
 /// <summary>The actual view scroll position, read from the terminal view; independent of parser history and not a pixel capture.</summary>

@@ -17,6 +17,7 @@ namespace Ntilde.Controls
     {
         public void Reconnect()
         {
+            ResetSessionPointerShapes();
             PrivateClipboardQa.Interrupt(this);
             // Phase 5 Task 23: the shell was let go for a restart that is still stopping the old daemon, whose connection the
             // host still holds - a shell started over it would end with the rest. Held until the restart ends.
@@ -78,6 +79,7 @@ namespace Ntilde.Controls
 
             if (session is MuxClientSession) UnregisterRemoteMuxSession(); // its shell ended: nothing left to browse
             LastExitCode = code;
+            ResetSessionPointerShapes();
             // The child's end is the TTY hangup that UAPI.15 says must drop every context; reset sequences deliberately do not.
             Parser?.ResetContexts();
             _kittyClipboard?.Reset();

@@ -1,0 +1,1303 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc22-graded-v1",
+  "contractsVersion": 1,
+  "runId": "c04f7ec60715e65d20fc1dc52d27c060",
+  "adapter": {
+    "id": "ntilde-owned-osc22-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "d45d320e63bf81c75d3ef3cdc575e6556cf076221b4f84387cd6e67345f6c802",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 extensions.osc22-pointer terminal path (no termless function) sends two exact writes then asks for CPR and always remains inconclusive. Separate ntilde-osc22-app-cursor-effect-v1 grades the main-screen requested shape and actual Avalonia Cursor object kind for pointer, text, crosshair, default and empty reset, BEL/ST and optional equals, with text delivery and invalid/advanced-form controls, complete stored-state checks and restoration. No native pointer image or location, full Kitty stacks/queries/other shapes, alternate-screen runtime, hover runtime, mux/replay, real emitters, other platforms, stock-score or common-harness claim.",
+  "cases": [
+    {
+      "caseId": "extensions.osc22-pointer",
+      "pinned": {
+        "pass": false,
+        "note": "Cursor response does not measure OSC 22 pointer shape",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        },
+        "caseId": "extensions.osc22-pointer",
+        "termlessFunction": false,
+        "termless": null,
+        "terminal": {
+          "pass": false,
+          "response": "1;1",
+          "note": "Cursor response does not measure OSC 22 pointer shape",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query"
+          }
+        },
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]22;pointer\u0007"
+        ],
+        "cursor": [
+          1,
+          1
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "effectContract": {
+        "id": "ntilde-osc22-app-cursor-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "validity": [
+          {
+            "id": "independent-cursor-observable",
+            "held": true
+          },
+          {
+            "id": "stored-state-unaffected",
+            "held": true
+          },
+          {
+            "id": "delivery-text",
+            "held": true
+          },
+          {
+            "id": "unknown-control",
+            "held": true
+          },
+          {
+            "id": "case-control",
+            "held": true
+          },
+          {
+            "id": "stack-control",
+            "held": true
+          },
+          {
+            "id": "query-control",
+            "held": true
+          },
+          {
+            "id": "list-control",
+            "held": true
+          },
+          {
+            "id": "length-control",
+            "held": true
+          }
+        ],
+        "required": [
+          {
+            "id": "stock",
+            "held": true
+          },
+          {
+            "id": "crosshair",
+            "held": true
+          },
+          {
+            "id": "text-st",
+            "held": true
+          },
+          {
+            "id": "equals-pointer",
+            "held": true
+          },
+          {
+            "id": "default",
+            "held": true
+          },
+          {
+            "id": "reset",
+            "held": true
+          },
+          {
+            "id": "equals-reset",
+            "held": true
+          },
+          {
+            "id": "valid-after-invalid",
+            "held": true
+          }
+        ],
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "experiments": [
+        {
+          "id": "extensions.osc22-pointer/delivery-text",
+          "name": "delivery-text",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 2,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/stock",
+          "name": "stock",
+          "role": "stock",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 3,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    0,
+                    0
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "pointer",
+                "controlCursor": "Hand",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "pointer",
+                "controlCursor": "Hand",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/crosshair",
+          "name": "crosshair",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 4,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "crosshair",
+                "controlCursor": "Cross",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "crosshair",
+                "controlCursor": "Cross",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/text-st",
+          "name": "text-st",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 5,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/equals-pointer",
+          "name": "equals-pointer",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 6,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "pointer",
+                "controlCursor": "Hand",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "pointer",
+                "controlCursor": "Hand",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/default",
+          "name": "default",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 7,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "default",
+                "controlCursor": "Arrow",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "default",
+                "controlCursor": "Arrow",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/reset",
+          "name": "reset",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 8,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": null,
+                "controlCursor": "Arrow",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": null,
+                "controlCursor": "Arrow",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/equals-reset",
+          "name": "equals-reset",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 9,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": null,
+                "controlCursor": "Arrow",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": null,
+                "controlCursor": "Arrow",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/unknown-control",
+          "name": "unknown-control",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 10,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/case-control",
+          "name": "case-control",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 11,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/stack-control",
+          "name": "stack-control",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 12,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/query-control",
+          "name": "query-control",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 13,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/list-control",
+          "name": "list-control",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 14,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/length-control",
+          "name": "length-control",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 15,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "text",
+                "controlCursor": "Ibeam",
+                "linkOverride": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc22-pointer/valid-after-invalid",
+          "name": "valid-after-invalid",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "effect",
+              "snapshot": 16,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-c04f7ec6",
+                  "displayTitle": "SH-base-c04f7ec6",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 266,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "pointer": {
+                "requested": "pointer",
+                "controlCursor": "Hand",
+                "linkOverride": false
+              },
+              "expected": {
+                "requested": "pointer",
+                "controlCursor": "Hand",
+                "linkOverride": false
+              }
+            }
+          ]
+        }
+      ],
+      "stock": {
+        "featureId": "extensions.osc22-pointer",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc22-pointer"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-by-design"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "pinned-terminal-unmeasured-preserved-by-design",
+        "evidence": "owned-pane-metadata-and-session-status"
+      }
+    }
+  ]
+}

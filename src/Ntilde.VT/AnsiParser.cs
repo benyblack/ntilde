@@ -635,6 +635,7 @@ namespace Ntilde.VT
                                 {
                                     _buffer.Reset();
                                     OnKittyClipboardReset?.Invoke();
+                                    OnPointerShapeReset?.Invoke();
                                     ClearITerm2Multipart();
                                     ClearPendingOsc99();
                                     ResetCharsets();

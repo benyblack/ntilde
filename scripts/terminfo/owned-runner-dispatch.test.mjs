@@ -52,3 +52,9 @@ test('cell-size lifecycle requests reach the untranslated owner observation disp
     for (const kind of ['csz-start', 'csz-bind', 'csz-read', 'csz-finish']) assert.equal(untranslatedCellKind(kind), true, kind);
     for (const kind of ['csz-startx', 'csz-read\n', 'csz-finish-extra', 'csz-apply']) assert.equal(untranslatedCellKind(kind), false, kind);
 });
+
+test('OSC22 lifecycle requests reach the authenticated owner observation dispatcher', () => {
+    for (const kind of ['ptr-start', 'ptr-bind', 'ptr-read', 'ptr-finish']) assert.equal(untranslatedCellKind(kind), true, kind);
+    for (const kind of ['ptr-startx', 'ptr-read\n', 'ptr-finish-extra', 'ptr-apply', 'ptrx-read']) assert.equal(untranslatedCellKind(kind), false, kind);
+    assert.match(source, /if \(prefix === osc22Prefix\) return observeOsc22\(request, budget\);/);
+});

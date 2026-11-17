@@ -101,14 +101,23 @@ function cellGeometry(value, rows, cols) {
 }
 /** Normalize omitted nullable fields, preserving actual hidden-control properties and raw anchors. */
 export function copyPaneMetadata(value) {
-    shape(value, ['paneId', 'displayTitle', 'buffer', 'presentation'], ['oscTitle', 'workingDirectory', 'cellGeometry', 'viewport']);
+    shape(value, ['paneId', 'displayTitle', 'buffer', 'presentation'], ['oscTitle', 'workingDirectory', 'cellGeometry', 'viewport', 'pointerShape']);
     check(guid(value.paneId));
     const result = { paneId: value.paneId, oscTitle: nullableText(value.oscTitle), workingDirectory: nullableText(value.workingDirectory),
         displayTitle: text(value.displayTitle), buffer: buffer(value.buffer), presentation: presentation(value.presentation) };
     if (value.cellGeometry !== undefined) result.cellGeometry = cellGeometry(value.cellGeometry, result.buffer.rows, result.buffer.cols);
     if (value.viewport !== undefined) result.viewport = viewport(value.viewport);
+    if (value.pointerShape !== undefined) {
+        const pointer = value.pointerShape;
+        shape(pointer, ['controlCursor', 'linkOverride'], ['requested']);
+        const names = ['default', 'pointer', 'text', 'crosshair'];
+        check(pointer.requested == null || names.includes(pointer.requested));
+        check(typeof pointer.controlCursor === 'string' && pointer.controlCursor.length > 0 && pointer.controlCursor.length <= 64);
+        result.pointerShape = { requested: pointer.requested ?? null, controlCursor: pointer.controlCursor, linkOverride: flag(pointer.linkOverride) };
+    }
     const p = result.presentation;
     const fields = [result.oscTitle, result.workingDirectory, result.displayTitle, p.tabText, p.toastTitle, p.toastMessage,
+        ...(result.pointerShape ? [result.pointerShape.requested, result.pointerShape.controlCursor] : []),
         ...result.buffer.links.flatMap(link => [link.uri, link.id])];
     check(fields.reduce((sum, field) => sum + (field?.length ?? 0), 0) <= 32768);
     return result;

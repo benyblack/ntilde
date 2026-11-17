@@ -175,6 +175,8 @@ Capped SIXEL decoding remains compatible. The loss marker alone qualifies no
 protocol or runtime behavior: positive setting reports additionally require exact
 payload and standard ST, while other settings retain bounded negative replies.
 
+OSC 22 basic setters forward only bounded shape requests and reset notifications. The direct App owns per-screen overrides, Avalonia cursor objects, hyperlink-hover precedence and actual control-property readback. Pointer shape is not stored cell state; stacks/queries, mux/replay restoration and native pointer-image qualification remain unsupported.
+
 OSC 0/2 forward exact bounded title payloads, including empty and whitespace
 requests. The host owns title presentation and fallback; an empty request can
 clear a stale application title without forcing an empty tab label.

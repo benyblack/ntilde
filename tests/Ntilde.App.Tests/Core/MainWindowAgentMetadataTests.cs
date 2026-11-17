@@ -55,6 +55,33 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
     }
 
     [AvaloniaFact]
+    public async Task Osc22_pointer_readback_separates_requested_and_actual_control_state()
+    {
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane, _) = CreateWindow();
+        var registration = Registration(pane);
+        async Task AssertShape(string bytes, string? requested, string actual)
+        {
+            pane.Parser!.Process(bytes); Dispatcher.UIThread.RunJobs();
+            var result = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+            var shape = Assert.IsType<PanePointerShape>(result.PointerShape);
+            Assert.Equal(requested, shape.Requested);
+            Assert.Equal(actual, shape.ControlCursor);
+            Assert.False(shape.LinkOverride);
+        }
+        await AssertShape("\x1b]22;pointer\x07", "pointer", "Hand");
+        await AssertShape("\x1b]22;text\x1b\\", "text", "Ibeam");
+        await AssertShape("\x1b]22;unknown\x07", "text", "Ibeam");
+        await AssertShape("\x1b[?1049h\x1b]22;crosshair\x07", "crosshair", "Cross");
+        await AssertShape("\x1b[?1049l", "text", "Ibeam");
+        await AssertShape("\x1b[!p", null, "Arrow");
+        await AssertShape("\x1b[?1049h", null, "Arrow");
+        await AssertShape("\x1b]22;pointer\x07\u001bc", null, "Arrow");
+        await AssertShape("\x1b]22;crosshair\x07\x1b]22;\x07", null, "Arrow");
+    }
+
+    [AvaloniaFact]
     public async Task Cell_geometry_is_observed_from_the_view_without_parsing_a_query_reply()
     {
         using var service = new AgentHostService(new AgentSessionRegistry());

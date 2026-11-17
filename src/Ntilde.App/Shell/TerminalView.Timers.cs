@@ -264,6 +264,7 @@ namespace Ntilde.Shell
         internal void Retire()
         {
             _retired = true;
+            ReleasePointerShapeCursors();
             _isUiRenderable = false;
             StopUiTimers();
             // Each of these can run without the render timer, and StopUiTimers stops nothing while that one is off.

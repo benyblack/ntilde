@@ -64,7 +64,7 @@ const scopePolicyOk = context => {
     if (same(scope, osc633ScopeV3) || same(scope, legacyScopeV3)) return policy === 'readonly-owned-source-graph-v63';
     if (same(scope, osc633ScopeV4) || same(scope, legacyScopeV4)) return isCellSizeV64Scope(context);
     if (same(scope, osc5Osc633ScopeV4) || same(scope, osc5LegacyScopeV4)) return isOsc5V64Scope(context);
-    return ['readonly-owned-source-graph-v65', 'readonly-owned-source-graph-v66', 'readonly-owned-source-graph-v67'].includes(policy);
+    return ['readonly-owned-source-graph-v65', 'readonly-owned-source-graph-v66', 'readonly-owned-source-graph-v67', 'readonly-owned-source-graph-v68'].includes(policy);
 };
 const omittedArtifacts = Object.freeze([
     'osn-observations.json', 'osn-run.json', 'osn-snapshots.jsonl', 'osn-unavailable.json', 'osn-focus.json', 'osn-failed-observation.json',

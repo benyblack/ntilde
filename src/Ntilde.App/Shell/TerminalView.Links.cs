@@ -170,7 +170,7 @@ namespace Ntilde.Shell
             }
 
             _hoveredLink = link;
-            Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
+            UpdatePointerShape();
             InvalidateVisual();
         }
 
@@ -180,7 +180,7 @@ namespace Ntilde.Shell
             if (_hoveredLink == null) return;
             Avalonia.Controls.ToolTip.SetTip(this, null);
             _hoveredLink = null;
-            Cursor = Avalonia.Input.Cursor.Default;
+            UpdatePointerShape();
             InvalidateVisual();
         }
 
