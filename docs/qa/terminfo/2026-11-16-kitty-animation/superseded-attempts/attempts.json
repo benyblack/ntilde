@@ -86,6 +86,15 @@
         "animation-observations.json": "a5fe00edbfc4f0a18c83590e63648db3b167606f11a1a43803a45b0f51f9ccf0",
         "cell-receipt.json": "b9dabcb5349f09fce564085bb2f3a149cbc785e3fb721d6874d82d873ab7a530"
       }
+    },
+    {
+      "runId": "9e5c67aa1c85b79fb810f05b4ad7dd63",
+      "scriptsRevision": "78ab1d2b",
+      "reason": "A sixth complete 18/18 run (effect supported, receipt schema 70) on the App built from 78ab1d2b. Superseded, not failed: the SonarCloud and review follow-ups restructured the production playhead code (the render-path advance takes and releases its write lock in one method, playhead settling and frame publishing became helpers, the room check reads the clock only for an animating unpaused asset), so the App was rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "9725efc5f058415b81faa3736a7196ca9071e00f1c53faa4ddbd4cbb563d766a",
+        "cell-receipt.json": "98c10993ed68102e82f3875644ed8daa3f4da39031adb7132155d4e4e1383e36"
+      }
     }
   ]
 }

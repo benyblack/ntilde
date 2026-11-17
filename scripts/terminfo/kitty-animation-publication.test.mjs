@@ -191,8 +191,8 @@ test('a retained pixel, input, journal line or directory member that changed is 
 
 test('the superseded collection attempts are retained with their actual failures and none carries a grade', () => {
     const { attempts } = JSON.parse(readFileSync(join(dir, 'superseded-attempts', 'attempts.json')));
-    assert.equal(attempts.length, 9);
-    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32, 32, 32, 32]);
+    assert.equal(attempts.length, 10);
+    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32, 32, 32, 32, 32]);
     assert.ok(attempts.every(item => item.runId !== original.animationEvidence.runId && item.reason.length > 40));
     for (const item of attempts) {
         assert.deepEqual(readdirSync(join(dir, 'superseded-attempts', item.runId)).sort(), Object.keys(item.retainedFiles).sort());
@@ -209,6 +209,8 @@ test('the superseded collection attempts are retained with their actual failures
     assert.match(attempts[6].reason, /Superseded, not failed/);
     assert.match(attempts[7].reason, /Superseded, not failed/);
     assert.match(attempts[8].reason, /Superseded, not failed/);
+    assert.match(attempts[9].reason, /Superseded, not failed/);
+    assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[9].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[8].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[7].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[6].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);

@@ -103,7 +103,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `osc633` | 4 | v1 | passed | 69 | `9c814b13` | v62 | 4 | `8cf95ba4` |
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |
-| `kitty-animation` | 1 | v1 | passed | 70 | `78ab1d2b` | v63 | 26 | `42d77c02` |
+| `kitty-animation` | 1 | v1 | passed | 70 | `de376515` | v63 | 28 | `afeafe56` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
@@ -164,7 +164,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `osc633` | collected-run-id-recorded | `cb002bb5` | 161/93/1 | `cf7d8759` |
 | `static-images` | collected-run-id-recorded | `620df113` | 161/93/1 | `cf7d8759` |
 | `shell-integration-aggregates` | collected-raw-digest-recorded | raw `a554f4cf` | 161/93/1 | `cf7d8759` |
-| `kitty-animation` | collected-run-id-recorded | `98660b0a` | 161/93/1 | `cf7d8759` |
+| `kitty-animation` | collected-run-id-recorded | `c8a1d3a4` | 161/93/1 | `cf7d8759` |
 
 The baseline run itself is retained as a case-id to outcome map in [`2026-11-09-stock-baseline.json`](2026-11-09-stock-baseline.json); its raw output is git-ignored and not in the repository (`c47151de0dec…`). Profile: macOS, Ntilde 0.12.0 (identity `unverified`, operator supplied), no outer terminal or mux, default settings.
 The stock collector reports `suiteComplete=false` in every run.
