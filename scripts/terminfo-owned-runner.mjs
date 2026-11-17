@@ -366,10 +366,10 @@ function requireInputCompletion(state) {
     if (!state?.observer?.restored && !state?.unavailable) throw new Error('Input suite is not sealed or initially unavailable.');
 }
 function requireAnimationCompletion(state) {
-    if (!state?.observer?.restored && !state?.unavailable) throw new Error('Kitty animation must be restored and sealed.');
+    if (!state?.observer?.captureRestored && !state?.unavailable) throw new Error('Kitty animation must be restored and sealed.');
 }
 function requireStaticImageCompletion(state) {
-    if (!state?.observer?.restored && !state?.unavailable) throw new Error('Static images must be restored and sealed.');
+    if (!state?.observer?.captureRestored && !state?.unavailable) throw new Error('Static images must be restored and sealed.');
 }
 
 function requireQueryCompletion(state) {
@@ -3281,7 +3281,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const priorChallenges = carrier.priorFrames().filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
                 state = carrier.setState({ workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
                     observer: new carrier.Observer({ appData, ownerPid: app.pid, profileName, output,
-                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) });
+                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges, deferReport: true }) });
                 proofs[0][carrier.proof].actions = state.observer.actions;
             }
             if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error(carrier.label + ' fixture ownership changed.');
@@ -4234,6 +4234,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc3008Evidence = await retainOsc3008Evidence(output, runId, osc3008Bundle, upstreamBundleSha256, osc3008State?.unavailable === true);
             osc22Evidence = await retainOsc22Evidence(output, runId, osc22Bundle, upstreamBundleSha256, osc22State?.unavailable === true);
             oscTitleEvidence = retainOscTitleEvidence(output, runId, upstreamBundleSha256, oscTitleState?.unavailable === true);
+            // The worker has completed: grade every retained PNG outside the bounded owner RPC.
+            if (!staticImageState?.unavailable) staticImageState?.observer.finalizeReport();
+            if (!animationState?.unavailable) animationState?.observer.finalizeReport();
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
             animationEvidence = animationState?.unavailable ?? retainCellReport(output, animationState?.observer, runId,

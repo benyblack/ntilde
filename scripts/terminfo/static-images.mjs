@@ -16,6 +16,20 @@ export const ownedStaticImagePolicy = 'owned-static-images-paired-raw-render-v2'
 export const imageModeQueries = '\x1b]11;?\x1b\\\x1b[?5$p' + routedInputModeQueries;
 export const imageModeReplyHex = Buffer.from('\x1b[?5;2$y').toString('hex') + inputModeReplyHex(defaultInputModes);
 export const checkImages = value => { if (!value) throw new Error('Invalid or incomplete owned static-image evidence.'); };
+/** Cheap wire-seal checks run before acknowledgment and again during full report grading. */
+export function validateImageSeal(frames, seal, suite, output) {
+    const first = frames[0], last = frames.at(-1);
+    validateImageOwnership(seal?.ownership, first.ownership, first.screen);
+    checkImages(Date.parse(last.ownership.at) <= Date.parse(seal.ownership.at));
+    checkImages(seal?.failed === false && seal.disposed === true && seal.attempts === suite.plan.length && seal.lastAttempt?.completed === true
+        && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
+        && seal.lastAttempt.hex === last.capture.hex + Buffer.from(last.capture.barrier).toString('hex')
+        && snapshotHash(seal.lastAttempt.nonces) === snapshotHash(last.capture.nonces));
+    for (const input of suite.inputs()) {
+        const stat = lstatSync(join(output, input.file)); checkImages(stat.isFile() && !stat.isSymbolicLink() && stat.size === input.bytes.length);
+        checkImages(pngHash(readFileSync(join(output, input.file))) === input.sha256);
+    }
+}
 export const imagePlan = Object.freeze([
     { kind: 'bind' }, ...staticImageCases.flatMap(item => [...item.stages.map(stage => ({ kind: 'read', caseId: item.id, stageId: stage.id })),
         { kind: 'restore', caseId: item.id }]), { kind: 'finish' },
@@ -261,17 +275,8 @@ export class StaticImageReport {
     /** Hook: a suite that records more than the shared facts reads them from the initial frame here. */
     initialFrameFacts() { /* none in the shared base */ }
     checkSeal(seal) {
-        const last = this.frames.at(-1).capture;
-        validateImageOwnership(seal?.ownership, this.frames[0].ownership, this.initial);
+        validateImageSeal(this.frames, seal, this.suite, this.output);
         checkImages(this.lastTime <= Date.parse(seal.ownership.at));
-        checkImages(seal?.failed === false && seal.disposed === true && seal.attempts === this.suite.plan.length && seal.lastAttempt?.completed === true
-        && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
-        && seal.lastAttempt.hex === last.hex + Buffer.from(last.barrier).toString('hex')
-        && snapshotHash(seal.lastAttempt.nonces) === snapshotHash(last.nonces));
-        for (const input of this.suite.inputs()) {
-            const stat = lstatSync(join(this.output, input.file)); checkImages(stat.isFile() && !stat.isSymbolicLink() && stat.size === input.bytes.length);
-            checkImages(pngHash(readFileSync(join(this.output, input.file))) === input.sha256);
-        }
     }
 }
 
