@@ -55,6 +55,7 @@ public partial class MainWindow
                 RenderScaling = pane.TermView.EffectiveRenderScaling,
                 BackingScale = RenderScaling,
             },
+            Viewport = new PaneViewportMetadata { ScrollOffset = pane.TermView.ScrollOffset, MaxScrollOffset = pane.TermView.MaxScrollOffset },
             Presentation = new PanePresentationMetadata
             {
                 WindowActive = IsActive,

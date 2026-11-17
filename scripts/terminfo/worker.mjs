@@ -59,6 +59,7 @@ import { collectXsvGrading } from './xsv-collector.mjs';
 import { collectKclGrading } from './kcl-collector.mjs';
 import { collectOsc5Grading } from './osc5-collector.mjs';
 import { collectOsc3008 } from './osc3008-collector.mjs';
+import { collectOsc720 } from './osc720-collector.mjs';
 import { collectOsc22 } from './osc22-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
@@ -486,6 +487,12 @@ try {
         if (createHash('sha256').update(osc3008Source).digest('hex') !== config.osc3008BundleSha256) throw new Error('Local OSC 3008 adapter bundle changed.');
         const osc3008Result = await collectOsc3008({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc3008Bundle).href) });
         if (osc3008Result.status === 'complete') writeFileSync(join(config.output, 'ocx-run.json'), JSON.stringify(osc3008Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered rxvt OSC 720 qualification follows the OSC 3008 suite on the same fence. A typed refusal of its first observation is retained by the parent as its typed
+        // marker (written before it answers), so the worker writes nothing and the run continues. It leaves no history, the live view and the blank baseline screen.
+        const osc720Source = readFileSync(config.osc720Bundle);
+        if (createHash('sha256').update(osc720Source).digest('hex') !== config.osc720BundleSha256) throw new Error('Local OSC 720 adapter bundle changed.');
+        const osc720Result = await collectOsc720({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc720Bundle).href) });
+        if (osc720Result.status === 'complete') writeFileSync(join(config.output, 'ovu-run.json'), JSON.stringify(osc720Result.run) + '\n', { flag: 'wx', mode: 0o600 });
         const osc22Source = readFileSync(config.osc22Bundle);
         if (createHash('sha256').update(osc22Source).digest('hex') !== config.osc22BundleSha256) throw new Error('Local OSC 22 adapter bundle changed.');
         const osc22Result = await collectOsc22({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc22Bundle).href) });

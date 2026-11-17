@@ -23,6 +23,8 @@ public sealed record PaneMetadataResult
     /// <summary>App request and actual Avalonia Cursor property; not the native pointer image.</summary>
     [JsonPropertyName("pointerShape"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PanePointerShape? PointerShape { get; init; }
+    [JsonPropertyName("viewport"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PaneViewportMetadata? Viewport { get; init; }
 }
 
 /// <summary>Bounded direct-view pointer facts, observed on the UI dispatcher.</summary>
@@ -31,6 +33,16 @@ public sealed record PanePointerShape
     [JsonPropertyName("requested")] public string? Requested { get; init; }
     [JsonPropertyName("controlCursor")] public required string ControlCursor { get; init; }
     [JsonPropertyName("linkOverride")] public required bool LinkOverride { get; init; }
+}
+
+/// <summary>The actual view scroll position, read from the terminal view; independent of parser history and not a pixel capture.</summary>
+public sealed record PaneViewportMetadata
+{
+    /// <summary>Rows the viewport sits above the live line; 0 means the live (bottom) view.</summary>
+    [JsonPropertyName("scrollOffset")] public required int ScrollOffset { get; init; }
+
+    /// <summary>Greatest reachable <see cref="ScrollOffset"/> for the current history (total lines minus view rows).</summary>
+    [JsonPropertyName("maxScrollOffset")] public required int MaxScrollOffset { get; init; }
 }
 
 /// <summary>One complete active viewport's stored links and raw shell anchors, captured under the buffer read lock.</summary>

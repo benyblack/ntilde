@@ -14,7 +14,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'ptr-observations.json', run: 'ptr-run.json', journal: 'ptr-snapshots.jsonl', unavailable: 'ptr-unavailable.json', adapter: 'collector-ptr.mjs' });
 /** The first source policy whose worker always runs this suite (the parent's plumbing sets the real number). */
-export const osc22FirstPolicy = 67;
+export const osc22FirstPolicy = 68;
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const fail = message => { throw new Error(message); };

@@ -17,6 +17,7 @@ import { includesPxmEvidence, checkPxmEvidence } from './pxm-receipt.mjs';
 import { includesKclEvidence, checkKclEvidence } from './kcl-receipt.mjs';
 import { includesOsc5Evidence, checkOsc5Evidence } from './osc5-receipt.mjs';
 import { includesOsc3008Evidence, checkOsc3008Evidence } from './osc3008-receipt.mjs';
+import { includesOsc720Evidence, checkOsc720Evidence } from './osc720-receipt.mjs';
 import { includesOsc22Evidence, checkOsc22Evidence } from './osc22-receipt.mjs';
 import { includesReverseWideEvidence, checkReverseWideEvidence } from './core-reverse-wide-receipt.mjs';
 import { includesSgrRasterEvidence, checkSgrRasterEvidence } from './core-sgr-raster-receipt.mjs';
@@ -247,6 +248,7 @@ const receiptSuffixOrder = Object.freeze([
     'includesCellSize',
     'includesOsc5',
     'includesOsc3008',
+    'includesOsc720',
     'includesOsc22',
 ]);
 
@@ -329,6 +331,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesKcl = includesKclEvidence(output, evidence, context);
     const includesOsc5 = includesOsc5Evidence(output, evidence, context);
     const includesOsc3008 = includesOsc3008Evidence(output, evidence, context);
+    const includesOsc720 = includesOsc720Evidence(output, evidence, context);
     const includesOsc22 = includesOsc22Evidence(output, evidence, context);
     const includesCellSize = includesCellSizeEvidence(output, evidence, context);
     const includesLrMargins = includesLrMarginsEvidence(output, evidence, context);
@@ -343,7 +346,7 @@ function admittedSuffixes(output, evidence, context, proof) {
     const includesSaved = includesSavedEvidence(output, evidence, context, proof) || includesMetadata;
     const includesResize = includesResizeEvidence(output, evidence, context, proof) || includesSaved;
     return { includesEditing, includesHistory, includesResize, includesSaved, includesMetadata,
-        includesInput, includesImages, includesAnimation, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc633, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesModifyOtherKeys, includesOsc9, includesAsciiReflow, includesNotify, includesSelectionColors, includesDevq, includesXcs, includesXss, includesXsv, includesMex, includesKcl, includesPxm, includesOsc5, includesOsc3008, includesOsc22, includesScopedCollection, includesCellSize };
+        includesInput, includesImages, includesAnimation, includesQueries, includesPrivateClipboard, includesAsciiSgr, includesSgrColors, includesSgrRgb, includesSgrAttrs, includesSgrPalette, includesSgrTruecolor, includesTruecolorFinding, includesSgrUnderline, includesSgrUnderlineColor, includesUnderlineResolved, includesSgrReset, includesSgrClosure, includesEraseLine, includesCharEdit, includesEraseDisplay, includesLineEdit, includesCharsets, includesScrollback, includesSavedReset, includesEraseAttrsRegion, includesAttrRect, includesCursorQual, includesEraseCharsHistory, includesSelectiveErase, includesRectEdit, includesColEdit, includesRectChecksum, includesLrMargins, includesCoreGaps, includesRoutedInput, includesColorReset, includesTextCursor, includesOsc133, includesOsc633, includesOsc78, includesCoreErase, includesTabStops, includesCoreWrap, includesSgrRaster, includesReverseWide, includesTitleStack, includesOscTitle, includesInsertReplace, includesXtgettcap, includesModifyOtherKeys, includesOsc9, includesAsciiReflow, includesNotify, includesSelectionColors, includesDevq, includesXcs, includesXss, includesXsv, includesMex, includesKcl, includesPxm, includesOsc5, includesOsc3008, includesOsc720, includesOsc22, includesScopedCollection, includesCellSize };
 }
 
 /** Validate every admitted optional suffix after the mandatory core suites. */
@@ -416,6 +419,7 @@ function checkAdmittedSuffixes(output, evidence, runId, context, proof, suffixes
     if (suffixes.includesKcl) checkKclEvidence(output, evidence, runId, context);
     if (suffixes.includesOsc5) checkOsc5Evidence(output, evidence, runId, context);
     if (suffixes.includesOsc3008) checkOsc3008Evidence(output, evidence, runId, context);
+    if (suffixes.includesOsc720) checkOsc720Evidence(output, evidence, runId, context);
     if (suffixes.includesOsc22) checkOsc22Evidence(output, evidence, runId, context);
     if (suffixes.includesCellSize) checkCellSizeEvidence(output, evidence, runId, context);
 }
