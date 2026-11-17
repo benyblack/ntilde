@@ -437,5 +437,10 @@
   "osc5CollectorSourceSha256": "osc5-collector.mjs",
   "osc5GradingSourceSha256": "osc5-grading.mjs",
   "osc5GradingCollectorSourceSha256": "osc5-grading-collector.mjs",
-  "osc5ReceiptSourceSha256": "osc5-receipt.mjs"
+  "osc5ReceiptSourceSha256": "osc5-receipt.mjs",
+  "osc3008ContractsSourceSha256": "osc3008-contracts.mjs",
+  "osc3008CollectorSourceSha256": "osc3008-collector.mjs",
+  "osc3008GradingSourceSha256": "osc3008-grading.mjs",
+  "osc3008GradingCollectorSourceSha256": "osc3008-grading-collector.mjs",
+  "osc3008ReceiptSourceSha256": "osc3008-receipt.mjs"
 }
