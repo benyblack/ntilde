@@ -21,7 +21,9 @@ function replyEnd(rest) {
     // A chunk can stop halfway through ST. An embedded ESC is otherwise forbidden.
     if (end < 0 && body.endsWith(esc)) body = body.slice(0, -1);
     if (body.length > bodyLimit || body.includes(esc)) throw new Error('Unexpected special-color reply bytes.');
-    return end < 0 ? -1 : end + (endsWithSt ? 2 : 1);
+    if (end < 0) return -1;
+    const terminatorLength = endsWithSt ? 2 : 1;
+    return end + terminatorLength;
 }
 
 /** Require exactly one complete bounded OSC reply, ended by BEL or ST. */

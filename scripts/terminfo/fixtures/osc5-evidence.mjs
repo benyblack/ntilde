@@ -52,7 +52,6 @@ const exchanges = Object.freeze({
 export function syntheticOsc5Screens(contract, binding = paletteBinding(), mutate = null, runId = 'a'.repeat(32)) {
     const nonce = 'NTILDE_O5_' + runId;
     // The plan's static reseed homes the cursor: every read (and every exchange) observes it at home over the nonce row.
-    const seed = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], binding), nonce);
     return contract.roles.map(role => {
         const fresh = () => {
             let colors = structuredClone(binding);

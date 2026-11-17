@@ -79,3 +79,6 @@ It used owned ID `1eda9658848990fce76b888d41b7bb4f`, stock ID `fd5b6501307a54ce3
 The current run remeasures the review fixes and merged Kitty animation build: special-color-only updates preserve row revisions, set-direction isolation permits only the exact setup mutation, the finish
 always clears OSC 5 overrides, and special-color baselines remain usable if a later legacy baseline fails. Both full runs independently rederive through the publication test; only the current run is
 registered in the live inventory. Neither run claims binary-to-source attestation.
+
+The final Sonar cleanup splits an equivalent reply-terminator expression and removes an unused synthetic-test seed. It changes no fixture bytes, collector calls, reply framing, oracle or App input.
+Both retained reports and full receipts rederive unchanged through the current validators. The measured App/scripts identity remains `e52b99c9`, as recorded in the archive, rather than the later publication commit.
