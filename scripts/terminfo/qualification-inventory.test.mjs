@@ -155,12 +155,13 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         const kitty = stored.suites.findIndex(item => item.suite === 'kcl');
         // The special-color suite's App answers the unchanged OSC 5;0;? probe (query policy v6), so its stock run also grades extensions.osc5-special-color supported.
         const osc5Live = stored.suites.findIndex(item => item.suite === 'osc5');
+        // The OSC 3008 suite was measured on the integrated App, so its stock run carries the special-color grade too.
+        const osc3008Live = stored.suites.findIndex(item => item.suite === 'osc3008');
         // Reflow keeps its original registry position, but its replacement measurement follows all five production changes.
         const measurementPosition = suite.suite === 'ascii-reflow' ? stored.suites.length : stored.suites.indexOf(suite);
         const moved = (gated >= 0 && measurementPosition >= gated ? 1 : 0) + (notice >= 0 && measurementPosition >= notice ? 1 : 0) + (device >= 0 && measurementPosition >= device ? 3 : 0)
             + (mouse >= 0 && measurementPosition >= mouse ? 1 : 0) + (kitty >= 0 && measurementPosition >= kitty ? 1 : 0)
-            // The OSC 720 suite ran on the same App build lineage after OSC 5, so its stock run carries that grade too.
-            + (osc5Live >= 0 && (measurementPosition === osc5Live || suite.suite === 'osc720') ? 1 : 0);
+            + (osc5Live >= 0 && (measurementPosition === osc5Live || measurementPosition === osc3008Live || suite.suite === 'osc720') ? 1 : 0);
         const expected = { ...base.counts, inconclusive: base.counts.inconclusive - moved, supported: base.counts.supported + moved };
         if (suite.stock.basis !== 'carried-forward') assert.deepEqual(suite.stock.counts, expected, suite.suite);
         assert.equal(suite.stock.suiteComplete ?? false, false);
@@ -337,8 +338,8 @@ test('OSC cell-size qualification adds two effect-supported ids while preserving
 test('current effect totals preserve the separate unsupported and measured-other claims without inflating pinned scores', () => {
     const stored = committed(), { totals } = stored;
     // The OSC 633 implementation remeasurement turned its four ids from effect-unsupported to effect-supported (pinned stays inconclusive). The static-image qualification (#987)
-    // then measured extensions.sixel effect-unsupported (native-size defect #851) and extensions.iterm2-images effect-supported. The OSC 720 qualification (#999) adds the second measured-unsupported id:
-    // the pinned terminal path is inconclusive by design and the effect contract observed no effect for the bare and counted forms.
+    // then measured extensions.sixel effect-unsupported (native-size defect #851), the only measured-unsupported id, and extensions.iterm2-images effect-supported.
+    // The OSC 720 qualification (#999) adds the second measured-unsupported id: the pinned terminal path is inconclusive by design and the effect contract observed no effect.
     assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc720-scroll-up', 'extensions.sixel']);
     assert.equal(totals.effectUnsupportedIds, 2);
     // The aggregate batch adds the first measured-other id: extensions.osc-633-vscode is measured, stock-inconclusive and inconclusive
@@ -349,15 +350,15 @@ test('current effect totals preserve the separate unsupported and measured-other
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
     assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + totals.effectUnsupportedIds + totals.effectOtherIds);
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
-    assert.equal(totals.effectSupportedIds, 142);
+    assert.equal(totals.effectSupportedIds, 143);
     assert.equal(totals.pinnedSupportedIds, 94);
     assert.equal(totals.pinnedAndEffectSupportedIds, 94);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 48);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 141);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 49);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 142);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 93);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 27, effectMeasuredUnsupported: 2, effectMeasuredOther: 1, effectNotMeasured: 24, notPinnedSupported: 75 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 26, effectMeasuredUnsupported: 2, effectMeasuredOther: 1, effectNotMeasured: 23, notPinnedSupported: 75 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -454,7 +455,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc720-scroll-up`, `extensions\.sixel`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 2 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 24 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 23 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -471,7 +472,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // 288 KiB: the selection-colors suite entry (receipt schema 60, four effect-supported ids) joins the merged inventory.
     // 336 KiB: the truecolor projection and four OSC 633 cases add their receipt bindings.
     // 352 KiB: the cell-size and OSC 5 cases add their separate source-bound runs and receipts.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 352 * 1024, 'the generated files stay reviewable');
+    // 368 KiB: the OSC 3008 and OSC 720 cases add their source-bound runs and receipts.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 368 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {

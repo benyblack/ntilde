@@ -35,7 +35,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc(?:133|633|78|9)|title-stack|osc-title)-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc720|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|osc720|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -45,7 +45,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-text-cursor(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc720|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|osc720|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -981,7 +981,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc720 = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc720 = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -1026,11 +1026,13 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (osc5) {
             await addOsc5Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        // The OSC 720 suffix is the next sibling off the same left/right-margin bytes and is equally opt-in; it needs no setting.
+        if (osc3008) {
+            await addOsc3008Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
         if (osc720) {
             await addOsc720Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc720) writerFor(output)('context.json', context);
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc720) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1166,6 +1168,27 @@ async function addKclEvidence({ output, write, context, evidence, lrMarginsBytes
 }
 
 /** The opt-in rxvt special-color suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */
+async function addOsc5Evidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticOsc5Evidence } = await import('./osc5-evidence.mjs');
+    const { buildOsc5GradingReport } = await import('../osc5-grading.mjs');
+    const { osc5Counts } = await import('../osc5-receipt.mjs');
+    const { adaptOsc5Collector, osc5AdapterId } = await import('../osc5-grading-collector.mjs');
+    const { osc5SuiteId, osc5ContractsVersion } = await import('../osc5-contracts.mjs');
+    const osc5Bytes = Buffer.from(adaptOsc5Collector(lrMarginsBytes.toString()));
+    const osc5 = syntheticOsc5Evidence({ runId: context.runId, bundleSha256: hash(osc5Bytes) });
+    osc5.adapter = { ...osc5.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const osc5Report = buildOsc5GradingReport(osc5.frames, osc5.run, context.runId, osc5.adapter);
+    write('osc5-observations.json', osc5Report);
+    write('osc5-run.json', osc5.run);
+    writeFileSync(join(output, 'osc5-snapshots.jsonl'), osc5.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-osc5.mjs'), osc5Bytes);
+    Object.assign(context, { osc5AdapterId, osc5SuiteId, osc5BundleSha256: hash(osc5Bytes), osc5ContractsVersion });
+    evidence.osc5Evidence = { runId: context.runId, suiteId: osc5SuiteId, file: 'osc5-observations.json', sha256: hash(readFileSync(join(output, 'osc5-observations.json'))),
+        runFile: 'osc5-run.json', runSha256: hash(readFileSync(join(output, 'osc5-run.json'))), adapterBundleSha256: hash(osc5Bytes),
+        contractsVersion: osc5ContractsVersion, counts: osc5Counts(osc5Report), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** The opt-in OSC 3008 suffix: synthetic frames from the suite's own oracles (never collected ones), layered over the left/right-margin bytes. */
 async function addOsc720Evidence({ output, write, context, evidence, lrMarginsBytes }) {
     const { syntheticOsc720Evidence } = await import('./osc720-evidence.mjs');
     const { buildOsc720Report } = await import('../osc720-grading.mjs');
@@ -1187,24 +1210,23 @@ async function addOsc720Evidence({ output, write, context, evidence, lrMarginsBy
         adapterBundleSha256: hash(osc720Bytes), contractsVersion: osc720ContractsVersion, counts: osc720Counts(osc720Report), provisionalUntil: 'cell-receipt.json' };
 }
 
-async function addOsc5Evidence({ output, write, context, evidence, lrMarginsBytes }) {
-    const { syntheticOsc5Evidence } = await import('./osc5-evidence.mjs');
-    const { buildOsc5GradingReport } = await import('../osc5-grading.mjs');
-    const { osc5Counts } = await import('../osc5-receipt.mjs');
-    const { adaptOsc5Collector, osc5AdapterId } = await import('../osc5-grading-collector.mjs');
-    const { osc5SuiteId, osc5ContractsVersion } = await import('../osc5-contracts.mjs');
-    const osc5Bytes = Buffer.from(adaptOsc5Collector(lrMarginsBytes.toString()));
-    const osc5 = syntheticOsc5Evidence({ runId: context.runId, bundleSha256: hash(osc5Bytes) });
-    osc5.adapter = { ...osc5.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
-    const osc5Report = buildOsc5GradingReport(osc5.frames, osc5.run, context.runId, osc5.adapter);
-    write('osc5-observations.json', osc5Report);
-    write('osc5-run.json', osc5.run);
-    writeFileSync(join(output, 'osc5-snapshots.jsonl'), osc5.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
-    writeFileSync(join(output, 'collector-osc5.mjs'), osc5Bytes);
-    Object.assign(context, { osc5AdapterId, osc5SuiteId, osc5BundleSha256: hash(osc5Bytes), osc5ContractsVersion });
-    evidence.osc5Evidence = { runId: context.runId, suiteId: osc5SuiteId, file: 'osc5-observations.json', sha256: hash(readFileSync(join(output, 'osc5-observations.json'))),
-        runFile: 'osc5-run.json', runSha256: hash(readFileSync(join(output, 'osc5-run.json'))), adapterBundleSha256: hash(osc5Bytes),
-        contractsVersion: osc5ContractsVersion, counts: osc5Counts(osc5Report), provisionalUntil: 'cell-receipt.json' };
+async function addOsc3008Evidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticOsc3008Evidence } = await import('./osc3008-evidence.mjs');
+    const { buildOsc3008GradingReport, osc3008Counts } = await import('../osc3008-grading.mjs');
+    const { adaptOsc3008Collector, osc3008AdapterId } = await import('../osc3008-grading-collector.mjs');
+    const { osc3008SuiteId, osc3008ContractsVersion } = await import('../osc3008-contracts.mjs');
+    const osc3008Bytes = Buffer.from(adaptOsc3008Collector(lrMarginsBytes.toString()));
+    const osc3008 = syntheticOsc3008Evidence({ runId: context.runId, bundleSha256: hash(osc3008Bytes) });
+    osc3008.adapter = { ...osc3008.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const osc3008Report = buildOsc3008GradingReport(osc3008.frames, osc3008.run, context.runId, osc3008.adapter);
+    write('ocx-observations.json', osc3008Report);
+    write('ocx-run.json', osc3008.run);
+    writeFileSync(join(output, 'ocx-snapshots.jsonl'), osc3008.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-ocx.mjs'), osc3008Bytes);
+    Object.assign(context, { osc3008AdapterId, osc3008SuiteId, osc3008BundleSha256: hash(osc3008Bytes), osc3008ContractsVersion });
+    evidence.osc3008Evidence = { runId: context.runId, suiteId: osc3008SuiteId, file: 'ocx-observations.json', sha256: hash(readFileSync(join(output, 'ocx-observations.json'))),
+        runFile: 'ocx-run.json', runSha256: hash(readFileSync(join(output, 'ocx-run.json'))), adapterBundleSha256: hash(osc3008Bytes),
+        contractsVersion: osc3008ContractsVersion, counts: osc3008Counts(osc3008Report), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** The opt-in xterm saved-mode suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */

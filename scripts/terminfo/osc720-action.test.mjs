@@ -16,8 +16,14 @@ test('one wheel notch is requested through the owned input path and recorded com
     assert.equal(JSON.stringify(record).includes('big'), false);
 });
 
+test('scroll-down sends the opposite notch', async () => {
+    const seen = [];
+    await runViewAction({ action: 'scroll-down', config: {}, budget: () => 1, input: async (config, event) => { seen.push(event); return attempt(event); } });
+    assert.deepEqual(seen, [{ kind: 'mouseWheel', wheelDelta: -1, column: 1, row: 1 }]);
+});
+
 test('an unknown action or a failed notch is refused and never retried', async () => {
-    await assert.rejects(runViewAction({ action: 'scroll-down', config: {}, budget: () => 1 }), /Invalid OSC 720 action/);
+    await assert.rejects(runViewAction({ action: 'scroll-sideways', config: {}, budget: () => 1 }), /Invalid OSC 720 action/);
     let calls = 0;
     await assert.rejects(runViewAction({ action: 'scroll-up', config: {}, budget: () => 1, input: async () => { calls++; throw new Error('Owned generated-input action failed.'); } }), /failed/);
     assert.equal(calls, 1);

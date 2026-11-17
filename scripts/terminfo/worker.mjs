@@ -58,6 +58,7 @@ import { collectXssGrading } from './xss-collector.mjs';
 import { collectXsvGrading } from './xsv-collector.mjs';
 import { collectKclGrading } from './kcl-collector.mjs';
 import { collectOsc5Grading } from './osc5-collector.mjs';
+import { collectOsc3008 } from './osc3008-collector.mjs';
 import { collectOsc720 } from './osc720-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
@@ -479,7 +480,13 @@ try {
         const osc5Module = await import(pathToFileURL(config.osc5Bundle).href);
         const osc5Run = await collectOsc5Grading({ config, fence, owner, gradingModule: osc5Module });
         writeFileSync(join(config.output, 'osc5-run.json'), JSON.stringify(osc5Run) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered rxvt OSC 720 qualification follows the special-color suite on the same fence. A typed refusal of its first observation is retained by the parent as its typed
+        // The layered OSC 3008 context qualification follows the special-color suite on the same exclusively owned fence. A typed refusal of its first observation is retained by the parent
+        // as its typed marker (written before it answers), so the worker writes nothing and the run continues. It leaves no open context behind.
+        const osc3008Source = readFileSync(config.osc3008Bundle);
+        if (createHash('sha256').update(osc3008Source).digest('hex') !== config.osc3008BundleSha256) throw new Error('Local OSC 3008 adapter bundle changed.');
+        const osc3008Result = await collectOsc3008({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc3008Bundle).href) });
+        if (osc3008Result.status === 'complete') writeFileSync(join(config.output, 'ocx-run.json'), JSON.stringify(osc3008Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+        // The layered rxvt OSC 720 qualification follows the OSC 3008 suite on the same fence. A typed refusal of its first observation is retained by the parent as its typed
         // marker (written before it answers), so the worker writes nothing and the run continues. It leaves no history, the live view and the blank baseline screen.
         const osc720Source = readFileSync(config.osc720Bundle);
         if (createHash('sha256').update(osc720Source).digest('hex') !== config.osc720BundleSha256) throw new Error('Local OSC 720 adapter bundle changed.');

@@ -328,6 +328,26 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task Child_exit_drops_osc3008_contexts_from_the_authoritative_snapshot()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            fake.Emit("\x1b]3008;start=s;type=session\x1b\\\x1b]3008;start=c;type=command\x1b\\\x1b]3008;end=c;status=0\x1b\\");
+            await mux.FlushAsync();
+            TerminalStateSnapshot live = await mux.InvokeAsync(() => mux.CaptureSnapshot(0));
+            Assert.Equal("s", Assert.Single(live.Parser.ContextStack!).Id);
+            Assert.Single(live.Parser.EndedContexts!);
+
+            fake.Exit(0);
+            await mux.FlushAsync();
+            TerminalStateSnapshot exited = await mux.InvokeAsync(() => mux.CaptureSnapshot(0));
+            Assert.Null(exited.Parser.ContextStack);
+            Assert.Null(exited.Parser.EndedContexts);
+        }
+    }
+
+    [Fact]
     public async Task Exit_is_delivered_after_every_byte_already_tapped()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

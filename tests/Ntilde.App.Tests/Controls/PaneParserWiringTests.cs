@@ -85,6 +85,22 @@ public class PaneParserWiringTests
     }
 
     [AvaloniaFact]
+    public void Session_exit_is_the_hangup_that_drops_osc3008_contexts_but_a_terminal_reset_does_not()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        pane.Parser!.Process("\x1b]3008;start=s;type=session\x1b\\\x1b]3008;start=c;type=command\x1b\\\x1b]3008;end=c\x1b\\");
+        pane.Parser.Process("\x1bc\x1b[!p");
+        Assert.Equal("s", Assert.Single(pane.Parser.ContextStack).Id);
+        Assert.Single(pane.Parser.EndedContexts);
+
+        pane.HandleSessionExitForTesting(0);
+
+        Assert.Empty(pane.Parser.ContextStack);
+        Assert.Empty(pane.Parser.EndedContexts);
+    }
+
+    [AvaloniaFact]
     public void RewiringTheParser_ReplacesItRatherThanReusingIt()
     {
         using var pane = new TerminalPane();
@@ -541,6 +557,24 @@ public class PaneParserWiringTests
         Assert.Equal(1, CountOccurrences(native, "env_map.insert(\"TERM\".to_string(), \"" + expected + "\".to_string());"));
         Assert.Equal(1, CountOccurrences(native, "cmd_builder.env(\"TERM\", \"" + expected + "\");"));
         Assert.Equal(expected, new Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions { Host = "example.test", User = "qa" }.Term);
+    }
+
+    /// <summary>
+    /// The native PTY layer never writes <c>TERM_FEATURES</c> on either spawn path: a child inherits the user's
+    /// environment plus only TERM, COLORTERM and TERM_PROGRAM, so Ntilde makes no iTerm2 feature-reporting
+    /// declaration and the <c>device.term-features</c> probe has nothing Ntilde-made to observe. A declaration
+    /// would need owning evidence for every advertised feature. Policy audit:
+    /// docs/qa/terminfo/2026-11-17-term-features-policy.md.
+    /// </summary>
+    [Fact]
+    public void Child_environment_never_declares_TERM_FEATURES()
+    {
+        string root = AppContext.BaseDirectory;
+        while (root is not null && !File.Exists(Path.Combine(root, "Ntilde.sln"))) root = Path.GetDirectoryName(root)!;
+        Assert.NotNull(root);
+        string native = File.ReadAllText(Path.Combine(root, "src", "Ntilde.App", "native", "src", "lib.rs"));
+        Assert.Equal(1, CountOccurrences(native, "cmd_builder.env(\"COLORTERM\", \"truecolor\");"));
+        Assert.Equal(0, CountOccurrences(native, "TERM_FEATURES"));
     }
 
     /// <summary>

@@ -108,6 +108,14 @@ namespace Ntilde.VT
         [JsonPropertyName("osc99_pending"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<PendingNotificationState>? PendingNotifications { get; set; }
 
+        /// <summary>Open OSC 3008 contexts, outermost first; null when none. Untrusted descriptive metadata. Importing replaces any the target holds.</summary>
+        [JsonPropertyName("osc3008_stack"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<ContextRecord>? ContextStack { get; set; }
+
+        /// <summary>Recently ended OSC 3008 contexts, oldest first; null when none.</summary>
+        [JsonPropertyName("osc3008_ended"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<EndedContextRecord>? EndedContexts { get; set; }
+
         /// <summary>
         /// Length of the parser's text-batching buffer at export. Always 0 in practice - the
         /// buffer is flushed before every state-affecting branch - and exported purely so that
@@ -179,6 +187,18 @@ namespace Ntilde.VT
             foreach (PendingNotificationState entry in PendingNotifications ?? new List<PendingNotificationState>())
             {
                 sb.Append('(').Append(Quote(entry?.Id)).Append(',').Append(Quote(entry?.Title)).Append(',').Append(Quote(entry?.Body)).Append(',').Append(entry?.Overflowed).Append(')');
+            }
+
+            sb.Append(" osc3008=");
+            foreach (ContextRecord entry in ContextStack ?? new List<ContextRecord>())
+            {
+                sb.Append('(').Append(entry?.ToDebugString() ?? "<null>").Append(')');
+            }
+
+            sb.Append(" osc3008_ended=");
+            foreach (EndedContextRecord entry in EndedContexts ?? new List<EndedContextRecord>())
+            {
+                sb.Append('(').Append(entry?.ToDebugString() ?? "<null>").Append(')');
             }
 
             sb.Append(" sixel_cw=").Append(SixelCellWidthPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");

@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedV71SourceFiles, capturedV72SourceFiles, capturedV73SourceFiles,
+import { capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedV71SourceFiles, capturedV72SourceFiles, capturedV73SourceFiles, capturedV74SourceFiles,
     capturedOsc5ForkV63Files, capturedOsc5ForkV64Files, ownedSourceFiles,
     isCellSizePolicy63, isKittyAnimationPolicy63, isOsc5Policy63 } from './owned-sources.mjs';
 import { retainedInventory } from './metadata-receipt.mjs';
 import { includesCellSizeEvidence } from './cell-size-receipt.mjs';
 import { includesAnimationEvidence } from './kitty-animation-receipt.mjs';
 import { includesOsc5Evidence } from './osc5-receipt.mjs';
-import { historicOsc633Scope, osc633ScopeV2, osc633ScopeV3, osc633ScopeV4, osc633ScopeV5, osc633Scope, historicLegacyScope, legacyScopeV2,
-    legacyScopeV3, legacyScopeV4, legacyScopeV5, legacyScope, osc5LegacyScopeV4, osc5Osc633ScopeV4, validateCollectionScope } from './collection-scope.mjs';
+import { historicOsc633Scope, osc633ScopeV2, osc633ScopeV3, osc633ScopeV4, osc633Scope, historicLegacyScope, legacyScopeV2,
+    legacyScopeV3, legacyScopeV4, legacyScope, osc5LegacyScopeV4, osc5Osc633ScopeV4, validateCollectionScope } from './collection-scope.mjs';
 
 const policy = version => 'readonly-owned-source-graph-v' + version;
 const fields = { cellSizeContractsSourceSha256: 'a'.repeat(64), kittyAnimationInputsSourceSha256: 'b'.repeat(64), osc5ContractsSourceSha256: 'c'.repeat(64) };
@@ -21,12 +21,12 @@ const osc5 = () => ({ sourceSnapshotPolicy: policy(63), osc5ContractsSourceSha25
 const cell64 = () => ({ ...cell(), ...kitty(), sourceSnapshotPolicy: policy(64), collectionScope: legacyScopeV4 });
 const osc564 = () => ({ ...osc5(), ...kitty(), sourceSnapshotPolicy: policy(64), collectionScope: osc5LegacyScopeV4 });
 
-test('six frozen graphs remain distinct from the live445-input v66 graph', () => {
+test('seven frozen graphs remain distinct from the live450-input v67 graph', () => {
     for (const [graph, count] of [[capturedV70SourceFiles, 420], [capturedCellSizeForkV70Files, 425], [capturedOsc5ForkV63Files, 420],
-        [capturedV71SourceFiles, 432], [capturedOsc5ForkV64Files, 427], [capturedV72SourceFiles, 439], [capturedV73SourceFiles, 445]]) assert.equal(Object.keys(graph).length, count);
-    assert.deepEqual(ownedSourceFiles, capturedV73SourceFiles);
+        [capturedV71SourceFiles, 432], [capturedOsc5ForkV64Files, 427], [capturedV72SourceFiles, 439], [capturedV73SourceFiles, 444], [capturedV74SourceFiles, 450]]) assert.equal(Object.keys(graph).length, count);
+    assert.deepEqual(ownedSourceFiles, capturedV74SourceFiles);
     for (const [context, graph] of [[cell(), capturedCellSizeForkV70Files], [kitty(), capturedV70SourceFiles], [osc5(), capturedOsc5ForkV63Files],
-        [cell64(), capturedV71SourceFiles], [osc564(), capturedOsc5ForkV64Files], [{ sourceSnapshotPolicy: policy(65) }, capturedV72SourceFiles], [{ sourceSnapshotPolicy: policy(66) }, capturedV73SourceFiles]]) {
+        [cell64(), capturedV71SourceFiles], [osc564(), capturedOsc5ForkV64Files], [{ sourceSnapshotPolicy: policy(65) }, capturedV72SourceFiles], [{ sourceSnapshotPolicy: policy(66) }, capturedV73SourceFiles], [{ sourceSnapshotPolicy: policy(67) }, capturedV74SourceFiles]]) {
         assert.equal(retainedInventory('', context), graph);
     }
 });
@@ -70,8 +70,8 @@ test('historical family exemptions never hide declarations or artifacts; live65 
         assert.deepEqual(flags(osc5()), [false, false, true]);
         assert.deepEqual(flags(cell64()), [true, true, false]);
         assert.deepEqual(flags(osc564()), [false, true, true]);
-        for (const version of [63, 64, 65, 66]) assert.deepEqual(flags({ sourceSnapshotPolicy: policy(version) }), [true, true, true]);
-        for (const make of [cell64, osc564]) assert.deepEqual(flags({ ...make(), sourceSnapshotPolicy: policy(66) }), [true, true, true]);
+        for (const version of [63, 64, 65]) assert.deepEqual(flags({ sourceSnapshotPolicy: policy(version) }), [true, true, true]);
+        for (const make of [cell64, osc564]) assert.deepEqual(flags({ ...make(), sourceSnapshotPolicy: policy(65) }), [true, true, true]);
         for (const [make, file, position] of [[osc564, 'cell-size-run.json', 0], [osc5, 'animation-snapshots.jsonl', 1], [cell64, 'osc5-run.json', 2]]) {
             writeFileSync(join(root, file), '');
             assert.equal(flags(make())[position], true);
@@ -80,13 +80,13 @@ test('historical family exemptions never hide declarations or artifacts; live65 
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('every exact frozen selection stays bound to its policy while live V6 uses66', () => {
+test('every exact frozen selection stays bound to its policy while live V5 uses65', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-scope-forks-'));
-    const selected = [[historicOsc633Scope, 61, {}], [osc633ScopeV2, 62, {}], [osc633ScopeV3, 63, cell()], [osc633ScopeV4, 64, cell64()], [osc633ScopeV5, 65, {}], [osc633Scope, 66, {}],
-        [historicLegacyScope, 61, {}], [legacyScopeV2, 62, {}], [legacyScopeV3, 63, kitty()], [legacyScopeV4, 64, cell64()], [legacyScopeV5, 65, {}], [legacyScope, 66, {}],
+    const selected = [[historicOsc633Scope, 61, {}], [osc633ScopeV2, 62, {}], [osc633ScopeV3, 63, cell()], [osc633ScopeV4, 64, cell64()], [osc633Scope, 65, {}],
+        [historicLegacyScope, 61, {}], [legacyScopeV2, 62, {}], [legacyScopeV3, 63, kitty()], [legacyScopeV4, 64, cell64()], [legacyScope, 65, {}],
         [legacyScopeV2, 63, osc5()], [osc5LegacyScopeV4, 64, osc564()], [osc5Osc633ScopeV4, 64, osc564()]];
     try {
-        for (const [scope, version, fields] of selected) for (const candidate of [61, 62, 63, 64, 65, 66]) {
+        for (const [scope, version, fields] of selected) for (const candidate of [61, 62, 63, 64, 65]) {
             const legacy = scope.omittedSuites.includes('osc633');
             const context = { ...fields, sourceSnapshotPolicy: policy(candidate), collectionScope: scope,
                 ...(legacy ? {} : { osc633SuiteId: 'ntilde-owned-osc633-graded-v1' }) };

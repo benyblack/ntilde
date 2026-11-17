@@ -16,9 +16,9 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), 'b94864d4783e3f6162bf9b7f1d3cd6f1cd5bdcabd96a583beae37fe6b257b783');
+    assert.equal(hash(manifestBytes), '0fd70aaebdb8a515d30b20289009d467eae25e429716199a72071d753e9e5422');
     const manifest = JSON.parse(manifestBytes);
-    assert.equal(Object.keys(manifest.archives).length, 8, 'the final run, five retained failed attempts and two earlier complete runs');
+    assert.equal(Object.keys(manifest.archives).length, 10, 'the final run, five retained failed attempts and four earlier runs (three complete, one with a failed control)');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const root = mkdtempSync(join(tmpdir(), 'nt-osc720-publication-'));
     try {
@@ -50,8 +50,8 @@ test('retained run independently rederives the complete receipt and published pr
         for (const entry of item.experiments) assert.equal(entry.observations[0].scrollbackLines, 30, entry.name);
         assert.equal(byName['wheel-control'].observations[1].scrollOffset > 0, true);
         assert.equal(byName['ed3-control'].observations[1].scrollbackLines, 0);
-        assert.deepEqual(projected.report.wheelActions.map(entry => entry.notches.length), [1, 1]);
+        assert.deepEqual(projected.report.wheelActions.map(entry => [entry.action, entry.notches.length]), [['scroll-up', 1], ['scroll-down', 1], ['scroll-down', 1], ['scroll-up', 1], ['scroll-down', 1], ['scroll-down', 1]]);
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 160, supported: 94, unsupported: 1 });
-        assert.equal(schemaVersion, 73); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 74); assert.equal(fixtureRemoved, true);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });

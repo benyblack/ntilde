@@ -1,0 +1,5539 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc3008-graded-v1",
+  "contractsVersion": 1,
+  "runId": "34dd71da0b96927426033d07458e20de",
+  "adapter": {
+    "id": "ntilde-owned-osc3008-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "bec120b8f067bbe62421e682c597326926078ffcbff3421977b10c571fef3134",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 extensions.osc3008-context (no termless function; the terminal path writes ESC[1;1H ESC[2K and OSC 3008;type=test BEL, queries the cursor and returns unmeasuredCellResult, inconclusive by construction; the payload is not a UAPI.15 start or end) replayed byte-exactly over the journaled cursor, with the unchanged pinned code re-run from the retained derived bundle, and preserved. Beside it a separately identified effect contract graded by an independent oracle written from UAPI.15 v1.0 over paired complete stored cells, pane metadata (including the untrusted stored context stack and the ended-record ring) and session status: start and end, nesting, the specification example, an update flushing metadata and ending sub-contexts, BEL and ST terminators, id bounds, field validity, escapes, end metadata, a soft reset leaving the stack alone, and negative controls (the pinned payload, foreign spellings, OSC 133/633 not creating a context and a context not moving the title, working directory or shell state). Stack depth, the ended ring, end-ends-sub-contexts, repeated fields and bare backslashes are policy groups that never decide. Stored untrusted metadata in a disposable direct-local App only: no presentation, command-assist or agent use, no hangup, RIS, alternate-screen or real-emitter claim, no remote/mux, other platforms, common-harness or stock-score claim; the ended ring and original null title/working directory are not restored.",
+  "cases": [
+    {
+      "caseId": "extensions.osc3008-context",
+      "pinned": {
+        "pass": false,
+        "note": "Cursor response does not measure OSC 3008 systemd context",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        },
+        "caseId": "extensions.osc3008-context",
+        "termlessFunction": false,
+        "termless": null,
+        "terminal": {
+          "pass": false,
+          "response": "1;1",
+          "note": "Cursor response does not measure OSC 3008 systemd context",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query"
+          }
+        },
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]3008;type=test\u0007"
+        ],
+        "cursor": [
+          1,
+          1
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "effectContract": {
+        "id": "ntilde-osc3008-context-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "validity": [
+          {
+            "id": "observer-reads-contexts",
+            "held": true
+          },
+          {
+            "id": "stored-state-unaffected",
+            "held": true
+          }
+        ],
+        "required": [
+          {
+            "id": "stock/pinned",
+            "role": "stock",
+            "held": true
+          },
+          {
+            "id": "minimal/opened",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "minimal/closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "spec-example/opened",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "spec-example/closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "nesting/nested",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "nesting/updated",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "nesting/closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "terminators/opened",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "terminators/inner-closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "terminators/closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "id-bounds/bounded",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "id-bounds/closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "field-validity/fields",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "field-validity/typed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "field-validity/closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "escapes/escaped",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "escapes/closed",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "end-fields/crash",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "end-fields/invalid-fields",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "end-fields/success",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "foreign-negatives/ignored",
+            "role": "control",
+            "held": true
+          },
+          {
+            "id": "foreign-negatives/closed",
+            "role": "control",
+            "held": true
+          },
+          {
+            "id": "separate-from-shell-state/input-window",
+            "role": "control",
+            "held": true
+          },
+          {
+            "id": "separate-from-shell-state/finished",
+            "role": "control",
+            "held": true
+          },
+          {
+            "id": "separate-from-shell-state/closed",
+            "role": "control",
+            "held": true
+          },
+          {
+            "id": "reset-resilience/after-soft-reset",
+            "role": "required",
+            "held": true
+          },
+          {
+            "id": "reset-resilience/closed",
+            "role": "required",
+            "held": true
+          }
+        ],
+        "policy": [
+          {
+            "id": "end-ends-subcontexts/b-ended",
+            "match": true
+          },
+          {
+            "id": "end-ends-subcontexts/closed",
+            "match": true
+          },
+          {
+            "id": "depth/full",
+            "match": true
+          },
+          {
+            "id": "depth/updated-at-depth",
+            "match": true
+          },
+          {
+            "id": "depth/closed",
+            "match": true
+          },
+          {
+            "id": "depth/cleaned",
+            "match": true
+          },
+          {
+            "id": "repeated-field/repeated",
+            "match": true
+          },
+          {
+            "id": "repeated-field/closed",
+            "match": true
+          },
+          {
+            "id": "bare-backslash/invalid-escape",
+            "match": true
+          },
+          {
+            "id": "bare-backslash/closed",
+            "match": true
+          }
+        ],
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "experiments": [
+        {
+          "id": "extensions.osc3008-context/stock",
+          "name": "stock",
+          "role": "stock",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "pinned",
+              "snapshot": 2,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    0,
+                    0
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": []
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": []
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/minimal",
+          "name": "minimal",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "opened",
+              "snapshot": 3,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ],
+                  "ended": []
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ],
+                  "ended": []
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 4,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/spec-example",
+          "name": "spec-example",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "opened",
+              "snapshot": 5,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container",
+                      "user": "lennart",
+                      "hostname": "zeta",
+                      "machineId": "3deb5353d3ba43d08201c136a47ead7b",
+                      "bootId": "d4a3d0fdf2e24fdea6d971ce73f4fbf2",
+                      "pid": "1062862",
+                      "pidFdId": "1063162",
+                      "comm": "systemd-nspawn",
+                      "container": "foobar"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container",
+                      "user": "lennart",
+                      "hostname": "zeta",
+                      "machineId": "3deb5353d3ba43d08201c136a47ead7b",
+                      "bootId": "d4a3d0fdf2e24fdea6d971ce73f4fbf2",
+                      "pid": "1062862",
+                      "pidFdId": "1063162",
+                      "comm": "systemd-nspawn",
+                      "container": "foobar"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 6,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/nesting",
+          "name": "nesting",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "nested",
+              "snapshot": 7,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session",
+                      "user": "u-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell",
+                      "cwd": "/ctx/shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "cmdline": "echo hi"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session",
+                      "user": "u-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell",
+                      "cwd": "/ctx/shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "cmdline": "echo hi"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "updated",
+              "snapshot": 8,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app",
+                      "comm": "updated"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app",
+                      "comm": "updated"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 9,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/terminators",
+          "name": "terminators",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "opened",
+              "snapshot": 10,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "inner-closed",
+              "snapshot": 11,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 12,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/id-bounds",
+          "name": "id-bounds",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "bounded",
+              "snapshot": 13,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 14,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/field-validity",
+          "name": "field-validity",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "fields",
+              "snapshot": 15,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "user": "lennart",
+                      "cwd": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                      "cmdline": "",
+                      "hostname": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+                      "pid": "18446744073709551615"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "user": "lennart",
+                      "hostname": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+                      "pid": "18446744073709551615",
+                      "cwd": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                      "cmdline": ""
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "typed",
+              "snapshot": 16,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "user": "lennart",
+                      "cwd": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                      "cmdline": "",
+                      "hostname": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+                      "pid": "18446744073709551615"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm",
+                      "vm": "guest",
+                      "machineId": "3deb5353-d3ba-43d0-8201-c136a47ead7b",
+                      "bootId": "ABCDEFabcdef01234567890123456789",
+                      "targetUser": "root",
+                      "targetHost": "h.example",
+                      "sessionId": "7"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "user": "lennart",
+                      "hostname": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+                      "pid": "18446744073709551615",
+                      "cwd": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                      "cmdline": ""
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm",
+                      "machineId": "3deb5353-d3ba-43d0-8201-c136a47ead7b",
+                      "bootId": "ABCDEFabcdef01234567890123456789",
+                      "vm": "guest",
+                      "targetUser": "root",
+                      "targetHost": "h.example",
+                      "sessionId": "7"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 17,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/escapes",
+          "name": "escapes",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "escaped",
+              "snapshot": 18,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "cwd": "/a;b\\c",
+                      "cmdline": "echo ; done",
+                      "user": "zoë",
+                      "comm": "日本語"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "user": "zoë",
+                      "comm": "日本語",
+                      "cwd": "/a;b\\c",
+                      "cmdline": "echo ; done"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "bed86fab93af4328bbed0a1224af6d40",
+                      "type": "container"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 19,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "app"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/end-fields",
+          "name": "end-fields",
+          "role": "required",
+          "compareEnded": "last",
+          "reads": [
+            {
+              "label": "crash",
+              "snapshot": 20,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "invalid-fields",
+              "snapshot": 21,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "success",
+              "snapshot": 22,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/foreign-negatives",
+          "name": "foreign-negatives",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "ignored",
+              "snapshot": 23,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    0,
+                    0
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 24,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    0,
+                    0
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/separate-from-shell-state",
+          "name": "separate-from-shell-state",
+          "role": "control",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "input-window",
+              "snapshot": 25,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": true,
+                    "observed": true,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": [
+                      9,
+                      42
+                    ],
+                    "observed": [
+                      9,
+                      42
+                    ],
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": true,
+                  "commandStart": [
+                    9,
+                    42
+                  ],
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "cwd": "/ctx/not-the-cwd",
+                      "comm": "title-bait"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "comm": "title-bait",
+                      "cwd": "/ctx/not-the-cwd"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "finished",
+              "snapshot": 26,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "cwd": "/ctx/not-the-cwd",
+                      "comm": "title-bait"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell",
+                      "comm": "title-bait",
+                      "cwd": "/ctx/not-the-cwd"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 27,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/reset-resilience",
+          "name": "reset-resilience",
+          "role": "required",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "after-soft-reset",
+              "snapshot": 28,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "vm"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 29,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/end-ends-subcontexts",
+          "name": "end-ends-subcontexts",
+          "role": "policy",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "b-ended",
+              "snapshot": 30,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "command",
+                      "exit": "crash",
+                      "status": "139",
+                      "signal": "SIGSEGV"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 31,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/depth",
+          "name": "depth",
+          "role": "policy",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "full",
+              "snapshot": 32,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d1"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d2"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d3"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d4"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d5"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d6"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d7"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d8"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d9"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d10"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d11"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d12"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d13"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d14"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d15"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d1"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d2"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d3"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d4"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d5"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d6"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d7"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d8"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d9"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d10"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d11"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d12"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d13"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d14"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d15"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "updated-at-depth",
+              "snapshot": 33,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d1"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d2"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d3"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d4"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d5"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d6"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d7"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d8"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d9"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d10"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d11"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d12"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d13"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d14"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d15",
+                      "pid": "999"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d1"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d2"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d3"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d4"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d5"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d6"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d7"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d8"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d9"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d10"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d11"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d12"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d13"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d14"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d15",
+                      "pid": "999"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "command"
+                    },
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 34,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "cleaned",
+              "snapshot": 35,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/repeated-field",
+          "name": "repeated-field",
+          "role": "policy",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "repeated",
+              "snapshot": 36,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d",
+                      "user": "last",
+                      "pid": "1"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d",
+                      "user": "last",
+                      "pid": "1"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-c",
+                      "type": "command",
+                      "exit": "success",
+                      "status": "0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 37,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "extensions.osc3008-context/bare-backslash",
+          "name": "bare-backslash",
+          "role": "policy",
+          "compareEnded": null,
+          "reads": [
+            {
+              "label": "invalid-escape",
+              "snapshot": 38,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d",
+                      "user": "kept"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [
+                    {
+                      "id": "ctx-34dd71da-d",
+                      "user": "kept"
+                    }
+                  ],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "closed",
+              "snapshot": 39,
+              "stored": {
+                "passed": true,
+                "screenMatches": true,
+                "preserved": true,
+                "required": {
+                  "status": {
+                    "expected": "prompt",
+                    "observed": "prompt",
+                    "match": true
+                  },
+                  "command": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "accepting": {
+                    "expected": false,
+                    "observed": false,
+                    "match": true
+                  },
+                  "commandStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  },
+                  "outputStart": {
+                    "expected": null,
+                    "observed": null,
+                    "match": true
+                  }
+                },
+                "policy": {},
+                "observed": {
+                  "status": "prompt",
+                  "statusRaw": "awaitingInput",
+                  "confidence": "precise",
+                  "command": null,
+                  "exitCode": null,
+                  "accepting": false,
+                  "commandStart": null,
+                  "outputStart": null,
+                  "cursor": [
+                    9,
+                    42
+                  ],
+                  "title": "SH-base-34dd71da",
+                  "displayTitle": "SH-base-34dd71da",
+                  "cwd": "/ntilde-qa/osc133-base",
+                  "links": 0,
+                  "alternateScreen": false,
+                  "scrollbackLines": 0,
+                  "historyGeneration": 253,
+                  "colorBinding": "a3adbd528da5edb97c8eb42b092a89a1ce7d982ac67b522d1d281c5baa0f4d98"
+                }
+              },
+              "contexts": {
+                "observable": true,
+                "stackMatches": true,
+                "endedMatches": true,
+                "lastEndedMatches": true,
+                "expected": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    }
+                  ]
+                },
+                "observed": {
+                  "stack": [],
+                  "ended": [
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b",
+                      "type": "shell"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a",
+                      "type": "session"
+                    },
+                    {
+                      "id": "ctx-34dd71da-b"
+                    },
+                    {
+                      "id": "ctx-34dd71da-a"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d0"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    },
+                    {
+                      "id": "ctx-34dd71da-d"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "stock": {
+        "featureId": "extensions.osc3008-context",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc3008-context"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported",
+        "kind": "pinned-inconclusive-by-design"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "pinned-terminal-unmeasured-preserved-by-design",
+        "evidence": "owned-pane-metadata-and-session-status"
+      }
+    }
+  ]
+}

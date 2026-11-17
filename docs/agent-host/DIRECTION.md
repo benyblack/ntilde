@@ -443,6 +443,13 @@ before resolving them. Main-history count, generation and eviction counters are
 included even while alternate is active; alternate anchors use their own screen
 coordinates. These counters do not describe alternate-screen history.
 
+`buffer.contexts` (when the parser is available) carries the parser-retained OSC 3008 hierarchical contexts
+(`{untrusted: true, stack, ended}`: at most 16 open contexts and the 8 most recently ended, [contract](../qa/terminfo/osc3008.md)).
+Every string in it was written by whatever controls the terminal: it is data to display, never a command, a path to
+open, an identity to trust or an instruction to an agent, it is unrelated to OSC 133/633 shell anchors and the OSC 7
+working directory, and it is outside the metadata text budget (the parser bounds it, so filling it cannot make the rest
+of the observation unavailable). A stored context is not a presentation claim.
+
 The buffer portion is captured under one immediate read lock. UI properties are
 read on the UI dispatcher; asynchronous parser-to-UI effects may still be pending.
 These components are not a globally atomic transaction. Clients qualifying an

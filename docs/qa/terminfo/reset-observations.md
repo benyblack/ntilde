@@ -17,7 +17,7 @@ That archive is a later measurement, not the original triage artifact.
 
 | Entry | Exact source behavior | Disposition |
 | --- | --- | --- |
-| `device.term-features` | Reads only whether `process.env.TERM_FEATURES` is present, emits no request, and returns `pass: false`, `evidence: legacy`, `insufficient-evidence` regardless of presence. | An unverified environment hint. It neither tests nor advertises a terminal capability; setting the variable cannot make it a measured pass. |
+| `device.term-features` | Reads only whether `process.env.TERM_FEATURES` is present, emits no request, and returns `pass: false`, `evidence: legacy`, `insufficient-evidence` regardless of presence. | An unverified environment hint. It neither tests nor advertises a terminal capability; setting the variable cannot make it a measured pass. The [policy audit](2026-11-17-term-features-policy.md) closes this as inapplicable/deferred with no declaration. |
 | `reset.method` | The parser-only callback writes `Hello World`, calls `ctx.reset()`, and compares cursor/text. The App callback instead returns an unavailable-method note and `insufficient-evidence`; it does not invoke a reset or read state. | A legacy collector API gap, not evidence about RIS. Its empty App trace cannot qualify clearing or cursor restoration. |
 
 Concrete replacements are scoped observations: exact query replies in #771,

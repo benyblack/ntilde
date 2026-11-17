@@ -130,6 +130,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/AnsiParser.TextSizing.cs",
             "src/Ntilde.VT/AnsiParser.Titles.cs",
             "src/Ntilde.VT/AnsiParser.Notifications.cs",
+            "src/Ntilde.VT/AnsiParser.ContextSignalling.cs",
             "src/Ntilde.VT/KittyClipboardPacket.cs",
             "src/Ntilde.VT/AnsiParser.ShellIntegration.cs",
             "src/Ntilde.VT/AnsiParser.Images.cs",

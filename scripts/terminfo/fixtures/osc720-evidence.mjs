@@ -8,7 +8,7 @@ import { metadataProjection } from '../metadata.mjs';
 import { exposeOsc720Facts } from '../osc720-collector.mjs';
 import { osc720AdapterId } from '../osc720-grading-collector.mjs';
 import { replayOsc720TerminalStatic, replayOsc720TermlessStatic } from '../osc720-grading.mjs';
-import { osc720CaseId, osc720CaseIds, osc720Experiments, osc720Fixture, osc720NonceRow } from '../osc720-contracts.mjs';
+import { osc720ActionDeltas, osc720CaseId, osc720CaseIds, osc720Experiments, osc720Fixture, osc720NonceRow } from '../osc720-contracts.mjs';
 import { colEditRows, paletteBinding, syntheticColEditScreen } from './col-edit-evidence.mjs';
 
 export const osc720PaneId = '0f0e0d0c-0b0a-4009-8008-700600500400';
@@ -50,7 +50,7 @@ function frameOf(base, index, kind, state) {
     return { index, kind, paneId: osc720PaneId, barrier: index === 0 ? null : barrier, before, sha256, after: structuredClone(before), afterSha256: sha256, caseId: null, stageId: null };
 }
 
-const wheelRecord = () => ({ action: 'scroll-up', ok: true, ownerPid: 4242, notches: [{ request: { kind: 'mouseWheel', wheelDelta: 1, column: 1, row: 1, paneId: osc720PaneId }, eventDispatched: true, handled: true,
+const wheelRecord = action => ({ action, ok: true, ownerPid: 4242, notches: [{ request: { kind: 'mouseWheel', wheelDelta: osc720ActionDeltas[action], column: 1, row: 1, paneId: osc720PaneId }, eventDispatched: true, handled: true,
     boundary: 'avalonia-routed', observationAvailable: true, postVerified: true, observedAt: '2026-11-17T12:00:00.000Z' }], startedAt: '2026-11-17T12:00:00.000Z', finishedAt: '2026-11-17T12:00:01.500Z' });
 
 /** The model App applying one probe. `behavior` is 'ignore' (Ntilde) or 'rxvt' (the reference text). */
@@ -76,8 +76,7 @@ export function syntheticOsc720Evidence({ runId = 'a'.repeat(32), behavior = 'ig
         // Each experiment resets (ED 3 erases the history, so the history generation rises) and refills the fixed history.
         generation += 1;
         let state = { lines: ['scroll-28', 'scroll-29'], cursor: [colEditRows - 1, 0], scrollback: syntheticHistory, offset: 0, generation };
-        const hasAction = contract.plan.some(step => step.action !== undefined);
-        if (hasAction) actions.push({ action: 'scroll-up', response: wheelRecord() });
+        for (const step of contract.plan.filter(item => item.action !== undefined)) actions.push({ action: step.action, response: wheelRecord(step.action) });
         const pushRead = (step, current) => {
             const shown = adjust ? adjust(contract, step.read, structuredClone(current)) : current;
             const frame = frameOf(base, frames.length, 'ovu-read', shown);

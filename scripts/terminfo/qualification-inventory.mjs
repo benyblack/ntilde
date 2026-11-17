@@ -95,6 +95,8 @@ export const benchmarkSuites = Object.freeze([
     // Kitty graphics animation: the pinned callbacks replayed (always inconclusive), one effect contract composed from the owned animation carrier of the same run.
     { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v2', test: 'kitty-animation-publication.test.mjs' },
     { ...directory('cell-size', '2026-11-17-osc-cell-size-integrated', '2026-11-17-osc-cell-size-integrated-qualification.md'), module: 'cell-size-contracts.mjs', exports: ['cellSizeSuiteId', 'cellSizeVersion', 'cellSizeIds'], test: 'cell-size-integrated-publication.test.mjs' },
+    // OSC 3008 hierarchical contexts (#997): the pinned probe is inconclusive by construction; the effect contract is a recorded divergence.
+    { ...directory('osc3008', '2026-11-17-osc3008', '2026-11-17-osc3008-qualification.md'), module: 'osc3008-inventory.mjs', exports: ['osc3008SuiteId', 'osc3008ContractsVersion', 'osc3008CaseIds'], test: 'osc3008-publication.test.mjs' },
 ]);
 
 /**

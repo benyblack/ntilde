@@ -52,3 +52,13 @@ test('the scrollback state mapping follows the termless definition: the absolute
     assert.deepEqual(osc720ScrollbackState(24, facts(30, 30)), { viewportOffset: 0, totalLines: 54, screenLines: 24 });
     assert.deepEqual(osc720ScrollbackState(24, facts(0, 0)), { viewportOffset: 0, totalLines: 24, screenLines: 24 });
 });
+
+test('a scrolled experiment restores the live view before the next reset', () => {
+    const byName = Object.fromEntries(osc720Experiments(runId).map(item => [item.name, item]));
+    for (const name of ['count-2-from-scrolled', 'wheel-control']) {
+        const tail = byName[name].plan.slice(-3);
+        assert.deepEqual(tail.map(step => Object.keys(step)[0]), ['action', 'action', 'wait'], name);
+        assert.deepEqual(tail.slice(0, 2).map(step => step.action), ['scroll-down', 'scroll-down'], name);
+    }
+    for (const name of ['pinned-bare', 'unmarked', 'ed3-control']) assert.equal(byName[name].plan.some(step => step.action !== undefined), false, name);
+});

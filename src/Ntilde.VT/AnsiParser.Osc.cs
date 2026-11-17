@@ -128,6 +128,12 @@ namespace Ntilde.VT
                 case "633":
                     HandleVsCodeShellIntegrationMark(data);
                     break;
+
+                // OSC 3008: UAPI.15 hierarchical context signalling. Bounded, untrusted descriptive metadata only;
+                // see AnsiParser.ContextSignalling.cs. It is independent of the OSC 133/633 prompt state above.
+                case "3008":
+                    HandleOsc3008(data);
+                    break;
             }
         }
 

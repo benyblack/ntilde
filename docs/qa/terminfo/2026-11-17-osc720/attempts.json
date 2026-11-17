@@ -50,6 +50,20 @@
       "scriptsCommit": "f538abb9de3ef72d7dbd0ae649d85db6c832e244",
       "failedAt": null,
       "reason": "A complete, successful run (owned run 7b3a588563d29ef1fa74ce9d9260e62c, stock collector run 19ab1c7fe2cee695151b967daf6fe5c7) whose grading compared only the screen text between the two reads of an experiment. Codex review showed that would credit a view move that also changed attributes, cursor mode or terminal modes; the grading now compares the complete stored screen except the separately measured history, and the run was repeated. Same conclusion; kept as a complete run."
+    },
+    {
+      "file": "superseded/attempt-8.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "4e8605dbc4f26ae24e5a49b8e2a4a058c4eafc20",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run 966525901fd2e59442dc76dd4ed1b80e, stock collector run 3c7b51ec949950f3e17cbc8e37326e1e, source policy v66, receipt 73) measured before the OSC 3008 batch merged and took policy v66. The suite was restacked onto source policy v67 / receipt schema 74 on the merged tree; this run is kept as a complete run, not a failure."
+    },
+    {
+      "file": "superseded/attempt-9.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "85efa784607f1e98b36c52c1538a30d25c6f9000",
+      "failedAt": null,
+      "reason": "A complete run on the restacked tree (policy v67, receipt 74) whose effect contract was inconclusive, correctly: the unmarked control started with the view still scrolled to offset 3 (left by the previous scrolled experiment) so its setup did not hold. The reset and refill of the next experiment can outrun the view's clamp. The plan now returns the view to the live line with two scroll-down notches after each scrolled experiment, and the run was repeated; the six protocol experiments had observed no change in this run either."
     }
   ]
 }
