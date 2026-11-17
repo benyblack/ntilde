@@ -68,7 +68,7 @@ export class OwnedQueryObserver {
         check(this.#pending?.index === index && index === this.#frames.length);
         const entry = queryPlan[index], before = this.#pending.before.screen;
         this.#pending.capture = capture;
-        const comparison = inspectQueryWitness(queryContext(before, this.#checksumReport, this.#marginsReport, this.#noticeReport, this.#deviceReport, this.#colorReport, this.#specialColorReport, this.#capabilitiesReport), entry.id ?? queryPlan[1].id, capture);
+        const comparison = inspectQueryWitness(queryContext(before, { checksumReport: this.#checksumReport, marginsReport: this.#marginsReport, noticeReport: this.#noticeReport, deviceReport: this.#deviceReport, colorReport: this.#colorReport, specialColorReport: this.#specialColorReport, capabilitiesReport: this.#capabilitiesReport }), entry.id ?? queryPlan[1].id, capture);
         const nonceKey = comparison.orderingNonces.join(','); check(!this.#used.has(nonceKey)); this.#used.add(nonceKey);
         if (entry.kind !== 'query') {
             check(capture.byteLength === 0);

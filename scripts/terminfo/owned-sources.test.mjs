@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 451 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 451); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 452 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 452); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs', 'clipboard-pane-session.cs', 'core-icon-window.cs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -291,10 +291,17 @@ test('private v57 fixed336 source scope adds the six modifyOtherKeys scripts to 
 });
 
 
+<<<<<<< HEAD
 test('live v74 fixed451 adds the seven feature-reporting scripts to the frozen v73 graph', () => {
     assert.deepEqual(ownedSourceFiles, capturedV76SourceFiles);
     assert.equal(Object.keys(capturedV74SourceFiles).length, 451);
     assert.deepEqual(Object.fromEntries(Object.entries(capturedV74SourceFiles).filter(([key]) => !key.startsWith('caps'))), capturedV73SourceFiles);
+=======
+test('live v74 fixed452 adds the shared query-probe machinery and the seven feature-reporting scripts to the frozen v73 graph', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV74SourceFiles);
+    assert.equal(Object.keys(capturedV74SourceFiles).length, 452);
+    assert.deepEqual(Object.fromEntries(Object.entries(capturedV74SourceFiles).filter(([key]) => key !== 'probeSuiteSharedSourceSha256' && !key.startsWith('caps'))), capturedV73SourceFiles);
+>>>>>>> 0a9f08fda (caps: share the query-probe machinery and clear the Sonar findings)
     assert.deepEqual(Object.values(capturedV73SourceFiles).filter(file => file.startsWith('osc3008-')).sort(),
         ['osc3008-collector.mjs', 'osc3008-contracts.mjs', 'osc3008-grading-collector.mjs', 'osc3008-grading.mjs', 'osc3008-receipt.mjs']);
     assert.deepEqual(Object.fromEntries(Object.entries(capturedV73SourceFiles).filter(([key]) => !key.startsWith('osc3008'))), capturedV72SourceFiles);

@@ -19,6 +19,7 @@
 // boundaries; no rendering, painted-pixel, remote/mux, common-harness or score claim.
 import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { selectiveEraseInk } from './selective-erase-contracts.mjs';
+import { pinnedOscReply, replayPinnedPath } from './probe-suite-shared.mjs';
 import { devqColorReset, devqFixture, devqMinimum, devqReseed, devqReset, devqSeed } from './devq-contracts.mjs';
 export { validateDevqScreen as validateCapsScreen } from './devq-contracts.mjs';
 
@@ -54,8 +55,8 @@ const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.
 
 /** The pinned request (BEL-terminated, exactly as registered), and the frame pattern the pinned code searches the captured text for (text escapes, like the bundle spells them). */
 export const capsPinnedQuery = `${esc}]1337;RequestCapabilities${bel}`;
-export const capsPinnedPattern = new RegExp(String.raw`\x1b\]1337;Capabilities=[^\x07\x1b]*(?:\x07|\x1b\\)`);
-const pinnedPrefix = new RegExp(String.raw`\x1b\]1337;Capabilities=`);
+export const capsPinnedPattern = /\x1b\]1337;Capabilities=[^\x07\x1b]*(?:\x07|\x1b\\)/;
+const pinnedPrefix = /\x1b\]1337;Capabilities=/;
 const pinnedExpected = 'Complete OSC 1337 Capabilities reply';
 
 /** The exact calls each pinned path makes, in order. `replies` names which journaled bytes the captured call returns. */
@@ -71,23 +72,11 @@ const pinnedCriteria = Object.freeze({
         + 'without a complete frame is inconclusive (invalid-reply) and no frame is inconclusive (no-response); it can never be unsupported',
 });
 
-/** The pinned oscReplyResult over one response text (key order is part of the retained result; the pinned code sets no note). */
-function capabilitiesResult(response) {
-    const match = capsPinnedPattern.exec(response);
-    if (match !== null) {
-        return { pass: true, response, observation: { outcome: 'supported', evidence: 'query' },
-            assertions: [{ kind: 'positive', expected: pinnedExpected, observed: match[0] }] };
-    }
-    const reason = pinnedPrefix.test(response) ? 'invalid-reply' : 'no-response';
-    return { pass: false, response, observation: { outcome: 'inconclusive', reason, evidence: 'query' } };
-}
-
-/** The pinned result of one path over the journaled bytes of the case's own exchange: `replies` (the captured reply text before the barrier) and `barrier`. */
-export function replayCapsPinned(caseId, path, { replies = '', barrier = '' } = {}) {
+/** The pinned result of one path over the journaled bytes of the case's own exchange: `replies` (the captured reply text before the barrier) and `barrier`. The criterion is the shared pinned
+ *  oscReplyResult bound to this case's pattern, prefix and expectation. */
+export function replayCapsPinned(caseId, path, bytes) {
     if (capsPinnedScripts[caseId] === undefined) throw new Error(`Unknown feature-reporting case ${caseId}.`);
-    if (path === 'termless') return capabilitiesResult(replies);
-    if (path !== 'terminal') throw new Error(`Unknown pinned path ${path}.`);
-    return capabilitiesResult(replies + barrier);
+    return replayPinnedPath(path, bytes, response => pinnedOscReply({ pattern: capsPinnedPattern, prefix: pinnedPrefix, expected: pinnedExpected }, response));
 }
 
 // ---------- the independent reply oracle ----------

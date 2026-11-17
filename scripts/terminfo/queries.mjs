@@ -138,7 +138,10 @@ function inspectCapture(capture, context, id, used) {
 }
 /** The witness context of one query frame; `checksumReport` only when the run turned the off-by-default DECRQCRA report on and
  * `marginsReport` only under the v2 and v3 query policies and `noticeReport` only under v3. */
-export const queryContext = (screen, checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false, capabilitiesReport = false) => ({ rows: screen.rows, cols: screen.cols, top: screen.bufferState.scrollTop + 1,
+/** The witness context of one query frame; `checksumReport` only when the run turned the off-by-default DECRQCRA report on and
+ * `marginsReport` only under the v2 and v3 query policies and `noticeReport` only under v3. The flags arrive as one options object
+ * so a new query policy cannot grow the parameter list past the lint bound. */
+export const queryContext = (screen, { checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false, capabilitiesReport = false } = {}) => ({ rows: screen.rows, cols: screen.cols, top: screen.bufferState.scrollTop + 1,
     bottom: screen.bufferState.scrollBottom + 1, ...(checksumReport ? { checksumReport: true } : {}), ...(marginsReport ? { marginsReport: true } : {}), ...(noticeReport ? { noticeReport: true } : {}), ...(deviceReport ? { deviceReport: true } : {}), ...(colorReport ? { colorReport: true } : {}), ...(specialColorReport ? { specialColorReport: true } : {}), ...(capabilitiesReport ? { capabilitiesReport: true } : {}) });
 export function buildQueryReport(input) {
     const { binding: supplied, priorChallenges, initial, actions, frames, seal, checksumReport = false, marginsReport = false, noticeReport = false, deviceReport = false, colorReport = false, specialColorReport = false, capabilitiesReport = false } = structuredClone(input);
@@ -156,7 +159,7 @@ export function buildQueryReport(input) {
         const before = validateSample(frame.before, binding, original, clock);
         const after = validateSample(frame.after, binding, original, clock);
         check(snapshotHash(before) === snapshotHash(expected));
-        const comparison = inspectCapture(frame.capture, queryContext(before, checksumReport, marginsReport, noticeReport, deviceReport, colorReport, specialColorReport, capabilitiesReport), entry.id ?? fixed[0].id, used);
+        const comparison = inspectCapture(frame.capture, queryContext(before, { checksumReport, marginsReport, noticeReport, deviceReport, colorReport, specialColorReport, capabilitiesReport }), entry.id ?? fixed[0].id, used);
         if (entry.kind === 'query') observations.push(comparison);
         else {
             check(frame.capture.byteLength === 0);

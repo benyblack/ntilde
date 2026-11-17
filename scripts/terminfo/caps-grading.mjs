@@ -3,6 +3,7 @@
 // terminal path also sees the DA barrier that follows them). The pinned verdict is the replayed pinned code's own (supported when the captured text carries one complete Capabilities frame, whatever the
 // feature string); the separately identified effect contract carries the graded conclusion and any difference is recorded as a divergence, never absorbed.
 import { validateGradedJournal, crossCheckGradedCapture, requirePinnedAgreement, requireReplayAgreement, validateGradedCaptureRecord, planReads } from './graded-plan.mjs';
+import { suiteReplyLists, reconcilePinnedWithEffect, verifySuitePinnedReplays, suitePinnedResult } from './probe-suite-shared.mjs';
 import { colorBindingHash } from './resolved-colors.mjs';
 import { screenSnapshot } from './agent-observer.mjs';
 import { validateCapsExchange } from './caps-report.mjs';
@@ -50,44 +51,18 @@ export function validateCapsEvidence(frames, run, runId, adapter) {
     }
 }
 
-/** The reply lists of one case's reads, in plan order. A cells read carries no report; a report read's journaled replies must equal the worker's record and be ordered by that read's own barrier. */
-function repliesOf(contract, recorded, readFrames) {
-    const reads = contract.plan.filter(step => step.read), out = [];
-    for (const [index, step] of reads.entries()) {
-        const frame = readFrames[index], read = recorded.reads[index];
-        if (step.read !== 'report') {
-            if (frame.report !== undefined || read.report !== undefined) throw new Error(`Unexpected ${contract.caseId} report on a cells read.`);
-            out.push([]);
-            continue;
-        }
-        const journaled = validateCapsExchange(frame.report), worker = validateCapsExchange(read.report);
-        if (JSON.stringify(journaled) !== JSON.stringify(worker) || journaled.barrier !== frame.barrier) throw new Error(`${label} ${contract.caseId} replies differ from their read frame.`);
-        out.push(journaled.replies);
-    }
-    return out;
-}
-
-/** A difference between the pinned verdict and the effect verdict is a recorded divergence, never absorbed. */
-function reconcile(pinnedOutcome, effect) {
-    return pinnedOutcome === effect.outcome ? null : { pinnedOutcome, contractOutcome: effect.outcome, kind: `pinned-${pinnedOutcome}-effect-${effect.outcome}` };
-}
-
-/** Verify and replay one case's pinned results over its journaled exchange; returns the verified pair. */
-function verifyPinnedReplays(contract, recorded, exchange, { replayModule = null } = {}) {
-    const { termless, terminal } = recorded.pinned ?? {};
-    if (termless?.probeId !== contract.caseId || terminal?.probeId !== contract.caseId || !termless.observation || !terminal.observation) throw new Error(`Missing pinned ${contract.caseId} grading results.`);
-    const replies = exchange.replies.join('');
-    requirePinnedAgreement(contract, termless, replayCapsPinned(contract.caseId, 'termless', { replies }), label);
-    requirePinnedAgreement(contract, terminal, replayCapsPinned(contract.caseId, 'terminal', { replies, barrier: exchange.barrier }), label);
-    if (replayModule) {
-        const context = capsRecordingContext(contract, exchange);
-        requireReplayAgreement(contract, replayModule.ntildeRunCapsTermless(contract.caseId, context), termless);
-        if (context.fedCount !== contract.pinnedFeeds.length || context.askedCount !== 0) throw new Error(`Pinned ${contract.caseId} replay made a different number of calls.`);
-    }
-    return { termless, terminal };
-}
-
-const resultOf = pinned => ({ pass: pinned.pass, response: pinned.response ?? null, note: pinned.note ?? null, observation: pinned.observation, assertions: pinned.assertions ?? null });
+const repliesOf = (contract, recorded, readFrames) =>
+    suiteReplyLists({ label, contract, recorded, readFrames, validateExchange: validateCapsExchange });
+const reconcile = reconcilePinnedWithEffect;
+const verifyPinnedReplays = (contract, recorded, exchange, { replayModule = null } = {}) => verifySuitePinnedReplays({
+    label, contract, recorded, exchange, replayModule, requirePinned: requirePinnedAgreement, requireReplay: requireReplayAgreement,
+    replayTermless: ({ replies } = {}) => replayCapsPinned(contract.caseId, 'termless', { replies }),
+    replayTerminal: ({ replies, barrier } = {}) => replayCapsPinned(contract.caseId, 'terminal', { replies, barrier }),
+    recordingContextOf: capsRecordingContext,
+    runTermless: (probeId, ctx) => replayModule.ntildeRunCapsTermless(probeId, ctx),
+    runTerminal: (probeId, ctx) => replayModule.ntildeRunCapsTerminal(probeId, ctx),
+});
+const resultOf = suitePinnedResult;
 
 /** Derive one case's published record from its journaled frames, worker record and the graded effect. */
 function deriveCapsCase(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, contractsVersion }) {

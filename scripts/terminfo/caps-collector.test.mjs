@@ -67,9 +67,9 @@ function fakeIo({ failAt = null, failFinish = false } = {}) {
 
 /** A stand-in for the layered bundle: its pinned functions are the replay itself, called with the real recording contexts. */
 const gradingModule = {
-    ntildeCapsAdapter: { id: capsAdapterId, probeIds: [caseId] },
-    ntildeRunCapsTermless: (probeId, ctx) => ({ probeId, ...replayCapsPinned(probeId, 'termless', { replies: ctx.feedCapture(capsPinnedQuery) }) }),
-    ntildeRunCapsTerminal: async (probeId, ctx) => {
+    adapter: { id: capsAdapterId, probeIds: [caseId] },
+    runTermless: (probeId, ctx) => ({ probeId, ...replayCapsPinned(probeId, 'termless', { replies: ctx.feedCapture(capsPinnedQuery) }) }),
+    runTerminal: async (probeId, ctx) => {
         const reply = await ctx.queryWithSentinelOutcome(capsPinnedQuery, capsPinnedPattern);
         return { probeId, ...replayCapsPinned(probeId, 'terminal', { replies: reply.raw, barrier: '' }) };
     },
@@ -112,12 +112,12 @@ test('a collection failure still restores, and a restoration failure is reported
 
 test('a layered bundle whose pinned code makes a different number of calls is refused', async () => {
     const { fence, owner } = fakeIo();
-    const extra = { ...gradingModule, ntildeRunCapsTermless: (probeId, ctx) => ({ probeId, ...replayCapsPinned(probeId, 'termless', { replies: ctx.feedCapture(capsPinnedQuery) + ctx.feedCapture(capsPinnedQuery) }) }) };
+    const extra = { ...gradingModule, runTermless: (probeId, ctx) => ({ probeId, ...replayCapsPinned(probeId, 'termless', { replies: ctx.feedCapture(capsPinnedQuery) + ctx.feedCapture(capsPinnedQuery) }) }) };
     await assert.rejects(collectCapsGrading({ config, fence, owner, gradingModule: extra }), /out of order/, 'an extra pinned call is refused by the context');
-    const skipped = { ...gradingModule, ntildeRunCapsTermless: probeId => ({ probeId, ...replayCapsPinned(probeId, 'termless', { replies: '' }) }) };
+    const skipped = { ...gradingModule, runTermless: probeId => ({ probeId, ...replayCapsPinned(probeId, 'termless', { replies: '' }) }) };
     const first = fakeIo();
     await assert.rejects(collectCapsGrading({ config, fence: first.fence, owner: first.owner, gradingModule: skipped }), /different number of calls/, 'a pinned path that skips its call is refused');
-    const fewer = { ...gradingModule, ntildeRunCapsTerminal: async probeId => ({ probeId, ...replayCapsPinned(probeId, 'terminal', { replies: '', barrier: '' }) }) };
+    const fewer = { ...gradingModule, runTerminal: async probeId => ({ probeId, ...replayCapsPinned(probeId, 'terminal', { replies: '', barrier: '' }) }) };
     const second = fakeIo();
     await assert.rejects(collectCapsGrading({ config, fence: second.fence, owner: second.owner, gradingModule: fewer }), /different number of calls/);
 });
