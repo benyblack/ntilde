@@ -44,6 +44,7 @@ namespace Ntilde.VT
         private void SoftReset()
         {
             _buffer.SoftReset();
+            OnPointerShapeReset?.Invoke();
             ResetCharsets();
             _swallowNextNewline = false;
             _verticalOffset = 0;

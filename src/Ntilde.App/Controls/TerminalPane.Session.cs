@@ -157,6 +157,18 @@ namespace Ntilde.Controls
             // decodes the bitmaps: SIXEL always, Kitty and iTerm2 where the session's policy carries them.
             Parser = new AnsiParser(Buffer, forceConPtyFiltering);
             WireKittyClipboard(muxBacked);
+            if (!muxBacked)
+            {
+                var pointerParser = Parser;
+                Parser.OnPointerShapeRequested = (shape, alternate) => this.Dispatcher.Post(() =>
+                {
+                    if (ReferenceEquals(Parser, pointerParser)) TermView.RequestPointerShape(shape, alternate);
+                });
+                Parser.OnPointerShapeReset = () => this.Dispatcher.Post(() =>
+                {
+                    if (ReferenceEquals(Parser, pointerParser)) TermView.ResetPointerShapes();
+                });
+            }
 
             // The GUI decodes the pixels while the headless parser applies the same geometry.
             Parser.ImageDecoder = CreateImageDecoder(muxBacked);

@@ -92,3 +92,15 @@ test('status projects stable facts but validates required original timestamps', 
     assert.throws(() => copyMetadataStatus(raw, 'wrong'));
     delete raw.lastOutputAtMs; assert.throws(() => copyMetadataStatus(raw, paneId));
 });
+
+test('pointer readback preserves independent control state and does not invent historical observations', () => {
+    assert.equal(Object.hasOwn(copyPaneMetadata(wire()), 'pointerShape'), false);
+    const raw = { ...wire(), pointerShape: { requested: 'text', controlCursor: 'Wait', linkOverride: false } };
+    assert.deepEqual(copyPaneMetadata(raw).pointerShape, raw.pointerShape);
+    for (const pointerShape of [{ requested: 'bad', controlCursor: 'text', linkOverride: false },
+        { requested: 'text', controlCursor: 'x'.repeat(65), linkOverride: false },
+        { requested: 'text', controlCursor: 'text' },
+        { requested: null, controlCursor: 'default', linkOverride: 'false' },
+        { requested: null, controlCursor: 'default', linkOverride: false, extra: true }])
+        assert.throws(() => copyPaneMetadata({ ...wire(), pointerShape }));
+});

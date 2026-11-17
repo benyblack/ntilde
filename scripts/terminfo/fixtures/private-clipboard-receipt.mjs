@@ -35,7 +35,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc(?:133|633|78|9)|title-stack|osc-title)-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|osc22|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -45,7 +45,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-text-cursor(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|osc22|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -981,7 +981,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc22 = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -1029,7 +1029,10 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (osc3008) {
             await addOsc3008Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008) writerFor(output)('context.json', context);
+        if (osc22) {
+            await addOsc22Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc22) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1203,6 +1206,26 @@ async function addOsc3008Evidence({ output, write, context, evidence, lrMarginsB
     evidence.osc3008Evidence = { runId: context.runId, suiteId: osc3008SuiteId, file: 'ocx-observations.json', sha256: hash(readFileSync(join(output, 'ocx-observations.json'))),
         runFile: 'ocx-run.json', runSha256: hash(readFileSync(join(output, 'ocx-run.json'))), adapterBundleSha256: hash(osc3008Bytes),
         contractsVersion: osc3008ContractsVersion, counts: osc3008Counts(osc3008Report), provisionalUntil: 'cell-receipt.json' };
+}
+
+/** Synthetic OSC 22 receipt evidence, not a runtime measurement. */
+async function addOsc22Evidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticOsc22Evidence } = await import('./osc22-evidence.mjs');
+    const { buildOsc22GradingReport, osc22Counts } = await import('../osc22-grading.mjs');
+    const { adaptOsc22Collector, osc22AdapterId } = await import('../osc22-grading-collector.mjs');
+    const { osc22SuiteId, osc22ContractsVersion } = await import('../osc22-contracts.mjs');
+    const osc22Bytes = Buffer.from(adaptOsc22Collector(lrMarginsBytes.toString()));
+    const osc22 = syntheticOsc22Evidence({ runId: context.runId, bundleSha256: hash(osc22Bytes) });
+    osc22.adapter = { ...osc22.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const osc22Report = buildOsc22GradingReport(osc22.frames, osc22.run, context.runId, osc22.adapter);
+    write('ptr-observations.json', osc22Report);
+    write('ptr-run.json', osc22.run);
+    writeFileSync(join(output, 'ptr-snapshots.jsonl'), osc22.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-ptr.mjs'), osc22Bytes);
+    Object.assign(context, { osc22AdapterId, osc22SuiteId, osc22BundleSha256: hash(osc22Bytes), osc22ContractsVersion });
+    evidence.osc22Evidence = { runId: context.runId, suiteId: osc22SuiteId, file: 'ptr-observations.json', sha256: hash(readFileSync(join(output, 'ptr-observations.json'))),
+        runFile: 'ptr-run.json', runSha256: hash(readFileSync(join(output, 'ptr-run.json'))), adapterBundleSha256: hash(osc22Bytes),
+        contractsVersion: osc22ContractsVersion, counts: osc22Counts(osc22Report), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** The opt-in xterm saved-mode suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes. */

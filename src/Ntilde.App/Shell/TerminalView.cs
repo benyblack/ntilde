@@ -277,8 +277,15 @@ namespace Ntilde.Shell
                 _buffer.OnInvalidate -= InvalidateBuffer; // Idempotent remove
                 _buffer.OnScreenSwitched -= OnScreenSwitched;
             }
-            if (!ReferenceEquals(_buffer, buffer)) LastCompletedResizeDispatch = default;
+            bool changed = !ReferenceEquals(_buffer, buffer);
+            if (changed)
+            {
+                LastCompletedResizeDispatch = default;
+                ClearHoveredLink();
+            }
             _buffer = buffer;
+            if (changed) ResetPointerShapes();
+            else UpdatePointerShape();
             _textBlink.Restart(clearCells: true);
             if (_buffer != null)
             {
@@ -300,6 +307,11 @@ namespace Ntilde.Shell
 
         private void OnScreenSwitched(bool isAltScreen)
         {
+            var source = _buffer;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (ReferenceEquals(_buffer, source)) UpdatePointerShape();
+            });
             // CRITICAL: Clear the row picture cache on every screen switch.
             // AltScreen rows are reused objects whose revision counters can cycle back to
             // previously-cached values, causing stale blank SKPictures to be served.

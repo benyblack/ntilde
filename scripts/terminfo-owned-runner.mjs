@@ -191,6 +191,9 @@ import { Osc5Observer } from './terminfo/osc5-capture.mjs';
 import { adaptOsc3008Collector, osc3008AdapterId, osc3008DerivedFromAdapterId } from './terminfo/osc3008-grading-collector.mjs';
 import { osc3008ContractsVersion, osc3008Prefix, osc3008SuiteId } from './terminfo/osc3008-contracts.mjs';
 import { buildOsc3008GradingReport, matchesOsc3008Baseline, osc3008Counts, osc3008ObserverPlan, verifyOsc3008PinnedCode } from './terminfo/osc3008-grading.mjs';
+import { adaptOsc22Collector, osc22AdapterId, osc22DerivedFromAdapterId } from './terminfo/osc22-grading-collector.mjs';
+import { osc22ContractsVersion, osc22Prefix, osc22SuiteId } from './terminfo/osc22-contracts.mjs';
+import { buildOsc22GradingReport, matchesOsc22Baseline, osc22Counts, osc22ObserverPlan, verifyOsc22PinnedCode } from './terminfo/osc22-grading.mjs';
 import { adaptModifyOtherKeysCollector, modifyOtherKeysAdapterId } from './terminfo/modify-other-keys-grading-collector.mjs';
 import { modifyOtherKeysCaseIds, modifyOtherKeysContractsVersion, modifyOtherKeysGradedSuiteId } from './terminfo/modify-other-keys-contracts.mjs';
 import { buildModifyOtherKeysGradingReport, modifyOtherKeysCounts } from './terminfo/modify-other-keys-grading.mjs';
@@ -1605,6 +1608,36 @@ async function retainOsc3008Evidence(output, runId, osc3008Bundle, upstream, una
         contractsVersion: osc3008ContractsVersion, counts: osc3008Counts(report), provisionalUntil: 'cell-receipt.json' };
 }
 
+/** Derive and lock the layered OSC 22 grading extension over the left/right-margin one (a sibling of the special-color, notification and OSC 133 layers). */
+function prepareOsc22Collector(tool, lrMarginsBundle, output) {
+    const adapted = adaptOsc22Collector(readFileSync(lrMarginsBundle));
+    const osc22BundleSha256 = hash(adapted);
+    const bundle = join(tool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-osc22-${osc22BundleSha256}.mjs`);
+    writeFileSync(bundle, adapted, { flag: 'wx', mode: 0o600 });
+    if (hash(readFileSync(bundle)) !== osc22BundleSha256) throw new Error('Derived OSC 22 bundle digest mismatch.');
+    writeFileSync(join(output, 'collector-ptr.mjs'), readFileSync(bundle), { flag: 'wx', mode: 0o600 });
+    return { bundle, osc22BundleSha256 };
+}
+
+/** Re-derive the OSC 22 report parent-side from the paired journal and the worker's run log, then run the PINNED terminal-path code from the retained derived bundle over the journaled cursor. */
+async function retainOsc22Evidence(output, runId, osc22Bundle, upstream, unavailable) {
+    const adapterBytes = readFileSync(join(output, 'collector-ptr.mjs'));
+    if (unavailable) {
+        const markerBytes = readFileSync(join(output, 'ptr-unavailable.json')), marker = JSON.parse(markerBytes);
+        return { runId, suiteId: osc22SuiteId, file: 'ptr-unavailable.json', sha256: hash(markerBytes), status: 'unavailable', reason: marker.reason, counts: {},
+            adapterBundleSha256: hash(adapterBytes), contractsVersion: osc22ContractsVersion, provisionalUntil: 'cell-receipt.json' };
+    }
+    const runBytes = readFileSync(join(output, 'ptr-run.json')), run = JSON.parse(runBytes);
+    const frames = readFileSync(join(output, 'ptr-snapshots.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const adapter = { id: osc22AdapterId, derivedFromAdapterId: osc22DerivedFromAdapterId, bundleSha256: hash(adapterBytes), upstreamBundleSha256: upstream };
+    await verifyOsc22PinnedCode(run, await import(pathToFileURL(osc22Bundle).href));
+    const report = buildOsc22GradingReport(frames, run, runId, adapter);
+    writeJson(join(output, 'ptr-observations.json'), report);
+    return { runId, suiteId: osc22SuiteId, file: 'ptr-observations.json', sha256: hash(readFileSync(join(output, 'ptr-observations.json'))),
+        runFile: 'ptr-run.json', runSha256: hash(runBytes), adapterBundleSha256: adapter.bundleSha256,
+        contractsVersion: osc22ContractsVersion, counts: osc22Counts(report), provisionalUntil: 'cell-receipt.json' };
+}
+
 /** Derive and lock the layered XTGETTCAP grading extension over the title/icon-stack one. */
 function prepareXtgettcapCollector(tool, titleStackBundle, output) {
     const adapted = adaptXtgettcapCollector(readFileSync(titleStackBundle));
@@ -2075,6 +2108,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let kclEvidence;
     let osc5Evidence;
     let osc3008Evidence;
+    let osc22Evidence;
     let oscTitleEvidence;
     let selectionColorsEvidence;
     let colorResetEvidence;
@@ -2169,6 +2203,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const { bundle: kclBundle, kclBundleSha256 } = prepareKclCollector(privateTool, lrMarginsBundle, output);
         const { bundle: osc5Bundle, osc5BundleSha256 } = prepareOsc5Collector(privateTool, lrMarginsBundle, output);
         const { bundle: osc3008Bundle, osc3008BundleSha256 } = prepareOsc3008Collector(privateTool, lrMarginsBundle, output);
+        const { bundle: osc22Bundle, osc22BundleSha256 } = prepareOsc22Collector(privateTool, lrMarginsBundle, output);
         const { bundle: modifyOtherKeysBundle, modifyOtherKeysBundleSha256 } = prepareModifyOtherKeysCollector(privateTool, lrMarginsBundle, output);
         const { bundle: mexBundle, mexBundleSha256 } = prepareMexCollector(privateTool, lrMarginsBundle, output);
         const { bundle: pxmBundle, pxmBundleSha256 } = preparePxmCollector(privateTool, lrMarginsBundle, output);
@@ -2187,7 +2222,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             ...(collectionScope ? { collectionScope } : {}),
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
-            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc633Bundle, osc633BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, notifyBundle, notifyBundleSha256, devqBundle, devqBundleSha256, xcsBundle, xcsBundleSha256, xssBundle, xssBundleSha256, xsvBundle, xsvBundleSha256, kclBundle, kclBundleSha256, osc5Bundle, osc5BundleSha256, osc3008Bundle, osc3008BundleSha256, mexBundle, mexBundleSha256, pxmBundle, pxmBundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
+            coreGapsBundle, coreGapsBundleSha256, routedInputBundle, routedInputBundleSha256, osc133Bundle, osc133BundleSha256, osc633Bundle, osc633BundleSha256, osc78Bundle, osc78BundleSha256, titleStackBundle, titleStackBundleSha256, xtgettcapBundle, xtgettcapBundleSha256, osc9Bundle, osc9BundleSha256, notifyBundle, notifyBundleSha256, devqBundle, devqBundleSha256, xcsBundle, xcsBundleSha256, xssBundle, xssBundleSha256, xsvBundle, xsvBundleSha256, kclBundle, kclBundleSha256, osc5Bundle, osc5BundleSha256, osc3008Bundle, osc3008BundleSha256, osc22Bundle, osc22BundleSha256, mexBundle, mexBundleSha256, pxmBundle, pxmBundleSha256, oscTitleBundle, oscTitleBundleSha256, selectionColorsBundle, selectionColorsBundleSha256, insertReplaceBundle, insertReplaceBundleSha256, modifyOtherKeysBundle, modifyOtherKeysBundleSha256, reflowBundle, reflowBundleSha256: asciiReflowBundleSha256,
             profileName, cellNonce: `NTILDE_QA_${runId}`,
             socket: join(scratch, 'owner.sock'), adapterBundleSha256, upstreamBundleSha256 };
         writeJson(configPath, config);
@@ -2369,6 +2404,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             kclAdapterId, kclSuiteId, kclBundleSha256, kclContractsVersion,
             osc5AdapterId, osc5SuiteId, osc5BundleSha256, osc5ContractsVersion,
             osc3008AdapterId, osc3008SuiteId, osc3008BundleSha256, osc3008ContractsVersion,
+            osc22AdapterId, osc22SuiteId, osc22BundleSha256, osc22ContractsVersion,
             xtgettcap: 'layered versioned collector extension; pinned device.xtgettcap termless and terminal code (DCS + q 544e ST; a 1+r544e=<even hex> value reply is supported, the bare 0+r refusal and silence stay inconclusive) replayed byte-exactly over the journaled raw replies of its own fenced exchange and preserved — TN is deliberately refused, so both pinned verdicts stay inconclusive — beside the separately identified effect contract ntilde-xtgettcap-capability-report-effect-v1 graded by an independent reply oracle over the same fence: the exact pinned request, the numeric Co/colors replies, the RGB/Tc flag replies, one string reply, multi-name reply order with per-name outcomes, documented unavailable and unknown names, case-sensitivity, the uppercase echo, malformed lists with exactly one refusal and verified recovery after each; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged; capability-report replies only — no rendering, color accuracy, control-string execution, Ms clipboard, X resource, remote-delivery or other-platform claim, no stock grade',
             asciiReflow: 'layered versioned collector extension; pinned extensions.reflow code (no fixture, no resize request, no cell readback; both arms always inconclusive by design) replayed byte-exactly over the journaled declared capability and preserved, beside a separately identified effect contract graded from paired complete stored cells, cursor, modes, attributes and complete ordered history at three actual geometries per experiment, proven by parent-selected App resize actions with independent kernel geometry and output-processing proof: an independent character-slicing model must reproduce the width round trip and the history round trip with top-anchored restoration in a disposable main screen buffer; the alternate screen is observed once as the nonce-bind control; no Unicode, wide-cell, grapheme or history-attribute claim, no images, pixels or rendered appearance, no saved banks, remote delivery or other platforms, no stock grades',
             osc9: 'layered versioned collector extension; pinned extensions.osc9-progress (no termless function; terminal path unmeasuredStateEffect) and extensions.notifications (declared-capability report; no delivery readback) preserved as always inconclusive and replayed over the layered derivation, beside separately identified effect contracts graded by an independent OSC 9 oracle from paired complete stored cells, pane metadata and session status: OSC 9;4 stored progress kind, percent and owner and the actual horizontal tab suffix (states 1-4, withdrawal, percentage present/clamped, ST terminator, unmarked and withdrawal controls; absent-percentage, unknown/malformed-state and bare-4 behavior recorded as policy, never graded), and the private in-window toast title, message, visibility and auto-hide with the window-focus and opt-in preconditions recorded at control time and at delivery (the parent defocuses the App by activating Finder and records it); no OS taskbar or desktop notification delivery, no OSC 777/99 or other OSC 9 variants, no real-program emission, no remote/mux, Windows/Linux, hidden-pane or unobserved focus-change claim, no stock grade',
@@ -2377,6 +2413,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             xss: 'layered versioned collector extension; pinned modes.xtpushsgr (CSI # {) and modes.xtpopsgr (CSI # }), both always inconclusive by construction (they measure DA1 and cursor responsiveness, never stack state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read and preserved, beside the separately identified effect contract ntilde-xterm-sgr-stack-effect-v1 graded by an independent oracle written from xterm\'s control sequence text: silence of both sequences, and after pops the stored bold, faint, italic, underline, blink, inverse, hidden, strikethrough, foreground and background of a probe character\'s cell, the selection of each documented push parameter alone, the argument-less push saving all of them, LIFO order, snapshot copy semantics, ten levels holding and the baseline pen restored, each exchange leaving the complete screen, cursor, margins, modes and active screen unchanged; the eleventh push, a pop with nothing saved, an unlisted value and the overline and underline color are policy groups that never decide; stored cell attributes, no rendering, XTREPORTSGR or stock-grade claim.',
             xsv: 'layered versioned collector extension; pinned modes.xtsave (CSI ? 7 s) and modes.xtrestore (CSI ? 7 r), both always inconclusive by construction (they measure DA1 and cursor responsiveness, never saved-mode state), replayed byte-exactly over the journaled raw bytes of their own fenced exchange and the cursor of its read and preserved, beside the separately identified effect contract ntilde-xterm-saved-modes-effect-v1 graded by an independent oracle written from xterm\'s control sequence text: silence of both sequences, and after restores the stored DECAWM (also as a pending wrap after a character in the last column), DECOM, DECLRMM and DECTCEM state, each mode returning to its saved value in both polarities, only the listed modes restored, a list restoring together, a second save replacing the first, neither sequence being SCOSC, SCORC or DECSTBM, each exchange leaving the complete screen, cursor, margins, insert mode and active screen unchanged; values the text does not list, a repeated restore, the ?1048 cursor save and the cursor move of a restored ?6 are policy groups that never decide; stored state, no rendering, no claim for the input-side, mouse, alternate-screen, reverse-wrap or sixel modes and no stock-grade claim.',
             kcl: 'layered versioned collector extension; pinned extensions.osc21-kitty-color (OSC 21;foreground=? ST, a query-only probe the stock collector also grades), both pinned paths replayed byte-exactly over the journaled raw replies of their own fenced exchange, beside the separately identified effect contract ntilde-kitty-color-control-effect-v1 graded by an independent oracle written from kitty\'s color-control protocol text: exact 8-bit rgb replies for foreground, background, cursor, the selection colors and palette entries set by other sequences (OSC 4, 10, 11, 12, 17, 19), each key alone and together in request order, ST-terminated replies to BEL requests, set-then-query and the numeric encodings read back through the oracle\'s own parser and through OSC 10/4 replies, a bare key restoring the baseline reply, unknown keys as Base64 unknown fields, every exchange leaving the complete screen, cursor, margins, modes and active screen unchanged; color names, alpha, the empty (dynamic) value, cursor_text, oversize sequences and the field cap are policy groups that never decide; raw replies and state, no rendering or painted-pixel claim.',
+            osc22: 'bounded basic OSC 22 setters: requested shape and actual Avalonia Cursor kind via paired metadata; pinned terminal CPR-only inconclusive retained; no native pointer-image, full Kitty, mux/replay or stock-score claim',
             osc3008: 'layered versioned collector extension; pinned extensions.osc3008-context (no termless function; the terminal path writes two strings, ESC[1;1H ESC[2K and OSC 3008;type=test BEL, then asks for the cursor position and returns unmeasuredCellResult, inconclusive by construction; the payload is not a UAPI.15 start or end) replayed byte-exactly over the journaled cursor, with the unchanged pinned code re-run from the retained derived bundle, and preserved, beside the separately identified effect contract ntilde-osc3008-context-effect-v1 graded by an independent oracle written from UAPI.15 v1.0 over paired complete stored cells, pane metadata (including the untrusted stored context stack and ended records) and session status: start and end of one and nested contexts, the specification example, an update flushing metadata and ending sub-contexts, BEL and ST terminators, id bounds, field validity (unknown and invalid fields ignored, ABNF bounds, escapes), end metadata, a soft terminal reset leaving the stack alone, and negative controls (the pinned payload, foreign spellings, OSC 133/633 not creating a context and a context not changing title, working directory or shell state); the stack depth, the ended-record ring, end-ends-sub-contexts, repeated fields and bare backslashes are policy groups that never decide; stored untrusted metadata only: no presentation (breadcrumbs, tinting, actions), command-assist or agent use, no hangup, RIS or alternate-screen claim, no real-program emission, remote/mux, Windows/Linux or stock-grade claim',
             osc5: 'layered versioned collector extension; pinned extensions.osc5-special-color (OSC 5;0;? BEL, a query-only probe the stock collector also grades), both pinned paths replayed byte-exactly over the journaled raw replies of their own fenced exchange, beside the separately identified effect contract ntilde-osc5-special-colors-effect-v1 graded by an independent oracle written from rxvt\'s special-color text: chained numeric selector/value pairs (0 bold, 1 underline, 2 blink, 3 reverse, 4 italic) over a five-slot resource set separate from the OSC 4 palette, the OSC 10-19 dynamic colors and the kitty OSC 21 keys (pinned by within-exchange reply equalities), per-slot and bare OSC 105 resets, the numeric encodings, reply order and the ST terminator; numeric selectors 0-4 only, ignored unmodeled selectors, malformed pairs, the oversize cap, set-only silence and the default-foreground slot default are policy groups that never decide; raw replies and state, no rendering or painted-pixel claim.',
             notify: 'layered versioned collector extension; pinned extensions.osc777-notify (no termless function; the terminal path writes two strings and asks for the cursor position, inconclusive by construction) replayed over the journaled cursor and preserved, and pinned extensions.osc99-kitty-notify (decided by the unchanged stock probe in the same run and by the exact-query witness under query policy v3, identified here only), beside separately identified effect contracts graded by an independent oracle from paired complete stored cells and pane metadata: OSC 777 notify title and body and OSC 99 title, body, hold-until-done chunking, concatenation, base64 and ignored payload types as the private in-window toast title, message, visibility and auto-hide with the window-focus and opt-in preconditions recorded at control time and at delivery (the parent defocuses the App by activating Finder and records it); flattening, caps, unknown keys, refused chunks and empty payloads recorded as policy, never graded; no OS desktop notification delivery, no OSC 99 actions, close reports, icons, buttons, urgency, sounds or expiry, no real-program emission, no remote/mux, Windows/Linux, hidden-pane or unobserved focus-change claim, no stock grade for OSC 777',
@@ -2874,6 +2911,42 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 throw metadataFailure(request, error, state.observer);
             }
         };
+        let osc22State;
+        const recordOsc22Unavailable = reason => {
+            writeJson(join(output, 'ptr-unavailable.json'), { schemaVersion: 1, runId, suiteId: osc22SuiteId, status: 'unavailable', reason, plannedCases: 1 });
+            osc22State.unavailable = true;
+        };
+        const refuseOsc22StartWhenUnavailable = () => {
+            const { rows, cols } = cellObserver.baseline;
+            const reason = metadataState?.unavailable?.reason ?? savedState?.unavailable?.reason ?? osc133State?.unavailable?.reason
+                ?? (rows < osc133Minimum.rows || cols < osc133Minimum.cols ? 'metadataGeometryUnavailable' : null);
+            if (reason === null) return;
+            if (!['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(reason)) throw new Error('Unexpected OSC 22 unavailability reason.');
+            recordOsc22Unavailable(reason);
+            throw Object.assign(new Error('OSC 22 fixture is unavailable.'), { code: reason });
+        };
+        /** The OSC 22 suite reuses the paired metadata/status observer under its own prefix and plan; it runs after the special-color suite. */
+        const observeOsc22 = async (request, budget) => {
+            if (!osc3008State?.observer.restored && !osc3008State?.unavailable) throw new Error('OSC 3008 suite must restore before OSC 22 observations.');
+            osc22State ??= { workerPid: request.workerPid, tty: request.tty,
+                observer: new OwnedMetadataObserver({ appData, ownerPid: app.pid, profileName, runId, expectedPaneId: cellObserver.paneId,
+                    prefix: osc22Prefix, includeResolvedColors: true, planOf: osc22ObserverPlan, matchesBaseline: matchesOsc22Baseline }) };
+            const state = osc22State;
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC 22 fixture ownership or availability changed.');
+            if (request.kind === `${osc22Prefix}-start`) refuseOsc22StartWhenUnavailable();
+            try {
+                const result = await state.observer.handle(request, budget);
+                if (request.kind === `${osc22Prefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {
+                    throw new Error('Original geometry changed before OSC 22 observations.');
+                }
+                appendFileSync(join(output, 'ptr-snapshots.jsonl'), JSON.stringify(state.observer.frames.at(-1)) + '\n');
+                return result;
+            } catch (error) {
+                retainFailedMetadataAttempt(output, request, error, state.observer, 'ptr-failed-observation.json');
+                if (initialMetadataRefusal(request, error, state.observer)) recordOsc22Unavailable(error.code);
+                throw metadataFailure(request, error, state.observer);
+            }
+        };
         let osc78State;
         const recordOsc78Unavailable = reason => {
             writeJson(join(output, 'lnk-unavailable.json'), { schemaVersion: 1, runId, suiteId: osc78SuiteId, status: 'unavailable', reason, plannedCases: 2 });
@@ -3288,6 +3361,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             if (prefix === osc133Prefix) return observeOsc133(request, budget);
             if (prefix === osc633Prefix) return observeOsc633(request, budget);
             if (prefix === osc3008Prefix) return observeOsc3008(request, budget);
+            if (prefix === osc22Prefix) return observeOsc22(request, budget);
             if (prefix === osc78Prefix) return observeOsc78(request, budget);
             if (prefix === titleStackPrefix) return observeTitleStack(request, budget);
             if (prefix === oscTitlePrefix) return observeOscTitle(request, budget);
@@ -4069,6 +4143,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             kclEvidence = await retainKclEvidence(output, runId, kclBundle, upstreamBundleSha256);
             osc5Evidence = await retainOsc5Evidence(output, runId, osc5Bundle, upstreamBundleSha256);
             osc3008Evidence = await retainOsc3008Evidence(output, runId, osc3008Bundle, upstreamBundleSha256, osc3008State?.unavailable === true);
+            osc22Evidence = await retainOsc22Evidence(output, runId, osc22Bundle, upstreamBundleSha256, osc22State?.unavailable === true);
             oscTitleEvidence = retainOscTitleEvidence(output, runId, upstreamBundleSha256, oscTitleState?.unavailable === true);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
@@ -4160,6 +4235,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.kclEvidence = kclEvidence;
             summary.osc5Evidence = osc5Evidence;
             summary.osc3008Evidence = osc3008Evidence;
+            summary.osc22Evidence = osc22Evidence;
             summary.oscTitleEvidence = oscTitleEvidence;
             summary.selectionColorsEvidence = selectionColorsEvidence;
             summary.colorResetEvidence = colorResetEvidence;
@@ -4203,7 +4279,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, osc5Evidence, osc3008Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, osc5Evidence, osc3008Evidence, osc22Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }
