@@ -106,7 +106,8 @@ test('cleanup asks for nothing when no daemon is recorded and none is found', as
     assert.equal(asked, false);
 });
 
-test('cleanup refuses to signal a live process that is not this run\'s daemon', async () => {
+const unixOnly = { skip: process.platform === 'win32' ? 'Requires Unix process inspection and user ids' : false };
+test('cleanup refuses to signal a live process that is not this run\'s daemon', unixOnly, async () => {
     let asked = false;
     await assert.rejects(terminateRecordedDaemon({ pid: process.pid, uid: process.getuid(), executable: process.execPath }, { executable: process.execPath, appData, runId },
         { stop: () => { asked = true; }, discover: () => [] }), /identity changed/);
@@ -128,6 +129,6 @@ test('a daemon that never published its descriptor is still found by its environ
 });
 
 test('a failed process scan is a failed cleanup, never an empty result', async () => {
-    assert.throws(() => discoverPersistentDaemons(context, { run: () => { throw new Error('ps failed'); } }), /ps failed/);
+    assert.throws(() => discoverPersistentDaemons(context, { run: () => { throw new Error('ps failed'); }, uid: 501 }), /ps failed/);
     await assert.rejects(terminateRecordedDaemon(undefined, context, { stop: () => {}, discover: () => { throw new Error('ps failed'); } }), /ps failed/);
 });

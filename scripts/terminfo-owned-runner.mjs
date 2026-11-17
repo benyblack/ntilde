@@ -4338,7 +4338,7 @@ async function handlePersistentRequest(run, text) {
     if (run.identities.worker && run.identities.worker.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
     run.identities.worker ??= worker;
     run.identities.daemon ??= persistentDaemonIdentity(daemon);
-    run.daemonProof ??= { identity: run.identities.daemon, appData, command: daemon.text.split(/\s+/).slice(0, 3).join(' '), birth: daemon.birth, appBirth: daemon.appBirth, descriptor: daemon.descriptor };
+    run.daemonProof ??= { identity: run.identities.daemon, appData, command: `${daemon.record.executable} mux serve`, birth: daemon.birth, appBirth: daemon.appBirth, descriptor: daemon.descriptor };
     return { ok: true, ownerPid: app.pid, ...(await answerPersistentRequest(run, request, budget, { owner, worker, daemon })) };
 }
 
@@ -4395,6 +4395,7 @@ async function persistentAnimationMain(args, executable, snapshot) {
     if (['SIGINT', 'SIGTERM', 'SIGHUP'].includes(process.env.NTILDE_TERMINFO_PENDING_SIGNAL)) interrupted(process.env.NTILDE_TERMINFO_PENDING_SIGNAL);
     try {
         lease = await acquireDesktopLease(() => interruption);
+        mkdirSync(join(repo, 'artifacts', 'terminfo'), { recursive: true });
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
         run = preparePersistentRun(args, executable, snapshot, lease, output);
