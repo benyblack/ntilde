@@ -61,6 +61,26 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
+    /// A fresh copy of frame <paramref name="index"/>'s straight-alpha RGBA (0 is the root), or null when it is not available. A later frame keeps its
+    /// pixels; the root's are read back from its decoded handle by <paramref name="decoder"/> under the lock, so the handle cannot be retired mid-read.
+    /// </summary>
+    internal byte[]? ReadKittyFramePixels(KittyImageAsset asset, int index, IImageDecoder? decoder)
+    {
+        bool lockTaken = EnterWriteLockIfNeeded();
+        try
+        {
+            if (!_kittyImageAssets.Contains(asset)) return null;
+            KittyFrame? frame = asset.Animation is { } animation && index >= 0 && index < animation.Frames.Count ? animation.Frames[index] : null;
+            if (frame?.Rgba is { } retained) return (byte[])retained.Clone();
+            if (index != 0 || decoder is null) return null;
+            object root = frame?.Handle ?? asset.Handle;
+            return decoder.TryReadPixels(root, out byte[] rgba, out int width, out int height) && width == asset.PixelWidth && height == asset.PixelHeight
+                && rgba.LongLength == (long)width * height * 4 ? rgba : null;
+        }
+        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+    }
+
+    /// <summary>
     /// Appends <paramref name="frame"/>, or replaces frame <paramref name="replaceIndex"/> when it is
     /// nonnegative. Quota pressure from the new bytes evicts other assets exactly as a new image would;
     /// a frame that cannot fit even then is refused and nothing changes.

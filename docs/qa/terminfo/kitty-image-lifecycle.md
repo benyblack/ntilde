@@ -90,8 +90,11 @@ while an animation with a placement is running; a retired view arms none, and a 
 Deliberate bounds, each with its own negative reply: 64 frames per image including the root; a
 frame is charged at 8 bytes per pixel (decoded pixels plus the RGBA kept for later composition)
 against the same 64 MiB screen quota and is refused with ENOSPC rather than evicting everything;
-the root frame's pixels are not retained, so `c=1`/`r=1` return ENOTSUP; `f=100`, an absent `f`
-and `a=c` composition return ENOTSUP, and `a=q,e=c` answers ERR. The root frame's gap is 0 by the
+a frame is raw `f=24`/`f=32` or a container (`f=100`, PNG): a container frame's size is read from its header first (a frame that cannot fit its place is refused before
+anything is decoded) and the host decoder reads the decoded pixels back through `IImageDecoder.TryReadPixels` (a decoder without it, or no decoder, answers
+ENOTSUP). The root frame keeps no pixels of its own: `c=1` reads them back from the root's decoded handle when a frame is built on it, and `r=1` replaces the root with
+the edited pixels (the new root keeps its RGBA, charged 4 bytes per pixel since its decoded pixels were already the asset's, and its gap); where the root cannot be read back
+(an undecoded root, or a decoder without `TryReadPixels`) `c=1`/`r=1` answer ENOTSUP. An absent `f` and `a=c` composition return ENOTSUP, and `a=q,e=c` answers ERR. The root frame's gap is 0 by the
 protocol; the playhead shows it for the 40 ms default (an implementation policy, not a protocol
 statement). Frames are released with their image (replace, hard delete, reset). Snapshots and persistent-session replay carry the root frame only, so
 where images are retained for snapshots (a parser with `RetainImageSources`, i.e. persistent image policy 1/2) `a=f` and `a=a` answer
@@ -100,5 +103,5 @@ where images are retained for snapshots (a parser with `RetainImageSources`, i.e
 `KittyAnimationTests` (VT) pin the frame store, composition arithmetic, error replies, quotas, the
 playhead on an injected clock and frame retirement; `KittyAnimationRenderTests` check the real view
 paints the frame the clock selects. These do not establish wall-clock playback on the desktop; that
-belongs to the owned measurement, which has not been collected. The pinned
+belongs to the owned measurement (`kitty-animation-model.md`). The pinned
 `extensions.kitty-graphics.animation` probe can only return inconclusive whatever Ntilde does.
