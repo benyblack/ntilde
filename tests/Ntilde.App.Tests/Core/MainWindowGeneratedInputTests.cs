@@ -361,6 +361,32 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     }
 
     [AvaloniaFact]
+    [Trait("Category", "Regression")]
+    public async Task A_wheel_notch_without_mouse_reporting_scrolls_the_view_and_sends_nothing_while_other_pointer_events_stay_refused()
+    {
+        // #999: the one pointer event routed without reporting is the view's own scroll, which lets an owned observation move the viewport it measures.
+        var (window, pane, session) = Create();
+        var parser = new AnsiParser(pane.Buffer!);
+        for (int i = 0; i < 80; i++) parser.Process($"line-{i}\r\n");
+        Dispatcher.UIThread.RunJobs();
+        var view = pane.TermView;
+        Assert.Equal(0, view.ScrollOffset);
+        Assert.False(pane.Buffer!.IsMouseReportingActive());
+        foreach (var kind in new[] { "mousePress", "mouseRelease", "mouseMove" })
+            Assert.Null(await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = kind, Button = kind == "mouseMove" ? "none" : "left", Column = 1, Row = 1 }));
+        var up = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mouseWheel", WheelDelta = 1, Column = 1, Row = 1 });
+        Assert.NotNull(up); Assert.True(up.EventDispatched); Assert.True(up.Handled); Assert.False(up.InputSubmitted);
+        for (int i = 0; i < 200 && view.AdvanceScrollAnimation(); i++) { }
+        Assert.True(view.ScrollOffset > 0);
+        int scrolled = view.ScrollOffset;
+        var down = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "mouseWheel", WheelDelta = -1, Column = 1, Row = 1 });
+        Assert.NotNull(down);
+        for (int i = 0; i < 200 && view.AdvanceScrollAnimation(); i++) { }
+        Assert.True(view.ScrollOffset < scrolled);
+        Assert.Empty(session.SentInput);
+    }
+
+    [AvaloniaFact]
     public async Task A_pixel_event_needs_active_mouse_reporting_like_a_cell_event()
     {
         var (window, pane, session) = Create();
@@ -604,7 +630,6 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     [InlineData("mousePress")]
     [InlineData("mouseRelease")]
     [InlineData("mouseMove")]
-    [InlineData("mouseWheel")]
     public void Reporting_branch_refuses_synthetic_host_selection_and_scroll_even_if_the_entry_lease_accepts(string kind)
     {
         var (window, pane, session) = Create();

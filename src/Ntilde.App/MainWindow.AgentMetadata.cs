@@ -32,6 +32,9 @@ public partial class MainWindow
         if (text == null || toast == null || toastTitle == null || toastMessage == null) return null;
         if (!AgentPaneMetadataCapture.TryRead(registration.Buffer, out var buffer, pane.Parser) || buffer == null) return null;
         var bar = FindTabHeaderDescendant<ProgressBar>(tab.Header, "TabProgressBar");
+        // Read the bound first and clamp the offset to it: scrollback can shrink on the parse thread before the view repairs its stored offset.
+        int maxScrollOffset = pane.TermView.MaxScrollOffset;
+        int scrollOffset = Math.Min(pane.TermView.ScrollOffset, maxScrollOffset);
         var result = new PaneMetadataResult
         {
             PaneId = pane.PaneId,
@@ -49,6 +52,7 @@ public partial class MainWindow
                 RenderScaling = pane.TermView.EffectiveRenderScaling,
                 BackingScale = RenderScaling,
             },
+            Viewport = new PaneViewportMetadata { ScrollOffset = scrollOffset, MaxScrollOffset = maxScrollOffset },
             Presentation = new PanePresentationMetadata
             {
                 WindowActive = IsActive,

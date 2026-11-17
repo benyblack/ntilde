@@ -152,6 +152,9 @@ namespace Ntilde.Shell
             }
         }
 
+        /// <summary>Greatest reachable <see cref="ScrollOffset"/> for the attached buffer (0 when none).</summary>
+        public int MaxScrollOffset => _buffer == null ? 0 : Math.Max(0, _buffer.TotalLines - _buffer.Rows);
+
         public void SetScrollOffset(int offset)
         {
             ScrollOffset = offset;
@@ -247,6 +250,7 @@ namespace Ntilde.Shell
         }
 
         // Mouse event handlers
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "S3776", Justification = "A linear wheel router (mouse report, alternate scroll, scrollback); the generated-input guards from #999 are two necessary early-outs on that fixed order. Splitting it would hide the route precedence.")]
         protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
         {
             if (!CanApplyGeneratedInput) { e.Handled = true; return; }
@@ -289,7 +293,8 @@ namespace Ntilde.Shell
                 return;
             }
 
-            if (_generatedInputInProgress) { e.Handled = true; return; }
+            // A generated event never sends keys: the alternate-scroll route below is refused for it. Its standard branch is the view's own scrollback scroll, which sends nothing (#999 viewport control).
+            if (_generatedInputInProgress && _buffer.IsAltScreenActive && _buffer.Modes.IsAlternateScroll) { e.Handled = true; return; }
 
             // Alternate scroll (?1007, issue #828): the alternate screen has no scrollback, so a
             // pager or TUI without mouse support (less, man, htop) gets one cursor key per notch
@@ -312,6 +317,7 @@ namespace Ntilde.Shell
             {
                 ScrollByWheelLines(delta);
             }
+            if (_generatedInputInProgress) e.Handled = true;
         }
 
         /// <summary>

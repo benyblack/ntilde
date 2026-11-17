@@ -72,6 +72,36 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
         Assert.Equal(size, window.ClientSize);
     }
 
+    [AvaloniaFact]
+    [Trait("Category", "Regression")]
+    public async Task Viewport_scroll_position_is_observed_from_the_view_and_does_not_follow_unhandled_OSC()
+    {
+        // #999: the view's own scroll position, independent of parser history. OSC 720 has no handler.
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane, _) = CreateWindow(); var registration = Registration(pane);
+        var parser = pane.Parser!;
+        for (int i = 0; i < 80; i++) parser.Process($"scroll-{i}\r\n");
+        Dispatcher.UIThread.RunJobs();
+        var live = Assert.IsType<PaneViewportMetadata>((await Read(window, registration))!.Viewport);
+        Assert.Equal(0, live.ScrollOffset);
+        Assert.Equal(pane.TermView.MaxScrollOffset, live.MaxScrollOffset);
+        Assert.True(live.MaxScrollOffset > 0);
+
+        pane.TermView.ScrollOffset = 5; Dispatcher.UIThread.RunJobs();
+        var scrolled = Assert.IsType<PaneViewportMetadata>((await Read(window, registration))!.Viewport);
+        Assert.Equal(5, scrolled.ScrollOffset);
+        Assert.Equal(live.MaxScrollOffset, scrolled.MaxScrollOffset);
+
+        foreach (string frame in new[] { "\u001b]720\a", "\u001b]720;3\u001b\\", "\u001b]720;0\a" })
+        {
+            parser.Process(frame); Dispatcher.UIThread.RunJobs();
+            var after = Assert.IsType<PaneMetadataResult>(await Read(window, registration));
+            Assert.Equal(5, after.Viewport!.ScrollOffset);
+            Assert.True(after.Buffer.ScrollbackLines > 0);
+        }
+    }
+
     [AvaloniaTheory]
     [InlineData("0", "")]
     [InlineData("2", "")]

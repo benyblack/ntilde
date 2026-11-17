@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "note": "Failed or superseded owned-collection attempts for #999, retained unchanged. Each ran the collector against the same pinned terminfo.dev@4.0.0 bundle on the same disposable-App setup.",
+  "attempts": [
+    {
+      "file": "superseded/attempt-1.zip",
+      "scope": "default (legacy) selection",
+      "scriptsCommit": "e95c5ad3ec8f8779e275c4bbcd4fceeb63d122f9",
+      "failedAt": "ovu bind (first suite write after the start observation)",
+      "reason": "The terminal fence reported 'Unexpected input during cell collection' (bytes arrived on the worker's stdin while no barrier was pending). Environmental: not reproduced by the next attempt, which ran the same suite code through twelve frames. The retained journal holds only the start frame."
+    },
+    {
+      "file": "superseded/attempt-2.zip",
+      "scope": "default (legacy) selection",
+      "scriptsCommit": "e95c5ad3ec8f8779e275c4bbcd4fceeb63d122f9",
+      "failedAt": "count-2-from-scrolled (first wheel action)",
+      "reason": "Five experiments completed (twelve frames; OSC 720 changed nothing, history 30 rows, maximum view offset 30). The owner refused the generated wheel request ('Owned generated-input action failed'). Cause found afterwards: a generated pointer event must carry a viewport cell; the action sent none. Fixed in the action, and failed actions now retain their attempt record."
+    },
+    {
+      "file": "superseded/attempt-3.zip",
+      "scope": "default (legacy) selection",
+      "scriptsCommit": "951bcb4fcf3559a4b736eaf5264fe2849bca5a8a",
+      "failedAt": "OSC 9 suite (an earlier, unchanged suite) after a focus action",
+      "reason": "'Unexpected input during cell collection' before the OSC 720 suite started. Environmental; the focus-stealing notification suites were then omitted by moving to the established scoped selection."
+    },
+    {
+      "file": "superseded/attempt-4.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "951bcb4fcf3559a4b736eaf5264fe2849bca5a8a",
+      "failedAt": "count-2-from-scrolled (first wheel action)",
+      "reason": "The retained failed-action record shows the App refused the (now well-formed) generated wheel: 'Invalid or refused owned input response'. Cause: the generated-input API required active mouse reporting for every pointer event and the view refused synthetic host scrolling. The wheel routing for reporting-off panes was added to the App (see the qualification page) and the sidecar rebuilt."
+    },
+    {
+      "file": "superseded/attempt-5.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
+      "failedAt": "the first suite of the run (before any OSC 720 code)",
+      "reason": "'Unexpected input during cell collection' at the very start. Environmental; the retry with identical scripts and App is the published run."
+    },
+    {
+      "file": "superseded/attempt-6.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run c3a92cc0b2e369916ccd75a6374bbf74, stock collector run 88bce0cebbabf15faab519e0fc1d75f5) on the tree before PR 1016 (Kitty animation PNG frames) merged: effect unsupported, every control held, receipt 73. Superseded only by the remeasurement on the merged tree, which gave the identical conclusion; it is kept as a complete run, not a failure."
+    },
+    {
+      "file": "superseded/attempt-7.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "f538abb9de3ef72d7dbd0ae649d85db6c832e244",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run 7b3a588563d29ef1fa74ce9d9260e62c, stock collector run 19ab1c7fe2cee695151b967daf6fe5c7) whose grading compared only the screen text between the two reads of an experiment. Codex review showed that would credit a view move that also changed attributes, cursor mode or terminal modes; the grading now compares the complete stored screen except the separately measured history, and the run was repeated. Same conclusion; kept as a complete run."
+    },
+    {
+      "file": "superseded/attempt-8.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "4e8605dbc4f26ae24e5a49b8e2a4a058c4eafc20",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run 966525901fd2e59442dc76dd4ed1b80e, stock collector run 3c7b51ec949950f3e17cbc8e37326e1e, source policy v66, receipt 73) measured before the OSC 3008 batch merged and took policy v66. The suite was restacked onto source policy v67 / receipt schema 74 on the merged tree; this run is kept as a complete run, not a failure."
+    },
+    {
+      "file": "superseded/attempt-9.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "85efa784607f1e98b36c52c1538a30d25c6f9000",
+      "failedAt": null,
+      "reason": "A complete run on the restacked tree (policy v67, receipt 74) whose effect contract was inconclusive, correctly: the unmarked control started with the view still scrolled to offset 3 (left by the previous scrolled experiment) so its setup did not hold. The reset and refill of the next experiment can outrun the view's clamp. The plan now returns the view to the live line with two scroll-down notches after each scrolled experiment, and the run was repeated; the six protocol experiments had observed no change in this run either."
+    },
+    {
+      "file": "superseded/attempt-10.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "0c825f5a0f6c225cc4b881c9f31a9e67156469b4",
+      "failedAt": null,
+      "reason": "A complete, successful restacked run (owned run bb832e39430176c8f96f62d40ea4a5e6, stock collector run 54d8392084916c19f55245d2379b43d5, policy v67, receipt 74), identical conclusion. Review found the runner no longer retained a failed wheel attempt's request and ownership facts (that handler had been lost in the restack); it was restored and the run repeated. Kept as a complete run."
+    },
+    {
+      "file": "superseded/attempt-11.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "cefc06768a2d6efa076d9e128841c471b385ca60",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run 4889417f35fe10780c3385cb19e8a51d) whose pinned-bare experiment expected an erase. Review (CodeRabbit) checked rxvt-unicode's process_osc_seq: an OSC is dispatched only after a ';', so the bare ESC]720 BEL is not dispatched and has no effect; only the empty-count form ESC]720; (and ;0) reaches scr_erase_savelines. The contract now expects no effect for the bare form and adds the empty-count experiment; the run was repeated. Same unsupported conclusion; kept as a complete run."
+    }
+  ]
+}

@@ -35,7 +35,8 @@ public partial class MainWindow
             && pane.IsCurrentAgentRegistration(registration) && ReferenceEquals(pane.Buffer, registration.Buffer) && ReferenceEquals(pane.Session, session)
             && ReferenceEquals(registration.ObservationSession, session)
             && pane.TermView.MatchesGeneratedInputContext(registration.Buffer, session)
-            && (!pointer || registration.Buffer.IsMouseReportingActive());
+            // A wheel notch while reporting is inactive is the view's own scroll: it sends no bytes and cannot activate a link, so it is the one pointer event routed then (#999 viewport control).
+            && (!pointer || input.Kind == "mouseWheel" || registration.Buffer.IsMouseReportingActive());
         bool Matches() => MatchesTarget() && pane!.TermView.CanGenerateInputSynchronously(!pointer);
         if (_agentGeneratedInputInProgress || _agentPaneResizeInProgress || pane == null || !Matches()) return null;
         var view = pane.TermView;

@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 145,
-    "suiteClaims": 147,
+    "uniqueBenchmarkIds": 146,
+    "suiteClaims": 148,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
     "effectSupportedIds": 143,
-    "effectUnsupportedIds": 1,
+    "effectUnsupportedIds": 2,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 94,
     "effectSupportedPinnedInconclusiveIds": [
@@ -102,10 +102,11 @@
       "scrollback.set-region"
     ],
     "effectUnsupportedPinnedInconclusiveIds": [
+      "extensions.osc720-scroll-up",
       "extensions.sixel"
     ],
     "effectSupportedOfStockInconclusive": 142,
-    "effectUnsupportedOfStockInconclusive": 1,
+    "effectUnsupportedOfStockInconclusive": 2,
     "pinnedSupportedOfStockInconclusive": 93,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -120,9 +121,9 @@
     },
     "remainingAgainstStockInconclusive": {
       "effectUnqualified": 26,
-      "effectMeasuredUnsupported": 1,
+      "effectMeasuredUnsupported": 2,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 24,
+      "effectNotMeasured": 23,
       "notPinnedSupported": 75
     }
   },
@@ -3841,6 +3842,76 @@
       }
     },
     {
+      "suite": "osc720",
+      "suiteId": "ntilde-owned-osc720-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-17-osc720/",
+      "doc": "2026-11-17-osc720-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc720-scroll-up"
+      ],
+      "evidence": {
+        "files": 16,
+        "bytes": 165603625,
+        "sha256": "4ab8f61d94eb6b8dab7e19518eb66cefe9c65bb2343ac3917e8c4345585baacb"
+      },
+      "receipt": {
+        "schemaVersion": 74,
+        "runId": "7924727037ace6f3cce045ca63697c17",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "9a93fafe00c70deaf2284413fd3892028252dbafef1bc648ef3c2c0489294fed"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc720-graded-v1",
+          "file": "ovu-observations.json",
+          "sha256": "38ece1af6519444da1925c18d0eeebbe103b4a0409ddc67e8226f6f82b2cf050",
+          "runFile": "ovu-run.json",
+          "runSha256": "94ff48808dc942b40eb89fbb4d634d6cbb6a430b7423d2e69b553ffaad50f636",
+          "counts": {
+            "inconclusive/unsupported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "7924727037ace6f3cce045ca63697c17",
+        "measuredAt": "2026-11-17T16:05:44.381Z",
+        "appRevision": "06ee7177a8ae6fff17b88bcf437c686f17e1bf91",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "06ee7177a8ae6fff17b88bcf437c686f17e1bf91",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "a6e6e77e580f2b08ef520419202374fdb59216c45d9e4e2c5863a84cc5f64dbf",
+        "gradingAdapterId": "ntilde-owned-osc720-grading-v1",
+        "gradingAdapterBundleSha256": "e383cebe2c7fca5b3c20cb510bad3d1e19b461297fd6326170f4c033d7316e28",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v67",
+        "sourceSnapshotManifestSha256": "b47fc78e53df289c35518558607c802ef2c1d7cf07c9f442366180edbe61150f"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "142102417788363f541e2f3b90c19ca6",
+        "counts": {
+          "inconclusive": 160,
+          "supported": 94,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "a17f637740451c76f3c4e74b8cf2aa1d49151b7851a9ba705a6007e3527903aa",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; the OSC 720 effect does not change the stock score."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc720-publication.test.mjs",
+        "testSha256": "a09dbcaa257dd1442bbe89726f1452ad98853039916bba6c661a5ac2042be286"
+      }
+    },
+    {
       "suite": "kitty-animation",
       "suiteId": "ntilde-owned-kitty-animation-qualification-v2",
       "contractsVersion": 2,
@@ -7515,6 +7586,59 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc720-scroll-up",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc720",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "osc720",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc720-scroll-up",
+          "suite": "osc720",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor answered; scrollback viewport was not measured"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-terminal-preserved-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "Cursor answered; scrollback viewport was not measured"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "view-position, stored history, cursor and screen (pane-metadata-and-session-status)"
         }
       ]
     },

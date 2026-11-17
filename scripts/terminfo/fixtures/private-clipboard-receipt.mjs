@@ -35,7 +35,8 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc(?:133|633|78|9)|title-stack|osc-title)-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?osc720-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** Remove the newer suffixes (text/cursor, OSC 133, title/icon stack, modifyOtherKeys) from the synthetic v37 scope on LF and CRLF checkouts. */
@@ -45,7 +46,8 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:core-erase|core-tab-stops)(?:-receipt)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-text-cursor(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?osc720-[a-z-]+\.mjs';\n/gm, ''));
 }
 
 /** The opt-in title-stack suffix: synthetic frames from the suite's own oracle (never collected ones), written into `output` and declared in `context` and `evidence`. */
@@ -981,7 +983,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc720 = false } = {}) {
     const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     try {
@@ -1029,7 +1031,10 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (osc3008) {
             await addOsc3008Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008) writerFor(output)('context.json', context);
+        if (osc720) {
+            await addOsc720Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc720) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally { rmSync(output, { recursive: true, force: true }); }
@@ -1186,6 +1191,27 @@ async function addOsc5Evidence({ output, write, context, evidence, lrMarginsByte
 }
 
 /** The opt-in OSC 3008 suffix: synthetic frames from the suite's own oracles (never collected ones), layered over the left/right-margin bytes. */
+async function addOsc720Evidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticOsc720Evidence } = await import('./osc720-evidence.mjs');
+    const { buildOsc720Report } = await import('../osc720-grading.mjs');
+    const { osc720Counts } = await import('../osc720-receipt.mjs');
+    const { adaptOsc720Collector, osc720AdapterId } = await import('../osc720-grading-collector.mjs');
+    const { osc720SuiteId, osc720ContractsVersion } = await import('../osc720-contracts.mjs');
+    const osc720Bytes = Buffer.from(adaptOsc720Collector(lrMarginsBytes.toString()));
+    const osc720 = syntheticOsc720Evidence({ runId: context.runId, bundleSha256: hash(osc720Bytes) });
+    osc720.adapter = { ...osc720.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const osc720Report = buildOsc720Report(osc720.frames, osc720.run, context.runId, osc720.adapter);
+    write('ovu-observations.json', osc720Report);
+    write('ovu-run.json', osc720.run);
+    write('ovu-actions.json', osc720.actions);
+    writeFileSync(join(output, 'ovu-snapshots.jsonl'), osc720.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-ovu.mjs'), osc720Bytes);
+    Object.assign(context, { osc720AdapterId, osc720SuiteId, osc720BundleSha256: hash(osc720Bytes), osc720ContractsVersion });
+    evidence.osc720Evidence = { runId: context.runId, suiteId: osc720SuiteId, file: 'ovu-observations.json', sha256: hash(readFileSync(join(output, 'ovu-observations.json'))),
+        runFile: 'ovu-run.json', runSha256: hash(readFileSync(join(output, 'ovu-run.json'))), actionsFile: 'ovu-actions.json', actionsSha256: hash(readFileSync(join(output, 'ovu-actions.json'))),
+        adapterBundleSha256: hash(osc720Bytes), contractsVersion: osc720ContractsVersion, counts: osc720Counts(osc720Report), provisionalUntil: 'cell-receipt.json' };
+}
+
 async function addOsc3008Evidence({ output, write, context, evidence, lrMarginsBytes }) {
     const { syntheticOsc3008Evidence } = await import('./osc3008-evidence.mjs');
     const { buildOsc3008GradingReport, osc3008Counts } = await import('../osc3008-grading.mjs');
