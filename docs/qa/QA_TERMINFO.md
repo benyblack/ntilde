@@ -1306,3 +1306,14 @@ the pinned inconclusive recorded as `pinned-inconclusive-by-design`; `extensions
 authoritative VS Code contract, which have no implemented publication yet, so its effect contract stays **inconclusive** with them recorded as required-and-pending (#983) — the
 inventory's first measured-other id, not a demonstrated failure. No production code changed, no stock grade moved (frozen baseline unchanged), and no Core, Modern or common-harness
 count moves; the sum of the marker publications is explicitly not an upstream supported verdict. See [the qualification page](terminfo/2026-11-16-shell-integration-aggregates-qualification.md).
+
+### Exact OSC cell-size reports
+
+The [cell-size batch](terminfo/2026-11-17-osc-cell-size-qualification.md) implements and independently qualifies
+`extensions.osc1337-cellsize` and `extensions.osc776-cell-size` as two separate protocols. Both owned effects are **supported**:
+the observed 8.5 × 18.5 DIP view at backing scale 2 returns iTerm2 height/width/scale `18.5;8.5;2` and urxvt pixel width/height/ascent
+`17;37;29`, with exact BEL/ST behavior, positive CSI controls, unsupported-form silence and unchanged state. The frozen iTerm2
+two-field matcher rejects the modern scale field, while the frozen urxvt request omits the documented `;?`; both pinned and stock
+outcomes remain **inconclusive**. The fresh stock total stays 93 supported / 161 inconclusive / 1 unsupported. Receipt70/source-policy63
+bind 425 inputs, independent geometry and all 19 exchanges. The inventory adds two effect-supported IDs, with no pinned/Core/Modern
+or common-harness score increase. The retained scoped run is combined evidence with the separately pinned notification predecessor.

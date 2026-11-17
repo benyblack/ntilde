@@ -88,6 +88,7 @@ export const benchmarkSuites = Object.freeze([
     // publications and binds the primary (OSC 633) carrier receipt at the suite level, the OSC 133 carrier per case.
     // `carrierSuites` makes its claims transitive: a carrier whose own rederivation fails lends no verdict to them.
     { ...directory('shell-integration-aggregates', '2026-11-16-shell-integration-aggregates', '2026-11-16-shell-integration-aggregates-qualification.md'), module: 'shell-integration-aggregates-contracts.mjs', exports: ['aggregatesSuiteId', 'aggregatesVersion', 'aggregateCaseIds'], carrierSuites: ['osc133', 'osc633'], receiptSuiteId: 'ntilde-owned-osc633-graded-v1', test: 'shell-integration-aggregates-publication.test.mjs' },
+    { ...directory('cell-size', '2026-11-17-osc-cell-size', '2026-11-17-osc-cell-size-qualification.md'), module: 'cell-size-contracts.mjs', exports: ['cellSizeSuiteId', 'cellSizeVersion', 'cellSizeIds'], test: 'cell-size-publication.test.mjs' },
 ]);
 
 /**

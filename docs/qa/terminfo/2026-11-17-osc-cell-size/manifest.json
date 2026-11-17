@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "attempts/attempt-1-display-asleep.zip": "41ee11c8bd2e679b61a70e8bb77d9637412f83b85d229d5d44589468beeb6c75",
+    "attempts/attempt-2-display-asleep.zip": "8b81ac7eee8f935480a05308b7487573f859666189edbb57da22927b0958c3f1",
+    "attempts/attempt-3-metadata-geometry.zip": "c9d32e675b865cd3824d922bcb595a944a1993c8a106fd7ab33533f5b333ab33",
+    "owned-run.zip": "80c494832ac7af76c9b6c3fdb2469e1b6c62c8b6098142c8b1cbba964b467564"
+  },
+  "buildIdentitiesSha256": "5d9a3f2eabbf7e5b3dcaf6cccfd897b458c24c4956ad349cf9757c71f1fc748f",
+  "measurement": {
+    "runId": "113410a700e612e361c599b1df920fb2",
+    "appRevision": "4fba0d48f6c3633489403cc238bfd0118b205bd8",
+    "scriptsRevision": "ecfc4c42a208a3b7ea6135cff532834d08d2fb2f",
+    "receiptSchema": 70,
+    "sourcePolicy": "readonly-owned-source-graph-v63"
+  },
+  "attempts": [
+    {
+      "directory": "owned-lsUg4i",
+      "archive": "artifacts/issue-993/retained-attempts/attempt-1-display-asleep.zip",
+      "sha256": "41ee11c8bd2e679b61a70e8bb77d9637412f83b85d229d5d44589468beeb6c75",
+      "bytes": 13224403,
+      "failure": {
+        "error": "Owned app exited before collection (SIGABRT).",
+        "at": "2026-11-16T22:59:57.140Z"
+      }
+    },
+    {
+      "directory": "owned-lFAqSV",
+      "archive": "artifacts/issue-993/retained-attempts/attempt-2-display-asleep.zip",
+      "sha256": "8b81ac7eee8f935480a05308b7487573f859666189edbb57da22927b0958c3f1",
+      "bytes": 13224483,
+      "failure": {
+        "error": "Owned app exited before collection (SIGABRT).",
+        "at": "2026-11-16T23:03:22.148Z"
+      }
+    },
+    {
+      "directory": "owned-17sfmy",
+      "archive": "artifacts/issue-993/retained-attempts/attempt-3-metadata-geometry.zip",
+      "sha256": "c9d32e675b865cd3824d922bcb595a944a1993c8a106fd7ab33533f5b333ab33",
+      "bytes": 13482573,
+      "failure": {
+        "error": "Invalid or incomplete owned pane metadata.",
+        "at": "2026-11-17T07:01:53.092Z"
+      }
+    }
+  ]
+}
