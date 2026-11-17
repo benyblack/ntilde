@@ -152,33 +152,39 @@ namespace Ntilde.VT
                 return;
             }
             if (!TryReadKittyIdentity(out KittyCommandIdentity identity)) return;
-            string status;
             uint id = identity.Id;
-            if (_kittyPayloadOverflow) status = "E2BIG:Graphics payload or controls exceeded bounds";
-            else if (!AllowNonSixelImages || IsNativeKittyBlocked(isTunneled)) status = "ENOTSUP:Graphics disabled by host";
-            else
-            {
-                try
-                {
-                    status = action switch
-                    {
-                        "t" or "T" => TransmitKittyImage(identity, action == "T", out id),
-                        "p" => DisplayStoredKittyImage(identity, out id),
-                        "f" or "a" when RetainImageSources => "ENOTSUP:Animation is not supported where images are retained for snapshots",
-                        "f" => TransmitKittyFrame(identity, out id),
-                        "a" => ControlKittyAnimation(identity, out id),
-                        "d" => DeleteStoredKittyImages(identity),
-                        _ => "ENOTSUP:Graphics action not supported"
-                    };
-                }
-                catch (Exception ex)
-                {
-                    TerminalLogger.Debug($"[ANSI_PARSER] Kitty command failed: {ex.Message}");
-                    status = "EINVAL:Invalid image data";
-                }
-            }
+            string status = RefusedKittyCommandStatus(isTunneled) ?? DispatchKittyCommand(action, identity, ref id);
             // Successful deletion has no acknowledgement. Errors still obey quiet policy.
             if (action != "d" || status != "OK") ReplyKittyCommand(identity with { Id = id }, status);
+        }
+
+        /// <summary>The refusal a command gets before any action runs: an oversized transfer, or graphics the host does not allow; null when it proceeds.</summary>
+        private string? RefusedKittyCommandStatus(bool isTunneled)
+        {
+            if (_kittyPayloadOverflow) return "E2BIG:Graphics payload or controls exceeded bounds";
+            return !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) ? "ENOTSUP:Graphics disabled by host" : null;
+        }
+
+        private string DispatchKittyCommand(string action, KittyCommandIdentity identity, ref uint id)
+        {
+            try
+            {
+                return action switch
+                {
+                    "t" or "T" => TransmitKittyImage(identity, action == "T", out id),
+                    "p" => DisplayStoredKittyImage(identity, out id),
+                    "f" or "a" when RetainImageSources && !RetainedAnimation => "ENOTSUP:Animation is not supported where images are retained for snapshots without policy 3",
+                    "f" => TransmitKittyFrame(identity, out id),
+                    "a" => ControlKittyAnimation(identity, out id),
+                    "d" => DeleteStoredKittyImages(identity),
+                    _ => "ENOTSUP:Graphics action not supported"
+                };
+            }
+            catch (Exception ex)
+            {
+                TerminalLogger.Debug($"[ANSI_PARSER] Kitty command failed: {ex.Message}");
+                return "EINVAL:Invalid image data";
+            }
         }
 
         private void ExecuteKittyQuery(bool isTunneled)
@@ -228,9 +234,9 @@ namespace Ntilde.VT
             bool transportSupported = probeTransport == "d"
                 || (probeTransport == "f" && ReadFileBytes != null);
             // a=a/a=f are implemented; a=c composition is not, and a client probing it (e=c) must fall back.
-            // Animation is refused where images are retained for snapshots (persistent sessions), so a probe must not advertise it there.
+            // Animation is refused where images are retained for snapshots without persistent image policy 3, so a probe must not advertise it there.
             bool probesComposition = _kittyPendingParams.TryGetValue("e", out string? probedAction)
-                && (probedAction == "c" || (RetainImageSources && probedAction is "f" or "a"));
+                && (probedAction == "c" || (RetainImageSources && !RetainedAnimation && probedAction is "f" or "a"));
             string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported || probesComposition
                 ? "ERR"
                 : "OK";
