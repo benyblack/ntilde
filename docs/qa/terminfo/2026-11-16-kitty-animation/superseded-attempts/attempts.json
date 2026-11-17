@@ -104,6 +104,24 @@
         "animation-observations.json": "2c971860bd89d023470f7f67a70815107c6fe07abf420f896e6b3a1057a10af5",
         "cell-receipt.json": "3bf3e2dd2f0bf6e36e3124011b6e206efd6205b15b7cfe799ab49d08f94cd135"
       }
+    },
+    {
+      "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+      "scriptsRevision": "9bc1fd9c",
+      "reason": "An eighth complete 18/18 run (effect supported, receipt schema 70, suite ntilde-owned-kitty-animation-v1 with three cases) on the App built from 9bc1fd9c, the run #1013 merged. Superseded, not failed: #1015 added PNG frames and the root frame as a base and edit target, and a fourth carrier case measuring them, so the suite, policy and effect contract moved to v2 and the whole collection was repeated on the new App and scripts. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "2441ef5f19d827872afddaaae9d3fd0a10264c94eebecfc3e9b449846ebf0f20",
+        "cell-receipt.json": "0ae8767f4ffa0828e16c912d925c6ad030f3d64614179e1621a787923e0c40f9"
+      }
+    },
+    {
+      "runId": "dfe73776db79207ba766b2486324a681",
+      "scriptsRevision": "4f4b294e",
+      "reason": "A complete 24/24 run (effect supported, receipt schema 70, suite ntilde-owned-kitty-animation-v2 with four cases) on the App built from 4f4b294e. Superseded, not failed: merging main brought in the integrated OSC cell-size run, which carries v1 animation evidence, so the animation plan, report builder and receipt check were made version-aware (v1 stays rederivable beside v2), and the review and SonarCloud follow-ups changed measured scripts and the frame parser, so the whole collection was repeated on the merged tree. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "6ccfe9d0448baa0244e58543693ed7a903034c6958ac359b35a2a7bc6e917878",
+        "cell-receipt.json": "27d3573fa5e5c25716b6ac6647e9c8e1a99559603c6fbf636765bd0306ca2340"
+      }
     }
   ]
 }

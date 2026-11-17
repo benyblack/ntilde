@@ -123,6 +123,36 @@ namespace Ntilde.Rendering
             return new NativeSixelImage(source, allocation);
         }
 
+        public bool TryReadPixels(object handle, out byte[] rgba, out int pixelWidth, out int pixelHeight)
+        {
+            rgba = [];
+            pixelWidth = pixelHeight = 0;
+            // A disposed bitmap reports a zero native handle without throwing, and reading through it would fault the process.
+            if (handle is not SKBitmap { Handle: not 0 } bitmap) return false;
+            try
+            {
+                if (bitmap.IsNull || bitmap.Width <= 0 || bitmap.Height <= 0 || bitmap.Width > MaxPixelDimension || bitmap.Height > MaxPixelDimension) return false;
+                var info = new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+                byte[] pixels = new byte[checked(info.Width * info.Height * 4)];
+                var pin = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                try
+                {
+                    // Skia converts from whatever the bitmap holds (premultiplied BGRA from a container decode, unpremultiplied from a raw frame).
+                    using SKPixmap? pixmap = bitmap.PeekPixels();
+                    if (pixmap is null || !pixmap.ReadPixels(info, pin.AddrOfPinnedObject(), info.RowBytes, 0, 0)) return false;
+                }
+                finally { pin.Free(); }
+                rgba = pixels;
+                (pixelWidth, pixelHeight) = (info.Width, info.Height);
+                return true;
+            }
+            catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException or OverflowException)
+            {
+                // A handle the buffer retired between lookup and read: not readable, not an error.
+                return false;
+            }
+        }
+
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
         {
             pixelWidth = 0;

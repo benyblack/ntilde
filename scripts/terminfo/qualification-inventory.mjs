@@ -93,7 +93,7 @@ export const benchmarkSuites = Object.freeze([
     // rxvt OSC 720 (view up / erase saved lines): pinned terminal path preserved inconclusive by design, the replayed termless function and one effect contract, graded from the App view position, history, cursor and screen with wheel and ED 3 controls.
     { ...directory('osc720', '2026-11-17-osc720', '2026-11-17-osc720-qualification.md'), module: 'osc720-inventory.mjs', exports: ['osc720SuiteId', 'osc720ContractsVersion', 'osc720CaseIds'], test: 'osc720-publication.test.mjs' },
     // Kitty graphics animation: the pinned callbacks replayed (always inconclusive), one effect contract composed from the owned animation carrier of the same run.
-    { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v1', test: 'kitty-animation-publication.test.mjs' },
+    { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v2', test: 'kitty-animation-publication.test.mjs' },
     { ...directory('cell-size', '2026-11-17-osc-cell-size-integrated', '2026-11-17-osc-cell-size-integrated-qualification.md'), module: 'cell-size-contracts.mjs', exports: ['cellSizeSuiteId', 'cellSizeVersion', 'cellSizeIds'], test: 'cell-size-integrated-publication.test.mjs' },
 ]);
 

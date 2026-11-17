@@ -4,9 +4,10 @@ using System.Globalization;
 namespace Ntilde.VT;
 
 /// <summary>
-/// Kitty graphics animation: <c>a=f</c> frame data and <c>a=a</c> playback control. Frames are raw
-/// RGB/RGBA only, the root frame's pixels are not retained (so <c>c=1</c>/<c>r=1</c> cannot be a base
-/// or an edit target) and <c>a=c</c> composition stays unsupported; each limit has its own negative reply.
+/// Kitty graphics animation: <c>a=f</c> frame data and <c>a=a</c> playback control. Frames are raw RGB/RGBA
+/// or PNG (<c>f=100</c>, decoded to pixels by a host decoder that can expose them), the root frame can be a base or an edit
+/// target (its pixels are read back from its decoded handle when needed), and <c>a=c</c> composition stays unsupported;
+/// each limit has its own negative reply.
 /// </summary>
 public partial class AnsiParser
 {
@@ -33,19 +34,19 @@ public partial class AnsiParser
         id = asset.Id;
         if (!TryReadKittyFrameRequest(asset, out KittyFrameRequest request, out string error)) return error;
         // A frame the quotas will refuse is refused before its payload is inflated, composed or decoded: a rejected upload costs no canvas and no bitmap.
-        KittyFrameStoreResult room = _buffer.CheckKittyFrameRoom(asset, request.Editing ? (int)request.Edit - 1 : -1, KittyFrameCharge(asset));
+        KittyFrameStoreResult room = _buffer.CheckKittyFrameRoom(asset, request.Editing ? (int)request.Edit - 1 : -1, KittyFrameCharge(asset, request.Edit));
         if (room != KittyFrameStoreResult.Stored) return KittyFrameStatus(room);
-        if (!TryReadKittyFrameData(request, out byte[] data, out error)) return error;
+        if (!TryReadKittyFrameData(asset, ref request, out byte[] data, out error)) return error;
         byte[] canvas = BuildKittyFrameCanvas(asset, request, data);
-        if (canvas.Length == 0) return "ENOENT:Frame not found";
+        if (canvas.Length == 0) return request.CanvasFrame == 1 ? "ENOTSUP:Root frame pixels are unavailable" : "ENOENT:Frame not found";
         return StoreKittyFrame(asset, request, canvas);
     }
 
     private bool TryReadKittyFrameRequest(KittyImageAsset asset, out KittyFrameRequest request, out string error)
     {
         request = default;
-        if (!_kittyPendingParams.TryGetValue("f", out string? format) || format is not ("24" or "32"))
-            return Refuse(out error, "ENOTSUP:Animation frames require raw f=24 or f=32 data");
+        if (!_kittyPendingParams.TryGetValue("f", out string? format) || format is not ("24" or "32" or "100"))
+            return Refuse(out error, "ENOTSUP:Animation frames require f=24, f=32 or f=100 data");
         error = ValidateKittyPayloadEncoding() ?? "";
         if (error.Length != 0) return false;
         if (!TryReadKittyUInt("x", out uint x) || !TryReadKittyUInt("y", out uint y) || !TryReadKittyUInt("c", out uint baseFrame)
@@ -53,14 +54,26 @@ public partial class AnsiParser
             return Refuse(out error, "EINVAL:Invalid animation frame control");
         if (!TryReadKittyGap(out int gap)) return Refuse(out error, "EINVAL:Invalid animation frame gap");
         if (!TryReadKittyCompositionMode(out bool overwrite)) return Refuse(out error, "EINVAL:Invalid composition mode");
-        if (!TryReadKittyRawSize(out int width, out int height)) return Refuse(out error, "EINVAL:Invalid raw frame dimensions");
-        if ((long)x + width > asset.PixelWidth || (long)y + height > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image");
+        if (!TryReadKittyFrameSize(asset, format == "100", x, y, out int width, out int height, out error)) return false;
         request = new KittyFrameRequest(format == "24" ? 3 : 4, int.Parse(format, CultureInfo.InvariantCulture), new KittyFrameRect((int)x, (int)y, width, height),
             baseFrame, editFrame, background, gap, overwrite);
-        if (request.CanvasFrame == 1) return Refuse(out error, "ENOTSUP:Root frame pixels are not retained");
         if (request.CanvasFrame > TerminalBuffer.KittyFrameCount(asset)) return Refuse(out error, "ENOENT:Frame not found");
         error = "";
         return true;
+    }
+
+    /// <summary>
+    /// Where a frame lands and, for a raw frame, how big it is (<c>s=</c>, <c>v=</c>). The offsets are checked as the unsigned values they were sent as,
+    /// before they become ints. A container frame's size comes from its own header once the payload is read, so it has none here.
+    /// </summary>
+    private bool TryReadKittyFrameSize(KittyImageAsset asset, bool container, uint x, uint y, out int width, out int height, out string error)
+    {
+        width = height = 0;
+        error = "";
+        if (x > asset.PixelWidth || y > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image");
+        if (container) return true;
+        if (!TryReadKittyRawSize(out width, out height)) return Refuse(out error, "EINVAL:Invalid raw frame dimensions");
+        return (long)x + width <= asset.PixelWidth && (long)y + height <= asset.PixelHeight || Refuse(out error, "EINVAL:Frame rectangle outside the image");
     }
 
     /// <summary><c>X=</c>: 0 (the default) alpha-blends, 1 overwrites; anything else is invalid.</summary>
@@ -72,13 +85,14 @@ public partial class AnsiParser
         return composition is "0" or "1";
     }
 
-    private bool TryReadKittyFrameData(KittyFrameRequest request, out byte[] data, out string error)
+    private bool TryReadKittyFrameData(KittyImageAsset asset, ref KittyFrameRequest request, out byte[] data, out string error)
     {
         data = Array.Empty<byte>();
         byte[]? payload = ReadKittyPayload();
         if (payload is null) return Refuse(out error, "EINVAL:Frame payload unavailable");
         payload = InflateKittyPayload(payload, request.Format, request.Rect.Width, request.Rect.Height);
         if (payload is null) return Refuse(out error, "EINVAL:Invalid compressed frame payload");
+        if (request.Format == 100) return TryDecodeKittyContainerFrame(asset, ref request, payload, out data, out error);
         if (payload.LongLength != (long)request.Rect.Width * request.Rect.Height * request.BytesPerPixel)
             return Refuse(out error, "EINVAL:Frame data does not match its dimensions");
         data = payload;
@@ -86,15 +100,40 @@ public partial class AnsiParser
         return true;
     }
 
-    /// <summary>The canvas the data is drawn onto, or an empty array when the named base frame has no retained pixels.</summary>
-    private static byte[] BuildKittyFrameCanvas(KittyImageAsset asset, KittyFrameRequest request, byte[] data)
+    /// <summary>
+    /// A container (PNG) frame: its size is read from the header before anything is decoded, so a frame that cannot fit the image costs no bitmap,
+    /// then it is decoded and read back as straight-alpha RGBA, which is what composition draws.
+    /// </summary>
+    private bool TryDecodeKittyContainerFrame(KittyImageAsset asset, ref KittyFrameRequest request, byte[] payload, out byte[] data, out string error)
+    {
+        data = Array.Empty<byte>();
+        if (ImageDecoder is not { } decoder) return Refuse(out error, "ENOTSUP:Container frames need an image decoder");
+        if (!ImageHeaderProbe.TryGetSize(payload, out _, out int width, out int height) || width <= 0 || height <= 0)
+            return Refuse(out error, "EINVAL:Invalid frame image data");
+        KittyFrameRect rect = request.Rect with { Width = width, Height = height };
+        if ((long)rect.X + width > asset.PixelWidth || (long)rect.Y + height > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image");
+        object? handle = decoder.DecodeImageBytes(payload, out _, out _);
+        if (handle is null) return Refuse(out error, "EINVAL:Invalid frame image data");
+        bool read = decoder.TryReadPixels(handle, out byte[] rgba, out int readWidth, out int readHeight);
+        _buffer.ReleaseRejectedImageHandle(handle); // only its pixels are used and it was never admitted: release it now, not at a renderer drain
+        if (!read) return Refuse(out error, "ENOTSUP:This decoder cannot expose frame pixels");
+        if (readWidth != width || readHeight != height || rgba.LongLength != (long)width * height * 4)
+            return Refuse(out error, "EINVAL:Frame data does not match its dimensions");
+        request = request with { Rect = rect };
+        data = rgba;
+        error = "";
+        return true;
+    }
+
+    /// <summary>The canvas the data is drawn onto, or an empty array when the named base frame has no readable pixels.</summary>
+    private byte[] BuildKittyFrameCanvas(KittyImageAsset asset, KittyFrameRequest request, byte[] data)
     {
         byte[] canvas;
         if (request.CanvasFrame != 0)
         {
-            byte[]? basePixels = asset.Animation?.Frames[(int)request.CanvasFrame - 1].Rgba;
+            byte[]? basePixels = _buffer.ReadKittyFramePixels(asset, (int)request.CanvasFrame - 1, ImageDecoder);
             if (basePixels is null) return Array.Empty<byte>();
-            canvas = (byte[])basePixels.Clone();
+            canvas = basePixels;
         }
         else canvas = KittyFrameCompositor.SolidCanvas(asset.PixelWidth, asset.PixelHeight, request.Background);
         KittyFrameCompositor.Draw(canvas, asset.PixelWidth, data, request.BytesPerPixel, request.Rect, request.Overwrite);
@@ -105,7 +144,7 @@ public partial class AnsiParser
     private string StoreKittyFrame(KittyImageAsset asset, KittyFrameRequest request, byte[] canvas)
     {
         int replaceIndex = request.Editing ? (int)request.Edit - 1 : -1;
-        long charge = KittyFrameCharge(asset);
+        long charge = KittyFrameCharge(asset, request.Edit);
         object handle = DecodeOrPlaceholder((IImageDecoder decoder, out int w, out int h) =>
             decoder.DecodeRawImage(canvas, 4, asset.PixelWidth, asset.PixelHeight, out w, out h), asset.PixelWidth, asset.PixelHeight);
         int gapMs = request.Gap;
@@ -124,7 +163,9 @@ public partial class AnsiParser
     }
 
     /// <summary>What a frame of this image costs against the quota: its decoded pixels plus the RGBA kept for later composition.</summary>
-    private static long KittyFrameCharge(KittyImageAsset asset) => 8L * asset.PixelWidth * asset.PixelHeight;
+    private static long KittyFrameCharge(KittyImageAsset asset, uint editedFrame) =>
+        // An edited root frame's decoded pixels are the asset's own, already charged; only the RGBA kept for composition is new.
+        (editedFrame == 1 ? 4L : 8L) * asset.PixelWidth * asset.PixelHeight;
 
     private static string KittyFrameStatus(KittyFrameStoreResult result) => result switch
     {
@@ -138,7 +179,8 @@ public partial class AnsiParser
     private static int EditedKittyFrameGap(KittyImageAsset asset, uint frameNumber)
     {
         KittyFrame? existing = asset.Animation?.Frames[(int)frameNumber - 1];
-        return existing?.GapMs ?? KittyAnimation.DefaultGapMs;
+        // The root has no gap of its own until one is set (the playhead holds it for the default).
+        return existing?.GapMs ?? (frameNumber == 1 ? 0 : KittyAnimation.DefaultGapMs);
     }
 
     /// <summary><c>a=a</c>: sets a frame gap, the displayed frame, loop count and run state of a retained image.</summary>

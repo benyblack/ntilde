@@ -47,7 +47,7 @@ async function fixture(action, { badModes = false, badReply = false, changedWork
         else if (text.endsWith(imageModeQueries)) {
             const entry = animationPlan[observer.next], spec = animationCases.find(value => value.id === entry.caseId);
             const stage = spec?.stages.find(value => value.id === entry.stageId), state = observer.states.get(entry.caseId);
-            let reply = stage ? animationExpectedReplies(stage.id, state.imageId).join('') : '';
+            let reply = stage ? animationExpectedReplies(stage, state.imageId).join('') : '';
             if (badReply && reply) reply = 'unframed';
             screen = structuredClone(entry.kind === 'finish' ? baseline : bound);
             const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
@@ -67,14 +67,14 @@ async function fixture(action, { badModes = false, badReply = false, changedWork
     finally { rmSync(directory, { recursive: true, force: true }); }
 }
 
-test('collector and observer run 23 admitted emits with timed waits that put every read in its planned window', async () => fixture(async f => {
+test('collector and observer run 30 admitted emits with timed waits that put every read in its planned window', async () => fixture(async f => {
     const result = await collectAnimation(f);
     assert.deepEqual(result, { status: 'complete' });
-    assert.equal(f.observer.restored, true); assert.equal(f.observer.frames.length, 24); assert.equal(f.observer.actions.length, 23);
-    assert.equal(f.observer.before.snapshots, 24); assert.equal(f.observer.after.snapshots, 24);
+    assert.equal(f.observer.restored, true); assert.equal(f.observer.frames.length, 31); assert.equal(f.observer.actions.length, 30);
+    assert.equal(f.observer.before.snapshots, 31); assert.equal(f.observer.after.snapshots, 31);
     assert.equal(f.input.listenerCount('data'), 0); assert.equal(f.calls.at(-1).kind, 'kan-seal');
-    assert.equal(f.calls.filter(value => value.kind === 'kan-admit').length, 23);
-    assert.equal(f.writes.filter(value => value.endsWith(imageModeQueries)).length, 23);
+    assert.equal(f.calls.filter(value => value.kind === 'kan-admit').length, 30);
+    assert.equal(f.writes.filter(value => value.endsWith(imageModeQueries)).length, 30);
     const report = f.observer.report;
     assert.ok(report.observations.every(value => value.result === 'passed'), JSON.stringify(report.observations.filter(value => value.result !== 'passed').map(value => [value.featureId, value.inconclusiveReason])));
     assert.ok(report.snapshots.slice(1).every(frame => frame.capture.nonces.join(',') !== '32768,32769'));
