@@ -1,5 +1,5 @@
 // Qualification of the exact terminfo.dev@4.0.0 case extensions.kitty-graphics.animation over the owned
-// Kitty animation suite (ntilde-owned-kitty-animation-v1) of the same run. The carrier report is the authority for
+// Kitty animation suite (ntilde-owned-kitty-animation-v2) of the same run. The carrier report is the authority for
 // every stage; this projection adds the exact pinned-probe replay, one separately identified effect contract and
 // explicit validity controls. A pinned verdict, an effect verdict and a stock grade never merge.
 import { createHash } from 'node:crypto';
@@ -7,16 +7,17 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { gunzipSync } from 'node:zlib';
+import { animationCases } from './kitty-animation-cases.mjs';
 
-export const kittyAnimationQualificationSuiteId = 'ntilde-owned-kitty-animation-qualification-v1';
-export const kittyAnimationQualificationVersion = 1;
+export const kittyAnimationQualificationSuiteId = 'ntilde-owned-kitty-animation-qualification-v2';
+export const kittyAnimationQualificationVersion = 2;
 export const kittyAnimationQualificationIds = Object.freeze(['extensions.kitty-graphics.animation']);
-export const kittyAnimationCarrierSuiteId = 'ntilde-owned-kitty-animation-v1';
-export const kittyAnimationCarrierPolicy = 'owned-kitty-animation-paired-raw-render-v1';
+export const kittyAnimationCarrierSuiteId = 'ntilde-owned-kitty-animation-v2';
+export const kittyAnimationCarrierPolicy = 'owned-kitty-animation-paired-raw-render-v2';
 export const upstreamBundleSha256 = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
-// Measured on the committed tree at 9bc1fd9c: the Release sidecar was built from it and the measured scripts are its tree (later commits are publication, docs, test pins and merges of main only).
-export const measuredAppRevision = '9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e';
-export const measuredScriptsRevision = '9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e';
+// Measured on the committed tree at cf59628f: the Release sidecar was built from it and the measured scripts are its tree (later commits are publication, docs, test pins and merges of main only).
+export const measuredAppRevision = 'cf59628f0ef73dd0a99dba0952acb4b6552678a4';
+export const measuredScriptsRevision = 'cf59628f0ef73dd0a99dba0952acb4b6552678a4';
 export const pinnedBundleArchive = 'terminfo-dev-4.0.0.bundle.mjs.gz';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -26,11 +27,13 @@ const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 
 /** Independently specified effect contract. It names the carrier cases it composes, never the pinned probe. */
 export const effectContract = Object.freeze({
-    id: 'ntilde-kitty-animation-playback-effect-v1', version: 1,
-    carrierCases: Object.freeze(['kitty.animation.stopped-hold', 'kitty.animation.playback', 'kitty.animation.stop-freeze']),
+    id: 'ntilde-kitty-animation-playback-effect-v2', version: 2,
+    carrierCases: Object.freeze(['kitty.animation.stopped-hold', 'kitty.animation.playback', 'kitty.animation.stop-freeze', 'kitty.animation.png-and-root-frames']),
     statement: 'A retained 16x16 raw RGBA image with two further frames added by a=f (z=5000 ms each, root gap 5000 ms) shows its root frame, stays on it past that gap while stopped, '
         + 'then after a=a,s=3 shows the second frame, the third frame and the root frame again at the times its gaps give (measured by paired offscreen captures against the App\'s wall clock), '
-        + 'and after a=a,s=1 stays frozen on the frame it was showing past a hold that would have advanced it; every write is acknowledged OK and every cleared target is blank again.',
+        + 'and after a=a,s=1 stays frozen on the frame it was showing past a hold that would have advanced it. A half-transparent PNG frame (a=f,f=100) built over the root frame (c=1) shows the protocol\'s straight-alpha blend '
+        + 'of the two when chosen with a=a,c=; after the root is edited (a=f,r=1) and shown again, a second PNG frame built over it shows the blend of the edited pixels instead of the original. '
+        + 'Every write is acknowledged OK and every cleared target is blank again.',
     primary: 'https://sw.kovidgoyal.net/kitty/graphics-protocol/#animation',
 });
 
@@ -92,7 +95,7 @@ export function validityControls(report, receipt, context, observationBytes) {
         ['receipt-binds-animation-report', binding?.runId === context.runId && binding.suiteId === kittyAnimationCarrierSuiteId && binding.sha256 === sha(observationBytes) && receipt.fixtureRemoved === true,
             'the complete receipt binds this exact report and records fixture removal'],
         ['carrier-policy', report.suiteId === kittyAnimationCarrierSuiteId && report.policy === kittyAnimationCarrierPolicy && context.ownedAnimationPolicy === kittyAnimationCarrierPolicy && report.runId === context.runId,
-            'the retained report is the paired raw render policy v1 animation report of this run'],
+            'the retained report is the paired raw render policy v2 animation report of this run'],
         ['raw-reader-healthy', report.seal.failed === false && report.seal.disposed === true && report.seal.attempts === report.actions.length,
             'the exclusive raw reader sealed without failure over every admitted write'],
         ['state-restored', report.initialSnapshot === 0 && report.restoredSnapshot === report.actions.length && report.snapshots.length === report.actions.length + 1,
@@ -102,7 +105,7 @@ export function validityControls(report, receipt, context, observationBytes) {
             'every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme'],
         ['fresh-paired-fences', captures.length === report.actions.length && pairs.length === new Set(pairs).size && pairs.every(pair => !prior.has(pair)),
             'every capture carries its own unpredictable paired challenges, none reused from the earlier phases or another capture'],
-        ['blank-before-controls', blanks.length === 3 && blanks.every(item => item.result === 'passed' && item.assertions.length === 2 && item.assertions.every(value => value.passed)),
+        ['blank-before-controls', blanks.length === animationCases.length && blanks.every(item => item.result === 'passed' && item.assertions.length === 2 && item.assertions.every(value => value.passed)),
             'every case began from an independently blank, unchanged-surroundings target'],
         ['acknowledgement-separate-from-pixels', stages.every(item => item.reply?.passed === true) && stages.every(item => item.assertions.length > 0),
             'every write was acknowledged by its raw fence while pixel assertions were graded separately'],
@@ -155,9 +158,9 @@ export async function kittyAnimationQualification(dir, source, archive) {
         adapter: { id: context.adapter, upstreamBundleSha256: context.upstreamBundleSha256, pinnedSpans: pinnedSpanDigests },
         scope: 'One exact pinned terminfo.dev@4.0.0 case, extensions.kitty-graphics.animation. Both pinned callbacks (termless and terminal) are replayed from the retained pinned bundle and are always inconclusive. '
             + 'One separately identified effect contract composes the owned Kitty animation carrier: a retained 16x16 raw RGBA image with three solid frames held 5 s each, a stationary control, playback, '
-            + 'loop and stop-freeze, over paired original offscreen PNGs, complete cell/mode reads, fresh raw fences and retained wall-clock brackets. Protocol acknowledgement and painted pixels are separate facts, '
-            + 'and elapsed time is the App\'s own monotonic clock observed on a real desktop, not a synthetic presentation time. One image size, one gap length and the production frame subset only: '
-            + 'no frame-rate or display-refresh cadence, PNG frames, root-frame composition, a=c, snapshot/persistent-session replay, remote/mux, other platforms, common-harness or stock-score claim.',
+            + 'loop and stop-freeze, plus half-transparent PNG frames and the root frame as a base and an edit target (chosen with a=a,c=, so no elapsed time is involved), over paired original offscreen PNGs, complete cell/mode reads, fresh raw fences and retained wall-clock brackets. '
+            + 'Protocol acknowledgement and painted pixels are separate facts, and elapsed time is the App\'s own monotonic clock observed on a real desktop, not a synthetic presentation time. '
+            + 'One image size, one gap length and one PNG encoding (8-bit RGBA, non-interlaced): no frame-rate or display-refresh cadence, other container formats or PNG encodings, a=c, snapshot/persistent-session replay, remote/mux, other platforms, common-harness or stock-score claim.',
         cases: [entry] };
     const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision: source.appRevision, scriptsRevision: source.scriptsRevision,
         context, receipt, stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash, sourceRevision: raw.sourceRevision },

@@ -3842,9 +3842,9 @@
     },
     {
       "suite": "kitty-animation",
-      "suiteId": "ntilde-owned-kitty-animation-qualification-v1",
-      "contractsVersion": 1,
-      "liveContractsVersion": 1,
+      "suiteId": "ntilde-owned-kitty-animation-qualification-v2",
+      "contractsVersion": 2,
+      "liveContractsVersion": 2,
       "publication": "2026-11-16-kitty-animation/",
       "doc": "2026-11-16-kitty-animation-qualification.md",
       "caseCount": 1,
@@ -3852,44 +3852,44 @@
         "extensions.kitty-graphics.animation"
       ],
       "evidence": {
-        "files": 30,
-        "bytes": 22010958,
-        "sha256": "076d43e6ca380a9e1496802323444a90c7c07f0c15321c963f9e93aa4dd0cb57"
+        "files": 34,
+        "bytes": 24031985,
+        "sha256": "816430bc2fcad50e0ff3392c08ba6dce7d3e1218567c684c0b4ba33d1fd51dd1"
       },
       "receipt": {
-        "schemaVersion": 70,
-        "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+        "schemaVersion": 71,
+        "runId": "99d639356e6c79215fd29c5cd655b4b8",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "dee2e8d7d85dfddf0ffe1eb9de563db454b8de18af01470064e7cc5e650c8fd2"
+          "sha256": "a78e6c0f7094cde7c28ac1d42fcab61fe7514062cba51b463213ebfa66adbe01"
         },
         "suiteEvidence": {
-          "suiteId": "ntilde-owned-kitty-animation-v1",
+          "suiteId": "ntilde-owned-kitty-animation-v2",
           "file": "animation-observations.json",
-          "sha256": "2441ef5f19d827872afddaaae9d3fd0a10264c94eebecfc3e9b449846ebf0f20",
+          "sha256": "96023a9f20815e92af271ba4677e1e91563a541e81c25bc95d64d28bf904882e",
           "counts": {
-            "passed": 18
+            "passed": 24
           }
         }
       },
       "run": {
-        "ownedRunId": "f8738a9e6d01cff70a5029fa1e5f9197",
-        "measuredAt": "2026-11-17T07:04:34.986Z",
-        "appRevision": "9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e",
+        "ownedRunId": "99d639356e6c79215fd29c5cd655b4b8",
+        "measuredAt": "2026-11-17T10:32:00.476Z",
+        "appRevision": "cf59628f0ef73dd0a99dba0952acb4b6552678a4",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e",
+        "scriptsRevision": "cf59628f0ef73dd0a99dba0952acb4b6552678a4",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "2a95777a05e00170c5a03c634d18ac4ad05bf10d6a648706b964c9ef56d52ba4",
+        "collectorAdapterBundleSha256": "f21757de8ba9e73b3886b6ef439f89ef68e6c892224b2b0c686537f509db8583",
         "gradingAdapterId": "ntilde-owned-macos-v1",
         "gradingAdapterBundleSha256": null,
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v63",
-        "sourceSnapshotManifestSha256": "74b848b978b9ab2b7d5de250518472912395586f0b85c62a804a18e923a74ebe"
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v64",
+        "sourceSnapshotManifestSha256": "1c6fc20c5bce34796cc6a0d58505586b5bd1379bcb3fd44cd3885863b6ffb65f"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "6072cac853bc179316a1c853dd80d981",
+        "runId": "b0d928355c08946d7180c3f77bacfcc9",
         "counts": {
           "inconclusive": 161,
           "supported": 93,
@@ -3897,14 +3897,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "f64f0f0d2557c27baae2d648ff013f2c378a10cbf1e6b6d10d60a047434f765e",
+        "rawSha256": "d60bf531e854ea0da4682359e71848ab3099b8c550aa8198610c1d8d2e1a16d9",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/kitty-animation-publication.test.mjs",
-        "testSha256": "a35af54bcb087531e8ebb0ac6dd090ecdbacefc7c1ad5b9c29a57f25782410b6"
+        "testSha256": "2d40fec3f7ff5fd1de03c60fa972d53412e00c937a333d7ed9d36961774bce2a"
       }
     },
     {

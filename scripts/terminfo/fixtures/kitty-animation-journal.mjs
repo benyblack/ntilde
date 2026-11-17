@@ -5,7 +5,7 @@ import { initialInputScreen, inputPaneId, inputRunId, inputCapture } from './inp
 import { pixelCapture } from './pixel-capture.mjs';
 import { imageOwnership, rgbaPng } from './static-images-journal.mjs';
 import { animationCases, animationExpectedReplies } from '../kitty-animation-cases.mjs';
-import { animationFrameColor } from '../kitty-animation-inputs.mjs';
+import { animationAppearanceColor } from '../kitty-animation-inputs.mjs';
 import { animationPlan, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix, animationActionCount } from '../kitty-animation.mjs';
 import { imageModeReplyHex, imageBackgroundReply } from '../static-images.mjs';
 import { snapshotHash } from '../agent-observer.mjs';
@@ -20,7 +20,7 @@ export function syntheticAnimationCapture(screen, appearance, { bleed = false } 
     const rgba = Buffer.alloc(width * height * 4), background = screen.bufferState.alternateScreen ? 16 : 0;
     for (let i = 0; i < rgba.length; i += 4) rgba.set([background, background, background, 255], i);
     if (appearance && appearance !== 'absent') {
-        const color = animationFrameColor(appearance);
+        const color = animationAppearanceColor(appearance).color;
         for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) rgba.set(color, ((72 + y) * width + 24 + x) * 4);
     }
     if (bleed) rgba.set([255, 0, 0, 255], 0);
@@ -88,7 +88,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
             imageId: state.imageId ?? null, commandHex: Buffer.from(expected.command).toString('hex'),
             commandSha256: pngHash(Buffer.from(expected.command)), skipReason: expected.skipReason, ownership: stamp(plan.actionAt) };
         actions.push(action);
-        let raw = stage ? animationExpectedReplies(stage.id, state.imageId).join('') : '';
+        let raw = stage ? animationExpectedReplies(stage, state.imageId).join('') : '';
         raw = reply?.(entry, raw) ?? raw;
         const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
         const sample = inputCapture(Buffer.from(raw + background).toString('hex') + imageModeReplyHex, 100 + action.index);

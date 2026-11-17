@@ -1,0 +1,940 @@
+{
+  "schemaVersion": 70,
+  "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+  "suiteId": "ntilde-owned-ascii-cells-v1",
+  "file": "cell-observations.json",
+  "sha256": "dee2e8d7d85dfddf0ffe1eb9de563db454b8de18af01470064e7cc5e650c8fd2",
+  "counts": {
+    "passed": 8
+  },
+  "provisionalUntil": "cell-receipt.json",
+  "sgrEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-indices-v1",
+    "file": "sgr-observations.json",
+    "sha256": "4585587540f0e3c2e6f5e42284cf51a444e09c6a93b6479808eae769eef8902e",
+    "counts": {
+      "passed": 17
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "gradingEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-ascii-sgr-graded-v1",
+    "file": "grading-observations.json",
+    "sha256": "768bddaf81a8cb0258658c72dc71f2f611ca6b272bd04fad481046d1f07d0deb",
+    "runFile": "grading-run.json",
+    "runSha256": "eff452cfc4f44b8339d020780bcc9ae17962c4f110fb5d47e2d92edf6f6418cf",
+    "adapterBundleSha256": "bf1ae37507e696e0afbfc619e64c2c3c7b0045ac9234a8177a9893ded51fccd2",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrColorsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-colors-graded-v1",
+    "file": "sgcolors-observations.json",
+    "sha256": "4b286d1c242786a78d79dfad75e341ac58914160c1cde49f54eceaa96d7b44c8",
+    "runFile": "sgcolors-run.json",
+    "runSha256": "71b4bb63f8ad984bac39fe9f1c91c9e1432b39b2bce5c1e3c2f45a3076a3b916",
+    "adapterBundleSha256": "4fa4c833236e13f761d7dd733869337b94dcbe73362fcafd864ffb1a3c5397a8",
+    "contractsVersion": 2,
+    "counts": {
+      "supported": 5
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrRgbEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-rgb-graded-v1",
+    "file": "sgrgb-observations.json",
+    "sha256": "b14e58b3d27c7180edc656d9972ad14952481808133323f00bc27c99ad6782e5",
+    "runFile": "sgrgb-run.json",
+    "runSha256": "08c884b24fa5a793184d981113f958f1b334b722aac654d9702c836ce51a7478",
+    "adapterBundleSha256": "c27e445e812d27319857ffe9c9074df91a28fca74920d50d6dcc7fdefd6b109e",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrAttrsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-attributes-graded-v1",
+    "file": "sgattr-observations.json",
+    "sha256": "653b996631db8162000864515a26102d818bd173e3982b7109dd7d69322ef7b9",
+    "runFile": "sgattr-run.json",
+    "runSha256": "bb2f0b739fdf6b4a2348ea55d62c817103a6b0ee0fd932bc18900dc3625b2960",
+    "adapterBundleSha256": "67154c7df13214efc0642534794e9f1804ee2db3b7848989cbff6c94e6da6718",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 5
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrPaletteEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-palette-graded-v1",
+    "file": "sgpal-observations.json",
+    "sha256": "f0cff011d90ce567786401fd8b75dea900f6bd522044d727f7a8854cee8eb27c",
+    "runFile": "sgpal-run.json",
+    "runSha256": "a85c9738ebd6af2770f3b9e535eefbfbb66a87cb1e488ded66e3ac7eebd38912",
+    "adapterBundleSha256": "d3f698e38cf4a883ff8b174d7f72e939800dca72870e5a67d4c254cf3199c6df",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 6
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrTruecolorEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-truecolor-graded-v1",
+    "file": "sgtc-observations.json",
+    "sha256": "1071f202d6eab789a92f60dd6ea61baebae0fc0ee0dca954a580708950a78c70",
+    "runFile": "sgtc-run.json",
+    "runSha256": "75627075fc17286f1bcbcef3dc025e080c6c96384068bb75f2ee29ff7b348299",
+    "adapterBundleSha256": "584504902659e879d726a847bb1e3f9efb63851dc41f479341b24860835e82dc",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "truecolorFindingEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-truecolor-literal-finding-v1",
+    "file": "sgtf-observations.json",
+    "sha256": "054e81e1a415a7301382632285b558d202d8208d14f39c4a8549ff870af83a8b",
+    "runFile": "sgtf-run.json",
+    "runSha256": "530bb2ad56513bfd5b74d5913b1364477a654ad0dcb27b880407dfbe8593e742",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 10
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrUnderlineEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-underline-styles-graded-v1",
+    "file": "sgus-observations.json",
+    "sha256": "ee6253c834a251747e4514dda873b4d09936a41f5f95826ce26885a3adf05cb7",
+    "runFile": "sgus-run.json",
+    "runSha256": "09c28fe68acea0f2197945dfc789b18a2017f6fbcdb23619d5173bf6cda61dab",
+    "adapterBundleSha256": "b979be9bf33450a56d0f44d4a156af8d2ac898f1cc773b9235c5ca2afb156f00",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrUnderlineColorEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-underline-color-graded-v1",
+    "file": "sguc-observations.json",
+    "sha256": "ea4a8758a10c6dd831cc7894f566f64e5f6d9d067bc55797f9a50eb797f3204a",
+    "runFile": "sguc-run.json",
+    "runSha256": "18ca05109449d916f9601f089ec164b00f02613f59a3d610ed97fa7cb3340b41",
+    "adapterBundleSha256": "9bd98b8e006e9155f34355eeb06e9b8a87096e90b4c9239fad9cc9da5faddf3e",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "underlineResolvedEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-underline-color-resolved-v1",
+    "file": "sgur-observations.json",
+    "sha256": "6164dca1ec687956881e240e0918a4c2ae9c8cb9b0527802f860e41d1e686b5b",
+    "runFile": "sgur-run.json",
+    "runSha256": "cf1a9eeacdde5463b564826e1d2ed01b8947424fae7f2c9f49f587ecdde109e6",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrResetEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-selective-reset-graded-v1",
+    "file": "sgsr-observations.json",
+    "sha256": "821cbfd236ac1947dab2f0f3c843776cf0be560bdbe5f441db181e7b2c5295c6",
+    "runFile": "sgsr-run.json",
+    "runSha256": "f06b065ef7247f380a2160c92f146ff429d2dc70000ff9c4a93beb788605c2a0",
+    "adapterBundleSha256": "197b69d8bb5a51540fc8aedaf3b3abe57115e1bdac8dd08946b4272c7ac14dec",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrClosureEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-sgr-closure-graded-v1",
+    "file": "sgcl-observations.json",
+    "sha256": "d07920f5fd90ba3304720ec1dd598f1249b6b4381891bc2bbdd4e09a4e622524",
+    "runFile": "sgcl-run.json",
+    "runSha256": "a842c9221ae16b7375a7458f178d5e9be0bbb34b0f6ad706126a884de9bd7261",
+    "adapterBundleSha256": "2b7c67e35e1f8deeff34bb4b77642d9a28ef2b6eacf531d96edd40162a0c7ffc",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "eraseLineEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-erase-line-graded-v1",
+    "file": "erln-observations.json",
+    "sha256": "ac51803b609e7140523f6f5b8435c8536d06871141293efbf3f864d4cd27ee11",
+    "runFile": "erln-run.json",
+    "runSha256": "ac96b755b78770414a6d3169c112901b2d7785a4752c895c3712e086dfc30de4",
+    "adapterBundleSha256": "3b4a5eb5264752e9be46bfaec32107072fcd348a70263724d01e312d295efa8f",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "charEditEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-char-edit-graded-v1",
+    "file": "ched-observations.json",
+    "sha256": "75f6c22ed703e37813d136f00c3a460ebfc3592e39931ad8fa1925a67e526a62",
+    "runFile": "ched-run.json",
+    "runSha256": "a293572bd576983a32969733dc4c7f5a14dce2db1a10fbff8898f77dd31a4271",
+    "adapterBundleSha256": "2ab5307791f01974b3e6c8c3e84d111214c0b821575f36aae10199b7934cbab7",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "eraseDisplayEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-erase-display-graded-v1",
+    "file": "erdi-observations.json",
+    "sha256": "cebbd9dc20372b57eab0952e9fb52d50ab38c620786283893a58485611e2d65c",
+    "runFile": "erdi-run.json",
+    "runSha256": "a0daf51f11702aae244553539c7d49b3b0e0c7cc7a06bdeabc83ef434406442b",
+    "adapterBundleSha256": "ce85385176c4af985abc4ad0f16c6dab862914eaf1035e1dca0adab3019d322c",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "lineEditEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-line-editing-graded-v1",
+    "file": "ledt-observations.json",
+    "sha256": "066fa96b48c1b06f5557a0c3d8250f6ff77d4f97c65462e2924bea021ac81ffd",
+    "runFile": "ledt-run.json",
+    "runSha256": "aca66eb387a38b68c537bc48587e674a860a63a4a6f1a0a3eebd43956e009260",
+    "adapterBundleSha256": "9eeb37594abf5d81e3a612800fecab7212522165e0e02840f74c2ca2f5f406ef",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "charsetsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-charsets-graded-v1",
+    "file": "chrs-observations.json",
+    "sha256": "6a96a08e204208e8f4a2f8a6cad95c55014616865b99f4865d781c4aebb2e6af",
+    "runFile": "chrs-run.json",
+    "runSha256": "12546bcee32b9c363592500e47db761fa046408e71f0cb040d8d4508bcaf57f8",
+    "adapterBundleSha256": "846130768fb64647e1f0ea143c4f9e0a5acd872ee3a3cc46b0e4152ab606d2b4",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "scrollbackEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-scrollback-graded-v1",
+    "file": "scrl-observations.json",
+    "sha256": "8aabdd3fa3a2e9809b0783dc3d6e697690311704477529f58050de5264199dfb",
+    "runFile": "scrl-run.json",
+    "runSha256": "2341670be0a151089773508024599e52d0639a69fb6a7b015c4eb2d35b5bb31d",
+    "adapterBundleSha256": "3fefe41da5515951435c6deafa9ea5c913c488072a0f137206c1d152d42e7fb1",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 9
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "savedResetEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-saved-reset-graded-v1",
+    "file": "svrs-observations.json",
+    "sha256": "6dfd197c3edae92ae6220991de5ec043126cd4f11e0a3969c6e0fe3a41d4ea92",
+    "runFile": "svrs-run.json",
+    "runSha256": "49b7a899ea4114945c3f08debdfc9f68377eb0cabca7b85b5f8114364fac48f1",
+    "adapterBundleSha256": "0eb4943bd51dbe71b69b50be7149c0510727d5b40f99913c115ec94c2df02e25",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3,
+      "inconclusive": 2
+    },
+    "effectCounts": {
+      "supported": 5
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "eraseAttrsRegionEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-erase-attrs-region-graded-v1",
+    "file": "erar-observations.json",
+    "sha256": "1ad26af630a459f684e3446f59c95f2789f0563f726ef103707ea195c794ce76",
+    "runFile": "erar-run.json",
+    "runSha256": "01007aae885783efd037f2fa533106aca6e079964c8c484af966cde02219ef72",
+    "adapterBundleSha256": "373e65afd6847b4f77679a238cdeb010e1eabb25a9111c64efbb392a97710717",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "attrRectEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-attr-rect-graded-v1",
+    "file": "atrc-observations.json",
+    "sha256": "b8fca73b674bb01f3781a58e276352193c8a50c14a20d1c11b67eee301c8167e",
+    "runFile": "atrc-run.json",
+    "runSha256": "c87d716d5f4e813e0c5c1c05972471ba799ff8a2ddd16747a5f262997d4b7474",
+    "adapterBundleSha256": "753386ed8461559773fcfd0693971521751fa9c60429da5351688f5cc9ba7dec",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive": 3
+    },
+    "effectCounts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "cursorQualEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-cursor-qualification-graded-v1",
+    "file": "curq-observations.json",
+    "sha256": "8b4c1bd8ab88afb506aad2a8e3d27d6f407a39c488785f6a8b5dbc7736b26b9f",
+    "runFile": "curq-run.json",
+    "runSha256": "dd181b639561c31b93793b3922d8674fc12d53c1b151430ba1cb307c28429dfc",
+    "adapterBundleSha256": "89a1724503deeaf2462faedee87ca60bb66a6a50a57d895ea18cf2b9c1cce416",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "eraseCharsHistoryEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-erase-chars-history-graded-v1",
+    "file": "echh-observations.json",
+    "sha256": "84573aa699177522713e7718d834702e0cdcbe2263c5918c258237e3f46bcfac",
+    "runFile": "echh-run.json",
+    "runSha256": "63ba07b338e322b1d4298994cfc380f589ec394c56768da228320004f081f113",
+    "adapterBundleSha256": "7db4902f31ee8bce9fab49bf205fdda586da256c04673db3b2b193e36fcb944b",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "selectiveEraseEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-selective-erase-graded-v1",
+    "file": "sels-observations.json",
+    "sha256": "ec03099d5f4c7a7aec1b5f12e0f00aaa6abe7e8a5f7bec2b23056f781dadbd9e",
+    "runFile": "sels-run.json",
+    "runSha256": "85671ba2fa9a8b9ed5acdc0855de480b5102e59931607a51ccfea896ca45b8e6",
+    "adapterBundleSha256": "c3fc14e046b987056b9d80fe240dcfcd48ba3d6be98ca330a0902bbace74ac8f",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "rectEditEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-rectangle-editing-graded-v1",
+    "file": "rect-observations.json",
+    "sha256": "2896f36c5a0bbd400166930769bf97c530c99993aca9429b46f786dd863c0f3e",
+    "runFile": "rect-run.json",
+    "runSha256": "271a27f788beac2210eafecf91ac8e6b8adfc91bf0afb16c10ed60cbc9287906",
+    "adapterBundleSha256": "b1b63fff3ba8421554abecc6757589ca95f3e0e726a8c34e5cc7c92d1c0743df",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "colEditEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-column-editing-graded-v1",
+    "file": "cole-observations.json",
+    "sha256": "d153fce0a7bb259de76e1a844d45c71dcad72fbfd694ce74acabe045a76b0a59",
+    "runFile": "cole-run.json",
+    "runSha256": "2140ec7e045b4e561a1b7a4ebf1ad76a7b340d41a9cdac16c9dfe471d0280ada",
+    "adapterBundleSha256": "24f19456556653eb9fcb41db56fce345ac755af391182ea9452937418802be8c",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "rectChecksumEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-rectangle-checksum-graded-v1",
+    "file": "csum-observations.json",
+    "sha256": "fd9ff4c6c2f2d9a69f762b6e17df5afdb48eb13c2bb94441512994c7a08bd2a5",
+    "runFile": "csum-run.json",
+    "runSha256": "1cbd8082b7483bcbc945e218efb0fb75d7393be31a1cdf5b0d0e2c5e77c7f7e3",
+    "adapterBundleSha256": "75bd00965a7c08b8698d9e14053ddeef67a9ab5e20dc1aa02e3a28001a3d484c",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "lrMarginsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-left-right-margins-graded-v1",
+    "file": "lrmm-observations.json",
+    "sha256": "13b6e32491b6fcd14e199c1a66fed4b9e5a339a576e420a6c09c6abdcaacec6a",
+    "runFile": "lrmm-run.json",
+    "runSha256": "a97d379aa3f094d94115772f190b024122058e39223f074d53525167a7612411",
+    "adapterBundleSha256": "fa5d79c703f66bf3209caab94581789a7ea1df2f1f5e8568b6da4a853688acfc",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "colorResetEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-runtime-color-reset-graded-v1",
+    "file": "crst-observations.json",
+    "sha256": "a045f0bd64327d845d7efa2e482b987379766e20471c1b72465dc4e7aafe7d8b",
+    "runFile": "crst-run.json",
+    "runSha256": "5395d3f639e2affbe0763b7fb9bc702af351fd28cb1c7c6e2753dee98798cb5b",
+    "adapterBundleSha256": "20159ba82fbc248e9e66965ed4f59e04276b4b464507faaeebf2d0727f443e11",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "coreGapsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-core-gaps-v1",
+    "file": "cg-observations.json",
+    "sha256": "851c14d7f87a585dc6a3932be8e23ae5dec0f7e46ef330b70aff06251ebeacfd",
+    "runFile": "cg-run.json",
+    "runSha256": "ee547e7ed6021ee836d49895a374ed2f26b7de9672ea84614ff3def06971037a",
+    "adapterBundleSha256": "fd562cdf1c92f00b8fa41b05ca7fb9deb56a0e52e8f610fff314da18ba36e808",
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "routedInputEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-routed-input-benchmark-graded-v1",
+    "file": "rin-observations.json",
+    "sha256": "a8c5169351c40aacafc7f6f1cb5fcb77ffc87112da6060eb97d782eb776d01d5",
+    "runFile": "rin-run.json",
+    "runSha256": "40a438123e9a9a90dc3602dbed5d4ac6b3df081cbea872a24905e96a84f129d8",
+    "adapterBundleSha256": "151ac87a7c4cc8abf158447d1fde0438fcdf9682e5eccf21e5ce0994ec08bf70",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "textCursorEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-core-text-cursor-v1",
+    "file": "tc-observations.json",
+    "sha256": "8b151f6e71a3c1eeda2d1fbce97235f793785645b2bd3f943d0306711f44cd6e",
+    "runFile": "tc-run.json",
+    "runSha256": "9685043e79696752efc13884067abca92a4d31bdd6aeb759756c687904259b03",
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "osc133Evidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-osc133-graded-v1",
+    "file": "shi-observations.json",
+    "sha256": "914b8692801496087d3e354f82cad983c6a52256f50e7d913b933bd509884ec6",
+    "runFile": "shi-run.json",
+    "runSha256": "d58e0dba7033531b715ed2bf82392dbb560fee415ea9bcaa77a0b27d2613be47",
+    "adapterBundleSha256": "76101364970ac81716b4da3e9f146acb9a542058cfcbaf65e76e74c08aaad80b",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "osc633Evidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-osc633-graded-v1",
+    "file": "vs633-observations.json",
+    "sha256": "bfe44ed057b82cad1eed9b36a8b8aebc4dbe7cc3abdc3c59400f39b13bc7047c",
+    "runFile": "vs633-run.json",
+    "runSha256": "5e2b3ec56f93e98046d2efb503d61d96aa7dffbf653b8083e7e31fbeb929e2ce",
+    "adapterBundleSha256": "b41189d17f8fe3ecbada321effb38fc95c3f928b03d11e3eccda31b0750f6fb7",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "osc78Evidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-osc7-osc8-graded-v1",
+    "file": "lnk-observations.json",
+    "sha256": "16dc2586abe644b3e4808820bfb0acab373afdf671ded5155bb2f8ca9aa843dc",
+    "runFile": "lnk-run.json",
+    "runSha256": "d0fe27f81d94049c2ed7ad1d4ea15a901ebdc9026e2a8544858501a5792cf024",
+    "adapterBundleSha256": "dac7c100b9efeebc91585d9f81bbf6170a688e4dde46181dbf719002bd706886",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 1,
+      "supported/supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "coreEraseEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-core-erase-v1",
+    "file": "ce-observations.json",
+    "sha256": "3e244a37a0388fa08da56254133c80a6024bd41d1f8fc2577752541306417ad7",
+    "runFile": "ce-run.json",
+    "runSha256": "37c89287570ae2aea19097becdc0ffe8a81eed45d080d37b702f87b74286e465",
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "tabStopsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-core-tab-stops-v1",
+    "file": "ts-observations.json",
+    "sha256": "80691fd593f73c83a7d1c0562308c73aa100434f481849d5b6d0b8c4c0d248ae",
+    "runFile": "ts-run.json",
+    "runSha256": "48df819133f60f9c824ddd73c07614762f098b607f5a7f98ce90ca79f85b7c52",
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "coreWrapEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-core-wrap-v1",
+    "file": "cw-observations.json",
+    "sha256": "5c3fbb4aad5ce63af8fabed9212be86bb1aad37047460a950ea02624411ba46d",
+    "runFile": "cw-run.json",
+    "runSha256": "32ad4cd85b6c631cafa5890066352d7bebc86b5abd5602b2fd62f1086f75dbc6",
+    "geometryFile": "cw-geometry.json",
+    "geometrySha256": "21e2f8539911a80e43df1ee122f6dff9f5df80f7962656c9436fcbb14a9fd1cf",
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "sgrRasterEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-core-sgr-raster-v1",
+    "file": "sr-observations.json",
+    "sha256": "621effd9f8e872107226c97162c74e6eddb55e812839f65dd19f949bcdbfd84e",
+    "runFile": "sr-run.json",
+    "runSha256": "f388396074aa31e067e82eaef124130e7c81599f42b6383caf382ab8f078bd55",
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "reverseWideEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-core-reverse-wide-v1",
+    "file": "rw-observations.json",
+    "sha256": "95756959bfeeb7623a6a404fb6ed8d94f348998f624bf92dfb2c939b95cf81c0",
+    "runFile": "rw-run.json",
+    "runSha256": "0c10fffcc69217d5ea0096b099851d5dacbe43b2a8e68fc06713082de0c4a161",
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "titleStackEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-title-stack-graded-v1",
+    "file": "tst-observations.json",
+    "sha256": "e2067e1f49397d2ff736ec8955f8fa9642421ac9c0516827ca0ea4558c6deecf",
+    "runFile": "tst-run.json",
+    "runSha256": "e6677857ed24e0c1622ab0f51cb262dbbaa3f5ca60f42c55e029792eba3780d6",
+    "adapterBundleSha256": "76294db5572dd62004805b0abe61626a92a67071b370319d2bc533d866754927",
+    "contractsVersion": 1,
+    "counts": {
+      "supported/supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "oscTitleEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-osc-title-graded-v1",
+    "file": "ost-observations.json",
+    "sha256": "b865e7b4ba5ae22abeca274b7eafd05b8aac3a95d17150135f99e67acb481b9e",
+    "runFile": "ost-run.json",
+    "runSha256": "d7938d8e5ec55479e457d75aa69f0ec333d5f18e98b592f8ecfcee0673bf1396",
+    "adapterBundleSha256": "bfe79f071467e2874f395c689805978481e4815addecaaa7bcf834579ca6b528",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 2,
+      "supported/supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "selectionColorsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-selection-colors-graded-v1",
+    "file": "selc-observations.json",
+    "sha256": "4733e3e7667dbb45023faf17ae812d0db34b4256363378b362b151a5cdf9055b",
+    "runFile": "selc-run.json",
+    "runSha256": "3c78c3032e92c1ca39f5c532387210a6c0dccb96888d3e0a70ea7e898400ddb1",
+    "adapterBundleSha256": "86aee1834999e1594981fd1a159290c9cf14fe9f76f0408e066bc3b2da644081",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 4
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "insertReplaceEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-insert-replace-effect-v1",
+    "file": "irm-observations.json",
+    "sha256": "0d865f759b2f66b5b55b660c73b15c3d0d06c5ef044b5218eb2ede2023f6db00",
+    "runFile": "irm-run.json",
+    "runSha256": "9b94ef97730e873f990bd04eaba883f6c5f1417f429629cf78392bb1186f38cb",
+    "adapterBundleSha256": "353f29728796471f0cb96cf6080fab625d80b4adb8b3941352c5eb877b5c2d7e",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "xtgettcapEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-xtgettcap-graded-v1",
+    "file": "xgtc-observations.json",
+    "sha256": "d19ce96b866f74b4dab28c82d8872bcc9d267ffd28c7a73b4d74f76514062455",
+    "runFile": "xgtc-run.json",
+    "runSha256": "6fd043ad6c5f469103435356502ddb26585c98a9ff0ada49e8f38244de3c8d40",
+    "adapterBundleSha256": "69d22f34a1c247a0c4599abc426b85fbf740c0f1b651d2b595f7b96f9f340f3d",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "modifyOtherKeysEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-modify-other-keys-benchmark-graded-v1",
+    "file": "mok-observations.json",
+    "sha256": "2201df72ebb1bffba3ccb38e3798a83fbc27a1e8255c39924f4afd2106419167",
+    "runFile": "mok-run.json",
+    "runSha256": "ac4636b5463c51e2cbec9fc49fb62247308b2e6063bd3105c35cf2408e463155",
+    "adapterBundleSha256": "0e7ca3762e6ca0cfc9b30a70907f0058e9317905e0cfd0d5f7bb83b35dfc1870",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "devqEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-device-queries-graded-v1",
+    "file": "dvq-observations.json",
+    "sha256": "90b5bafdaa235ddc0190860e0f5bda148c99a319143e8b451a9fe9256ecd3d5a",
+    "runFile": "dvq-run.json",
+    "runSha256": "16466a77d5696e74072595f1f094f383e985cd28a293c46e384bd76264fc4335",
+    "adapterBundleSha256": "7312c4f1a7bf0f3e6cc1f649770edbab44e03fa3e2bd6930af80359290570cdd",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 3,
+      "inconclusive": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "xcsEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-xterm-color-stack-graded-v1",
+    "file": "xcs-observations.json",
+    "sha256": "157e41b9832365558f26336bfad0bea8cd6e646a81dfa15ee53cf4ca285af349",
+    "runFile": "xcs-run.json",
+    "runSha256": "6233ddca17aeb1fbf87891f8779d4898d4037380616da011983c9ff2cdf20c0b",
+    "adapterBundleSha256": "03b4384343f485e91c69db955595d851d144a0163d65304b48741b68f1bb3cd3",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "xssEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-xterm-sgr-stack-graded-v1",
+    "file": "xss-observations.json",
+    "sha256": "ac30ff6b9e569ed0d9cf7c2d7d7977489afc5dcadcc1f6f2223b4dcb5125ee4f",
+    "runFile": "xss-run.json",
+    "runSha256": "7da2b1c30f056f20601b0744165e60fafb2baf33984e24f3d9e634515fd2750d",
+    "adapterBundleSha256": "5e68a74ab7a5afc33d15345b94b2ee1cc677e9064c275dd301afaaefdcbc4e25",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "xsvEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-xterm-saved-modes-graded-v1",
+    "file": "xsv-observations.json",
+    "sha256": "52f0d29bed3e9815e531b89c792c5d2610733ffc2e12eede25fa2e8d79a6cf00",
+    "runFile": "xsv-run.json",
+    "runSha256": "4966393ad04649fefe5229a835ca320fb7a74281a1b9221f404eca07fdef4ae7",
+    "adapterBundleSha256": "de889370e393af856e72eeb0ebe0226bbd5a0cc43395f4152cb8c9fc9bd44cd7",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "mexEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-mouse-extended-benchmark-graded-v1",
+    "file": "mex-observations.json",
+    "sha256": "cf1f04155aae7d707eea75c148fcc04e5df8cb6451199b09ab7749c0e65d3396",
+    "runFile": "mex-run.json",
+    "runSha256": "23bcef16ed4655e0835f166c7d378f0183a2de1260e5f8896e35d5a65b946beb",
+    "adapterBundleSha256": "39028f3b155cc84f633d501dd51fc9056ff6ce1252f7fee9e7992aface8b212f",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 2
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "pxmEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-pixel-mouse-benchmark-graded-v1",
+    "file": "pxm-observations.json",
+    "sha256": "cfc654c6ff57da499617b714b1861300ffa4acb996c643dac0e8315fb922134e",
+    "runFile": "pxm-run.json",
+    "runSha256": "c3b0278fe70de5cde359077efd03121ee9279901e062bd50f5806fcfd4c2d9ca",
+    "adapterBundleSha256": "39296a00bfda4b918d7c520af20b6381dbe358c74557789fb76fe8325a57d18b",
+    "contractsVersion": 1,
+    "counts": {
+      "inconclusive/supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "kclEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-kitty-color-graded-v1",
+    "file": "kcl-observations.json",
+    "sha256": "3ef2046238df598369f2f87eb62efec0496b4dce92a6da17fdca39938eaa5f3c",
+    "runFile": "kcl-run.json",
+    "runSha256": "c09693c9a4887038b51672fd7aaa3b73d89cf351c2a8c6492268b0a392fd040d",
+    "adapterBundleSha256": "a9c2b14e23139f3d8d0b71a83e7b81c7d9502219529b8a1b755cf68d6c69bf18",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "rgbEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-rgb-underline-v1",
+    "file": "rgb-observations.json",
+    "sha256": "16a6ad7395d8513462d388ae504782a5252bb61c756dbbc503747a2d1d73d52d",
+    "counts": {
+      "passed": 20
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "renditionEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-rendition-charsets-v3",
+    "file": "rendition-observations.json",
+    "sha256": "1612ad806c7efe3d813057483c65ca2bf23685f466deab8344984118d9de5a99",
+    "counts": {
+      "passed": 19
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "cursorEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-cursor-modes-v1",
+    "file": "cursor-observations.json",
+    "sha256": "8848e01972d1f42bb326ccf4e4e04626ce649d9b1b1a888bc922f21c0da15252",
+    "counts": {
+      "passed": 8,
+      "failed": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "pixelEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-render-pixels-v1",
+    "file": "pixel-observations.json",
+    "sha256": "4b4ebf72b622536169f6a8c1c3cbf82d40e02325f96b23fcfb27452d08e61cd5",
+    "counts": {
+      "passed": 24,
+      "failed": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "colorEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-runtime-colors-v1",
+    "file": "color-observations.json",
+    "sha256": "3ed5a7c5bd4684c9476d905250c4bcf01916a8f8bf86546903f02ffc2fc244ba",
+    "counts": {
+      "passed": 10
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "eraseEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-erasure-v1",
+    "file": "erase-observations.json",
+    "sha256": "ee0da6eb5a7332eb123371a6ca9d1b6ad020a4b8463bb09f3731ea5fe13f3083",
+    "counts": {
+      "passed": 13
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "editingEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-cell-editing-v1",
+    "file": "editing-observations.json",
+    "sha256": "02a02b9ee2c480736968e7a94fc274ca1a25793ec752348624a1d32abb78e4a5",
+    "counts": {
+      "passed": 22
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "historyEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-history-scrolling-v1",
+    "file": "history-observations.json",
+    "sha256": "9ea37deb4b07e54c710ced5d7917515b68fc644ebdc48d51268914fc66db09f6",
+    "counts": {
+      "passed": 30
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "resizeEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-resize-reflow-v1",
+    "file": "resize-observations.json",
+    "sha256": "e10f2deca7749e62efb60330869e5e58c752d826b9c9dbf3a3e7ccafa0238df3",
+    "counts": {
+      "passed": 3
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "reflowEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-ascii-reflow-v1",
+    "file": "reflow-observations.json",
+    "sha256": "b2813803e7f018a24ce6d99acbfdde12011e7f55e9e8559c8dce3967d92d78f4",
+    "runFile": "rf-run.json",
+    "runSha256": "4fb43f5999dabd2ceac0371a289d3d1707ed9e0d82496e5d7398e000bda2e0b6",
+    "adapterBundleSha256": "7a4dd84a92fe4f1ef9da1695ad8ca23e616fe7e0cd873076cef00d5b7974a830",
+    "contractsVersion": 1,
+    "counts": {
+      "supported": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "savedEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-saved-alternate-v1",
+    "file": "saved-observations.json",
+    "sha256": "0c8eb55d607672bf59d931edb4039ee8de1ee8ea37ced3225ce16ce2320a8e82",
+    "counts": {
+      "passed": 9
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "metadataEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-pane-metadata-v1",
+    "file": "metadata-observations.json",
+    "sha256": "2e2c3e59411e8334668df1a27b6babc87699662ab628a287513e3881b8924da3",
+    "counts": {
+      "passed": 9,
+      "inconclusive": 3,
+      "failed": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "inputEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-routed-input-v5",
+    "file": "input-observations.json",
+    "sha256": "51132a3050d613dcb971a1a73e57a64b3d0df615f04e0e03e89c6f642305e300",
+    "counts": {
+      "passed": 196
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "staticImageEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-static-images-v1",
+    "file": "image-observations.json",
+    "sha256": "c079a0abbb8b96775911a62be23e1e04695623027a33245adde1e2f99e384568",
+    "counts": {
+      "passed": 21,
+      "failed": 1,
+      "inconclusive": 1
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "animationEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-kitty-animation-v1",
+    "file": "animation-observations.json",
+    "sha256": "2441ef5f19d827872afddaaae9d3fd0a10264c94eebecfc3e9b449846ebf0f20",
+    "counts": {
+      "passed": 18
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "queryEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-exact-queries-v1",
+    "file": "query-observations.json",
+    "sha256": "f31ac87d5ac5c97d6d7b269e4865b58d0f400b1c693375c7eca3a409ec63fd74",
+    "counts": {
+      "matched": 31,
+      "mismatched": 9
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "privateClipboardEvidence": {
+    "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
+    "suiteId": "ntilde-owned-private-clipboard-v1",
+    "file": "private-clipboard-observations.json",
+    "sha256": "bd9ed15de529db255fa7008aac29b8f01eefc0d39d5e961d74d9d7b1083e0eaa",
+    "counts": {
+      "completedProbes": 3,
+      "acceptedWrites": 2
+    },
+    "complete": true
+  },
+  "ownershipProofSha256": "7932d8816099dac950b143111b9b98c61ecb0856ed6467a12b1d2ae472333da5",
+  "contextSha256": "305383c13034d3861190c4bb239da1ed03c58b6669f26368435158be001098b5",
+  "rawSha256": "f64f0f0d2557c27baae2d648ff013f2c378a10cbf1e6b6d10d60a047434f765e",
+  "collectionScope": {
+    "id": "owned-osc633-without-notification-suites-v3",
+    "omittedSuites": [
+      "osc9",
+      "notify"
+    ],
+    "deadlineMs": 300000,
+    "predecessor": {
+      "file": "scope-predecessor.zip",
+      "sha256": "a3ef48571fc95de3e7c54f8c3d4d924d85b4ead8c7f8f6b959b11414a9d8e820",
+      "runId": "b45702ad11ea1f0ea46eeb4908206155",
+      "sourcePolicy": "readonly-owned-source-graph-v61"
+    }
+  },
+  "fixtureRemoved": true,
+  "completedAt": "2026-11-17T07:06:32.151Z"
+}

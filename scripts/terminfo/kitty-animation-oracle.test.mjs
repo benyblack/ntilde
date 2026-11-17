@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { animationFrameColor, animationFrameInput, animationInputPins, animationFrameIds } from './kitty-animation-inputs.mjs';
+import { animationAppearanceColor, animationAppearanceIds, animationComposedIds, animationFrameInput, animationInputPins, animationFrameIds, animationPngIds, animationPngInput, animationPngPins, composeOver, composedTolerance } from './kitty-animation-inputs.mjs';
 import { animationCases, animationCommand, animationExpectedReplies, animationHoldMs } from './kitty-animation-cases.mjs';
 import { classifyAnimationFrame, evaluateAnimationTiming, framesPossibleAt, inspectAnimationPixels } from './kitty-animation-oracle.mjs';
 
@@ -17,7 +18,7 @@ function draw(frameId, rect = square, edge = null) {
     const value = blank();
     for (let y = 0; y < rect.height; y++) for (let x = 0; x < rect.width; x++) {
         const border = edge && (x === 0 || y === 0 || x === rect.width - 1 || y === rect.height - 1);
-        value.pixels.set(border ? edge : animationFrameColor(frameId), ((rect.y + y) * value.width + rect.x + x) * 4);
+        value.pixels.set(border ? edge : animationAppearanceColor(frameId).color, ((rect.y + y) * value.width + rect.x + x) * 4);
     }
     return value;
 }
@@ -50,8 +51,9 @@ test('commands are exact bounded bytes from an explicit image id', () => {
     assert.equal(animationCommand('kitty.animation.stopped-hold', 'hold', { imageId: 7 }), '');
     assert.throws(() => animationCommand('kitty.animation.playback', 'build', {})); assert.throws(() => animationCommand('kitty.animation.playback', 'build', { imageId: 0 }));
     assert.throws(() => animationCommand('kitty.animation.playback', 'nope', { imageId: 1 })); assert.throws(() => animationCommand('nope', 'build', { imageId: 1 }));
-    assert.deepEqual(animationExpectedReplies('build', 7), ['\x1b_Gi=7,p=1;OK\x1b\\', ...Array(3).fill('\x1b_Gi=7;OK\x1b\\')], 'a=T echoes its placement id');
-    assert.deepEqual(animationExpectedReplies('start', 7), ['\x1b_Gi=7;OK\x1b\\']); assert.deepEqual(animationExpectedReplies('clear', 7), []);
+    const stageOf = (caseId, stageId) => animationCases.find(item => item.id === caseId).stages.find(item => item.id === stageId);
+    assert.deepEqual(animationExpectedReplies(stageOf('kitty.animation.playback', 'build'), 7), ['\x1b_Gi=7,p=1;OK\x1b\\', ...Array(3).fill('\x1b_Gi=7;OK\x1b\\')], 'a=T echoes its placement id');
+    assert.deepEqual(animationExpectedReplies(stageOf('kitty.animation.playback', 'start'), 7), ['\x1b_Gi=7;OK\x1b\\']); assert.deepEqual(animationExpectedReplies(stageOf('kitty.animation.playback', 'clear'), 7), []);
 });
 
 test('every case begins blank, builds, and ends cleared, with unique stage ids and timed targets inside hold windows', () => {
@@ -75,6 +77,54 @@ for (const id of animationFrameIds) test(`a clean ${id} frame classifies exactly
     for (const other of animationFrameIds.filter(item => item !== id)) assert.equal(inspect(observed, other).assertions[0].passed, false);
     assert.equal(inspect(observed, 'absent').assertions[0].passed, false);
     assert.match(value.scope, /no ownership, freshness, timing or stock grade/);
+});
+
+test('the PNG inputs are independent, pinned, valid 16x16 RGBA PNGs and composed colors follow the protocol blend', () => {
+    assert.deepEqual(animationPngIds, ['overRoot', 'overEdit']);
+    for (const id of animationPngIds) {
+        const input = animationPngInput(id);
+        assert.equal(input.sha256, animationPngPins[id]); assert.equal(input.bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+        assert.equal(input.bytes.readUInt32BE(16), 16); assert.equal(input.bytes.readUInt32BE(20), 16); assert.equal(input.bytes[24], 8); assert.equal(input.bytes[25], 6);
+        assert.equal(createHash('sha256').update(animationPngInput(id).bytes).digest('hex'), input.sha256, 'deterministic');
+    }
+    assert.throws(() => animationPngInput('nope')); assert.throws(() => animationPngInput('__proto__'));
+    // Half-transparent green over the opaque red root, and half-transparent red over the opaque blue edited root.
+    assert.deepEqual(composeOver([0, 255, 0, 128], [255, 0, 0, 255]), [127, 128, 0, 255]);
+    assert.deepEqual(composeOver([255, 0, 0, 128], [0, 0, 255, 255]), [128, 0, 127, 255]);
+    assert.deepEqual(animationComposedIds, ['overRoot', 'overEdit']);
+    assert.deepEqual(animationAppearanceIds, ['root', 'second', 'third', 'overRoot', 'overEdit']);
+    assert.deepEqual(animationAppearanceColor('overRoot'), { color: [127, 128, 0, 255], tolerance: composedTolerance });
+    assert.deepEqual(animationAppearanceColor('root'), { color: [255, 0, 0, 255], tolerance: 0 });
+});
+
+for (const id of animationComposedIds) test(`a composed ${id} frame passes within the blend rounding step and only its own appearance`, () => {
+    const { color } = animationAppearanceColor(id), near = draw(id);
+    const step = (value, by) => (value + by > 255 || value + by < 0 ? value - by : value + by);   // stays a valid byte
+    for (let i = 0; i < near.pixels.length; i += 4) if (near.pixels[i] === color[0] && near.pixels[i + 1] === color[1] && near.pixels[i + 2] === color[2]) near.pixels.set([step(color[0], 2), color[1], step(color[2], 2), 255], i);
+    const value = inspect(near, id);
+    assert.ok(all(value.controls)); assert.ok(all(value.assertions)); assert.equal(value.classification.frameId, id);
+    const far = draw(id); for (let i = 0; i < far.pixels.length; i += 4) if (far.pixels[i] === color[0] && far.pixels[i + 1] === color[1]) far.pixels.set([step(color[0], 3), color[1], color[2], 255], i);
+    assert.equal(inspect(far, id).assertions[0].passed, false, 'three steps off is not the composed color');
+    for (const other of animationAppearanceIds.filter(item => item !== id)) assert.equal(inspect(draw(id), other).assertions[0].passed, false);
+});
+
+test('the PNG and root frames case is bounded exact bytes with explicit frame choices and no elapsed time', () => {
+    const caseId = 'kitty.animation.png-and-root-frames', item = animationCases.find(value => value.id === caseId);
+    assert.deepEqual(item.stages.map(stage => [stage.id, stage.appearance, stage.clock]), [['blank', 'absent', 'static'], ['build', 'root', 'static'], ['show', 'overRoot', 'static'],
+        ['edit', 'third', 'static'], ['compose', 'overEdit', 'static'], ['clear', 'absent', 'static']]);
+    const apcs = id => animationCommand(caseId, id, { imageId: 9 }).split('\x1b\\').filter(Boolean);
+    const build = apcs('build'); assert.equal(build.length, 2);
+    assert.match(build[0], /^\x1b_Ga=T,f=32,s=16,v=16,t=d,i=9,p=1,c=4,r=2,C=1;/);
+    assert.equal(build[1], `\x1b_Ga=f,f=100,t=d,i=9,c=1,z=${animationHoldMs};` + animationPngInput('overRoot').bytes.toString('base64'));
+    assert.deepEqual(apcs('show'), ['\x1b_Ga=a,i=9,c=2']);
+    const edit = apcs('edit'); assert.equal(edit.length, 2);
+    assert.equal(edit[0], '\x1b_Ga=f,f=32,s=16,v=16,t=d,i=9,r=1;' + animationFrameInput('third').bytes.toString('base64')); assert.equal(edit[1], '\x1b_Ga=a,i=9,c=1');
+    const compose = apcs('compose'); assert.equal(compose.length, 2);
+    assert.equal(compose[0], `\x1b_Ga=f,f=100,t=d,i=9,c=1,z=${animationHoldMs};` + animationPngInput('overEdit').bytes.toString('base64')); assert.equal(compose[1], '\x1b_Ga=a,i=9,c=3');
+    assert.equal(animationCommand(caseId, 'blank', { imageId: 9 }), ''); assert.equal(animationCommand(caseId, 'clear', { imageId: 9 }), '\x1b_Ga=d,d=I,i=9\x1b\\\x1b[2J\x1b[H');
+    const replies = id => animationExpectedReplies(item.stages.find(stage => stage.id === id), 9);
+    assert.deepEqual(replies('build'), ['\x1b_Gi=9,p=1;OK\x1b\\', '\x1b_Gi=9;OK\x1b\\']);
+    assert.deepEqual(replies('show'), ['\x1b_Gi=9;OK\x1b\\']); assert.deepEqual(replies('compose'), Array(2).fill('\x1b_Gi=9;OK\x1b\\')); assert.deepEqual(replies('clear'), []);
 });
 
 test('antialiased edge pixels do not change the named frame but a mixed interior does', () => {
