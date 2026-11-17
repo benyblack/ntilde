@@ -31,6 +31,7 @@ invariant changes.
   Mux preserves raw session titles; its text listings choose command fallback. App's
   combined-host listing retains text cleaning/caps, and JSON keeps raw metadata.
 - OSC 5522 framing/strict base64 and the host-enabled DEC 5522 mode. Clipboard payloads, permission grants, transfer budgets and OS I/O belong to App; headless VT does not advertise a desktop service.
+- OSC 22 basic-set request validation and reset callbacks only; App owns per-screen pointer overrides, Avalonia cursor selection and its readback. No native presentation state is retained in VT.
 - Main + alternate screen buffers
 - Scrollback (`Buffer/ScrollbackPages.cs`) and lossless reflow (`TerminalBuffer.ReflowEngine.cs`)
 - Cell/row semantics, grapheme cluster handling, Unicode width

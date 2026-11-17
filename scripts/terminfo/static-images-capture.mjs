@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest } from './agent-observer.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
-import { checkImages, imageBoundScreen, staticImageSuite, validateImageOwnership, validateEpochChange,
+import { checkImages, imageBoundScreen, staticImageSuite, validateImageOwnership, validateImageSeal, validateEpochChange,
     imageRawReplies, validateImageCapture, stableImageContext, pristineImageBaseline } from './static-images.mjs';
 
 /**
@@ -10,9 +10,9 @@ import { checkImages, imageBoundScreen, staticImageSuite, validateImageOwnership
  * `suite` names its plan, kind prefix, retained directories and how replies and per-case state are read (the static-image suite by default).
  */
 export class OwnedStaticImageObserver {
-    constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, suite = staticImageSuite, now = Date.now, ...options }) {
+    constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, suite = staticImageSuite, deferReport = false, now = Date.now, ...options }) {
         checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= suite.priorCap);
-        this.suite = suite; this.now = now;
+        this.suite = suite; this.now = now; this.deferReport = deferReport;
         this.output = output; this.runId = options.nonce.slice(11); this.priorChallenges = [...priorChallenges];
         this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.frames = []; this.actions = []; this.states = new Map();
         this.next = 0; this.phase = 'start'; this.totalPixels = 0;
@@ -21,6 +21,7 @@ export class OwnedStaticImageObserver {
     }
     get paneId() { return this.before.paneId; }
     get restored() { return this.phase === 'complete' && !this.failed; }
+    get captureRestored() { return ['sealed', 'complete'].includes(this.phase) && !this.failed; }
     action() {
         const entry = this.suite.plan[this.next]; checkImages(entry);
         if (entry.kind === 'read' && !this.states.has(entry.caseId)) this.states.set(entry.caseId, this.suite.newState(this.states));
@@ -62,7 +63,7 @@ export class OwnedStaticImageObserver {
             writeFileSync(join(this.output, file), bytes, { flag: 'wx', mode: 0o600 }); return pixel;
     }
     validateRequest(request) {
-        checkImages(!this.busy && !this.failed && !this.restored);
+        checkImages(!this.busy && !this.failed && !this.captureRestored);
         checkImages(Object.keys(request).every(key => ['kind', 'caseId', 'stageId', 'capture', 'captureStatus', 'tty', 'barrier', 'token', 'runId', 'workerPid'].includes(key)));
         let entry = this.suite.plan[this.next], kind = entry?.kind;
         if (this.phase === 'start') entry = { kind: 'start' };
@@ -72,7 +73,7 @@ export class OwnedStaticImageObserver {
         return entry;
     }
     /**
-     * The ownership the current App process is held to. A relaunch stage may bring a new App process under the same persistent session: its observers
+     * The ownership the current App process is held to. A relaunch stage brings a new App process under the same persistent session (and must): its observers
      * are then bound to that process and forget the old pane (the new pane's id is learned at the first capture).
      */
     adoptOwnership(ownership, entry) {
@@ -93,8 +94,19 @@ export class OwnedStaticImageObserver {
     sealCapture(request, ownership) {
         validateImageOwnership(ownership, this.epoch, this.baseline);
         this.seal = { ...structuredClone(request.captureStatus), ownership: structuredClone(ownership) };
-        this.report = this.suite.buildReport(this.frames, this.actions, this.seal, this.runId, this.output, this.priorChallenges);
-        this.phase = 'complete'; return { sealed: true };
+        validateImageSeal(this.frames, this.seal, this.suite, this.output);
+        this.phase = 'sealed';
+        if (!this.deferReport) this.finalizeReport();
+        return { sealed: true };
+    }
+    /** Full PNG grading stays mandatory, but the owner need not hold an RPC open while it runs. */
+    finalizeReport() {
+        checkImages(this.captureRestored);
+        if (this.restored) return this.report;
+        try {
+            this.report = this.suite.buildReport(this.frames, this.actions, this.seal, this.runId, this.output, this.priorChallenges);
+            this.phase = 'complete'; return this.report;
+        } catch (error) { this.failed = true; this.lastAttempt.error = String(error.message ?? error); throw error; }
     }
     acceptRaw(request, entry) {
         const argb = entry.kind === 'finish' ? this.initialBackground : 0xff101010;
@@ -106,7 +118,8 @@ export class OwnedStaticImageObserver {
         if (entry.kind !== 'read') checkImages(pair.pixels.every(value => value.imageDetails.totalPlacements === 0));
         if (this.phase !== 'start') {
             checkImages(snapshotHash(pair.screen) === snapshotHash(entry.kind === 'finish' ? this.baseline : this.bound));
-            if (entry.kind === 'finish') checkImages(snapshotHash(pair.pixels[0].renderDetails) === snapshotHash(this.initialDetails));
+            if (entry.kind === 'finish') checkImages(pair.pixels[0].sha256 === this.frames[0].pixels[0].sha256
+                && snapshotHash(pair.pixels[0].renderDetails) === snapshotHash(this.initialDetails));
             return;
         }
         checkImages(pristineImageBaseline(pair.screen) && pair.screen.rows >= 8 && pair.screen.cols >= 60);

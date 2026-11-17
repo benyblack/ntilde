@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { OwnedStaticImageObserver } from './static-images-capture.mjs';
 import { collectStaticImages } from './static-images-collector.mjs';
-import { imagePlan, imageBoundScreen, imageModeQueries as inputModeQueries, imageModeReplyHex, imageBackgroundReply } from './static-images.mjs';
+import { imagePlan, imageBoundScreen, imageModeQueries as inputModeQueries, imageModeReplyHex, imageBackgroundReply, staticImageSuite } from './static-images.mjs';
 import { staticImageCases } from './static-images-cases.mjs';
 import { initialInputScreen, inputRunId, inputPaneId } from './fixtures/input-journal.mjs';
 import { imageOwnership, syntheticImageCapture, syntheticImageReply } from './fixtures/static-images-journal.mjs';
@@ -16,12 +16,14 @@ class Input extends EventEmitter {
     pause() { this.paused = true; } resume() { this.paused = false; }
 }
 async function fixture(action, { late = false, changedPair = false, changedWorker = false, badModes = false, badReply = false,
-    initialCursorVisible = true, risShowsCursor = false, omitCursorRestore = false, mutateCapture } = {}) {
+    initialCursorVisible = true, risShowsCursor = false, omitCursorRestore = false, mutateCapture,
+    deferReport = false, buildReport = staticImageSuite.buildReport, mutateSeal } = {}) {
     const directory = mkdtempSync(join(tmpdir(), 'nt-image-capture-')), input = new Input(), calls = [], writes = [];
     let screen = initialInputScreen(10, 60), allocated = 99, reads = 0;
     screen.cursorVisible = initialCursorVisible;
     const baseline = structuredClone(screen), bound = imageBoundScreen(baseline, inputRunId), ownership = imageOwnership();
     const observer = new OwnedStaticImageObserver({ output: directory, nonce: 'NTILDE_IMG_' + inputRunId,
+        deferReport, suite: { ...staticImageSuite, buildReport },
         profileName: 'fixture', expectedPaneId: inputPaneId, priorChallenges: ['32768,32769'], endpoint: () => 'private',
         rpc: async (_, method) => {
             if (method === 'listSessions') return { sessions: [{ paneId: inputPaneId, kind: 'local', profileName: 'fixture', rows: screen.rows, cols: screen.cols }] };
@@ -58,6 +60,7 @@ async function fixture(action, { late = false, changedPair = false, changedWorke
     } };
     const owner = async (kind, _, extra = {}) => {
         calls.push({ kind, extra });
+        if (kind === 'images-seal') mutateSeal?.(extra.captureStatus);
         const fact = structuredClone(ownership); if (changedWorker && kind === 'images-admit') fact.worker.pid++;
         const result = await observer.handle({ kind, ...extra }, () => 1000, fact);
         if (late && kind === 'images-finish') input.emit('data', Buffer.from('late'));
@@ -77,6 +80,36 @@ test('real collector/observer orchestration uses30 admitted bounded emits,31 pai
     assert.equal(f.writes.filter(value => value.endsWith(inputModeQueries)).length, 30);
     assert.ok(f.observer.report.snapshots.slice(1).every(frame => frame.capture.nonces.join(',') !== '32768,32769'));
 }));
+test('deferred grading acknowledges a checked wire seal and completes only after full report grading', async () => {
+    let grades = 0;
+    await fixture(async f => {
+        await collectStaticImages(f);
+        assert.equal(grades, 0); assert.equal(f.observer.captureRestored, true);
+        assert.equal(f.observer.restored, false); assert.equal(f.observer.report, undefined);
+        await assert.rejects(f.owner('images-seal'));
+        const report = f.observer.finalizeReport();
+        assert.equal(grades, 1); assert.equal(f.observer.restored, true);
+        assert.strictEqual(f.observer.finalizeReport(), report); assert.equal(grades, 1);
+    }, { deferReport: true, buildReport: (...args) => { grades++; return staticImageSuite.buildReport(...args); } });
+});
+test('deferred grading failure cannot acquire the restored state or a report', async () => fixture(async f => {
+    await collectStaticImages(f);
+    assert.throws(() => f.observer.finalizeReport(), /grading failed/);
+    assert.equal(f.observer.restored, false); assert.equal(f.observer.captureRestored, false);
+    assert.equal(f.observer.report, undefined); assert.equal(f.observer.failed, true);
+    assert.match(f.observer.lastAttempt.error, /grading failed/);
+}, { deferReport: true, buildReport: () => { throw new Error('grading failed'); } }));
+for (const [name, mutateSeal] of [
+    ['failed raw reader', seal => { seal.failed = true; }],
+    ['undisposed raw reader', seal => { seal.disposed = false; }],
+    ['missing attempt', seal => { seal.attempts--; }],
+    ['wrong raw bytes', seal => { seal.lastAttempt.hex = '00'; }],
+    ['wrong nonces', seal => { seal.lastAttempt.nonces = []; }],
+]) test(`deferred grading still rejects ${name} before acknowledging the seal`, async () => fixture(async f => {
+    await assert.rejects(collectStaticImages(f));
+    assert.equal(f.observer.captureRestored, false); assert.equal(f.observer.restored, false);
+    assert.equal(f.observer.report, undefined);
+}, { deferReport: true, mutateSeal }));
 for (const initialCursorVisible of [true, false]) for (const risShowsCursor of [false, true])
     test(`finish restores observed visibility=${initialCursorVisible} with RIS-shows=${risShowsCursor}`, async () => fixture(async f => {
         await collectStaticImages(f);

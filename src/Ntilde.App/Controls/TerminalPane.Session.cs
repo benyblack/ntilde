@@ -128,6 +128,16 @@ namespace Ntilde.Controls
         /// </summary>
         internal const string ChildTerminalType = "xterm-256color";
 
+        private int _pointerShapeGeneration;
+
+        // Session-owned requests must not survive replacement, reconnect or exit. The generation
+        // also rejects already queued callbacks when the exited parser remains attached to the buffer.
+        private void ResetSessionPointerShapes()
+        {
+            _pointerShapeGeneration++;
+            TermView.ResetPointerShapes();
+        }
+
         /// <summary>
         /// Replaces <see cref="Parser"/> with a fresh <see cref="AnsiParser"/> and attaches this
         /// pane's handlers to it.
@@ -155,8 +165,22 @@ namespace Ntilde.Controls
 
             // A mux-backed pane shares the daemon's image geometry even though only the GUI
             // decodes the bitmaps: SIXEL always, Kitty and iTerm2 where the session's policy carries them.
+            ResetSessionPointerShapes();
             Parser = new AnsiParser(Buffer, forceConPtyFiltering);
             WireKittyClipboard(muxBacked);
+            if (!muxBacked)
+            {
+                var pointerParser = Parser;
+                int pointerGeneration = _pointerShapeGeneration;
+                Parser.OnPointerShapeRequested = (shape, alternate) => this.Dispatcher.Post(() =>
+                {
+                    if (ReferenceEquals(Parser, pointerParser) && _pointerShapeGeneration == pointerGeneration) TermView.RequestPointerShape(shape, alternate);
+                });
+                Parser.OnPointerShapeReset = () => this.Dispatcher.Post(() =>
+                {
+                    if (ReferenceEquals(Parser, pointerParser) && _pointerShapeGeneration == pointerGeneration) TermView.ResetPointerShapes();
+                });
+            }
 
             // The GUI decodes the pixels while the headless parser applies the same geometry.
             Parser.ImageDecoder = CreateImageDecoder(muxBacked);

@@ -127,6 +127,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/AnsiParser.ModeSave.cs",
             "src/Ntilde.VT/AnsiParser.Reset.cs",
             "src/Ntilde.VT/AnsiParser.Osc.cs",
+            "src/Ntilde.VT/AnsiParser.PointerShape.cs",
             "src/Ntilde.VT/AnsiParser.TextSizing.cs",
             "src/Ntilde.VT/AnsiParser.Titles.cs",
             "src/Ntilde.VT/AnsiParser.Notifications.cs",

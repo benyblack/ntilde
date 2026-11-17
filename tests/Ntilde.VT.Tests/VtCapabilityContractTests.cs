@@ -82,6 +82,7 @@ public sealed class VtCapabilityContractTests
             ["kitty-color-control"] = AssertKittyColorControl,
             ["osc5-special-color"] = AssertOsc5SpecialColor,
             ["osc3008-context"] = AssertOsc3008Context,
+            ["osc22-pointer"] = AssertOsc22Pointer,
             ["color-scheme-query"] = AssertColorSchemeQuery,
             ["color-scheme-notifications"] = AssertColorSchemeNotifications,
             ["alternate-scroll"] = AssertAlternateScroll,
@@ -692,6 +693,15 @@ public sealed class VtCapabilityContractTests
         parser.Process("\u001b]3008;end=ctx\u001b\\");
         Assert.Empty(parser.ContextStack);
         Assert.Empty(replies);
+    }
+
+    private static void AssertOsc22Pointer()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(12, 8));
+        var requests = new List<(string?, bool)>();
+        parser.OnPointerShapeRequested = (name, alternate) => requests.Add((name, alternate));
+        parser.Process("\x1b]22;pointer\x07\x1b]22;text\x1b\\\x1b]22;\x07");
+        Assert.Equal(new (string?, bool)[] { ("pointer", false), ("text", false), (null, false) }, requests);
     }
 
     private static void AssertColorSchemeQuery()

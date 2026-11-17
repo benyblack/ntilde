@@ -137,6 +137,15 @@
       "contractCase": "osc5-special-color"
     },
     {
+      "key": "OSC:22",
+      "mnemonic": "Pointer shape",
+      "support": "partial",
+      "description": "Bounded basic-set requests for pointer, text, crosshair and default, optional leading =, and empty reset. VT emits bounded requests and reset notifications; the direct App owns separate main/alternate overrides and maps them to Avalonia Cursor objects, with hyperlink hover priority. RIS and DECSTR withdraw both overrides. Stacks, queries, other CSS names and X11 aliases are ignored; no native pointer image, mux or replay support is claimed.",
+      "matrixFeature": "OSC 22 (pointer shape)",
+      "evidencePath": "tests/Ntilde.VT.Tests/Osc22PointerShapeTests.cs",
+      "contractCase": "osc22-pointer"
+    },
+    {
       "key": "OSC:3008",
       "mnemonic": "Context signalling",
       "support": "partial",

@@ -60,6 +60,7 @@ import { collectKclGrading } from './kcl-collector.mjs';
 import { collectOsc5Grading } from './osc5-collector.mjs';
 import { collectOsc3008 } from './osc3008-collector.mjs';
 import { collectOsc720 } from './osc720-collector.mjs';
+import { collectOsc22 } from './osc22-collector.mjs';
 import { collectLrMarginsGrading } from './lr-margins-collector.mjs';
 import { collectRoutedInputPinned } from './routed-input-collector.mjs';
 import { routedInputCaseIds, routedInputGradedSuiteId } from './routed-input-contracts.mjs';
@@ -521,6 +522,10 @@ try {
             if (createHash('sha256').update(osc720Source).digest('hex') !== config.osc720BundleSha256) throw new Error('Local OSC 720 adapter bundle changed.');
             const osc720Result = await collectOsc720({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc720Bundle).href) });
             if (osc720Result.status === 'complete') writeFileSync(join(config.output, 'ovu-run.json'), JSON.stringify(osc720Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+            const osc22Source = readFileSync(config.osc22Bundle);
+            if (createHash('sha256').update(osc22Source).digest('hex') !== config.osc22BundleSha256) throw new Error('Local OSC 22 adapter bundle changed.');
+            const osc22Result = await collectOsc22({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc22Bundle).href) });
+            if (osc22Result.status === 'complete') writeFileSync(join(config.output, 'ptr-run.json'), JSON.stringify(osc22Result.run) + '\n', { flag: 'wx', mode: 0o600 });
             const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
             // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
             // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

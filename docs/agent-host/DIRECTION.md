@@ -443,6 +443,12 @@ before resolving them. Main-history count, generation and eviction counters are
 included even while alternate is active; alternate anchors use their own screen
 coordinates. These counters do not describe alternate-screen history.
 
+`pointerShape` carries the active view's requested OSC 22 name (or null), `controlCursor`
+(the actual Avalonia Cursor object's standard-kind name, such as Hand or Ibeam), and
+`linkOverride`. It observes App state and a control property, not the operating system's
+currently displayed pointer image. The basic-setter scope and omitted unsupported forms
+are specified in [the OSC 22 contract](../qa/terminfo/osc22-pointer.md).
+
 `buffer.contexts` (when the parser is available) carries the parser-retained OSC 3008 hierarchical contexts
 (`{untrusted: true, stack, ended}`: at most 16 open contexts and the 8 most recently ended, [contract](../qa/terminfo/osc3008.md)).
 Every string in it was written by whatever controls the terminal: it is data to display, never a command, a path to

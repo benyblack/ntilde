@@ -15,6 +15,10 @@ for(const [kind,code,expected] of [
     ['rgb-start','metadataGeometryUnavailable',undefined],
     ['metadata-start','paneMetadataUnavailable','paneMetadataUnavailable'],
     ['metadata-read','paneMetadataUnavailable',undefined],
+    ['ptr-start','paneMetadataUnavailable','paneMetadataUnavailable'],
+    ['ptr-start','metadataGeometryUnavailable','metadataGeometryUnavailable'],
+    ['ptr-read','paneMetadataUnavailable',undefined],
+    ['ptr-finish','metadataGeometryUnavailable',undefined],
     ['metadata-start','untrustedCode',undefined],
     ['metadata-start','screenDetailsUnavailable','screenDetailsUnavailable'],
 ])test('owner code '+code+' on '+kind+' retains only the permitted meaning',async()=>{
@@ -35,4 +39,12 @@ test('column-editing reads (protection and attribute runs over a full screen) us
         await assert.rejects(requestOwner(config,'rect-read'),/Oversized/);
     });
     await withServer(JSON.stringify({ok:true,screen:'x'.repeat(512*1024)})+'\n',config=>assert.rejects(requestOwner(config,'cole-read'),/Oversized/));
+});
+
+test('OSC22 paired full-screen metadata keeps the bounded snapshot cap',async()=>{
+    await withServer(JSON.stringify({ok:true,screen:'x'.repeat(40000)})+'\n',async config=>{
+        for(const kind of ['ptr-start','ptr-bind','ptr-read','ptr-finish']) assert.equal((await requestOwner(config,kind)).screen.length,40000);
+        await assert.rejects(requestOwner(config,'ptrx-read'),/Oversized/);
+    });
+    await withServer(JSON.stringify({ok:true,screen:'x'.repeat(512*1024)})+'\n',config=>assert.rejects(requestOwner(config,'ptr-read'),/Oversized/));
 });
