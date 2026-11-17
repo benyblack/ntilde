@@ -34,7 +34,7 @@ Three distinct things, recorded separately in [report.json](2026-11-17-osc720/re
   `totalLines = scrollbackLines + rows`, `screenLines = rows`). This is not a termless backend run and not a stock grade. It returned `unsupported`: the viewport stayed at the live line after the bare form.
 - **Effect contract:** independent oracle written from the rxvt text. All six protocol experiments observed **no effect**, with every control held, so the effect is **unsupported**.
 
-The stock collector, re-run in the same owned run (`966525901fd2e59442dc76dd4ed1b80e`; stock collector run `3c7b51ec949950f3e17cbc8e37326e1e`), still grades the case inconclusive
+The stock collector, re-run in the same owned run (`bb832e39430176c8f96f62d40ea4a5e6`; stock collector run `54d8392084916c19f55245d2379b43d5`), still grades the case inconclusive
 (94 supported / 1 unsupported / 160 inconclusive, `suiteComplete=false`): **no stock score, no Core point and no common-harness score is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -57,7 +57,7 @@ is a paired complete screen, stored history (count, generation, evictions and co
 
 The two controls prove the measured quantities can move: ED 3 changes the history observation and one generated wheel notch (the App's own routed pointer path, verified before and after against the
 disposable fixture's ownership) changes the view position. The unmarked control and every setup read prove nothing moves spontaneously and that each experiment started from the same history and view.
-A conclusive effect needs all controls and setups to hold; a partial implementation would be inconclusive, never a guess.
+After each scrolled experiment two `scroll-down` wheel notches return the view to the live line, because the next experiment's reset and refill can outrun the view's own clamp. A conclusive effect needs all controls and setups to hold; a partial implementation would be inconclusive, never a guess.
 
 ## What changed in the App
 
@@ -70,9 +70,9 @@ A conclusive effect needs all controls and setups to hold; a partial implementat
 
 ## Evidence and reproduction
 
-- Measured: App `0.14.0+4e8605db…` (Release sidecar built from the merge of PR 1016, executable SHA-256 `f5814e51…9bf8`), scripts at `4e8605db…`, source policy v67 (450 files), receipt schema 74, scope `owned-osc633-without-notification-suites-v5`
+- Measured: App `0.14.0+85efa784…` (Release sidecar built on the tree restacked after PR 1016 and the OSC 3008 batch, executable SHA-256 `f5814e51…9bf8`), scripts at `0c825f5a…`, source policy v67 (450 files), receipt schema 74, scope `owned-osc633-without-notification-suites-v5`
   (the notification suites are omitted and independently rederived from their own publications). Layered collector extension `ntilde-owned-osc720-grading-v1` over the left/right-margin one.
-- Retained: [owned-run.zip](2026-11-17-osc720/owned-run.zip) (complete run, receipt, journals, run log, wheel actions, adapter bytes) and seven superseded runs (five failed attempts and two identical-result complete runs: one measured before PR 1016 merged, one graded with a text-only screen comparison that review replaced) in
+- Retained: [owned-run.zip](2026-11-17-osc720/owned-run.zip) (complete run, receipt, journals, run log, wheel actions, adapter bytes) and nine superseded runs (five failed attempts, three complete runs measured on earlier trees or with an earlier grading, and one restack run whose unmarked control failed because a scrolled view survived the next reset) in
   [superseded/](2026-11-17-osc720/superseded) with reasons in [attempts.json](2026-11-17-osc720/attempts.json). `node --test scripts/terminfo/osc720-publication.test.mjs` extracts the run, reissues the complete receipt
   with the current validators, rebuilds the report from the paired journal and compares it byte for byte.
 - Policy: stock unchanged; the unchanged pinned bundle's two paths and the effect contract are three separate rows; OSC 721, painted pixels, remote/mux, Windows/Linux and a bare-form-with-count variant beyond the six

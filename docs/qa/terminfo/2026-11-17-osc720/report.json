@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-osc720-graded-v1",
   "contractsVersion": 1,
-  "runId": "966525901fd2e59442dc76dd4ed1b80e",
+  "runId": "bb832e39430176c8f96f62d40ea4a5e6",
   "adapter": {
     "id": "ntilde-owned-osc720-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "23dc886f875c46a33ebb62822ca1fd4ff6689ff10fdcacae5f18aabf1f107379",
+    "bundleSha256": "0124622fdf383aa10bd7936466c1cd66cc3c21bc722cd7e16dc85cbbce60ba76",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 paths for extensions.osc720-scroll-up preserved: the terminal path (two writes, a cursor-position query and unverifiedEffect; always inconclusive, evidence \"consumed\", and the path the stock collector grades) and the termless function (thirty fed lines, two scrollback reads and the bare OSC 720 BEL; replayed UNCHANGED over a parent-built scrollback context mapped from the App view position, which is not a termless backend run and not a stock grade), beside a separately identified effect contract graded by an independent oracle written from rxvt-unicode: OSC 720 ; Pt moves the viewing window up Pt lines and, for a zero or absent Pt (which the pinned bare form is), clears the scrollback (rxvt(7) and src/command.C scr_page / scr_erase_savelines). Observed quantities are the App view scroll position, the stored history (count, generation, evictions and content), the cursor and the screen; the wheel (a routed generated-input notch) and ED 3 are observer controls only and never evidence for OSC 720. No OSC 721, painted pixels, remote/mux, Windows/Linux, stock-score or common-harness claim.",
@@ -20,18 +20,62 @@
             "wheelDelta": 1,
             "column": 1,
             "row": 1,
-            "paneId": "a0d3632f-b935-4d34-a67c-6897bd139f78"
+            "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
           },
           "eventDispatched": true,
           "handled": true,
           "boundary": "avalonia-routed",
           "observationAvailable": true,
           "postVerified": true,
-          "observedAt": "2026-11-17T13:41:44.057Z"
+          "observedAt": "2026-11-17T14:46:55.778Z"
         }
       ],
-      "startedAt": "2026-11-17T13:41:44.032Z",
-      "finishedAt": "2026-11-17T13:41:44.057Z"
+      "startedAt": "2026-11-17T14:46:55.742Z",
+      "finishedAt": "2026-11-17T14:46:55.778Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T14:46:57.332Z"
+        }
+      ],
+      "startedAt": "2026-11-17T14:46:57.314Z",
+      "finishedAt": "2026-11-17T14:46:57.332Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T14:46:57.350Z"
+        }
+      ],
+      "startedAt": "2026-11-17T14:46:57.336Z",
+      "finishedAt": "2026-11-17T14:46:57.350Z"
     },
     {
       "action": "scroll-up",
@@ -42,18 +86,62 @@
             "wheelDelta": 1,
             "column": 1,
             "row": 1,
-            "paneId": "a0d3632f-b935-4d34-a67c-6897bd139f78"
+            "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
           },
           "eventDispatched": true,
           "handled": true,
           "boundary": "avalonia-routed",
           "observationAvailable": true,
           "postVerified": true,
-          "observedAt": "2026-11-17T13:41:45.643Z"
+          "observedAt": "2026-11-17T14:46:58.948Z"
         }
       ],
-      "startedAt": "2026-11-17T13:41:45.627Z",
-      "finishedAt": "2026-11-17T13:41:45.643Z"
+      "startedAt": "2026-11-17T14:46:58.933Z",
+      "finishedAt": "2026-11-17T14:46:58.948Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T14:47:00.496Z"
+        }
+      ],
+      "startedAt": "2026-11-17T14:47:00.476Z",
+      "finishedAt": "2026-11-17T14:47:00.496Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T14:47:00.517Z"
+        }
+      ],
+      "startedAt": "2026-11-17T14:47:00.502Z",
+      "finishedAt": "2026-11-17T14:47:00.517Z"
     }
   ],
   "cases": [
@@ -467,7 +555,7 @@
               "action": "scroll-up",
               "response": {
                 "ok": true,
-                "ownerPid": 56749,
+                "ownerPid": 14315,
                 "action": "scroll-up",
                 "notches": [
                   {
@@ -476,18 +564,72 @@
                       "wheelDelta": 1,
                       "column": 1,
                       "row": 1,
-                      "paneId": "a0d3632f-b935-4d34-a67c-6897bd139f78"
+                      "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
                     },
                     "eventDispatched": true,
                     "handled": true,
                     "boundary": "avalonia-routed",
                     "observationAvailable": true,
                     "postVerified": true,
-                    "observedAt": "2026-11-17T13:41:44.057Z"
+                    "observedAt": "2026-11-17T14:46:55.778Z"
                   }
                 ],
-                "startedAt": "2026-11-17T13:41:44.032Z",
-                "finishedAt": "2026-11-17T13:41:44.057Z"
+                "startedAt": "2026-11-17T14:46:55.742Z",
+                "finishedAt": "2026-11-17T14:46:55.778Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 14315,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T14:46:57.332Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T14:46:57.314Z",
+                "finishedAt": "2026-11-17T14:46:57.332Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 14315,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T14:46:57.350Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T14:46:57.336Z",
+                "finishedAt": "2026-11-17T14:46:57.350Z"
               }
             }
           ]
@@ -667,7 +809,7 @@
               "action": "scroll-up",
               "response": {
                 "ok": true,
-                "ownerPid": 56749,
+                "ownerPid": 14315,
                 "action": "scroll-up",
                 "notches": [
                   {
@@ -676,18 +818,72 @@
                       "wheelDelta": 1,
                       "column": 1,
                       "row": 1,
-                      "paneId": "a0d3632f-b935-4d34-a67c-6897bd139f78"
+                      "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
                     },
                     "eventDispatched": true,
                     "handled": true,
                     "boundary": "avalonia-routed",
                     "observationAvailable": true,
                     "postVerified": true,
-                    "observedAt": "2026-11-17T13:41:45.643Z"
+                    "observedAt": "2026-11-17T14:46:58.948Z"
                   }
                 ],
-                "startedAt": "2026-11-17T13:41:45.627Z",
-                "finishedAt": "2026-11-17T13:41:45.643Z"
+                "startedAt": "2026-11-17T14:46:58.933Z",
+                "finishedAt": "2026-11-17T14:46:58.948Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 14315,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T14:47:00.496Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T14:47:00.476Z",
+                "finishedAt": "2026-11-17T14:47:00.496Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 14315,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "11e53b51-a84d-4035-aa38-a62726c9edd2"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T14:47:00.517Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T14:47:00.502Z",
+                "finishedAt": "2026-11-17T14:47:00.517Z"
               }
             }
           ]
