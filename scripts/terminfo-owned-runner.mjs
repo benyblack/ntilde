@@ -272,7 +272,7 @@ const osc9ActionKinds = new Set(['osn-defocus', 'osn-refocus']);
 /** The parent-performed focus actions of the OSC 777 / OSC 99 notification suite: exact kinds, answered by the runner. */
 const notifyActionKinds = new Set(['ntf-defocus', 'ntf-refocus']);
 /** The parent-performed wheel action of the OSC 720 suite: one exact kind, answered by the runner through the owned generated-input path. */
-const osc720ActionKinds = new Set(['ovu-scroll-up']);
+const osc720ActionKinds = new Set(['ovu-scroll-up', 'ovu-scroll-down']);
 const untranslatedCellSteps = new Set(['start', 'bind', 'read', 'finish']);
 /** Whether a request kind is exactly `<prefix>-<step>` for one of the cell observation prefixes and steps. */
 function untranslatedCellKind(kind) {
@@ -3090,7 +3090,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     prefix: osc720Prefix, includeResolvedColors: true, planOf: osc720ObserverPlan, matchesBaseline: matchesOsc720Baseline, expose: exposeOsc720Facts, monotonicHistory: true }) };
             const state = osc720State;
             if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('OSC 720 fixture ownership or availability changed.');
-            if (request.kind === `${osc720Prefix}-scroll-up`) return performOsc720Action(request, budget);
+            if (osc720ActionKinds.has(request.kind)) return performOsc720Action(request, budget);
             try {
                 const result = await state.observer.handle(request, budget);
                 if (request.kind === `${osc720Prefix}-start` && (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols)) {

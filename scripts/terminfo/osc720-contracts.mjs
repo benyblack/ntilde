@@ -25,6 +25,8 @@ export const osc720CaseIds = Object.freeze([osc720CaseId]);
 export const osc720EffectContractId = 'ntilde-osc720-view-up-and-erase-saved-effect-v1';
 export const osc720Minimum = Object.freeze({ rows: 12, cols: 48 });
 export const osc720NonceRow = 9;
+/** The wheel action's direction per parent action: one notch is three rows, away from (+1) or back toward (-1) the live line. */
+export const osc720ActionDeltas = Object.freeze({ 'scroll-up': 1, 'scroll-down': -1 });
 /** The wheel action's settle time: the App's smooth-scroll animation must finish before the paired read. */
 export const osc720WheelSettleMs = 1500;
 /** Every request the pinned and the contract bytes use, in one place. */
@@ -72,12 +74,15 @@ const experimentSpecs = [
     ['ed3-control', 'control', live, '\x1b[3J', eraseSaved],
 ];
 
-/** The plan of one experiment: reset, the fixed history, an optional wheel scroll, the setup read, the probe and the effect read. */
+/** Two notches back down: from any scrolled offset this experiment can reach (3, or 5 if a view move were implemented) the view returns to the live line before the next reset, so no experiment inherits a scrolled view. */
+const restoreView = Object.freeze([{ action: 'scroll-down' }, { action: 'scroll-down' }, { wait: osc720WheelSettleMs }]);
+
+/** The plan of one experiment: reset, the fixed history, an optional wheel scroll, the setup read, the probe, the effect read and, after a scroll, the restoration of the live view. */
 function planOf(fixture, spec) {
     const [, , setup, probe] = spec;
     return [{ feed: fixture.reset }, { feed: fixture.filler }, { feed: fixture.pinnedFeed },
         ...(setup.scrolled ? [{ action: 'scroll-up' }, { wait: osc720WheelSettleMs }] : []),
-        { read: 'before', kind: 'setup' }, { feed: probe }, { read: 'after', kind: 'effect' }];
+        { read: 'before', kind: 'setup' }, { feed: probe }, { read: 'after', kind: 'effect' }, ...(setup.scrolled ? restoreView : [])];
 }
 
 /** Every observation follows a distinct, observed setup; the wheel control is the only experiment that moves the view without a probe. */
@@ -89,7 +94,7 @@ export function osc720Experiments(runId) {
     });
     const wheelControl = { caseId: `${osc720CaseId}/wheel-control`, owner: osc720CaseId, name: 'wheel-control', role: 'control', setup: live, probe: null, expected: wheel,
         plan: [{ feed: fixture.reset }, { feed: fixture.filler }, { feed: fixture.pinnedFeed }, { read: 'before', kind: 'setup' },
-            { action: 'scroll-up' }, { wait: osc720WheelSettleMs }, { read: 'after', kind: 'effect' }] };
+            { action: 'scroll-up' }, { wait: osc720WheelSettleMs }, { read: 'after', kind: 'effect' }, ...restoreView] };
     return [...probes, wheelControl];
 }
 

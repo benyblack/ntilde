@@ -9,7 +9,7 @@ import { planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
 import { exposeOsc720Facts } from './osc720-collector.mjs';
 import { osc720AdapterId } from './osc720-grading-collector.mjs';
 import { osc720CaseId, osc720CaseIds, osc720ContractsVersion, osc720EffectContractId, osc720Experiments, osc720Fixture, osc720Minimum, osc720NonceRow, osc720Pinned,
-    osc720Prefix, osc720ScrollbackState, osc720SuiteId } from './osc720-contracts.mjs';
+    osc720ActionDeltas, osc720Prefix, osc720ScrollbackState, osc720SuiteId } from './osc720-contracts.mjs';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const check = (value, message) => { if (!value) throw new Error(message); };
@@ -122,7 +122,7 @@ function checkActions(contract, recorded) {
     const names = contract.plan.filter(step => step.action !== undefined).map(step => step.action), actions = recorded.actions ?? [];
     check(actions.length === names.length && actions.every((item, index) => item.action === names[index] && item.response?.action === names[index] && Array.isArray(item.response.notches)
         && item.response.notches.length > 0 && item.response.notches.every(notch => notch.eventDispatched === true && notch.postVerified === true && notch.request?.kind === 'mouseWheel'
-            && notch.request.wheelDelta === 1)), 'OSC 720 action record changed.');
+            && notch.request.wheelDelta === osc720ActionDeltas[item.action])), 'OSC 720 action record changed.');
     return actions;
 }
 
