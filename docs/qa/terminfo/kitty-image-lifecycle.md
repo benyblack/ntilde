@@ -93,8 +93,9 @@ against the same 64 MiB screen quota and is refused with ENOSPC rather than evic
 the root frame's pixels are not retained, so `c=1`/`r=1` return ENOTSUP; `f=100`, an absent `f`
 and `a=c` composition return ENOTSUP, and `a=q,e=c` answers ERR. The root frame's gap is 0 by the
 protocol; the playhead shows it for the 40 ms default (an implementation policy, not a protocol
-statement). Frames are released with their image (replace, hard delete, reset); they are not carried
-by snapshots or persistent-session replay, which keep the root frame only.
+statement). Frames are released with their image (replace, hard delete, reset). Snapshots and persistent-session replay carry the root frame only, so
+where images are retained for snapshots (a parser with `RetainImageSources`, i.e. persistent image policy 1/2) `a=f` and `a=a` answer
+`ENOTSUP`, and `a=q,e=f`/`e=a` answer `ERR`, rather than letting a daemon and a restored client disagree about quota.
 
 `KittyAnimationTests` (VT) pin the frame store, composition arithmetic, error replies, quotas, the
 playhead on an injected clock and frame retirement; `KittyAnimationRenderTests` check the real view

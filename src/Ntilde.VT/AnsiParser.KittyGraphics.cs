@@ -164,6 +164,7 @@ namespace Ntilde.VT
                     {
                         "t" or "T" => TransmitKittyImage(identity, action == "T", out id),
                         "p" => DisplayStoredKittyImage(identity, out id),
+                        "f" or "a" when RetainImageSources => "ENOTSUP:Animation is not supported where images are retained for snapshots",
                         "f" => TransmitKittyFrame(identity, out id),
                         "a" => ControlKittyAnimation(identity, out id),
                         "d" => DeleteStoredKittyImages(identity),
@@ -227,7 +228,9 @@ namespace Ntilde.VT
             bool transportSupported = probeTransport == "d"
                 || (probeTransport == "f" && ReadFileBytes != null);
             // a=a/a=f are implemented; a=c composition is not, and a client probing it (e=c) must fall back.
-            bool probesComposition = _kittyPendingParams.TryGetValue("e", out string? probedAction) && probedAction == "c";
+            // Animation is refused where images are retained for snapshots (persistent sessions), so a probe must not advertise it there.
+            bool probesComposition = _kittyPendingParams.TryGetValue("e", out string? probedAction)
+                && (probedAction == "c" || (RetainImageSources && probedAction is "f" or "a"));
             string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported || probesComposition
                 ? "ERR"
                 : "OK";

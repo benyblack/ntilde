@@ -477,6 +477,43 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void Animation_is_refused_and_not_advertised_where_images_are_retained_for_snapshots()
+    {
+        var h = new Harness();
+        h.Parser.RetainImageSources = true;                   // a persistent-session parser: snapshots keep the root frame only
+        h.Send("a=f,i=1,f=32,s=2,v=1", Solid(1, 2, 3, 255));
+        Assert.Contains(";ENOTSUP:", h.Reply());
+        h.Send("a=a,i=1,s=3");
+        Assert.Contains(";ENOTSUP:", h.Reply());
+        Assert.Equal(1, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+        foreach (string extension in new[] { "f", "a", "c" })
+        {
+            h.Send($"a=q,i=31,s=1,v=1,f=24,t=d,e={extension}", "AAAA");
+            Assert.Equal("\x1b_Gi=31;ERR\x1b\\", h.Reply());
+        }
+        h.Parser.RetainImageSources = false;
+        h.Send("a=q,i=31,s=1,v=1,f=24,t=d,e=a", "AAAA");
+        Assert.Equal("\x1b_Gi=31;OK\x1b\\", h.Reply());
+    }
+
+    [Fact]
+    public void Switching_a_parked_loading_animation_to_running_does_not_count_the_time_it_was_parked()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=2"); h.Replies.Clear();
+        h.Advance(10_000);                                   // parked on the last frame since 350 ms
+        h.Now = 10_000; h.Send("a=a,i=1,s=3,v=3"); h.Replies.Clear();
+        h.Advance(10_000);
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(KittyAnimationState.Running, animation.State);   // the parked time did not use up the two passes
+        Assert.Equal(0, animation.Current);
+        Assert.True(animation.LoopsRemaining >= 0);
+        h.Advance(10_349);
+        Assert.Equal(KittyAnimationState.Running, animation.State);
+        Assert.Equal(2, animation.Current);
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();

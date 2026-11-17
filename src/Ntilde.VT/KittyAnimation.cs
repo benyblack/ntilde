@@ -82,6 +82,11 @@ internal sealed class KittyAnimation
     internal void Start(KittyAnimationState state, long nowMs)
     {
         if (State == KittyAnimationState.Stopped) FrameStartMs = nowMs;
+        else if (_waiting && state == KittyAnimationState.Running)
+        {
+            // Parked on a frame whose gap has long run out: running continues past it from now, and the time spent parked is not playback.
+            FrameStartMs = nowMs - Hold(Frames[Current]);
+        }
         State = state;
         if (state == KittyAnimationState.Running) _waiting = false;
     }

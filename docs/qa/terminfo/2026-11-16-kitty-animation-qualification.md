@@ -42,8 +42,8 @@ root gap after the frame was built and still showed the root.
 ## Limits
 
 This is playback by elapsed time on one App build (App and scripts revision `b4bcba0d`), one desktop, one image size and one gap length. It is
-not a frame-rate or display-refresh claim, and says nothing about PNG frames, building on or editing the root frame, `a=c` composition, persistent-session or snapshot
-replay (which keep the root frame only), remote/mux, other platforms or the common-harness comparison. Those production limits are listed in the
+not a frame-rate or display-refresh claim, and says nothing about PNG frames, building on or editing the root frame, `a=c` composition, persistent sessions (animation is
+refused there, `ENOTSUP`, because their snapshots keep the root frame only), remote/mux, other platforms or the common-harness comparison. Those production limits are listed in the
 [lifecycle contract](kitty-image-lifecycle.md), and `a=q,e=c` answers `ERR`.
 
 ## Retained evidence and superseded attempts
