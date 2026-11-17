@@ -79,6 +79,9 @@ namespace Ntilde.UI.Replay
                 _buffer.Theme = theme;
                 _buffer.UpdateThemeColors(defaultTheme);
             }
+            // A replay shows an animated Kitty image as its root frame and never plays it: the playhead follows a wall clock, while a recording has its
+            // own time (pause, speed changes and seeks would leave it out of step), and the replay snapshots keep the root frame only.
+            _buffer.KittyAnimationPaused = true;
             _parser = new AnsiParser(_buffer);
             // Replays of sessions that drew inline images must render the same way live panes do.
             _parser.ImageDecoder = new Ntilde.Rendering.SkiaImageDecoder();

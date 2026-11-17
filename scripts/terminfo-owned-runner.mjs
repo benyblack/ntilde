@@ -215,6 +215,9 @@ import { querySuiteId, ownedQueryPolicy, queryPriorCounts } from './terminfo/que
 import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
 import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
 import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
+import { OwnedAnimationObserver } from './terminfo/kitty-animation-capture.mjs';
+import { animationSuiteId, animationCases } from './terminfo/kitty-animation-cases.mjs';
+import { ownedAnimationPolicy, animationPlannedStages } from './terminfo/kitty-animation.mjs';
 import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
 import { buildSgrReport } from './terminfo/sgr.mjs';
@@ -339,6 +342,9 @@ function ownerFailure(error, privateFailure = false) {
 
 function requireInputCompletion(state) {
     if (!state?.observer?.restored && !state?.unavailable) throw new Error('Input suite is not sealed or initially unavailable.');
+}
+function requireAnimationCompletion(state) {
+    if (!state?.observer?.restored && !state?.unavailable) throw new Error('Kitty animation must be restored and sealed.');
 }
 function requireStaticImageCompletion(state) {
     if (!state?.observer?.restored && !state?.unavailable) throw new Error('Static images must be restored and sealed.');
@@ -2016,6 +2022,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let metadataEvidence;
     let inputEvidence;
     let staticImageEvidence;
+    let animationEvidence;
     let queryEvidence;
     let privateClipboardEvidence;
     let sourceContext;
@@ -2195,6 +2202,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let metadataState;
         let inputState;
         let staticImageState;
+        let animationState;
         let queryState;
         let privateClipboardState;
         let completed = false, outputModeVerified = false;
@@ -2215,7 +2223,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             clipboard: 'armed synthetic App-private storage only; no native interchange or OSC52 read permission',
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
             privateClipboardReferenceScope: 'selected App/VT observational reference inputs; not complete App closure or binary-source attestation',
-            retainedOriginalCollector: 'collector-original.mjs', terminalOutput: privateClipboardOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
+            retainedOriginalCollector: 'collector-original.mjs', terminalOutput: privateClipboardOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, animationSuiteId, ownedAnimationPolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             gradingAdapterId, asciiSgrSuiteId, gradingBundleSha256, gradingContractsVersion: asciiSgrContractsVersion,
             grading: 'versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output',
             sgrColorsAdapterId, sgrColorsSuiteId, sgrColorsBundleSha256, sgrColorsContractsVersion,
@@ -2371,6 +2379,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(join(output, 'resize-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'input-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'image-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'animation-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'animation-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'query-actions.jsonl'), '', { flag: 'wx', mode: 0o600 });
         /** Complete each prior suite before capturing this one; only initial typed refusal is optional. */
         const observeDetails = async (prefix, request, budget) => {
@@ -2977,45 +2987,59 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 state.recordedActions = state.observer.actions.length;
             }
         };
-        const observeImages = async (request, budget, ownership) => {
-            requireInputCompletion(inputState);
-            if (!staticImageState) {
-                const priorChallenges = inputState.observer?.frames.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(',')) ?? [];
-                staticImageState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
-                    observer: new OwnedStaticImageObserver({ appData, ownerPid: app.pid, profileName, output,
-                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) };
-                proofs[0].staticImages.actions = staticImageState.observer.actions;
+        /**
+         * One image-carrier suite's observer: created on first use from the previous suite's evidence, bound to the proved worker and PTY, and
+         * journaled as it goes. `carrier` names the suite's state, proof slot, retained files, plan size and prerequisite.
+         */
+        const observeImageCarrier = async (carrier, request, budget, ownership) => {
+            carrier.require();
+            let state = carrier.state();
+            if (!state) {
+                const priorChallenges = carrier.priorFrames().filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
+                state = carrier.setState({ workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
+                    observer: new carrier.Observer({ appData, ownerPid: app.pid, profileName, output,
+                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) });
+                proofs[0][carrier.proof].actions = state.observer.actions;
             }
-            const state = staticImageState;
-            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Image fixture ownership changed.');
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error(carrier.label + ' fixture ownership changed.');
             try {
                 const result = await state.observer.handle(request, budget, ownership);
-                if (request.kind === 'images-start') {
-                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Image fixture geometry changed.');
-                    proofs[0].staticImages.paneId = state.observer.paneId;
-                    proofs[0].staticImages.geometry = { rows: result.screen.rows, cols: result.screen.cols };
+                if (request.kind === carrier.prefix + 'start') {
+                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error(carrier.label + ' fixture geometry changed.');
+                    proofs[0][carrier.proof].paneId = state.observer.paneId;
+                    proofs[0][carrier.proof].geometry = { rows: result.screen.rows, cols: result.screen.cols };
                 }
-                if (request.kind === 'images-seal') proofs[0].staticImages.seal = state.observer.seal;
+                if (request.kind === carrier.prefix + 'seal') proofs[0][carrier.proof].seal = state.observer.seal;
                 return result;
             } catch (error) {
-                const initial = request.kind === 'images-start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
+                const initial = request.kind === carrier.prefix + 'start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
                     && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length
-                    && !existsSync(join(output, 'image-pixels')) && !existsSync(join(output, 'image-inputs'));
+                    && !existsSync(join(output, carrier.pixelDir)) && !existsSync(join(output, carrier.inputDir));
                 if (initial) {
-                    const file = 'image-unavailable.json';
-                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: staticImageSuiteId, status: 'unavailable',
-                        reason: error.code, fixtureStarted: false, plannedExperiments: 5, plannedStages: 23 });
-                    state.unavailable = { runId, suiteId: staticImageSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                    const file = carrier.file + '-unavailable.json';
+                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: carrier.suiteId, status: 'unavailable',
+                        reason: error.code, fixtureStarted: false, plannedExperiments: carrier.planned.experiments, plannedStages: carrier.planned.stages });
+                    state.unavailable = { runId, suiteId: carrier.suiteId, file, sha256: hash(readFileSync(join(output, file))),
                         status: 'unavailable', reason: error.code, counts: {} };
-                } else if (state.observer.lastAttempt) writeJson(join(output, 'image-failed-observation.json'), state.observer.lastAttempt);
+                } else if (state.observer.lastAttempt) writeJson(join(output, carrier.file + '-failed-observation.json'), state.observer.lastAttempt);
                 throw error;
             } finally {
-                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, 'image-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, carrier.file + '-snapshots.jsonl'), JSON.stringify(frame) + '\n');
                 state.recordedFrames = state.observer.frames.length;
-                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, 'image-actions.jsonl'), JSON.stringify(action) + '\n');
+                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, carrier.file + '-actions.jsonl'), JSON.stringify(action) + '\n');
                 state.recordedActions = state.observer.actions.length;
             }
         };
+        const staticImageCarrier = { label: 'Image', prefix: 'images-', proof: 'staticImages', file: 'image', suiteId: staticImageSuiteId, Observer: OwnedStaticImageObserver,
+            pixelDir: 'image-pixels', inputDir: 'image-inputs', planned: { experiments: 5, stages: 23 },
+            require: () => requireInputCompletion(inputState), state: () => staticImageState, setState: value => (staticImageState = value),
+            priorFrames: () => inputState.observer?.frames ?? [] };
+        const animationCarrier = { label: 'Animation', prefix: 'kan-', proof: 'kittyAnimation', file: 'animation', suiteId: animationSuiteId, Observer: OwnedAnimationObserver,
+            pixelDir: 'animation-pixels', inputDir: 'animation-inputs', planned: { experiments: animationCases.length, stages: animationPlannedStages },
+            require: () => requireStaticImageCompletion(staticImageState), state: () => animationState, setState: value => (animationState = value),
+            priorFrames: () => [...(inputState.observer?.frames ?? []), ...(staticImageState.observer?.frames ?? [])] };
+        const observeImages = (request, budget, ownership) => observeImageCarrier(staticImageCarrier, request, budget, ownership);
+        const observeAnimation = (request, budget, ownership) => observeImageCarrier(animationCarrier, request, budget, ownership);
         const attestQuery = (state, budget) => {
             if (!outputModeVerified || !app?.pid || app.exitCode !== null || app.signalCode !== null)
                 throw new Error('Owned query App/output proof is no longer live.');
@@ -3644,7 +3668,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const retainFirstProof = (owner, worker, tty, budget) => {
             if (proofs.length !== 0) return;
             proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
-                workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, asciiReflow: { policy: ownedAsciiReflowPolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
+                workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, asciiReflow: { policy: ownedAsciiReflowPolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, kittyAnimation: { policy: ownedAnimationPolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
         };
         /** Bind one kernel-observed output-mode proof to the already verified worker. */
         const attestOutputMode = (request, budget) => {
@@ -3653,14 +3677,14 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             proofs[0].terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
             outputModeVerified = true;
         };
-        const observeImageRequest = (request, budget, owner, worker) => {
+        const observeImageRequest = (request, budget, owner, worker, observe = observeImages) => {
             if (!outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
             const command = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='],
                 { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
             if (!matchesRecordedWorker(worker, workerIdentity, command, runId)) throw new Error('Recorded image worker identity or marker changed.');
             const ownership = { app: owner, worker, tty: request.tty, at: new Date().toISOString(),
                 terminalOutput: readOwnedOutputMode(request.tty, budget()) };
-            return observeImages(request, budget, ownership);
+            return observe(request, budget, ownership);
         };
         /** Route already authenticated requests serially; preserve each suite's existing response shape and budget. */
         const routeOwnedObservation = async (request, queryTimeout, owner, worker) => {
@@ -3672,8 +3696,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 const result = await observeQueries(request, queryTimeout, owner, worker);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
-            if (/^images-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
-                const result = await observeImageRequest(request, queryTimeout, owner, worker);
+            if (/^(?:images|kan)-(?:start|admit|bind|read|restore|finish|seal)$/.test(request.kind)) {
+                const result = await observeImageRequest(request, queryTimeout, owner, worker, request.kind.startsWith('kan-') ? observeAnimation : observeImages);
                 return { ok: true, ownerPid: app.pid, ...result };
             }
             if (untranslatedCellKind(request.kind)
@@ -3698,6 +3722,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 if (isOsc633Scope(collectionScope) && (osc9State !== undefined || notifyState !== undefined)) throw new Error('Omitted notification suites ran in the scoped collection.');
                 requireInputCompletion(inputState);
                 requireStaticImageCompletion(staticImageState);
+                requireAnimationCompletion(animationState);
                 requireQueryCompletion(queryState);
                 if (!privateClipboardState?.observer.complete || !privateClipboardEvidence) throw new Error('Private clipboard did not close.');
                 const original = proofs[0].privateClipboard.originalTerminalState;
@@ -3888,6 +3913,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             oscTitleEvidence = retainOscTitleEvidence(output, runId, upstreamBundleSha256, oscTitleState?.unavailable === true);
             staticImageEvidence = staticImageState?.unavailable ?? retainCellReport(output, staticImageState?.observer, runId,
                 () => staticImageState.observer.report, 'image-observations.json');
+            animationEvidence = animationState?.unavailable ?? retainCellReport(output, animationState?.observer, runId,
+                () => animationState.observer.report, 'animation-observations.json');
             queryEvidence = retainQueryReport(output, queryState, runId);
             summary.coreGapsEvidence = coreGapsEvidence;
             summary.textCursorEvidence = textCursorEvidence;
@@ -3911,6 +3938,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             summary.privateClipboardEvidence = privateClipboardEvidence;
             summary.queryEvidence = queryEvidence;
             summary.staticImageEvidence = staticImageEvidence;
+            summary.animationEvidence = animationEvidence;
             summary.inputEvidence = inputEvidence;
             summary.metadataEvidence = metadataEvidence;
             summary.savedEvidence = savedEvidence;
@@ -4014,7 +4042,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

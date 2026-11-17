@@ -1,0 +1,114 @@
+// Pure bounded comparisons and the independent playback timeline; no rendering, I/O or ownership inference.
+import { staticImageEnvelope } from './static-images-oracle.mjs';
+import { animationBackground, animationFrameColor, animationFrameIds } from './kitty-animation-inputs.mjs';
+import { animationHoldCycle, animationHoldMs } from './kitty-animation-cases.mjs';
+
+const invalid = () => new Error('Invalid animation comparison.');
+const integer = (v, min, max) => Number.isSafeInteger(v) && v >= min && v <= max;
+const pixelAt = (image, x, y) => image.pixels.subarray((y * image.width + x) * 4, (y * image.width + x + 1) * 4);
+const same = (a, b) => a.every((value, index) => value === b[index]);
+const check = (description, passed) => ({ description, passed });
+function validateImage(image) {
+    if (!image || !integer(image.width, 1, 8192) || !integer(image.height, 1, 8192) || image.width * image.height > 4_000_000
+        || !Buffer.isBuffer(image.pixels) || image.pixels.length !== image.width * image.height * 4) throw invalid();
+}
+const inside = (rect, x, y) => x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height;
+
+function contentBounds(image, envelope) {
+    let left = image.width, right = -1, top = image.height, bottom = -1;
+    for (let y = envelope.y; y < envelope.y + envelope.height; y++) {
+        for (let x = envelope.x; x < envelope.x + envelope.width; x++) {
+            if (same(pixelAt(image, x, y), animationBackground)) continue;
+            left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
+        }
+    }
+    return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+}
+const regionUniform = (image, rect) => {
+    const first = pixelAt(image, rect.x, rect.y);
+    for (let y = rect.y; y < rect.y + rect.height; y++) for (let x = rect.x; x < rect.x + rect.width; x++) if (!same(pixelAt(image, x, y), first)) return null;
+    return [...first];
+};
+
+/**
+ * Names the displayed frame from one capture: the non-background content must be the undistorted square the
+ * 16x16 source fits into, and its interior (clear of the antialiased edge) must be one exact palette color.
+ */
+export function classifyAnimationFrame({ image, grid, anchor, cells }) {
+    validateImage(image);
+    const envelope = staticImageEnvelope(image, grid, anchor, cells), bounds = contentBounds(image, envelope);
+    if (!bounds) return { kind: 'background', frameId: null, envelope, bounds: null, geometryOk: true };
+    const side = Math.min(envelope.width, envelope.height), geometryOk = bounds.width === side && bounds.height === side;
+    const inset = Math.max(1, Math.floor(side / 8)), interior = { x: bounds.x + inset, y: bounds.y + inset, width: bounds.width - 2 * inset, height: bounds.height - 2 * inset };
+    const color = interior.width > 0 && interior.height > 0 ? regionUniform(image, interior) : null;
+    const frameId = color ? animationFrameIds.find(id => same(animationFrameColor(id), color)) ?? null : null;
+    return { kind: frameId ? 'frame' : 'mixed', frameId, envelope, bounds, geometryOk };
+}
+
+/** Independent controls: the baseline target is blank, and nothing outside the target envelope changed. */
+export function inspectAnimationPixels({ baseline, observed, grid, anchor, cells, appearance }) {
+    validateImage(baseline); validateImage(observed);
+    if (baseline.width !== observed.width || baseline.height !== observed.height
+        || !(appearance === 'absent' || animationFrameIds.includes(appearance))) throw invalid();
+    const classification = classifyAnimationFrame({ image: observed, grid, anchor, cells }), envelope = classification.envelope;
+    const baselineBlank = classifyAnimationFrame({ image: baseline, grid, anchor, cells }).kind === 'background';
+    let outsideUnchanged = true;
+    for (let y = 0; y < baseline.height && outsideUnchanged; y++)
+        for (let x = 0; x < baseline.width; x++) if (!inside(envelope, x, y) && !same(pixelAt(baseline, x, y), pixelAt(observed, x, y))) { outsideUnchanged = false; break; }
+    const controls = [check('reference target is independently blank with the known background', baselineBlank),
+        check('all non-target capture pixels remain unchanged', outsideUnchanged)];
+    const assertion = appearance === 'absent'
+        ? check('no displayed image pixels in target envelope', classification.kind === 'background')
+        : check(`undistorted placement filled with the ${appearance} frame color`, classification.kind === 'frame' && classification.geometryOk && classification.frameId === appearance);
+    return { scope: 'bounded animation-frame pixel comparison only; no ownership, freshness, timing or stock grade',
+        controls, assertions: [assertion], classification: { kind: classification.kind, frameId: classification.frameId, geometryOk: classification.geometryOk },
+        measurement: { envelope, contentBounds: classification.bounds } };
+}
+
+const cycleMs = animationHoldCycle.length * animationHoldMs;
+/**
+ * Frames a looping animation could be showing for every start time in [start.earliest, start.latest] and every
+ * instant in [window.start, window.end]. A window before the animation could have started shows the root.
+ */
+export function framesPossibleAt(start, window) {
+    for (const value of [start?.earliest, start?.latest, window?.start, window?.end]) if (!Number.isFinite(value)) throw invalid();
+    if (start.earliest > start.latest || window.start > window.end) throw invalid();
+    const low = window.start - start.latest, high = window.end - start.earliest;
+    const set = new Set();
+    if (low < 0) set.add(animationHoldCycle[0]);
+    if (high < 0) return [...set];
+    if (high - Math.max(low, 0) >= cycleMs) return [...animationHoldCycle];
+    for (let slot = Math.floor(Math.max(low, 0) / animationHoldMs); slot <= Math.floor(high / animationHoldMs); slot++) set.add(animationHoldCycle[slot % animationHoldCycle.length]);
+    return animationHoldCycle.filter(id => set.has(id));
+}
+
+const timingOk = Object.freeze({ valid: true, reason: null }), timingNo = reason => ({ valid: false, reason });
+function runningTiming(stage, facts) {
+    if (!facts.start) return timingNo('animation start time unavailable');
+    const possible = framesPossibleAt(facts.start, facts.capture);
+    if (possible.length !== 1) return timingNo('capture span straddles a frame boundary: ' + possible.join('/'));
+    return possible[0] === stage.appearance ? timingOk : timingNo(`read landed in the ${possible[0]} window, not the planned ${stage.appearance} window`);
+}
+function frozenTiming(stage, facts) {
+    const { capture } = facts;
+    if (!facts.start) return facts.build && capture.start - facts.build.latest >= animationHoldMs
+        ? timingOk : timingNo('read did not outlast the root hold since the frame was built');
+    if (!facts.stop) return timingNo('stop time unavailable');
+    const frozenAt = framesPossibleAt(facts.start, { start: facts.stop.earliest, end: facts.stop.latest });
+    if (frozenAt.length !== 1 || frozenAt[0] !== stage.appearance) return timingNo('stop did not land inside the ' + stage.appearance + ' window');
+    if (capture.start < facts.stop.latest) return timingNo('read precedes the stop taking effect');
+    if (stage.waitMs === undefined) return timingOk;
+    return framesPossibleAt(facts.start, capture).includes(stage.appearance) ? timingNo('a running animation could still show ' + stage.appearance + ' here') : timingOk;
+}
+/**
+ * Whether the timing facts let a read of this stage stand for its declared frame. Invalid timing makes a stage
+ * inconclusive (a read outside its window says nothing about playback); it never becomes a failure.
+ * facts: { start, stop, build } are { earliest, latest } milliseconds a command took effect within; capture is
+ * { start, end }, the wall-clock span of the paired image captures.
+ */
+export function evaluateAnimationTiming(stage, facts) {
+    if (stage.clock === 'static') return timingOk;
+    const capture = facts.capture;
+    if (!capture || !Number.isFinite(capture.start) || !Number.isFinite(capture.end) || capture.start > capture.end) return timingNo('capture span unavailable');
+    return stage.clock === 'running' ? runningTiming(stage, facts) : frozenTiming(stage, facts);
+}
