@@ -119,7 +119,7 @@ export class OwnedStaticImageObserver {
     async handle(request, budget, ownership) {
         const entry = this.validateRequest(request);
         this.busy = true; this.lastAttempt = { kind: request.kind, caseId: request.caseId ?? null, stageId: request.stageId ?? null,
-            capture: structuredClone(request.capture ?? null) };
+            capture: structuredClone(request.capture ?? null), ownership: structuredClone(ownership ?? null) };
         try {
             if (this.phase === 'admit') return this.admit(ownership);
             if (this.phase === 'seal') return this.sealCapture(request, ownership);
