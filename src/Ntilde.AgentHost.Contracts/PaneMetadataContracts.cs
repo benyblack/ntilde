@@ -20,6 +20,18 @@ public sealed record PaneMetadataResult
     [JsonPropertyName("presentation")] public required PanePresentationMetadata Presentation { get; init; }
     [JsonPropertyName("cellGeometry"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PaneCellGeometry? CellGeometry { get; init; }
+    [JsonPropertyName("viewport"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PaneViewportMetadata? Viewport { get; init; }
+}
+
+/// <summary>The actual view scroll position, read from the terminal view; independent of parser history and not a pixel capture.</summary>
+public sealed record PaneViewportMetadata
+{
+    /// <summary>Rows the viewport sits above the live line; 0 means the live (bottom) view.</summary>
+    [JsonPropertyName("scrollOffset")] public required int ScrollOffset { get; init; }
+
+    /// <summary>Greatest reachable <see cref="ScrollOffset"/> for the current history (total lines minus view rows).</summary>
+    [JsonPropertyName("maxScrollOffset")] public required int MaxScrollOffset { get; init; }
 }
 
 /// <summary>One complete active viewport's stored links and raw shell anchors, captured under the buffer read lock.</summary>

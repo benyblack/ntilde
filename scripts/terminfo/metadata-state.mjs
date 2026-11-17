@@ -85,6 +85,11 @@ function presentation(value) {
         progressKind: value.progressKind ?? null, progressPercent: value.progressPercent ?? null, progressBar: progressBar(value.progressBar),
         toastVisible: flag(value.toastVisible), toastTitle: text(value.toastTitle), toastMessage: text(value.toastMessage) };
 }
+function viewport(value) {
+    shape(value, ['scrollOffset', 'maxScrollOffset']);
+    check(integer(value.scrollOffset, 0) && integer(value.maxScrollOffset, 0) && value.scrollOffset <= value.maxScrollOffset);
+    return { scrollOffset: value.scrollOffset, maxScrollOffset: value.maxScrollOffset };
+}
 function cellGeometry(value, rows, cols) {
     shape(value, ['viewRows', 'viewCols', 'cellWidthDip', 'cellHeightDip', 'fontAscentDip', 'renderScaling', 'backingScale']);
     check(value.viewRows === rows && value.viewCols === cols);
@@ -96,11 +101,12 @@ function cellGeometry(value, rows, cols) {
 }
 /** Normalize omitted nullable fields, preserving actual hidden-control properties and raw anchors. */
 export function copyPaneMetadata(value) {
-    shape(value, ['paneId', 'displayTitle', 'buffer', 'presentation'], ['oscTitle', 'workingDirectory', 'cellGeometry']);
+    shape(value, ['paneId', 'displayTitle', 'buffer', 'presentation'], ['oscTitle', 'workingDirectory', 'cellGeometry', 'viewport']);
     check(guid(value.paneId));
     const result = { paneId: value.paneId, oscTitle: nullableText(value.oscTitle), workingDirectory: nullableText(value.workingDirectory),
         displayTitle: text(value.displayTitle), buffer: buffer(value.buffer), presentation: presentation(value.presentation) };
     if (value.cellGeometry !== undefined) result.cellGeometry = cellGeometry(value.cellGeometry, result.buffer.rows, result.buffer.cols);
+    if (value.viewport !== undefined) result.viewport = viewport(value.viewport);
     const p = result.presentation;
     const fields = [result.oscTitle, result.workingDirectory, result.displayTitle, p.tabText, p.toastTitle, p.toastMessage,
         ...result.buffer.links.flatMap(link => [link.uri, link.id])];

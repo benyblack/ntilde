@@ -1,0 +1,1018 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc720-graded-v1",
+  "contractsVersion": 1,
+  "runId": "7924727037ace6f3cce045ca63697c17",
+  "adapter": {
+    "id": "ntilde-owned-osc720-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "e383cebe2c7fca5b3c20cb510bad3d1e19b461297fd6326170f4c033d7316e28",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 paths for extensions.osc720-scroll-up preserved: the terminal path (two writes, a cursor-position query and unverifiedEffect; always inconclusive, evidence \"consumed\", and the path the stock collector grades) and the termless function (thirty fed lines, two scrollback reads and the bare OSC 720 BEL, which carries no `;` and so is not dispatched by urxvt either; replayed UNCHANGED over a parent-built scrollback context mapped from the App view position, which is not a termless backend run and not a stock grade), beside a separately identified effect contract graded by an independent oracle written from rxvt-unicode: OSC 720 ; Pt moves the viewing window up Pt lines and, for a zero or empty Pt, clears the scrollback (rxvt(7) and src/command.C scr_page / scr_erase_savelines); an OSC is dispatched only after a `;`, so the pinned bare form is ignored by urxvt and is expected to change nothing. Observed quantities are the App view scroll position, the stored history (count, generation, evictions and content), the cursor and the screen; the wheel (a routed generated-input notch) and ED 3 are observer controls only and never evidence for OSC 720. No OSC 721, painted pixels, remote/mux, Windows/Linux, stock-score or common-harness claim.",
+  "wheelActions": [
+    {
+      "action": "scroll-up",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": 1,
+            "column": 1,
+            "row": 1,
+            "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T16:04:24.336Z"
+        }
+      ],
+      "startedAt": "2026-11-17T16:04:24.296Z",
+      "finishedAt": "2026-11-17T16:04:24.336Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T16:04:25.898Z"
+        }
+      ],
+      "startedAt": "2026-11-17T16:04:25.874Z",
+      "finishedAt": "2026-11-17T16:04:25.898Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T16:04:25.931Z"
+        }
+      ],
+      "startedAt": "2026-11-17T16:04:25.907Z",
+      "finishedAt": "2026-11-17T16:04:25.931Z"
+    },
+    {
+      "action": "scroll-up",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": 1,
+            "column": 1,
+            "row": 1,
+            "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T16:04:27.534Z"
+        }
+      ],
+      "startedAt": "2026-11-17T16:04:27.512Z",
+      "finishedAt": "2026-11-17T16:04:27.534Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T16:04:29.075Z"
+        }
+      ],
+      "startedAt": "2026-11-17T16:04:29.058Z",
+      "finishedAt": "2026-11-17T16:04:29.075Z"
+    },
+    {
+      "action": "scroll-down",
+      "notches": [
+        {
+          "request": {
+            "kind": "mouseWheel",
+            "wheelDelta": -1,
+            "column": 1,
+            "row": 1,
+            "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+          },
+          "eventDispatched": true,
+          "handled": true,
+          "boundary": "avalonia-routed",
+          "observationAvailable": true,
+          "postVerified": true,
+          "observedAt": "2026-11-17T16:04:29.100Z"
+        }
+      ],
+      "startedAt": "2026-11-17T16:04:29.081Z",
+      "finishedAt": "2026-11-17T16:04:29.100Z"
+    }
+  ],
+  "cases": [
+    {
+      "caseId": "extensions.osc720-scroll-up",
+      "effectContract": {
+        "id": "ntilde-osc720-view-up-and-erase-saved-effect-v1",
+        "version": 1,
+        "outcome": "unsupported",
+        "controlsHeld": true,
+        "reason": null,
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe",
+        "protocolExperiments": [
+          {
+            "name": "pinned-bare",
+            "passed": true,
+            "observed": "none"
+          },
+          {
+            "name": "count-zero",
+            "passed": false,
+            "observed": "none"
+          },
+          {
+            "name": "count-empty",
+            "passed": false,
+            "observed": "none"
+          },
+          {
+            "name": "count-3",
+            "passed": false,
+            "observed": "none"
+          },
+          {
+            "name": "count-3-st",
+            "passed": false,
+            "observed": "none"
+          },
+          {
+            "name": "count-clamped",
+            "passed": false,
+            "observed": "none"
+          },
+          {
+            "name": "count-2-from-scrolled",
+            "passed": false,
+            "observed": "none"
+          }
+        ],
+        "controlExperiments": [
+          {
+            "name": "unmarked",
+            "passed": true,
+            "observed": "none"
+          },
+          {
+            "name": "ed3-control",
+            "passed": true,
+            "observed": "erase-saved"
+          },
+          {
+            "name": "wheel-control",
+            "passed": true,
+            "observed": "view-up"
+          }
+        ]
+      },
+      "experiments": [
+        {
+          "caseId": "extensions.osc720-scroll-up/pinned-bare",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "pinned-bare",
+          "role": "protocol",
+          "probe": "\u001b]720\u0007",
+          "expected": {
+            "kind": "none"
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 2,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 255,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 3,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 255,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": true
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/count-zero",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "count-zero",
+          "role": "protocol",
+          "probe": "\u001b]720;0\u0007",
+          "expected": {
+            "kind": "erase-saved"
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 4,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 256,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 5,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 256,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": false
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/count-empty",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "count-empty",
+          "role": "protocol",
+          "probe": "\u001b]720;\u0007",
+          "expected": {
+            "kind": "erase-saved"
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 6,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 257,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 7,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 257,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": false
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/count-3",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "count-3",
+          "role": "protocol",
+          "probe": "\u001b]720;3\u0007",
+          "expected": {
+            "kind": "view-up",
+            "count": 3
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 8,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 258,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 9,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 258,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": false
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/count-3-st",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "count-3-st",
+          "role": "protocol",
+          "probe": "\u001b]720;3\u001b\\",
+          "expected": {
+            "kind": "view-up",
+            "count": 3
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 10,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 259,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 11,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 259,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": false
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/count-clamped",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "count-clamped",
+          "role": "protocol",
+          "probe": "\u001b]720;100000\u0007",
+          "expected": {
+            "kind": "view-up",
+            "count": 100000
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 12,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 260,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 13,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 260,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": false
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/count-2-from-scrolled",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "count-2-from-scrolled",
+          "role": "protocol",
+          "probe": "\u001b]720;2\u0007",
+          "expected": {
+            "kind": "view-up",
+            "count": 2
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 14,
+              "scrollOffset": 3,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 261,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 15,
+              "scrollOffset": 3,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 261,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": false,
+          "actions": [
+            {
+              "action": "scroll-up",
+              "response": {
+                "ok": true,
+                "ownerPid": 3515,
+                "action": "scroll-up",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": 1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T16:04:24.336Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T16:04:24.296Z",
+                "finishedAt": "2026-11-17T16:04:24.336Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 3515,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T16:04:25.898Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T16:04:25.874Z",
+                "finishedAt": "2026-11-17T16:04:25.898Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 3515,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T16:04:25.931Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T16:04:25.907Z",
+                "finishedAt": "2026-11-17T16:04:25.931Z"
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/unmarked",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "unmarked",
+          "role": "control",
+          "probe": "\u001b[0m",
+          "expected": {
+            "kind": "none"
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 16,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 262,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 17,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 262,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "none",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": true
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/ed3-control",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "ed3-control",
+          "role": "control",
+          "probe": "\u001b[3J",
+          "expected": {
+            "kind": "erase-saved"
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 18,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 263,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 19,
+              "scrollOffset": 0,
+              "maxScrollOffset": 0,
+              "scrollbackLines": 0,
+              "historyGeneration": 264,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "ab87bfee0acd8816db21b410ffb0ff1c4a3f9a7e66454b2a0ee770dee74b13d5",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "erase-saved",
+            "delta": 0,
+            "screenSame": true,
+            "historySame": false
+          },
+          "passed": true
+        },
+        {
+          "caseId": "extensions.osc720-scroll-up/wheel-control",
+          "owner": "extensions.osc720-scroll-up",
+          "name": "wheel-control",
+          "role": "control",
+          "probe": null,
+          "expected": {
+            "kind": "view-up-any"
+          },
+          "held": true,
+          "preserved": true,
+          "observations": [
+            {
+              "label": "before",
+              "kind": "setup",
+              "snapshot": 20,
+              "scrollOffset": 0,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 265,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            },
+            {
+              "label": "after",
+              "kind": "effect",
+              "snapshot": 21,
+              "scrollOffset": 3,
+              "maxScrollOffset": 30,
+              "scrollbackLines": 30,
+              "historyGeneration": 265,
+              "rowsEvicted": 0,
+              "cursor": [
+                39,
+                0
+              ],
+              "screenSha256": "de6aa4b0723719aa6f3cd4dd42a2dae148bfc5fe58d4947391619239ecba32cb",
+              "historySha256": "af0f48f0ca900ed09d1b5537a0efb8746adc398486fa1483808c04370fd80d45",
+              "pinnedTextVisible": true,
+              "rows": 40
+            }
+          ],
+          "observed": {
+            "kind": "view-up",
+            "delta": 3,
+            "screenSame": true,
+            "historySame": true
+          },
+          "passed": true,
+          "actions": [
+            {
+              "action": "scroll-up",
+              "response": {
+                "ok": true,
+                "ownerPid": 3515,
+                "action": "scroll-up",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": 1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T16:04:27.534Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T16:04:27.512Z",
+                "finishedAt": "2026-11-17T16:04:27.534Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 3515,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T16:04:29.075Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T16:04:29.058Z",
+                "finishedAt": "2026-11-17T16:04:29.075Z"
+              }
+            },
+            {
+              "action": "scroll-down",
+              "response": {
+                "ok": true,
+                "ownerPid": 3515,
+                "action": "scroll-down",
+                "notches": [
+                  {
+                    "request": {
+                      "kind": "mouseWheel",
+                      "wheelDelta": -1,
+                      "column": 1,
+                      "row": 1,
+                      "paneId": "3d4b43a6-0f1b-491e-b6e4-dd363c2a0b2b"
+                    },
+                    "eventDispatched": true,
+                    "handled": true,
+                    "boundary": "avalonia-routed",
+                    "observationAvailable": true,
+                    "postVerified": true,
+                    "observedAt": "2026-11-17T16:04:29.100Z"
+                  }
+                ],
+                "startedAt": "2026-11-17T16:04:29.081Z",
+                "finishedAt": "2026-11-17T16:04:29.100Z"
+              }
+            }
+          ]
+        }
+      ],
+      "pinned": {
+        "terminal": {
+          "pass": false,
+          "note": "Cursor answered; scrollback viewport was not measured",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "consumed",
+            "note": "Cursor answered; scrollback viewport was not measured"
+          }
+        },
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "consumed",
+          "note": "Cursor answered; scrollback viewport was not measured"
+        },
+        "note": "Cursor answered; scrollback viewport was not measured",
+        "termlessReplay": {
+          "pass": false,
+          "response": "{\"before\":{\"viewportOffset\":30,\"totalLines\":70,\"screenLines\":40},\"after\":{\"viewportOffset\":30,\"totalLines\":70,\"screenLines\":40}}",
+          "observation": {
+            "outcome": "unsupported",
+            "evidence": "parser-state"
+          },
+          "assertions": [
+            {
+              "kind": "negative",
+              "expected": "OSC 720 moves the scrollback viewport up",
+              "observed": "{\"before\":{\"viewportOffset\":30,\"totalLines\":70,\"screenLines\":40},\"after\":{\"viewportOffset\":30,\"totalLines\":70,\"screenLines\":40}}"
+            }
+          ]
+        },
+        "termlessInputs": [
+          2,
+          3
+        ],
+        "verdictSource": "terminal path (the path real terminal applications are graded by; the termless replay is recorded separately)",
+        "qualifiedOutcome": "inconclusive"
+      },
+      "contractResult": {
+        "outcome": "unsupported"
+      },
+      "stock": {
+        "featureId": "extensions.osc720-scroll-up",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "consumed",
+        "note": "Cursor answered; scrollback viewport was not measured",
+        "rawReplyRef": "extensions.osc720-scroll-up"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "unsupported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "view-position, stored history, cursor and screen (pane-metadata-and-session-status)",
+        "grading": "pinned-terminal-preserved-over-owned-observations",
+        "note": "Cursor answered; scrollback viewport was not measured"
+      }
+    }
+  ]
+}

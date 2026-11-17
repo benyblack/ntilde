@@ -1338,6 +1338,16 @@ outcomes remain **inconclusive**. The fresh stock total stays 93 supported / 161
 bind 432 inputs, including the integrated animation family, independent geometry and all 19 exchanges. The inventory adds two effect-supported IDs, with no pinned/Core/Modern
 or common-harness score increase. The retained scoped run is combined evidence with the separately pinned notification predecessor.
 
+### OSC 720 view-up / erase-saved qualification
+
+The [OSC 720 batch](terminfo/2026-11-17-osc720-qualification.md) qualifies `extensions.osc720-scroll-up` without changing terminal behavior. rxvt-unicode defines `OSC 720 ; Pt` as a view move up `Pt` lines for a non-zero
+count and a saved-line erase for a zero or empty count after the `;` (`atoi` of the empty string is 0); an OSC is only dispatched after a `;`, so the pinned probe's bare `ESC]720 BEL` is ignored by urxvt itself, and its viewport criterion also cannot tell a view move from a history erase. The pinned terminal
+path is `unverifiedEffect` (always inconclusive, the path the stock collector grades) and the pinned termless function is replayed unchanged over a parent-built scrollback context mapped from the App's own view position,
+beside an effect contract (`ntilde-osc720-view-up-and-erase-saved-effect-v1`) graded from the view scroll position, stored history, cursor and screen. Two measurement hooks were added: an optional read-only `viewport` on
+`readPaneMetadata`, and a generated wheel notch routed to the view's own scroll when mouse reporting is off (the observer control). All seven protocol experiments observed no effect with the unmarked, ED 3 and wheel
+controls held, so the effect is **unsupported**; the pinned terminal path stays **inconclusive** and the stock counts are unchanged (94/1/160). The run uses receipt schema 74 and source policy v67 (450 files) on the
+`osc633` scope; the frozen selections and all earlier publications remain retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc720-qualification.md).
+
 ### OSC 3008 hierarchical contexts
 
 The [OSC 3008 batch](terminfo/2026-11-17-osc3008-qualification.md) implements [UAPI.15](https://uapi-group.org/specifications/specs/osc_context/) context signalling: `OSC 3008;start=<id>[;field=value]...` opens, updates or returns to a context and `OSC 3008;end=<id>` closes it. The App keeps a stack of at most 16 contexts and the 8 most recently ended as **untrusted data**, exposed only through read-only `readPaneMetadata` (`buffer.contexts`); nothing is presented, executed or fed to command assist or an agent, OSC 133/633 neither create nor update a context, a terminal reset leaves the stack alone and the child's exit drops it ([contract](terminfo/osc3008.md)). The pinned probe (`type=test`, a cursor query, `unmeasuredCellResult`) is inconclusive by construction and its payload is not a UAPI.15 sequence, so it stays **inconclusive** with unchanged stock counts (94/1/160); the separately identified effect contract `ntilde-osc3008-context-effect-v1` is **supported** (28 of 28 decided reads, 10 policy reads recorded). Receipt schema 73 and source policy v66 bind 444 inputs; the inventory adds one effect-supported ID and no pinned, Core, Modern, stock or common-harness score increase.
