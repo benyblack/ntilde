@@ -4,10 +4,10 @@ import { join } from 'node:path';
 import { osc5CaseIds } from './osc5-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '9c922a4c1f96081f38572c6078d9a221ba826874';
+export const measuredScriptsRevision = '9c922a4a3857fb109ba1ef7978a35ae013a8e63f';
 /** The batch commit whose src/ tree the sidecar App was built from: the OSC 5 implementation landed there, and the measured run then exercised exactly that build. The retained
  *  source-snapshot manifest (context.sourceSnapshotManifestSha256) pins the precise measured tree besides these human-readable revisions. */
-export const measuredAppRevision = '9c922a4c1f96081f38572c6078d9a221ba826874';
+export const measuredAppRevision = '9c922a4a3857fb109ba1ef7978a35ae013a8e63f';
 const scope = 'Pinned terminfo.dev@4.0.0 criterion for extensions.osc5-special-color (OSC 5;0;? BEL answered by one complete OSC 5;0;rgb:h{1,4}/h{1,4}/h{1,4} frame ended by BEL or ST; a query-only '
     + 'probe that can never return unsupported), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v6) and replayed '
     + 'byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent oracle written from rxvt\'s '

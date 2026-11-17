@@ -3,8 +3,8 @@
   "measuredAt": "2026-11-17T04:59:52.888Z",
   "ownedRunId": "1eda9658848990fce76b888d41b7bb4f",
   "stockCollectorRunId": "fd5b6501307a54ce3dddd81b1bbab3c6",
-  "appRevision": "9c922a4c1f96081f38572c6078d9a221ba826874",
-  "scriptsRevision": "9c922a4c1f96081f38572c6078d9a221ba826874",
+  "appRevision": "9c922a4a3857fb109ba1ef7978a35ae013a8e63f",
+  "scriptsRevision": "9c922a4a3857fb109ba1ef7978a35ae013a8e63f",
   "context": {
     "adapter": "ntilde-owned-macos-v1",
     "adapterBundleSha256": "7bbbffd1bd730855657d629519f97060df62ee3bb5380a1dd0b587aea13e21eb",
