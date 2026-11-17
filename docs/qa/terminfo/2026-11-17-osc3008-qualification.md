@@ -31,3 +31,5 @@ Retained evidence: [owned-run.zip](2026-11-17-osc3008/owned-run.zip) (the comple
 ## Limits
 
 Direct-local disposable App on the measured platform only; the stored data is observed, not presented. Not measured: hangup (the child of the measured pane cannot be ended by the suite; unit tests in VT, App and Mux cover it), RIS, alternate-screen switches, real emitters (systemd `run0`, `systemd-nspawn`, `machinectl`, shells), remote or mux delivery, other platforms, the OSC 133/633 prompt features beyond the separation control. The ended-record ring cannot be cleared by any sequence and the initial null title and working directory are not restorable; the stack was empty again at the end. The pre-existing `cursor.reverse-wrap` ungraded collector diagnostic is unchanged. No fixture URL was opened and no native notification was used.
+
+The measured App predates the later main commits that bring Kitty animation to persistent sessions and PNG pixel decoding; they touch no OSC 3008, pane-metadata or measured script input, and the VT, Mux and App test lanes were rerun with them merged. The OSC 3008 measurement was not repeated for them.
