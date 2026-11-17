@@ -4361,7 +4361,7 @@ async function persistentAnimationMain(args, executable, snapshot) {
                     if (request.kind.startsWith('kan-')) {
                         const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
                         if (!matchesRecordedWorker(worker, workerIdentity, workerCommand, runId)) throw new Error('Recorded animation worker identity or marker changed.');
-                        result = await owned.observe(request, budget, { app: owner, worker, tty: request.tty, at: new Date().toISOString(), terminalOutput: readOwnedOutputMode(request.tty, budget()) });
+                        result = await owned.observe(request, budget, { app: owner, worker, daemon: daemon.record, tty: request.tty, at: new Date().toISOString(), terminalOutput: readOwnedOutputMode(request.tty, budget()) });
                     } else if (Object.hasOwn(owned, request.kind) && request.kind !== 'observe') result = owned[request.kind](request, budget, owner, worker);
                     else throw new Error('Unknown owner request.');
                     socket.end(JSON.stringify({ ok: true, ownerPid: app.pid, ...result }) + '\n');

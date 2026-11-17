@@ -125,7 +125,14 @@ export function validateImageOwnership(actual, original, geometry) {
         && actual.terminalOutput?.tool === '/bin/stty' && actual.terminalOutput.outputProcessing === false);
     for (const side of ['app', 'worker']) checkImages(actual[side] && original[side]
         && ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual[side][key] === original[side][key]));
-    checkImages(Number.isSafeInteger(actual.app.pid) && actual.app.pid > 1 && actual.worker.ppid === actual.app.pid
+    // A persistent collection's worker is the multiplexer daemon's child: the record of that daemon travels with every ownership fact, must be the
+    // same process throughout, and replaces the direct App parent. A direct run carries none, and neither side may add or drop it alone.
+    checkImages((actual.daemon === undefined) === (original.daemon === undefined));
+    const lineage = actual.daemon === undefined ? actual.worker.ppid === actual.app.pid
+        : ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual.daemon[key] === original.daemon[key])
+            && Number.isSafeInteger(actual.daemon.pid) && actual.daemon.pid > 1 && actual.worker.ppid === actual.daemon.pid
+            && actual.daemon.uid === actual.app.uid && actual.daemon.executable === actual.app.executable;
+    checkImages(Number.isSafeInteger(actual.app.pid) && actual.app.pid > 1 && lineage
         && Number.isSafeInteger(actual.worker.pid) && actual.worker.pid > 1 && actual.worker.uid === actual.app.uid
         && actual.worker.tty === actual.tty.slice(5));
     validateOutputGeometry(actual.terminalOutput.description, geometry.rows, geometry.cols);
