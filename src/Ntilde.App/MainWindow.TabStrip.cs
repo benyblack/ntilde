@@ -9,6 +9,7 @@ using Ntilde.Shell.Theming;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Layout;
+using Avalonia.Interactivity;
 using Ntilde.Shell.TitleBar;
 
 namespace Ntilde
@@ -31,6 +32,9 @@ namespace Ntilde
         // before the lazy populate could fill it), so MainWindow owns the instance and
         // PopulateTabListMenu(anchorOverride: pill) fills + shows it on demand.
         private MenuFlyout? _tabOverflowPillFlyout;
+
+        // Stable keys for the command rows; tab rows use their TabItem as the key.
+        private enum TabListAction { Rename, CopyTitle, CloseCurrent, CloseOthers, Pin, Protect }
         internal const double MinimumTabHeaderRightReserve = 440;
         internal const double MacOsTrafficLightReserve = 92;
         internal const double TabHeaderViewportPadding = 16;
@@ -858,71 +862,69 @@ namespace Ntilde
             var (anchor, flyout) = resolved.Value;
 
             ReleaseOtherTabListMenus(flyout);
-            flyout.Items.Clear();
+            // Refreshes run while the menu is open, including on background terminal output.
+            // Clearing it invalidates the popup's measurement and focus on every pass, making
+            // it repeatedly resize and move. Keep the controls and their handlers, updating
+            // properties in place; only a change in the tab list changes the collection.
+            var existing = IndexTabListMenuItems(flyout);
+            var desired = new List<Control>();
+
+            MenuItem Item(object key, string header, EventHandler<RoutedEventArgs> click)
+            {
+                if (!existing.TryGetValue(key, out var item))
+                {
+                    item = new MenuItem { Tag = key };
+                    item.Click += click;
+                }
+
+                if (!Equals(item.Header, header)) item.Header = header;
+                desired.Add(item);
+                return item;
+            }
+
             int index = 1;
             foreach (var tab in tabs.Items.Cast<TabItem>())
             {
-                var item = new MenuItem
-                {
-                    Header = GetTabMenuLabel(tab, index),
-                    FontFamily = Shell.BundledFontCatalog.ShellTextUiFontFamily,
-                    IsChecked = tabs.SelectedItem == tab,
-                    ToggleType = MenuItemToggleType.Radio,
-                    StaysOpenOnClick = false
-                };
-                item.Click += (_, __) =>
+                var item = Item(tab, GetTabMenuLabel(tab, index), (_, __) =>
                 {
                     tabs.SelectedItem = tab;
                     flyout.Hide();
-                };
-                flyout.Items.Add(item);
+                });
+                item.FontFamily = Shell.BundledFontCatalog.ShellTextUiFontFamily;
+                item.IsChecked = tabs.SelectedItem == tab;
+                item.ToggleType = MenuItemToggleType.Radio;
+                item.StaysOpenOnClick = false;
                 index++;
             }
 
             if (tabs.Items.Count > 0)
             {
-                flyout.Items.Add(new Separator());
+                desired.Add(flyout.Items.OfType<Separator>().FirstOrDefault() ?? new Separator());
 
-                var renameItem = new MenuItem { Header = "Rename Current Tab..." };
-                renameItem.Click += async (_, __) => await RenameSelectedTabAsync();
-                flyout.Items.Add(renameItem);
+                Item(TabListAction.Rename, "Rename Current Tab...", async (_, __) => await RenameSelectedTabAsync());
 
-                var copyTitleItem = new MenuItem { Header = "Copy Tab Title" };
-                copyTitleItem.Click += async (_, __) => await CopySelectedTabTitleAsync();
-                flyout.Items.Add(copyTitleItem);
+                Item(TabListAction.CopyTitle, "Copy Tab Title", async (_, __) => await CopySelectedTabTitleAsync());
 
                 bool canCloseCurrent = tabs.SelectedItem is not TabItem currentTab || CanCloseTab(IsTabProtected(currentTab));
-                var closeCurrentItem = new MenuItem
-                {
-                    Header = "Close Current Tab",
-                    IsEnabled = canCloseCurrent
-                };
-                closeCurrentItem.Click += async (_, __) => await CloseSelectedTabAsync();
-                flyout.Items.Add(closeCurrentItem);
+                var closeCurrentItem = Item(TabListAction.CloseCurrent, "Close Current Tab", async (_, __) => await CloseSelectedTabAsync());
+                closeCurrentItem.IsEnabled = canCloseCurrent;
 
                 bool hasClosableOthers = tabs.SelectedItem is TabItem selectedForCloseOthers &&
                     tabs.Items.Cast<TabItem>().Any(t => t != selectedForCloseOthers && !ShouldSkipTabWhenClosingOthers(IsTabPinned(t), IsTabProtected(t)));
-                var closeOthersItem = new MenuItem
-                {
-                    Header = "Close Other Tabs",
-                    IsEnabled = hasClosableOthers
-                };
-                closeOthersItem.Click += async (_, __) => await CloseOtherTabsAsync();
-                flyout.Items.Add(closeOthersItem);
+                var closeOthersItem = Item(TabListAction.CloseOthers, "Close Other Tabs", async (_, __) => await CloseOtherTabsAsync());
+                closeOthersItem.IsEnabled = hasClosableOthers;
 
                 if (tabs.SelectedItem is TabItem selectedTab)
                 {
                     var selectedState = GetOrCreateTabState(selectedTab);
 
-                    var pinItem = new MenuItem { Header = GetPinTabActionLabel(selectedState.IsPinned) };
-                    pinItem.Click += (_, __) => TogglePinSelectedTab();
-                    flyout.Items.Add(pinItem);
+                    Item(TabListAction.Pin, GetPinTabActionLabel(selectedState.IsPinned), (_, __) => TogglePinSelectedTab());
 
-                    var protectItem = new MenuItem { Header = GetProtectTabActionLabel(selectedState.IsProtected) };
-                    protectItem.Click += (_, __) => ToggleProtectSelectedTab();
-                    flyout.Items.Add(protectItem);
+                    Item(TabListAction.Protect, GetProtectTabActionLabel(selectedState.IsProtected), (_, __) => ToggleProtectSelectedTab());
                 }
             }
+
+            ReconcileTabListMenuItems(flyout, desired);
 
             if (showFlyout)
             {
@@ -930,6 +932,29 @@ namespace Ntilde
             }
 
             UpdateTabOverflowIndicator();
+        }
+
+        private static Dictionary<object, MenuItem> IndexTabListMenuItems(MenuFlyout flyout)
+        {
+            var existing = new Dictionary<object, MenuItem>();
+            foreach (var item in flyout.Items.OfType<MenuItem>())
+            {
+                if (item.Tag is { } key) existing.Add(key, item);
+            }
+
+            return existing;
+        }
+
+        private static void ReconcileTabListMenuItems(MenuFlyout flyout, List<Control> desired)
+        {
+            for (int i = 0; i < desired.Count; i++)
+            {
+                if (i < flyout.Items.Count && ReferenceEquals(flyout.Items[i], desired[i])) continue;
+                flyout.Items.Remove(desired[i]);
+                flyout.Items.Insert(i, desired[i]);
+            }
+
+            while (flyout.Items.Count > desired.Count) flyout.Items.RemoveAt(flyout.Items.Count - 1);
         }
     }
 }

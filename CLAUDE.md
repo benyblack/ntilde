@@ -30,6 +30,36 @@ A raw `dotnet build` invocation spawns long-lived daemons — the MSBuild worker
 If a build appears stuck in BuildCliShim and you reached for raw `dotnet build`: stop, kill the orphan MSBuild/dotnet daemons (`dotnet build-server shutdown` + Stop-Process on any stale `MSBuild.exe` / `dotnet.exe`), and re-run via the wrapper.
 
 <!-- rtk-instructions v2 -->
+## Reviewing changes
+
+The architecture, UI and testing rules in `AGENTS.md` are review rules too:
+
+@AGENTS.md
+
+When reviewing a diff or PR in this repo:
+
+- **Important** means one of: a VT conformance or rendering regression, a hang
+  or deadlock, data loss, a broken module boundary from `AGENTS.md` /
+  `docs/MODULE_OWNERSHIP.md`, a new `TerminalSettings` field missing its
+  `TerminalPane.ApplySettings` whitelist entry or `McpServer` schema and
+  validators, or a change that weakens a blocking CI gate (widened test filter,
+  raised timeout, new allowlist entry without a stated reason). Everything else
+  is a nit.
+- Report at most five nits, the most useful ones first.
+- Do not report what CI already blocks on: whitespace formatting
+  (`dotnet format whitespace`), analyzer and code-style warnings
+  (`TreatWarningsAsErrors`), or SonarCloud categories.
+- Do not review the content of pinned or generated artifacts:
+  `packaging/terminfo/*.terminfo`, the digest-checked JSON under
+  `docs/qa/terminfo/`, and golden PNGs. Do flag a change to one of them that
+  arrives without the source or generator change that explains it.
+- In `docs/` (plans, specs, historical scripts — none of it ships), only report
+  a statement that contradicts the code in the same PR.
+- A claim about behaviour needs a `file:line` citation from the source. Do not
+  infer what code does from a name.
+- A flaky test fixed by a longer timeout is a finding, not a fix (see
+  `AGENTS.md`, Testing).
+
 # RTK (Rust Token Killer) - Token-Optimized Commands
 
 ## Golden Rule
