@@ -4,12 +4,12 @@ import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, osc633Scope, runPredecessorExtractor, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
+import { historicOsc633Scope, isLegacyScope, isOsc633Scope, legacyScope, legacyScopeV2, legacyScopeV3, osc633ScopeV3, osc633Scope, osc633ScopeV2, runPredecessorExtractor, validateCollectionScope, verifyScopePredecessor } from './collection-scope.mjs';
 import { completeOwnedReceipt } from './receipt.mjs';
 
 test('only the fixed scope is admitted by matching context, parent proof, policy and absence of excluded evidence', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v63', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v64', osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: structuredClone(osc633Scope) };
     const proof = { collectionScope: structuredClone(osc633Scope) };
     const evidence = { osc633Evidence: {} };
     try {
@@ -36,9 +36,32 @@ test('only the fixed scope is admitted by matching context, parent proof, policy
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('scope generations bind their exact historical source policies and the two v63 forks remain distinct', () => {
+    const root = mkdtempSync(join(tmpdir(), 'nt-scope-gen-'));
+    const scoped = (scope, policy) => validateCollectionScope(root, { osc633Evidence: {} }, { sourceSnapshotPolicy: policy, osc633SuiteId: 'ntilde-owned-osc633-graded-v1', collectionScope: scope }, { collectionScope: scope });
+    const legacy = (scope, policy, evidence = {}) => validateCollectionScope(root, evidence, { sourceSnapshotPolicy: policy, collectionScope: scope }, { collectionScope: scope });
+    try {
+        for (const [scope, policy] of [[osc633ScopeV2, 62], [osc633ScopeV3, 63], [osc633Scope, 64]]) {
+            for (const candidate of [61, 62, 63, 64]) {
+                const run = () => scoped(scope, `readonly-owned-source-graph-v${candidate}`);
+                if (candidate === policy) assert.equal(run(), true); else assert.throws(run, /scoped collection/);
+            }
+        }
+        for (const [scope, policies] of [[legacyScopeV2, [62, 63]], [legacyScopeV3, [63]], [legacyScope, [64]]]) {
+            for (const candidate of [61, 62, 63, 64]) {
+                const run = () => legacy(scope, `readonly-owned-source-graph-v${candidate}`);
+                if (policies.includes(candidate)) assert.equal(run(), true); else assert.throws(run, /scoped collection/);
+            }
+        }
+        assert.throws(() => legacy(legacyScopeV2, 'readonly-owned-source-graph-v63', { animationEvidence: {} }), /scoped collection/);
+        writeFileSync(join(root, 'animation-snapshots.jsonl'), '');
+        assert.throws(() => legacy(legacyScopeV2, 'readonly-owned-source-graph-v63'), /scoped collection/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the default selection preserves all prior suites and explicitly excludes only OSC 633', () => {
     const root = mkdtempSync(join(tmpdir(), 'nt-legacy-scope-'));
-    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v63', collectionScope: structuredClone(legacyScope) };
+    const context = { sourceSnapshotPolicy: 'readonly-owned-source-graph-v64', collectionScope: structuredClone(legacyScope) };
     const proof = { collectionScope: structuredClone(legacyScope) };
     try {
         assert.equal(isLegacyScope(context.collectionScope), true);

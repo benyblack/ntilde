@@ -5,7 +5,6 @@
 // The extension adds no probe of its own. It exposes the PINNED probe definition so both of its paths can be replayed over the parent-journaled bytes of their own fenced exchange: the termless function
 // (feedCapture of OSC 5;0;? BEL and oscReplyResult over the captured text) and the terminal function (queryWithSentinelOutcome of the same request with the same frame pattern). The derivation refuses
 // unless the retained left/right-margin extension still contains each pinned seam verbatim and exactly once.
-import { osc5CaseIds } from './osc5-contracts.mjs';
 
 /** Identity of this layered extension. */
 export const osc5AdapterId = 'ntilde-owned-osc5-special-colors-grading-v1';

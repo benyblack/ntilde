@@ -46,6 +46,20 @@ public sealed class ReplayWindowTests
     }
 
     [AvaloniaFact]
+    public void A_replay_shows_an_animated_image_as_its_root_frame_and_never_advances_it()
+    {
+        var window = new ReplayWindow(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".rec"));
+        try
+        {
+            var buffer = (TerminalBuffer)typeof(ReplayWindow).GetField("_buffer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            Assert.True(buffer.KittyAnimationPaused);
+            Assert.False(buffer.AdvanceKittyAnimations(long.MaxValue, out long? due));   // a held buffer moves nothing and asks for no wake-up
+            Assert.Null(due);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task A_restored_snapshot_keeps_its_geometry_until_an_in_stream_resize()
     {
         string path = Path.GetTempFileName();

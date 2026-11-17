@@ -24,9 +24,12 @@ public sealed class TerminalColorOverrides
     [JsonPropertyName("special")] public uint?[] SpecialColors { get; set; } = new uint?[SpecialColorCount];
 
     internal bool HasSameColors(TerminalColorOverrides other) =>
+        HasSameRenderColors(other) && SpecialColors.AsSpan().SequenceEqual(other.SpecialColors);
+
+    internal bool HasSameRenderColors(TerminalColorOverrides other) =>
         Foreground == other.Foreground && Background == other.Background && Cursor == other.Cursor &&
         SelectionBackground == other.SelectionBackground && SelectionForeground == other.SelectionForeground &&
-        Palette.AsSpan().SequenceEqual(other.Palette) && SpecialColors.AsSpan().SequenceEqual(other.SpecialColors);
+        Palette.AsSpan().SequenceEqual(other.Palette);
 
     internal TerminalColorOverrides Clone() => new()
     {

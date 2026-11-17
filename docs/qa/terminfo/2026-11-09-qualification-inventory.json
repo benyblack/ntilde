@@ -49,7 +49,7 @@
     "effectSupportedIds": 139,
     "effectUnsupportedIds": 1,
     "effectOtherIds": 1,
-    "pinnedAndEffectSupportedIds": 94,
+    "pinnedAndEffectSupportedIds": 93,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -57,6 +57,7 @@
       "editing.decrara",
       "editing.decsace",
       "extensions.iterm2-images",
+      "extensions.kitty-graphics.animation",
       "extensions.notifications",
       "extensions.osc0-icon-title",
       "extensions.osc1-icon",
@@ -102,11 +103,11 @@
     ],
     "effectSupportedOfStockInconclusive": 138,
     "effectUnsupportedOfStockInconclusive": 1,
-    "pinnedSupportedOfStockInconclusive": 93,
+    "pinnedSupportedOfStockInconclusive": 92,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 94,
+    "pinnedSupportedIds": 93,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -119,7 +120,7 @@
       "effectMeasuredUnsupported": 1,
       "effectMeasuredOther": 1,
       "effectNotMeasured": 28,
-      "notPinnedSupported": 75
+      "notPinnedSupported": 76
     }
   },
   "suites": [
@@ -3767,73 +3768,70 @@
       }
     },
     {
-      "suite": "osc5",
-      "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
+      "suite": "kitty-animation",
+      "suiteId": "ntilde-owned-kitty-animation-qualification-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-17-osc5-special-colors/",
-      "doc": "2026-11-17-osc5-special-colors-qualification.md",
+      "publication": "2026-11-16-kitty-animation/",
+      "doc": "2026-11-16-kitty-animation-qualification.md",
       "caseCount": 1,
       "caseIds": [
-        "extensions.osc5-special-color"
+        "extensions.kitty-graphics.animation"
       ],
       "evidence": {
-        "files": 4,
-        "bytes": 8773948,
-        "sha256": "8c670aae2f6dbd6d0f553afeb7e6e0116f3cbf284975da232932b6d05d0b9112"
+        "files": 30,
+        "bytes": 22010958,
+        "sha256": "076d43e6ca380a9e1496802323444a90c7c07f0c15321c963f9e93aa4dd0cb57"
       },
       "receipt": {
         "schemaVersion": 70,
-        "runId": "1eda9658848990fce76b888d41b7bb4f",
+        "runId": "f8738a9e6d01cff70a5029fa1e5f9197",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "79b7fb4d497a99f7a4021f9e922c72350b2e09f53b090760eafc6eddeed27bb5"
+          "sha256": "dee2e8d7d85dfddf0ffe1eb9de563db454b8de18af01470064e7cc5e650c8fd2"
         },
         "suiteEvidence": {
-          "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
-          "file": "osc5-observations.json",
-          "sha256": "2544a0503df2b5a8130ff4a10a515236554889cdeefa409827c8e04711b9316f",
-          "runFile": "osc5-run.json",
-          "runSha256": "cec4d52b21d1c7d616584f51550927e38f1025fdd118f4c043d9387f6b6d6afc",
+          "suiteId": "ntilde-owned-kitty-animation-v1",
+          "file": "animation-observations.json",
+          "sha256": "2441ef5f19d827872afddaaae9d3fd0a10264c94eebecfc3e9b449846ebf0f20",
           "counts": {
-            "supported": 1
-          },
-          "contractsVersion": 1
+            "passed": 18
+          }
         }
       },
       "run": {
-        "ownedRunId": "1eda9658848990fce76b888d41b7bb4f",
-        "measuredAt": "2026-11-17T04:59:52.888Z",
-        "appRevision": "9c922a4a3857fb109ba1ef7978a35ae013a8e63f",
+        "ownedRunId": "f8738a9e6d01cff70a5029fa1e5f9197",
+        "measuredAt": "2026-11-17T07:04:34.986Z",
+        "appRevision": "9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "9c922a4a3857fb109ba1ef7978a35ae013a8e63f",
+        "scriptsRevision": "9bc1fd9c8fbca6c851ae6f9f7923baad5b68d20e",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "7bbbffd1bd730855657d629519f97060df62ee3bb5380a1dd0b587aea13e21eb",
-        "gradingAdapterId": "ntilde-owned-osc5-special-colors-grading-v1",
-        "gradingAdapterBundleSha256": "cc7cf0925e69fc391535139e8387d25fc71137bf2c8c1c0bece9fb3294a3b03b",
+        "collectorAdapterBundleSha256": "2a95777a05e00170c5a03c634d18ac4ad05bf10d6a648706b964c9ef56d52ba4",
+        "gradingAdapterId": "ntilde-owned-macos-v1",
+        "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v63",
-        "sourceSnapshotManifestSha256": "9aa8d63605d6f86a79dac30e9516702bbd072695495efbb954d27119dd71e8c2"
+        "sourceSnapshotManifestSha256": "74b848b978b9ab2b7d5de250518472912395586f0b85c62a804a18e923a74ebe"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "fd5b6501307a54ce3dddd81b1bbab3c6",
+        "runId": "6072cac853bc179316a1c853dd80d981",
         "counts": {
-          "inconclusive": 160,
-          "supported": 94,
+          "inconclusive": 161,
+          "supported": 93,
           "unsupported": 1
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "3ceade9f3331831e7efd9efbdd1583bbab2fba8194a24b78a8d3a559c92ac5f3",
+        "rawSha256": "f64f0f0d2557c27baae2d648ff013f2c378a10cbf1e6b6d10d60a047434f765e",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
-        "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc5-special-color from inconclusive to supported."
+        "note": null
       },
       "rederivation": {
         "status": "passed",
-        "command": "node --test scripts/terminfo/osc5-publication.test.mjs",
-        "testSha256": "24cf0ebaa65f4def21a654c52300a2c6faa16b497b621be47908f601b2d50149"
+        "command": "node --test scripts/terminfo/kitty-animation-publication.test.mjs",
+        "testSha256": "a35af54bcb087531e8ebb0ac6dd090ecdbacefc7c1ad5b9c29a57f25782410b6"
       }
     }
   ],
@@ -5927,6 +5925,58 @@
       ]
     },
     {
+      "id": "extensions.kitty-graphics.animation",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "kitty-animation",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "kitty-animation",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.kitty-graphics.animation",
+          "suite": "kitty-animation",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-callbacks-preserved-plus-owned-wall-clock-pixel-effect-v1"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "measuredLayers": [
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-controlled-pixels-paired-raw-render"
+        }
+      ]
+    },
+    {
       "id": "extensions.notifications",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -6824,52 +6874,6 @@
         {
           "id": "extensions.osc21-kitty-color",
           "suite": "kcl",
-          "status": "qualified",
-          "pinned": {
-            "verdict": "supported",
-            "note": null
-          },
-          "effect": {
-            "verdict": "supported"
-          },
-          "reportedConclusion": {
-            "outcome": "supported",
-            "grading": "pinned-termless-replayed"
-          },
-          "divergence": null,
-          "measuredLayers": [
-            "stored-state"
-          ],
-          "evidenceTag": "owned-raw-replies-and-unchanged-state"
-        }
-      ]
-    },
-    {
-      "id": "extensions.osc5-special-color",
-      "kind": "benchmark",
-      "stockOutcome": "inconclusive",
-      "pinned": {
-        "best": "supported",
-        "byClaim": [
-          {
-            "suite": "osc5",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "effect": {
-        "verdict": "supported",
-        "byClaim": [
-          {
-            "suite": "osc5",
-            "verdict": "supported"
-          }
-        ]
-      },
-      "claims": [
-        {
-          "id": "extensions.osc5-special-color",
-          "suite": "osc5",
           "status": "qualified",
           "pinned": {
             "verdict": "supported",

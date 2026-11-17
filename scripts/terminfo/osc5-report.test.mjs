@@ -33,3 +33,11 @@ test('a retained exchange is validated reply by reply and capped', () => {
     // A reply body carrying an embedded ESC (a smuggled second frame) is refused.
     assert.throws(() => validateOsc5Exchange({ barrier: da, replies: ['\x1b]5;0;x\x1b]5;0;y\x07'] }), /Unexpected special-color reply/);
 });
+
+test('framing retains unknown OSC replies without stalling and refuses incomplete retained strings', () => {
+    assert.deepEqual(parseOsc5Frame('\x1b]999;value\x07' + da), { barrier: da, replies: ['\x1b]999;value\x07'] });
+    for (const reply of ['\x1b]5;0;rgb:1/2/3', '\x1b]5;0;x\x07tail', '\x1bPunterminated', '\x1b[?1;2#Qjunk']) {
+        assert.throws(() => parseOsc5Reply(reply), /special-color reply/);
+    }
+    for (let end = 0; end < da.length; end++) assert.equal(parseOsc5Frame(da.slice(0, end)), null);
+});

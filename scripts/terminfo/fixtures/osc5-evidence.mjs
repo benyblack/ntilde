@@ -54,7 +54,16 @@ export function syntheticOsc5Screens(contract, binding = paletteBinding(), mutat
     // The plan's static reseed homes the cursor: every read (and every exchange) observes it at home over the nonce row.
     const seed = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], binding), nonce);
     return contract.roles.map(role => {
-        const fresh = () => ({ screen: structuredClone(seed), replies: [...(exchanges[role] ?? [])] });
+        const fresh = () => {
+            let colors = structuredClone(binding);
+            if (role === 'cross-dynamic-set') colors = { ...colors, foregroundOverride: true, foregroundArgb: 0xffabcdef };
+            if (role === 'cross-palette-set') {
+                colors = { ...binding, ansiPaletteArgb: [...binding.ansiPaletteArgb], paletteOverrideIndices: [...new Set([...binding.paletteOverrideIndices, 200])].sort((a, b) => a - b) };
+                colors.ansiPaletteArgb[200] = 0xff121212;
+            }
+            const screen = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], colors), nonce);
+            return { screen, replies: [...(exchanges[role] ?? [])] };
+        };
         const read = mutate?.(contract.caseId, role, fresh()) ?? fresh();
         return { role, screen: read.screen, replies: read.replies };
     });

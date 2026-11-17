@@ -130,7 +130,7 @@ public partial class TerminalBuffer
 
     private void PublishRuntimeColors(TerminalRuntimeColors next)
     {
-        bool changed = !_runtimeColors.Current.HasSameColors(next.Current);
+        bool changed = !_runtimeColors.Current.HasSameRenderColors(next.Current);
         Volatile.Write(ref _runtimeColors, next);
         if (!changed) return;
         _runtimeTheme = null;

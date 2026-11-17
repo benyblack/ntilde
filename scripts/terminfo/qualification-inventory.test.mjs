@@ -112,11 +112,11 @@ test('benchmark ids, Ntilde findings, controls and diagnostics are separated', (
     assert.deepEqual(stored.stockBaseline.stockUnsupported, ['extensions.osc5522-clipboard']);
 });
 
-test('only controlled pixels are measured, by the cursor, runtime-color reset, selection-color and static-image suites; layers are classified from the retained evidence', () => {
+test('only controlled pixels are measured, by the cursor, runtime-color reset, selection-color, static-image and Kitty animation suites; layers are classified from the retained evidence', () => {
     const stored = committed();
     assert.ok(stored.benchmark.every(item => item.claims.every(claim => !claim.measuredLayers.includes('pixels'))));
     const pixelClaims = stored.benchmark.flatMap(item => item.claims.filter(claim => claim.measuredLayers.includes('controlled-pixels')).map(claim => [item.id, claim.suite]));
-    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.iterm2-images', 'static-images'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
+    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.iterm2-images', 'static-images'], ['extensions.kitty-graphics.animation', 'kitty-animation'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
         ['extensions.osc111-reset-bg', 'color-reset'], ['extensions.osc112-reset-cursor', 'color-reset'],
         ['extensions.osc117-reset-highlight-bg', 'selection-colors'], ['extensions.osc119-reset-highlight-fg', 'selection-colors'],
         ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors'], ['extensions.sixel', 'static-images']]);
@@ -633,4 +633,24 @@ test('the static-image qualification keeps the SIXEL native-size negative and th
     assert.equal(row(failing, 'extensions.sixel').claims[0].status, 'declared-not-rederived');
     assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 2);
     assert.equal(failing.totals.effectUnsupportedIds, 0);
+});
+
+test('the Kitty animation qualification keeps the supported effect, the inconclusive pinned callbacks and the stock grade as separate rederived claims', async () => {
+    const suite = benchmarkSuites.find(entry => entry.suite === 'kitty-animation');
+    assert.equal(suite.dir, '2026-11-16-kitty-animation');
+    const { report, summary } = loadPublication(defaultQaRoot, suite);
+    assert.deepEqual(report.cases.map(item => [item.caseId, pinnedVerdictOf(item), effectVerdictOf(item)]), [['extensions.kitty-graphics.animation', 'inconclusive', 'supported']]);
+    assert.equal(summary.ownedRunId, 'f8738a9e6d01cff70a5029fa1e5f9197');
+    const stored = committed(), item = row(stored, 'extensions.kitty-graphics.animation');
+    assert.equal(item.claims.length, 1);
+    assert.equal(item.stockOutcome, 'inconclusive');
+    assert.equal(item.pinned.best, 'inconclusive');
+    assert.equal(item.effect.verdict, 'supported');
+    assert.equal(item.claims[0].divergence.kind, 'pinned-inconclusive-by-design');
+    assert.deepEqual(item.claims[0].measuredLayers, ['controlled-pixels']);
+    assert.equal(item.claims[0].status, 'qualified');
+    assert.ok(stored.totals.effectSupportedPinnedInconclusiveIds.includes('extensions.kitty-graphics.animation'));
+    const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'kitty-animation' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
+    assert.equal(row(failing, 'extensions.kitty-graphics.animation').claims[0].status, 'declared-not-rederived');
+    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 1);
 });

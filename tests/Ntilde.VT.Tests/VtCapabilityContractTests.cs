@@ -84,6 +84,15 @@ public sealed class VtCapabilityContractTests
             ["modify-other-keys-query"] = AssertModifyOtherKeysQuery,
         };
 
+    [Fact]
+    public void Partial_osc5_special_color_catalogue_entry_has_an_executable_contract()
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == "OSC:5");
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal("osc5-special-color", capability.ContractCase);
+        ContractCases["osc5-special-color"]();
+    }
+
     private static readonly Dictionary<string, string> ContractSequences =
         new(StringComparer.Ordinal)
         {

@@ -1,6 +1,7 @@
 // Receipt binding for the rxvt special-color qualification (extensions.osc5-special-color). The graded evidence stays provisional until the shared cleanup receipt exists, and the check re-derives the whole
 // report from the retained paired journal, the worker's run log and the layered adapter bytes without the collector. The run carries no setting of its own. A run carrying this evidence must also carry
 // every earlier grading layer (through left/right-margin).
+import { isOsc5ForkScope } from './collection-scope.mjs';
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,7 +15,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'osc5-observations.json', run: 'osc5-run.json', journal: 'osc5-snapshots.jsonl', adapter: 'collector-osc5.mjs' });
 /** The first source policy whose worker always runs this suite (the parent's plumbing sets the real number). */
-export const osc5FirstPolicy = 63;
+export const osc5FirstPolicy = 64;
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const fail = message => { throw new Error(message); };
@@ -24,7 +25,7 @@ const present = path => lstatSync(path, { throwIfNoEntry: false }) !== undefined
 /** Any retained special-color artifact or declaration requires this suffix; a run from the first special-color policy on always carries them. */
 export function includesOsc5Evidence(output, evidence, context) {
     const declared = ['osc5AdapterId', 'osc5SuiteId', 'osc5BundleSha256', 'osc5ContractsVersion'].some(key => context[key] !== undefined);
-    return policyNumber(context.sourceSnapshotPolicy) >= osc5FirstPolicy || declared || evidence.osc5Evidence !== undefined
+    return policyNumber(context.sourceSnapshotPolicy) >= osc5FirstPolicy || isOsc5ForkScope(context) || declared || evidence.osc5Evidence !== undefined
         || Object.values(artifact).some(file => present(join(output, file)));
 }
 

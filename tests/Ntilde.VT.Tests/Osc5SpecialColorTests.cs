@@ -92,8 +92,13 @@ public sealed class Osc5SpecialColorTests
         var (parser, buffer, replies) = Create();
         parser.Process(Osc($"5;{selector};#121212;{selector};?"));
         Assert.Empty(replies);
-        Assert.All(Enumerable.Range(0, TerminalColorOverrides.SpecialColorCount),
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.All(Enumerable.Range(0, TerminalColorOverrides.SpecialColorCount),
             index => Assert.Null(buffer.CopyColorOverrides().SpecialColors[index]));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
     }
 
     [Fact]
@@ -185,11 +190,34 @@ public sealed class Osc5SpecialColorTests
     }
 
     [Fact]
+    public void Special_color_changes_preserve_row_revisions_and_the_render_baseline()
+    {
+        var (parser, buffer, _) = Create();
+        parser.Process("Text");
+        var request = new RenderSnapshotRequest { ViewportCols = 10, ViewportRows = 3 };
+        using var before = buffer.CaptureRenderSnapshot(request, out _);
+        uint revision = before.RowsData.Array[0].Revision;
+        foreach (string sequence in new[] { "5;0;#123456", "5;0;#abcdef", "30001", "105", "30101", "105" })
+        {
+            parser.Process(Osc(sequence));
+            using var after = buffer.CaptureRenderSnapshot(request, out _);
+            Assert.Equal(revision, after.RowsData.Array[0].Revision);
+            Assert.Equal(0, after.DirtySpans.Length);
+        }
+        parser.Process(Osc("4;200;#123456"));
+        using var palette = buffer.CaptureRenderSnapshot(request, out _);
+        Assert.NotEqual(revision, palette.RowsData.Array[0].Revision);
+        Assert.Equal(3, palette.DirtySpans.Length);
+    }
+
+    [Fact]
     public void Oversized_sequences_are_dropped_whole()
     {
         var (parser, buffer, replies) = Create();
         parser.Process(Osc("5;0;#101010;" + new string('#', 32769)));
-        Assert.Null(buffer.CopyColorOverrides().SpecialColors[0]);
+        buffer.Lock.EnterReadLock();
+        try { Assert.Null(buffer.CopyColorOverrides().SpecialColors[0]); }
+        finally { buffer.Lock.ExitReadLock(); }
         parser.Process(Osc("5;0;?"));
         Assert.Equal(new[] { Osc("5;0;rgb:ffff/ffff/ffff") }, replies);
     }
@@ -200,7 +228,13 @@ public sealed class Osc5SpecialColorTests
         var (parser, buffer, _) = Create();
         parser.Process(Osc("5;0;#101010;4;#505050"));
         var restored = new TerminalBuffer(10, 3);
-        restored.ImportRuntimeColors(buffer.ExportRuntimeColors());
+        TerminalRuntimeColors? colors;
+        buffer.Lock.EnterReadLock();
+        try { colors = buffer.ExportRuntimeColors(); }
+        finally { buffer.Lock.ExitReadLock(); }
+        restored.Lock.EnterWriteLock();
+        try { restored.ImportRuntimeColors(colors); }
+        finally { restored.Lock.ExitWriteLock(); }
         var restoredParser = new AnsiParser(restored) { DefaultForeground = TermColor.White };
         var replies = new List<string>();
         restoredParser.OnResponse = replies.Add;

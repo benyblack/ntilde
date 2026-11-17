@@ -1,0 +1,20 @@
+Unhandled exception. System.InvalidOperationException: Avalonia.Native was not able to start the RenderTimer. Native error code is: -6661
+   at Avalonia.Native.AvaloniaNativeRenderTimer.EnsureRegistered()
+   at Avalonia.Native.AvaloniaNativeRenderTimer.set_Tick(Action`1 value)
+   at Avalonia.Rendering.ThreadProxyRenderTimer.set_Tick(Action`1 value)
+   at Avalonia.Rendering.DefaultRenderLoop.Wakeup()
+   at Avalonia.Rendering.DefaultRenderLoop.Add(IRenderLoopTask i)
+   at Avalonia.Rendering.Composition.Server.ServerCompositor..ctor(IRenderLoop renderLoop, IPlatformGraphics platformGraphics, CompositionOptions options, BatchStreamObjectPool`1 batchObjectPool, BatchStreamMemoryPool batchMemoryPool)
+   at Avalonia.Rendering.Composition.Compositor..ctor(IRenderLoop loop, IPlatformGraphics gpu, Boolean useUiThreadForSynchronousCommits, ICompositorScheduler scheduler, Boolean reclaimBuffersImmediately, Dispatcher dispatcher, CompositionOptions options)
+   at Avalonia.Rendering.Composition.Compositor..ctor(IRenderLoop loop, IPlatformGraphics gpu, Boolean useUiThreadForSynchronousCommits)
+   at Avalonia.Rendering.Composition.Compositor..ctor(IPlatformGraphics gpu, Boolean useUiThreadForSynchronousCommits)
+   at Avalonia.Native.AvaloniaNativePlatform.DoInitialize(AvaloniaNativePlatformOptions options)
+   at Avalonia.Native.AvaloniaNativePlatform.Initialize(IntPtr factory, AvaloniaNativePlatformOptions options)
+   at Avalonia.Native.AvaloniaNativePlatform.Initialize(AvaloniaNativePlatformOptions options)
+   at Avalonia.AvaloniaNativePlatformExtensions.<>c__DisplayClass0_0.<UseAvaloniaNative>b__0()
+   at Avalonia.AppBuilder.SetupUnsafe()
+   at Avalonia.AppBuilder.Setup()
+   at Avalonia.AppBuilder.SetupWithLifetime(IApplicationLifetime lifetime)
+   at Avalonia.ClassicDesktopStyleApplicationLifetimeExtensions.StartWithClassicDesktopLifetime(AppBuilder builder, String[] args, Action`1 lifetimeBuilder)
+   at Ntilde.Program.Main(String[] args) in /Users/behnam/Projects/ntilde/.claude/worktrees/kitty-animation-988/src/Ntilde.App/Program.cs:line 157
+

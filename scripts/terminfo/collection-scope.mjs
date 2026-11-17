@@ -16,22 +16,36 @@ export const historicOsc633Scope = Object.freeze({
         runId: '55f0ba462cd3cc6fbc315a0e5fad5126', sourcePolicy: 'readonly-owned-source-graph-v60' }),
 });
 
-export const osc633Scope = Object.freeze({
-    id: 'owned-osc633-without-notification-suites-v2', omittedSuites: Object.freeze(['osc9', 'notify']), deadlineMs: 300000,
-    predecessor: Object.freeze({ file: 'scope-predecessor.zip', sha256: 'a3ef48571fc95de3e7c54f8c3d4d924d85b4ead8c7f8f6b959b11414a9d8e820',
-        runId: 'b45702ad11ea1f0ea46eeb4908206155', sourcePolicy: 'readonly-owned-source-graph-v61' }),
+const osc633Predecessor = Object.freeze({ file: 'scope-predecessor.zip', sha256: 'a3ef48571fc95de3e7c54f8c3d4d924d85b4ead8c7f8f6b959b11414a9d8e820',
+    runId: 'b45702ad11ea1f0ea46eeb4908206155', sourcePolicy: 'readonly-owned-source-graph-v61' });
+// Frozen v62 selection (the runs published before the animation suite); its runs keep their exact scope and source policy.
+export const osc633ScopeV2 = Object.freeze({
+    id: 'owned-osc633-without-notification-suites-v2', omittedSuites: Object.freeze(['osc9', 'notify']), deadlineMs: 300000, predecessor: osc633Predecessor,
+});
+// Current selection: the same predecessor and omitted suites, collected under source policy v63 with the Kitty animation suite.
+export const osc633ScopeV3 = Object.freeze({
+    id: 'owned-osc633-without-notification-suites-v3', omittedSuites: Object.freeze(['osc9', 'notify']), deadlineMs: 300000, predecessor: osc633Predecessor,
 });
 export const historicLegacyScope = Object.freeze({ id: 'owned-pre-osc633-full-selection-v1', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
-export const legacyScope = Object.freeze({ id: 'owned-pre-osc633-full-selection-v2', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
+export const legacyScopeV2 = Object.freeze({ id: 'owned-pre-osc633-full-selection-v2', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
+export const legacyScopeV3 = Object.freeze({ id: 'owned-pre-osc633-full-selection-v3', omittedSuites: Object.freeze(['osc633']), deadlineMs: 300000 });
+
+export const osc633Scope = Object.freeze({ ...osc633ScopeV3, id: 'owned-osc633-without-notification-suites-v4', deadlineMs: 600000 });
+export const legacyScope = Object.freeze({ ...legacyScopeV3, id: 'owned-pre-osc633-full-selection-v4', deadlineMs: 600000 });
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-export const isOsc633Scope = value => same(value, osc633Scope) || same(value, historicOsc633Scope);
-export const isLegacyScope = value => same(value, legacyScope) || same(value, historicLegacyScope);
+export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV3) || same(value, osc633ScopeV2) || same(value, historicOsc633Scope);
+export const isLegacyScope = value => same(value, legacyScope) || same(value, legacyScopeV3) || same(value, legacyScopeV2) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
-/** The source-snapshot policies under which each scope selection was actually collected: the v1 scopes are frozen at v61 (their archived receipts), the v2 scopes span the frozen v62 publications and
- * the live v63. New runs always record the newest entry. */
-const allowedScopePolicies = scope => isHistoricOsc633Scope(scope) ? ['readonly-owned-source-graph-v61']
-    : ['readonly-owned-source-graph-v62', 'readonly-owned-source-graph-v63'];
+/** The frozen OSC 5 branch used the V2 legacy selection with v63, before animation merged. */
+export const isOsc5ForkScope = context => context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v63' && same(context.collectionScope, legacyScopeV2);
+const allowedScopePolicies = scope => {
+    if (isHistoricOsc633Scope(scope)) return ['readonly-owned-source-graph-v61'];
+    if (same(scope, legacyScopeV2)) return ['readonly-owned-source-graph-v62', 'readonly-owned-source-graph-v63'];
+    if (same(scope, osc633ScopeV2)) return ['readonly-owned-source-graph-v62'];
+    if (same(scope, osc633ScopeV3) || same(scope, legacyScopeV3)) return ['readonly-owned-source-graph-v63'];
+    return ['readonly-owned-source-graph-v64'];
+};
 const omittedArtifacts = Object.freeze([
     'osn-observations.json', 'osn-run.json', 'osn-snapshots.jsonl', 'osn-unavailable.json', 'osn-focus.json', 'osn-failed-observation.json',
     'ntf-observations.json', 'ntf-run.json', 'ntf-snapshots.jsonl', 'ntf-unavailable.json', 'ntf-focus.json', 'ntf-failed-observation.json',
@@ -45,6 +59,11 @@ export function validateCollectionScope(output, evidence, context, proof) {
     if (isHistoricOsc633Scope(context.collectionScope) && (evidence.pxmEvidence !== undefined
         || ['pxmAdapterId', 'pxmSuiteId', 'pxmBundleSha256', 'pxmContractsVersion'].some(key => context[key] !== undefined)
         || ['collector-pxm.mjs', 'pxm-run.json', 'pxm-observations.json', 'pxm-unavailable.json'].some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined))) {
+        throw new Error('Invalid or incomplete scoped collection declaration.');
+    }
+    if (isOsc5ForkScope(context) && (evidence.animationEvidence !== undefined
+        || Object.keys(context).some(key => key.startsWith('kittyAnimation') || key === 'animationSuiteId' || key === 'ownedAnimationPolicy')
+        || ['animation-snapshots.jsonl', 'animation-actions.jsonl', 'animation-observations.json', 'animation-unavailable.json'].some(file => lstatSync(join(output, file), { throwIfNoEntry: false }) !== undefined))) {
         throw new Error('Invalid or incomplete scoped collection declaration.');
     }
     if (isLegacyScope(context.collectionScope) && isLegacyScope(proof.collectionScope)) {

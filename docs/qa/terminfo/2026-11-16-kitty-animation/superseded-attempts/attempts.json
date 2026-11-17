@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "note": "Superseded collection attempts on the way to the published run. Each is retained with its actual failure; full raw directories are not committed. None produced a grade.",
+  "attempts": [
+    {
+      "runId": "fd78b5e9ff0578117b9c1905e028baf9",
+      "scriptsRevision": "e0c32683",
+      "reason": "The disposable App aborted before collection (SIGABRT, Avalonia RenderTimer error -6661): the desktop display was unavailable. Nothing was measured; the cause is the environment, not the suite.",
+      "retainedFiles": {
+        "app-output-head.txt": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
+        "failure.json": "79235bc568b031245cb33d08bfe8f8d8cd4c276bb875d01a9d71645bcbd8bde8"
+      }
+    },
+    {
+      "runId": "eb498291e493a5c339cec7cf3acd5081",
+      "scriptsRevision": "e0c32683",
+      "reason": "The static-image suite completed but the animation observer refused its first request (diagnosed from the retained evidence and the fix: no animation frame was recorded): its prior-challenge allowance covered the input phase only, while the static-image phase adds 31 more pairs. Fixed in b8625ed5 with a regression test.",
+      "retainedFiles": {
+        "failure.json": "8d826675522cac2547f8f8e04d9551725ca4d7e4d4a76044d23bf1755fa1e1e2",
+        "worker-error.txt": "7624a6f782a5d3cd40f1497eb34a5087af667435fc20d9a44e28ed16bcbbca6d"
+      }
+    },
+    {
+      "runId": "2f1f9e79b2dcfc2692a2f6c71a3395ce",
+      "scriptsRevision": "b8625ed5",
+      "reason": "The animation suite reached its first build stage and refused the raw replies: the App acknowledged a=T with its placement id (i=<id>,p=1;OK) as the lifecycle contract documents, while the expected reply shape omitted it. The reply-format expectation was corrected in c9875876; no pixel result or grade was involved.",
+      "retainedFiles": {
+        "failure.json": "b4eb54cbb91bed4b24221a761dda06ef29708e9fa56aa8f99494b0e85594de58",
+        "worker-error.txt": "8ed3e73d99ab37123140ab9343b4832c92519841a5482e1bf561499c12d771a1",
+        "animation-raw-failure.json": "720d3414d121024e1a1b8651e3f9893b834b8d3e80860f99b6dad06e05dc8942",
+        "animation-failed-observation.json": "9ea59a0eee6a6de0af591621be043e0ed89b48903db31219c026d554b2d9cada"
+      }
+    },
+    {
+      "runId": "c14fff8234ded3203aba2b8450b66cc4",
+      "scriptsRevision": "c9875876",
+      "reason": "A complete 18/18 run (effect supported, receipt schema 70) on the App built from 479a5465. Superseded, not failed: review of the playhead found five defects (finite-loop count, catch-up after a long gap, loading resume timing, trailing gapless frame, wake-up on retire), fixed in b4bcba0d, so the changed App was rebuilt and the whole collection repeated. The retained report and receipt are the earlier verdict; the full archive (sha256 below) is in the history of commit 2838dbd9.",
+      "retainedFiles": {
+        "animation-observations.json": "1842b5c1e2a51ba4f3bdb2053f7bbe07270d62f8ea9a52d0c1b7510f0e0a0581",
+        "cell-receipt.json": "7f4bb45b525d78a03cbab42061a76f2810778f72721aa19c276e6a4674b4f5b7"
+      },
+      "archiveSha256": "cfb76fa297679fc75636136398b7c58d0df256f9fe4e64dfa33cdee886443cf5",
+      "archiveCommit": "2838dbd9"
+    },
+    {
+      "runId": "d8dcf8c4f24d194b8b8ff254aa167a71",
+      "scriptsRevision": "b4bcba0d",
+      "reason": "The disposable App (rebuilt after the review fixes) aborted before collection (SIGABRT, Avalonia RenderTimer error -6661) while the desktop session was locked and the display unavailable. Nothing was measured; the cause is the environment. The collection was repeated after waking the display.",
+      "retainedFiles": {
+        "app-output-head.txt": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
+        "failure.json": "9e2fa8c7da713e8ce9e8153e387368c94153f1aae2a70e2bc49888d1a1283dd9"
+      }
+    },
+    {
+      "runId": "204458814fedd2be7247939f8cf8d5b8",
+      "scriptsRevision": "b4bcba0d",
+      "reason": "A second complete 18/18 run (effect supported, receipt schema 70) on the App built from b4bcba0d. Superseded, not failed: further review rounds changed production code and the measuring scripts again (settling the playhead before gap or frame changes, arrival-anchored loading resume, wake-ups for an animation that cannot move, tolerated boundary-straddling capture pairs, eviction ordering, undecoded fallback for a rejected frame handle, bleed checks on both pair members, refusal in persistent sessions and parked-time rebasing), so the App and scripts were rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "bc260ba50b3f58c2664c3c5490e0a215787f5bd68d2d4ac72fce3222d7733fd1",
+        "cell-receipt.json": "be99620ba4540694b054bc6af5ae3bd4fcd558f18dc6c7919a43c17f1995925b"
+      }
+    },
+    {
+      "runId": "6af0d336ed7f70743fa9d166fe7302fb",
+      "scriptsRevision": "be8add66",
+      "reason": "A third complete 18/18 run (effect supported, receipt schema 70) on the App built from be8add66. Superseded, not failed: CI on the pull request then required fixes to the production and measuring code (SonarCloud complexity, ternary, parameter-count and duplication findings were resolved by sharing the static-image observer and report with this suite and splitting the playhead, frame transmit and compositor; the MCP parser topic gained the new parser file; crash logs were kept as text because *.log is git-ignored), so the App and scripts were rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "471a52006ea1ca1407e16ba8e2f77d19ec7298d6b8f4670ddb16a32921f6b5f9",
+        "cell-receipt.json": "dd4bcb7f67f1d25b5f283771f57a8893aea2cd5347741a57012a3bdd86724f41"
+      }
+    },
+    {
+      "runId": "35968b7e4d2299810d5cd3f91b37ab17",
+      "scriptsRevision": "a706d8a1",
+      "reason": "A fourth complete 18/18 run (effect supported, receipt schema 70) on the App built from a706d8a1. Superseded, not failed: further review rounds changed the production and measuring code again (a held host never advances by time and replay windows hold animations, wake-ups only for placements in the visible rows and not inside synchronized output, refused frames decoded no bitmap, no lock or clock on the render path of a buffer that never animates and a non-blocking advance otherwise, differing capture pairs graded against independent timing, the fence handed over when both earlier collectors were unavailable), so the App and scripts were rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "5828982536208dfe927c7d61ba50b3d528973554a880bdad7c8e97c2105726d3",
+        "cell-receipt.json": "6c2049bc860f704a57dcf9580b10f56244cdfadc67cdbc931b1a96374b2b6bf7"
+      }
+    },
+    {
+      "runId": "a3bc9c2e7381e740e3a9dc8d946e889e",
+      "scriptsRevision": "efed4bf8",
+      "reason": "A fifth complete 18/18 run (effect supported, receipt schema 70) on the App built from efed4bf8. Superseded, not failed: the last review rounds changed the production playhead again (a frame refused by the quotas before anything is inflated or composed, skipped playback cycles leaving the visible frame stepping would leave, a gap change applying from now without backdating later frames, and no wake-ups when fewer than two frames are ever shown), so the App was rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "a5fe00edbfc4f0a18c83590e63648db3b167606f11a1a43803a45b0f51f9ccf0",
+        "cell-receipt.json": "b9dabcb5349f09fce564085bb2f3a149cbc785e3fb721d6874d82d873ab7a530"
+      }
+    },
+    {
+      "runId": "9e5c67aa1c85b79fb810f05b4ad7dd63",
+      "scriptsRevision": "78ab1d2b",
+      "reason": "A sixth complete 18/18 run (effect supported, receipt schema 70) on the App built from 78ab1d2b. Superseded, not failed: the SonarCloud and review follow-ups restructured the production playhead code (the render-path advance takes and releases its write lock in one method, playhead settling and frame publishing became helpers, the room check reads the clock only for an animating unpaused asset), so the App was rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "9725efc5f058415b81faa3736a7196ca9071e00f1c53faa4ddbd4cbb563d766a",
+        "cell-receipt.json": "98c10993ed68102e82f3875644ed8daa3f4da39031adb7132155d4e4e1383e36"
+      }
+    },
+    {
+      "runId": "a915df8ac3b3ca602f1896d77b39821f",
+      "scriptsRevision": "de376515",
+      "reason": "A seventh complete 18/18 run (effect supported, receipt schema 70) on the App built from de376515. Superseded, not failed: SonarCloud flagged the render-path advance (S2222, a lock released only under a flag) on that head, so its lock handling was restructured into an unconditional release after a plain non-blocking acquire, the App was rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "2c971860bd89d023470f7f67a70815107c6fe07abf420f896e6b3a1057a10af5",
+        "cell-receipt.json": "3bf3e2dd2f0bf6e36e3124011b6e206efd6205b15b7cfe799ab49d08f94cd135"
+      }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +32,21 @@ test('retained run independently rederives the complete receipt and published pr
         const frames = readFileSync(join(root, 'osc5-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)), retained = readFileSync(join(root, 'osc5-observations.json'));
         const rebuilt = buildOsc5GradingReport(frames, JSON.parse(readFileSync(join(root, 'osc5-run.json'))), JSON.parse(retained).runId, JSON.parse(retained).adapter);
         assert.equal(Buffer.compare(Buffer.from(JSON.stringify(rebuilt, null, 2) + '\n'), retained), 0);
+        // Every projected file must remain bound to this receipt; the stock and owned run IDs legitimately differ.
+        for (const [file, mutate] of [
+            ['context.json', value => { value.runId = 'b'.repeat(32); }],
+            ['raw.json', value => { value.runId = 'b'.repeat(32); }],
+            ['osc5-observations.json', value => { value.runId = 'b'.repeat(32); }],
+            ['query-observations.json', value => { value.runId = 'b'.repeat(32); }],
+            ['summary.json', value => { value.counts.supported++; }],
+            ['summary.json', value => { value.runId = 'b'.repeat(32); }],
+            ['cell-receipt.json', value => { value.rawSha256 = '0'.repeat(64); }],
+        ]) {
+            const path = join(root, file), bytes = readFileSync(path), value = JSON.parse(bytes);
+            mutate(value); writeFileSync(path, JSON.stringify(value));
+            assert.throws(() => osc5Publication(root), /publication run or receipt binding/, file);
+            writeFileSync(path, bytes);
+        }
         const projected = osc5Publication(root);
         // A newly finalized receipt has a new timestamp; publication preserves the original receipt byte-for-byte.
         projected.summary.receipt = original;

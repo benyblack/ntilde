@@ -85,7 +85,7 @@ export async function collectOsc5Grading({ config, fence, owner, gradingModule }
     const run = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds], cases: [] };
     for (const item of collected) {
         const contract = osc5Contracts.find(entry => entry.caseId === item.caseId); // NOSONAR - serial by design: each pinned replay settles in case order
-        run.cases.push({ ...item, pinned: await replayPinned(gradingModule, contract, item) });
+        run.cases.push({ ...item, pinned: await replayPinned(gradingModule, contract, item) }); // NOSONAR - preserve sequential replay and failure ordering
     }
     return run;
 }

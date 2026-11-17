@@ -244,9 +244,8 @@ public sealed class KittyImageLifecycleTests
         Assert.Equal("\x1b_Gi=1,I=14;OK\x1b\\", Assert.Single(replies)); Assert.Single(buffer.Images);
     }
 
+    // a=f and a=a are implemented (KittyAnimationTests); frame composition is not.
     [Theory]
-    [InlineData("f")]
-    [InlineData("a")]
     [InlineData("c")]
     public void Unsupported_animation_actions_have_negative_correlated_replies(string action)
     {

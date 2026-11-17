@@ -55,8 +55,8 @@ const re = (source, flags = '') => new RegExp(source.replaceAll('<ESC>', String.
 export const osc5PinnedQuery = `${esc}]5;0;?${bel}`;
 /** The pinned code's frame pattern spells its control characters as text escapes (the collector compares the source text exactly), so they are written as text here too. */
 const escText = String.raw`\x1b`, belText = String.raw`\x07`;
-export const osc5PinnedPattern = new RegExp(`${escText}\\]5;0;rgb:[0-9a-f]{1,4}/[0-9a-f]{1,4}/[0-9a-f]{1,4}(?:${belText}|${escText}\\\\)`, 'i');
-const pinnedPrefix = new RegExp(`${escText}\\]5;0;`, 'i');
+export const osc5PinnedPattern = new RegExp(String.raw`${escText}\]5;0;rgb:[0-9a-f]{1,4}/[0-9a-f]{1,4}/[0-9a-f]{1,4}(?:${belText}|${escText}\\)`, 'i');
+const pinnedPrefix = new RegExp(String.raw`${escText}\]5;0;`, 'i');
 const pinnedExpected = 'Complete OSC 5 index-0 color reply';
 
 /** The exact calls each pinned path makes, in order. `replies` names which journaled bytes the captured call returns. */
@@ -148,7 +148,8 @@ class SpecialColorModel {
             const selector = Number(item);
             if (Number.isInteger(selector) && selector >= 0 && selector <= 4 && String(selector) === item) delete this.colors[selector];
         }
-        return { bytes: `${esc}]105${text === '' ? '' : `;${text}`}${st}`, reply: null };
+        const suffix = text === '' ? '' : ';' + text;
+        return { bytes: `${esc}]105${suffix}${st}`, reply: null };
     }
 }
 
@@ -192,7 +193,7 @@ function listOk(demand, replies) {
 /** The host-default values the baseline groups measured: a selector/`rgb:rrrr/gggg/bbbb` value map with the measured legacy frames beside it, or null while a group is missing or malformed. */
 export function baselineOf(observation) {
     const read = observation['baseline-special'];
-    if (!read || read.replies.length !== 5) return null;
+    if (read?.replies.length !== 5) return null;
     const map = {};
     for (const [index, reply] of read.replies.entries()) {
         const frame = re(String.raw`^<ESC>\]5;([0-4]);(rgb:[0-9a-f]{4}/[0-9a-f]{4}/[0-9a-f]{4})<ESC>\\$`).exec(reply ?? '');
@@ -200,13 +201,13 @@ export function baselineOf(observation) {
         map[index] = frame[2];
     }
     const other = observation['baseline-other'];
-    if (!other || other.replies.length !== 3) return null;
+    if (other?.replies.length !== 3) return map;
     const legacy = [['10', String.raw`^<ESC>\](10);rgb:[0-9a-f]{4}/[0-9a-f]{4}/[0-9a-f]{4}<ESC>\\$`],
         ['4;200', String.raw`^<ESC>\](4;200);rgb:[0-9a-f]{4}/[0-9a-f]{4}/[0-9a-f]{4}<ESC>\\$`],
         ['21-cursor', String.raw`^<ESC>\](21;cursor=rgb:[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{2})<ESC>\\$`]];
     for (const [index, [key, pattern]] of legacy.entries()) {
         const frame = re(pattern).exec(other.replies[index] ?? '');
-        if (frame === null) return null;
+        if (frame === null) return map;
         map[`legacy-${key}`] = frame[0];
     }
     return map;
@@ -217,14 +218,8 @@ export function baselineOf(observation) {
 const ask = (role, kind, note, spec) => {
     const request = spec.request.map(op => op.bytes).join('');
     if (request.length > 128) throw new Error(`The ${role} request exceeds the 128-byte exchange limit.`);
-    const pinsBinding = !role.endsWith('-set');
-    // A set-direction isolation group declares the one binding field its setup legitimately changes
-    // (the OSC 10 foreground set overrides the resolved foreground; the OSC 4 palette set changes the
-    // palette and the override list); everything else stays pinned. Read-direction groups pin everything.
-    const openBindingFields = role === 'cross-dynamic-set' ? ['foregroundOverride', 'foregroundArgb']
-        : role === 'cross-palette-set' ? ['ansiPaletteArgb', 'paletteOverrideIndices'] : [];
     return Object.freeze({ role, kind, note, setup: Object.freeze((spec.setup ?? []).map(op => op.bytes)), request, after: Object.freeze((spec.after ?? []).map(op => op.bytes)),
-        demand: Object.freeze(spec.request.map(op => op.reply).filter(reply => reply !== null).flatMap(entry => (entry.demanded ? entry.demanded : [entry]))), shape: null, pinsBinding, openBindingFields });
+        demand: Object.freeze(spec.request.map(op => op.reply).filter(reply => reply !== null).flatMap(entry => (entry.demanded ? entry.demanded : [entry]))), shape: null });
 };
 
 const model = new SpecialColorModel();
@@ -309,30 +304,27 @@ function seedOk(state, nonce) {
 const inconclusive = note => ({ outcome: 'inconclusive', note });
 const unsupported = note => ({ outcome: 'unsupported', note });
 
+/** Compare the complete normalized binding, permitting only the exact values written by this group's setup. */
+function bindingMatches(group, state, initial) {
+    const expected = { ...initial.colorState, ansiPaletteArgb: [...initial.colorState.ansiPaletteArgb], paletteOverrideIndices: [...initial.colorState.paletteOverrideIndices] };
+    if (group.role === 'cross-dynamic-set') {
+        expected.foregroundOverride = true;
+        expected.foregroundArgb = 0xffabcdef;
+    } else if (group.role === 'cross-palette-set') {
+        expected.ansiPaletteArgb[200] = 0xff121212;
+        expected.paletteOverrideIndices = [...new Set([...expected.paletteOverrideIndices, 200])].sort((a, b) => a - b);
+    }
+    return JSON.stringify(state.colorState) === JSON.stringify(expected);
+}
+
 /** The way one exchange group differs from its demand, or null: unchanged state, then the color binding, then the reply list (baseline references resolved). The stored special colors are never
  *  render-applied, so the palette, theme and render state must equal the initial read at EVERY read - a collateral mutation of any unrelated color is rejected here, not only at the cleanup edges. */
 function groupMismatch(group, state, initial, baseline) {
     if (stateKey(state) !== stateKey(initial)) {
         return `The ${group.role} request changed the screen, the cursor (position, visibility or stored mode), the rendition, the margins (vertical or horizontal), the wrap/insert modes or the active screen: a color request must change nothing but the special colors`;
     }
-    // A read-direction group pins the whole color binding: its own set touches only the never-render-applied
-    // special slots, so the theme and palette must equal the initial read. A set-direction group pins every
-    // binding field except the ones its declared setup changes, so a collateral mutation of any unrelated
-    // color is still rejected while the declared set applies.
-    if (group.openBindingFields !== undefined) {
-        // The declared setup may change exactly its declared fields; every other binding field must equal
-        // the initial read (which the fixture expresses as an unchanged binding and a real run as one whose
-        // cleanup already restored).
-        const declared = new Set(group.openBindingFields);
-        const left = { ...state.colorState }, right = { ...initial.colorState };
-        for (const field of declared) { delete left[field]; delete right[field]; }
-        if (JSON.stringify(left) !== JSON.stringify(right)) {
-            return declared.size === 0
-                ? `The ${group.role} request changed the palette, the theme or the render state: an OSC 5 request must not touch any color outside its own five slots`
-                : `The ${group.role} request changed the palette, the theme or the render state beyond its declared setup: only ${[...declared].join(' and ')} may differ, and only through the declared set`;
-        }
-    } else if (group.pinsBinding && state.colorBinding !== initial.colorBinding) {
-        return `The ${group.role} request changed the palette, the theme or the render state: an OSC 5 request must not touch any color outside its own five slots`;
+    if (!bindingMatches(group, state, initial)) {
+        return `The ${group.role} request changed the palette, the theme or the render state beyond its declared setup`;
     }
     const demand = resolveDemand(group, baseline);
     if (demand === null) return `The ${group.role} demand depends on a baseline that was not measured`;
@@ -362,7 +354,7 @@ function briefCase(item, observation) {
     const baseline = baselineOf(observation);
     const groups = Object.fromEntries(item.groups.map(group => {
         const state = observation[group.role], demand = resolveDemand(group, baseline);
-        const bindingUnchanged = !group.pinsBinding || state.colorBinding === observation.initial.colorBinding;
+        const bindingUnchanged = bindingMatches(group, state, observation.initial);
         const matches = demand !== null && JSON.stringify(state.replies) === JSON.stringify(demand) && bindingUnchanged;
         return [group.role, { kind: group.kind, request: printable(group.request), ...(group.setup.length === 0 ? {} : { setup: group.setup.map(printable) }),
             ...(group.after.length === 0 ? {} : { after: group.after.map(printable) }), demand: group.note, demanded: demand === null ? null : demand.map(printable),
@@ -403,7 +395,7 @@ export function osc5PlanSeed(runId) {
     return osc5Reset + osc5Seed(osc5NoncePrefix + runId);
 }
 /** The finish: the screen and colors reset, the baseline title written, the alternate screen left. */
-export const osc5Finish = runId => osc5Reset + osc5ColorReset + `${esc}]0;${osc5BaseTitle(runId)}${st}` + '\x1b[?1049l';
+export const osc5Finish = runId => osc5Reset + osc5ColorReset + `${esc}]105${st}` + `${esc}]0;${osc5BaseTitle(runId)}${st}` + '\x1b[?1049l';
 
 /** Reject any recorded feed list that is not byte-identical to the contract. */
 export function validateOsc5Feeds(item, feeds) { validateExactFeeds(item, feeds, 'contract'); }

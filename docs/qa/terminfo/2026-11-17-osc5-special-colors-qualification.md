@@ -21,10 +21,12 @@ corroborated by the exact-query witness `q07.extensions.osc5-special-color` unde
 
 | Case | Pinned termless / terminal paths | Stock grade (this run) | Exact-query witness | Effect contract (`ntilde-osc5-special-colors-effect-v1`) |
 |---|---|---|---|---|
-| `extensions.osc5-special-color` | **supported** / **supported** | **supported** (was inconclusive: no reply) | matched a complete `rgb:` frame | **supported** (2 controls and 15 protocol groups matched; 5 policy groups, all matched Ntilde's choices) |
+| `extensions.osc5-special-color` | **supported** / **supported** | **supported** (was inconclusive: no reply) | matched a complete `rgb:` frame | **supported** (3 controls and 15 protocol groups matched; 5 policy groups, all matched Ntilde's choices) |
 
-The stock collector in the same owned run (`d278a2269f111b4ab24e36e013bfaf17`) grades 94 supported / 1 unsupported / 160 inconclusive (`suiteComplete=false`). The frozen baseline counts are 93 / 1 / 162,
-so exactly one stock grade moves: `extensions.osc5-special-color`. The frozen stock baseline keeps its original grades. No Core point is added.
+The stock collector (`fd5b6501307a54ce3dddd81b1bbab3c6`) in owned run `1eda9658848990fce76b888d41b7bb4f` grades 94 supported / 1 unsupported / 160 inconclusive (`suiteComplete=false`), 255 graded cases.
+The frozen November 9 baseline is 86 / 1 / 168, also 255 cases. Eight cases have since moved from inconclusive to supported: OSC 5 plus the separately implemented OSC 99 notification, Kitty OSC 21,
+DECRQCRA, UTF-8 mouse, window title/icon reports and XTGETXRES cases. This batch newly implements OSC 5 only; those seven other changes are not attributed to it. The frozen baseline stays unchanged.
+No Core point is added.
 
 ## Production
 
@@ -58,7 +60,7 @@ Windows/Linux or common-harness claim; no stock score beyond this run's recorded
 
 ## Identities
 
-App version 0.14.0, Release sidecar from `d5548908…80b4` (the merge that landed this batch's production commit; scripts and App revision are the same commit). Owned run `d278a2269f111b4ab24e36e013bfaf17`,
+App version 0.14.0, Release sidecar from `9c922a4a3857fb109ba1ef7978a35ae013a8e63f` (this batch's production implementation; the selected source snapshot pins the measured script bytes independently). Owned run `1eda9658848990fce76b888d41b7bb4f`,
 measured 2026-11-17, macOS, Node v24.22.2. Source policy `readonly-owned-source-graph-v63` (420 files), receipt schema 70, query policy `owned-exact-query-paired-raw-state-v6`. The build is not
 binary-to-source attestation.
 

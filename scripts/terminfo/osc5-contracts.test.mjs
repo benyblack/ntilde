@@ -116,7 +116,7 @@ test('an unmeasured baseline makes a baseline-relative demand unresolvable', () 
     assert.equal(resolveDemand(group, {}), null);
     assert.equal(baselineOf({}), null);
     assert.equal(baselineOf({ 'baseline-special': { replies: [] } }), null);
-    assert.equal(baselineOf({ 'baseline-special': { replies: syntheticOsc5Exchanges['baseline-special'] } }), null, 'the legacy defaults are part of the baseline');
+    assert.deepEqual(Object.keys(baselineOf({ 'baseline-special': { replies: syntheticOsc5Exchanges['baseline-special'] } })), ['0', '1', '2', '3', '4'], 'later missing legacy defaults preserve the measured special colors');
 });
 
 test('a wrong reply to a protocol group is unsupported', () => {
@@ -192,8 +192,9 @@ test('the grader refuses a revision it does not know and missing captures', () =
 test('every deciding encoding group scales to whole bytes, so the unspecified rounding of a partial byte cannot decide a verdict', () => {
     const floor = value => {
         const wide = /^rgb:([0-9a-f]{1,4})\/([0-9a-f]{1,4})\/([0-9a-f]{1,4})$/i.exec(value), intensity = /^rgbi:([\d.]+)\/([\d.]+)\/([\d.]+)$/.exec(value);
-        const channels = wide ? wide.slice(1).map(part => Math.floor(Number.parseInt(part, 16) * 255 / (16 ** part.length - 1)))
-            : intensity?.slice(1).map(part => Math.floor(Math.min(1, Number(part)) * 255 + 1e-9));
+        const channels = wide ? wide.slice(1).map(part => Number.parseInt(part, 16) * 255 / (16 ** part.length - 1))
+            : intensity?.slice(1).map(part => Math.min(1, Number(part)) * 255);
+        if (channels) assert.ok(channels.every(Number.isInteger), `${value} must have integral scaled channels before truncation`);
         return channels ? `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}` : null;
     };
     let checked = 0;
@@ -208,3 +209,24 @@ test('every deciding encoding group scales to whole bytes, so the unspecified ro
     }
     assert.ok(checked >= 3);
 });
+
+test('a later failed legacy baseline cannot hide an earlier pinned protocol failure', () => {
+    const result = syntheticOsc5Grade(caseId, undefined, (id, role, read) => ['pinned', 'baseline-other'].includes(role) ? { ...read, replies: [] } : null);
+    assert.equal(result.outcome, 'unsupported');
+    assert.match(result.note, /pinned request was not answered/);
+});
+
+test('finish clears special colors even when interrupted before the plan reset', () => {
+    assert.ok(osc5Finish('a'.repeat(32)).includes('\x1b]105\x1b\\'));
+});
+
+for (const role of ['cross-dynamic-set', 'cross-palette-set', 'cross-kitty-set']) {
+    test(`${role} rejects collateral palette mutation despite correct special-color replies`, () => {
+        const result = syntheticOsc5Grade(caseId, undefined, change(role, read => {
+            read.screen.colorBinding.ansiPaletteArgb[201] = 0xff112233;
+            return { screen: read.screen };
+        }));
+        assert.equal(result.outcome, 'unsupported');
+        assert.match(result.note, new RegExp(role));
+    });
+}
