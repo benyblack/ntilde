@@ -34,7 +34,7 @@ Three distinct things, recorded separately in [report.json](2026-11-17-osc720/re
   `totalLines = scrollbackLines + rows`, `screenLines = rows`). This is not a termless backend run and not a stock grade. It returned `unsupported`: the viewport stayed at the live line after the bare form.
 - **Effect contract:** independent oracle written from the rxvt text. All six protocol experiments observed **no effect**, with every control held, so the effect is **unsupported**.
 
-The stock collector, re-run in the same owned run (`c3a92cc0b2e369916ccd75a6374bbf74`; stock collector run `88bce0cebbabf15faab519e0fc1d75f5`), still grades the case inconclusive
+The stock collector, re-run in the same owned run (`7b3a588563d29ef1fa74ce9d9260e62c`; stock collector run `19ab1c7fe2cee695151b967daf6fe5c7`), still grades the case inconclusive
 (94 supported / 1 unsupported / 160 inconclusive, `suiteComplete=false`): **no stock score, no Core point and no common-harness score is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -70,9 +70,9 @@ A conclusive effect needs all controls and setups to hold; a partial implementat
 
 ## Evidence and reproduction
 
-- Measured: App `0.14.0+052f0abe…` (Release sidecar, executable SHA-256 `f5814e51…9bf8`), scripts at `052f0abe…`, source policy v66 (445 files), receipt schema 73, scope `owned-osc633-without-notification-suites-v6`
+- Measured: App `0.14.0+f538abb9…` (Release sidecar built from the merge of PR 1016, executable SHA-256 `f5814e51…9bf8`), scripts at `f538abb9…`, source policy v66 (445 files), receipt schema 73, scope `owned-osc633-without-notification-suites-v6`
   (the notification suites are omitted and independently rederived from their own publications). Layered collector extension `ntilde-owned-osc720-grading-v1` over the left/right-margin one.
-- Retained: [owned-run.zip](2026-11-17-osc720/owned-run.zip) (complete run, receipt, journals, run log, wheel actions, adapter bytes) and five superseded attempts in
+- Retained: [owned-run.zip](2026-11-17-osc720/owned-run.zip) (complete run, receipt, journals, run log, wheel actions, adapter bytes) and six superseded runs (five failed attempts and the identical-result complete run measured before PR 1016 merged) in
   [superseded/](2026-11-17-osc720/superseded) with reasons in [attempts.json](2026-11-17-osc720/attempts.json). `node --test scripts/terminfo/osc720-publication.test.mjs` extracts the run, reissues the complete receipt
   with the current validators, rebuilds the report from the paired journal and compares it byte for byte.
 - Policy: stock unchanged; the unchanged pinned bundle's two paths and the effect contract are three separate rows; OSC 721, painted pixels, remote/mux, Windows/Linux and a bare-form-with-count variant beyond the six

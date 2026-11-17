@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import { osc720CaseIds } from './osc720-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = '052f0abe83a3109f8afe642d59749547fdaa9a6a';
+export const measuredScriptsRevision = 'f538abb9de3ef72d7dbd0ae649d85db6c832e244';
 /** The measured App build revision (stamped into the sidecar assembly). The retained selected-source manifest independently pins the measured scripts; these human-readable labels are not binary-to-source attestation. */
-export const measuredAppRevision = '052f0abe83a3109f8afe642d59749547fdaa9a6a';
+export const measuredAppRevision = 'f538abb9de3ef72d7dbd0ae649d85db6c832e244';
 const scope = 'Pinned terminfo.dev@4.0.0 paths for extensions.osc720-scroll-up preserved: the terminal path (two writes, a cursor-position query and unverifiedEffect; always inconclusive, evidence "consumed", and the path the '
     + 'stock collector grades) and the termless function (thirty fed lines, two scrollback reads and the bare OSC 720 BEL; replayed UNCHANGED over a parent-built scrollback context mapped from the App view position, which is not a '
     + 'termless backend run and not a stock grade), beside a separately identified effect contract graded by an independent oracle written from rxvt-unicode: OSC 720 ; Pt moves the viewing window up Pt lines and, for a zero or '

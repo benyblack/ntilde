@@ -36,6 +36,13 @@
       "scriptsCommit": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
       "failedAt": "the first suite of the run (before any OSC 720 code)",
       "reason": "'Unexpected input during cell collection' at the very start. Environmental; the retry with identical scripts and App is the published run."
+    },
+    {
+      "file": "superseded/attempt-6.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
+      "failedAt": null,
+      "reason": "A complete, successful run (owned run c3a92cc0b2e369916ccd75a6374bbf74, stock collector run 88bce0cebbabf15faab519e0fc1d75f5) on the tree before PR 1016 (Kitty animation PNG frames) merged: effect unsupported, every control held, receipt 73. Superseded only by the remeasurement on the merged tree, which gave the identical conclusion; it is kept as a complete run, not a failure."
     }
   ]
 }

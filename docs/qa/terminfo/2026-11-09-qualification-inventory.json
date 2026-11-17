@@ -3852,23 +3852,23 @@
         "extensions.osc720-scroll-up"
       ],
       "evidence": {
-        "files": 10,
-        "bytes": 66136218,
-        "sha256": "69e2ad08e5aa0f40c46ef2735c3c4646796aebdddb307a8599bcc5d405cefbbd"
+        "files": 11,
+        "bytes": 82645099,
+        "sha256": "93d6439636af196f2cc9f25e516edcdc96172f0e8c8ef75bfdf07f0c1972b137"
       },
       "receipt": {
         "schemaVersion": 73,
-        "runId": "c3a92cc0b2e369916ccd75a6374bbf74",
+        "runId": "7b3a588563d29ef1fa74ce9d9260e62c",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "141a4f72c541054151497b1e0c8ddee38c0c07f455166ea4e188248517614df0"
+          "sha256": "ce658ebfe42d951efcd56d921ae5166bae82b2a5d9111466daa3a7535d7d41bc"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-osc720-graded-v1",
           "file": "ovu-observations.json",
-          "sha256": "f3b5855c6530e3b27a73beb5315bd9623501cd24b131645688024bb6613e0002",
+          "sha256": "a0feee468bd8671de6b21b515f90f0c4016e802226d7643743b2bba709296a9b",
           "runFile": "ovu-run.json",
-          "runSha256": "1d016a51cdddda5f1f566e5339b2f9cc7d68647ffa91f069b659eed733fb3305",
+          "runSha256": "8dd9ad6a1801758d4d2b880ab9f8225ee385d194d5e1ced19e581d8ac00619e7",
           "counts": {
             "inconclusive/unsupported": 1
           },
@@ -3876,23 +3876,23 @@
         }
       },
       "run": {
-        "ownedRunId": "c3a92cc0b2e369916ccd75a6374bbf74",
-        "measuredAt": "2026-11-17T12:20:35.504Z",
-        "appRevision": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
+        "ownedRunId": "7b3a588563d29ef1fa74ce9d9260e62c",
+        "measuredAt": "2026-11-17T12:52:21.142Z",
+        "appRevision": "f538abb9de3ef72d7dbd0ae649d85db6c832e244",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
+        "scriptsRevision": "f538abb9de3ef72d7dbd0ae649d85db6c832e244",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "6cf40f9ca7beafab8f84540d8f3abf6c9a920495df14ebb8b0fb3f9fca8ad20b",
+        "collectorAdapterBundleSha256": "dfd541a9cf045e1bda73273508d5ef630ab8551097ff505e716943bfb07998c6",
         "gradingAdapterId": "ntilde-owned-osc720-grading-v1",
-        "gradingAdapterBundleSha256": "87bd0b2c4da35aba09b2736c8f74913906b77ff59e53115faf3e9c8cc25e6cf1",
+        "gradingAdapterBundleSha256": "8177c75afc19d1ba71d0ed4abf784ad09ca697359e3b431f4dc0daf56d1ca75b",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v66",
-        "sourceSnapshotManifestSha256": "48f9266fbe49897be5b815a44da67c67ea651bc0bfbf875e3a60f61c85189e84"
+        "sourceSnapshotManifestSha256": "2ad9d8aede62d8605881bfd8896fdc5af33af84bfee54c9ed63f881bf695fdbc"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "88bce0cebbabf15faab519e0fc1d75f5",
+        "runId": "19ab1c7fe2cee695151b967daf6fe5c7",
         "counts": {
           "inconclusive": 160,
           "supported": 94,
@@ -3900,14 +3900,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "8d636c43e9334af43dfab8c74a0e9730fbc5da4415781a231ff8c969baa2b066",
+        "rawSha256": "08ffe73723ec87035e597eae2d87ac0ede10cda9c5cb2c9034bfe6d22d33ffd2",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades from the same owned run; the OSC 720 effect does not change the stock score."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/osc720-publication.test.mjs",
-        "testSha256": "a2dfaaf9af530f2a7bca443cabca33154451ab3fadc82153aad7cd77f64d00a8"
+        "testSha256": "5b9e3a186c5017d664f4a6e076b01192f68783ac87d2122dfe87f2411579681c"
       }
     },
     {

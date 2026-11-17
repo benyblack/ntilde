@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-osc720-graded-v1",
   "contractsVersion": 1,
-  "runId": "c3a92cc0b2e369916ccd75a6374bbf74",
+  "runId": "7b3a588563d29ef1fa74ce9d9260e62c",
   "adapter": {
     "id": "ntilde-owned-osc720-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "87bd0b2c4da35aba09b2736c8f74913906b77ff59e53115faf3e9c8cc25e6cf1",
+    "bundleSha256": "8177c75afc19d1ba71d0ed4abf784ad09ca697359e3b431f4dc0daf56d1ca75b",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 paths for extensions.osc720-scroll-up preserved: the terminal path (two writes, a cursor-position query and unverifiedEffect; always inconclusive, evidence \"consumed\", and the path the stock collector grades) and the termless function (thirty fed lines, two scrollback reads and the bare OSC 720 BEL; replayed UNCHANGED over a parent-built scrollback context mapped from the App view position, which is not a termless backend run and not a stock grade), beside a separately identified effect contract graded by an independent oracle written from rxvt-unicode: OSC 720 ; Pt moves the viewing window up Pt lines and, for a zero or absent Pt (which the pinned bare form is), clears the scrollback (rxvt(7) and src/command.C scr_page / scr_erase_savelines). Observed quantities are the App view scroll position, the stored history (count, generation, evictions and content), the cursor and the screen; the wheel (a routed generated-input notch) and ED 3 are observer controls only and never evidence for OSC 720. No OSC 721, painted pixels, remote/mux, Windows/Linux, stock-score or common-harness claim.",
@@ -20,18 +20,18 @@
             "wheelDelta": 1,
             "column": 1,
             "row": 1,
-            "paneId": "e26fd243-5664-4d9c-b851-7a0f046569d7"
+            "paneId": "22728f6b-bda2-40c3-855c-e3f583b8e24a"
           },
           "eventDispatched": true,
           "handled": true,
           "boundary": "avalonia-routed",
           "observationAvailable": true,
           "postVerified": true,
-          "observedAt": "2026-11-17T12:19:34.037Z"
+          "observedAt": "2026-11-17T12:51:15.573Z"
         }
       ],
-      "startedAt": "2026-11-17T12:19:34.011Z",
-      "finishedAt": "2026-11-17T12:19:34.037Z"
+      "startedAt": "2026-11-17T12:51:15.544Z",
+      "finishedAt": "2026-11-17T12:51:15.573Z"
     },
     {
       "action": "scroll-up",
@@ -42,18 +42,18 @@
             "wheelDelta": 1,
             "column": 1,
             "row": 1,
-            "paneId": "e26fd243-5664-4d9c-b851-7a0f046569d7"
+            "paneId": "22728f6b-bda2-40c3-855c-e3f583b8e24a"
           },
           "eventDispatched": true,
           "handled": true,
           "boundary": "avalonia-routed",
           "observationAvailable": true,
           "postVerified": true,
-          "observedAt": "2026-11-17T12:19:35.623Z"
+          "observedAt": "2026-11-17T12:51:17.169Z"
         }
       ],
-      "startedAt": "2026-11-17T12:19:35.607Z",
-      "finishedAt": "2026-11-17T12:19:35.623Z"
+      "startedAt": "2026-11-17T12:51:17.152Z",
+      "finishedAt": "2026-11-17T12:51:17.169Z"
     }
   ],
   "cases": [
@@ -467,7 +467,7 @@
               "action": "scroll-up",
               "response": {
                 "ok": true,
-                "ownerPid": 49594,
+                "ownerPid": 86450,
                 "action": "scroll-up",
                 "notches": [
                   {
@@ -476,18 +476,18 @@
                       "wheelDelta": 1,
                       "column": 1,
                       "row": 1,
-                      "paneId": "e26fd243-5664-4d9c-b851-7a0f046569d7"
+                      "paneId": "22728f6b-bda2-40c3-855c-e3f583b8e24a"
                     },
                     "eventDispatched": true,
                     "handled": true,
                     "boundary": "avalonia-routed",
                     "observationAvailable": true,
                     "postVerified": true,
-                    "observedAt": "2026-11-17T12:19:34.037Z"
+                    "observedAt": "2026-11-17T12:51:15.573Z"
                   }
                 ],
-                "startedAt": "2026-11-17T12:19:34.011Z",
-                "finishedAt": "2026-11-17T12:19:34.037Z"
+                "startedAt": "2026-11-17T12:51:15.544Z",
+                "finishedAt": "2026-11-17T12:51:15.573Z"
               }
             }
           ]
@@ -667,7 +667,7 @@
               "action": "scroll-up",
               "response": {
                 "ok": true,
-                "ownerPid": 49594,
+                "ownerPid": 86450,
                 "action": "scroll-up",
                 "notches": [
                   {
@@ -676,18 +676,18 @@
                       "wheelDelta": 1,
                       "column": 1,
                       "row": 1,
-                      "paneId": "e26fd243-5664-4d9c-b851-7a0f046569d7"
+                      "paneId": "22728f6b-bda2-40c3-855c-e3f583b8e24a"
                     },
                     "eventDispatched": true,
                     "handled": true,
                     "boundary": "avalonia-routed",
                     "observationAvailable": true,
                     "postVerified": true,
-                    "observedAt": "2026-11-17T12:19:35.623Z"
+                    "observedAt": "2026-11-17T12:51:17.169Z"
                   }
                 ],
-                "startedAt": "2026-11-17T12:19:35.607Z",
-                "finishedAt": "2026-11-17T12:19:35.623Z"
+                "startedAt": "2026-11-17T12:51:17.152Z",
+                "finishedAt": "2026-11-17T12:51:17.169Z"
               }
             }
           ]
