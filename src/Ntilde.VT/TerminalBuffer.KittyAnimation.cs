@@ -140,6 +140,10 @@ public partial class TerminalBuffer
     /// nothing is gained by waking for pixels nobody can see. <paramref name="firstVisibleLine"/> is the absolute line at the top of the viewport
     /// (null counts any placement on the screen as visible).
     /// </summary>
+    // S2222 reads ReaderWriterLockSlim.TryEnterWriteLock as always acquiring, so it reports the failed-acquire path as a leaked lock. Only
+    // the success path holds the lock, and it releases it in the finally below.
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Critical Bug", "S2222:Locks should be released on all exit paths",
+        Justification = "A failed TryEnterWriteLock(0) takes nothing; a successful one is released in the finally of the same method.")]
     public bool AdvanceKittyAnimations(long nowMs, out long? nextDueMs, bool invalidate = true, int? firstVisibleLine = null)
     {
         nextDueMs = null;
