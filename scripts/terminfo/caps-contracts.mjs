@@ -103,7 +103,9 @@ export const capsSilentPayloads = Object.freeze(['1337;Capabilities', '1337;Capa
 // ---------- the groups ----------
 
 const ask = (role, kind, note, request, demand, setup = null) => {
-    if (request.length > 128) throw new Error(`The ${role} request exceeds the 128-byte exchange limit.`);
+    // The owned fence refuses any exchange request over 64 characters (terminal-fence.mjs); the contract
+    // self-check keeps every group inside that bound instead of discovering it at collection time.
+    if (request.length > 64) throw new Error(`The ${role} request exceeds the 64-byte owned exchange limit.`);
     return Object.freeze({ role, kind, note, setup: setup === null ? [] : [setup], request, demand: Object.freeze(demand) });
 };
 
@@ -114,8 +116,10 @@ const groupList = [
     ask('pinned', 'protocol', 'the exact pinned BEL-terminated request on the untouched default is answered by the complete declared declaration, ST-terminated', request(bel), [capsExpectedReply]),
     ask('st-terminated', 'protocol', 'the same request ended by ST is answered by the same ST-terminated reply', request(st), [capsExpectedReply]),
     ask('repeat', 'protocol', 'two requests in one exchange are answered by two identical replies in request order', request(bel) + request(st), [capsExpectedReply, capsExpectedReply]),
-    ask('silent-forms', 'policy', 'an unsolicited assignment, a bare Capabilities form and a query spelling change nothing and stay silent', capsSilentPayloads.slice(0, 3).map(silentRequest).join(''), []),
-    ask('silent-spellings', 'policy', 'a suffixed request, both lower- and upper-case spellings and another OSC change nothing and stay silent', capsSilentPayloads.slice(3).map(silentRequest).join(''), []),
+    ask('silent-forms', 'policy', 'a bare Capabilities form and a query spelling change nothing and stay silent', capsSilentPayloads.slice(0, 2).map(silentRequest).join(''), []),
+    ask('silent-assignment', 'policy', 'an unsolicited Capabilities assignment changes nothing and stays silent', silentRequest(capsSilentPayloads[2]), []),
+    ask('silent-suffix', 'policy', 'a suffixed request changes nothing and stays silent', silentRequest(capsSilentPayloads[3]), []),
+    ask('silent-case', 'policy', 'both wrong-case spellings change nothing and stay silent', capsSilentPayloads.slice(4).map(silentRequest).join(''), []),
     ask('recover', 'protocol', 'after the silent forms the exact request is still answered by the same reply, so silence never broke the framing', request(bel), [capsExpectedReply]),
 ];
 

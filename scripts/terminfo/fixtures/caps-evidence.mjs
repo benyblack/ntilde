@@ -21,7 +21,9 @@ const exchanges = Object.freeze({
     'st-terminated': [reply],
     repeat: [reply, reply],
     'silent-forms': [],
-    'silent-spellings': [],
+    'silent-assignment': [],
+    'silent-suffix': [],
+    'silent-case': [],
     recover: [reply],
 });
 

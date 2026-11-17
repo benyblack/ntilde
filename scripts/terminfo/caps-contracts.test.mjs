@@ -23,15 +23,18 @@ test('every protocol group demands the complete declared reply and every policy 
     assert.deepEqual(byRole['st-terminated'].demand, [capsFixture.expectedReply]);
     assert.deepEqual(byRole.repeat.demand, [capsFixture.expectedReply, capsFixture.expectedReply]);
     assert.deepEqual(byRole['silent-forms'].demand, []);
-    assert.deepEqual(byRole['silent-spellings'].demand, []);
+    assert.deepEqual(byRole['silent-assignment'].demand, []);
+    assert.deepEqual(byRole['silent-suffix'].demand, []);
+    assert.deepEqual(byRole['silent-case'].demand, []);
     assert.deepEqual(byRole.recover.demand, [capsFixture.expectedReply]);
     assert.deepEqual(byRole.pinned.kind, 'protocol');
-    assert.deepEqual(byRole['silent-forms'].kind, 'policy');
-    assert.deepEqual(byRole['silent-spellings'].kind, 'policy');
-    // Each silent group's request carries its payloads exactly once, BEL-terminated, within the 128-byte exchange bound.
-    for (const [role, payloads] of [['silent-forms', capsFixture.silentPayloads.slice(0, 3)], ['silent-spellings', capsFixture.silentPayloads.slice(3)]]) {
+    for (const role of ['silent-forms', 'silent-assignment', 'silent-suffix', 'silent-case']) assert.deepEqual(byRole[role].kind, 'policy');
+    // Each silent group's request carries its payloads exactly once, BEL-terminated, within the fence's 64-byte exchange bound.
+    const grouped = [['silent-forms', capsFixture.silentPayloads.slice(0, 2)], ['silent-assignment', capsFixture.silentPayloads.slice(2, 3)],
+        ['silent-suffix', capsFixture.silentPayloads.slice(3, 4)], ['silent-case', capsFixture.silentPayloads.slice(4)]];
+    for (const [role, payloads] of grouped) {
         for (const payload of payloads) assert.ok(byRole[role].request.includes(`\x1b]${payload}\x07`), payload);
-        assert.ok(byRole[role].request.length <= 128, `${role} stays within the exchange bound`);
+        assert.ok(byRole[role].request.length <= 64, `${role} stays within the exchange bound`);
     }
 });
 
