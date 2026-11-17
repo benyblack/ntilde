@@ -111,7 +111,8 @@ generated conformance report are updated.
 
 Local checks: VT 3,583 passed; architecture 191; targeted App geometry 3;
 separate PlatformBoot 187 passed/4 skipped; Replay 76; RenderMetrics 48;
-MCP 452. Full App gating completed with 8,621 passed, 58 skipped and two
+MCP 470, including complete raw/escaped framing and mixed-notation refusals.
+Full App gating completed with 8,621 passed, 58 skipped and two
 failures: a reflow benchmark at 15.02 ms against 15 ms, and a fake mux handshake
 timeout. Unchanged isolated follow-ups passed (benchmark 5.87 ms; entire mux
 lifecycle class 31 passed). No threshold, timeout or skip was adjusted. The

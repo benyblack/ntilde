@@ -622,6 +622,12 @@ public class ExplainEscapeSequenceTests
     [InlineData("OSC 776 ?", "urxvt cell size")]
     [InlineData("\x1b]776;?\x07", "urxvt cell size")]
     [InlineData("\x1b]776;?\x1b\\", "urxvt cell size")]
+    [InlineData("\x1b]776;?\u009c", "urxvt cell size")]
+    [InlineData("\\x1b]1337;ReportCellSize\\x07", "iTerm2 cell size")]
+    [InlineData("\\x1b]776;?\\x1b\\", "urxvt cell size")]
+    [InlineData("\\e]776;?\\a", "urxvt cell size")]
+    [InlineData("ESC]776;?ESC\\", "urxvt cell size")]
+    [InlineData("ESC ]1337;ReportCellSizeESC\\", "iTerm2 cell size")]
     public void Cell_size_subcommands_explain_their_exact_catalog_contract(string sequence, string mnemonic)
     {
         Assert.Contains(mnemonic, VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
@@ -637,6 +643,18 @@ public class ExplainEscapeSequenceTests
     [InlineData("\x1b]1337;ReportCellSize;\x07")]
     [InlineData("\x1b]1337;ReportCellSize=17;8;2\x07")]
     [InlineData("\x1b]1337;reportcellsize\x07")]
+    [InlineData("\x1b]776;?")]
+    [InlineData("\x1b]1337;ReportCellSize")]
+    [InlineData("\x1b]776;?ESC\\")]
+    [InlineData("\x1b]776;?\\x1b\\")]
+    [InlineData("\x1b]1337;ReportCellSize\\x07")]
+    [InlineData("\\x1b]776;?")]
+    [InlineData("\\x1b]776;?ESC\\")]
+    [InlineData("\\x1b]776;?\x1b\\")]
+    [InlineData("\\x1b]1337;ReportCellSize\x07")]
+    [InlineData("ESC]776;?\x1b\\")]
+    [InlineData("OSC 776 ?\x07")]
+    [InlineData("\x1b]776;?\x07 ")]
     public void Other_osc_forms_do_not_inherit_cell_size_contracts(string sequence)
     {
         Assert.DoesNotContain("cell size", VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
