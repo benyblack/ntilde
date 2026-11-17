@@ -4,12 +4,12 @@ import { join } from 'node:path';
 import { inputPriorCaptureCap } from './input-plan.mjs';
 import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs } from './kitty-animation-cases.mjs';
 import { animationFrameInput, animationFrameIds, animationPngIds, animationPngInput } from './kitty-animation-inputs.mjs';
-import { inspectAnimationPixels, evaluateAnimationTiming } from './kitty-animation-oracle.mjs';
+import { inspectAnimationPixels, evaluateAnimationTiming, timelineAppearance } from './kitty-animation-oracle.mjs';
 import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, StaticImageReport, validateImageCapture } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
 
 /** Policies by suite version; a retained run's context names the one it was collected under, and its evidence is rederived under that version's plan. */
-export const ownedAnimationPolicies = Object.freeze({ 1: 'owned-kitty-animation-paired-raw-render-v1', 2: 'owned-kitty-animation-paired-raw-render-v2' });
+export const ownedAnimationPolicies = Object.freeze({ 1: 'owned-kitty-animation-paired-raw-render-v1', 2: 'owned-kitty-animation-paired-raw-render-v2', 3: 'owned-kitty-animation-paired-raw-render-restore-v1' });
 export const ownedAnimationPolicy = ownedAnimationPolicies[currentAnimationVersion];
 /** The suite version a retained policy string names, or null for an unknown one. */
 export const animationVersionOfPolicy = policy => Object.keys(ownedAnimationPolicies).map(Number).find(version => ownedAnimationPolicies[version] === policy) ?? null;
@@ -34,11 +34,11 @@ const mayDiffer = cases => entry => {
 export const animationPairMayDiffer = mayDiffer(animationCases);
 
 /** Parent chooses each case's image id; replies must echo it exactly. */
-export function animationAction(entry, state, runId, initialCursorVisible) {
+export function animationAction(entry, state, runId, initialCursorVisible, version = currentAnimationVersion) {
     if (entry.kind === 'bind' || entry.kind === 'restore') return { command: imageSetup(runId), skipReason: null };
     if (entry.kind === 'finish') return { command: imageRestore(initialCursorVisible), skipReason: null };
     checkImages(uint(state.imageId));
-    return { command: imagePosition(runId) + animationCommand(entry.caseId, entry.stageId, state) + imagePosition(runId), skipReason: null };
+    return { command: imagePosition(runId) + animationCommand(entry.caseId, entry.stageId, state, version) + imagePosition(runId), skipReason: null };
 }
 
 /** Exact framing of consecutive APC replies; mixed or uncorrelated bytes invalidate the experiment. */
@@ -94,6 +94,9 @@ const scopeTail = 'independently captured raw replies, paired original offscreen
 const scopes = Object.freeze({
     1: 'Three bounded Kitty animation cases; ' + scopeTail,
     2: 'Four bounded Kitty animation cases (a stationary control, playback, stop-freeze, and PNG and root-based frames); ' + scopeTail,
+    3: 'Three bounded Kitty animation restore cases in a persistent tab (a running animation, a stopped one, and PNG and root-edited frames), each read again after the App was quit and started again on the same persistent session; '
+        + 'independently captured raw replies, paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. Elapsed-time claims are bounded to this App build and run: '
+        + 'no display-refresh cadence, other platform, frame-rate, second-client, remote-session or stock-grade claim.',
 });
 
 /** Rederives or builds the report of a suite version (default: the current one); a retained run is checked under the version its context names. */
@@ -115,8 +118,8 @@ export function buildAnimationReport(frames, actions, seal, runId, output, prior
 function suiteOf(version) {
     const cases = animationCasesByVersion[version], stageOfEntry = entry => cases.find(value => value.id === entry.caseId).stages.find(value => value.id === entry.stageId);
     return Object.freeze({
-        plan: planOf(cases), prefix: 'kan-', pixelDir: animationPixelPrefix, inputDir: 'animation-inputs', priorCap: animationPriorCap, recordSpan: true,
-        inputs: () => animationInputs(version), action: animationAction, buildReport: (frames, actions, seal, runId, output, prior) => buildAnimationReport(frames, actions, seal, runId, output, prior, version),
+        plan: planOf(cases), prefix: 'kan-', relaunches: entry => entry.kind === 'read' && stageOfEntry(entry).relaunch === true, pixelDir: animationPixelPrefix, inputDir: 'animation-inputs', priorCap: animationPriorCap, recordSpan: true,
+        inputs: () => animationInputs(version), action: (entry, state, runId, cursorVisible) => animationAction(entry, state, runId, cursorVisible, version), buildReport: (frames, actions, seal, runId, output, prior) => buildAnimationReport(frames, actions, seal, runId, output, prior, version),
         retainPixel: retainedAnimationPixel, captureKind: imageCaptureKind, pairMayDiffer: mayDiffer(cases), stageOfEntry,
         acceptReply: (reply, entry, states) => { animationReply(reply.toString('ascii'), stageOfEntry(entry), states.get(entry.caseId).imageId); },
         newState(states) {
@@ -132,7 +135,7 @@ function suiteOf(version) {
         factsMatch: (action, state) => action.imageId === (state.imageId ?? null),
     });
 }
-export const animationSuites = Object.freeze({ 1: suiteOf(1), 2: suiteOf(2) });
+export const animationSuites = Object.freeze({ 1: suiteOf(1), 2: suiteOf(2), 3: suiteOf(3) });
 export const animationSuite = animationSuites[currentAnimationVersion];
 
 class AnimationReport extends StaticImageReport {
@@ -167,8 +170,10 @@ class AnimationReport extends StaticImageReport {
         // inside the span it is legitimate and the stage is inconclusive; where only one frame can be on screen it is an inconsistency and fails.
         const pairStable = this.frames[index].pixels[0].sha256 === this.frames[index].pixels[1].sha256;
         const timing = evaluateAnimationTiming(stage, facts);
+        // A relaunch stage that follows a running animation shows whichever frame the independent timeline gives for the capture span (when the App came back varies); an ambiguous span makes the timing invalid, so the placeholder can only leave the stage inconclusive.
+        const appearance = stage.appearance === 'timeline' ? timelineAppearance(facts) ?? 'root' : stage.appearance;
         const inspect = observed => inspectAnimationPixels({ baseline: this.boundPixel.image, observed: observed.image, grid: observed.details.grid,
-            anchor: animationAnchor, cells: animationCellEnvelope, appearance: stage.appearance });
+            anchor: animationAnchor, cells: animationCellEnvelope, appearance });
         const pixel = inspect(pixels[0]);
         checkImages(pixel.controls[0].passed);
         // Bleed is timing-independent, so a pair that differs must be clean in both members.

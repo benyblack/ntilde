@@ -93,7 +93,14 @@ function runningTiming(stage, facts) {
     if (!facts.start) return timingNo('animation start time unavailable');
     const possible = framesPossibleAt(facts.start, facts.capture);
     if (possible.length !== 1) return timingNo('capture span straddles a frame boundary: ' + possible.join('/'));
+    if (stage.appearance === 'timeline') return timingOk;
     return possible[0] === stage.appearance ? timingOk : timingNo(`read landed in the ${possible[0]} window, not the planned ${stage.appearance} window`);
+}
+/** The one frame the timeline allows for a stage whose frame depends on when it was read; undefined when the capture span could show more than one (the stage is then inconclusive). */
+export function timelineAppearance(facts) {
+    if (!facts.start || !facts.capture) return undefined;
+    const possible = framesPossibleAt(facts.start, facts.capture);
+    return possible.length === 1 ? possible[0] : undefined;
 }
 function frozenTiming(stage, facts) {
     const { capture } = facts;

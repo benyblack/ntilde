@@ -70,7 +70,7 @@ const daemonBirthMs = birth => Date.parse(birth + ' UTC');
  * assertPersistentDaemon's.
  */
 export function readPersistentDaemon(daemonPid, appPid, appData, timeout = 2000, {
-    record = processRecord, birth = processBirth, canonical = realpathSync, run = execFileSync, status = lstatSync, read = readFileSync,
+    record = processRecord, birth = processBirth, canonical = realpathSync, run = execFileSync, status = lstatSync, read = readFileSync, firstAppBirth,
 } = {}) {
     const daemon = record(daemonPid, timeout);
     const text = run('/bin/ps', ['eww', '-p', String(daemonPid), '-o', 'command='], { encoding: 'utf8', timeout, maxBuffer: 262144 }).trim();
@@ -78,7 +78,7 @@ export function readPersistentDaemon(daemonPid, appPid, appData, timeout = 2000,
     const stat = status(path);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('The multiplexer descriptor is not a regular file.');
     const descriptor = JSON.parse(read(path, 'utf8'));
-    return { record: { ...daemon, executable: canonical(daemon.executable) }, text, birth: birth(daemonPid, timeout), appBirth: birth(appPid, timeout),
+    return { record: { ...daemon, executable: canonical(daemon.executable) }, text, birth: birth(daemonPid, timeout), appBirth: firstAppBirth ?? birth(appPid, timeout),
         descriptor: { pid: descriptor.pid, processName: descriptor.processName, endpoint: descriptor.endpoint } };
 }
 
@@ -202,6 +202,8 @@ function preservedOwnerCode(kind, code) {
         && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(code);
 }
 
+/** A relaunch (#1030) quits the App and waits for a new one to reattach the pane: it alone may take longer than the five-second owner answer. */
+const relaunchKind = 'kan-relaunch', relaunchTimeoutMs = 90000;
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
@@ -212,7 +214,7 @@ export function requestOwner(config, kind, extra = {}) {
             socket.destroy();
             if (error) reject(error); else resolve(result);
         };
-        socket.setTimeout(5000, () => finish(new Error('Ntilde owner did not respond.')));
+        socket.setTimeout(kind === relaunchKind ? relaunchTimeoutMs : 5000, () => finish(new Error('Ntilde owner did not respond.')));
         socket.on('error', reject);
         socket.on('connect', () => socket.write(JSON.stringify({
             ...extra, kind, token: config.token, runId: config.runId, workerPid: process.pid,

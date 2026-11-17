@@ -4,15 +4,17 @@ import { join } from 'node:path';
 import { initialInputScreen, inputPaneId, inputRunId, inputCapture } from './input-journal.mjs';
 import { pixelCapture } from './pixel-capture.mjs';
 import { imageOwnership, rgbaPng } from './static-images-journal.mjs';
-import { animationCases, animationExpectedReplies } from '../kitty-animation-cases.mjs';
+import { animationCases, animationCasesByVersion, animationExpectedReplies, currentAnimationVersion } from '../kitty-animation-cases.mjs';
 import { animationAppearanceColor } from '../kitty-animation-inputs.mjs';
-import { animationPlan, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix, animationActionCount } from '../kitty-animation.mjs';
+import { animationSuites, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix } from '../kitty-animation.mjs';
 import { imageModeReplyHex, imageBackgroundReply } from '../static-images.mjs';
 import { snapshotHash } from '../agent-observer.mjs';
 import { pngHash } from '../pixels-capture.mjs';
 
 export const animationEpoch = Date.parse('2026-11-04T14:00:00.000Z');
 const iso = ms => new Date(animationEpoch + ms).toISOString();
+/** The frame the timeline gives at the middle of a capture span (tests keep the span well inside one window). */
+const timelineFrame = (startedAt, span) => ['root', 'second', 'third'][Math.floor(Math.max(0, (span[0] + span[1]) / 2 - startedAt) / 5000) % 3];
 
 /** A 32x32 aspect-fit square of one frame color at the controlled anchor, or blank; optional bleed outside it. */
 export function syntheticAnimationCapture(screen, appearance, { bleed = false } = {}) {
@@ -56,12 +58,16 @@ function plannedTiming(stage, startedAt, clock) {
  * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
  * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry, side) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
  */
-export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer } = {}) {
+export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer, version = currentAnimationVersion, relaunchAt, daemon } = {}) {
     const bound = animationBoundScreen(initial, runId), frames = [], actions = [], states = new Map();
+    const { plan: animationPlan } = animationSuites[version], cases = animationCasesByVersion[version], animationActionCount = animationPlan.length;
     mkdirSync(join(output, animationPixelPrefix)); mkdirSync(join(output, 'animation-inputs'));
-    for (const input of animationInputs()) writeFileSync(join(output, input.file), input.bytes);
+    for (const input of animationInputs(version)) writeFileSync(join(output, input.file), input.bytes);
     const baseOwnership = imageOwnership(initial.rows, initial.cols, runId);
-    const stamp = at => ({ ...structuredClone(baseOwnership), at: iso(at) });
+    // A restore run (version 3) lives in a persistent tab: the worker is the multiplexer daemon's child, and every relaunch stage brings a new App process (and pane).
+    const daemonRecord = { pid: 700, ppid: 1, uid: baseOwnership.app.uid, tty: '??', executable: baseOwnership.app.executable, ...daemon };
+    let appPid = baseOwnership.app.pid, currentPane = paneId;
+    const stamp = at => ({ ...structuredClone(baseOwnership), app: { ...structuredClone(baseOwnership.app), pid: appPid }, ...(version === currentAnimationVersion ? {} : { worker: { ...structuredClone(baseOwnership.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) }), at: iso(at) });
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
         const other = pairDiffer?.(entry);
         const pixels = [appearance, other ?? appearance].map((shown, side) => {
@@ -71,7 +77,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
             writeFileSync(join(output, file), bytes); return { ...structuredClone(facts), file, sha256: pngHash(bytes) };
         });
         frames.push({ index: frames.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
-            paneId, screen: structuredClone(screen), afterScreen: structuredClone(screen), sha256: snapshotHash(screen),
+            paneId: currentPane, screen: structuredClone(screen), afterScreen: structuredClone(screen), sha256: snapshotHash(screen),
             afterSha256: snapshotHash(screen), pixels, pairSpan: { startMs: animationEpoch + span[0], endMs: animationEpoch + span[1] },
             ownership: stamp(readAt), actionIndex: action?.index ?? null, capture: sample });
     };
@@ -79,10 +85,11 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     let clock = 1000; const startedAt = new Map();
     for (const entry of animationPlan) {
         if (entry.kind === 'read' && !states.has(entry.caseId)) states.set(entry.caseId, { imageId: 4000 + states.size });
-        const state = states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, runId, initial.cursorVisible);
-        const item = animationCases.find(value => value.id === entry.caseId), stage = item?.stages.find(value => value.id === entry.stageId);
+        const state = states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, runId, initial.cursorVisible, version);
+        const item = cases.find(value => value.id === entry.caseId), stage = item?.stages.find(value => value.id === entry.stageId);
+        if (stage?.relaunch) { appPid += 1; currentPane = relaunchAt?.paneId ?? `${paneId.slice(0, -2)}${String(appPid).slice(-2)}`; }
         let plan = plannedTiming(stage, startedAt.get(entry.caseId), clock);
-        plan = timing?.(entry, plan) ?? plan;
+        plan = timing?.(entry, plan, { startedAt: startedAt.get(entry.caseId) }) ?? plan;
         if (stage?.reply === 'start') startedAt.set(entry.caseId, plan.actionAt);
         const action = { index: actions.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
             imageId: state.imageId ?? null, commandHex: Buffer.from(expected.command).toString('hex'),
@@ -92,7 +99,8 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
         raw = reply?.(entry, raw) ?? raw;
         const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
         const sample = inputCapture(Buffer.from(raw + background).toString('hex') + imageModeReplyHex, 100 + action.index);
-        const appearance = paint?.(entry, stage?.appearance ?? 'absent') ?? stage?.appearance ?? 'absent';
+        const shown = stage?.appearance === 'timeline' ? timelineFrame(startedAt.get(entry.caseId), plan.span) : stage?.appearance;
+        const appearance = paint?.(entry, shown ?? 'absent') ?? shown ?? 'absent';
         add(entry, entry.kind === 'finish' ? initial : bound, sample, action, entry.kind === 'read' ? appearance : 'absent', plan.readAt, plan.span);
         clock = plan.span[1];
     }

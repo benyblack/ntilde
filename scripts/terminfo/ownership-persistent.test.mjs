@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemons, environmentHas, isDaemonCommand, readPersistentDaemon, terminateRecordedDaemon } from './ownership.mjs';
+import { createServer } from 'node:net';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemons, environmentHas, isDaemonCommand, readPersistentDaemon, requestOwner, terminateRecordedDaemon } from './ownership.mjs';
 
 const runId = 'a'.repeat(32), appData = '/private/ntilde-qa/nt-abc123/appdata', executable = '/sidecar/Ntilde';
 const daemonFacts = () => ({
@@ -131,4 +135,26 @@ test('a daemon that never published its descriptor is still found by its environ
 test('a failed process scan is a failed cleanup, never an empty result', async () => {
     assert.throws(() => discoverPersistentDaemons(context, { run: () => { throw new Error('ps failed'); }, uid: 501 }), /ps failed/);
     await assert.rejects(terminateRecordedDaemon(undefined, context, { stop: () => {}, discover: () => { throw new Error('ps failed'); } }), /ps failed/);
+});
+
+test('after a relaunch the daemon is compared with the App that first started it, not the new one', () => {
+    const facts = { record: () => ({ pid: 300, ppid: 1, uid: 501, tty: '??', executable }), birth: pid => (pid === 300 ? 'Tue Nov 17 16:07:30 2026' : 'Tue Nov 17 16:09:00 2026'),
+        canonical: path => path, run: () => `${executable} mux serve x NTILDE_APPDATA_ROOT=${appData}\n`, status: () => ({ isFile: () => true, isSymbolicLink: () => false }),
+        read: () => JSON.stringify({ pid: 300, processName: 'Ntilde', endpoint: appData + '/mux/sock' }) };
+    const relaunched = readPersistentDaemon(300, 101, appData, 1000, facts);
+    assert.throws(() => assertPersistentDaemon({ app: { uid: 501 }, worker: { ppid: 300 }, daemon: { ...relaunched, text: `${executable} mux serve NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId}` }, executable, uid: 501, runId, appData }), /predates/);
+    const first = readPersistentDaemon(300, 101, appData, 1000, { ...facts, firstAppBirth: 'Tue Nov 17 16:07:29 2026' });
+    assert.doesNotThrow(() => assertPersistentDaemon({ app: { uid: 501 }, worker: { ppid: 300 }, daemon: { ...first, text: `${executable} mux serve NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId}` }, executable, uid: 501, runId, appData }));
+});
+
+test('only a relaunch request may take longer than five seconds to be answered', { skip: process.platform === 'win32' ? 'Requires Unix sockets' : false }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ntilde-owner-relaunch-'));
+    const server = createServer(socket => socket.once('data', chunk => setTimeout(() => socket.end(JSON.stringify({ ok: true, kind: JSON.parse(chunk.toString()).kind }) + '\n'), 5400)));
+    await new Promise(resolve => server.listen(join(dir, 's.sock'), resolve));
+    try {
+        const config = { socket: join(dir, 's.sock'), token: 't', runId };
+        const slow = await requestOwner(config, 'kan-relaunch');
+        assert.equal(slow.kind, 'kan-relaunch');
+        await assert.rejects(requestOwner(config, 'kan-read'), /did not respond/);
+    } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
 });

@@ -114,7 +114,7 @@ async function runPersistentAnimation(config, binding) {
         restoreOutput = prepareOwnedOutput(binding.tabTty);
         await requestOwner(config, 'raw-output', { tty: binding.tabTty });
         const owner = (kind, barrier = null, extra = {}) => requestOwner(config, kind, { ...extra, tty: binding.tabTty, barrier });
-        await collectAnimation({ config, fence, owner, detachFence: true });
+        await collectAnimation({ config, fence, owner, detachFence: true, version: config.collectionScope.suiteVersion });
         fence.retireInput();
     } catch (error) { primary = error; failed = true; }
     finally {

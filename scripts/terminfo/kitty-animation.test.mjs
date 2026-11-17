@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { syntheticAnimationJournal, animationEpoch } from './fixtures/kitty-animation-journal.mjs';
 import { buildAnimationReport, animationPlan, animationActionCount, animationPlannedStages, animationReply, parseAnimationReplies, animationInputs, animationSuites, animationVersionOfPolicy, ownedAnimationPolicies } from './kitty-animation.mjs';
-import { animationCases, animationCasesByVersion, animationSuiteIds } from './kitty-animation-cases.mjs';
+import { animationCases, animationCasesByVersion, animationCommand, animationSuiteIds } from './kitty-animation-cases.mjs';
 import { inputRunId } from './fixtures/input-journal.mjs';
 
 function withJournal(options, action) {
@@ -24,14 +24,14 @@ test('the plan covers every stage once, bounded by the capture budget', () => {
 });
 
 test('suite v1 stays defined beside v2 so retained v1 evidence still rederives', () => {
-    assert.deepEqual(Object.keys(animationSuiteIds), ['1', '2']); assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[1]), 1);
+    assert.deepEqual(Object.keys(animationSuiteIds), ['1', '2', '3']); assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[1]), 1);
     assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[2]), 2); assert.equal(animationVersionOfPolicy('owned-kitty-animation-paired-raw-render-v3'), null);
     assert.equal(animationVersionOfPolicy(undefined), null);
     // v1 is the three-case suite exactly as #988 retained it: 23 actions, 18 stages, three raw-frame inputs; v2 only adds the PNG and root-frame case and its two PNG inputs.
     assert.deepEqual(animationCasesByVersion[1].map(item => item.id), ['kitty.animation.stopped-hold', 'kitty.animation.playback', 'kitty.animation.stop-freeze']);
     assert.equal(animationSuites[1].plan.length, 23); assert.equal(animationSuites[2].plan.length, 30); assert.equal(animationInputs(1).length, 3); assert.equal(animationInputs(2).length, 5);
     assert.deepEqual(animationCasesByVersion[2].slice(0, 3), animationCasesByVersion[1]);
-    assert.throws(() => buildAnimationReport([], [], {}, 'a'.repeat(32), '/nonexistent', [], 3));
+    assert.throws(() => buildAnimationReport([], [], {}, 'a'.repeat(32), '/nonexistent', [], 4));
 });
 
 test('a faithful playback run grades every stage passed, with timing facts and valid windows retained', () => {
@@ -218,4 +218,90 @@ test('replies: exact correlated framing with the a=T placement echo; missing or 
     assert.equal(animationReply(placed(7) + error(7), png, 7).passed, false);
     assert.deepEqual(animationReply(ok(7).repeat(2), edit, 7), { passed: true, statuses: ['OK', 'OK'] });
     assert.throws(() => animationReply(ok(7).repeat(3), edit, 7));
+});
+
+// The restore suite (#1030): the same animation state read again after the App was quit and started again on the same persistent session.
+const restoreOf = (caseId, id) => animationCasesByVersion[3].find(item => item.id === caseId).stages.find(stage => stage.id === id);
+const playing = 'kitty.animation.restore-playing', stopped = 'kitty.animation.restore-stopped', frames3 = 'kitty.animation.restore-frames';
+function withRestore(options, action) {
+    const output = mkdtempSync(join(tmpdir(), 'nt-kan-restore-'));
+    try {
+        const journal = syntheticAnimationJournal(output, { version: 3, ...options });
+        action({ output, ...journal, build: (frames = journal.frames, actions = journal.actions, seal = journal.seal) => buildAnimationReport(frames, actions, seal, inputRunId, output, [], 3) });
+    } finally { rmSync(output, { recursive: true, force: true }); }
+}
+
+test('the restore suite plans one relaunch per case, each read as an empty command, and its plan fits the capture budget', () => {
+    assert.deepEqual(animationCasesByVersion[3].map(item => item.id), [playing, stopped, frames3]);
+    assert.equal(animationSuites[3].plan.length, 27); assert.ok((animationSuites[3].plan.length + 1) * 2 <= 64);
+    assert.equal(animationInputs(3).length, 5);
+    for (const caseId of [playing, stopped, frames3]) {
+        assert.equal(animationSuites[3].relaunches({ kind: 'read', caseId, stageId: 'reattach' }), true);
+        assert.equal(animationSuites[3].relaunches({ kind: 'read', caseId, stageId: 'blank' }), false);
+        assert.equal(animationSuites[3].relaunches({ kind: 'restore', caseId }), false);
+        assert.equal(animationCommand(caseId, 'reattach', { imageId: 4000 }, 3), '');
+    }
+    assert.equal(animationSuites[2].relaunches({ kind: 'read', caseId: 'kitty.animation.playback', stageId: 'second' }), false, 'a direct-tab suite has nothing to relaunch');
+    assert.equal(restoreOf(playing, 'reattach').appearance, 'timeline');
+});
+
+test('a faithful restore run grades every stage passed across three App processes', () => {
+    withRestore({}, ({ build, frames }) => {
+        const report = build();
+        assert.equal(report.suiteId, 'ntilde-owned-kitty-animation-restore-v1'); assert.equal(report.observations.length, 22);
+        assert.ok(report.observations.every(item => item.result === 'passed'), JSON.stringify(report.observations.filter(item => item.result !== 'passed').map(item => [item.featureId, item.inconclusiveReason])));
+        assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
+        assert.equal(new Set(frames.map(frame => frame.ownership.app.pid)).size, 4, 'the initial App and one new App per relaunch');
+        assert.match(report.scope, /quit and started again on the same persistent session/);
+    });
+});
+
+test('a relaunch stage shows whichever frame the timeline gives for when the App came back', () => {
+    // Back after 6.4 s: the timeline says second, and a pane that shows the second frame passes.
+    const around = (from, to) => (entry, plan, { startedAt }) => entry.caseId === playing && entry.stageId === 'reattach'
+        ? { actionAt: startedAt + from - 1000, readAt: startedAt + from - 200, span: [startedAt + from, startedAt + to] } : plan;
+    withRestore({ timing: around(6400, 7600) }, ({ build }) => {
+        const reattach = build().observations.find(item => item.featureId === playing + '.reattach');
+        assert.equal(reattach.result, 'passed'); assert.equal(reattach.classification.frameId, 'second');
+    });
+    // The same late return with a pane that restarted at the root (the playhead was not restored): that is the failure the stage exists to catch.
+    withRestore({ timing: around(6400, 7600), paint: (entry, appearance) => entry.caseId === playing && entry.stageId === 'reattach' ? 'root' : appearance }, ({ build }) => {
+        const reattach = build().observations.find(item => item.featureId === playing + '.reattach');
+        assert.equal(reattach.result, 'failed'); assert.equal(reattach.timing.valid, true);
+    });
+    // A capture span that straddles a frame boundary proves nothing either way.
+    withRestore({ timing: around(4700, 5300), paint: (entry, appearance) => entry.caseId === playing && entry.stageId === 'reattach' ? 'second' : appearance }, ({ build }) => {
+        const reattach = build().observations.find(item => item.featureId === playing + '.reattach');
+        assert.equal(reattach.result, 'inconclusive'); assert.equal(reattach.timing.valid, false);
+    });
+});
+
+test('a restored playhead that restarts, a stopped animation that resumes and lost edits each fail on their own evidence', () => {
+    withRestore({ paint: (entry, appearance) => entry.caseId === playing && entry.stageId === 'third' ? 'second' : appearance }, ({ build }) => {
+        const value = results(build());
+        assert.equal(value[playing + '.third'], 'failed'); assert.equal(value[stopped + '.hold'], 'passed');
+    });
+    withRestore({ paint: (entry, appearance) => entry.caseId === stopped && entry.stageId === 'hold' ? 'third' : appearance }, ({ build }) => {
+        const value = results(build());
+        assert.equal(value[stopped + '.hold'], 'failed'); assert.equal(value[stopped + '.reattach'], 'passed');
+    });
+    // The frame built over the edited root after the restore shows the original-root blend: the edited pixels were not restored.
+    withRestore({ paint: (entry, appearance) => entry.caseId === frames3 && entry.stageId === 'compose' ? 'overRoot' : appearance }, ({ build }) => {
+        const value = results(build());
+        assert.equal(value[frames3 + '.compose'], 'failed'); assert.equal(value[frames3 + '.reattach'], 'passed');
+    });
+});
+
+test('only a declared relaunch stage may change the App process, and the worker, daemon and PTY must stay exactly the same', () => {
+    const refuses = (mutate, options = {}) => withRestore(options, ({ build, frames, actions }) => { mutate(frames, actions); assert.throws(() => build(frames, actions)); });
+    // Another App process at a stage that is not a relaunch.
+    refuses(frames => { for (const frame of frames.filter(value => value.index > 8)) frame.ownership.app = { ...frame.ownership.app, pid: 99999 }; });
+    // The relaunched App sees another daemon, another worker parent or another PTY.
+    const afterRelaunch = frames => frames.filter(value => value.stageId === 'reattach' && value.caseId === playing);
+    refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.daemon = { ...frame.ownership.daemon, pid: 701 }; frame.ownership.worker = { ...frame.ownership.worker, ppid: 701 }; });
+    refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.worker = { ...frame.ownership.worker, pid: 4242 }; });
+    refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.app = { ...frame.ownership.app, uid: 9999 }; });
+    refuses(frames => { const [frame] = afterRelaunch(frames); delete frame.ownership.daemon; });
+    // A direct-tab (version 2) journal never admits a changed App process.
+    withJournal({}, ({ build, frames }) => { for (const frame of frames.filter(value => value.index > 4)) frame.ownership.app = { ...frame.ownership.app, pid: 99999 }; assert.throws(() => build(frames)); });
 });

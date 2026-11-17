@@ -43,7 +43,13 @@ export const legacyScope = Object.freeze({ ...legacyScopeV4, id: 'owned-pre-osc6
  * multiplexer daemon's child. It has its own receipt (persistent-animation-receipt.json), so no full-receipt scope rule applies to it.
  */
 export const persistentAnimationScope = Object.freeze({ id: 'owned-kitty-animation-persistent-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-animation']), deadlineMs: 300000 });
-export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope);
+/**
+ * The restore collection (#1030): the same persistent tab, but the App is quit and started again on the same persistent session between stages, and the animation suite
+ * read is the version 3 restore suite. It has its own receipt, like the live-tab collection.
+ */
+export const persistentRestoreScope = Object.freeze({ id: 'owned-kitty-animation-persistent-restore-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-animation-restore']), suiteVersion: 3, deadlineMs: 600000 });
+export const isPersistentRestoreScope = value => JSON.stringify(value) === JSON.stringify(persistentRestoreScope);
+export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope) || isPersistentRestoreScope(value);
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV4) || same(value, osc5Osc633ScopeV4) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
