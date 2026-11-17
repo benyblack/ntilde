@@ -33,35 +33,39 @@ const screenOf = value => {
 /** Total read groups across the contracts, plus start, bind and finish frames. */
 const frameCount = () => 3 + osc5Contracts.reduce((sum, contract) => sum + planReads(contract), 0);
 
-/** Validate journal, run identity, binding stability and restoration. */
+/** Validate journal, run identity, binding stability and restoration. The case stores special colors (that is what it measures), so its reads legitimately carry another color binding - but the
+ *  palette, theme and render state must be proven identical before the first request, after the bind and after the finish (every color reset back to the host's), and only report reads carry a
+ *  reply list; start, bind and finish never do. */
 export function validateOsc5Evidence(frames, run, runId, adapter) {
     validateGradedJournal(frames, { frameCount: frameCount(), prefix: osc5Prefix, noncePrefix: osc5NoncePrefix, runId, label, screenOf });
-    const identity = adapter && adapter.id === osc5AdapterId && run.adapterId === osc5AdapterId && isDigest(adapter.bundleSha256) && isDigest(adapter.upstreamBundleSha256)
-        && adapter.derivedFromAdapterId === derivedFrom;
-    if (!identity) throw new Error(`Invalid ${label} adapter identity.`);
-    if (JSON.stringify(run.probeIds) !== JSON.stringify([...osc5CaseIds]) || !Array.isArray(run.cases) || run.cases.length !== osc5Contracts.length) {
-        throw new Error(`${label} run does not cover the contracted cases.`);
+    const adapterIdentityOk = adapter !== null && adapter !== undefined && adapter.id === osc5AdapterId && run.adapterId === osc5AdapterId
+        && isDigest(adapter.bundleSha256) && isDigest(adapter.upstreamBundleSha256) && adapter.derivedFromAdapterId === derivedFrom;
+    if (!adapterIdentityOk) throw new Error(`Invalid ${label} adapter identity.`);
+    const coversCases = JSON.stringify(run.probeIds) === JSON.stringify([...osc5CaseIds]) && Array.isArray(run.cases) && run.cases.length === osc5Contracts.length;
+    if (!coversCases) throw new Error(`${label} run does not cover the contracted cases.`);
+    const edgeBinding = colorBindingHash(frames[0].screen.colorBinding);
+    const edges = [frames[1], frames.at(-1)];
+    if (edges.some(edge => colorBindingHash(edge.screen.colorBinding) !== edgeBinding)) throw new Error(`${label} observation saw the palette or theme change.`);
+    for (const edge of [frames[0], frames[1], frames.at(-1)]) {
+        if (edge.report !== undefined) throw new Error(`Unexpected ${label} report frame.`);
     }
-    // The case stores special colors (that is what it measures), so its reads legitimately carry another color binding; the palette, theme and render state is proven the same before the first request,
-    // after the bind and after the finish (every color reset back to the host's).
-    const binding = colorBindingHash(frames[0].screen.colorBinding);
-    if ([frames[1], frames.at(-1)].some(edge => colorBindingHash(edge.screen.colorBinding) !== binding)) throw new Error(`${label} observation saw the palette or theme change.`);
-    // Only report reads carry a reply list; start, bind and finish never do.
-    if ([frames[0], frames[1], frames.at(-1)].some(edge => edge.report !== undefined)) throw new Error(`Unexpected ${label} report frame.`);
 }
 
-/** The reply lists of one case's reads, in plan order: a cells read carries no report; a report read's journaled replies must equal the worker's record and its own barrier. */
+/** The reply lists of one case's reads, in plan order. A cells read carries no report; a report read's journaled replies must equal the worker's record and be ordered by that read's own barrier. */
 function repliesOf(contract, recorded, readFrames) {
-    return contract.plan.filter(step => step.read).map((step, index) => {
+    const reads = contract.plan.filter(step => step.read), out = [];
+    for (const [index, step] of reads.entries()) {
         const frame = readFrames[index], read = recorded.reads[index];
         if (step.read !== 'report') {
             if (frame.report !== undefined || read.report !== undefined) throw new Error(`Unexpected ${contract.caseId} report on a cells read.`);
-            return [];
+            out.push([]);
+            continue;
         }
         const journaled = validateOsc5Exchange(frame.report), worker = validateOsc5Exchange(read.report);
         if (JSON.stringify(journaled) !== JSON.stringify(worker) || journaled.barrier !== frame.barrier) throw new Error(`${label} ${contract.caseId} replies differ from their read frame.`);
-        return journaled.replies;
-    });
+        out.push(journaled.replies);
+    }
+    return out;
 }
 
 /** A difference between the pinned verdict and the effect verdict is a recorded divergence, never absorbed. */
@@ -88,11 +92,16 @@ const resultOf = pinned => ({ pass: pinned.pass, response: pinned.response ?? nu
 
 /** Derive one case's published record from its journaled frames, worker record and the graded effect. */
 function deriveOsc5Case(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, contractsVersion }) {
-    const theme = readFrames[0].screen.colorBinding, divergence = reconcile(termless.observation.outcome, effect), observed = contract.observed(observation);
+    const theme = readFrames[0].screen.colorBinding, observed = contract.observed(observation);
+    const divergence = reconcile(termless.observation.outcome, effect);
+    const reads = recorded.reads.map((read, index) => ({ kind: read.kind, cursor: read.cursor, ...(read.kind === 'report' ? { replies: replies[index] } : {}) }));
+    const binding = { reverseVideo: theme.reverseVideo, themeName: theme.themeName, foregroundArgb: theme.foregroundArgb, backgroundArgb: theme.backgroundArgb,
+        minimumContrast: theme.minimumContrast, paletteOverrideIndices: [...theme.paletteOverrideIndices], bindingSha256: colorBindingHash(theme) };
     return { caseId: contract.caseId, pinnedCriterion: contract.pinnedCriterion, pinnedScript: observed.pinnedScript, terminalFixture: contract.terminalFixture,
         feeds: recorded.feeds, barriers: recorded.barriers,
-        reads: recorded.reads.map((read, index) => ({ kind: read.kind, cursor: read.cursor, ...(read.kind === 'report' ? { replies: replies[index] } : {}) })),
+        reads,
         observed,
+        colorBinding: binding,
         colorBinding: { reverseVideo: theme.reverseVideo, themeName: theme.themeName, foregroundArgb: theme.foregroundArgb, backgroundArgb: theme.backgroundArgb,
             minimumContrast: theme.minimumContrast, paletteOverrideIndices: [...theme.paletteOverrideIndices], bindingSha256: colorBindingHash(theme) },
         pinned: { termless: resultOf(termless), terminal: resultOf(terminal) },

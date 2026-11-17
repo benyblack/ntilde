@@ -16,6 +16,7 @@
 // Limits: only numeric selectors 0-4 are modeled (names such as "bold" are ignored); unmodeled selectors change nothing and stay silent; a sequence over 32768 characters is dropped whole; the colors are
 // reset with a bare OSC 105 at the end; raw replies and stored state only — no rendering, painted-pixel or stock-grade claim.
 import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
+import { colorBindingHash } from './resolved-colors.mjs';
 import { selectiveEraseInk } from './selective-erase-contracts.mjs';
 import { devqColorReset, devqFixture, devqMinimum, devqReseed, devqReset, devqSeed } from './devq-contracts.mjs';
 export { validateDevqScreen as validateOsc5Screen } from './devq-contracts.mjs';
@@ -216,8 +217,9 @@ export function baselineOf(observation) {
 const ask = (role, kind, note, spec) => {
     const request = spec.request.map(op => op.bytes).join('');
     if (request.length > 128) throw new Error(`The ${role} request exceeds the 128-byte exchange limit.`);
+    const pinsBinding = !role.endsWith('-set');
     return Object.freeze({ role, kind, note, setup: Object.freeze((spec.setup ?? []).map(op => op.bytes)), request, after: Object.freeze((spec.after ?? []).map(op => op.bytes)),
-        demand: Object.freeze(spec.request.map(op => op.reply).filter(reply => reply !== null).flatMap(entry => (entry.demanded ? entry.demanded : [entry]))), shape: null });
+        demand: Object.freeze(spec.request.map(op => op.reply).filter(reply => reply !== null).flatMap(entry => (entry.demanded ? entry.demanded : [entry]))), shape: null, pinsBinding });
 };
 
 const model = new SpecialColorModel();
@@ -280,7 +282,7 @@ const appearanceScope = 'rxvt special colors (OSC 5/105) sets, queries and reset
 const groupOf = (screen, replies) => ({ screen, ink: selectiveEraseInk(screen), cursor: [screen.cursorRow, screen.cursorCol], cursorVisible: screen.cursorVisible,
     cursorMode: screen.cursorMode, rows: screen.rows, cols: screen.cols, margins: [screen.bufferState.scrollTop, screen.bufferState.scrollBottom],
     origin: screen.bufferState.originMode, alternate: screen.bufferState.alternateScreen, buffer: screen.bufferState,
-    horizontalMargins: screen.horizontalMargins, replies });
+    horizontalMargins: screen.horizontalMargins, colorBinding: colorBindingHash(screen.colorBinding), replies });
 /** Everything an exchange must leave unchanged. */
 const stateKey = state => JSON.stringify([state.ink, state.cursor, state.cursorVisible, state.cursorMode, state.buffer, state.horizontalMargins]);
 const printable = raw => (raw === null ? null : raw.replaceAll(esc, String.raw`\e`).replaceAll(bel, String.raw`\a`));
@@ -302,10 +304,18 @@ function seedOk(state, nonce) {
 const inconclusive = note => ({ outcome: 'inconclusive', note });
 const unsupported = note => ({ outcome: 'unsupported', note });
 
-/** The way one exchange group differs from its demand, or null: unchanged state, then the within-exchange equalities, then the reply list (baseline references resolved). */
+/** The way one exchange group differs from its demand, or null: unchanged state, then the color binding, then the reply list (baseline references resolved). The stored special colors are never
+ *  render-applied, so the palette, theme and render state must equal the initial read at EVERY read - a collateral mutation of any unrelated color is rejected here, not only at the cleanup edges. */
 function groupMismatch(group, state, initial, baseline) {
     if (stateKey(state) !== stateKey(initial)) {
         return `The ${group.role} request changed the screen, the cursor (position, visibility or stored mode), the rendition, the margins (vertical or horizontal), the wrap/insert modes or the active screen: a color request must change nothing but the special colors`;
+    }
+    // A read-direction group pins the color binding: its own set touches only the never-render-applied
+    // special slots, so the theme and palette must equal the initial read. A set-direction group instead
+    // proves the isolation through the demanded reply (the other service's measured default), because that
+    // service's own set legitimately changes the render theme.
+    if (group.pinsBinding && state.colorBinding !== initial.colorBinding) {
+        return `The ${group.role} request changed the palette, the theme or the render state: an OSC 5 request must not touch any color outside its own five slots`;
     }
     const demand = resolveDemand(group, baseline);
     if (demand === null) return `The ${group.role} demand depends on a baseline that was not measured`;
@@ -335,10 +345,11 @@ function briefCase(item, observation) {
     const baseline = baselineOf(observation);
     const groups = Object.fromEntries(item.groups.map(group => {
         const state = observation[group.role], demand = resolveDemand(group, baseline);
-        const matches = demand !== null && JSON.stringify(state.replies) === JSON.stringify(demand);
+        const bindingUnchanged = !group.pinsBinding || state.colorBinding === observation.initial.colorBinding;
+        const matches = demand !== null && JSON.stringify(state.replies) === JSON.stringify(demand) && bindingUnchanged;
         return [group.role, { kind: group.kind, request: printable(group.request), ...(group.setup.length === 0 ? {} : { setup: group.setup.map(printable) }),
             ...(group.after.length === 0 ? {} : { after: group.after.map(printable) }), demand: group.note, demanded: demand === null ? null : demand.map(printable),
-            received: state.replies.map(printable), matches, unchanged: stateKey(state) === stateKey(observation.initial) }];
+            received: state.replies.map(printable), matches, unchanged: stateKey(state) === stateKey(observation.initial), bindingUnchanged }];
     }));
     const { rows, cols } = observation.initial, script = item.pinnedScript;
     return { geometry: { rows, cols }, effectContract: osc5EffectContractId, pinnedScript: { termless: script.termless.map(call => call.map(printable)), terminal: script.terminal.map(call => call.map(printable)) },

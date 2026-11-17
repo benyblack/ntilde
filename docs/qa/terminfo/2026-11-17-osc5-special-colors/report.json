@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
   "contractsVersion": 1,
-  "runId": "ea7933fbbc7524e73f76c46f332027b0",
+  "runId": "1eda9658848990fce76b888d41b7bb4f",
   "adapter": {
     "id": "ntilde-owned-osc5-special-colors-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "c02f3a6e76de057aa5a23d3d6a2a65b8b7b0ae250c8152c09153aa5122424489",
+    "bundleSha256": "cc7cf0925e69fc391535139e8387d25fc71137bf2c8c1c0bece9fb3294a3b03b",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 criterion for extensions.osc5-special-color (OSC 5;0;? BEL answered by one complete OSC 5;0;rgb:h{1,4}/h{1,4}/h{1,4} frame ended by BEL or ST; a query-only probe that can never return unsupported), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v6) and replayed byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent oracle written from rxvt's special-color text: chained numeric selector/value pairs (0 bold, 1 underline, 2 blink, 3 reverse, 4 italic) over a five-slot resource set separate from the OSC 4 palette, the OSC 10-19 dynamic colors and the kitty OSC 21 keys (each direction pinned by its own set/read group with the other service's measured default), per-selector and bare OSC 105 resets, the numeric encodings, reply order and the ST terminator; numeric selectors 0-4 only, ignored unmodeled selectors, malformed pairs, the oversize cap, set-only silence and the default-foreground slot default are policy groups that never decide; raw replies and stored state, not rendering or painted pixels; no setting of named colors, rxvt OSC 106 color modes, remote/mux, Windows/Linux or common-harness claim.",
@@ -59,7 +59,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_O5_ea7933fbbc7524e73f76c46f332027b0",
+          "nonce": "NTILDE_O5_1eda9658848990fce76b888d41b7bb4f",
           "margins": [
             1,
             5
@@ -98,7 +98,8 @@
               "\\e]5;4;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "pinned": {
             "kind": "protocol",
@@ -111,7 +112,8 @@
               "\\e]5;0;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "setup-A": {
             "kind": "control",
@@ -143,7 +145,8 @@
               "\\e]5;4;rgb:d2d2/e3e3/f4f4\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "set-then-query": {
             "kind": "protocol",
@@ -160,7 +163,8 @@
               "\\e]5;0;rgb:0a0a/1b1b/2c2c\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "per-slot": {
             "kind": "protocol",
@@ -177,7 +181,8 @@
               "\\e]5;3;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "encodings": {
             "kind": "protocol",
@@ -198,7 +203,8 @@
               "\\e]5;2;rgb:ffff/0000/3333\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "bel-terminated": {
             "kind": "protocol",
@@ -211,7 +217,8 @@
               "\\e]5;1;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "two-sequences": {
             "kind": "protocol",
@@ -226,7 +233,8 @@
               "\\e]5;2;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "reset-one": {
             "kind": "protocol",
@@ -244,7 +252,8 @@
               "\\e]5;1;rgb:2020/2020/2020\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "reset-all": {
             "kind": "protocol",
@@ -268,7 +277,8 @@
               "\\e]5;4;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "baseline-other": {
             "kind": "control",
@@ -285,7 +295,8 @@
               "\\e]21;cursor=rgb:ff/ff/ff\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "cross-dynamic-set": {
             "kind": "protocol",
@@ -305,7 +316,8 @@
               "\\e]5;0;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "cross-dynamic-read": {
             "kind": "protocol",
@@ -325,7 +337,8 @@
               "\\e]10;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "cross-palette-set": {
             "kind": "protocol",
@@ -345,7 +358,8 @@
               "\\e]5;1;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "cross-palette-read": {
             "kind": "protocol",
@@ -365,7 +379,8 @@
               "\\e]4;200;rgb:ffff/0000/d7d7\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "cross-kitty-set": {
             "kind": "protocol",
@@ -385,7 +400,8 @@
               "\\e]5;2;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "cross-kitty-read": {
             "kind": "protocol",
@@ -405,7 +421,8 @@
               "\\e]21;cursor=rgb:ff/ff/ff\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "restore": {
             "kind": "protocol",
@@ -431,7 +448,8 @@
               "\\e]5;4;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "unrelated-selector": {
             "kind": "policy",
@@ -448,7 +466,8 @@
               "\\e]5;0;rgb:1414/1414/1414\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "malformed": {
             "kind": "policy",
@@ -461,7 +480,8 @@
               "\\e]5;0;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "set-only-silent": {
             "kind": "policy",
@@ -474,7 +494,8 @@
             "demanded": [],
             "received": [],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "reset-noise": {
             "kind": "policy",
@@ -490,7 +511,8 @@
               "\\e]5;0;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           },
           "oversize-dropped": {
             "kind": "policy",
@@ -510,7 +532,8 @@
               "\\e]5;0;rgb:d3d3/d3d3/d3d3\\e\\"
             ],
             "matches": true,
-            "unchanged": true
+            "unchanged": true,
+            "bindingUnchanged": true
           }
         }
       },

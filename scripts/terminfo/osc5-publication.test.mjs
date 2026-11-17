@@ -16,7 +16,7 @@ const read = name => readFileSync(join(dir, name));
 
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
-    assert.equal(hash(manifestBytes), '4e09134eb9e45074b1e7a25995f46c6a95446c1e3f1cfbd693b0e74b4b3f77ad');
+    assert.equal(hash(manifestBytes), '7991c411846088023ff0e08d870a63fe846aee73344da2f4cd62140f48ebbc84');
     const manifest = JSON.parse(manifestBytes);
     assert.equal(Object.keys(manifest.archives).length, 1, 'the single final run; no superseded attempt');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
@@ -48,6 +48,7 @@ test('retained run independently rederives the complete receipt and published pr
         assert.equal(item.divergence, undefined);
         assert.deepEqual(item.queryWitness, { id: 'q07.extensions.osc5-special-color', expectedEvidence: 'positive-reply', expectedPattern: item.queryWitness.expectedPattern,
             receivedHex: item.queryWitness.receivedHex, contractMatched: true });
+        assert.equal(item.queryWitness.byteLength, undefined, 'the shape-only witness records no byte length');
         assert.match(Buffer.from(item.queryWitness.receivedHex, 'hex').toString('latin1'), /^\x1b\]5;0;rgb:[0-9a-f]{1,4}\/[0-9a-f]{1,4}\/[0-9a-f]{1,4}(?:\x07|\x1b\\)$/i);
         const groups = Object.entries(item.observed.groups);
         assert.deepEqual(Object.fromEntries(['control', 'protocol', 'policy'].map(kind => [kind, groups.filter(([, group]) => group.kind === kind).length])), { control: 3, protocol: 15, policy: 5 });

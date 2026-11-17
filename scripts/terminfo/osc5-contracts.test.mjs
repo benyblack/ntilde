@@ -172,6 +172,18 @@ test('policy groups record a mismatch but never decide', () => {
     }
 });
 
+test('a collateral color mutation inside any group is rejected, even when the special replies are right', () => {
+    // An OSC 5 operation that also changed an unrelated palette slot (or the theme) would recolor the seed
+    // row's resolved colors: the group's color binding pins that, and the grader refuses it.
+    const recolored = syntheticOsc5Grade(caseId, undefined, change('set-then-query', read => {
+        const palette = [...read.screen.colorBinding.ansiPaletteArgb];
+        palette[201] = 0xff112233;
+        return { screen: { ...read.screen, colorBinding: { ...read.screen.colorBinding, ansiPaletteArgb: palette } } };
+    }));
+    assert.equal(recolored.outcome, 'unsupported');
+    assert.match(recolored.note, /must not touch any color outside its own five slots/);
+});
+
 test('the grader refuses a revision it does not know and missing captures', () => {
     assert.throws(() => gradeOsc5Case(contract, {}, 2), /Unknown special-color contracts revision/);
     assert.throws(() => gradeOsc5Case(contract, {}), /Missing extensions.osc5-special-color read captures/);
