@@ -4,8 +4,8 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { syntheticAnimationJournal, animationEpoch } from './fixtures/kitty-animation-journal.mjs';
-import { buildAnimationReport, animationPlan, animationActionCount, animationPlannedStages, animationReply, parseAnimationReplies, animationInputs } from './kitty-animation.mjs';
-import { animationCases } from './kitty-animation-cases.mjs';
+import { buildAnimationReport, animationPlan, animationActionCount, animationPlannedStages, animationReply, parseAnimationReplies, animationInputs, animationSuites, animationVersionOfPolicy, ownedAnimationPolicies } from './kitty-animation.mjs';
+import { animationCases, animationCasesByVersion, animationSuiteIds } from './kitty-animation-cases.mjs';
 import { inputRunId } from './fixtures/input-journal.mjs';
 
 function withJournal(options, action) {
@@ -21,6 +21,17 @@ test('the plan covers every stage once, bounded by the capture budget', () => {
     assert.equal(animationPlan.length, 30); assert.equal(animationActionCount, 30); assert.equal(animationPlannedStages, 24);
     assert.equal(animationPlan.filter(entry => entry.kind === 'read').length, 24);
     assert.ok((animationActionCount + 1) * 2 <= 64);
+});
+
+test('suite v1 stays defined beside v2 so retained v1 evidence still rederives', () => {
+    assert.deepEqual(Object.keys(animationSuiteIds), ['1', '2']); assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[1]), 1);
+    assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[2]), 2); assert.equal(animationVersionOfPolicy('owned-kitty-animation-paired-raw-render-v3'), null);
+    assert.equal(animationVersionOfPolicy(undefined), null);
+    // v1 is the three-case suite exactly as #988 retained it: 23 actions, 18 stages, three raw-frame inputs; v2 only adds the PNG and root-frame case and its two PNG inputs.
+    assert.deepEqual(animationCasesByVersion[1].map(item => item.id), ['kitty.animation.stopped-hold', 'kitty.animation.playback', 'kitty.animation.stop-freeze']);
+    assert.equal(animationSuites[1].plan.length, 23); assert.equal(animationSuites[2].plan.length, 30); assert.equal(animationInputs(1).length, 3); assert.equal(animationInputs(2).length, 5);
+    assert.deepEqual(animationCasesByVersion[2].slice(0, 3), animationCasesByVersion[1]);
+    assert.throws(() => buildAnimationReport([], [], {}, 'a'.repeat(32), '/nonexistent', [], 3));
 });
 
 test('a faithful playback run grades every stage passed, with timing facts and valid windows retained', () => {

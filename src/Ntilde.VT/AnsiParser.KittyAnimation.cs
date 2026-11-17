@@ -52,21 +52,28 @@ public partial class AnsiParser
         if (!TryReadKittyUInt("x", out uint x) || !TryReadKittyUInt("y", out uint y) || !TryReadKittyUInt("c", out uint baseFrame)
             || !TryReadKittyUInt("r", out uint editFrame) || !TryReadKittyUInt("Y", out uint background))
             return Refuse(out error, "EINVAL:Invalid animation frame control");
-        if (x > asset.PixelWidth || y > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image"); // before x and y become ints
         if (!TryReadKittyGap(out int gap)) return Refuse(out error, "EINVAL:Invalid animation frame gap");
         if (!TryReadKittyCompositionMode(out bool overwrite)) return Refuse(out error, "EINVAL:Invalid composition mode");
-        int width = 0, height = 0;
-        // A PNG frame's size comes from its own header once the payload is read; a raw frame declares it with s= and v=.
-        if (format != "100")
-        {
-            if (!TryReadKittyRawSize(out width, out height)) return Refuse(out error, "EINVAL:Invalid raw frame dimensions");
-            if ((long)x + width > asset.PixelWidth || (long)y + height > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image");
-        }
+        if (!TryReadKittyFrameSize(asset, format == "100", x, y, out int width, out int height, out error)) return false;
         request = new KittyFrameRequest(format == "24" ? 3 : 4, int.Parse(format, CultureInfo.InvariantCulture), new KittyFrameRect((int)x, (int)y, width, height),
             baseFrame, editFrame, background, gap, overwrite);
         if (request.CanvasFrame > TerminalBuffer.KittyFrameCount(asset)) return Refuse(out error, "ENOENT:Frame not found");
         error = "";
         return true;
+    }
+
+    /// <summary>
+    /// Where a frame lands and, for a raw frame, how big it is (<c>s=</c>, <c>v=</c>). The offsets are checked as the unsigned values they were sent as,
+    /// before they become ints. A container frame's size comes from its own header once the payload is read, so it has none here.
+    /// </summary>
+    private bool TryReadKittyFrameSize(KittyImageAsset asset, bool container, uint x, uint y, out int width, out int height, out string error)
+    {
+        width = height = 0;
+        error = "";
+        if (x > asset.PixelWidth || y > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image");
+        if (container) return true;
+        if (!TryReadKittyRawSize(out width, out height)) return Refuse(out error, "EINVAL:Invalid raw frame dimensions");
+        return (long)x + width <= asset.PixelWidth && (long)y + height <= asset.PixelHeight || Refuse(out error, "EINVAL:Frame rectangle outside the image");
     }
 
     /// <summary><c>X=</c>: 0 (the default) alpha-blends, 1 overwrites; anything else is invalid.</summary>

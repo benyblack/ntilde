@@ -90,6 +90,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('shell-integration-aggregates', '2026-11-16-shell-integration-aggregates', '2026-11-16-shell-integration-aggregates-qualification.md'), module: 'shell-integration-aggregates-contracts.mjs', exports: ['aggregatesSuiteId', 'aggregatesVersion', 'aggregateCaseIds'], carrierSuites: ['osc133', 'osc633'], receiptSuiteId: 'ntilde-owned-osc633-graded-v1', test: 'shell-integration-aggregates-publication.test.mjs' },
     // Kitty graphics animation: the pinned callbacks replayed (always inconclusive), one effect contract composed from the owned animation carrier of the same run.
     { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v2', test: 'kitty-animation-publication.test.mjs' },
+    { ...directory('cell-size', '2026-11-17-osc-cell-size-integrated', '2026-11-17-osc-cell-size-integrated-qualification.md'), module: 'cell-size-contracts.mjs', exports: ['cellSizeSuiteId', 'cellSizeVersion', 'cellSizeIds'], test: 'cell-size-integrated-publication.test.mjs' },
 ]);
 
 /**
@@ -98,6 +99,7 @@ export const benchmarkSuites = Object.freeze([
  * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
  */
 export const nonInventoryPublicationTests = Object.freeze({
+    'cell-size-publication.test.mjs': 'frozen pre-integration source-policy v63 cell-size result; current integrated v64 remeasurement is the active suite claim',
     'osc633-publication.test.mjs': 'frozen historical unsupported OSC 633 result; the current implementing-App remeasurement is the active suite claim',
     'ascii-reflow-publication.test.mjs': 'frozen historical unsupported reflow result; current fixed-App retest is the active suite claim',
     'modern-publication.test.mjs': 'frozen Modern requirement reassessment; preserves separate stock and owned semantic results without adding benchmark-suite claims',

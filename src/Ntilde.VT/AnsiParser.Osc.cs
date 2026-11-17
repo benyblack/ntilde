@@ -42,9 +42,10 @@ namespace Ntilde.VT
         /// </summary>
         private const int Osc52MaxEchoedTargetChars = 8;
 
-        private void HandleOsc(string osc)
+        private void HandleOsc(string osc, string terminator)
         {
             if (string.IsNullOrEmpty(osc)) return;
+            if (HandleCellSizeReport(osc, terminator)) return;
             if (osc.StartsWith("1337;File=", StringComparison.Ordinal))
             {
                 HandleITerm2Image(osc);

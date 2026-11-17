@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "appRevision": "4fba0d48f6c3633489403cc238bfd0118b205bd8",
+  "scriptsRevision": "ecfc4c42a208a3b7ea6135cff532834d08d2fb2f",
+  "productionRevision": "4f1621f83a2b13c074177ff28aacc2030d6ede20",
+  "configuration": "Release",
+  "buildCommand": "scripts/build.sh build src/Ntilde.App -c Release --output /Users/behnam/.ntilde-qa-sidecars/issue-993-cell-size/Release/net10.0",
+  "files": {
+    "Ntilde": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "Ntilde.dll": "80fae76fbda67d73eacda12529f993593bd0ae26377a54036c0de77dcf074606",
+    "Ntilde.VT.dll": "60f0b7c7f5fd83d2338c2a12cfb3d131cece351d675501079fccb902651550d1",
+    "Ntilde.AgentHost.Contracts.dll": "26c36170061b1194b115ed7a7b09092c259a1eaa8c89dbee5683a64ba66cc28b"
+  },
+  "appSourceEquivalence": "App/VT/AgentHost.Contracts sources are unchanged between built App revision4fba0d48 and scripts revisionecfc4c42. Later C# changes affect MCP explanatory tools, which the live observer does not execute."
+}

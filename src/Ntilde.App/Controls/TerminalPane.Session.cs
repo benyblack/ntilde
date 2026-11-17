@@ -75,6 +75,11 @@ namespace Ntilde.Controls
             {
                 if (Parser is not { } parser || Session is MuxClientSession) return;
                 double scale = TermView.EffectiveRenderScaling;
+                var metrics = TermView.Metrics;
+                double backingScale = Avalonia.Controls.TopLevel.GetTopLevel(TermView)?.RenderScaling ?? double.NaN;
+                double pointScale = scale / backingScale;
+                parser.CellSizeReports = new CellSizeReportMetrics(metrics.CellWidth * pointScale, metrics.CellHeight * pointScale,
+                    backingScale, metrics.Ascent * pointScale);
                 if (!double.IsFinite(scale) || scale <= 0) scale = 1;
                 float width = (float)(TermView.Metrics.CellWidth * scale);
                 float height = (float)(TermView.Metrics.CellHeight * scale);

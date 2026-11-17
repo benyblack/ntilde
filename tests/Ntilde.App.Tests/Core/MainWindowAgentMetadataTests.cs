@@ -54,6 +54,24 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
         return await task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }
 
+    [AvaloniaFact]
+    public async Task Cell_geometry_is_observed_from_the_view_without_parsing_a_query_reply()
+    {
+        using var service = new AgentHostService(new AgentSessionRegistry());
+        using var scope = AgentHostService.OverrideInstanceForTesting(service);
+        var (window, pane, _) = CreateWindow();
+        var size = window.ClientSize;
+        var observed = Assert.IsType<PaneMetadataResult>(await Read(window, Registration(pane)));
+        var geometry = Assert.IsType<PaneCellGeometry>(observed.CellGeometry);
+        Assert.Equal(pane.TermView.Metrics.CellWidth, geometry.CellWidthDip);
+        Assert.Equal(pane.TermView.Metrics.CellHeight, geometry.CellHeightDip);
+        Assert.Equal(pane.TermView.Metrics.Ascent, geometry.FontAscentDip);
+        Assert.Equal(pane.TermView.EffectiveRenderScaling, geometry.RenderScaling);
+        Assert.Equal(window.RenderScaling, geometry.BackingScale);
+        Assert.Equal((pane.TermView.Rows, pane.TermView.Cols), (geometry.ViewRows, geometry.ViewCols));
+        Assert.Equal(size, window.ClientSize);
+    }
+
     [AvaloniaTheory]
     [InlineData("0", "")]
     [InlineData("2", "")]

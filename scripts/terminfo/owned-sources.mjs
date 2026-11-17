@@ -7,8 +7,17 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v63';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v64';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
+// Two independently measured v63 graphs preceded integration. Only exact own-key
+// graph declarations select a fork; missing, null or opposite markers never do.
+const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
+export const isCellSizePolicy63 = context => context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v63'
+    && Object.hasOwn(context, 'cellSizeContractsSourceSha256') && graphDigest(context.cellSizeContractsSourceSha256)
+    && !Object.hasOwn(context, 'kittyAnimationInputsSourceSha256');
+export const isKittyAnimationPolicy63 = context => context.sourceSnapshotPolicy === 'readonly-owned-source-graph-v63'
+    && Object.hasOwn(context, 'kittyAnimationInputsSourceSha256') && graphDigest(context.kittyAnimationInputsSourceSha256)
+    && !Object.hasOwn(context, 'cellSizeContractsSourceSha256');
 // Historical dc32fc8e scope: never derive it from the evolving measured graph.
 export const legacyV8SourceFiles = Object.freeze({
     "runnerSourceSha256": "terminfo-owned.mjs",
@@ -228,7 +237,15 @@ export const capturedV18SourceFiles = Object.freeze({
     sgrPaletteReceiptSourceSha256: "sgr-palette-receipt.mjs",
 });
 /** Resolve paths from the caller's fixed inventory; selected C# inputs remain nonexecuted reference bytes. */
+export const cellSizeReferencePaths = Object.freeze({
+    "cell-size-parser.cs": "src/Ntilde.VT/AnsiParser.CellSizeReports.cs",
+    "cell-size-metrics.cs": "src/Ntilde.VT/CellSizeReportMetrics.cs",
+    "cell-size-framing.cs": "src/Ntilde.VT/AnsiParser.cs",
+    "cell-size-font.cs": "src/Ntilde.App/Shell/TerminalView.Fonts.cs",
+    "cell-size-observer-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneCellGeometry.cs"
+});
 export function ownedSourcePath(root, file) {
+    if (Object.hasOwn(cellSizeReferencePaths, file)) return join(root, cellSizeReferencePaths[file]);
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
     if (Object.hasOwn(insertReplaceReferencePaths, file)) return join(root, insertReplaceReferencePaths[file]);
@@ -810,11 +827,34 @@ export const capturedV70SourceFiles = Object.freeze({
     kittyAnimationReceiptSourceSha256: 'kitty-animation-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v70 inventory and manifest environment pin before trusting any captured source. */
+// Frozen pre-integration OSC cell-size fork, measured under the same v63 policy.
+export const capturedCellSizeForkV70Files = Object.freeze({
+    ...capturedV69SourceFiles,
+    cellSizeContractsSourceSha256: "cell-size-contracts.mjs",
+    cellSizeFrameSourceSha256: "cell-size-frame.mjs",
+    cellSizeGradingCollectorSourceSha256: "cell-size-grading-collector.mjs",
+    cellSizeCollectorSourceSha256: "cell-size-collector.mjs",
+    cellSizeCaptureSourceSha256: "cell-size-capture.mjs",
+    cellSizeGradingSourceSha256: "cell-size-grading.mjs",
+    cellSizeReceiptSourceSha256: "cell-size-receipt.mjs",
+    cellSizeParserReferenceSha256: "cell-size-parser.cs",
+    cellSizeMetricsReferenceSha256: "cell-size-metrics.cs",
+    cellSizeFramingReferenceSha256: "cell-size-framing.cs",
+    cellSizeFontReferenceSha256: "cell-size-font.cs",
+    cellSizeGeometryContractReferenceSha256: "cell-size-observer-contract.cs",
+});
+
+// Combined graph: both previously measured forks remain immutable.
+export const capturedV71SourceFiles = Object.freeze({
+    ...capturedV70SourceFiles,
+    ...capturedCellSizeForkV70Files,
+});
+
+/** Bind the private temporary root, exact v71 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV70SourceFiles)) throw new Error('Invalid current v70 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV71SourceFiles)) throw new Error('Invalid current v71 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

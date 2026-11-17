@@ -29,6 +29,15 @@ namespace Ntilde.VT.Tests;
 /// </remarks>
 public sealed class VtCapabilityContractTests
 {
+    private static void AssertOscCellSize(string request, string expected)
+    {
+        var parser = new AnsiParser(new TerminalBuffer(80, 24)) { CellSizeReports = new(8, 18, 2, 13) };
+        var responses = new List<string>();
+        parser.OnResponse = responses.Add;
+        parser.Process(request);
+        Assert.Equal(expected, Assert.Single(responses));
+    }
+
     private static readonly Dictionary<string, Action> ContractCases =
         new(StringComparer.Ordinal)
         {
@@ -81,6 +90,8 @@ public sealed class VtCapabilityContractTests
             ["sgr-overline-on"] = AssertOverline,
             ["sgr-overline-off"] = AssertOverline,
             ["modify-other-keys-query"] = AssertModifyOtherKeysQuery,
+            ["iterm2-cell-size"] = () => AssertOscCellSize("\x1b]1337;ReportCellSize\a", "\x1b]1337;ReportCellSize=18;8;2\x1b\\"),
+            ["urxvt-cell-size"] = () => AssertOscCellSize("\x1b]776;?\a", "\x1b]776;16;36;26\a"),
         };
 
     private static readonly Dictionary<string, string> ContractSequences =
@@ -135,6 +146,8 @@ public sealed class VtCapabilityContractTests
             ["sgr-overline-on"] = "\x1b[53mA",
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
             ["modify-other-keys-query"] = "\x1b[>4;2m\x1b[?4mA",
+            ["iterm2-cell-size"] = "\x1b]1337;ReportCellSize\aA",
+            ["urxvt-cell-size"] = "\x1b]776;?\x1b\\A",
         };
 
     /// <summary>Pins the advertised partial text contract without claiming image-plane erasure or protected-cell support.</summary>

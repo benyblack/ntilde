@@ -159,6 +159,10 @@ import { devqContractsVersion, devqNoncePrefix, devqPrefix, devqSuiteId } from '
 import { buildDevqGradingReport } from './terminfo/devq-grading.mjs';
 import { devqCounts } from './terminfo/devq-receipt.mjs';
 import { DevqObserver } from './terminfo/devq-capture.mjs';
+import { CellSizeObserver } from './terminfo/cell-size-capture.mjs';
+import { adaptCellSizeCollector, cellSizeAdapterId } from './terminfo/cell-size-grading-collector.mjs';
+import { cellSizeNonce, cellSizePrefix, cellSizeSuiteId, cellSizeVersion } from './terminfo/cell-size-contracts.mjs';
+import { buildCellSizeReport, cellSizeCounts } from './terminfo/cell-size-grading.mjs';
 import { adaptXcsCollector, xcsAdapterId } from './terminfo/xcs-grading-collector.mjs';
 import { xcsContractsVersion, xcsNoncePrefix, xcsPrefix, xcsSuiteId } from './terminfo/xcs-contracts.mjs';
 import { buildXcsGradingReport } from './terminfo/xcs-grading.mjs';
@@ -246,7 +250,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 /** The observation request prefixes whose `-start`, `-bind`, `-read` and `-finish` kinds are cell observations served without translation. */
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
-    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'xcs', 'xss', 'xsv', 'kcl', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
+    'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'csz', 'xcs', 'xss', 'xsv', 'kcl', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
     'history', 'saved', 'metadata',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
@@ -2001,6 +2005,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let osc9Evidence;
     let notifyEvidence;
     let devqEvidence;
+    let cellSizeEvidence;
     let xcsEvidence;
     let xssEvidence;
     let xsvEvidence;
@@ -2046,6 +2051,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const privateTool = join(scratch, 'collector');
         installLockedCollector(privateTool, input.manifestBytes, input.lockBytes);
         const { ownerModule, bundle, adapterBundleSha256, receiptBytes, lockBytes, originalBundle } = prepareCollector(privateTool);
+        const cellSizeSource = adaptCellSizeCollector(readFileSync(bundle));
+        const cellSizeBundleSha256 = hash(cellSizeSource);
+        const cellSizeBundle = join(privateTool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-cell-size-${cellSizeBundleSha256}.mjs`);
+        writeFileSync(cellSizeBundle, cellSizeSource, { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'collector-cell-size.mjs'), cellSizeSource, { flag: 'wx', mode: 0o600 });
         const { bundle: gradingBundle, gradingBundleSha256 } = prepareGradingCollector(privateTool, bundle, output);
         const { bundle: sgrColorsBundle, sgrColorsBundleSha256 } = prepareSgrColorsCollector(privateTool, gradingBundle, output);
         const { bundle: sgrRgbBundle, sgrRgbBundleSha256 } = prepareSgrRgbCollector(privateTool, sgrColorsBundle, output);
@@ -2106,6 +2116,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
+            cellSizeBundle, cellSizeBundleSha256,
             ...(collectionScope ? { collectionScope } : {}),
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
@@ -2167,6 +2178,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let lrMarginsObserver;
         let xtgettcapObserver;
         let devqObserver;
+        let cellSizeObserver;
         let xcsObserver;
         let xssObserver;
         let xsvObserver;
@@ -2282,6 +2294,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             osc9AdapterId, osc9SuiteId, osc9BundleSha256, osc9ContractsVersion,
             notifyAdapterId, notifySuiteId, notifyBundleSha256, notifyContractsVersion,
             devqAdapterId, devqSuiteId, devqBundleSha256, devqContractsVersion,
+            cellSizeAdapterId, cellSizeSuiteId, cellSizeBundleSha256, cellSizeContractsVersion: cellSizeVersion,
             xcsAdapterId, xcsSuiteId, xcsBundleSha256, xcsContractsVersion,
             xssAdapterId, xssSuiteId, xssBundleSha256, xssContractsVersion,
             xsvAdapterId, xsvSuiteId, xsvBundleSha256, xsvContractsVersion,
@@ -2367,6 +2380,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             writeFileSync(join(output, 'ntf-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         }
         writeFileSync(join(output, 'dvq-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'cell-size-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xcs-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xss-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'xsv-snapshots.jsonl'), '', { flag: 'wx', mode: 0o600 });
@@ -3470,9 +3484,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'dvq-snapshots.jsonl'), JSON.stringify(devqObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === cellSizePrefix) {
+                if (!devqObserver?.restored) throw new Error('Device-query suite must restore before cell-size observations.');
+                cellSizeObserver ??= new CellSizeObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `${cellSizeNonce}${runId}`, expectedPaneId: cellObserver.paneId });
+                const result = await cellSizeObserver.handle(request, budget);
+                appendFileSync(join(output, 'cell-size-snapshots.jsonl'), JSON.stringify(cellSizeObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             if (prefix === xcsPrefix) {
                 // The xterm color-stack suite runs after the device-query suite; a report read also journals the raw reply list bound to its barrier.
-                if (!devqObserver?.restored) throw new Error('Device-query suite must restore before xterm color-stack observations.');
+                if (!cellSizeObserver?.restored) throw new Error('Cell-size suite must restore before xterm color-stack observations.');
                 xcsObserver ??= new XcsObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `${xcsNoncePrefix}${runId}`, expectedPaneId: cellObserver.paneId });
                 const result = await xcsObserver.handle(request, budget);
@@ -3906,6 +3928,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 notifyEvidence = retainNotifyEvidence(output, runId, upstreamBundleSha256, notifyState?.unavailable === true);
             }
             devqEvidence = await retainDevqEvidence(output, runId, devqBundle, upstreamBundleSha256);
+            const cellSizeRunBytes = readFileSync(join(output, 'cell-size-run.json'));
+            const cellSizeFrames = readFileSync(join(output, 'cell-size-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            const cellSizeAdapter = { id: cellSizeAdapterId, bundleSha256: cellSizeBundleSha256, upstreamBundleSha256 };
+            const cellSizeReport = buildCellSizeReport(cellSizeFrames, JSON.parse(cellSizeRunBytes), runId, cellSizeAdapter,
+                { replayModule: await import(pathToFileURL(cellSizeBundle).href) });
+            writeJson(join(output, 'cell-size-observations.json'), cellSizeReport);
+            cellSizeEvidence = { runId, suiteId: cellSizeSuiteId, file: 'cell-size-observations.json',
+                sha256: hash(readFileSync(join(output, 'cell-size-observations.json'))), runFile: 'cell-size-run.json', runSha256: hash(cellSizeRunBytes),
+                adapterBundleSha256: cellSizeBundleSha256, contractsVersion: cellSizeVersion,
+                counts: cellSizeCounts(cellSizeReport), provisionalUntil: 'cell-receipt.json' };
+            summary.cellSizeEvidence = cellSizeEvidence;
             xcsEvidence = await retainXcsEvidence(output, runId, xcsBundle, upstreamBundleSha256);
             xssEvidence = await retainXssEvidence(output, runId, xssBundle, upstreamBundleSha256);
             xsvEvidence = await retainXsvEvidence(output, runId, xsvBundle, upstreamBundleSha256);
@@ -4042,7 +4075,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

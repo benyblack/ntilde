@@ -65,6 +65,11 @@ invariant changes.
   child (`TerminalPane.ChildTerminalType`, kept equal to the native PTY layer and SSH options by a
   test); VT never reads the process environment. `device.term-features` is an unverified
   environment hint, not a query, and has no VT behaviour.
+- **OSC cell-size reports keep their protocol units.** VT owns exact OSC 1337 ReportCellSize
+  and OSC 776 `?` query framing. App supplies one atomic logical-cell/scale/font-ascent snapshot
+  from the direct view. Headless and mux hosts without those facts stay silent. The read-only
+  pane metadata API independently projects the view metrics; a CSI 16 t reply is a control,
+  never substituted for either OSC query.
 - **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
   reset precede the existing full clear under one write cut. Main and retained
   alternate screens return to visible DECTCEM cursor presentation in that cut;

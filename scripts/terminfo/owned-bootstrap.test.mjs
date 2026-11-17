@@ -131,3 +131,20 @@ test('unreviewed C# aliases cannot broaden the bootstrap reference-input allowli
     writeFileSync(join(f.root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(f.inventory));
     const result = f.run({}); assert.equal(result.status, 1); assert.match(result.stderr, /Invalid source inventory entry/);
 }));
+
+for (const [alias, file] of [
+    ['cell-size-parser.cs', 'src/Ntilde.VT/AnsiParser.CellSizeReports.cs'],
+    ['cell-size-metrics.cs', 'src/Ntilde.VT/CellSizeReportMetrics.cs'],
+    ['cell-size-framing.cs', 'src/Ntilde.VT/AnsiParser.cs'],
+    ['cell-size-font.cs', 'src/Ntilde.App/Shell/TerminalView.Fonts.cs'],
+    ['cell-size-observer-contract.cs', 'src/Ntilde.AgentHost.Contracts/PaneCellGeometry.cs'],
+]) test('cell-size reference allowlist captures only the reviewed path: ' + alias, () => fixture(f => {
+    f.inventory.cellSizeReferenceSha256 = alias;
+    writeFileSync(join(f.root, 'scripts/terminfo/owned-source-inventory.json'), JSON.stringify(f.inventory));
+    const source = join(f.root, file); mkdirSync(dirname(source), { recursive: true });
+    writeFileSync(source, 'CELL SIZE REFERENCE');
+    writeFileSync(join(f.root, 'scripts/terminfo-owned-runner.mjs'), `import {readFileSync} from 'node:fs';
+        console.log(readFileSync(new URL(${JSON.stringify('../' + file)},import.meta.url),'utf8'));`);
+    const result = f.run({}); assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), 'CELL SIZE REFERENCE');
+}));

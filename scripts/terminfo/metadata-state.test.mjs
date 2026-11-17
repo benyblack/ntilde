@@ -21,6 +21,26 @@ test('actual hidden progress and toast control properties survive the projection
     assert.equal(observed.presentation.toastMessage, 'Previous message');
     raw.presentation.progressBar.value = 9; assert.equal(observed.presentation.progressBar.value, 42);
 });
+const geometry = () => ({ viewRows: 12, viewCols: 60, cellWidthDip: 8.5, cellHeightDip: 18.5,
+    fontAscentDip: 14.28, renderScaling: 3, backingScale: 2 });
+test('optional observed geometry survives strict metadata projection without inventing historical facts', () => {
+    assert.equal(Object.hasOwn(copyPaneMetadata(wire()), 'cellGeometry'), false);
+    const raw = { ...wire(), cellGeometry: geometry() }, projected = copyPaneMetadata(raw);
+    assert.deepEqual(projected.cellGeometry, raw.cellGeometry);
+    raw.cellGeometry.backingScale = 4;
+    assert.equal(projected.cellGeometry.backingScale, 2);
+});
+for (const [name, mutate] of Object.entries({
+    missing: value => delete value.backingScale,
+    unknown: value => value.extra = true,
+    stale: value => value.viewCols = 61,
+    nonfinite: value => value.cellWidthDip = NaN,
+    ascent: value => value.fontAscentDip = 19,
+    scale: value => value.renderScaling = 0,
+})) test('rejects invalid optional geometry: ' + name, () => {
+    const cellGeometry = geometry(); mutate(cellGeometry);
+    assert.throws(() => copyPaneMetadata({ ...wire(), cellGeometry }));
+});
 test('raw anchors remain raw and snapshot-local hyperlink identities are preserved', () => {
     const raw = wire(); raw.buffer.commandStart = { row: -1, col: 2, absoluteRow: 3, generation: 2, alternateScreen: true };
     raw.buffer.links = [{ row: 1, col: 2, length: 3, identity: 0, uri: 'https://example.invalid/a', id: 'same' },

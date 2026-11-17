@@ -465,6 +465,24 @@
       "matrixFeature": "SR (SP A)",
       "evidencePath": "tests/Ntilde.VT.Tests/ColumnEditingTests.cs",
       "contractCase": "scroll-right"
+    },
+    {
+      "key": "OSC:1337:ReportCellSize",
+      "mnemonic": "iTerm2 cell size",
+      "support": "supported",
+      "description": "Report logical cell height, width and physical/logical scale from authoritative host metrics.",
+      "matrixFeature": "iTerm2 cell size",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "iterm2-cell-size"
+    },
+    {
+      "key": "OSC:776:?",
+      "mnemonic": "urxvt cell size",
+      "support": "supported",
+      "description": "Report integer pixel cell width, height and font ascent for the exact question-mark query.",
+      "matrixFeature": "urxvt cell size",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "urxvt-cell-size"
     }
   ]
 }
