@@ -1,13 +1,12 @@
+import { randomInt } from 'node:crypto';
 import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
-import { snapshotHash, screenSnapshot } from './agent-observer.mjs';
 import { inputPriorCaptureCap } from './input-plan.mjs';
 import { animationCases, animationCommand, animationExpectedReplies, animationSuiteId, animationAnchor, animationCellEnvelope, animationHoldMs } from './kitty-animation-cases.mjs';
 import { animationFrameInput, animationFrameIds } from './kitty-animation-inputs.mjs';
 import { inspectAnimationPixels, evaluateAnimationTiming } from './kitty-animation-oracle.mjs';
-import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, pristineImageBaseline, imageRawReplies, stableImageContext,
-    validateImageCapture, validateImageOwnership } from './static-images.mjs';
-import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
+import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, StaticImageReport, validateImageCapture } from './static-images.mjs';
+import { pngHash } from './pixels-capture.mjs';
 
 export const ownedAnimationPolicy = 'owned-kitty-animation-paired-raw-render-v1';
 export const animationPlan = Object.freeze([
@@ -95,67 +94,38 @@ export function buildAnimationReport(frames, actions, seal, runId, output, prior
         caseResults: builder.caseResults(), observations: builder.observations };
 }
 
-class AnimationReport {
+const stageOfEntry = entry => animationCases.find(value => value.id === entry.caseId).stages.find(value => value.id === entry.stageId);
+/** What the shared image-carrier observer and report need to know about this suite. */
+export const animationSuite = Object.freeze({
+    plan: animationPlan, prefix: 'kan-', pixelDir: animationPixelPrefix, inputDir: 'animation-inputs', priorCap: animationPriorCap, recordSpan: true,
+    inputs: animationInputs, action: animationAction, buildReport: buildAnimationReport, retainPixel: retainedAnimationPixel,
+    captureKind: imageCaptureKind, pairMayDiffer: animationPairMayDiffer,
+    acceptReply: (reply, entry, states) => { animationReply(reply.toString('ascii'), stageOfEntry(entry), states.get(entry.caseId).imageId); },
+    newState(states) {
+        let imageId;
+        do { imageId = randomInt(1, 0x100000000); } while ([...states.values()].some(value => value.imageId === imageId));
+        return { imageId };
+    },
+    actionFacts: state => ({ imageId: state.imageId ?? null }),
+    registerState(action, states) {
+        checkImages(uint(action.imageId) && ![...states.values()].some(value => value.imageId === action.imageId));
+        return { imageId: action.imageId };
+    },
+    factsMatch: (action, state) => action.imageId === (state.imageId ?? null),
+});
+
+class AnimationReport extends StaticImageReport {
     constructor(frames, actions, runId, output, priorChallenges) {
-        this.frames = frames; this.actions = actions; this.runId = runId; this.output = output;
-        this.initial = frames[0].screen; this.paneId = frames[0].paneId; this.bound = animationBoundScreen(this.initial, runId);
-        checkImages(pristineImageBaseline(this.initial) && this.initial.rows >= 8 && this.initial.cols >= 60);
-        this.used = new Set(priorChallenges); this.states = new Map(); this.observations = []; this.backgrounds = []; this.total = 0;
-        this.lastTime = -Infinity; this.lastEnd = -Infinity; this.facts = new Map();
+        super(frames, actions, runId, output, priorChallenges, animationSuite);
+        this.lastEnd = -Infinity; this.facts = new Map();
     }
-    validateFrame(frame, index, entry) {
-        validateImageOwnership(frame.ownership, this.frames[0].ownership, this.initial);
-        checkImages(frame.index === index && frame.kind === 'kan-' + entry.kind && frame.paneId === this.paneId
-            && frame.caseId === (entry.caseId ?? null) && frame.stageId === (entry.stageId ?? null));
-        for (const screen of [frame.screen, frame.afterScreen]) screenSnapshot(screen, false, true, true, true, true);
-        const expectedScreen = ['start', 'finish'].includes(entry.kind) ? this.initial : this.bound;
-        checkImages(frame.sha256 === snapshotHash(frame.screen) && frame.afterSha256 === snapshotHash(frame.afterScreen)
-            && snapshotHash(frame.screen) === snapshotHash(expectedScreen) && snapshotHash(frame.afterScreen) === snapshotHash(expectedScreen));
-    }
-    readPixels(frame, index, entry) {
-        checkImages(frame.pixels?.length === 2);
-        const pixels = frame.pixels.map((pixel, side) => {
-            checkImages(pixel.file === framePixelFile(index, side));
-            const value = retainedAnimationPixel(this.output, pixel, frame.screen, frame.kind); this.total += value.image.width * value.image.height;
-            const stable = stableImageContext(value.details); this.context ??= stable; checkImages(stable === this.context);
-            return value;
-        });
-        checkImages(this.total <= totalPixelLimit && (animationPairMayDiffer(entry) || frame.pixels[0].sha256 === frame.pixels[1].sha256)
-            && snapshotHash(frame.pixels[0].renderDetails) === snapshotHash(frame.pixels[1].renderDetails)
-            && snapshotHash(frame.pixels[0].imageDetails) === snapshotHash(frame.pixels[1].imageDetails));
-        return pixels;
-    }
+    initialFrameFacts(frame) { this.lastEnd = animationSpanOf(frame).end; }
     validateAction(frame, index, entry) {
-        const action = this.actions[index - 1];
-        validateImageOwnership(action.ownership, this.frames[0].ownership, this.initial);
-        const actionTime = Date.parse(action.ownership.at), frameTime = Date.parse(frame.ownership.at);
-        checkImages(this.lastTime <= actionTime && actionTime <= frameTime); this.lastTime = frameTime;
-        checkImages(action.index === index - 1 && frame.actionIndex === action.index && action.kind === frame.kind
-            && action.caseId === frame.caseId && action.stageId === frame.stageId);
-        if (entry.kind === 'read' && !this.states.has(entry.caseId)) {
-            checkImages(uint(action.imageId) && ![...this.states.values()].some(value => value.imageId === action.imageId));
-            this.states.set(entry.caseId, { imageId: action.imageId });
-        }
-        const state = this.states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, this.runId, this.initial.cursorVisible);
-        checkImages(action.commandHex === Buffer.from(expected.command).toString('hex') && action.commandSha256 === pngHash(Buffer.from(expected.command))
-            && action.skipReason === expected.skipReason && action.imageId === (state.imageId ?? null));
-        return { action, state, expected, actionTime, frameTime };
-    }
-    readReply(frame) {
-        const argb = frame.kind === 'kan-finish' ? this.initialBackground : 0xff101010;
-        const { replyBytes, backgroundQuery } = imageRawReplies(frame.capture, this.used, argb);
-        this.backgrounds.push({ snapshot: frame.index, argb, query: backgroundQuery });
-        return replyBytes;
-    }
-    checkControl(entry, frame, pixels, replyBytes) {
-        checkImages(replyBytes.length === 0 && pixels.every(value => value.imageDetails.totalPlacements === 0));
-        if (entry.kind === 'bind') this.boundPixel = pixels[0];
-        if (entry.kind === 'restore') checkImages(frame.pixels[0].sha256 === pngHash(this.boundPixel.bytes));
-        if (entry.kind === 'finish') checkImages(frame.pixels[0].sha256 === this.initialPixel
-            && snapshotHash(frame.pixels[0].renderDetails) === snapshotHash(this.frames[0].pixels[0].renderDetails));
+        const facts = super.validateAction(frame, index, entry);
+        return { ...facts, actionTime: Date.parse(facts.action.ownership.at), frameTime: Date.parse(frame.ownership.at) };
     }
     /** Wall-clock facts: when a command could have taken effect, and the span the paired captures covered. */
-    timingFacts(entry, stage, index, { action, actionTime, frameTime }) {
+    timingFacts(entry, stage, index, { actionTime, frameTime }) {
         const span = animationSpanOf(this.frames[index]);
         checkImages(frameTime <= span.start && this.lastEnd <= actionTime);
         if (stage.waitMs !== undefined) checkImages(actionTime - this.lastEnd >= stage.waitMs);
@@ -165,26 +135,26 @@ class AnimationReport {
         if (stage.reply === 'start') caseFacts.start = { earliest: actionTime, latest: frameTime };
         if (stage.reply === 'stop') caseFacts.stop = { earliest: actionTime, latest: frameTime };
         this.facts.set(entry.caseId, caseFacts);
-        return { facts: { ...caseFacts, capture: span }, action };
+        return { ...caseFacts, capture: span };
     }
     observe(entry, index, pixels, replyBytes, context) {
-        const item = animationCases.find(value => value.id === entry.caseId), stage = item.stages.find(value => value.id === entry.stageId);
+        const item = animationCases.find(value => value.id === entry.caseId), stage = stageOfEntry(entry);
         const reply = animationReply(replyBytes.toString('ascii'), stage, context.state.imageId);
-        const { facts } = this.timingFacts(entry, stage, index, context);
+        const facts = this.timingFacts(entry, stage, index, context);
         // A pair that differs means the frame changed between its two captures: legitimate near a boundary, but then no single frame is observed.
-        const timing = this.pairStable ? evaluateAnimationTiming(stage, facts) : { valid: false, reason: 'paired captures differ: the frame changed between them' };
+        const pairStable = this.frames[index].pixels[0].sha256 === this.frames[index].pixels[1].sha256;
+        const timing = pairStable ? evaluateAnimationTiming(stage, facts) : { valid: false, reason: 'paired captures differ: the frame changed between them' };
         const inspect = observed => inspectAnimationPixels({ baseline: this.boundPixel.image, observed: observed.image, grid: observed.details.grid,
             anchor: animationAnchor, cells: animationCellEnvelope, appearance: stage.appearance });
         const pixel = inspect(pixels[0]);
         checkImages(pixel.controls[0].passed);
         // Bleed is timing-independent, so a pair that differs must be clean in both members.
-        const other = this.pairStable ? pixel : inspect(pixels[1]);
+        const other = pairStable ? pixel : inspect(pixels[1]);
         checkImages(other.controls[0].passed);
         const bleed = { ...pixel.controls[1], passed: pixel.controls[1].passed && other.controls[1].passed };
         const assertions = [...pixel.assertions, bleed];
-        const grade = this.gradeStage(item, stage, reply, assertions, timing);
-        this.observations.push({ featureId: item.id + '.' + stage.id, ...grade, snapshot: index, actionIndex: context.action.index,
-            reply, assertions, classification: pixel.classification, measurement: pixel.measurement,
+        this.observations.push({ featureId: item.id + '.' + stage.id, ...this.gradeStage(item, stage, reply, assertions, timing), snapshot: index,
+            actionIndex: context.action.index, reply, assertions, classification: pixel.classification, measurement: pixel.measurement,
             timing: { clock: stage.clock, valid: timing.valid, reason: timing.reason, facts } });
     }
     gradeStage(item, stage, reply, assertions, timing) {
@@ -200,11 +170,9 @@ class AnimationReport {
         if (missing.length) inconclusiveReason = 'requires passed prior witness: ' + missing.map(value => value.featureId + ' (' + value.result + ')').join(', ');
         if (!inconclusiveReason && !timing.valid) inconclusiveReason = timing.reason;
         // A negative reply or bleed outside the target stands without timing; a pixel mismatch needs valid timing and witnesses.
-        const independentNegative = reply.passed === false || assertions.at(-1).passed === false;
-        let result = 'inconclusive';
-        if (independentNegative) { result = 'failed'; inconclusiveReason = null; }
-        else if (!inconclusiveReason) result = assertions.every(value => value.passed) ? 'passed' : 'failed';
-        return { result, causality, inconclusiveReason };
+        if (reply.passed === false || assertions.at(-1).passed === false) return { result: 'failed', causality, inconclusiveReason: null };
+        if (inconclusiveReason) return { result: 'inconclusive', causality, inconclusiveReason };
+        return { result: assertions.every(value => value.passed) ? 'passed' : 'failed', causality, inconclusiveReason };
     }
     caseResults() {
         return animationCases.map(item => {
@@ -215,32 +183,5 @@ class AnimationReport {
             if (stages.some(value => value.result === 'failed')) result = 'failed';
             return { caseId: item.id, result, stages: stages.map(value => value.featureId) };
         });
-    }
-    processFrame(frame, index) {
-        const entry = index ? animationPlan[index - 1] : { kind: 'start' };
-        this.validateFrame(frame, index, entry); const pixels = this.readPixels(frame, index, entry);
-        if (!index) {
-            checkImages(frame.capture === null && frame.actionIndex === null); this.initialPixel = frame.pixels[0].sha256;
-            this.initialBackground = pixels[0].details.theme.backgroundArgb;
-            checkImages(pixels[0].imageDetails.totalPlacements === 0);
-            this.lastTime = Date.parse(frame.ownership.at); this.lastEnd = animationSpanOf(frame).end; return;
-        }
-        this.pairStable = frame.pixels[0].sha256 === frame.pixels[1].sha256;
-        const facts = this.validateAction(frame, index, entry), replyBytes = this.readReply(frame);
-        if (entry.kind !== 'read') this.checkControl(entry, frame, pixels, replyBytes);
-        else this.observe(entry, index, pixels, replyBytes, facts);
-    }
-    checkSeal(seal) {
-        const last = this.frames.at(-1).capture;
-        validateImageOwnership(seal?.ownership, this.frames[0].ownership, this.initial);
-        checkImages(this.lastTime <= Date.parse(seal.ownership.at));
-        checkImages(seal?.failed === false && seal.disposed === true && seal.attempts === animationActionCount && seal.lastAttempt?.completed === true
-            && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
-            && seal.lastAttempt.hex === last.hex + Buffer.from(last.barrier).toString('hex')
-            && snapshotHash(seal.lastAttempt.nonces) === snapshotHash(last.nonces));
-        for (const input of animationInputs()) {
-            const stat = lstatSync(join(this.output, input.file)); checkImages(stat.isFile() && !stat.isSymbolicLink() && stat.size === input.bytes.length);
-            checkImages(pngHash(readFileSync(join(this.output, input.file))) === input.sha256);
-        }
     }
 }

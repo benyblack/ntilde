@@ -56,7 +56,11 @@ internal sealed class KittyAnimation
         }
     }
 
-    private static long Hold(KittyFrame frame) => frame.GapMs < 0 ? 0 : frame.GapMs == 0 ? DefaultGapMs : frame.GapMs;
+    private static long Hold(KittyFrame frame)
+    {
+        if (frame.GapMs < 0) return 0;
+        return frame.GapMs == 0 ? DefaultGapMs : frame.GapMs;
+    }
 
     private long CycleMs()
     {
@@ -110,14 +114,7 @@ internal sealed class KittyAnimation
     {
         if (State == KittyAnimationState.Stopped) return false;
         int before = Displayed;
-        if (_waiting)
-        {
-            // A frame arrived while parked: it is shown now and its gap counts from now, not from the old timeline.
-            if (Current + 1 >= Frames.Count) return false;
-            _waiting = false;
-            MoveTo(Current + 1);
-            FrameStartMs = nowMs;
-        }
+        if (_waiting && !ResumeParked(nowMs)) return false;
         if (CycleMs() == 0)
         {
             // Every frame is gapless: nothing can be shown for a time, so the playhead cannot move.
@@ -125,24 +122,41 @@ internal sealed class KittyAnimation
             return false;
         }
         SkipWholeCycles(nowMs);
-        for (int steps = 0, limit = Frames.Count * 4 + 8; steps < limit; steps++)
+        int limit = Frames.Count * 4 + 8;
+        for (int steps = 0; steps < limit && StepOnce(nowMs); steps++)
         {
-            long hold = Hold(Frames[Current]);
-            if (hold > 0 && nowMs - FrameStartMs < hold) break;
-            if (Current + 1 < Frames.Count)
-            {
-                FrameStartMs += hold;
-                MoveTo(Current + 1);
-                continue;
-            }
-            // Past the last frame.
-            if (State == KittyAnimationState.Loading) { _waiting = true; break; }
-            if (LoopsRemaining == 0) { Stop(); break; }
-            if (LoopsRemaining > 0) LoopsRemaining--;
-            FrameStartMs += hold;
-            MoveTo(0);
         }
         return Displayed != before;
+    }
+
+    /// <summary>A frame arrived while parked: it is shown now and its gap counts from now, not from the old timeline.</summary>
+    private bool ResumeParked(long nowMs)
+    {
+        if (Current + 1 >= Frames.Count) return false;
+        _waiting = false;
+        MoveTo(Current + 1);
+        FrameStartMs = nowMs;
+        return true;
+    }
+
+    /// <summary>One transition when the current frame's gap has run out; false once the playhead has settled at <paramref name="nowMs"/>.</summary>
+    private bool StepOnce(long nowMs)
+    {
+        long hold = Hold(Frames[Current]);
+        if (hold > 0 && nowMs - FrameStartMs < hold) return false;
+        if (Current + 1 < Frames.Count)
+        {
+            FrameStartMs += hold;
+            MoveTo(Current + 1);
+            return true;
+        }
+        // Past the last frame.
+        if (State == KittyAnimationState.Loading) { _waiting = true; return false; }
+        if (LoopsRemaining == 0) { Stop(); return false; }
+        if (LoopsRemaining > 0) LoopsRemaining--;
+        FrameStartMs += hold;
+        MoveTo(0);
+        return true;
     }
 
     /// <summary>
@@ -186,6 +200,9 @@ internal sealed class KittyAnimation
     }
 }
 
+/// <summary>A pixel rectangle inside an image.</summary>
+internal readonly record struct KittyFrameRect(int X, int Y, int Width, int Height);
+
 /// <summary>Straight-alpha RGBA composition of a frame rectangle onto a canvas.</summary>
 internal static class KittyFrameCompositor
 {
@@ -199,36 +216,39 @@ internal static class KittyFrameCompositor
     }
 
     /// <summary>
-    /// Writes <paramref name="source"/> (<paramref name="bytesPerPixel"/> 3 or 4, top-down rows) over the
-    /// rectangle at (<paramref name="x"/>, <paramref name="y"/>); the caller has checked it fits.
-    /// <paramref name="overwrite"/> replaces canvas pixels, otherwise they are alpha-blended.
+    /// Writes <paramref name="source"/> (<paramref name="bytesPerPixel"/> 3 or 4, top-down rows) over <paramref name="rect"/> of the canvas;
+    /// the caller has checked it fits. <paramref name="overwrite"/> replaces canvas pixels, otherwise they are alpha-blended.
     /// </summary>
-    internal static void Draw(byte[] canvas, int canvasWidth, byte[] source, int bytesPerPixel, int x, int y, int width, int height, bool overwrite)
+    internal static void Draw(byte[] canvas, int canvasWidth, byte[] source, int bytesPerPixel, KittyFrameRect rect, bool overwrite)
     {
-        for (int row = 0; row < height; row++)
+        for (int row = 0; row < rect.Height; row++)
         {
-            for (int col = 0; col < width; col++)
+            for (int col = 0; col < rect.Width; col++)
             {
-                int s = (row * width + col) * bytesPerPixel;
-                int d = ((y + row) * canvasWidth + x + col) * 4;
-                byte sr = source[s], sg = source[s + 1], sb = source[s + 2];
-                byte sa = bytesPerPixel == 4 ? source[s + 3] : (byte)255;
-                if (overwrite || sa == 255)
-                {
-                    canvas[d] = sr; canvas[d + 1] = sg; canvas[d + 2] = sb; canvas[d + 3] = sa;
-                    continue;
-                }
-                if (sa == 0) continue;
-                int da = canvas[d + 3];
-                // out alpha = sa + da*(1-sa); colors are un-premultiplied again by out alpha.
-                int outA255 = sa * 255 + da * (255 - sa);
-                if (outA255 == 0) continue;
-                canvas[d] = Mix(sr, sa * 255, canvas[d], da * (255 - sa), outA255);
-                canvas[d + 1] = Mix(sg, sa * 255, canvas[d + 1], da * (255 - sa), outA255);
-                canvas[d + 2] = Mix(sb, sa * 255, canvas[d + 2], da * (255 - sa), outA255);
-                canvas[d + 3] = (byte)((outA255 + 127) / 255);
+                int s = (row * rect.Width + col) * bytesPerPixel;
+                int d = ((rect.Y + row) * canvasWidth + rect.X + col) * 4;
+                byte alpha = bytesPerPixel == 4 ? source[s + 3] : (byte)255;
+                BlendPixel(canvas, d, source[s], source[s + 1], source[s + 2], alpha, overwrite);
             }
         }
+    }
+
+    private static void BlendPixel(byte[] canvas, int d, byte sr, byte sg, byte sb, byte sa, bool overwrite)
+    {
+        if (overwrite || sa == 255)
+        {
+            canvas[d] = sr; canvas[d + 1] = sg; canvas[d + 2] = sb; canvas[d + 3] = sa;
+            return;
+        }
+        if (sa == 0) return;
+        int da = canvas[d + 3];
+        // out alpha = sa + da*(1-sa); colors are un-premultiplied again by out alpha.
+        int sourceWeight = sa * 255, destWeight = da * (255 - sa), total = sourceWeight + destWeight;
+        if (total == 0) return;
+        canvas[d] = Mix(sr, sourceWeight, canvas[d], destWeight, total);
+        canvas[d + 1] = Mix(sg, sourceWeight, canvas[d + 1], destWeight, total);
+        canvas[d + 2] = Mix(sb, sourceWeight, canvas[d + 2], destWeight, total);
+        canvas[d + 3] = (byte)((total + 127) / 255);
     }
 
     private static byte Mix(int sourceColor, int sourceWeight, int destColor, int destWeight, int total) =>

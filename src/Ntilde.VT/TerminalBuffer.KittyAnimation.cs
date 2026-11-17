@@ -112,9 +112,9 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
-            foreach (KittyImageAsset asset in _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen && item.Animation is not null).ToArray())
+            foreach (KittyImageAsset asset in _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen).ToArray())
             {
-                KittyAnimation animation = asset.Animation!;
+                if (asset.Animation is not { } animation) continue;
                 if (animation.Advance(nowMs))
                 {
                     ShowKittyFrame(asset, animation.Frames[animation.Displayed]);

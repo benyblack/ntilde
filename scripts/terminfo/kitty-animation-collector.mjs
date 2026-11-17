@@ -3,19 +3,10 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { rawInputCapture } from './input-bytes.mjs';
 import { imageModeQueries, imageRestore, checkImages } from './static-images.mjs';
+import { write } from './static-images-collector.mjs';
 import { animationPlan, animationPriorCap } from './kitty-animation.mjs';
 import { animationCases } from './kitty-animation-cases.mjs';
 
-const write = (output, bytes) => new Promise((resolve, reject) => {
-    let settled = false;
-    const timer = setTimeout(() => finish(new Error('Animation fixture write timed out.')), 1000);
-    const finish = error => {
-        if (settled) return;
-        settled = true; clearTimeout(timer);
-        if (error) reject(error); else resolve();
-    };
-    try { output.write(bytes, finish); } catch (error) { finish(error); }
-});
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const stageOf = entry => animationCases.find(item => item.id === entry.caseId)?.stages.find(item => item.id === entry.stageId);
 

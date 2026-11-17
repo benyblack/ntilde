@@ -7,7 +7,7 @@
       "scriptsRevision": "e0c32683",
       "reason": "The disposable App aborted before collection (SIGABRT, Avalonia RenderTimer error -6661): the desktop display was unavailable. Nothing was measured; the cause is the environment, not the suite.",
       "retainedFiles": {
-        "app-output.log": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
+        "app-output-head.txt": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
         "failure.json": "79235bc568b031245cb33d08bfe8f8d8cd4c276bb875d01a9d71645bcbd8bde8"
       }
     },
@@ -47,7 +47,7 @@
       "scriptsRevision": "b4bcba0d",
       "reason": "The disposable App (rebuilt after the review fixes) aborted before collection (SIGABRT, Avalonia RenderTimer error -6661) while the desktop session was locked and the display unavailable. Nothing was measured; the cause is the environment. The collection was repeated after waking the display.",
       "retainedFiles": {
-        "app-output.log": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
+        "app-output-head.txt": "edc347e3277f83d88cd976f59d28d8792343406a391c5948a6c914d2ea68b1cd",
         "failure.json": "9e2fa8c7da713e8ce9e8153e387368c94153f1aae2a70e2bc49888d1a1283dd9"
       }
     },

@@ -202,8 +202,8 @@ public partial class TerminalBuffer
         asset.Source?.Release();
         RetireUnstoredKittyHandle(asset.Handle);
         if (asset.Animation is { } animation)
-            foreach (KittyFrame frame in animation.Frames)
-                if (!ReferenceEquals(frame.Handle, asset.Handle)) RetireUnstoredKittyHandle(frame.Handle);
+            foreach (KittyFrame frame in animation.Frames.Where(frame => !ReferenceEquals(frame.Handle, asset.Handle)))
+                RetireUnstoredKittyHandle(frame.Handle);
     }
 
     private bool IsRetainedKittyHandle(object handle) => _kittyImageAssets.Any(asset => asset.OwnsHandle(handle));

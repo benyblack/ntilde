@@ -10,7 +10,14 @@ import { imagePlan, imageInputs, imageBoundScreen, imageAction, imageReply, imag
 import { snapshotHash } from '../agent-observer.mjs';
 import { pngHash } from '../pixels-capture.mjs';
 import { defaultInputModes } from '../input-state.mjs';
-const chunk = (type, data) => { const b = Buffer.alloc(data.length + 12); b.writeUInt32BE(data.length); b.write(type, 4); data.copy(b, 8); b.writeUInt32BE(crc32(b.subarray(4, -4)), b.length - 4); return b; };
+export const chunk = (type, data) => { const b = Buffer.alloc(data.length + 12); b.writeUInt32BE(data.length); b.write(type, 4); data.copy(b, 8); b.writeUInt32BE(crc32(b.subarray(4, -4)), b.length - 4); return b; };
+/** A truecolor+alpha PNG of top-down RGBA rows. */
+export function rgbaPng(width, height, rgba) {
+    const raw = Buffer.alloc(height * (width * 4 + 1));
+    for (let row = 0; row < height; row++) rgba.copy(raw, row * (width * 4 + 1) + 1, row * width * 4, (row + 1) * width * 4);
+    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
+    return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+}
 function paintSource(rgba, width, spec, stage) {
         if (!spec) throw new Error('Synthetic image requires an explicit spec.');
         const size = { native: [16, 16], stretch: [32, 36], aspect: [32, 32] }[spec.geometry];
@@ -27,10 +34,7 @@ export function syntheticImageCapture(screen, spec = null, stage = null, { blank
     for (let i = 0; i < rgba.length; i += 4) rgba.set([background, background, background, 255], i);
     if (!blank && stage && stage.appearance !== 'absent') paintSource(rgba, width, spec, stage);
     if (bleed) rgba.set([255, 0, 0, 255], 0);
-    const raw = Buffer.alloc(height * (width * 4 + 1));
-    for (let row = 0; row < height; row++) rgba.copy(raw, row * (width * 4 + 1) + 1, row * width * 4, (row + 1) * width * 4);
-    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
-    const bytes = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+    const bytes = rgbaPng(width, height, rgba);
     Object.assign(capture, { width, height, byteCount: bytes.length, pngBase64: bytes.toString('base64') });
     Object.assign(capture.renderDetails.theme, { backgroundOverride: screen.bufferState.alternateScreen,
         backgroundArgb: screen.bufferState.alternateScreen ? 0xff101010 : 0xff000000,

@@ -2987,85 +2987,59 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 state.recordedActions = state.observer.actions.length;
             }
         };
-        const observeImages = async (request, budget, ownership) => {
-            requireInputCompletion(inputState);
-            if (!staticImageState) {
-                const priorChallenges = inputState.observer?.frames.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(',')) ?? [];
-                staticImageState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
-                    observer: new OwnedStaticImageObserver({ appData, ownerPid: app.pid, profileName, output,
-                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) };
-                proofs[0].staticImages.actions = staticImageState.observer.actions;
+        /**
+         * One image-carrier suite's observer: created on first use from the previous suite's evidence, bound to the proved worker and PTY, and
+         * journaled as it goes. `carrier` names the suite's state, proof slot, retained files, plan size and prerequisite.
+         */
+        const observeImageCarrier = async (carrier, request, budget, ownership) => {
+            carrier.require();
+            let state = carrier.state();
+            if (!state) {
+                const priorChallenges = carrier.priorFrames().filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
+                state = carrier.setState({ workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
+                    observer: new carrier.Observer({ appData, ownerPid: app.pid, profileName, output,
+                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) });
+                proofs[0][carrier.proof].actions = state.observer.actions;
             }
-            const state = staticImageState;
-            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Image fixture ownership changed.');
+            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error(carrier.label + ' fixture ownership changed.');
             try {
                 const result = await state.observer.handle(request, budget, ownership);
-                if (request.kind === 'images-start') {
-                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Image fixture geometry changed.');
-                    proofs[0].staticImages.paneId = state.observer.paneId;
-                    proofs[0].staticImages.geometry = { rows: result.screen.rows, cols: result.screen.cols };
+                if (request.kind === carrier.prefix + 'start') {
+                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error(carrier.label + ' fixture geometry changed.');
+                    proofs[0][carrier.proof].paneId = state.observer.paneId;
+                    proofs[0][carrier.proof].geometry = { rows: result.screen.rows, cols: result.screen.cols };
                 }
-                if (request.kind === 'images-seal') proofs[0].staticImages.seal = state.observer.seal;
+                if (request.kind === carrier.prefix + 'seal') proofs[0][carrier.proof].seal = state.observer.seal;
                 return result;
             } catch (error) {
-                const initial = request.kind === 'images-start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
+                const initial = request.kind === carrier.prefix + 'start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
                     && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length
-                    && !existsSync(join(output, 'image-pixels')) && !existsSync(join(output, 'image-inputs'));
+                    && !existsSync(join(output, carrier.pixelDir)) && !existsSync(join(output, carrier.inputDir));
                 if (initial) {
-                    const file = 'image-unavailable.json';
-                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: staticImageSuiteId, status: 'unavailable',
-                        reason: error.code, fixtureStarted: false, plannedExperiments: 5, plannedStages: 23 });
-                    state.unavailable = { runId, suiteId: staticImageSuiteId, file, sha256: hash(readFileSync(join(output, file))),
+                    const file = carrier.file + '-unavailable.json';
+                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: carrier.suiteId, status: 'unavailable',
+                        reason: error.code, fixtureStarted: false, plannedExperiments: carrier.planned.experiments, plannedStages: carrier.planned.stages });
+                    state.unavailable = { runId, suiteId: carrier.suiteId, file, sha256: hash(readFileSync(join(output, file))),
                         status: 'unavailable', reason: error.code, counts: {} };
-                } else if (state.observer.lastAttempt) writeJson(join(output, 'image-failed-observation.json'), state.observer.lastAttempt);
+                } else if (state.observer.lastAttempt) writeJson(join(output, carrier.file + '-failed-observation.json'), state.observer.lastAttempt);
                 throw error;
             } finally {
-                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, 'image-snapshots.jsonl'), JSON.stringify(frame) + '\n');
+                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, carrier.file + '-snapshots.jsonl'), JSON.stringify(frame) + '\n');
                 state.recordedFrames = state.observer.frames.length;
-                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, 'image-actions.jsonl'), JSON.stringify(action) + '\n');
+                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, carrier.file + '-actions.jsonl'), JSON.stringify(action) + '\n');
                 state.recordedActions = state.observer.actions.length;
             }
         };
-        const observeAnimation = async (request, budget, ownership) => {
-            requireStaticImageCompletion(staticImageState);
-            if (!animationState) {
-                const priorChallenges = [...(inputState.observer?.frames ?? []), ...(staticImageState.observer?.frames ?? [])]
-                    .filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
-                animationState = { workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
-                    observer: new OwnedAnimationObserver({ appData, ownerPid: app.pid, profileName, output,
-                        nonce: 'NTILDE_IMG_' + runId, expectedPaneId: cellObserver.paneId, priorChallenges }) };
-                proofs[0].kittyAnimation.actions = animationState.observer.actions;
-            }
-            const state = animationState;
-            if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error('Animation fixture ownership changed.');
-            try {
-                const result = await state.observer.handle(request, budget, ownership);
-                if (request.kind === 'kan-start') {
-                    if (result.screen.rows !== cellObserver.baseline.rows || result.screen.cols !== cellObserver.baseline.cols) throw new Error('Animation fixture geometry changed.');
-                    proofs[0].kittyAnimation.paneId = state.observer.paneId;
-                    proofs[0].kittyAnimation.geometry = { rows: result.screen.rows, cols: result.screen.cols };
-                }
-                if (request.kind === 'kan-seal') proofs[0].kittyAnimation.seal = state.observer.seal;
-                return result;
-            } catch (error) {
-                const initial = request.kind === 'kan-start' && ['screenDetailsUnavailable', 'imageGeometryUnavailable'].includes(error.code)
-                    && !state.observer.baseline && !state.observer.frames.length && !state.observer.actions.length
-                    && !existsSync(join(output, 'animation-pixels')) && !existsSync(join(output, 'animation-inputs'));
-                if (initial) {
-                    const file = 'animation-unavailable.json';
-                    writeJson(join(output, file), { schemaVersion: 1, runId, suiteId: animationSuiteId, status: 'unavailable',
-                        reason: error.code, fixtureStarted: false, plannedExperiments: animationCases.length, plannedStages: animationPlannedStages });
-                    state.unavailable = { runId, suiteId: animationSuiteId, file, sha256: hash(readFileSync(join(output, file))),
-                        status: 'unavailable', reason: error.code, counts: {} };
-                } else if (state.observer.lastAttempt) writeJson(join(output, 'animation-failed-observation.json'), state.observer.lastAttempt);
-                throw error;
-            } finally {
-                for (const frame of state.observer.frames.slice(state.recordedFrames)) appendFileSync(join(output, 'animation-snapshots.jsonl'), JSON.stringify(frame) + '\n');
-                state.recordedFrames = state.observer.frames.length;
-                for (const action of state.observer.actions.slice(state.recordedActions)) appendFileSync(join(output, 'animation-actions.jsonl'), JSON.stringify(action) + '\n');
-                state.recordedActions = state.observer.actions.length;
-            }
-        };
+        const staticImageCarrier = { label: 'Image', prefix: 'images-', proof: 'staticImages', file: 'image', suiteId: staticImageSuiteId, Observer: OwnedStaticImageObserver,
+            pixelDir: 'image-pixels', inputDir: 'image-inputs', planned: { experiments: 5, stages: 23 },
+            require: () => requireInputCompletion(inputState), state: () => staticImageState, setState: value => (staticImageState = value),
+            priorFrames: () => inputState.observer?.frames ?? [] };
+        const animationCarrier = { label: 'Animation', prefix: 'kan-', proof: 'kittyAnimation', file: 'animation', suiteId: animationSuiteId, Observer: OwnedAnimationObserver,
+            pixelDir: 'animation-pixels', inputDir: 'animation-inputs', planned: { experiments: animationCases.length, stages: animationPlannedStages },
+            require: () => requireStaticImageCompletion(staticImageState), state: () => animationState, setState: value => (animationState = value),
+            priorFrames: () => [...(inputState.observer?.frames ?? []), ...(staticImageState.observer?.frames ?? [])] };
+        const observeImages = (request, budget, ownership) => observeImageCarrier(staticImageCarrier, request, budget, ownership);
+        const observeAnimation = (request, budget, ownership) => observeImageCarrier(animationCarrier, request, budget, ownership);
         const attestQuery = (state, budget) => {
             if (!outputModeVerified || !app?.pid || app.exitCode !== null || app.signalCode !== null)
                 throw new Error('Owned query App/output proof is no longer live.');

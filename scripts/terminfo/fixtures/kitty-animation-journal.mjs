@@ -1,10 +1,9 @@
 // Synthetic protocols/state/PNGs only. These are never runtime evidence.
-import { crc32, deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { initialInputScreen, inputPaneId, inputRunId, inputCapture } from './input-journal.mjs';
 import { pixelCapture } from './pixel-capture.mjs';
-import { imageOwnership } from './static-images-journal.mjs';
+import { imageOwnership, rgbaPng } from './static-images-journal.mjs';
 import { animationCases, animationExpectedReplies } from '../kitty-animation-cases.mjs';
 import { animationFrameColor } from '../kitty-animation-inputs.mjs';
 import { animationPlan, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix, animationActionCount } from '../kitty-animation.mjs';
@@ -12,7 +11,6 @@ import { imageModeReplyHex, imageBackgroundReply } from '../static-images.mjs';
 import { snapshotHash } from '../agent-observer.mjs';
 import { pngHash } from '../pixels-capture.mjs';
 
-const chunk = (type, data) => { const b = Buffer.alloc(data.length + 12); b.writeUInt32BE(data.length); b.write(type, 4); data.copy(b, 8); b.writeUInt32BE(crc32(b.subarray(4, -4)), b.length - 4); return b; };
 export const animationEpoch = Date.parse('2026-11-04T14:00:00.000Z');
 const iso = ms => new Date(animationEpoch + ms).toISOString();
 
@@ -26,10 +24,7 @@ export function syntheticAnimationCapture(screen, appearance, { bleed = false } 
         for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) rgba.set(color, ((72 + y) * width + 24 + x) * 4);
     }
     if (bleed) rgba.set([255, 0, 0, 255], 0);
-    const raw = Buffer.alloc(height * (width * 4 + 1));
-    for (let row = 0; row < height; row++) rgba.copy(raw, row * (width * 4 + 1) + 1, row * width * 4, (row + 1) * width * 4);
-    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
-    const bytes = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+    const bytes = rgbaPng(width, height, rgba);
     Object.assign(capture, { width, height, byteCount: bytes.length, pngBase64: bytes.toString('base64') });
     Object.assign(capture.renderDetails.theme, { backgroundOverride: screen.bufferState.alternateScreen,
         backgroundArgb: screen.bufferState.alternateScreen ? 0xff101010 : 0xff000000,
@@ -45,6 +40,16 @@ export function syntheticAnimationCapture(screen, appearance, { bleed = false } 
             bitmapWidthPx: 16, bitmapHeightPx: 16, sixelPlacement: null }] }
         : { schemaVersion: 1, complete: true, totalPlacements: 0, placements: [] };
     return capture;
+}
+
+/** Where a stage's admission, read request and capture span fall on the simulated clock: a running read centres on its target, any other waits out its gap. */
+function plannedTiming(stage, startedAt, clock) {
+    if (stage?.clock === 'running' && stage.targetMs !== undefined && startedAt !== undefined) {
+        const centre = startedAt + stage.targetMs, span = [centre - 600, centre + 600];
+        return { actionAt: span[0] - 1000, readAt: span[0] - 200, span };
+    }
+    const actionAt = clock + (stage?.waitMs ?? 100);
+    return { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
 }
 
 /**
@@ -76,14 +81,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
         if (entry.kind === 'read' && !states.has(entry.caseId)) states.set(entry.caseId, { imageId: 4000 + states.size });
         const state = states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, runId, initial.cursorVisible);
         const item = animationCases.find(value => value.id === entry.caseId), stage = item?.stages.find(value => value.id === entry.stageId);
-        let plan;
-        if (stage?.clock === 'running' && stage.targetMs !== undefined && startedAt.has(entry.caseId)) {
-            const centre = startedAt.get(entry.caseId) + stage.targetMs, span = [centre - 600, centre + 600];
-            plan = { actionAt: span[0] - 1000, readAt: span[0] - 200, span };
-        } else {
-            const actionAt = clock + (stage?.waitMs ?? 100);
-            plan = { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
-        }
+        let plan = plannedTiming(stage, startedAt.get(entry.caseId), clock);
         plan = timing?.(entry, plan) ?? plan;
         if (stage?.reply === 'start') startedAt.set(entry.caseId, plan.actionAt);
         const action = { index: actions.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
