@@ -474,6 +474,20 @@ public class Osc3008ContextTests
     }
 
     [Fact]
+    public void The_parity_debug_string_distinguishes_every_context_field()
+    {
+        var (first, _, _) = Create();
+        var (second, _, _) = Create();
+        first.Process(Start("a", ";type=shell;user=u;cwd=/x;cmdline=ls") + Start("b") + End("b", ";exit=failure;status=2;signal=SIGSEGV"));
+        second.Process(Start("a", ";type=shell;user=u;cwd=/y;cmdline=ls") + Start("b") + End("b", ";exit=failure;status=2;signal=SIGABRT"));
+
+        string left = first.ExportState().ToDebugString(), right = second.ExportState().ToDebugString();
+        Assert.NotEqual(left, right);
+        Assert.Contains("/x", left);
+        Assert.Contains("SIGSEGV", left);
+    }
+
+    [Fact]
     public void Imported_context_state_is_validated()
     {
         var parser = new AnsiParser(new TerminalBuffer(cols: 10, rows: 2));

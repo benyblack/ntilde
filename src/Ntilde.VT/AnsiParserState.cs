@@ -192,13 +192,13 @@ namespace Ntilde.VT
             sb.Append(" osc3008=");
             foreach (ContextRecord entry in ContextStack ?? new List<ContextRecord>())
             {
-                sb.Append('(').Append(Quote(entry?.Id)).Append(',').Append(Quote(entry?.Type)).Append(')');
+                sb.Append('(').Append(entry?.ToDebugString() ?? "<null>").Append(')');
             }
 
             sb.Append(" osc3008_ended=");
             foreach (EndedContextRecord entry in EndedContexts ?? new List<EndedContextRecord>())
             {
-                sb.Append('(').Append(Quote(entry?.Id)).Append(',').Append(Quote(entry?.Exit)).Append(',').Append(Quote(entry?.Status)).Append(')');
+                sb.Append('(').Append(entry?.ToDebugString() ?? "<null>").Append(')');
             }
 
             sb.Append(" sixel_cw=").Append(SixelCellWidthPx?.ToString("R", CultureInfo.InvariantCulture) ?? "<null>");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -415,6 +416,10 @@ namespace Ntilde.VT
         [JsonPropertyName("sessionid"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? SessionId { get; set; }
 
         internal ContextRecord Clone() => (ContextRecord)MemberwiseClone();
+
+        /// <summary>Every field, in order, for the state-parity oracle: two records that differ in any field never render alike.</summary>
+        internal string ToDebugString() => string.Join(",", new[] { Id, Type, User, Hostname, MachineId, BootId, Pid, PidFdId, Comm, Cwd, CmdLine, Vm, Container, TargetUser, TargetHost, SessionId }
+            .Select(value => value is null ? "<null>" : "\"" + value + "\""));
     }
 
     /// <summary>An OSC 3008 context that was explicitly ended, with whatever end metadata was valid. Untrusted, like <see cref="ContextRecord"/>.</summary>
@@ -429,5 +434,8 @@ namespace Ntilde.VT
         [JsonPropertyName("signal"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Signal { get; set; }
 
         internal EndedContextRecord Clone() => (EndedContextRecord)MemberwiseClone();
+
+        /// <summary>Every field, in order, for the state-parity oracle.</summary>
+        internal string ToDebugString() => string.Join(",", new[] { Id, Type, Exit, Status, Signal }.Select(value => value is null ? "<null>" : "\"" + value + "\""));
     }
 }
