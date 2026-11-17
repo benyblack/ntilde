@@ -48,9 +48,9 @@ test('the owned run independently rederives the complete receipt and the publica
         rmSync(join(copy, 'cell-receipt.json'));
         const derived = completeOwnedReceipt(copy, join(copy, 'removed-fixture'), evidenceOf(original));
         assert.deepEqual({ ...derived, completedAt: original.completedAt }, original);
-        assert.equal(original.schemaVersion, 70);
+        assert.equal(original.schemaVersion, 71);
         assert.equal(original.fixtureRemoved, true);
-        assert.equal(original.collectionScope.id, 'owned-osc633-without-notification-suites-v3');
+        assert.equal(original.collectionScope.id, 'owned-osc633-without-notification-suites-v4');
         assert.deepEqual(original.collectionScope.omittedSuites, ['osc9', 'notify']);
         assert.equal(original.collectionScope.predecessor.runId, 'b45702ad11ea1f0ea46eeb4908206155');
         const archive = read(pinnedBundleArchive);
@@ -60,7 +60,7 @@ test('the owned run independently rederives the complete receipt and the publica
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
         assert.equal(projected.report.suiteId, kittyAnimationQualificationSuiteId);
         assert.deepEqual(projected.report.cases.map(item => item.caseId), [...kittyAnimationQualificationIds]);
-        assert.equal(projected.summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v63');
+        assert.equal(projected.summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v64');
         assert.equal(projected.summary.context.ownedAnimationPolicy, kittyAnimationCarrierPolicy);
         assert.equal(projected.summary.context.animationSuiteId, kittyAnimationCarrierSuiteId);
     } finally { rmSync(copy, { recursive: true, force: true }); }
@@ -205,8 +205,8 @@ test('a retained pixel, input, journal line or directory member that changed is 
 
 test('the superseded collection attempts are retained with their actual failures and none carries a grade', () => {
     const { attempts } = JSON.parse(readFileSync(join(dir, 'superseded-attempts', 'attempts.json')));
-    assert.equal(attempts.length, 12);
-    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]);
+    assert.equal(attempts.length, 13);
+    assert.deepEqual(attempts.map(item => item.runId.length), [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]);
     assert.ok(attempts.every(item => item.runId !== original.animationEvidence.runId && item.reason.length > 40));
     for (const item of attempts) {
         assert.deepEqual(readdirSync(join(dir, 'superseded-attempts', item.runId)).sort(), Object.keys(item.retainedFiles).sort());
@@ -226,6 +226,8 @@ test('the superseded collection attempts are retained with their actual failures
     assert.match(attempts[9].reason, /Superseded, not failed/);
     assert.match(attempts[10].reason, /Superseded, not failed/);
     assert.match(attempts[11].reason, /Superseded, not failed/);
+    assert.match(attempts[12].reason, /Superseded, not failed/);
+    assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[12].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[11].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[10].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'superseded-attempts', attempts[9].runId, 'animation-observations.json'))).caseResults.map(item => item.result), ['passed', 'passed', 'passed']);

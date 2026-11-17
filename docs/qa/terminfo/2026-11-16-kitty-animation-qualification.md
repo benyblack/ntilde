@@ -38,14 +38,14 @@ fences never reused from the input or static-image phases, blank-before controls
 ## What the wall-clock evidence shows
 
 Frames advance with the App's own monotonic clock; the suite does not synthesize presentation time. The collector waited so each paired capture would land mid-window.
-Measured against the bracket in which `a=a,s=3` could have taken effect (about 50 ms wide), the playback captures covered 7.48-7.56 s (second frame window 5-10 s),
-12.46-12.55 s (third, 10-15 s) and 17.46-17.55 s (root again, 15-20 s). In `stop-freeze` the stop took effect at 6.26-6.28 s, inside the second frame, and a capture
+Measured against the bracket in which `a=a,s=3` could have taken effect (about 50 ms wide), the playback captures covered 7.48-7.55 s (second frame window 5-10 s),
+12.45-12.52 s (third, 10-15 s) and 17.47-17.55 s (root again, 15-20 s). In `stop-freeze` the stop took effect at 6.25-6.27 s, inside the second frame, and a capture
 12.4 s after the start still showed the second frame, where a running animation would have shown the third. The stationary control's capture began more than one
 root gap after the frame was built and still showed the root.
 
 ## Limits
 
-This is playback by elapsed time on one App build (App and scripts revision `4f4b294e`), one desktop, one image size, one gap length and one PNG encoding (8-bit RGBA, non-interlaced). It is
+This is playback by elapsed time on one App build (App and scripts revision `cf59628f`, main merged in), one desktop, one image size, one gap length and one PNG encoding (8-bit RGBA, non-interlaced). It is
 not a frame-rate or display-refresh claim, and says nothing about other container formats or PNG encodings, `a=c` composition, persistent sessions (animation is
 refused there, `ENOTSUP`, because their snapshots keep the root frame only), remote/mux, other platforms or the common-harness comparison. Those production limits are listed in the
 [lifecycle contract](kitty-image-lifecycle.md), and `a=q,e=c` answers `ERR`.
@@ -53,14 +53,14 @@ refused there, `ENOTSUP`, because their snapshots keep the root frame only), rem
 ## Retained evidence and superseded attempts
 
 `2026-11-16-kitty-animation/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy, and the generated
-`summary.json` and `report.json`. The run is `dfe73776db79207ba766b2486324a681` (stock collector run `9398a85c0197804c15eab8de2ac02d5a`), source policy v63,
-receipt schema 70, collected with the v3 `osc633` scope whose predecessor archive is the existing pinned full run. `kitty-animation-publication.test.mjs` rederives the complete
+`summary.json` and `report.json`. The run is `99d639356e6c79215fd29c5cd655b4b8` (stock collector run `b0d928355c08946d7180c3f77bacfcc9`), source policy v64,
+receipt schema 71, collected with the v4 `osc633` scope whose predecessor archive is the existing pinned full run. `kitty-animation-publication.test.mjs` rederives the complete
 receipt and the projection from the archive and refuses an altered binding, journal line, pixel, input or marker.
 
-Twelve earlier runs are retained under `superseded-attempts/` with their real outcomes. Four ended without a grade: the display was unavailable twice, so the App aborted
+Thirteen earlier runs are retained under `superseded-attempts/` with their real outcomes. Four ended without a grade: the display was unavailable twice, so the App aborted
 before collecting (Avalonia RenderTimer error -6661); the observer's prior-challenge allowance covered the input phase only; and the expected `a=T` reply
 shape omitted the placement id the App correctly echoes (`i=<id>,p=1;OK`). Eight complete 18/18 runs of the three-case suite, on the Apps built from `479a5465`, `b4bcba0d`, `be8add66`, `a706d8a1`, `efed4bf8`, `78ab1d2b`, `de376515` and `9bc1fd9c` (the run #1013 merged),
 are kept as superseded rather than failed: five rounds of review of the playhead, the view and the measuring scripts found real defects (finite-loop counting, catch-up after a
 long gap, loading resume and gapless display, wake-ups on retire and for an animation that cannot move, settling before gap changes and refused frames,
 boundary-straddling capture pairs, challenge uniqueness, eviction ordering, rejected frame handles, bleed checks on both pair members, snapshot parity in persistent sessions), so each fix
-set rebuilt the App and repeated the whole collection, as did the CI and SonarCloud fixes after the pull request opened. The published run is therefore a fresh collection on the final App and scripts, and none of the fixes changed a measured verdict. The latest of them is superseded because #1015 extended the suite (a fourth case, v2 ids) rather than because anything failed.
+set rebuilt the App and repeated the whole collection, as did the CI and SonarCloud fixes after the pull request opened. The published run is therefore a fresh collection on the final App and scripts, and none of the fixes changed a measured verdict. Two more complete runs are superseded for #1015 rather than because anything failed: the three-case run #1013 merged (`9bc1fd9c`), and the first four-case run (`4f4b294e`), repeated because merging main brought in the integrated OSC cell-size run, whose v1 animation evidence made the suite versioned (v1 stays rederivable beside v2), and because the final review and SonarCloud follow-ups changed measured scripts and the frame parser.

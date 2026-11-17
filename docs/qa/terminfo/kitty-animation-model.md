@@ -1,7 +1,7 @@
 # Owned Kitty animation suite: model, oracle and timing (#988)
 
 Suite `ntilde-owned-kitty-animation-v2`, policy `owned-kitty-animation-paired-raw-render-v2`, run after the static-image suite
-in the same owned collection (source policy v63, receipt schema 70). The measured behavior is the Kitty graphics animation
+in the same owned collection (source policy v64, receipt schema 71). The measured behavior is the Kitty graphics animation
 playback added for #988, plus the PNG frames and root-frame base/edit added for #1015 ([contract](kitty-image-lifecycle.md)); this document defines what the measurement asserts.
 
 ## What is measured

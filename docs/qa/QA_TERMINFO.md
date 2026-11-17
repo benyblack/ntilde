@@ -868,10 +868,10 @@ needs no source-policy or receipt bump; stock grades and Core scores do not chan
 The [2026-11-16 Kitty animation qualification](terminfo/2026-11-16-kitty-animation-qualification.md)
 (#988, #1015) implements bounded Kitty frame playback (`a=f` raw and PNG frames, `a=a` control, a clock-driven playhead, the root frame as a base or edit target) and
 qualifies `extensions.kitty-graphics.animation` with a new owned suite, [`ntilde-owned-kitty-animation-v2`](terminfo/kitty-animation-model.md)
-(source policy v63, receipt schema 70): three timed cases of three solid frames held 5 s each plus a case of PNG and root-based frames, read by paired offscreen captures
+(source policy v64, receipt schema 71): three timed cases of three solid frames held 5 s each plus a case of PNG and root-based frames, read by paired offscreen captures
 against retained wall-clock brackets. The effect contract is supported (24/24 stages) while both pinned callbacks stay
-inconclusive by design and the stock grade stays inconclusive; Core scores do not change. Twelve superseded runs are retained with their
-actual outcomes, including eight earlier complete runs of the three-case suite on the Apps before review, CI and the #1015 extension. Persistent sessions still refuse animation (#1017).
+inconclusive by design and the stock grade stays inconclusive; Core scores do not change. Thirteen superseded runs are retained with their
+actual outcomes, including eight earlier complete runs of the three-case suite and one of the four-case suite on the Apps before review, CI, the merge with main and the #1015 extension. Persistent sessions still refuse animation (#1017).
 
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
