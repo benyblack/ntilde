@@ -514,6 +514,20 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void A_paused_host_holds_the_playheads_and_requests_no_wake_ups()
+    {
+        var h = ThreeFrames();
+        h.Now = 0; h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        h.Buffer.KittyAnimationPaused = true;                // a replay window that is not playing
+        Assert.False(h.Advance(60));
+        Assert.Equal(0, Index(h));
+        Assert.Null(NextDue(h));
+        h.Buffer.KittyAnimationPaused = false;
+        Assert.True(h.Advance(60));
+        Assert.Equal(1, Index(h));
+    }
+
+    [Fact]
     public void A_placed_animation_that_cannot_move_requests_no_wake_ups()
     {
         var h = new Harness();

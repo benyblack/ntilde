@@ -17,6 +17,12 @@ public partial class TerminalBuffer
     /// </summary>
     public Func<long> KittyAnimationClock { get; set; } = static () => Environment.TickCount64;
 
+    /// <summary>
+    /// A host that replays recorded output sets this while playback is not running: the playheads hold where they are and nothing
+    /// asks to be woken, instead of following the wall clock.
+    /// </summary>
+    public bool KittyAnimationPaused { get; set; }
+
     /// <summary>Frames in the image including the root (1 for a still image).</summary>
     internal static int KittyFrameCount(KittyImageAsset asset) => asset.Animation?.Frames.Count ?? 1;
 
@@ -108,6 +114,7 @@ public partial class TerminalBuffer
     public bool AdvanceKittyAnimations(long nowMs, out long? nextDueMs, bool invalidate = true)
     {
         nextDueMs = null;
+        if (KittyAnimationPaused) return false;
         bool changed = false;
         bool lockTaken = EnterWriteLockIfNeeded();
         try
