@@ -19,17 +19,37 @@
       "archive": "superseded/attempt-2-pre-hover-fix.zip",
       "log": "collection-logs.zip:attempt-2.log",
       "disposition": "superseded-pre-hover-fix",
-      "reason": "Supported basic main-screen effect on the earlier App, with complete cleanup receipt. Preserved as historical evidence after the App screen-switch stale-hover fix; not the final App measurement."
+      "reason": "Supported basic main-screen effect on the earlier App, with complete cleanup receipt. Preserved as historical evidence after the App screen-switch stale-hover fix; not the final App measurement. Its older OSC720 plan is rejected by the current full-receipt rederivation; only its independently rebuilt OSC22 report remains historical evidence."
     },
     {
       "attempt": 3,
       "runId": "95db74fe99675694c4197ccfca70df84",
       "appRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
       "scriptsRevision": "bcc85a1fdadcd88d753272e46d273fbe4bb4bb3e",
-      "archive": "owned-run.zip",
+      "archive": "superseded/attempt-3-before-corrected-predecessor.zip",
       "log": "collection-logs.zip:attempt-3.log",
+      "disposition": "superseded-pre-corrected-predecessor",
+      "reason": "Earlier successful main-screen OSC22 measurement before the corrected OSC720 predecessor. Current full-receipt rederivation rejects its old OSC720 plan. Its OSC22 journal/report and original cleanup remain retained as historical evidence."
+    },
+    {
+      "attempt": 4,
+      "runId": "72b465974ad2e13e4b0a1113444f8063",
+      "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "scriptsRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "archive": "superseded/attempt-4-animation-rpc-failure.zip",
+      "log": "collection-logs.zip:attempt-4.log",
+      "disposition": "failed-not-admitted",
+      "reason": "Owner RPC expired during synchronous animation report grading after all raw frames and the raw-reader seal. No receipt or admitted OSC22 effect. Complete raw attempt, primary failure, verified cleanup and lease release retained. No deadline was raised."
+    },
+    {
+      "attempt": 5,
+      "runId": "412aa71eeb2f93be09465d03b607eb56",
+      "appRevision": "2e8ef66c8c6ee86758c75538ac57dd42d623c52d",
+      "scriptsRevision": "750f137192ae07588c1e63f87073d5b297a972b3",
+      "archive": "owned-run.zip",
+      "log": "collection-logs.zip:attempt-5.log",
       "disposition": "admitted",
-      "reason": "Fresh App after clearing stale link hover on screen switches; complete paired journal, unchanged main-screen effect contract, prepared restoration and cleanup receipt75. Pinned inconclusive / separate App Cursor-kind effect supported."
+      "reason": "Fresh full owned run after corrected OSC720 predecessor and image grading moved outside the bounded owner RPC. Complete unchanged full grading and cleanup receipt75. Pinned inconclusive / separate App Cursor-kind effect supported."
     }
   ]
 }

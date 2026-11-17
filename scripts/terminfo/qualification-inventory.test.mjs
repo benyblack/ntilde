@@ -691,7 +691,7 @@ test('OSC22 counts one rederived App effect while preserving pinned and stock in
     assert.equal(suite.dir, '2026-11-17-osc22');
     const { report, summary } = loadPublication(defaultQaRoot, suite);
     assert.deepEqual(report.cases.map(item => [item.caseId, pinnedVerdictOf(item), effectVerdictOf(item)]), [['extensions.osc22-pointer', 'inconclusive', 'supported']]);
-    assert.equal(summary.ownedRunId, '95db74fe99675694c4197ccfca70df84');
+    assert.equal(summary.ownedRunId, '412aa71eeb2f93be09465d03b607eb56');
     const stored = committed(), item = row(stored, 'extensions.osc22-pointer');
     assert.equal(item.claims.length, 1);
     assert.equal(item.stockOutcome, 'inconclusive'); assert.equal(item.pinned.best, 'inconclusive'); assert.equal(item.effect.verdict, 'supported');
