@@ -16,7 +16,23 @@ public sealed class KittyAnimationTests
 
     private sealed class PixelDecoder : IImageDecoder
     {
-        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        /// <summary>A test container: a PNG signature and IHDR (what the header probe reads), then one RGBA color the whole image is filled with.</summary>
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight)
+        {
+            pixelWidth = pixelHeight = 0;
+            if (imageData.Length != 37 || !ImageHeaderProbe.TryGetSize(imageData, out _, out int width, out int height)) return null;
+            (pixelWidth, pixelHeight) = (width, height);
+            var rgba = new byte[width * height * 4];
+            for (int i = 0; i < width * height; i++) Array.Copy(imageData, 33, rgba, i * 4, 4);
+            return new Pixels(rgba, width, height);
+        }
+
+        public bool TryReadPixels(object handle, out byte[] rgba, out int pixelWidth, out int pixelHeight)
+        {
+            (rgba, pixelWidth, pixelHeight) = handle is Pixels pixels ? ((byte[])pixels.Rgba.Clone(), pixels.Width, pixels.Height) : ([], 0, 0);
+            return handle is Pixels;
+        }
+
         public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
         {
@@ -56,6 +72,17 @@ public sealed class KittyAnimationTests
         internal object Shown => Assert.Single(Buffer.Images).ImageHandle;
         internal Pixels FramePixels(int index) => (Pixels)Buffer.FindKittyImage(1, 0)!.Animation!.Frames[index].Handle;
         internal bool Advance(long now) { Now = now; return Buffer.AdvanceKittyAnimations(now, out _); }
+    }
+
+    /// <summary>The test container <see cref="PixelDecoder"/> reads: a 33-byte PNG header for the size, then the fill color.</summary>
+    private static string Png(int width, int height, byte r, byte g, byte b, byte a)
+    {
+        var bytes = new byte[37];
+        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, (byte)'I', (byte)'H', (byte)'D', (byte)'R' }.CopyTo(bytes, 0);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(16), (uint)width);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(20), (uint)height);
+        new[] { r, g, b, a }.CopyTo(bytes, 33);
+        return B64(bytes);
     }
 
     private static string Solid(byte r, byte g, byte b, byte a, int pixels = 2) =>
@@ -132,15 +159,13 @@ public sealed class KittyAnimationTests
     }
 
     [Theory]
-    [InlineData("a=f,i=1,f=32,s=2,v=1,c=1", "ENOTSUP")]           // root pixels are not retained
-    [InlineData("a=f,i=1,f=32,s=2,v=1,r=1", "ENOTSUP")]
     [InlineData("a=f,i=1,f=32,s=2,v=1,c=9", "ENOENT")]
     [InlineData("a=f,i=1,f=32,s=2,v=1,r=9", "ENOENT")]
     [InlineData("a=f,i=1,f=32,s=2,v=1,x=1", "EINVAL")]            // rectangle leaves the 2x1 image
     [InlineData("a=f,i=1,f=32,s=2,v=2", "EINVAL")]
     [InlineData("a=f,i=1,f=32,s=2,v=1,X=2", "EINVAL")]
     [InlineData("a=f,i=1,f=32,s=2,v=1,z=abc", "EINVAL")]
-    [InlineData("a=f,i=1,f=100", "ENOTSUP")]                       // only raw frames
+    [InlineData("a=f,i=1,f=100", "EINVAL")]                        // not an image container
     [InlineData("a=f,i=1,s=2,v=1", "ENOTSUP")]                      // f absent is not assumed
     [InlineData("a=f,i=2,f=32,s=2,v=1", "ENOENT")]                  // unknown image
     [InlineData("a=a,i=2,s=3", "ENOENT")]
@@ -153,6 +178,90 @@ public sealed class KittyAnimationTests
         h.Send(controls, Solid(1, 2, 3, 255));
         string reply = h.Reply();
         Assert.Contains($";{code}:", reply);
+        Assert.Equal(1, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+    }
+
+    [Fact]
+    public void The_root_frame_is_a_base_for_a_later_frame()
+    {
+        var h = new Harness();                                                          // root: red | blue
+        h.Send("a=f,i=1,f=32,s=1,v=1,x=1,c=1", Solid(0, 255, 0, 255, 1));              // green over the root's right pixel
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 255, 0, 0, 255, 0, 255, 0, 255 }, h.FramePixels(1).Rgba);
+        h.Send("a=f,i=1,f=32,s=1,v=1,c=1,X=1", Solid(255, 255, 255, 128, 1));          // overwrite replaces the pixel, alpha included
+        Assert.Equal(new byte[] { 255, 255, 255, 128, 0, 0, 255, 255 }, h.FramePixels(2).Rgba);
+    }
+
+    [Fact]
+    public void Editing_the_root_frame_replaces_its_pixels_and_keeps_its_gap()
+    {
+        var h = new Harness();
+        object original = h.Shown;
+        h.Send("a=a,i=1,r=1,z=300"); h.Replies.Clear();
+        h.Send("a=f,i=1,f=32,s=2,v=1,r=1", Solid(9, 8, 7, 255));
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Single(animation.Frames);
+        Assert.Equal(300, animation.Frames[0].GapMs);
+        Assert.NotSame(original, h.Shown);                                              // the displayed root now draws the edit
+        Assert.Equal(new byte[] { 9, 8, 7, 255, 9, 8, 7, 255 }, h.FramePixels(0).Rgba);
+        // The decoded pixels were already charged to the asset; only the retained RGBA is new (2x1 image: 8 bytes each).
+        Assert.Equal(8 + 8, h.Buffer.FindKittyImage(1, 0)!.PixelCharge);
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Contains(original, retired);
+        h.Send("a=f,i=1,f=32,s=1,v=1,x=1,c=1", Solid(1, 2, 3, 255, 1));                // a later frame is built on the edited root
+        Assert.Equal(new byte[] { 9, 8, 7, 255, 1, 2, 3, 255 }, h.FramePixels(1).Rgba);
+    }
+
+    [Fact]
+    public void A_decoder_that_cannot_read_pixels_leaves_the_root_unusable_as_a_base()
+    {
+        var h = new Harness();
+        h.Parser.ImageDecoder = new RawOnlyDecoder();
+        h.Send("a=f,i=1,f=32,s=1,v=1,c=1", Solid(1, 2, 3, 255, 1));
+        Assert.Contains(";ENOTSUP:Root frame pixels are unavailable", h.Reply());
+        h.Send("a=f,i=1,f=32,s=1,v=1", Solid(1, 2, 3, 255, 1));                          // a frame that needs no base is fine
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+    }
+
+    [Fact]
+    public void A_container_frame_is_decoded_to_pixels_and_composed()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=100,x=1,z=90", Png(1, 1, 0, 0, 255, 255));                    // a 1x1 blue PNG at x=1, over a transparent canvas
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 0, 0, 0, 0, 0, 0, 255, 255 }, h.FramePixels(1).Rgba);
+        Assert.Equal(90, h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames[1].GapMs);
+        h.Send("a=f,i=1,f=100,c=1", Png(1, 1, 0, 255, 0, 255));                         // a PNG over the root: green at the origin
+        Assert.Equal(new byte[] { 0, 255, 0, 255, 0, 0, 255, 255 }, h.FramePixels(2).Rgba);
+    }
+
+    [Theory]
+    [InlineData("a=f,i=1,f=100,x=1", 2, 1)]                                             // a 2x1 PNG at x=1 leaves the 2x1 image
+    [InlineData("a=f,i=1,f=100", 3, 1)]
+    [InlineData("a=f,i=1,f=100,x=2147483648", 1, 1)]                                   // an offset that would wrap negative as an int
+    [InlineData("a=f,i=1,f=32,s=1,v=1,y=4294967295", 1, 1)]
+    public void A_container_frame_larger_than_its_place_is_refused_before_decoding(string controls, int width, int height)
+    {
+        var h = new Harness();
+        var counting = new CountingDecoder();
+        h.Parser.ImageDecoder = counting;
+        h.Send(controls, Png(width, height, 1, 2, 3, 255));
+        Assert.Contains(";EINVAL:", h.Reply());
+        Assert.Equal(0, counting.Decodes);
+        Assert.Equal(1, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
+    }
+
+    [Fact]
+    public void A_container_frame_needs_a_decoder_that_exposes_pixels()
+    {
+        var h = new Harness();
+        h.Parser.ImageDecoder = new RawOnlyDecoder();
+        h.Send("a=f,i=1,f=100", Png(1, 1, 1, 2, 3, 255));
+        Assert.Contains(";ENOTSUP:", h.Reply());
+        h.Parser.ImageDecoder = null;
+        h.Send("a=f,i=1,f=100", Png(1, 1, 1, 2, 3, 255));
+        Assert.Contains(";ENOTSUP:", h.Reply());
         Assert.Equal(1, TerminalBuffer.KittyFrameCount(h.Buffer.FindKittyImage(1, 0)!));
     }
 
@@ -574,10 +683,22 @@ public sealed class KittyAnimationTests
         Assert.NotNull(anywhere);                                          // no viewport given: any placement counts
     }
 
+    /// <summary>Decodes raw frames and containers to opaque handles but cannot read them back as pixels (the interface default).</summary>
+    private sealed class RawOnlyDecoder : IImageDecoder
+    {
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) { (pixelWidth, pixelHeight) = (1, 1); return new object(); }
+        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
+        {
+            (pixelWidth, pixelHeight) = (width, height);
+            return new object();
+        }
+    }
+
     private sealed class CountingDecoder : IImageDecoder
     {
         internal int Decodes;
-        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
+        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight) { Decodes++; pixelWidth = pixelHeight = 0; return null; }
         public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight) { pixelWidth = pixelHeight = 0; return null; }
         public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
         {

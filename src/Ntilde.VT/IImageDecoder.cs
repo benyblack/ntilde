@@ -46,5 +46,17 @@ namespace Ntilde.VT
         /// Returns null on any dimension/length mismatch rather than throwing.
         /// </summary>
         object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight);
+
+        /// <summary>
+        /// Reads a handle this decoder produced back as top-down straight-alpha RGBA (<c>width * height * 4</c> bytes). Kitty animation
+        /// needs the pixels of a frame it did not retain (the root frame, or a PNG frame) to compose later frames over them. A decoder
+        /// that cannot expose pixels, or a handle that has been retired, returns false and the frame command is refused rather than guessed.
+        /// </summary>
+        bool TryReadPixels(object handle, out byte[] rgba, out int pixelWidth, out int pixelHeight)
+        {
+            rgba = [];
+            pixelWidth = pixelHeight = 0;
+            return false;
+        }
     }
 }

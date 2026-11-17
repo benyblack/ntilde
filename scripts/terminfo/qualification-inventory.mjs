@@ -91,7 +91,7 @@ export const benchmarkSuites = Object.freeze([
     // OSC 5/105 qualification on the integrated App: the registered run uses receipt schema 72 and source policy v65; earlier publications remain retained.
     { ...directory('osc5', '2026-11-17-osc5-special-colors-integrated', '2026-11-17-osc5-special-colors-qualification.md'), module: 'osc5-inventory.mjs', exports: ['osc5SuiteId', 'osc5ContractsVersion', 'osc5CaseIds'], test: 'osc5-publication.test.mjs' },
     // Kitty graphics animation: the pinned callbacks replayed (always inconclusive), one effect contract composed from the owned animation carrier of the same run.
-    { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v1', test: 'kitty-animation-publication.test.mjs' },
+    { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v2', test: 'kitty-animation-publication.test.mjs' },
     { ...directory('cell-size', '2026-11-17-osc-cell-size-integrated', '2026-11-17-osc-cell-size-integrated-qualification.md'), module: 'cell-size-contracts.mjs', exports: ['cellSizeSuiteId', 'cellSizeVersion', 'cellSizeIds'], test: 'cell-size-integrated-publication.test.mjs' },
 ]);
 

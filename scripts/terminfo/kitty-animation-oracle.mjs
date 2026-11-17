@@ -1,6 +1,6 @@
 // Pure bounded comparisons and the independent playback timeline; no rendering, I/O or ownership inference.
 import { staticImageEnvelope } from './static-images-oracle.mjs';
-import { animationBackground, animationFrameColor, animationFrameIds } from './kitty-animation-inputs.mjs';
+import { animationBackground, animationFrameIds, animationAppearanceIds, animationAppearanceColor, animationComposedIds } from './kitty-animation-inputs.mjs';
 import { animationHoldCycle, animationHoldMs } from './kitty-animation-cases.mjs';
 
 const invalid = () => new Error('Invalid animation comparison.');
@@ -30,6 +30,12 @@ const regionUniform = (image, rect) => {
     return [...first];
 };
 
+/** A solid frame color matches exactly; a composed frame's within the rounding step the protocol's blend allows. */
+const matchesAppearance = (id, color) => {
+    const { color: expected, tolerance } = animationAppearanceColor(id);
+    return expected.every((value, index) => Math.abs(value - color[index]) <= tolerance);
+};
+
 /**
  * Names the displayed frame from one capture: the non-background content must be the undistorted square the
  * 16x16 source fits into, and its interior (clear of the antialiased edge) must be one exact palette color.
@@ -41,7 +47,7 @@ export function classifyAnimationFrame({ image, grid, anchor, cells }) {
     const side = Math.min(envelope.width, envelope.height), geometryOk = bounds.width === side && bounds.height === side;
     const inset = Math.max(1, Math.floor(side / 8)), interior = { x: bounds.x + inset, y: bounds.y + inset, width: bounds.width - 2 * inset, height: bounds.height - 2 * inset };
     const color = interior.width > 0 && interior.height > 0 ? regionUniform(image, interior) : null;
-    const frameId = color ? animationFrameIds.find(id => same(animationFrameColor(id), color)) ?? null : null;
+    const frameId = color ? [...animationFrameIds, ...animationComposedIds].find(id => matchesAppearance(id, color)) ?? null : null;
     return { kind: frameId ? 'frame' : 'mixed', frameId, envelope, bounds, geometryOk };
 }
 
@@ -49,7 +55,7 @@ export function classifyAnimationFrame({ image, grid, anchor, cells }) {
 export function inspectAnimationPixels({ baseline, observed, grid, anchor, cells, appearance }) {
     validateImage(baseline); validateImage(observed);
     if (baseline.width !== observed.width || baseline.height !== observed.height
-        || !(appearance === 'absent' || animationFrameIds.includes(appearance))) throw invalid();
+        || !(appearance === 'absent' || animationAppearanceIds.includes(appearance))) throw invalid();
     const classification = classifyAnimationFrame({ image: observed, grid, anchor, cells }), envelope = classification.envelope;
     const baselineBlank = classifyAnimationFrame({ image: baseline, grid, anchor, cells }).kind === 'background';
     let outsideUnchanged = true;

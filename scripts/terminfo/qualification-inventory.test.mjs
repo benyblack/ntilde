@@ -667,7 +667,7 @@ test('the Kitty animation qualification keeps the supported effect, the inconclu
     assert.equal(suite.dir, '2026-11-16-kitty-animation');
     const { report, summary } = loadPublication(defaultQaRoot, suite);
     assert.deepEqual(report.cases.map(item => [item.caseId, pinnedVerdictOf(item), effectVerdictOf(item)]), [['extensions.kitty-graphics.animation', 'inconclusive', 'supported']]);
-    assert.equal(summary.ownedRunId, 'f8738a9e6d01cff70a5029fa1e5f9197');
+    assert.equal(summary.ownedRunId, '99d639356e6c79215fd29c5cd655b4b8');
     const stored = committed(), item = row(stored, 'extensions.kitty-graphics.animation');
     assert.equal(item.claims.length, 1);
     assert.equal(item.stockOutcome, 'inconclusive');
