@@ -1218,6 +1218,11 @@ requires public test classes.
   `validateImageOwnership` refuses a frame under any other parent. Cleanup stops the daemon through its private root, signals it only while it is still
   verifiably this run's, and a failed scan for survivors fails the cleanup. The run has its own receipt (`persistent-animation-receipt.json`), not the full-collection
   receipt: no stock collector or other suite runs. The full collection is not claimed for persistent tabs.
+  `--scope persistent-restore` (#1030) adds a **relaunch**: the parent kills the App and starts it again on the same private root while the daemon and the shell keep
+  running, then waits for the new App's pane to show the restored screen. The App saves its session after each persistent attach, so the killed App leaves the file the next one
+  restores. Ownership is then held per App process (an epoch): `validateEpochChange` requires the same worker, daemon (whose parent legitimately changes from the first App to init),
+  PTY, user and executable, a new App pid, and the parent's own relaunch record linking the two; only a stage the suite declares `relaunch` may change the pid, and it must. A
+  restored playhead is told from one the new App restarted by requiring the later reads to predict different frames under the two readings (otherwise the stage is inconclusive).
 - **Owned routed-input QA is a separate parent-owned acting boundary.** Policy v2
   captures a fixed 60-file graph and schema 9 requires all fourteen suites. Only
   source-selected standalone App events may run in the re-proved disposable local
