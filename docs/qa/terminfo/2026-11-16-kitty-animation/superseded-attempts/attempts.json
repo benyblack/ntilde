@@ -95,6 +95,15 @@
         "animation-observations.json": "9725efc5f058415b81faa3736a7196ca9071e00f1c53faa4ddbd4cbb563d766a",
         "cell-receipt.json": "98c10993ed68102e82f3875644ed8daa3f4da39031adb7132155d4e4e1383e36"
       }
+    },
+    {
+      "runId": "a915df8ac3b3ca602f1896d77b39821f",
+      "scriptsRevision": "de376515",
+      "reason": "A seventh complete 18/18 run (effect supported, receipt schema 70) on the App built from de376515. Superseded, not failed: SonarCloud flagged the render-path advance (S2222, a lock released only under a flag) on that head, so its lock handling was restructured into an unconditional release after a plain non-blocking acquire, the App was rebuilt and the whole collection repeated. The retained report and receipt are that run's verdict.",
+      "retainedFiles": {
+        "animation-observations.json": "2c971860bd89d023470f7f67a70815107c6fe07abf420f896e6b3a1057a10af5",
+        "cell-receipt.json": "3bf3e2dd2f0bf6e36e3124011b6e206efd6205b15b7cfe799ab49d08f94cd135"
+      }
     }
   ]
 }
