@@ -292,7 +292,8 @@ namespace Ntilde.Shell
                 return;
             }
 
-            if (_generatedInputInProgress) { e.Handled = true; return; }
+            // A generated event never sends keys: the alternate-scroll route below is refused for it. Its standard branch is the view's own scrollback scroll, which sends nothing (#999 viewport control).
+            if (_generatedInputInProgress && _buffer.IsAltScreenActive && _buffer.Modes.IsAlternateScroll) { e.Handled = true; return; }
 
             // Alternate scroll (?1007, issue #828): the alternate screen has no scrollback, so a
             // pager or TUI without mouse support (less, man, htop) gets one cursor key per notch
@@ -315,6 +316,7 @@ namespace Ntilde.Shell
             {
                 ScrollByWheelLines(delta);
             }
+            if (_generatedInputInProgress) e.Handled = true;
         }
 
         /// <summary>

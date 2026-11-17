@@ -26,7 +26,7 @@ public sealed record GeneratePaneInputParams
     /// <summary>Bit mask: shift=1, control=2, alt=4, meta=8. Text events require zero.</summary>
     [JsonPropertyName("modifiers")]
     public int Modifiers { get; init; }
-    /// <summary>One-based viewport cell; must also fit the actual current view and buffer.</summary>
+    /// <summary>One-based viewport cell; must also fit the actual current view and buffer. A pointer event needs active mouse reporting, except a wheel notch, which with reporting inactive scrolls the view itself and sends nothing.</summary>
     [JsonPropertyName("column")]
     public int? Column { get; init; }
     [JsonPropertyName("row")]
