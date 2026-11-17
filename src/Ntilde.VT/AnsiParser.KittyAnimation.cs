@@ -52,6 +52,7 @@ public partial class AnsiParser
         if (!TryReadKittyUInt("x", out uint x) || !TryReadKittyUInt("y", out uint y) || !TryReadKittyUInt("c", out uint baseFrame)
             || !TryReadKittyUInt("r", out uint editFrame) || !TryReadKittyUInt("Y", out uint background))
             return Refuse(out error, "EINVAL:Invalid animation frame control");
+        if (x > asset.PixelWidth || y > asset.PixelHeight) return Refuse(out error, "EINVAL:Frame rectangle outside the image"); // before x and y become ints
         if (!TryReadKittyGap(out int gap)) return Refuse(out error, "EINVAL:Invalid animation frame gap");
         if (!TryReadKittyCompositionMode(out bool overwrite)) return Refuse(out error, "EINVAL:Invalid composition mode");
         int width = 0, height = 0;
@@ -107,7 +108,7 @@ public partial class AnsiParser
         object? handle = decoder.DecodeImageBytes(payload, out _, out _);
         if (handle is null) return Refuse(out error, "EINVAL:Invalid frame image data");
         bool read = decoder.TryReadPixels(handle, out byte[] rgba, out int readWidth, out int readHeight);
-        _buffer.RetireUnstoredKittyHandle(handle); // only its pixels are used; the stored frame is built from the composed canvas
+        _buffer.ReleaseRejectedImageHandle(handle); // only its pixels are used and it was never admitted: release it now, not at a renderer drain
         if (!read) return Refuse(out error, "ENOTSUP:This decoder cannot expose frame pixels");
         if (readWidth != width || readHeight != height || rgba.LongLength != (long)width * height * 4)
             return Refuse(out error, "EINVAL:Frame data does not match its dimensions");

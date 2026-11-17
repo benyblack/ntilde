@@ -239,6 +239,8 @@ public sealed class KittyAnimationTests
     [Theory]
     [InlineData("a=f,i=1,f=100,x=1", 2, 1)]                                             // a 2x1 PNG at x=1 leaves the 2x1 image
     [InlineData("a=f,i=1,f=100", 3, 1)]
+    [InlineData("a=f,i=1,f=100,x=2147483648", 1, 1)]                                   // an offset that would wrap negative as an int
+    [InlineData("a=f,i=1,f=32,s=1,v=1,y=4294967295", 1, 1)]
     public void A_container_frame_larger_than_its_place_is_refused_before_decoding(string controls, int width, int height)
     {
         var h = new Harness();
