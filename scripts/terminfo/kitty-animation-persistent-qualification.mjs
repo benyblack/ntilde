@@ -8,9 +8,8 @@ import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { snapshotHash } from './agent-observer.mjs';
 import { persistentAnimationScope } from './collection-scope.mjs';
-import { animationCasesByVersion } from './kitty-animation-cases.mjs';
 import { animationInputs, buildAnimationReport } from './kitty-animation.mjs';
-import { caseOutcome, effectContract, gradeEffect, kittyAnimationCarrierPolicy, kittyAnimationCarrierSuiteId, kittyAnimationQualificationIds, pinnedBundleArchive,
+import { effectContract, gradeEffect, kittyAnimationCarrierPolicy, kittyAnimationCarrierSuiteId, kittyAnimationQualificationIds, pinnedBundleArchive,
     pinnedSpanDigests, replayPinnedAnimationProbe, upstreamBundleSha256, validityControls } from './kitty-animation-qualification.mjs';
 import { retainedInventory } from './metadata-receipt.mjs';
 import { pngHash } from './pixels-capture.mjs';
@@ -20,7 +19,7 @@ import { journal, json, present, read } from './static-images-receipt.mjs';
 export const persistentAnimationQualificationSuiteId = 'ntilde-owned-kitty-animation-persistent-qualification-v1';
 export const persistentAnimationQualificationVersion = 1;
 export const persistentAnimationReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-receipt-v1';
-export { pinnedBundleArchive, kittyAnimationQualificationIds, upstreamBundleSha256, pinnedSpanDigests };
+export { pinnedBundleArchive, kittyAnimationQualificationIds, upstreamBundleSha256, pinnedSpanDigests } from './kitty-animation-qualification.mjs';
 // Measured on the committed tree named here: the Release sidecar was built from the App at this commit and the measured scripts are its tree
 // (later commits are publication, docs, test pins and merges of main only).
 export const measuredAppRevision = 'b4bf3c838a46d5a154c9b783ab546d729bee170d';
@@ -55,7 +54,7 @@ function checkSources(dir, context) {
     const inventory = retainedInventory(dir, context), manifestBytes = read(dir, 'source-snapshot.json'), manifest = JSON.parse(manifestBytes);
     check(sha(manifestBytes) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === context.sourceSnapshotPolicy,
         'the retained source manifest is not the one the run names');
-    check(snapshotHash(Object.keys(manifest.hashes ?? {}).sort()) === snapshotHash(Object.keys(inventory).sort()), 'the source manifest does not cover the policy inventory');
+    check(snapshotHash(Object.keys(manifest.hashes ?? {}).sort((a, b) => a.localeCompare(b))) === snapshotHash(Object.keys(inventory).sort((a, b) => a.localeCompare(b))), 'the source manifest does not cover the policy inventory');
     for (const [key, file] of Object.entries(inventory)) {
         const digest = sha(read(dir, join('sources', file)));
         check(digest === context[key] && digest === manifest.hashes[key], `retained source ${file} differs from the measured digest`);
@@ -155,5 +154,3 @@ export async function persistentAnimationQualification(dir, source, archive) {
             counts: receipt.animationEvidence.counts, caseResults: report.caseResults.map(item => ({ caseId: item.caseId, result: item.result })) } };
     return { summary, report: suite };
 }
-
-export { animationCasesByVersion, caseOutcome };

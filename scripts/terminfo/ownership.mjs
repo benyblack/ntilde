@@ -51,7 +51,7 @@ export function parseProcessRecord(text, pid = '?') {
  */
 export function environmentHas(text, name, value) {
     const needle = ` ${name}=`, first = text.indexOf(needle);
-    if (first < 0 || text.indexOf(needle, first + 1) >= 0) return false;
+    if (first < 0 || text.includes(needle, first + 1)) return false;
     const end = first + needle.length + value.length;
     return text.startsWith(value, first + needle.length) && (end === text.length || text[end] === ' ');
 }
@@ -313,8 +313,8 @@ export function discoverPersistentDaemons(context, { run = execFileSync, uid = p
     const listing = run('/bin/ps', ['-axww', '-E', '-o', 'pid=,uid=,command='], { encoding: 'utf8', timeout: 10000, maxBuffer: 64 * 1024 * 1024 });
     const found = [];
     for (const line of listing.split('\n')) {
-        const match = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
-        if (match && Number(match[2]) === uid && isRunDaemon(match[3], context)) found.push({ pid: Number(match[1]), uid, executable: context.executable });
+        const match = /^ *(\d+) +(\d+) (.*)$/.exec(line);
+        if (match && Number(match[2]) === uid && isRunDaemon(match[3].trimStart(), context)) found.push({ pid: Number(match[1]), uid, executable: context.executable });
     }
     return found;
 }
@@ -336,13 +336,29 @@ function verifyRecordedDaemon(recorded, context) {
     }
 }
 
-async function daemonExits(pid, milliseconds) {
+function daemonExits(pid, milliseconds) {
     const deadline = performance.now() + milliseconds;
-    while (workerExists(pid)) {
-        if (performance.now() >= deadline) return false;
-        await new Promise(resolve => setTimeout(resolve, 50));
+    return new Promise(resolve => {
+        const check = () => {
+            if (!workerExists(pid)) return resolve(true);
+            if (performance.now() >= deadline) return resolve(false);
+            setTimeout(check, 50);
+        };
+        check();
+    });
+}
+
+/** Signal the daemon with each escalation in turn, re-proving it is this run's before every one; the first that ends it settles. */
+async function escalateDaemon(recorded, context, [signal, ...later]) {
+    if (signal === undefined) throw new Error(`Owned multiplexer daemon ${recorded.pid} did not exit after SIGKILL.`);
+    if (!verifyRecordedDaemon(recorded, context)) return;
+    try { process.kill(recorded.pid, signal); }
+    catch (error) {
+        if (error.code === 'ESRCH') return;
+        throw error;
     }
-    return true;
+    if (await daemonExits(recorded.pid, 2000)) return;
+    await escalateDaemon(recorded, context, later);
 }
 
 async function stopDaemon(recorded, context, stop) {
@@ -350,16 +366,7 @@ async function stopDaemon(recorded, context, stop) {
     stop(context.executable, ['mux', 'kill-server', '--force'], { env: { ...process.env, NTILDE_APPDATA_ROOT: context.appData },
         timeout: 15000, stdio: 'ignore', windowsHide: true });
     if (await daemonExits(recorded.pid, 5000)) return;
-    for (const signal of ['SIGTERM', 'SIGKILL']) {
-        if (!verifyRecordedDaemon(recorded, context)) return;
-        try { process.kill(recorded.pid, signal); }
-        catch (error) {
-            if (error.code === 'ESRCH') return;
-            throw error;
-        }
-        if (await daemonExits(recorded.pid, 2000)) return;
-    }
-    throw new Error(`Owned multiplexer daemon ${recorded.pid} did not exit after SIGKILL.`);
+    await escalateDaemon(recorded, context, ['SIGTERM', 'SIGKILL']);
 }
 
 /**
@@ -370,7 +377,7 @@ async function stopDaemon(recorded, context, stop) {
 export async function terminateRecordedDaemon(recorded, context, { stop = spawnSync, discover = discoverPersistentDaemons } = {}) {
     const candidates = new Map(discover(context).map(daemon => [daemon.pid, daemon]));
     if (recorded) candidates.set(recorded.pid, recorded);
-    for (const daemon of candidates.values()) await stopDaemon(daemon, context, stop);
+    await Promise.all([...candidates.values()].map(daemon => stopDaemon(daemon, context, stop)));
     const survivors = discover(context);
     if (survivors.length > 0) throw new Error(`Owned multiplexer daemon ${survivors[0].pid} survived cleanup.`);
 }

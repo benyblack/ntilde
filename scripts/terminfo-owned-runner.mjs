@@ -4257,7 +4257,16 @@ function completePersistentAnimationReceipt(output, scratch, evidence) {
 
 /** The disposable fixture of one persistent animation collection: private settings, a worker profile and the identity the owner server and cleanup share. */
 function preparePersistentRun(args, executable, snapshot, lease, output) {
-    const scratch = createPrivateScratch(), appData = join(scratch, 'appdata'), collectionScope = persistentAnimationScope;
+    const scratch = createPrivateScratch();
+    try { return preparePersistentRunIn(scratch, args, executable, snapshot, lease, output); }
+    catch (error) {
+        rmSync(scratch, { recursive: true, force: true });
+        throw error;
+    }
+}
+
+function preparePersistentRunIn(scratch, args, executable, snapshot, lease, output) {
+    const appData = join(scratch, 'appdata'), collectionScope = persistentAnimationScope;
     mkdirSync(appData, { mode: 0o700 });
     const runId = lease.leaseId, profileName = `terminfo disposable worker ${runId}`, configPath = join(scratch, 'worker.json'), command = join(scratch, 'worker.sh');
     const run = { args, executable, snapshot, lease, output, scratch, appData, runId, profileName, collectionScope, token: randomBytes(32).toString('hex'),

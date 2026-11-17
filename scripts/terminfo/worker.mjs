@@ -99,451 +99,6 @@ function retainedFailure(error, depth = 0) {
     return error instanceof AggregateError ? text + '\n' + error.errors.slice(0, 8)
         .map((value, index) => '[' + index + '] ' + retainedFailure(value, depth + 1)).join('\n') : text;
 }
-/** The full owned collection: every suite in order on one fence, then the stock probe engine, then the completion request. */
-async function runFullCollection(config, binding) {
-    const fence = terminalFence(process.stdin, process.stdout);
-    let restoreOutput;
-    const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
-        /** Require the pre-fixture kernel-mode token in private mode; other runs use the legacy restorers. */
-        () => { if (config.privateClipboard === true) restoreOwnedTerminalState(binding.tabTty, binding.originalTerminalState); }]);
-    let run, primary, failed = false, restoreFailure, restoreFailed = false;
-    try {
-        restoreOutput = prepareOwnedOutput(binding.tabTty);
-        await requestOwner(config, 'raw-output', { tty: binding.tabTty });
-        const owner = (kind, barrier = null, extra = {}) => requestOwner(config, kind, { ...extra, tty: binding.tabTty, barrier });
-        await collectCells({ config, fence, owner });
-        await collectSgr({ config, fence, owner });
-        await collectRgb({ config, fence, owner });
-        await collectRendition({ config, fence, owner });
-        await collectCursor({ config, fence, owner });
-        await collectPixels({ config, fence, owner });
-        await collectColors({ config, fence, owner });
-        await collectErase({ config, fence, owner });
-        await collectEditing({ config, fence, owner });
-        await collectHistory({ config, fence, owner });
-        await collectResize({ config, fence, owner });
-        // The layered ASCII reflow qualification follows the resize suite on the same exclusively owned fence: it reuses the
-        // parent-owned resize action under its own prefix and plan. A typed refusal of its first observation is retained by
-        // the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
-        const reflowSource = readFileSync(config.reflowBundle);
-        if (createHash('sha256').update(reflowSource).digest('hex') !== config.reflowBundleSha256) throw new Error('Local ASCII reflow adapter bundle changed.');
-        const reflowResult = await collectReflowGrading({ config, fence, owner, gradingModule: await import(pathToFileURL(config.reflowBundle).href) });
-        if (reflowResult.status === 'complete') writeFileSync(join(config.output, 'rf-run.json'), JSON.stringify(reflowResult.run) + '\n', { flag: 'wx', mode: 0o600 });
-        await collectSaved({ config, fence, owner });
-        await collectMetadata({ config, fence, owner });
-        // Graded ASCII/SGR qualification replays the pinned fixtures through the
-        // fence while it is still exclusively owned; the derived extension
-        // executes the pinned termless probes over parent-observed screens.
-        const gradingSource = readFileSync(config.gradingBundle);
-        if (createHash('sha256').update(gradingSource).digest('hex') !== config.gradingBundleSha256) {
-            throw new Error('Local grading adapter bundle changed.');
-        }
-        const gradingModule = await import(pathToFileURL(config.gradingBundle).href);
-        const gradingRun = await collectAsciiSgrGrading({ config, fence, owner, gradingModule });
-        writeFileSync(join(config.output, 'grading-run.json'), JSON.stringify(gradingRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered selection-color qualification follows on the same fence.
-        const selectionColorsSource = readFileSync(config.selectionColorsBundle);
-        if (createHash('sha256').update(selectionColorsSource).digest('hex') !== config.selectionColorsBundleSha256) {
-            throw new Error('Local selection-color adapter bundle changed.');
-        }
-        const selectionColorsModule = await import(pathToFileURL(config.selectionColorsBundle).href);
-        const selectionColorsRun = await collectSelectionColorsGrading({ config, fence, owner, gradingModule: selectionColorsModule });
-        writeFileSync(join(config.output, 'selc-run.json'), JSON.stringify(selectionColorsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR reset/standard-color qualification follows the first
-        // graded suite on the same exclusively owned fence.
-        const sgrColorsSource = readFileSync(config.sgrColorsBundle);
-        if (createHash('sha256').update(sgrColorsSource).digest('hex') !== config.sgrColorsBundleSha256) {
-            throw new Error('Local SGR-colors adapter bundle changed.');
-        }
-        const sgrColorsModule = await import(pathToFileURL(config.sgrColorsBundle).href);
-        const sgrColorsRun = await collectSgrColorsGrading({ config, fence, owner, gradingModule: sgrColorsModule });
-        writeFileSync(join(config.output, 'sgcolors-run.json'), JSON.stringify(sgrColorsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR-RGB qualification follows the SGR-colors suite on the
-        // same exclusively owned fence; its cells carry the App-resolved RGB.
-        const sgrRgbSource = readFileSync(config.sgrRgbBundle);
-        if (createHash('sha256').update(sgrRgbSource).digest('hex') !== config.sgrRgbBundleSha256) {
-            throw new Error('Local SGR-RGB adapter bundle changed.');
-        }
-        const sgrRgbModule = await import(pathToFileURL(config.sgrRgbBundle).href);
-        const sgrRgbRun = await collectSgrRgbGrading({ config, fence, owner, gradingModule: sgrRgbModule });
-        writeFileSync(join(config.output, 'sgrgb-run.json'), JSON.stringify(sgrRgbRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR-attributes qualification follows the SGR-RGB suite on the
-        // same exclusively owned fence.
-        const sgrAttrsSource = readFileSync(config.sgrAttrsBundle);
-        if (createHash('sha256').update(sgrAttrsSource).digest('hex') !== config.sgrAttrsBundleSha256) {
-            throw new Error('Local SGR-attributes adapter bundle changed.');
-        }
-        const sgrAttrsModule = await import(pathToFileURL(config.sgrAttrsBundle).href);
-        const sgrAttrsRun = await collectSgrAttrsGrading({ config, fence, owner, gradingModule: sgrAttrsModule });
-        writeFileSync(join(config.output, 'sgattr-run.json'), JSON.stringify(sgrAttrsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR-palette qualification follows the SGR-attributes suite on the
-        // same exclusively owned fence.
-        const sgrPaletteSource = readFileSync(config.sgrPaletteBundle);
-        if (createHash('sha256').update(sgrPaletteSource).digest('hex') !== config.sgrPaletteBundleSha256) {
-            throw new Error('Local SGR-palette adapter bundle changed.');
-        }
-        const sgrPaletteModule = await import(pathToFileURL(config.sgrPaletteBundle).href);
-        const sgrPaletteRun = await collectSgrPaletteGrading({ config, fence, owner, gradingModule: sgrPaletteModule });
-        writeFileSync(join(config.output, 'sgpal-run.json'), JSON.stringify(sgrPaletteRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR-truecolor qualification follows the SGR-palette suite on the same fence.
-        const sgrTruecolorSource = readFileSync(config.sgrTruecolorBundle);
-        if (createHash('sha256').update(sgrTruecolorSource).digest('hex') !== config.sgrTruecolorBundleSha256) {
-            throw new Error('Local SGR-truecolor adapter bundle changed.');
-        }
-        const sgrTruecolorModule = await import(pathToFileURL(config.sgrTruecolorBundle).href);
-        const sgrTruecolorRun = await collectSgrTruecolorGrading({ config, fence, owner, gradingModule: sgrTruecolorModule });
-        writeFileSync(join(config.output, 'sgtc-run.json'), JSON.stringify(sgrTruecolorRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The truecolor-literal finding (no pinned probe, no collector extension) follows on the same fence.
-        const truecolorFindingRun = await collectTruecolorFindingGrading({ config, fence, owner });
-        writeFileSync(join(config.output, 'sgtf-run.json'), JSON.stringify(truecolorFindingRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR-underline-style qualification follows the truecolor finding on the same fence.
-        const sgrUnderlineSource = readFileSync(config.sgrUnderlineBundle);
-        if (createHash('sha256').update(sgrUnderlineSource).digest('hex') !== config.sgrUnderlineBundleSha256) {
-            throw new Error('Local SGR-underline adapter bundle changed.');
-        }
-        const sgrUnderlineModule = await import(pathToFileURL(config.sgrUnderlineBundle).href);
-        const sgrUnderlineRun = await collectSgrUnderlineGrading({ config, fence, owner, gradingModule: sgrUnderlineModule });
-        writeFileSync(join(config.output, 'sgus-run.json'), JSON.stringify(sgrUnderlineRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR-underline-color qualification follows the underline-style suite on the same fence.
-        const sgrUnderlineColorSource = readFileSync(config.sgrUnderlineColorBundle);
-        if (createHash('sha256').update(sgrUnderlineColorSource).digest('hex') !== config.sgrUnderlineColorBundleSha256) {
-            throw new Error('Local SGR-underline-color adapter bundle changed.');
-        }
-        const sgrUnderlineColorModule = await import(pathToFileURL(config.sgrUnderlineColorBundle).href);
-        const sgrUnderlineColorRun = await collectSgrUnderlineColorGrading({ config, fence, owner, gradingModule: sgrUnderlineColorModule });
-        writeFileSync(join(config.output, 'sguc-run.json'), JSON.stringify(sgrUnderlineColorRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The App-observed underline-color resolution suite follows it on the same fence; it has no collector extension.
-        const underlineResolvedRun = await collectUnderlineResolvedGrading({ config, fence, owner });
-        writeFileSync(join(config.output, 'sgur-run.json'), JSON.stringify(underlineResolvedRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR selective-reset qualification follows the underline-resolution suite on the same fence.
-        const sgrResetSource = readFileSync(config.sgrResetBundle);
-        if (createHash('sha256').update(sgrResetSource).digest('hex') !== config.sgrResetBundleSha256) {
-            throw new Error('Local SGR selective-reset adapter bundle changed.');
-        }
-        const sgrResetModule = await import(pathToFileURL(config.sgrResetBundle).href);
-        const sgrResetRun = await collectSgrResetGrading({ config, fence, owner, gradingModule: sgrResetModule });
-        writeFileSync(join(config.output, 'sgsr-run.json'), JSON.stringify(sgrResetRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered SGR closure qualification follows the selective-reset suite on the same fence.
-        const sgrClosureSource = readFileSync(config.sgrClosureBundle);
-        if (createHash('sha256').update(sgrClosureSource).digest('hex') !== config.sgrClosureBundleSha256) {
-            throw new Error('Local SGR closure adapter bundle changed.');
-        }
-        const sgrClosureModule = await import(pathToFileURL(config.sgrClosureBundle).href);
-        const sgrClosureRun = await collectSgrClosureGrading({ config, fence, owner, gradingModule: sgrClosureModule });
-        writeFileSync(join(config.output, 'sgcl-run.json'), JSON.stringify(sgrClosureRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered erase-in-line qualification follows the SGR closure suite on the same fence.
-        const eraseLineSource = readFileSync(config.eraseLineBundle);
-        if (createHash('sha256').update(eraseLineSource).digest('hex') !== config.eraseLineBundleSha256) {
-            throw new Error('Local erase-in-line adapter bundle changed.');
-        }
-        const eraseLineModule = await import(pathToFileURL(config.eraseLineBundle).href);
-        const eraseLineRun = await collectEraseLineGrading({ config, fence, owner, gradingModule: eraseLineModule });
-        writeFileSync(join(config.output, 'erln-run.json'), JSON.stringify(eraseLineRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered character-editing qualification follows the erase-in-line suite on the same fence.
-        const charEditSource = readFileSync(config.charEditBundle);
-        if (createHash('sha256').update(charEditSource).digest('hex') !== config.charEditBundleSha256) {
-            throw new Error('Local character-editing adapter bundle changed.');
-        }
-        const charEditModule = await import(pathToFileURL(config.charEditBundle).href);
-        const charEditRun = await collectCharEditGrading({ config, fence, owner, gradingModule: charEditModule });
-        writeFileSync(join(config.output, 'ched-run.json'), JSON.stringify(charEditRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered erase-in-display qualification follows the character-editing suite on the same fence.
-        const eraseDisplaySource = readFileSync(config.eraseDisplayBundle);
-        if (createHash('sha256').update(eraseDisplaySource).digest('hex') !== config.eraseDisplayBundleSha256) {
-            throw new Error('Local erase-in-display adapter bundle changed.');
-        }
-        const eraseDisplayModule = await import(pathToFileURL(config.eraseDisplayBundle).href);
-        const eraseDisplayRun = await collectEraseDisplayGrading({ config, fence, owner, gradingModule: eraseDisplayModule });
-        writeFileSync(join(config.output, 'erdi-run.json'), JSON.stringify(eraseDisplayRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered line-editing qualification follows the erase-in-display suite on the same fence.
-        const lineEditSource = readFileSync(config.lineEditBundle);
-        if (createHash('sha256').update(lineEditSource).digest('hex') !== config.lineEditBundleSha256) {
-            throw new Error('Local line-editing adapter bundle changed.');
-        }
-        const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
-        const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
-        writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const insertReplaceSource = readFileSync(config.insertReplaceBundle);
-        if (createHash('sha256').update(insertReplaceSource).digest('hex') !== config.insertReplaceBundleSha256) throw new Error('Local IRM adapter bundle changed.');
-        const insertReplaceRun = await collectInsertReplace({ config, fence, owner, gradingModule: await import(pathToFileURL(config.insertReplaceBundle).href) });
-        writeFileSync(join(config.output, 'irm-run.json'), JSON.stringify(insertReplaceRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered charset qualification follows the line-editing suite on the same fence.
-        const charsetsSource = readFileSync(config.charsetsBundle);
-        if (createHash('sha256').update(charsetsSource).digest('hex') !== config.charsetsBundleSha256) {
-            throw new Error('Local charsets adapter bundle changed.');
-        }
-        const charsetsModule = await import(pathToFileURL(config.charsetsBundle).href);
-        const charsetsRun = await collectCharsetsGrading({ config, fence, owner, gradingModule: charsetsModule });
-        writeFileSync(join(config.output, 'chrs-run.json'), JSON.stringify(charsetsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered scrolling/history qualification follows the charsets suite on the same fence, on the main screen.
-        const scrollbackSource = readFileSync(config.scrollbackBundle);
-        if (createHash('sha256').update(scrollbackSource).digest('hex') !== config.scrollbackBundleSha256) {
-            throw new Error('Local scrolling/history adapter bundle changed.');
-        }
-        const scrollbackModule = await import(pathToFileURL(config.scrollbackBundle).href);
-        const scrollbackRun = await collectScrollbackGrading({ config, fence, owner, gradingModule: scrollbackModule });
-        writeFileSync(join(config.output, 'scrl-run.json'), JSON.stringify(scrollbackRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered saved-state/reset qualification follows the scrolling/history suite on the same fence.
-        const savedResetSource = readFileSync(config.savedResetBundle);
-        if (createHash('sha256').update(savedResetSource).digest('hex') !== config.savedResetBundleSha256) {
-            throw new Error('Local saved-state/reset adapter bundle changed.');
-        }
-        const savedResetModule = await import(pathToFileURL(config.savedResetBundle).href);
-        const savedResetRun = await collectSavedResetGrading({ config, fence, owner, gradingModule: savedResetModule });
-        writeFileSync(join(config.output, 'svrs-run.json'), JSON.stringify(savedResetRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered erase attributes / erase margins qualification follows the saved-state/reset suite on the same fence.
-        const eraseAttrsRegionSource = readFileSync(config.eraseAttrsRegionBundle);
-        if (createHash('sha256').update(eraseAttrsRegionSource).digest('hex') !== config.eraseAttrsRegionBundleSha256) {
-            throw new Error('Local erase-attributes adapter bundle changed.');
-        }
-        const eraseAttrsRegionModule = await import(pathToFileURL(config.eraseAttrsRegionBundle).href);
-        const eraseAttrsRegionRun = await collectEraseAttrsRegionGrading({ config, fence, owner, gradingModule: eraseAttrsRegionModule });
-        writeFileSync(join(config.output, 'erar-run.json'), JSON.stringify(eraseAttrsRegionRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered attribute-rectangle qualification follows the erase attributes / erase margins suite on the same fence.
-        const attrRectSource = readFileSync(config.attrRectBundle);
-        if (createHash('sha256').update(attrRectSource).digest('hex') !== config.attrRectBundleSha256) {
-            throw new Error('Local attribute-rectangle adapter bundle changed.');
-        }
-        const attrRectModule = await import(pathToFileURL(config.attrRectBundle).href);
-        const attrRectRun = await collectAttrRectGrading({ config, fence, owner, gradingModule: attrRectModule });
-        writeFileSync(join(config.output, 'atrc-run.json'), JSON.stringify(attrRectRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered cursor qualification follows the attribute-rectangle suite on the same fence, on the alternate screen.
-        const cursorQualSource = readFileSync(config.cursorQualBundle);
-        if (createHash('sha256').update(cursorQualSource).digest('hex') !== config.cursorQualBundleSha256) {
-            throw new Error('Local cursor adapter bundle changed.');
-        }
-        const cursorQualModule = await import(pathToFileURL(config.cursorQualBundle).href);
-        const cursorQualRun = await collectCursorQualGrading({ config, fence, owner, gradingModule: cursorQualModule });
-        writeFileSync(join(config.output, 'curq-run.json'), JSON.stringify(cursorQualRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered erase-character/saved-lines qualification follows the cursor-qualification suite on the same fence.
-        const eraseCharsHistorySource = readFileSync(config.eraseCharsHistoryBundle);
-        if (createHash('sha256').update(eraseCharsHistorySource).digest('hex') !== config.eraseCharsHistoryBundleSha256) {
-            throw new Error('Local erase-character/saved-lines adapter bundle changed.');
-        }
-        const eraseCharsHistoryModule = await import(pathToFileURL(config.eraseCharsHistoryBundle).href);
-        const eraseCharsHistoryRun = await collectEraseCharsHistoryGrading({ config, fence, owner, gradingModule: eraseCharsHistoryModule });
-        writeFileSync(join(config.output, 'echh-run.json'), JSON.stringify(eraseCharsHistoryRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered selective-erasure qualification follows the erase-character/saved-lines suite on the same fence.
-        const selectiveEraseSource = readFileSync(config.selectiveEraseBundle);
-        if (createHash('sha256').update(selectiveEraseSource).digest('hex') !== config.selectiveEraseBundleSha256) {
-            throw new Error('Local selective-erasure adapter bundle changed.');
-        }
-        const selectiveEraseModule = await import(pathToFileURL(config.selectiveEraseBundle).href);
-        const selectiveEraseRun = await collectSelectiveEraseGrading({ config, fence, owner, gradingModule: selectiveEraseModule });
-        writeFileSync(join(config.output, 'sels-run.json'), JSON.stringify(selectiveEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered rectangle-editing qualification follows the selective-erasure suite on the same fence.
-        const rectEditSource = readFileSync(config.rectEditBundle);
-        if (createHash('sha256').update(rectEditSource).digest('hex') !== config.rectEditBundleSha256) {
-            throw new Error('Local rectangle-editing adapter bundle changed.');
-        }
-        const rectEditModule = await import(pathToFileURL(config.rectEditBundle).href);
-        const rectEditRun = await collectRectEditGrading({ config, fence, owner, gradingModule: rectEditModule });
-        writeFileSync(join(config.output, 'rect-run.json'), JSON.stringify(rectEditRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered column-editing qualification follows the rectangle-editing suite on the same fence.
-        const colEditSource = readFileSync(config.colEditBundle);
-        if (createHash('sha256').update(colEditSource).digest('hex') !== config.colEditBundleSha256) {
-            throw new Error('Local column-editing adapter bundle changed.');
-        }
-        const colEditModule = await import(pathToFileURL(config.colEditBundle).href);
-        const colEditRun = await collectColEditGrading({ config, fence, owner, gradingModule: colEditModule });
-        writeFileSync(join(config.output, 'cole-run.json'), JSON.stringify(colEditRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered rectangle-checksum qualification follows the column-editing suite on the same fence.
-        const rectChecksumSource = readFileSync(config.rectChecksumBundle);
-        if (createHash('sha256').update(rectChecksumSource).digest('hex') !== config.rectChecksumBundleSha256) {
-            throw new Error('Local rectangle-checksum adapter bundle changed.');
-        }
-        const rectChecksumModule = await import(pathToFileURL(config.rectChecksumBundle).href);
-        const rectChecksumRun = await collectRectChecksumGrading({ config, fence, owner, gradingModule: rectChecksumModule });
-        writeFileSync(join(config.output, 'csum-run.json'), JSON.stringify(rectChecksumRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered left/right-margin qualification follows the rectangle-checksum suite on the same fence.
-        const lrMarginsSource = readFileSync(config.lrMarginsBundle);
-        if (createHash('sha256').update(lrMarginsSource).digest('hex') !== config.lrMarginsBundleSha256) {
-            throw new Error('Local left/right-margin adapter bundle changed.');
-        }
-        const lrMarginsModule = await import(pathToFileURL(config.lrMarginsBundle).href);
-        const lrMarginsRun = await collectLrMarginsGrading({ config, fence, owner, gradingModule: lrMarginsModule });
-        writeFileSync(join(config.output, 'lrmm-run.json'), JSON.stringify(lrMarginsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        if (createHash('sha256').update(readFileSync(config.coreGapsBundle)).digest('hex') !== config.coreGapsBundleSha256) throw new Error('Core-gap bundle changed.');
-        const coreRun = await collectCoreGaps({ config, fence, owner, gradingModule: await import(pathToFileURL(config.coreGapsBundle).href) });
-        writeFileSync(join(config.output, 'cg-run.json'), JSON.stringify(coreRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered runtime-color reset qualification follows the left/right-margin suite on the same fence.
-        const colorResetSource = readFileSync(config.colorResetBundle);
-        if (createHash('sha256').update(colorResetSource).digest('hex') !== config.colorResetBundleSha256) {
-            throw new Error('Local runtime-color reset adapter bundle changed.');
-        }
-        const colorResetModule = await import(pathToFileURL(config.colorResetBundle).href);
-        const colorResetRun = await collectColorResetGrading({ config, fence, owner, gradingModule: colorResetModule });
-        writeFileSync(join(config.output, 'crst-run.json'), JSON.stringify(colorResetRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const textCursorRun = await collectTextCursor({ config, fence, owner });
-        writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered OSC 133 qualification follows the text/cursor suite on the same exclusively owned fence. A typed refusal of its first
-        // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
-        const osc133Source = readFileSync(config.osc133Bundle);
-        if (createHash('sha256').update(osc133Source).digest('hex') !== config.osc133BundleSha256) throw new Error('Local OSC 133 adapter bundle changed.');
-        const osc133Result = await collectOsc133({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc133Bundle).href) });
-        if (osc133Result.status === 'complete') writeFileSync(join(config.output, 'shi-run.json'), JSON.stringify(osc133Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-        if (isOsc633Scope(config.collectionScope)) {
-            const osc633Source = readFileSync(config.osc633Bundle);
-            if (createHash('sha256').update(osc633Source).digest('hex') !== config.osc633BundleSha256) throw new Error('Local OSC 633 adapter bundle changed.');
-            const osc633Result = await collectOsc633({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc633Bundle).href) });
-            if (osc633Result.status === 'complete') writeFileSync(join(config.output, 'vs633-run.json'), JSON.stringify(osc633Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-        }
-        const coreEraseRun = await collectCoreErase({ config, fence, owner });
-        writeFileSync(join(config.output, 'ce-run.json'), JSON.stringify(coreEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const tabStopsRun = await collectTabStops({ config, fence, owner });
-        writeFileSync(join(config.output, 'ts-run.json'), JSON.stringify(tabStopsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const coreWrapRun = await collectWrap({ config, fence, owner });
-        writeFileSync(join(config.output, 'cw-run.json'), JSON.stringify(coreWrapRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const sgrRasterRun = await collectSgrRaster({ config, fence, owner });
-        writeFileSync(join(config.output, 'sr-run.json'), JSON.stringify(sgrRasterRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const reverseWideRun = await collectReverseWide({ config, fence, owner });
-        writeFileSync(join(config.output, 'rw-run.json'), JSON.stringify(reverseWideRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered OSC 7 / OSC 8 qualification follows the Core reverse-video/wide-cell suite on the same exclusively owned fence. A typed refusal of its first
-        // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
-        const osc78Source = readFileSync(config.osc78Bundle);
-        if (createHash('sha256').update(osc78Source).digest('hex') !== config.osc78BundleSha256) throw new Error('Local OSC 7/8 adapter bundle changed.');
-        const osc78Result = await collectOsc78({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc78Bundle).href) });
-        if (osc78Result.status === 'complete') writeFileSync(join(config.output, 'lnk-run.json'), JSON.stringify(osc78Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered title/icon stack qualification follows the OSC 7 / OSC 8 suite on the same exclusively owned fence. A typed refusal of its first
-        // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
-        const titleStackSource = readFileSync(config.titleStackBundle);
-        if (createHash('sha256').update(titleStackSource).digest('hex') !== config.titleStackBundleSha256) throw new Error('Local title-stack adapter bundle changed.');
-        const titleStackResult = await collectTitleStack({ config, fence, owner, gradingModule: await import(pathToFileURL(config.titleStackBundle).href) });
-        if (titleStackResult.status === 'complete') writeFileSync(join(config.output, 'tst-run.json'), JSON.stringify(titleStackResult.run) + '\n', { flag: 'wx', mode: 0o600 });
-        const oscTitleSource = readFileSync(config.oscTitleBundle);
-        if (createHash('sha256').update(oscTitleSource).digest('hex') !== config.oscTitleBundleSha256) throw new Error('Local OSC title adapter bundle changed.');
-        const oscTitleResult = await collectOscTitle({ config, fence, owner, gradingModule: await import(pathToFileURL(config.oscTitleBundle).href) });
-        if (oscTitleResult.status === 'complete') writeFileSync(join(config.output, 'ost-run.json'), JSON.stringify(oscTitleResult.run) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered XTGETTCAP qualification follows the OSC title suite on the same exclusively owned fence: every request is
-        // one fenced exchange whose raw replies the parent journals beside the unchanged state.
-        const xtgettcapSource = readFileSync(config.xtgettcapBundle);
-        if (createHash('sha256').update(xtgettcapSource).digest('hex') !== config.xtgettcapBundleSha256) throw new Error('Local XTGETTCAP adapter bundle changed.');
-        const xtgettcapModule = await import(pathToFileURL(config.xtgettcapBundle).href);
-        const xtgettcapRun = await collectXtgettcapGrading({ config, fence, owner, gradingModule: xtgettcapModule });
-        writeFileSync(join(config.output, 'xgtc-run.json'), JSON.stringify(xtgettcapRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered OSC 9 qualification follows the XTGETTCAP suite on the same exclusively owned fence. A typed refusal of its first observation is
-        // retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
-        if (!isOsc633Scope(config.collectionScope)) {
-            const osc9Source = readFileSync(config.osc9Bundle);
-            if (createHash('sha256').update(osc9Source).digest('hex') !== config.osc9BundleSha256) throw new Error('Local OSC 9 adapter bundle changed.');
-            const osc9Result = await collectOsc9({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc9Bundle).href) });
-            if (osc9Result.status === 'complete') writeFileSync(join(config.output, 'osn-run.json'), JSON.stringify(osc9Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-            const notifySource = readFileSync(config.notifyBundle);
-            if (createHash('sha256').update(notifySource).digest('hex') !== config.notifyBundleSha256) throw new Error('Local notification adapter bundle changed.');
-            const notifyResult = await collectNotify({ config, fence, owner, gradingModule: await import(pathToFileURL(config.notifyBundle).href) });
-            if (notifyResult.status === 'complete') writeFileSync(join(config.output, 'ntf-run.json'), JSON.stringify(notifyResult.run) + '\n', { flag: 'wx', mode: 0o600 });
-        }
-        // The layered device-query qualification follows the notification suite on the same exclusively owned fence: every request is one fenced exchange whose raw replies the
-        // parent journals beside the unchanged state.
-        const devqSource = readFileSync(config.devqBundle);
-        if (createHash('sha256').update(devqSource).digest('hex') !== config.devqBundleSha256) throw new Error('Local device-query adapter bundle changed.');
-        const devqModule = await import(pathToFileURL(config.devqBundle).href);
-        const devqRun = await collectDevqGrading({ config, fence, owner, gradingModule: devqModule });
-        writeFileSync(join(config.output, 'dvq-run.json'), JSON.stringify(devqRun) + '\n', { flag: 'wx', mode: 0o600 });
-        const cellSizeSource = readFileSync(config.cellSizeBundle);
-        if (createHash('sha256').update(cellSizeSource).digest('hex') !== config.cellSizeBundleSha256) throw new Error('Cell-size adapter bundle changed.');
-        const cellSizeRun = await collectCellSize({ config, fence, owner, module: await import(pathToFileURL(config.cellSizeBundle).href) });
-        writeFileSync(join(config.output, 'cell-size-run.json'), JSON.stringify(cellSizeRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered xterm color-stack qualification follows the device-query suite on the same fence; it leaves every color reset and the xterm palette stack balanced.
-        const xcsSource = readFileSync(config.xcsBundle);
-        if (createHash('sha256').update(xcsSource).digest('hex') !== config.xcsBundleSha256) throw new Error('Local xterm color-stack adapter bundle changed.');
-        const xcsModule = await import(pathToFileURL(config.xcsBundle).href);
-        const xcsRun = await collectXcsGrading({ config, fence, owner, gradingModule: xcsModule });
-        writeFileSync(join(config.output, 'xcs-run.json'), JSON.stringify(xcsRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered xterm SGR-stack qualification follows the color-stack suite on the same fence; it leaves the pen reset and the video-attribute stack drained.
-        const xssSource = readFileSync(config.xssBundle);
-        if (createHash('sha256').update(xssSource).digest('hex') !== config.xssBundleSha256) throw new Error('Local xterm SGR-stack adapter bundle changed.');
-        const xssModule = await import(pathToFileURL(config.xssBundle).href);
-        const xssRun = await collectXssGrading({ config, fence, owner, gradingModule: xssModule });
-        writeFileSync(join(config.output, 'xss-run.json'), JSON.stringify(xssRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered xterm saved-mode qualification follows the SGR-stack suite on the same fence; it leaves the baseline modes and an erased probe row.
-        const xsvSource = readFileSync(config.xsvBundle);
-        if (createHash('sha256').update(xsvSource).digest('hex') !== config.xsvBundleSha256) throw new Error('Local xterm saved-mode adapter bundle changed.');
-        const xsvModule = await import(pathToFileURL(config.xsvBundle).href);
-        const xsvRun = await collectXsvGrading({ config, fence, owner, gradingModule: xsvModule });
-        writeFileSync(join(config.output, 'xsv-run.json'), JSON.stringify(xsvRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered kitty color-control (OSC 21) qualification follows the xterm SGR-stack suite on the same fence; it leaves every runtime color override reset.
-        const kclSource = readFileSync(config.kclBundle);
-        if (createHash('sha256').update(kclSource).digest('hex') !== config.kclBundleSha256) throw new Error('Local kitty color-control adapter bundle changed.');
-        const kclModule = await import(pathToFileURL(config.kclBundle).href);
-        const kclRun = await collectKclGrading({ config, fence, owner, gradingModule: kclModule });
-        writeFileSync(join(config.output, 'kcl-run.json'), JSON.stringify(kclRun) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered rxvt special-color qualification follows the kitty color-control suite on the same fence; it leaves every runtime color override reset.
-        const osc5Source = readFileSync(config.osc5Bundle);
-        if (createHash('sha256').update(osc5Source).digest('hex') !== config.osc5BundleSha256) throw new Error('Local special-color adapter bundle changed.');
-        const osc5Module = await import(pathToFileURL(config.osc5Bundle).href);
-        const osc5Run = await collectOsc5Grading({ config, fence, owner, gradingModule: osc5Module });
-        writeFileSync(join(config.output, 'osc5-run.json'), JSON.stringify(osc5Run) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered OSC 3008 context qualification follows the special-color suite on the same exclusively owned fence. A typed refusal of its first observation is retained by the parent
-        // as its typed marker (written before it answers), so the worker writes nothing and the run continues. It leaves no open context behind.
-        const osc3008Source = readFileSync(config.osc3008Bundle);
-        if (createHash('sha256').update(osc3008Source).digest('hex') !== config.osc3008BundleSha256) throw new Error('Local OSC 3008 adapter bundle changed.');
-        const osc3008Result = await collectOsc3008({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc3008Bundle).href) });
-        if (osc3008Result.status === 'complete') writeFileSync(join(config.output, 'ocx-run.json'), JSON.stringify(osc3008Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-        const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
-        // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
-        // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
-        const routedInputSource = readFileSync(config.routedInputBundle);
-        if (createHash('sha256').update(routedInputSource).digest('hex') !== config.routedInputBundleSha256) throw new Error('Local routed-input adapter bundle changed.');
-        if (inputResult?.status === 'unavailable') {
-            writeFileSync(join(config.output, 'rin-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: routedInputGradedSuiteId,
-                status: 'unavailable', reason: inputResult.reason, plannedCases: routedInputCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
-            writeFileSync(join(config.output, 'mok-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: modifyOtherKeysGradedSuiteId,
-                status: 'unavailable', reason: inputResult.reason, plannedCases: modifyOtherKeysCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
-            writeFileSync(join(config.output, 'mex-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: mexGradedSuiteId,
-                status: 'unavailable', reason: inputResult.reason, plannedCases: mexCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
-            writeFileSync(join(config.output, 'pxm-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: pxmGradedSuiteId,
-                status: 'unavailable', reason: inputResult.reason, plannedCases: pxmCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
-        } else {
-            if (inputResult?.status !== 'complete') throw new Error('Routed-input qualification requires the owned input suite to complete or be unavailable.');
-            const routedInputRun = collectRoutedInputPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
-                gradingModule: await import(pathToFileURL(config.routedInputBundle).href) });
-            writeFileSync(join(config.output, 'rin-run.json'), JSON.stringify(routedInputRun) + '\n', { flag: 'wx', mode: 0o600 });
-            // The layered modifyOtherKeys qualification replays the pinned probe over the child's own XTGETTCAP declaration capture
-            // from the same collection; the routed-input events stay verbatim in the v3 plan so that layer keeps deciding.
-            const modifyOtherKeysSource = readFileSync(config.modifyOtherKeysBundle);
-            if (createHash('sha256').update(modifyOtherKeysSource).digest('hex') !== config.modifyOtherKeysBundleSha256) throw new Error('Local modifyOtherKeys adapter bundle changed.');
-            const modifyOtherKeysRun = collectModifyOtherKeysPinned({ geometry: inputResult.geometry, controls: inputResult.controls,
-                gradingModule: await import(pathToFileURL(config.modifyOtherKeysBundle).href) });
-            writeFileSync(join(config.output, 'mok-run.json'), JSON.stringify(modifyOtherKeysRun) + '\n', { flag: 'wx', mode: 0o600 });
-            // The layered extended-mouse qualification replays the pinned probes over the child's own DECRQM replies from the same collection;
-            // the routed-input and modifyOtherKeys events stay verbatim in the v4 plan so those layers keep deciding.
-            const mexSource = readFileSync(config.mexBundle);
-            if (createHash('sha256').update(mexSource).digest('hex') !== config.mexBundleSha256) throw new Error('Local extended-mouse adapter bundle changed.');
-            const mexRun = collectMexPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
-                gradingModule: await import(pathToFileURL(config.mexBundle).href) });
-            writeFileSync(join(config.output, 'mex-run.json'), JSON.stringify(mexRun) + '\n', { flag: 'wx', mode: 0o600 });
-            // The layered SGR-pixel qualification replays the pinned probe over the child's own DECRQM replies from the same collection;
-            // the routed-input and modifyOtherKeys events stay verbatim in the v5 plan so those layers keep deciding.
-            const pxmSource = readFileSync(config.pxmBundle);
-            if (createHash('sha256').update(pxmSource).digest('hex') !== config.pxmBundleSha256) throw new Error('Local SGR-pixel adapter bundle changed.');
-            const pxmRun = collectPxmPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
-                gradingModule: await import(pathToFileURL(config.pxmBundle).href) });
-            writeFileSync(join(config.output, 'pxm-run.json'), JSON.stringify(pxmRun) + '\n', { flag: 'wx', mode: 0o600 });
-        }
-        const imagesResult = await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
-        await collectAnimation({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' && imagesResult?.status === 'unavailable' });
-        await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
-        if (config.privateClipboard === true) fence.retireInput();
-        else restore();
-        const source = readFileSync(config.bundle);
-        const digest = createHash('sha256').update(source).digest('hex');
-        if (digest !== config.adapterBundleSha256) throw new Error('Local adapter bundle changed.');
-        const { collectNtildeRun } = await import(pathToFileURL(config.bundle).href);
-        run = await collectNtildeRun(config);
-    } catch (error) { primary = error; failed = true; }
-    finally {
-        try { restore(); }
-        catch (error) { restoreFailure = error; restoreFailed = true; }
-    }
-    if (failed && restoreFailed) throw new AggregateError([primary, restoreFailure], 'Owned collection and terminal restoration failed.');
-    if (restoreFailed) throw restoreFailure;
-    if (failed) throw primary;
-    run.collectorAdapter = { id: adapterId, bundleSha256: config.adapterBundleSha256, upstreamBundleSha256: config.upstreamBundleSha256 };
-    writeFileSync(join(config.output, 'raw.json'), JSON.stringify(run) + '\n', { flag: 'wx', mode: 0o600 });
-    await requestOwner(config, 'done', { tty: `/dev/${processRecord(process.pid).tty}` });
-}
-
 /**
  * The persistent-tab animation collection: the worker runs inside the multiplexer daemon, proves that relation to the parent, then plays only
  * the Kitty animation suite. No stock probe engine runs and no other suite's evidence exists.
@@ -579,7 +134,449 @@ try {
     // Establish the real process/PTY relation before loading the probe engine.
     const binding = await verifyNtildeOutput(config, process.stdout);
     if (isPersistentAnimationScope(config.collectionScope)) await runPersistentAnimation(config, binding);
-    else await runFullCollection(config, binding);
+    else {
+        const fence = terminalFence(process.stdin, process.stdout);
+        let restoreOutput;
+        const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
+            /** Require the pre-fixture kernel-mode token in private mode; other runs use the legacy restorers. */
+            () => { if (config.privateClipboard === true) restoreOwnedTerminalState(binding.tabTty, binding.originalTerminalState); }]);
+        let run, primary, failed = false, restoreFailure, restoreFailed = false;
+        try {
+            restoreOutput = prepareOwnedOutput(binding.tabTty);
+            await requestOwner(config, 'raw-output', { tty: binding.tabTty });
+            const owner = (kind, barrier = null, extra = {}) => requestOwner(config, kind, { ...extra, tty: binding.tabTty, barrier });
+            await collectCells({ config, fence, owner });
+            await collectSgr({ config, fence, owner });
+            await collectRgb({ config, fence, owner });
+            await collectRendition({ config, fence, owner });
+            await collectCursor({ config, fence, owner });
+            await collectPixels({ config, fence, owner });
+            await collectColors({ config, fence, owner });
+            await collectErase({ config, fence, owner });
+            await collectEditing({ config, fence, owner });
+            await collectHistory({ config, fence, owner });
+            await collectResize({ config, fence, owner });
+            // The layered ASCII reflow qualification follows the resize suite on the same exclusively owned fence: it reuses the
+            // parent-owned resize action under its own prefix and plan. A typed refusal of its first observation is retained by
+            // the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+            const reflowSource = readFileSync(config.reflowBundle);
+            if (createHash('sha256').update(reflowSource).digest('hex') !== config.reflowBundleSha256) throw new Error('Local ASCII reflow adapter bundle changed.');
+            const reflowResult = await collectReflowGrading({ config, fence, owner, gradingModule: await import(pathToFileURL(config.reflowBundle).href) });
+            if (reflowResult.status === 'complete') writeFileSync(join(config.output, 'rf-run.json'), JSON.stringify(reflowResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+            await collectSaved({ config, fence, owner });
+            await collectMetadata({ config, fence, owner });
+            // Graded ASCII/SGR qualification replays the pinned fixtures through the
+            // fence while it is still exclusively owned; the derived extension
+            // executes the pinned termless probes over parent-observed screens.
+            const gradingSource = readFileSync(config.gradingBundle);
+            if (createHash('sha256').update(gradingSource).digest('hex') !== config.gradingBundleSha256) {
+                throw new Error('Local grading adapter bundle changed.');
+            }
+            const gradingModule = await import(pathToFileURL(config.gradingBundle).href);
+            const gradingRun = await collectAsciiSgrGrading({ config, fence, owner, gradingModule });
+            writeFileSync(join(config.output, 'grading-run.json'), JSON.stringify(gradingRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered selection-color qualification follows on the same fence.
+            const selectionColorsSource = readFileSync(config.selectionColorsBundle);
+            if (createHash('sha256').update(selectionColorsSource).digest('hex') !== config.selectionColorsBundleSha256) {
+                throw new Error('Local selection-color adapter bundle changed.');
+            }
+            const selectionColorsModule = await import(pathToFileURL(config.selectionColorsBundle).href);
+            const selectionColorsRun = await collectSelectionColorsGrading({ config, fence, owner, gradingModule: selectionColorsModule });
+            writeFileSync(join(config.output, 'selc-run.json'), JSON.stringify(selectionColorsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR reset/standard-color qualification follows the first
+            // graded suite on the same exclusively owned fence.
+            const sgrColorsSource = readFileSync(config.sgrColorsBundle);
+            if (createHash('sha256').update(sgrColorsSource).digest('hex') !== config.sgrColorsBundleSha256) {
+                throw new Error('Local SGR-colors adapter bundle changed.');
+            }
+            const sgrColorsModule = await import(pathToFileURL(config.sgrColorsBundle).href);
+            const sgrColorsRun = await collectSgrColorsGrading({ config, fence, owner, gradingModule: sgrColorsModule });
+            writeFileSync(join(config.output, 'sgcolors-run.json'), JSON.stringify(sgrColorsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR-RGB qualification follows the SGR-colors suite on the
+            // same exclusively owned fence; its cells carry the App-resolved RGB.
+            const sgrRgbSource = readFileSync(config.sgrRgbBundle);
+            if (createHash('sha256').update(sgrRgbSource).digest('hex') !== config.sgrRgbBundleSha256) {
+                throw new Error('Local SGR-RGB adapter bundle changed.');
+            }
+            const sgrRgbModule = await import(pathToFileURL(config.sgrRgbBundle).href);
+            const sgrRgbRun = await collectSgrRgbGrading({ config, fence, owner, gradingModule: sgrRgbModule });
+            writeFileSync(join(config.output, 'sgrgb-run.json'), JSON.stringify(sgrRgbRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR-attributes qualification follows the SGR-RGB suite on the
+            // same exclusively owned fence.
+            const sgrAttrsSource = readFileSync(config.sgrAttrsBundle);
+            if (createHash('sha256').update(sgrAttrsSource).digest('hex') !== config.sgrAttrsBundleSha256) {
+                throw new Error('Local SGR-attributes adapter bundle changed.');
+            }
+            const sgrAttrsModule = await import(pathToFileURL(config.sgrAttrsBundle).href);
+            const sgrAttrsRun = await collectSgrAttrsGrading({ config, fence, owner, gradingModule: sgrAttrsModule });
+            writeFileSync(join(config.output, 'sgattr-run.json'), JSON.stringify(sgrAttrsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR-palette qualification follows the SGR-attributes suite on the
+            // same exclusively owned fence.
+            const sgrPaletteSource = readFileSync(config.sgrPaletteBundle);
+            if (createHash('sha256').update(sgrPaletteSource).digest('hex') !== config.sgrPaletteBundleSha256) {
+                throw new Error('Local SGR-palette adapter bundle changed.');
+            }
+            const sgrPaletteModule = await import(pathToFileURL(config.sgrPaletteBundle).href);
+            const sgrPaletteRun = await collectSgrPaletteGrading({ config, fence, owner, gradingModule: sgrPaletteModule });
+            writeFileSync(join(config.output, 'sgpal-run.json'), JSON.stringify(sgrPaletteRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR-truecolor qualification follows the SGR-palette suite on the same fence.
+            const sgrTruecolorSource = readFileSync(config.sgrTruecolorBundle);
+            if (createHash('sha256').update(sgrTruecolorSource).digest('hex') !== config.sgrTruecolorBundleSha256) {
+                throw new Error('Local SGR-truecolor adapter bundle changed.');
+            }
+            const sgrTruecolorModule = await import(pathToFileURL(config.sgrTruecolorBundle).href);
+            const sgrTruecolorRun = await collectSgrTruecolorGrading({ config, fence, owner, gradingModule: sgrTruecolorModule });
+            writeFileSync(join(config.output, 'sgtc-run.json'), JSON.stringify(sgrTruecolorRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The truecolor-literal finding (no pinned probe, no collector extension) follows on the same fence.
+            const truecolorFindingRun = await collectTruecolorFindingGrading({ config, fence, owner });
+            writeFileSync(join(config.output, 'sgtf-run.json'), JSON.stringify(truecolorFindingRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR-underline-style qualification follows the truecolor finding on the same fence.
+            const sgrUnderlineSource = readFileSync(config.sgrUnderlineBundle);
+            if (createHash('sha256').update(sgrUnderlineSource).digest('hex') !== config.sgrUnderlineBundleSha256) {
+                throw new Error('Local SGR-underline adapter bundle changed.');
+            }
+            const sgrUnderlineModule = await import(pathToFileURL(config.sgrUnderlineBundle).href);
+            const sgrUnderlineRun = await collectSgrUnderlineGrading({ config, fence, owner, gradingModule: sgrUnderlineModule });
+            writeFileSync(join(config.output, 'sgus-run.json'), JSON.stringify(sgrUnderlineRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR-underline-color qualification follows the underline-style suite on the same fence.
+            const sgrUnderlineColorSource = readFileSync(config.sgrUnderlineColorBundle);
+            if (createHash('sha256').update(sgrUnderlineColorSource).digest('hex') !== config.sgrUnderlineColorBundleSha256) {
+                throw new Error('Local SGR-underline-color adapter bundle changed.');
+            }
+            const sgrUnderlineColorModule = await import(pathToFileURL(config.sgrUnderlineColorBundle).href);
+            const sgrUnderlineColorRun = await collectSgrUnderlineColorGrading({ config, fence, owner, gradingModule: sgrUnderlineColorModule });
+            writeFileSync(join(config.output, 'sguc-run.json'), JSON.stringify(sgrUnderlineColorRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The App-observed underline-color resolution suite follows it on the same fence; it has no collector extension.
+            const underlineResolvedRun = await collectUnderlineResolvedGrading({ config, fence, owner });
+            writeFileSync(join(config.output, 'sgur-run.json'), JSON.stringify(underlineResolvedRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR selective-reset qualification follows the underline-resolution suite on the same fence.
+            const sgrResetSource = readFileSync(config.sgrResetBundle);
+            if (createHash('sha256').update(sgrResetSource).digest('hex') !== config.sgrResetBundleSha256) {
+                throw new Error('Local SGR selective-reset adapter bundle changed.');
+            }
+            const sgrResetModule = await import(pathToFileURL(config.sgrResetBundle).href);
+            const sgrResetRun = await collectSgrResetGrading({ config, fence, owner, gradingModule: sgrResetModule });
+            writeFileSync(join(config.output, 'sgsr-run.json'), JSON.stringify(sgrResetRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered SGR closure qualification follows the selective-reset suite on the same fence.
+            const sgrClosureSource = readFileSync(config.sgrClosureBundle);
+            if (createHash('sha256').update(sgrClosureSource).digest('hex') !== config.sgrClosureBundleSha256) {
+                throw new Error('Local SGR closure adapter bundle changed.');
+            }
+            const sgrClosureModule = await import(pathToFileURL(config.sgrClosureBundle).href);
+            const sgrClosureRun = await collectSgrClosureGrading({ config, fence, owner, gradingModule: sgrClosureModule });
+            writeFileSync(join(config.output, 'sgcl-run.json'), JSON.stringify(sgrClosureRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered erase-in-line qualification follows the SGR closure suite on the same fence.
+            const eraseLineSource = readFileSync(config.eraseLineBundle);
+            if (createHash('sha256').update(eraseLineSource).digest('hex') !== config.eraseLineBundleSha256) {
+                throw new Error('Local erase-in-line adapter bundle changed.');
+            }
+            const eraseLineModule = await import(pathToFileURL(config.eraseLineBundle).href);
+            const eraseLineRun = await collectEraseLineGrading({ config, fence, owner, gradingModule: eraseLineModule });
+            writeFileSync(join(config.output, 'erln-run.json'), JSON.stringify(eraseLineRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered character-editing qualification follows the erase-in-line suite on the same fence.
+            const charEditSource = readFileSync(config.charEditBundle);
+            if (createHash('sha256').update(charEditSource).digest('hex') !== config.charEditBundleSha256) {
+                throw new Error('Local character-editing adapter bundle changed.');
+            }
+            const charEditModule = await import(pathToFileURL(config.charEditBundle).href);
+            const charEditRun = await collectCharEditGrading({ config, fence, owner, gradingModule: charEditModule });
+            writeFileSync(join(config.output, 'ched-run.json'), JSON.stringify(charEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered erase-in-display qualification follows the character-editing suite on the same fence.
+            const eraseDisplaySource = readFileSync(config.eraseDisplayBundle);
+            if (createHash('sha256').update(eraseDisplaySource).digest('hex') !== config.eraseDisplayBundleSha256) {
+                throw new Error('Local erase-in-display adapter bundle changed.');
+            }
+            const eraseDisplayModule = await import(pathToFileURL(config.eraseDisplayBundle).href);
+            const eraseDisplayRun = await collectEraseDisplayGrading({ config, fence, owner, gradingModule: eraseDisplayModule });
+            writeFileSync(join(config.output, 'erdi-run.json'), JSON.stringify(eraseDisplayRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered line-editing qualification follows the erase-in-display suite on the same fence.
+            const lineEditSource = readFileSync(config.lineEditBundle);
+            if (createHash('sha256').update(lineEditSource).digest('hex') !== config.lineEditBundleSha256) {
+                throw new Error('Local line-editing adapter bundle changed.');
+            }
+            const lineEditModule = await import(pathToFileURL(config.lineEditBundle).href);
+            const lineEditRun = await collectLineEditGrading({ config, fence, owner, gradingModule: lineEditModule });
+            writeFileSync(join(config.output, 'ledt-run.json'), JSON.stringify(lineEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const insertReplaceSource = readFileSync(config.insertReplaceBundle);
+            if (createHash('sha256').update(insertReplaceSource).digest('hex') !== config.insertReplaceBundleSha256) throw new Error('Local IRM adapter bundle changed.');
+            const insertReplaceRun = await collectInsertReplace({ config, fence, owner, gradingModule: await import(pathToFileURL(config.insertReplaceBundle).href) });
+            writeFileSync(join(config.output, 'irm-run.json'), JSON.stringify(insertReplaceRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered charset qualification follows the line-editing suite on the same fence.
+            const charsetsSource = readFileSync(config.charsetsBundle);
+            if (createHash('sha256').update(charsetsSource).digest('hex') !== config.charsetsBundleSha256) {
+                throw new Error('Local charsets adapter bundle changed.');
+            }
+            const charsetsModule = await import(pathToFileURL(config.charsetsBundle).href);
+            const charsetsRun = await collectCharsetsGrading({ config, fence, owner, gradingModule: charsetsModule });
+            writeFileSync(join(config.output, 'chrs-run.json'), JSON.stringify(charsetsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered scrolling/history qualification follows the charsets suite on the same fence, on the main screen.
+            const scrollbackSource = readFileSync(config.scrollbackBundle);
+            if (createHash('sha256').update(scrollbackSource).digest('hex') !== config.scrollbackBundleSha256) {
+                throw new Error('Local scrolling/history adapter bundle changed.');
+            }
+            const scrollbackModule = await import(pathToFileURL(config.scrollbackBundle).href);
+            const scrollbackRun = await collectScrollbackGrading({ config, fence, owner, gradingModule: scrollbackModule });
+            writeFileSync(join(config.output, 'scrl-run.json'), JSON.stringify(scrollbackRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered saved-state/reset qualification follows the scrolling/history suite on the same fence.
+            const savedResetSource = readFileSync(config.savedResetBundle);
+            if (createHash('sha256').update(savedResetSource).digest('hex') !== config.savedResetBundleSha256) {
+                throw new Error('Local saved-state/reset adapter bundle changed.');
+            }
+            const savedResetModule = await import(pathToFileURL(config.savedResetBundle).href);
+            const savedResetRun = await collectSavedResetGrading({ config, fence, owner, gradingModule: savedResetModule });
+            writeFileSync(join(config.output, 'svrs-run.json'), JSON.stringify(savedResetRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered erase attributes / erase margins qualification follows the saved-state/reset suite on the same fence.
+            const eraseAttrsRegionSource = readFileSync(config.eraseAttrsRegionBundle);
+            if (createHash('sha256').update(eraseAttrsRegionSource).digest('hex') !== config.eraseAttrsRegionBundleSha256) {
+                throw new Error('Local erase-attributes adapter bundle changed.');
+            }
+            const eraseAttrsRegionModule = await import(pathToFileURL(config.eraseAttrsRegionBundle).href);
+            const eraseAttrsRegionRun = await collectEraseAttrsRegionGrading({ config, fence, owner, gradingModule: eraseAttrsRegionModule });
+            writeFileSync(join(config.output, 'erar-run.json'), JSON.stringify(eraseAttrsRegionRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered attribute-rectangle qualification follows the erase attributes / erase margins suite on the same fence.
+            const attrRectSource = readFileSync(config.attrRectBundle);
+            if (createHash('sha256').update(attrRectSource).digest('hex') !== config.attrRectBundleSha256) {
+                throw new Error('Local attribute-rectangle adapter bundle changed.');
+            }
+            const attrRectModule = await import(pathToFileURL(config.attrRectBundle).href);
+            const attrRectRun = await collectAttrRectGrading({ config, fence, owner, gradingModule: attrRectModule });
+            writeFileSync(join(config.output, 'atrc-run.json'), JSON.stringify(attrRectRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered cursor qualification follows the attribute-rectangle suite on the same fence, on the alternate screen.
+            const cursorQualSource = readFileSync(config.cursorQualBundle);
+            if (createHash('sha256').update(cursorQualSource).digest('hex') !== config.cursorQualBundleSha256) {
+                throw new Error('Local cursor adapter bundle changed.');
+            }
+            const cursorQualModule = await import(pathToFileURL(config.cursorQualBundle).href);
+            const cursorQualRun = await collectCursorQualGrading({ config, fence, owner, gradingModule: cursorQualModule });
+            writeFileSync(join(config.output, 'curq-run.json'), JSON.stringify(cursorQualRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered erase-character/saved-lines qualification follows the cursor-qualification suite on the same fence.
+            const eraseCharsHistorySource = readFileSync(config.eraseCharsHistoryBundle);
+            if (createHash('sha256').update(eraseCharsHistorySource).digest('hex') !== config.eraseCharsHistoryBundleSha256) {
+                throw new Error('Local erase-character/saved-lines adapter bundle changed.');
+            }
+            const eraseCharsHistoryModule = await import(pathToFileURL(config.eraseCharsHistoryBundle).href);
+            const eraseCharsHistoryRun = await collectEraseCharsHistoryGrading({ config, fence, owner, gradingModule: eraseCharsHistoryModule });
+            writeFileSync(join(config.output, 'echh-run.json'), JSON.stringify(eraseCharsHistoryRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered selective-erasure qualification follows the erase-character/saved-lines suite on the same fence.
+            const selectiveEraseSource = readFileSync(config.selectiveEraseBundle);
+            if (createHash('sha256').update(selectiveEraseSource).digest('hex') !== config.selectiveEraseBundleSha256) {
+                throw new Error('Local selective-erasure adapter bundle changed.');
+            }
+            const selectiveEraseModule = await import(pathToFileURL(config.selectiveEraseBundle).href);
+            const selectiveEraseRun = await collectSelectiveEraseGrading({ config, fence, owner, gradingModule: selectiveEraseModule });
+            writeFileSync(join(config.output, 'sels-run.json'), JSON.stringify(selectiveEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered rectangle-editing qualification follows the selective-erasure suite on the same fence.
+            const rectEditSource = readFileSync(config.rectEditBundle);
+            if (createHash('sha256').update(rectEditSource).digest('hex') !== config.rectEditBundleSha256) {
+                throw new Error('Local rectangle-editing adapter bundle changed.');
+            }
+            const rectEditModule = await import(pathToFileURL(config.rectEditBundle).href);
+            const rectEditRun = await collectRectEditGrading({ config, fence, owner, gradingModule: rectEditModule });
+            writeFileSync(join(config.output, 'rect-run.json'), JSON.stringify(rectEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered column-editing qualification follows the rectangle-editing suite on the same fence.
+            const colEditSource = readFileSync(config.colEditBundle);
+            if (createHash('sha256').update(colEditSource).digest('hex') !== config.colEditBundleSha256) {
+                throw new Error('Local column-editing adapter bundle changed.');
+            }
+            const colEditModule = await import(pathToFileURL(config.colEditBundle).href);
+            const colEditRun = await collectColEditGrading({ config, fence, owner, gradingModule: colEditModule });
+            writeFileSync(join(config.output, 'cole-run.json'), JSON.stringify(colEditRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered rectangle-checksum qualification follows the column-editing suite on the same fence.
+            const rectChecksumSource = readFileSync(config.rectChecksumBundle);
+            if (createHash('sha256').update(rectChecksumSource).digest('hex') !== config.rectChecksumBundleSha256) {
+                throw new Error('Local rectangle-checksum adapter bundle changed.');
+            }
+            const rectChecksumModule = await import(pathToFileURL(config.rectChecksumBundle).href);
+            const rectChecksumRun = await collectRectChecksumGrading({ config, fence, owner, gradingModule: rectChecksumModule });
+            writeFileSync(join(config.output, 'csum-run.json'), JSON.stringify(rectChecksumRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered left/right-margin qualification follows the rectangle-checksum suite on the same fence.
+            const lrMarginsSource = readFileSync(config.lrMarginsBundle);
+            if (createHash('sha256').update(lrMarginsSource).digest('hex') !== config.lrMarginsBundleSha256) {
+                throw new Error('Local left/right-margin adapter bundle changed.');
+            }
+            const lrMarginsModule = await import(pathToFileURL(config.lrMarginsBundle).href);
+            const lrMarginsRun = await collectLrMarginsGrading({ config, fence, owner, gradingModule: lrMarginsModule });
+            writeFileSync(join(config.output, 'lrmm-run.json'), JSON.stringify(lrMarginsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            if (createHash('sha256').update(readFileSync(config.coreGapsBundle)).digest('hex') !== config.coreGapsBundleSha256) throw new Error('Core-gap bundle changed.');
+            const coreRun = await collectCoreGaps({ config, fence, owner, gradingModule: await import(pathToFileURL(config.coreGapsBundle).href) });
+            writeFileSync(join(config.output, 'cg-run.json'), JSON.stringify(coreRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered runtime-color reset qualification follows the left/right-margin suite on the same fence.
+            const colorResetSource = readFileSync(config.colorResetBundle);
+            if (createHash('sha256').update(colorResetSource).digest('hex') !== config.colorResetBundleSha256) {
+                throw new Error('Local runtime-color reset adapter bundle changed.');
+            }
+            const colorResetModule = await import(pathToFileURL(config.colorResetBundle).href);
+            const colorResetRun = await collectColorResetGrading({ config, fence, owner, gradingModule: colorResetModule });
+            writeFileSync(join(config.output, 'crst-run.json'), JSON.stringify(colorResetRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const textCursorRun = await collectTextCursor({ config, fence, owner });
+            writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered OSC 133 qualification follows the text/cursor suite on the same exclusively owned fence. A typed refusal of its first
+            // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+            const osc133Source = readFileSync(config.osc133Bundle);
+            if (createHash('sha256').update(osc133Source).digest('hex') !== config.osc133BundleSha256) throw new Error('Local OSC 133 adapter bundle changed.');
+            const osc133Result = await collectOsc133({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc133Bundle).href) });
+            if (osc133Result.status === 'complete') writeFileSync(join(config.output, 'shi-run.json'), JSON.stringify(osc133Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+            if (isOsc633Scope(config.collectionScope)) {
+                const osc633Source = readFileSync(config.osc633Bundle);
+                if (createHash('sha256').update(osc633Source).digest('hex') !== config.osc633BundleSha256) throw new Error('Local OSC 633 adapter bundle changed.');
+                const osc633Result = await collectOsc633({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc633Bundle).href) });
+                if (osc633Result.status === 'complete') writeFileSync(join(config.output, 'vs633-run.json'), JSON.stringify(osc633Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+            }
+            const coreEraseRun = await collectCoreErase({ config, fence, owner });
+            writeFileSync(join(config.output, 'ce-run.json'), JSON.stringify(coreEraseRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const tabStopsRun = await collectTabStops({ config, fence, owner });
+            writeFileSync(join(config.output, 'ts-run.json'), JSON.stringify(tabStopsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const coreWrapRun = await collectWrap({ config, fence, owner });
+            writeFileSync(join(config.output, 'cw-run.json'), JSON.stringify(coreWrapRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const sgrRasterRun = await collectSgrRaster({ config, fence, owner });
+            writeFileSync(join(config.output, 'sr-run.json'), JSON.stringify(sgrRasterRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const reverseWideRun = await collectReverseWide({ config, fence, owner });
+            writeFileSync(join(config.output, 'rw-run.json'), JSON.stringify(reverseWideRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered OSC 7 / OSC 8 qualification follows the Core reverse-video/wide-cell suite on the same exclusively owned fence. A typed refusal of its first
+            // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+            const osc78Source = readFileSync(config.osc78Bundle);
+            if (createHash('sha256').update(osc78Source).digest('hex') !== config.osc78BundleSha256) throw new Error('Local OSC 7/8 adapter bundle changed.');
+            const osc78Result = await collectOsc78({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc78Bundle).href) });
+            if (osc78Result.status === 'complete') writeFileSync(join(config.output, 'lnk-run.json'), JSON.stringify(osc78Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered title/icon stack qualification follows the OSC 7 / OSC 8 suite on the same exclusively owned fence. A typed refusal of its first
+            // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+            const titleStackSource = readFileSync(config.titleStackBundle);
+            if (createHash('sha256').update(titleStackSource).digest('hex') !== config.titleStackBundleSha256) throw new Error('Local title-stack adapter bundle changed.');
+            const titleStackResult = await collectTitleStack({ config, fence, owner, gradingModule: await import(pathToFileURL(config.titleStackBundle).href) });
+            if (titleStackResult.status === 'complete') writeFileSync(join(config.output, 'tst-run.json'), JSON.stringify(titleStackResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+            const oscTitleSource = readFileSync(config.oscTitleBundle);
+            if (createHash('sha256').update(oscTitleSource).digest('hex') !== config.oscTitleBundleSha256) throw new Error('Local OSC title adapter bundle changed.');
+            const oscTitleResult = await collectOscTitle({ config, fence, owner, gradingModule: await import(pathToFileURL(config.oscTitleBundle).href) });
+            if (oscTitleResult.status === 'complete') writeFileSync(join(config.output, 'ost-run.json'), JSON.stringify(oscTitleResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered XTGETTCAP qualification follows the OSC title suite on the same exclusively owned fence: every request is
+            // one fenced exchange whose raw replies the parent journals beside the unchanged state.
+            const xtgettcapSource = readFileSync(config.xtgettcapBundle);
+            if (createHash('sha256').update(xtgettcapSource).digest('hex') !== config.xtgettcapBundleSha256) throw new Error('Local XTGETTCAP adapter bundle changed.');
+            const xtgettcapModule = await import(pathToFileURL(config.xtgettcapBundle).href);
+            const xtgettcapRun = await collectXtgettcapGrading({ config, fence, owner, gradingModule: xtgettcapModule });
+            writeFileSync(join(config.output, 'xgtc-run.json'), JSON.stringify(xtgettcapRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered OSC 9 qualification follows the XTGETTCAP suite on the same exclusively owned fence. A typed refusal of its first observation is
+            // retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
+            if (!isOsc633Scope(config.collectionScope)) {
+                const osc9Source = readFileSync(config.osc9Bundle);
+                if (createHash('sha256').update(osc9Source).digest('hex') !== config.osc9BundleSha256) throw new Error('Local OSC 9 adapter bundle changed.');
+                const osc9Result = await collectOsc9({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc9Bundle).href) });
+                if (osc9Result.status === 'complete') writeFileSync(join(config.output, 'osn-run.json'), JSON.stringify(osc9Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+                const notifySource = readFileSync(config.notifyBundle);
+                if (createHash('sha256').update(notifySource).digest('hex') !== config.notifyBundleSha256) throw new Error('Local notification adapter bundle changed.');
+                const notifyResult = await collectNotify({ config, fence, owner, gradingModule: await import(pathToFileURL(config.notifyBundle).href) });
+                if (notifyResult.status === 'complete') writeFileSync(join(config.output, 'ntf-run.json'), JSON.stringify(notifyResult.run) + '\n', { flag: 'wx', mode: 0o600 });
+            }
+            // The layered device-query qualification follows the notification suite on the same exclusively owned fence: every request is one fenced exchange whose raw replies the
+            // parent journals beside the unchanged state.
+            const devqSource = readFileSync(config.devqBundle);
+            if (createHash('sha256').update(devqSource).digest('hex') !== config.devqBundleSha256) throw new Error('Local device-query adapter bundle changed.');
+            const devqModule = await import(pathToFileURL(config.devqBundle).href);
+            const devqRun = await collectDevqGrading({ config, fence, owner, gradingModule: devqModule });
+            writeFileSync(join(config.output, 'dvq-run.json'), JSON.stringify(devqRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const cellSizeSource = readFileSync(config.cellSizeBundle);
+            if (createHash('sha256').update(cellSizeSource).digest('hex') !== config.cellSizeBundleSha256) throw new Error('Cell-size adapter bundle changed.');
+            const cellSizeRun = await collectCellSize({ config, fence, owner, module: await import(pathToFileURL(config.cellSizeBundle).href) });
+            writeFileSync(join(config.output, 'cell-size-run.json'), JSON.stringify(cellSizeRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered xterm color-stack qualification follows the device-query suite on the same fence; it leaves every color reset and the xterm palette stack balanced.
+            const xcsSource = readFileSync(config.xcsBundle);
+            if (createHash('sha256').update(xcsSource).digest('hex') !== config.xcsBundleSha256) throw new Error('Local xterm color-stack adapter bundle changed.');
+            const xcsModule = await import(pathToFileURL(config.xcsBundle).href);
+            const xcsRun = await collectXcsGrading({ config, fence, owner, gradingModule: xcsModule });
+            writeFileSync(join(config.output, 'xcs-run.json'), JSON.stringify(xcsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered xterm SGR-stack qualification follows the color-stack suite on the same fence; it leaves the pen reset and the video-attribute stack drained.
+            const xssSource = readFileSync(config.xssBundle);
+            if (createHash('sha256').update(xssSource).digest('hex') !== config.xssBundleSha256) throw new Error('Local xterm SGR-stack adapter bundle changed.');
+            const xssModule = await import(pathToFileURL(config.xssBundle).href);
+            const xssRun = await collectXssGrading({ config, fence, owner, gradingModule: xssModule });
+            writeFileSync(join(config.output, 'xss-run.json'), JSON.stringify(xssRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered xterm saved-mode qualification follows the SGR-stack suite on the same fence; it leaves the baseline modes and an erased probe row.
+            const xsvSource = readFileSync(config.xsvBundle);
+            if (createHash('sha256').update(xsvSource).digest('hex') !== config.xsvBundleSha256) throw new Error('Local xterm saved-mode adapter bundle changed.');
+            const xsvModule = await import(pathToFileURL(config.xsvBundle).href);
+            const xsvRun = await collectXsvGrading({ config, fence, owner, gradingModule: xsvModule });
+            writeFileSync(join(config.output, 'xsv-run.json'), JSON.stringify(xsvRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered kitty color-control (OSC 21) qualification follows the xterm SGR-stack suite on the same fence; it leaves every runtime color override reset.
+            const kclSource = readFileSync(config.kclBundle);
+            if (createHash('sha256').update(kclSource).digest('hex') !== config.kclBundleSha256) throw new Error('Local kitty color-control adapter bundle changed.');
+            const kclModule = await import(pathToFileURL(config.kclBundle).href);
+            const kclRun = await collectKclGrading({ config, fence, owner, gradingModule: kclModule });
+            writeFileSync(join(config.output, 'kcl-run.json'), JSON.stringify(kclRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered rxvt special-color qualification follows the kitty color-control suite on the same fence; it leaves every runtime color override reset.
+            const osc5Source = readFileSync(config.osc5Bundle);
+            if (createHash('sha256').update(osc5Source).digest('hex') !== config.osc5BundleSha256) throw new Error('Local special-color adapter bundle changed.');
+            const osc5Module = await import(pathToFileURL(config.osc5Bundle).href);
+            const osc5Run = await collectOsc5Grading({ config, fence, owner, gradingModule: osc5Module });
+            writeFileSync(join(config.output, 'osc5-run.json'), JSON.stringify(osc5Run) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered OSC 3008 context qualification follows the special-color suite on the same exclusively owned fence. A typed refusal of its first observation is retained by the parent
+            // as its typed marker (written before it answers), so the worker writes nothing and the run continues. It leaves no open context behind.
+            const osc3008Source = readFileSync(config.osc3008Bundle);
+            if (createHash('sha256').update(osc3008Source).digest('hex') !== config.osc3008BundleSha256) throw new Error('Local OSC 3008 adapter bundle changed.');
+            const osc3008Result = await collectOsc3008({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc3008Bundle).href) });
+            if (osc3008Result.status === 'complete') writeFileSync(join(config.output, 'ocx-run.json'), JSON.stringify(osc3008Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+            const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
+            // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
+            // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
+            const routedInputSource = readFileSync(config.routedInputBundle);
+            if (createHash('sha256').update(routedInputSource).digest('hex') !== config.routedInputBundleSha256) throw new Error('Local routed-input adapter bundle changed.');
+            if (inputResult?.status === 'unavailable') {
+                writeFileSync(join(config.output, 'rin-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: routedInputGradedSuiteId,
+                    status: 'unavailable', reason: inputResult.reason, plannedCases: routedInputCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
+                writeFileSync(join(config.output, 'mok-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: modifyOtherKeysGradedSuiteId,
+                    status: 'unavailable', reason: inputResult.reason, plannedCases: modifyOtherKeysCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
+                writeFileSync(join(config.output, 'mex-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: mexGradedSuiteId,
+                    status: 'unavailable', reason: inputResult.reason, plannedCases: mexCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
+                writeFileSync(join(config.output, 'pxm-unavailable.json'), JSON.stringify({ schemaVersion: 1, runId: config.runId, suiteId: pxmGradedSuiteId,
+                    status: 'unavailable', reason: inputResult.reason, plannedCases: pxmCaseIds.length }) + '\n', { flag: 'wx', mode: 0o600 });
+            } else {
+                if (inputResult?.status !== 'complete') throw new Error('Routed-input qualification requires the owned input suite to complete or be unavailable.');
+                const routedInputRun = collectRoutedInputPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
+                    gradingModule: await import(pathToFileURL(config.routedInputBundle).href) });
+                writeFileSync(join(config.output, 'rin-run.json'), JSON.stringify(routedInputRun) + '\n', { flag: 'wx', mode: 0o600 });
+                // The layered modifyOtherKeys qualification replays the pinned probe over the child's own XTGETTCAP declaration capture
+                // from the same collection; the routed-input events stay verbatim in the v3 plan so that layer keeps deciding.
+                const modifyOtherKeysSource = readFileSync(config.modifyOtherKeysBundle);
+                if (createHash('sha256').update(modifyOtherKeysSource).digest('hex') !== config.modifyOtherKeysBundleSha256) throw new Error('Local modifyOtherKeys adapter bundle changed.');
+                const modifyOtherKeysRun = collectModifyOtherKeysPinned({ geometry: inputResult.geometry, controls: inputResult.controls,
+                    gradingModule: await import(pathToFileURL(config.modifyOtherKeysBundle).href) });
+                writeFileSync(join(config.output, 'mok-run.json'), JSON.stringify(modifyOtherKeysRun) + '\n', { flag: 'wx', mode: 0o600 });
+                // The layered extended-mouse qualification replays the pinned probes over the child's own DECRQM replies from the same collection;
+                // the routed-input and modifyOtherKeys events stay verbatim in the v4 plan so those layers keep deciding.
+                const mexSource = readFileSync(config.mexBundle);
+                if (createHash('sha256').update(mexSource).digest('hex') !== config.mexBundleSha256) throw new Error('Local extended-mouse adapter bundle changed.');
+                const mexRun = collectMexPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
+                    gradingModule: await import(pathToFileURL(config.mexBundle).href) });
+                writeFileSync(join(config.output, 'mex-run.json'), JSON.stringify(mexRun) + '\n', { flag: 'wx', mode: 0o600 });
+                // The layered SGR-pixel qualification replays the pinned probe over the child's own DECRQM replies from the same collection;
+                // the routed-input and modifyOtherKeys events stay verbatim in the v5 plan so those layers keep deciding.
+                const pxmSource = readFileSync(config.pxmBundle);
+                if (createHash('sha256').update(pxmSource).digest('hex') !== config.pxmBundleSha256) throw new Error('Local SGR-pixel adapter bundle changed.');
+                const pxmRun = collectPxmPinned({ geometry: inputResult.geometry, controls: inputResult.controls, restored: inputResult.restored,
+                    gradingModule: await import(pathToFileURL(config.pxmBundle).href) });
+                writeFileSync(join(config.output, 'pxm-run.json'), JSON.stringify(pxmRun) + '\n', { flag: 'wx', mode: 0o600 });
+            }
+            const imagesResult = await collectStaticImages({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' });
+            await collectAnimation({ config, fence, owner, detachFence: inputResult?.status === 'unavailable' && imagesResult?.status === 'unavailable' });
+            await collectQueries({ runId: config.runId, owner, expectedOwnerPid: binding.ownerPid, outputDirectory: config.output });
+            if (config.privateClipboard === true) fence.retireInput();
+            else restore();
+            const source = readFileSync(config.bundle);
+            const digest = createHash('sha256').update(source).digest('hex');
+            if (digest !== config.adapterBundleSha256) throw new Error('Local adapter bundle changed.');
+            const { collectNtildeRun } = await import(pathToFileURL(config.bundle).href);
+            run = await collectNtildeRun(config);
+        } catch (error) { primary = error; failed = true; }
+        finally {
+            try { restore(); }
+            catch (error) { restoreFailure = error; restoreFailed = true; }
+        }
+        if (failed && restoreFailed) throw new AggregateError([primary, restoreFailure], 'Owned collection and terminal restoration failed.');
+        if (restoreFailed) throw restoreFailure;
+        if (failed) throw primary;
+        run.collectorAdapter = { id: adapterId, bundleSha256: config.adapterBundleSha256, upstreamBundleSha256: config.upstreamBundleSha256 };
+        writeFileSync(join(config.output, 'raw.json'), JSON.stringify(run) + '\n', { flag: 'wx', mode: 0o600 });
+        await requestOwner(config, 'done', { tty: `/dev/${processRecord(process.pid).tty}` });
+    }
 } catch (error) {
     if (config) {
         writeFileSync(join(config.output, 'worker-error.txt'), retainedFailure(error).slice(0, 65536) + '\n', { flag: 'wx', mode: 0o600 });
