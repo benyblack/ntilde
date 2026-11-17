@@ -258,6 +258,52 @@ public sealed class Osc5SpecialColorTests
     }
 
     [Fact]
+    public void Xterm_pop_preserves_reset_special_slots_and_the_render_baseline()
+    {
+        var (parser, buffer, replies) = Create();
+        parser.Process("Text" + Osc("5;0;#101010") + Esc + "[#P" + Osc("105"));
+        var request = new RenderSnapshotRequest { ViewportCols = 10, ViewportRows = 3 };
+        using var before = buffer.CaptureRenderSnapshot(request, out _);
+        uint revision = before.RowsData.Array[0].Revision;
+        parser.Process(Esc + "[#Q" + Osc("5;0;?"));
+        using var after = buffer.CaptureRenderSnapshot(request, out _);
+        Assert.Equal(new[] { Osc("5;0;rgb:ffff/ffff/ffff") }, replies);
+        Assert.Equal(revision, after.RowsData.Array[0].Revision);
+        Assert.Equal(0, after.DirtySpans.Length);
+    }
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("3", true)]
+    [InlineData("10", true)]
+    public void Xterm_palette_pop_preserves_live_special_colors(string slot, bool transfer)
+    {
+        var (parser, buffer, replies) = Create();
+        parser.Process(Osc("5;0;#101010;4;#505050") + Osc("10;#112233") + Osc("4;200;#123456"));
+        parser.Process(Esc + "[" + slot + "#P");
+        parser.Process(Osc("5;0;#202020;4;#606060") + Osc("10;#abcdef") + Osc("4;200;#654321"));
+        if (transfer)
+        {
+            TerminalRuntimeColors? colors;
+            buffer.Lock.EnterReadLock();
+            try { colors = buffer.ExportRuntimeColors(); }
+            finally { buffer.Lock.ExitReadLock(); }
+            var restored = new TerminalBuffer(10, 3);
+            restored.Lock.EnterWriteLock();
+            try { restored.ImportRuntimeColors(colors); }
+            finally { restored.Lock.ExitWriteLock(); }
+            parser = new AnsiParser(restored) { DefaultForeground = TermColor.White, OnResponse = replies.Add };
+        }
+        parser.Process(Esc + "[" + slot + "#Q");
+        parser.Process(Osc("5;0;?;4;?") + Osc("10;?") + Osc("4;200;?"));
+        Assert.Equal(new[]
+        {
+            Osc("5;0;rgb:2020/2020/2020"), Osc("5;4;rgb:6060/6060/6060"),
+            Osc("10;rgb:1111/2222/3333"), Osc("4;200;rgb:1212/3434/5656")
+        }, replies);
+    }
+
+    [Fact]
     public void Malformed_pairs_change_nothing_and_valid_pairs_still_apply()
     {
         var (parser, _, replies) = Create();

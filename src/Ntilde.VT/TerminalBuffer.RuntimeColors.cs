@@ -114,7 +114,11 @@ public partial class TerminalBuffer
         var state = _runtimeColors;
         int target = slot <= 0 ? state.XtermUsed - 1 : slot - 1;
         if (target is < 0 or >= TerminalRuntimeColors.MaxXtermSlots || state.XtermSlots?[target] is not { } frame) return;
-        var next = state.WithColors(frame, state.Stack);
+        // The xterm palette stack covers dynamic colors and palette entries, not rxvt's OSC 5 resources.
+        // Published arrays are immutable; keep the live special slots while restoring the saved render colors.
+        var restored = frame.Clone();
+        restored.SpecialColors = state.Current.SpecialColors;
+        var next = state.WithColors(restored, state.Stack);
         next.XtermSlots = state.XtermSlots;
         next.XtermUsed = target;
         next.XtermLast = state.XtermLast;
