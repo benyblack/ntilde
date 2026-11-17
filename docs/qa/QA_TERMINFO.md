@@ -1360,3 +1360,14 @@ The [OSC 3008 batch](terminfo/2026-11-17-osc3008-qualification.md) implements [U
 ### OSC 22 pointer shape (#990)
 
 The [OSC 22 batch](terminfo/2026-11-17-osc22-qualification.md) implements bounded direct-local App setters and measures the requested shape and the actual Avalonia Cursor kind independently. Eight required checks and nine controls held across 15 reads; prepared null/Arrow restoration and complete teardown are receipted (schema75, source policy68, 455 inputs). The exact pinned CPR-only probe remains inconclusive; the separate App effect is supported, with no stock/Core/Modern or native-pointer-image score claim. All three attempts are retained: failed dispatch, the earlier successful App, and the fresh App after the screen-switch hover fix. Stacks/queries/other names, runtime hover/alternate screens, mux/replay and other platforms remain outside this qualification.
+
+### iTerm2 feature reporting (OSC 1337 RequestCapabilities)
+
+The [feature-reporting batch](terminfo/2026-11-17-osc1337-capabilities-qualification.md) implements the response half of iTerm2's
+[feature-reporting specification](https://iterm2.com/feature-reporting): `OSC 1337 ; RequestCapabilities` is answered with one ST-terminated
+`Capabilities = T3CwLrMSc7UTs3BFGsGoSyHNoP` reply declaring exactly the codes with owning implementation and test evidence ([contract](terminfo/iterm-feature-reporting.md); `Cw` only while the host
+accepts OSC 52 writes, the XTGETTCAP `Ms` gate; `Aw`, `Uw` and the measured-unsupported `Sx` stay undeclared; unsolicited `Capabilities` forms stay silent — the [#1003 policy audit](terminfo/2026-11-17-term-features-policy.md)
+regressions are retained). The pinned probe's valid pattern accepts any feature string, so the graded conclusion is the separately identified effect contract `ntilde-osc1337-capabilities-effect-v1`,
+which demands the specification-table literal: **supported**, with the exact-query witness (query policy v7) matching byte for byte. The stock grade moves from inconclusive to **supported**
+(95/159/1). Receipt schema 74 and source policy v69 bind 463 inputs; the inventory adds one pinned-and-effect-supported ID and no Core, Modern or common-harness score increase. The
+[TERM_FEATURES environment declaration](terminfo/2026-11-17-term-features-policy.md) stays unset.

@@ -73,6 +73,13 @@ invariant changes.
   from the direct view. Headless and mux hosts without those facts stay silent. The read-only
   pane metadata API independently projects the view metrics; a CSI 16 t reply is a control,
   never substituted for either OSC query.
+- **iTerm2 feature reporting declares only owned evidence.** VT owns the exact
+  `OSC 1337 ; RequestCapabilities` reply: a fixed literal per host-acceptance state, never a
+  composed generic mechanism, with `Cw` gated by the host OSC 52 answer (the XTGETTCAP `Ms`
+  gate) and every code backed by its own implementation and tests
+  ([contract](qa/terminfo/iterm-feature-reporting.md)). The environment-variable half
+  (`TERM_FEATURES`) stays unset on every spawn path; unsolicited `Capabilities` forms and every
+  other `1337;` payload stay silent.
 - **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
   reset precede the existing full clear under one write cut. Main and retained
   alternate screens return to visible DECTCEM cursor presentation in that cut;

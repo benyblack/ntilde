@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc1337-capabilities-graded-v1",
+  "contractsVersion": 1,
+  "runId": "fd80abff940550734e8f78adee6967a7",
+  "adapter": {
+    "id": "ntilde-owned-osc1337-capabilities-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "cc4419a026240374f4db97f298855bbeef7a50f237e52c289352ecc2947a6327",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criterion for extensions.osc1337-capabilities (OSC 1337 ; RequestCapabilities BEL answered by one complete ESC]1337;Capabilities=<characters without BEL or ESC> frame ended by BEL or ST; a query-only probe that can never return unsupported and whose valid pattern accepts any feature string), decided by the unchanged stock collector against the App in this owned run, corroborated by the exact-query witness (query policy v7) and replayed byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately identified effect contract graded by an independent literal written from the iTerm2 feature-reporting specification's code table over this terminal's implemented, tested capabilities: the exact pinned request, the same request ended by ST answered by the same ST-terminated reply, two requests answered by two identical replies in request order, and silence for an unsolicited Capabilities assignment, a bare or query Capabilities form, a suffixed or wrong-case request and another OSC, with the exact request still answered after them; every exchange must leave the complete screen, cursor, rendition, margins, modes and active screen unchanged. The measured run's direct pane accepts OSC 52 writes under its default initial settings, so the declaration includes Cw; a host that cannot answer omits it (policy, unit-tested, not measured here). The declaration advertises implemented capabilities only — Aw, Uw and the measured-unsupported Sx stay out; the per-code behavior of every declared capability is owned by that capability's own implementations and tests; raw replies and stored state, not rendering or painted pixels; no remote/mux, Windows/Linux or common-harness claim.",
+  "cases": [
+    {
+      "caseId": "extensions.osc1337-capabilities",
+      "pinnedCriterion": "OSC 1337 ; RequestCapabilities BEL answered by one complete ESC]1337;Capabilities=<characters without BEL or ESC> frame ended by BEL or ST; a prefixed capture without a complete frame is inconclusive (invalid-reply) and no frame is inconclusive (no-response); it can never be unsupported",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feedCapture",
+            "\\e]1337;RequestCapabilities\\a",
+            "replies"
+          ]
+        ],
+        "terminal": [
+          [
+            "queryWithSentinelOutcome",
+            "\\e]1337;RequestCapabilities\\a",
+            "\\x1b\\]1337;Capabilities=[^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)"
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-osc1337-capabilities-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "effectContract": "ntilde-osc1337-capabilities-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feedCapture",
+              "\\e]1337;RequestCapabilities\\a",
+              "replies"
+            ]
+          ],
+          "terminal": [
+            [
+              "queryWithSentinelOutcome",
+              "\\e]1337;RequestCapabilities\\a",
+              "\\x1b\\]1337;Capabilities=[^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)"
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_CAP_fd80abff940550734e8f78adee6967a7",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e]1337;RequestCapabilities\\a",
+            "demand": "the exact pinned BEL-terminated request on the untouched default is answered by the complete declared declaration, ST-terminated",
+            "demanded": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "received": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "st-terminated": {
+            "kind": "protocol",
+            "request": "\\e]1337;RequestCapabilities\\e\\",
+            "demand": "the same request ended by ST is answered by the same ST-terminated reply",
+            "demanded": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "received": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "repeat": {
+            "kind": "protocol",
+            "request": "\\e]1337;RequestCapabilities\\a\\e]1337;RequestCapabilities\\e\\",
+            "demand": "two requests in one exchange are answered by two identical replies in request order",
+            "demanded": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\",
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "received": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\",
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          },
+          "silent-forms": {
+            "kind": "policy",
+            "request": "\\e]1337;Capabilities\\a\\e]1337;Capabilities?\\a",
+            "demand": "a bare Capabilities form and a query spelling change nothing and stay silent",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "silent-assignment": {
+            "kind": "policy",
+            "request": "\\e]1337;Capabilities=TSGoUwTsBFSyHNoSxP\\a",
+            "demand": "an unsolicited Capabilities assignment changes nothing and stays silent",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "silent-suffix": {
+            "kind": "policy",
+            "request": "\\e]1337;RequestCapabilitiesX\\a",
+            "demand": "a suffixed request changes nothing and stays silent",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "silent-case": {
+            "kind": "policy",
+            "request": "\\e]1337;requestcapabilities\\a\\e]1337;REQUESTCAPABILITIES\\a",
+            "demand": "both wrong-case spellings change nothing and stay silent",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "unchanged": true
+          },
+          "recover": {
+            "kind": "protocol",
+            "request": "\\e]1337;RequestCapabilities\\a",
+            "demand": "after the silent forms the exact request is still answered by the same reply, so silence never broke the framing",
+            "demanded": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "received": [
+              "\\e]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\\e\\"
+            ],
+            "matches": true,
+            "unchanged": true
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": true,
+          "response": "\u001b]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\u001b\\",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Complete OSC 1337 Capabilities reply",
+              "observed": "\u001b]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\u001b\\"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": true,
+          "response": "\u001b]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\u001b\\\u001b[?62;4;22c",
+          "note": null,
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Complete OSC 1337 Capabilities reply",
+              "observed": "\u001b]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\u001b\\"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "featureId": "extensions.osc1337-capabilities",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc1337-capabilities"
+      },
+      "queryWitness": {
+        "id": "q07.extensions.osc1337-capabilities",
+        "expectedEvidence": "positive-reply",
+        "receivedHex": "1b5d313333373b4361706162696c69746965733d543343774c724d5363375554733342464773476f5379484e6f501b5c",
+        "contractMatched": true
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "evidence": "owned-raw-replies-and-unchanged-state",
+        "grading": "pinned-termless-replayed",
+        "note": null,
+        "reason": null,
+        "scope": "the iTerm2 feature-reporting declaration (OSC 1337 RequestCapabilities/Capabilities) only: the exact pinned request, the ST-terminated reply framing, the declared code string with Cw (the direct pane's host accepts OSC 52 writes under the run's default initial settings), reply count and correlation, the silent boundaries for unsolicited, suffixed and wrong-case payloads and recovery after them; the Cw-omitted host state, the per-code behavior of every declared capability and the image and cell-size forms are owned elsewhere; raw replies and unchanged state, no rendering, painted-pixel, remote/mux, common-harness or score claim, and the pinned probe alone never establishes which capabilities are honestly advertised"
+      }
+    }
+  ]
+}
