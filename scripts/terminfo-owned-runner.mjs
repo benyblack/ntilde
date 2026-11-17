@@ -4475,7 +4475,8 @@ function startPersistentApp(run) {
     const app = launchOwnedApp(run.lease, run.executable, run.runId, run.env, run.logFd);
     run.app = app;
     app.once('error', run.reject);
-    app.once('exit', (code, signal) => { if (!run.completed && !run.relaunching && run.app === app) run.reject(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
+    // Only the App a relaunch is replacing may exit unannounced; any other exit, the new App's during its start included, fails the run at once.
+    app.once('exit', (code, signal) => { if (!run.completed && run.outgoing !== app) run.reject(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
     return app;
 }
 
@@ -4499,7 +4500,7 @@ async function waitForReattachedPane(run, deadline = Date.now() + 60000) {
  */
 async function relaunchPersistentApp(run) {
     const previous = run.app;
-    run.relaunching = true;
+    run.outgoing = previous;
     try {
         await terminateLaunchedApp(previous);
         if (run.stopping) throw new Error('The run stopped before the App was started again.');
@@ -4509,7 +4510,7 @@ async function relaunchPersistentApp(run) {
         const startedAt = new Date().toISOString(), next = startPersistentApp(run);
         await waitForReattachedPane(run);
         run.relaunches.push({ from: previous.pid, to: next.pid, appBirth: processBirth(next.pid), startedAt, at: new Date().toISOString() });
-    } finally { run.relaunching = false; }
+    } finally { run.outgoing = undefined; }
 }
 
 /** Start the disposable App and wait for the worker's completion; the evidence is retained only for a restored, sealed suite. */
