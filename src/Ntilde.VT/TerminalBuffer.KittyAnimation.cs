@@ -46,11 +46,7 @@ public partial class TerminalBuffer
         {
             if (!_kittyImageAssets.Contains(asset)) return KittyFrameStoreResult.ImageGone;
             // Settle first, as every command does: even a refused frame leaves the display where elapsed time puts it.
-            if (asset.Animation is { } animation && !KittyAnimationPaused && animation.Advance(KittyAnimationClock()))
-            {
-                ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
-                moved = true;
-            }
+            moved = SettleKittyPlayhead(asset, KittyAnimationClock());
             bool replacing = replaceIndex >= 0;
             int frames = KittyFrameCount(asset);
             if (!replacing && frames >= KittyAnimation.MaxFrames) return KittyFrameStoreResult.TooManyFrames;
@@ -80,7 +76,7 @@ public partial class TerminalBuffer
             // Settle the playhead to now before anything can refuse or change the frame list, so even a refused frame leaves the display
             // where elapsed time puts it and a change cannot rewrite time already elapsed.
             long now = KittyAnimationClock();
-            if (!KittyAnimationPaused && animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+            SettleKittyPlayhead(asset, now);
             bool replacing = replaceIndex >= 0;
             if (!replacing && animation.Frames.Count >= KittyAnimation.MaxFrames) return KittyFrameStoreResult.TooManyFrames;
             long resulting = asset.PixelCharge + frame.Charge - (replacing ? animation.Frames[replaceIndex].Charge : 0);
@@ -90,20 +86,7 @@ public partial class TerminalBuffer
 
             // Publish the frame's ownership before any other asset is freed: a host decoder that shares an opaque handle cannot then
             // see it retired while the frame already owns it (the order StoreKittyImage keeps for whole images).
-            KittyFrame? old = null;
-            if (!replacing)
-            {
-                animation.Frames.Add(frame);
-                // A parked loading animation resumes from this arrival, not from whenever the next render happens.
-                if (!KittyAnimationPaused && animation.OnFrameAppended(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
-            }
-            else
-            {
-                old = animation.Frames[replaceIndex];
-                animation.Frames[replaceIndex] = frame;
-                if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
-                if (replaceIndex == animation.Current && !KittyAnimationPaused) animation.RebaseCurrentGap(now);
-            }
+            KittyFrame? old = PublishKittyFrame(asset, animation, frame, replaceIndex, now);
             foreach (KittyImageAsset victim in victims) FreeKittyImage(victim);
             if (old is not null) RetireUnstoredKittyHandle(old.Handle); // no placement or asset references it any more
             return KittyFrameStoreResult.Stored;
@@ -126,7 +109,7 @@ public partial class TerminalBuffer
             _hasKittyAnimations = true;
             long now = KittyAnimationClock();
             // Settle first: a gap, frame or state change applies from now on and does not reach back over elapsed time.
-            if (!KittyAnimationPaused && animation.Advance(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+            SettleKittyPlayhead(asset, now);
             if (control.GapFrame != 0 && control.Gap != 0)
             {
                 animation.Frames[(int)control.GapFrame - 1].GapMs = control.Gap;
@@ -162,33 +145,69 @@ public partial class TerminalBuffer
         nextDueMs = null;
         if (KittyAnimationPaused || !_hasKittyAnimations) return false;
         // The render path calls this: it must never queue behind sustained output as a waiting writer. If the lock is busy, try again next frame.
-        bool lockTaken = false, changed = false;
-        if (!Lock.IsWriteLockHeld)
+        bool changed = false;
+        long? due = null;
+        if (!TryRunUnderWriteLock(() => changed = AdvanceKittyAnimationsLocked(nowMs, firstVisibleLine, out due)))
         {
-            if (!Lock.TryEnterWriteLock(0))
-            {
-                nextDueMs = nowMs + AnimationLockRetryMs;
-                return false;
-            }
-            lockTaken = true;
+            nextDueMs = nowMs + AnimationLockRetryMs;
+            return false;
         }
-        try
-        {
-            foreach (KittyImageAsset asset in _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen).ToArray())
-            {
-                if (asset.Animation is not { } animation) continue;
-                if (animation.Advance(nowMs))
-                {
-                    ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
-                    changed = true;
-                }
-                if (animation.NextDueMs is { } due && HasVisibleKittyPlacement(asset, firstVisibleLine) && (nextDueMs is null || due < nextDueMs)) nextDueMs = due;
-            }
-        }
-        finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        nextDueMs = due;
         // A caller inside a frame passes false: the frame it is drawing already shows the new pixels.
         if (changed && invalidate) Invalidate();
         return changed;
+    }
+
+    /// <summary>Runs <paramref name="action"/> under the write lock without ever waiting for it; false when another thread holds the lock.</summary>
+    private bool TryRunUnderWriteLock(Action action)
+    {
+        bool taken = false;
+        if (!Lock.IsWriteLockHeld)
+        {
+            if (!Lock.TryEnterWriteLock(0)) return false;
+            taken = true;
+        }
+        try { action(); }
+        finally { if (taken) Lock.ExitWriteLock(); }
+        return true;
+    }
+
+    private bool AdvanceKittyAnimationsLocked(long nowMs, int? firstVisibleLine, out long? nextDueMs)
+    {
+        nextDueMs = null;
+        bool changed = false;
+        foreach (KittyImageAsset asset in _kittyImageAssets.Where(item => item.IsAltScreen == _isAltScreen).ToArray())
+        {
+            if (asset.Animation is not { } animation) continue;
+            changed |= SettleKittyPlayhead(asset, nowMs);
+            if (animation.NextDueMs is { } due && HasVisibleKittyPlacement(asset, firstVisibleLine) && (nextDueMs is null || due < nextDueMs)) nextDueMs = due;
+        }
+        return changed;
+    }
+
+    /// <summary>Moves the asset's playhead to <paramref name="nowMs"/> and shows the frame it lands on; true when the display changed. A held host never advances by time.</summary>
+    private bool SettleKittyPlayhead(KittyImageAsset asset, long nowMs)
+    {
+        if (KittyAnimationPaused || asset.Animation is not { } animation || !animation.Advance(nowMs)) return false;
+        ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+        return true;
+    }
+
+    /// <summary>Adds the frame or puts it in place of the edited one, keeping the playhead consistent; returns the frame it replaced, if any.</summary>
+    private KittyFrame? PublishKittyFrame(KittyImageAsset asset, KittyAnimation animation, KittyFrame frame, int replaceIndex, long now)
+    {
+        if (replaceIndex < 0)
+        {
+            animation.Frames.Add(frame);
+            // A parked loading animation resumes from this arrival, not from whenever the next render happens.
+            if (!KittyAnimationPaused && animation.OnFrameAppended(now)) ShowKittyFrame(asset, animation.Frames[animation.Displayed]);
+            return null;
+        }
+        KittyFrame old = animation.Frames[replaceIndex];
+        animation.Frames[replaceIndex] = frame;
+        if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
+        if (replaceIndex == animation.Current && !KittyAnimationPaused) animation.RebaseCurrentGap(now);
+        return old;
     }
 
     private bool HasVisibleKittyPlacement(KittyImageAsset asset, int? firstVisibleLine) =>
