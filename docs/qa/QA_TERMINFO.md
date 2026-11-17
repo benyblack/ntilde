@@ -1316,6 +1316,16 @@ inventory's first measured-other id, not a demonstrated failure. No production c
 count moves; the sum of the marker publications is explicitly not an upstream supported verdict. See [the qualification page](terminfo/2026-11-16-shell-integration-aggregates-qualification.md).
 
 
+### OSC 720 view-up / erase-saved qualification
+
+The [OSC 720 batch](terminfo/2026-11-17-osc720-qualification.md) qualifies `extensions.osc720-scroll-up` without changing terminal behavior. rxvt-unicode defines `OSC 720 ; Pt` as a view move up `Pt` lines for a non-zero
+count and a saved-line erase for a zero **or absent** count (`atoi` of the empty string is 0); the pinned probe sends the bare form, so its viewport criterion cannot tell a view move from a history erase. The pinned terminal
+path is `unverifiedEffect` (always inconclusive, the path the stock collector grades) and the pinned termless function is replayed unchanged over a parent-built scrollback context mapped from the App's own view position,
+beside an effect contract (`ntilde-osc720-view-up-and-erase-saved-effect-v1`) graded from the view scroll position, stored history, cursor and screen. Two measurement hooks were added: an optional read-only `viewport` on
+`readPaneMetadata`, and a generated wheel notch routed to the view's own scroll when mouse reporting is off (the observer control). All six protocol experiments observed no effect with the unmarked, ED 3 and wheel
+controls held, so the effect is **unsupported**; the pinned terminal path stays **inconclusive** and the stock counts are unchanged (94/1/160). The run uses receipt schema 73 and source policy v66 (445 files) on the
+`osc633` scope v6; the frozen v5 scopes and all earlier publications remain retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc720-qualification.md).
+
 ### OSC 5 special-color qualification
 
 The [OSC 5 batch](terminfo/2026-11-17-osc5-special-colors-qualification.md) implements and qualifies rxvt's special colors: `OSC 5 ; c ; spec` sets special color c (0 bold, 1 underline, 2 blink, 3 reverse, 4 italic)

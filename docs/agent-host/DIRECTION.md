@@ -246,6 +246,10 @@ Mouse positions are measured cell centers (or declared pixel centers) translated
 coordinate space. Mouse events require active reporting immediately before the
 TerminalView handler, so a disabled protocol cannot fall through into selection
 or hyperlink activation. Such unavailable attempts are not no-byte evidence.
+The one exception is a `mouseWheel` notch while reporting is inactive: it is the
+view's own scrollback scroll (no bytes, no link activation; the alternate-scroll route
+that would send cursor keys stays refused for generated events), so an owned
+observation can move the viewport it measures. It is not no-byte evidence either.
 Synthetic keyboard events are unavailable while Kitty associated-text reporting
 is enabled or any human key/text/held-key correlation is already pending. Admission and the terminal
 handler recheck this bound, and the deferred-queue creation boundary independently
@@ -429,7 +433,10 @@ The result contains raw OSC title, host cwd, display title, a bounded active-buf
 projection (geometry, cursor, links, input-window/anchor facts), and actual UI
 properties (focus/settings, tab text, stored progress with owner, optional actual
 vertical progress bar, window-global toast visibility/title/message). Link run
-coordinates are zero-based in the active viewport, excluding scrollback. Link
+coordinates are zero-based in the active viewport, excluding scrollback. The optional
+`viewport` object is the terminal view's own scroll position (`scrollOffset`: rows above the live line,
+0 = live; `maxScrollOffset`: the greatest reachable offset), read on the UI dispatcher and independent of
+parser history. Link
 `identity` values are meaningful only within that snapshot. Shell anchors are raw
 stored coordinates: consumers must check screen, history generation and eviction
 before resolving them. Main-history count, generation and eviction counters are

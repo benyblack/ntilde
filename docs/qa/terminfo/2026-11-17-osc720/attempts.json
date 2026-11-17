@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "note": "Failed or superseded owned-collection attempts for #999, retained unchanged. Each ran the collector against the same pinned terminfo.dev@4.0.0 bundle on the same disposable-App setup.",
+  "attempts": [
+    {
+      "file": "superseded/attempt-1.zip",
+      "scope": "default (legacy) selection",
+      "scriptsCommit": "e95c5ad3ec8f8779e275c4bbcd4fceeb63d122f9",
+      "failedAt": "ovu bind (first suite write after the start observation)",
+      "reason": "The terminal fence reported 'Unexpected input during cell collection' (bytes arrived on the worker's stdin while no barrier was pending). Environmental: not reproduced by the next attempt, which ran the same suite code through twelve frames. The retained journal holds only the start frame."
+    },
+    {
+      "file": "superseded/attempt-2.zip",
+      "scope": "default (legacy) selection",
+      "scriptsCommit": "e95c5ad3ec8f8779e275c4bbcd4fceeb63d122f9",
+      "failedAt": "count-2-from-scrolled (first wheel action)",
+      "reason": "Five experiments completed (twelve frames; OSC 720 changed nothing, history 30 rows, maximum view offset 30). The owner refused the generated wheel request ('Owned generated-input action failed'). Cause found afterwards: a generated pointer event must carry a viewport cell; the action sent none. Fixed in the action, and failed actions now retain their attempt record."
+    },
+    {
+      "file": "superseded/attempt-3.zip",
+      "scope": "default (legacy) selection",
+      "scriptsCommit": "951bcb4fcf3559a4b736eaf5264fe2849bca5a8a",
+      "failedAt": "OSC 9 suite (an earlier, unchanged suite) after a focus action",
+      "reason": "'Unexpected input during cell collection' before the OSC 720 suite started. Environmental; the focus-stealing notification suites were then omitted by moving to the established scoped selection."
+    },
+    {
+      "file": "superseded/attempt-4.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "951bcb4fcf3559a4b736eaf5264fe2849bca5a8a",
+      "failedAt": "count-2-from-scrolled (first wheel action)",
+      "reason": "The retained failed-action record shows the App refused the (now well-formed) generated wheel: 'Invalid or refused owned input response'. Cause: the generated-input API required active mouse reporting for every pointer event and the view refused synthetic host scrolling. The wheel routing for reporting-off panes was added to the App (see the qualification page) and the sidecar rebuilt."
+    },
+    {
+      "file": "superseded/attempt-5.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "052f0abe83a3109f8afe642d59749547fdaa9a6a",
+      "failedAt": "the first suite of the run (before any OSC 720 code)",
+      "reason": "'Unexpected input during cell collection' at the very start. Environmental; the retry with identical scripts and App is the published run."
+    }
+  ]
+}
