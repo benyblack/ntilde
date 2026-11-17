@@ -76,11 +76,13 @@ internal static class PngPixelReader
     private static bool TryReadChunk(ReadOnlySpan<byte> png, ref int position, int maxDimension, Chunks state)
     {
         uint length = BinaryPrimitives.ReadUInt32BigEndian(png[position..]);
-        if (length > int.MaxValue || position + 12L + length > png.Length) return false;
-        ReadOnlySpan<byte> type = png.Slice(position + 4, 4), data = png.Slice(position + 8, (int)length);
-        if (BinaryPrimitives.ReadUInt32BigEndian(png[(position + 8 + (int)length)..]) != Crc(png.Slice(position + 4, 4 + (int)length))) return false;
-        position += 12 + (int)length;
-        return ApplyChunk(type, data, maxDimension, state);
+        long next = position + 12L + length;   // length, type, data, CRC: computed once as a long and bounded by what remains before any int offset is formed
+        if (next > png.Length) return false;
+        int end = (int)next;
+        ReadOnlySpan<byte> typeAndData = png[(position + 4)..(end - 4)];
+        if (BinaryPrimitives.ReadUInt32BigEndian(png[(end - 4)..]) != Crc(typeAndData)) return false;
+        position = end;
+        return ApplyChunk(typeAndData[..4], typeAndData[4..], maxDimension, state);
     }
 
     private static bool ApplyChunk(ReadOnlySpan<byte> type, ReadOnlySpan<byte> data, int maxDimension, Chunks state)
