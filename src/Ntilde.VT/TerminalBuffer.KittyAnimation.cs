@@ -46,7 +46,7 @@ public partial class TerminalBuffer
         {
             if (!_kittyImageAssets.Contains(asset)) return KittyFrameStoreResult.ImageGone;
             // Settle first, as every command does: even a refused frame leaves the display where elapsed time puts it.
-            moved = SettleKittyPlayhead(asset, KittyAnimationClock());
+            moved = SettleKittyPlayhead(asset);
             bool replacing = replaceIndex >= 0;
             int frames = KittyFrameCount(asset);
             if (!replacing && frames >= KittyAnimation.MaxFrames) return KittyFrameStoreResult.TooManyFrames;
@@ -145,31 +145,21 @@ public partial class TerminalBuffer
         nextDueMs = null;
         if (KittyAnimationPaused || !_hasKittyAnimations) return false;
         // The render path calls this: it must never queue behind sustained output as a waiting writer. If the lock is busy, try again next frame.
-        bool changed = false;
-        long? due = null;
-        if (!TryRunUnderWriteLock(() => changed = AdvanceKittyAnimationsLocked(nowMs, firstVisibleLine, out due)))
+        bool lockTaken = false, changed;
+        if (!Lock.IsWriteLockHeld)
         {
-            nextDueMs = nowMs + AnimationLockRetryMs;
-            return false;
+            if (!Lock.TryEnterWriteLock(0))
+            {
+                nextDueMs = nowMs + AnimationLockRetryMs;
+                return false;
+            }
+            lockTaken = true;
         }
-        nextDueMs = due;
+        try { changed = AdvanceKittyAnimationsLocked(nowMs, firstVisibleLine, out nextDueMs); }
+        finally { if (lockTaken) Lock.ExitWriteLock(); }
         // A caller inside a frame passes false: the frame it is drawing already shows the new pixels.
         if (changed && invalidate) Invalidate();
         return changed;
-    }
-
-    /// <summary>Runs <paramref name="action"/> under the write lock without ever waiting for it; false when another thread holds the lock.</summary>
-    private bool TryRunUnderWriteLock(Action action)
-    {
-        bool taken = false;
-        if (!Lock.IsWriteLockHeld)
-        {
-            if (!Lock.TryEnterWriteLock(0)) return false;
-            taken = true;
-        }
-        try { action(); }
-        finally { if (taken) Lock.ExitWriteLock(); }
-        return true;
     }
 
     private bool AdvanceKittyAnimationsLocked(long nowMs, int? firstVisibleLine, out long? nextDueMs)
@@ -184,6 +174,10 @@ public partial class TerminalBuffer
         }
         return changed;
     }
+
+    /// <summary>Settles to the clock's now; the clock is read only when the asset animates and the host is not holding it.</summary>
+    private bool SettleKittyPlayhead(KittyImageAsset asset) =>
+        !KittyAnimationPaused && asset.Animation is not null && SettleKittyPlayhead(asset, KittyAnimationClock());
 
     /// <summary>Moves the asset's playhead to <paramref name="nowMs"/> and shows the frame it lands on; true when the display changed. A held host never advances by time.</summary>
     private bool SettleKittyPlayhead(KittyImageAsset asset, long nowMs)

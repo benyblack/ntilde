@@ -528,6 +528,25 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
+    public void The_room_check_reads_the_clock_only_for_an_animating_unpaused_asset()
+    {
+        var h = new Harness();
+        int reads = 0;
+        h.Buffer.KittyAnimationClock = () => { reads++; return h.Now; };
+        KittyImageAsset asset = h.Buffer.FindKittyImage(1, 0)!;
+        h.Buffer.CheckKittyFrameRoom(asset, -1, 8);                // no frame yet, so nothing to settle
+        Assert.Equal(0, reads);
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=100", Solid(1, 2, 3, 255)); h.Replies.Clear();
+        reads = 0;
+        h.Buffer.KittyAnimationPaused = true;
+        h.Buffer.CheckKittyFrameRoom(asset, -1, 8);                // a held host never follows time
+        Assert.Equal(0, reads);
+        h.Buffer.KittyAnimationPaused = false;
+        h.Buffer.CheckKittyFrameRoom(asset, -1, 8);
+        Assert.Equal(1, reads);
+    }
+
+    [Fact]
     public void A_paused_host_applies_commands_without_advancing_by_time()
     {
         var h = ThreeFrames();

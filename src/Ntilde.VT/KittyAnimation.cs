@@ -123,8 +123,11 @@ internal sealed class KittyAnimation
             return false;
         }
         SkipWholeCycles(nowMs);
-        bool moved = true;
-        for (int steps = 0, limit = Frames.Count * 4 + 8; moved && steps < limit; steps++) moved = StepOnce(nowMs);
+        int limit = Frames.Count * 4 + 8;
+        for (int steps = 0; steps < limit; steps++)
+        {
+            if (!StepOnce(nowMs)) break;
+        }
         return Displayed != before;
     }
 
