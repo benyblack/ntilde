@@ -160,7 +160,8 @@ test('every development and measurement attempt is retained with its real outcom
         assert.notEqual(item.runId, published);
         assert.ok(item.reason.length > 20 && item.scripts.length > 0 && item.files.length >= 2, item.attempt);
         for (const file of item.files) {
-            const bytes = read(join('superseded-attempts', file.file));
+            // Retained text is LF in git; a Windows checkout may add CR, so hash and size the LF form (JSON is pinned LF by .gitattributes already).
+            const bytes = Buffer.from(read(join('superseded-attempts', file.file)).toString('latin1').replaceAll('\r\n', '\n'), 'latin1');
             assert.equal(hash(bytes), file.sha256, file.file);
             assert.equal(bytes.length, file.bytes, file.file);
         }
