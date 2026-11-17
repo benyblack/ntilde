@@ -90,6 +90,37 @@ public class ModifyOtherKeysProtocolTests
     }
 
     [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    public void LevelThree_IsNotAnAlias_AndQueryKeepsTheSupportedLevel(int level, bool alternate)
+    {
+        var (buffer, parser, responses) = CreateTerminal();
+        parser.Process("\x1b[>4;1m\x1b[?1049h\x1b[>4;2m");
+        if (!alternate) parser.Process("\x1b[?1049l");
+        parser.Process($"\x1b[>4;{level}m");
+        Assert.Equal($"\x1b[>4;{level}m", Query(parser, responses));
+        var levels = (buffer.Modes.ModifyOtherKeys.MainLevel, buffer.Modes.ModifyOtherKeys.AltLevel);
+        responses.Clear();
+
+        parser.Process("\x1b[>4;3m");
+
+        Assert.Empty(responses);
+        Assert.Equal(levels, (buffer.Modes.ModifyOtherKeys.MainLevel, buffer.Modes.ModifyOtherKeys.AltLevel));
+        Assert.Equal(level, buffer.Modes.ModifyOtherKeys.Level);
+        Assert.Equal($"\x1b[>4;{level}m", Query(parser, responses));
+        // A supported transition still works; refusing 3 does not disable negotiation.
+        int next = (level + 1) % 3;
+        parser.Process($"\x1b[>4;{next}m");
+        Assert.Equal($"\x1b[>4;{next}m", Query(parser, responses));
+        parser.Process("\x1b[>4m");
+        Assert.Equal("\x1b[>4;0m", Query(parser, responses));
+    }
+
+    [Theory]
     [InlineData("\x1b[?m")]
     [InlineData("\x1b[?1m")]
     [InlineData("\x1b[?0;2m")]

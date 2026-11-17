@@ -60,6 +60,7 @@ ELSEWHERE = {
     "osc5-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "osc3008-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "mex-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
+    "modify-other-keys-3-policy.test.mjs": REAL_BUNDLE_WORKFLOW,
     "query-publication.test.mjs": "ci.yml query_publication_guards",
     "ownership.test.mjs": "ci.yml private_clipboard_owned",
     "private-clipboard-": "ci.yml private_clipboard_owned",
