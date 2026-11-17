@@ -10,10 +10,20 @@ import { planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
 import { parseCapsFrame } from './caps-report.mjs';
 import { makeProbeSuiteCollector } from './probe-suite-shared.mjs';
 
-const { collectGrading: collectCapsGrading, recordingContext: capsRecordingContext, bindOf: capsBind } = makeProbeSuiteCollector({
+const { collectGrading, recordingContext: capsRecordingContext, bindOf: capsBind } = makeProbeSuiteCollector({
     label: 'feature-reporting', prefix: capsPrefix, contracts: capsContracts,
     planSeed: capsPlanSeed, finish: capsFinish, pinnedPattern: capsPinnedPattern, parseFrame: parseCapsFrame,
     deps: { devqRecordingContext, planFeeds, planReads, validateExactFeeds },
 });
 
-export { collectCapsGrading, capsRecordingContext, capsBind };
+/** Translate the layered bundle's exported names (ntildeCapsAdapter, ntildeRunCapsTermless, ntildeRunCapsTerminal)
+ *  into the shared driver's grading-module shape, then run the contracted case with parent-journaled reads. */
+export function collectCapsGrading({ config, fence, owner, gradingModule }) {
+    return collectGrading({ config, fence, owner, gradingModule: {
+        adapter: gradingModule.ntildeCapsAdapter,
+        runTermless: gradingModule.ntildeRunCapsTermless,
+        runTerminal: gradingModule.ntildeRunCapsTerminal,
+    } });
+}
+
+export { capsRecordingContext, capsBind };
