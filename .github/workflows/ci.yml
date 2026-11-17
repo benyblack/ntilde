@@ -374,6 +374,7 @@ jobs:
           scripts/terminfo/mex-grading-collector.test.mjs
           scripts/terminfo/cell-size-grading-collector.test.mjs
           scripts/terminfo/osc5-grading-collector.test.mjs
+          scripts/terminfo/osc720-grading-collector.test.mjs
           scripts/terminfo/osc3008-grading-collector.test.mjs
           scripts/terminfo/modify-other-keys-3-policy.test.mjs
           scripts/terminfo/osc133-p-policy.test.mjs

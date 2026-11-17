@@ -15,7 +15,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'ovu-observations.json', run: 'ovu-run.json', journal: 'ovu-snapshots.jsonl', marker: 'ovu-unavailable.json', actions: 'ovu-actions.json', adapter: 'collector-ovu.mjs' });
 /** The first source policy whose worker always runs this suite (the parent's plumbing sets the real number). */
-export const osc720FirstPolicy = 66;
+export const osc720FirstPolicy = 67;
 const unavailableReasons = new Set(['screenDetailsUnavailable', 'paneMetadataUnavailable', 'metadataGeometryUnavailable']);
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);

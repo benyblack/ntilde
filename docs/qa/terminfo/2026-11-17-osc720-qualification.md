@@ -70,7 +70,7 @@ A conclusive effect needs all controls and setups to hold; a partial implementat
 
 ## Evidence and reproduction
 
-- Measured: App `0.14.0+4e8605db…` (Release sidecar built from the merge of PR 1016, executable SHA-256 `f5814e51…9bf8`), scripts at `4e8605db…`, source policy v66 (445 files), receipt schema 73, scope `owned-osc633-without-notification-suites-v6`
+- Measured: App `0.14.0+4e8605db…` (Release sidecar built from the merge of PR 1016, executable SHA-256 `f5814e51…9bf8`), scripts at `4e8605db…`, source policy v67 (450 files), receipt schema 74, scope `owned-osc633-without-notification-suites-v5`
   (the notification suites are omitted and independently rederived from their own publications). Layered collector extension `ntilde-owned-osc720-grading-v1` over the left/right-margin one.
 - Retained: [owned-run.zip](2026-11-17-osc720/owned-run.zip) (complete run, receipt, journals, run log, wheel actions, adapter bytes) and seven superseded runs (five failed attempts and two identical-result complete runs: one measured before PR 1016 merged, one graded with a text-only screen comparison that review replaced) in
   [superseded/](2026-11-17-osc720/superseded) with reasons in [attempts.json](2026-11-17-osc720/attempts.json). `node --test scripts/terminfo/osc720-publication.test.mjs` extracts the run, reissues the complete receipt

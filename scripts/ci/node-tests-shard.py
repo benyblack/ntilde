@@ -58,6 +58,7 @@ ELSEWHERE = {
     "devq-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "cell-size-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "osc5-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
+    "osc720-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "osc3008-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "mex-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "modify-other-keys-3-policy.test.mjs": REAL_BUNDLE_WORKFLOW,

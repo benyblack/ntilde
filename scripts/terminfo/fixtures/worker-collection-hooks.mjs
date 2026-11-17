@@ -79,6 +79,7 @@ code.set(new URL('cell-size-collector.mjs', root).href, log + `export async func
 code.set(new URL('xcs-collector.mjs', root).href, log + `export async function collectXcsGrading() { record('Xcs'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('xss-collector.mjs', root).href, log + `export async function collectXssGrading() { record('Xss'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('kcl-collector.mjs', root).href, log + `export async function collectKclGrading() { record('Kcl'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('osc720-collector.mjs', root).href, log + `export async function collectOsc720() { record('Osc720'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: null } }; }`);
 code.set(new URL('osc3008-collector.mjs', root).href, log + `export async function collectOsc3008() { record('Osc3008'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
 code.set(new URL('osc5-collector.mjs', root).href, log + `export async function collectOsc5Grading() { record('Osc5'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('xsv-collector.mjs', root).href, log + `export async function collectXsvGrading() { record('Xsv'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);

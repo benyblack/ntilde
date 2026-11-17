@@ -52,6 +52,6 @@ test('retained run independently rederives the complete receipt and published pr
         assert.equal(byName['ed3-control'].observations[1].scrollbackLines, 0);
         assert.deepEqual(projected.report.wheelActions.map(entry => entry.notches.length), [1, 1]);
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 160, supported: 94, unsupported: 1 });
-        assert.equal(schemaVersion, 73); assert.equal(fixtureRemoved, true);
+        assert.equal(schemaVersion, 74); assert.equal(fixtureRemoved, true);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
