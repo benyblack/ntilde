@@ -78,6 +78,12 @@ public partial class TerminalBuffer
         return exported;
     }
 
+    /// <summary>
+    /// The longest elapsed time a snapshot may carry for an animation's current frame (about 35 years). A headless daemon never advances a playhead, so a long-lived
+    /// session legitimately carries a large value; the bound only keeps the clock arithmetic of a restore (and the renderer's deadlines) from wrapping on a crafted one.
+    /// </summary>
+    internal const long MaxKittyAnimationElapsedMs = 1L << 40;
+
     /// <summary>The frames and playback state of an animated asset (#1017), or null for a still image. Each frame's packed pixels are copies of its retained source.</summary>
     private TerminalKittyAnimationState? ExportKittyAnimation(KittyImageAsset asset, Dictionary<ImageSource, int> evictionOrder)
     {
@@ -88,7 +94,7 @@ public partial class TerminalBuffer
             Current = animation.Current,
             Displayed = animation.Displayed,
             LoopsRemaining = animation.LoopsRemaining,
-            ElapsedMs = Math.Max(0, KittyAnimationClock() - animation.FrameStartMs),
+            ElapsedMs = Math.Clamp(KittyAnimationClock() - animation.FrameStartMs, 0, MaxKittyAnimationElapsedMs),
             Waiting = animation.Waiting,
             Frames = animation.Frames.Select((frame, index) => new TerminalKittyFrameState
             {
@@ -227,7 +233,7 @@ public partial class TerminalBuffer
         if (frames.Count is < 1 or > KittyAnimation.MaxFrames) throw StateTransferValidation.Reject(KittyImageWhat, "an animation has between one and the maximum number of frames");
         RequirePixelSize(state.Width, state.Height, KittyImageWhat);
         if (animation.State is < 1 or > 3 || animation.Current < 0 || animation.Current >= frames.Count || animation.Displayed < 0 || animation.Displayed >= frames.Count
-            || animation.LoopsRemaining < -1 || animation.ElapsedMs < 0)
+            || animation.LoopsRemaining < -1 || animation.ElapsedMs is < 0 or > MaxKittyAnimationElapsedMs)
             throw StateTransferValidation.Reject(KittyImageWhat, "animation playback state out of range");
         int pixels = state.Width * state.Height;
         for (int i = 0; i < frames.Count; i++)

@@ -202,6 +202,22 @@ public sealed class PersistentKittyAnimationTests
     }
 
     [Fact]
+    public void The_largest_elapsed_time_a_snapshot_may_carry_restores_and_advances_without_wrapping()
+    {
+        var source = new Side(decoder: null);
+        source.Send(Traffic());
+        TerminalStateSnapshot snapshot = Export(source);
+        snapshot.KittyImages![0].Animation!.ElapsedMs = 1L << 40;
+        Side restored = Restore(snapshot, new ClientDecoder(), now: 1_000_000);
+        restored.Now = 1_000_001;
+        restored.Buffer.AdvanceKittyAnimations(restored.Now, out long? due);                                             // whole cycles are skipped, nothing wraps
+        Assert.True(due is null || due.Value > restored.Now);
+        // The exporting side clamps what it carries, so a daemon that has run for decades still produces a snapshot a restore accepts.
+        source.Now = long.MaxValue / 2;
+        Assert.Equal(1L << 40, Assert.Single(source.Buffer.ExportState(int.MaxValue).KittyImages!).Animation!.ElapsedMs);
+    }
+
+    [Fact]
     public void A_restored_session_keeps_deciding_like_the_one_it_came_from()
     {
         var source = new Side(decoder: null);
@@ -268,6 +284,8 @@ public sealed class PersistentKittyAnimationTests
         Case("a displayed frame past the frames", a => a.Displayed = -1),
         Case("an unknown state", a => a.State = 9),
         Case("negative elapsed time", a => a.ElapsedMs = -1),
+        Case("an absurd elapsed time", a => a.ElapsedMs = long.MaxValue),
+        Case("elapsed time one past the bound", a => a.ElapsedMs = (1L << 40) + 1),
         Case("loops below infinite", a => a.LoopsRemaining = -2),
         Case("pixels on an unedited root", a => a.Frames[0].Edited = false),
         Case("an edited later frame", a => a.Frames[2].Edited = true),

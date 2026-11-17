@@ -96,9 +96,20 @@ ENOTSUP). The root frame keeps no pixels of its own: `c=1` reads them back from 
 the edited pixels (the new root keeps its RGBA, charged 4 bytes per pixel since its decoded pixels were already the asset's, and its gap); where the root cannot be read back
 (an undecoded root, or a decoder without `TryReadPixels`) `c=1`/`r=1` answer ENOTSUP. An absent `f` and `a=c` composition return ENOTSUP, and `a=q,e=c` answers ERR. The root frame's gap is 0 by the
 protocol; the playhead shows it for the 40 ms default (an implementation policy, not a protocol
-statement). Frames are released with their image (replace, hard delete, reset). Snapshots and persistent-session replay carry the root frame only, so
-where images are retained for snapshots (a parser with `RetainImageSources`, i.e. persistent image policy 1/2) `a=f` and `a=a` answer
-`ENOTSUP`, and `a=q,e=f`/`e=a` answer `ERR`, rather than letting a daemon and a restored client disagree about quota.
+statement). Frames are released with their image (replace, hard delete, reset).
+
+**Persistent sessions (#1017).** Where images are retained for snapshots (`RetainImageSources`) animation needs persistent image policy 3
+(`PersistentImagePolicy.AnimationImagesVersion`, `RetainedAnimation`); under policy 1 or 2 `a=f` and `a=a` answer `ENOTSUP` and `a=q,e=f`/`e=a` answer `ERR`, as before, because a
+peer that predates frames would show a still image and could not restore a snapshot that carries them, so a session's policy is fixed at spawn, every attach must name it, and an older
+peer is refused rather than downgraded. A persistent session's daemon has no image decoder while its clients do, and all of them must accept, refuse and charge a frame from the same
+bytes, so nothing here asks a decoder for pixels (`IImageDecoder.TryReadPixels` is the ordinary tab's route): a container frame is read by `PngPixelReader` (a decoder-independent PNG
+reader; any other container answers `ENOTSUP`), the root's pixels come from the bytes it was sent as (raw directly, a PNG through the same reader), and each frame's pixels are kept only as
+their packed form (`KittyFrameCodec`, whole-pixel runs, deliberately not a runtime compressor: its length is charged to the shared image-source budget and must be identical on every
+side) as an entry of that budget. Snapshots therefore stay inside one mux frame, a source the budget evicts leaves its frame unavailable as a base (`ENOTSUP`, on every side alike) and
+carried without pixels, and an edited root's pixels are its own packed source (the image's original bytes are not used in their place). A snapshot carries each frame (gap, packed pixels,
+whether the root was edited), the playback state (state, current and displayed frame, loops left, whether it is parked) and the time the current frame had been up, from which the restoring
+side resumes its own clock; a restore charges every frame exactly as the source did (8 bytes per pixel, 4 for an edited root), validates the packings and indices without inflating them,
+and decodes the frames when a decoder exists (the displayed placement stays undecoded until then). A snapshot with frames is refused by a session whose policy is below 3.
 
 `KittyAnimationTests` (VT) pin the frame store, composition arithmetic, error replies, quotas, the
 playhead on an injected clock and frame retirement; `KittyAnimationRenderTests` check the real view

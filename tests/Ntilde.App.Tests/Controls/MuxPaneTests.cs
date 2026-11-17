@@ -259,12 +259,13 @@ public sealed class MuxPaneTests : IDisposable
             new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, ct), "test", null);
         MuxClientSession s = StartPane(factory: new MuxTerminalSessionFactory(_imageHost, new RecordingSessionFactory(new FakeTerminalSession()), null));
 
-        Assert.Equal(PersistentImagePolicy.MultipartImagesVersion, s.RequiredImagePolicy);
+        Assert.Equal(PersistentImagePolicy.AnimationImagesVersion, s.RequiredImagePolicy);   // the negotiated maximum, which now carries Kitty animation (#1017)
         Assert.Equal(s.RequiredImagePolicy, _mux.Mux(s.Id).RequiredImagePolicy);
         Assert.True(_pane!.Parser!.AllowNonSixelImages);
         Assert.True(_pane.Parser.RetainImageSources);
         Assert.True(_pane.Parser.AllowNativeKittyGraphics);
         Assert.True(_pane.Parser.AllowITerm2Multipart);
+        Assert.True(_pane.Parser.RetainedAnimation);
         Assert.Null(_pane.Parser.ReadFileBytes); // t=f stays unavailable in persistent panes
 
         string png = TestImages.PngBase64(12, 12);
