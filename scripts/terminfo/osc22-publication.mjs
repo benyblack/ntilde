@@ -6,7 +6,7 @@ import { osc22CaseIds } from './osc22-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 /** The scripts revision the measured run's private source snapshot was built from. The retained selected-source manifest independently pins the measured scripts; these labels are not binary-to-source attestation. */
-export const measuredScriptsRevision = 'de218cd705ad8516d61f598fe29fa88648311702';
+export const measuredScriptsRevision = '7f809a6f7b54fb76fa6a39588700a5286850c0d1';
 /** The measured App build revision. */
 export const measuredAppRevision = 'de218cd705ad8516d61f598fe29fa88648311702';
 const scope = 'Pinned terminfo.dev@4.0.0 extensions.osc22-pointer terminal path (no termless function) sends two exact writes then asks for CPR and always remains inconclusive. '

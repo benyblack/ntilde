@@ -17,7 +17,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const read = name => readFileSync(join(dir, name));
 const json = (root, name) => JSON.parse(readFileSync(join(root, name)));
 function manifest() {
-    assert.equal(hash(read('manifest.json')), '6085ec180aa442fbfd45eeb5281473a401711fa05071bc8e74bef82eb5c4d7b3');
+    assert.equal(hash(read('manifest.json')), '955e5711a007cd12f00672ca54158b85ebe6cb280f8e6df890b0a576fc626a8a');
     const value = JSON.parse(read('manifest.json'));
     for (const [name, digest] of Object.entries({ ...value.archives, ...value.files })) assert.equal(hash(read(name)), digest, name);
     return value;
@@ -33,7 +33,7 @@ test('the retained OSC22 measurement independently rederives its complete receip
         const derived = completeOwnedReceipt(root, join(root, 'removed-fixture'), evidence);
         assert.deepEqual({ ...derived, completedAt }, original);
         assert.equal(schemaVersion, 75); assert.equal(fixtureRemoved, true);
-        assert.equal(original.runId, 'c04f7ec60715e65d20fc1dc52d27c060');
+        assert.equal(original.runId, 'b70c675d73b252ff1bedfcfc0fe4aff4');
         const frames = readFileSync(join(root, 'ptr-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
         const bytes = readFileSync(join(root, 'ptr-observations.json')), measured = JSON.parse(bytes);
         const rebuilt = buildOsc22GradingReport(frames, json(root, 'ptr-run.json'), measured.runId, measured.adapter);
@@ -42,7 +42,7 @@ test('the retained OSC22 measurement independently rederives its complete receip
         assert.deepEqual(projected.summary, JSON.parse(read('summary.json')));
         assert.deepEqual(projected.report, JSON.parse(read('report.json')));
         assert.equal(projected.summary.appRevision, 'de218cd705ad8516d61f598fe29fa88648311702');
-        assert.equal(projected.summary.scriptsRevision, 'de218cd705ad8516d61f598fe29fa88648311702');
+        assert.equal(projected.summary.scriptsRevision, '7f809a6f7b54fb76fa6a39588700a5286850c0d1');
         assert.equal(projected.summary.context.sourceSnapshotPolicy, 'readonly-owned-source-graph-v68');
         assert.equal(Object.keys(json(root, 'source-snapshot.json').hashes).length, 455);
         assert.deepEqual(original.collectionScope.omittedSuites, ['osc9', 'notify']);
@@ -69,7 +69,7 @@ test('the retained OSC22 measurement independently rederives its complete receip
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('the failed dispatch attempt and all seven lease releases remain retained without admitting the failed run', () => {
+test('the failed dispatch attempt and all eight lease releases remain retained without admitting the failed run', () => {
     const pins = manifest(), root = mkdtempSync(join(tmpdir(), 'nt-osc22-failed-')), logs = mkdtempSync(join(tmpdir(), 'nt-osc22-logs-'));
     try {
         const name = 'superseded/attempt-1.zip';
@@ -80,11 +80,11 @@ test('the failed dispatch attempt and all seven lease releases remain retained w
         assert.equal(json(root, 'failure.json').error, 'Unknown owner request.');
         for (const file of ['cell-receipt.json', 'ptr-run.json', 'ptr-observations.json']) assert.equal(existsSync(join(root, file)), false);
         extractOwnedArchive(dir, { archives: { 'owned-run.zip': pins.archives['collection-logs.zip'] } }, logs, join(dir, 'collection-logs.zip'));
-        for (const [file, id] of [['attempt-1.log', context.runId], ['attempt-2.log', 'a188ef080019680287f85cab559f5adf'], ['attempt-3.log', '95db74fe99675694c4197ccfca70df84'], ['attempt-4.log', '72b465974ad2e13e4b0a1113444f8063'], ['attempt-5.log', '412aa71eeb2f93be09465d03b607eb56'], ['attempt-6.log', '80cf3172a34e097bca26458f2a35d785'], ['attempt-7.log', pins.runId]]) {
+        for (const [file, id] of [['attempt-1.log', context.runId], ['attempt-2.log', 'a188ef080019680287f85cab559f5adf'], ['attempt-3.log', '95db74fe99675694c4197ccfca70df84'], ['attempt-4.log', '72b465974ad2e13e4b0a1113444f8063'], ['attempt-5.log', '412aa71eeb2f93be09465d03b607eb56'], ['attempt-6.log', '80cf3172a34e097bca26458f2a35d785'], ['attempt-7.log', 'c04f7ec60715e65d20fc1dc52d27c060'], ['attempt-8.log', pins.runId]]) {
             assert.ok(readFileSync(join(logs, file), 'utf8').includes('desktop lease ' + id + ' released after verified cleanup.'));
         }
         assert.match(readFileSync(join(logs, 'preflight-7-busy.log'), 'utf8'), /Desktop collection lock is unavailable.*No App was launched/);
-        assert.deepEqual(JSON.parse(read('attempts.json')).attempts.map(item => item.disposition), ['failed-not-admitted', 'superseded-pre-hover-fix', 'superseded-pre-corrected-predecessor', 'failed-not-admitted', 'superseded-pre-ci-script-cleanup', 'superseded-pre-session-lifecycle-fix', 'admitted']);
+        assert.deepEqual(JSON.parse(read('attempts.json')).attempts.map(item => item.disposition), ['failed-not-admitted', 'superseded-pre-hover-fix', 'superseded-pre-corrected-predecessor', 'failed-not-admitted', 'superseded-pre-ci-script-cleanup', 'superseded-pre-session-lifecycle-fix', 'superseded-pre-persistent-integration', 'admitted']);
     } finally { rmSync(root, { recursive: true, force: true }); rmSync(logs, { recursive: true, force: true }); }
 });
 
@@ -129,10 +129,11 @@ test('animation RPC failure retains its complete raw seal and pointer journal wi
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-for (const [attempt, archive, runId, scriptsRevision] of [
-    [5, 'superseded/attempt-5-before-ci-script-cleanup.zip', '412aa71eeb2f93be09465d03b607eb56', '750f137192ae07588c1e63f87073d5b297a972b3'],
-    [6, 'superseded/attempt-6-before-session-lifecycle-fix.zip', '80cf3172a34e097bca26458f2a35d785', '48018d169dc42d89e711a32aaf05d30cad04617b'],
-]) test(`historical attempt ${attempt} preserves its corrected-plan OSC22 evidence and original cleanup before the final source fix`, () => {
+for (const [attempt, archive, runId, scriptsRevision, appRevision] of [
+    [5, 'superseded/attempt-5-before-ci-script-cleanup.zip', '412aa71eeb2f93be09465d03b607eb56', '750f137192ae07588c1e63f87073d5b297a972b3', '2e8ef66c8c6ee86758c75538ac57dd42d623c52d'],
+    [6, 'superseded/attempt-6-before-session-lifecycle-fix.zip', '80cf3172a34e097bca26458f2a35d785', '48018d169dc42d89e711a32aaf05d30cad04617b', '2e8ef66c8c6ee86758c75538ac57dd42d623c52d'],
+    [7, 'superseded/attempt-7-before-persistent-integration.zip', 'c04f7ec60715e65d20fc1dc52d27c060', 'de218cd705ad8516d61f598fe29fa88648311702', 'de218cd705ad8516d61f598fe29fa88648311702'],
+]) test(`historical attempt ${attempt} preserves its corrected-plan OSC22 evidence and original cleanup before the final integrated scripts`, () => {
     const pins = manifest(), root = mkdtempSync(join(tmpdir(), 'nt-osc22-later-history-'));
     try {
         extractOwnedArchive(dir, { archives: { 'owned-run.zip': pins.archives[archive] } }, root, join(dir, archive));
@@ -142,7 +143,7 @@ for (const [attempt, archive, runId, scriptsRevision] of [
         const frames = readFileSync(join(root, 'ptr-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
         const measured = json(root, 'ptr-observations.json');
         assert.deepEqual(buildOsc22GradingReport(frames, json(root, 'ptr-run.json'), runId, measured.adapter), measured);
-        const projected = osc22Publication(root, { appRevision: '2e8ef66c8c6ee86758c75538ac57dd42d623c52d', scriptsRevision });
+        const projected = osc22Publication(root, { appRevision, scriptsRevision });
         assert.deepEqual(projected.summary, JSON.parse(read(`superseded/attempt-${attempt}-summary.json`)));
         assert.deepEqual(projected.report, JSON.parse(read(`superseded/attempt-${attempt}-report.json`)));
         assert.doesNotThrow(() => checkOsc720Evidence(root, receipt, runId, json(root, 'context.json')));

@@ -66,10 +66,20 @@
       "runId": "c04f7ec60715e65d20fc1dc52d27c060",
       "appRevision": "de218cd705ad8516d61f598fe29fa88648311702",
       "scriptsRevision": "de218cd705ad8516d61f598fe29fa88648311702",
-      "archive": "owned-run.zip",
+      "archive": "superseded/attempt-7-before-persistent-integration.zip",
       "log": "collection-logs.zip:attempt-7.log",
+      "disposition": "superseded-pre-persistent-integration",
+      "reason": "Successful fresh rebuilt-App measurement with the session pointer-lifetime fix. While CI was finishing, PR1028 merged shared runner/worker changes into main. This original receipt, OSC22 report and cleanup remain historical; a fresh integrated-script run supplies the final admission."
+    },
+    {
+      "attempt": 8,
+      "runId": "b70c675d73b252ff1bedfcfc0fe4aff4",
+      "appRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+      "scriptsRevision": "7f809a6f7b54fb76fa6a39588700a5286850c0d1",
+      "archive": "owned-run.zip",
+      "log": "collection-logs.zip:attempt-8.log",
       "disposition": "admitted",
-      "reason": "Fresh full owned run with corrected predecessor, deferred image grading, final CI script-expression cleanup and App session pointer-lifetime fix. Complete unchanged experiment plan, full grading, receipt75, cleanup and lease release. Pinned inconclusive / separate App Cursor-kind effect supported."
+      "reason": "Fresh full owned run after integrating merged persistent-animation main2f6d8ff1 with OSC22 and deferred full-path image grading. App source remains identical to de218cd. Complete experiment plan, full grading, receipt75, cleanup and lease release. Pinned inconclusive / separate App Cursor-kind effect supported."
     }
   ]
 }
