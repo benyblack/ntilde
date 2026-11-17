@@ -310,10 +310,13 @@ test('OSC cell-size qualification adds two effect-supported ids while preserving
     assert.deepEqual(suite.caseIds, ids);
     assert.equal(suite.caseCount, 2);
     assert.equal(suite.rederivation.status, 'passed');
-    assert.equal(suite.receipt.schemaVersion, 70);
-    assert.equal(suite.run.sourceSnapshotPolicy, 'readonly-owned-source-graph-v63');
-    assert.equal(suite.run.appRevision, '4fba0d48f6c3633489403cc238bfd0118b205bd8');
-    assert.equal(suite.run.scriptsRevision, 'ecfc4c42a208a3b7ea6135cff532834d08d2fb2f');
+    assert.equal(suite.publication, '2026-11-17-osc-cell-size-integrated/');
+    assert.equal(suite.rederivation.command, 'node --test scripts/terminfo/cell-size-integrated-publication.test.mjs');
+    assert.equal(suite.receipt.schemaVersion, 71);
+    assert.equal(suite.run.sourceSnapshotPolicy, 'readonly-owned-source-graph-v64');
+    assert.equal(suite.run.appRevision, '8da07482a849946cf213d1d4b6781759bde1c56f');
+    assert.equal(suite.run.scriptsRevision, '8da07482a849946cf213d1d4b6781759bde1c56f');
+    assert.ok('cell-size-publication.test.mjs' in nonInventoryPublicationTests);
     for (const id of ids) {
         const item = row(stored, id);
         assert.equal(item.effect.verdict, 'supported');

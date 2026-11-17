@@ -6,7 +6,8 @@
     "Refreshed using node-tests-shard.py --update from successful Windows shard timing artifacts of runs 43853855260, 43857490086 (b, c and rest), 43860561937 and 43858054471. The update keeps the largest observed duration per file across these inputs.",
     "The ASCII reflow fix publication timing was measured locally on macOS arm64 with Node 24.22.2 through node-tests-run.mjs on 2026-11-16; existing Windows measurements are unchanged. This gives the new two-run receipt check a measured initial weight instead of the median.",
     "The OSC cell-size portable tests have an initial macOS arm64 Node 24 timing measured through node-tests-run.mjs on 2026-11-16; existing Windows timings are unchanged.",
-    "The OSC cell-size publication timing was measured locally on macOS arm64 with Node 24.22.2 through node-tests-run.mjs on 2026-11-17; its initial weight covers complete receipt rederivation and retained failed-attempt checks. Existing Windows timings are unchanged."
+    "The OSC cell-size publication timing was measured locally on macOS arm64 with Node 24.22.2 through node-tests-run.mjs on 2026-11-17; its initial weight covers complete receipt rederivation and retained failed-attempt checks. Existing Windows timings are unchanged.",
+    "The integrated OSC cell-size publication timing was measured locally on macOS arm64 with Node 24.22.2 through node-tests-run.mjs on 2026-11-17; only the new full-receipt test has a new initial weight. Existing measurements are unchanged."
   ],
   "rest_head_start_seconds": 110,
   "seconds": {
@@ -30,6 +31,7 @@
     "scripts/terminfo/attr-rect-receipt.test.mjs": 0.1,
     "scripts/terminfo/attributes.test.mjs": 0.1,
     "scripts/terminfo/cell-details.test.mjs": 0.1,
+    "scripts/terminfo/cell-size-integrated-publication.test.mjs": 67.7,
     "scripts/terminfo/cell-size-publication.test.mjs": 65.7,
     "scripts/terminfo/cell-size.test.mjs": 1.8,
     "scripts/terminfo/cells.test.mjs": 0.1,

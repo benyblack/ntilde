@@ -3841,31 +3841,31 @@
       "suiteId": "ntilde-owned-osc-cell-size-v1",
       "contractsVersion": 1,
       "liveContractsVersion": 1,
-      "publication": "2026-11-17-osc-cell-size/",
-      "doc": "2026-11-17-osc-cell-size-qualification.md",
+      "publication": "2026-11-17-osc-cell-size-integrated/",
+      "doc": "2026-11-17-osc-cell-size-integrated-qualification.md",
       "caseCount": 2,
       "caseIds": [
         "extensions.osc1337-cellsize",
         "extensions.osc776-cell-size"
       ],
       "evidence": {
-        "files": 8,
-        "bytes": 55949330,
-        "sha256": "3c0bffa497df25ade17284853193250a586900580b5c8c7687b69d25f3a8d221"
+        "files": 5,
+        "bytes": 16289014,
+        "sha256": "09930f53a7d8ab62a7a2bfac573987f14dbaef85789f035c39f875e4a6ec2d00"
       },
       "receipt": {
-        "schemaVersion": 70,
-        "runId": "113410a700e612e361c599b1df920fb2",
+        "schemaVersion": 71,
+        "runId": "4b63f57a61d3905acb38ac6a8738696f",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "1c0f916666d312957fd0c96f28bb6ffcb5889f0d3d13db7252925593abef0783"
+          "sha256": "50f0abda4168cde8194443919175b8900bb48c3fa91ea31a59b55d3a001a862f"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-osc-cell-size-v1",
           "file": "cell-size-observations.json",
-          "sha256": "8e1742fa6efc28cd673832d189de74c73b6926ebd42e41ebf7d835f5a405e6c4",
+          "sha256": "2b250be0477f0067e83ea6c57929a40595f631711a99c3c3f7a26c050bf32179",
           "runFile": "cell-size-run.json",
-          "runSha256": "c23d4cff00e4ee7421b538b17de11639337293cf7bbdbb85ee47f1f96e680ad4",
+          "runSha256": "45ebf24685a34827924fa7b7cd3ddf2fc51f2d24f01325ee22dabbda99737c28",
           "counts": {
             "inconclusive": 2
           },
@@ -3873,23 +3873,23 @@
         }
       },
       "run": {
-        "ownedRunId": "113410a700e612e361c599b1df920fb2",
-        "measuredAt": "2026-11-17T07:09:46.089Z",
-        "appRevision": "4fba0d48f6c3633489403cc238bfd0118b205bd8",
+        "ownedRunId": "4b63f57a61d3905acb38ac6a8738696f",
+        "measuredAt": "2026-11-17T08:49:04.096Z",
+        "appRevision": "8da07482a849946cf213d1d4b6781759bde1c56f",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "ecfc4c42a208a3b7ea6135cff532834d08d2fb2f",
+        "scriptsRevision": "8da07482a849946cf213d1d4b6781759bde1c56f",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "9fa3afdefa1f6ae0af3ad63b4f56334ed896fe1337bad0777bfe23e3b59ac52f",
+        "collectorAdapterBundleSha256": "6836a7f7fd4723d98c7edcfa72d1f8cf1cceafafb7e262afd46dfc0445992754",
         "gradingAdapterId": "ntilde-owned-osc-cell-size-grading-v1",
-        "gradingAdapterBundleSha256": "23b822da48d50a579da1be0c3f56f126a749f93ddbfb1bab8e7170ac4f5c2cbe",
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v63",
-        "sourceSnapshotManifestSha256": "c61e63a795925b4c988d50ce78f5273056819f89251b7b4e0d59b2173996cd64"
+        "gradingAdapterBundleSha256": "339d844bf5e53dd2966bfd7d02205835f6176e0c6f98a4fcdd15284a6757f91d",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v64",
+        "sourceSnapshotManifestSha256": "555706bebfe1aed48bcd008c3acdbe4ade2843a4b99fdfaeb82bdc1cf966f1cc"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "6448f6b35dec53778fd54a136d6be3d0",
+        "runId": "380108a115315b8081925a89475ac439",
         "counts": {
           "inconclusive": 161,
           "supported": 93,
@@ -3897,14 +3897,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "121ea101a83d1d53eac0fde7e9f29b94ee552a0f2f88f62c4b899198a8d10b88",
+        "rawSha256": "86fbddddad9f199a85e755e894d5c4b3e088c2431e3d2ce1f77db4a4ee6ead0c",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock grades collected in this same scoped run. Omitted notification suites retain their separate pinned predecessor receipt; combined evidence is not a fresh complete default run."
       },
       "rederivation": {
         "status": "passed",
-        "command": "node --test scripts/terminfo/cell-size-publication.test.mjs",
-        "testSha256": "0563e2912ee04387c7828fbd03e05697d5ab1349596d2712f2a6d64af14d976a"
+        "command": "node --test scripts/terminfo/cell-size-integrated-publication.test.mjs",
+        "testSha256": "1c4b6ed47cab53da1418d1107956d1261c15b69870c884891b43ea8ee2e1ba54"
       }
     }
   ],

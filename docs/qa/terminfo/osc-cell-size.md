@@ -3,7 +3,7 @@
 This contract keeps `extensions.osc1337-cellsize` and
 `extensions.osc776-cell-size` separate. CSI 16 t is a delivery/geometry control,
 never evidence that an OSC spelling is supported. The
-[2026-11-17 live publication](2026-11-17-osc-cell-size-qualification.md) retains
+[2026-11-17 live publication](2026-11-17-osc-cell-size-integrated-qualification.md) retains
 both supported effect contracts and their separate inconclusive pinned/stock
 results; deterministic tests alone do not establish runtime qualification.
 
