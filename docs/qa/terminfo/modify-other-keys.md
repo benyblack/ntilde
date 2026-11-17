@@ -15,6 +15,10 @@ Levels 1 and 2 are subcases of the single benchmark id. Level 3 (`input.modify-o
 dead keys, non-US layouts, AltGr and Meta/Super behavior beyond the labeled policy controls, SSH, mux, Windows/Linux
 desktop qualification and any general keyboard-API redesign are out of scope and never claimed.
 
+The [level-3 policy audit](2026-11-17-modify-other-keys-3-policy.md) records its separate pinned paths,
+the authoritative all-ordinary-keys semantics and the explicit unsupported/deferred implementation policy.
+It adds no graded suite or support claim.
+
 ## What the pinned probe actually is
 
 Read from `terminfo.dev@4.0.0` (`terminfo.bundle.mjs`, SHA-256 `aa5f2bf9…d1f6`), not inferred from the name: the probe
