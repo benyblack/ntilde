@@ -144,7 +144,9 @@ export function validateImageOwnership(actual, original, geometry) {
 export function validateEpochChange(actual, previous) {
     checkImages(actual?.app && previous?.app && actual.app.pid !== previous.app.pid && actual.app.uid === previous.app.uid && actual.app.executable === previous.app.executable);
     checkImages(actual.tty === previous.tty && previous.daemon !== undefined && actual.daemon !== undefined);
-    for (const side of ['worker', 'daemon']) checkImages(['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual[side][key] === previous[side][key]));
+    checkImages(['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual.worker[key] === previous.worker[key]));
+    // The daemon is the same process, but its parent is not: the App that started it was its parent until that App went away, then it belongs to init.
+    checkImages(['pid', 'uid', 'tty', 'executable'].every(key => actual.daemon[key] === previous.daemon[key]));
 }
 export function buildStaticImageReport(frames, actions, seal, runId, output, priorChallenges = []) {
     checkImages(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 31 && actions?.length === 30

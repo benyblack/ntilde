@@ -65,7 +65,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     for (const input of animationInputs(version)) writeFileSync(join(output, input.file), input.bytes);
     const baseOwnership = imageOwnership(initial.rows, initial.cols, runId);
     // A restore run (version 3) lives in a persistent tab: the worker is the multiplexer daemon's child, and every relaunch stage brings a new App process (and pane).
-    const daemonRecord = { pid: 700, ppid: 1, uid: baseOwnership.app.uid, tty: '??', executable: baseOwnership.app.executable, ...daemon };
+    const firstApp = baseOwnership.app.pid, daemonRecord = { pid: 700, ppid: firstApp, uid: baseOwnership.app.uid, tty: '??', executable: baseOwnership.app.executable, ...daemon };
     let appPid = baseOwnership.app.pid, currentPane = paneId;
     const stamp = at => ({ ...structuredClone(baseOwnership), app: { ...structuredClone(baseOwnership.app), pid: appPid }, ...(version === currentAnimationVersion ? {} : { worker: { ...structuredClone(baseOwnership.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) }), at: iso(at) });
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
@@ -87,7 +87,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
         if (entry.kind === 'read' && !states.has(entry.caseId)) states.set(entry.caseId, { imageId: 4000 + states.size });
         const state = states.get(entry.caseId) ?? {}, expected = animationAction(entry, state, runId, initial.cursorVisible, version);
         const item = cases.find(value => value.id === entry.caseId), stage = item?.stages.find(value => value.id === entry.stageId);
-        if (stage?.relaunch) { appPid += 1; currentPane = relaunchAt?.paneId ?? `${paneId.slice(0, -2)}${String(appPid).slice(-2)}`; }
+        if (stage?.relaunch) { appPid += 1; daemonRecord.ppid = 1; currentPane = relaunchAt?.paneId ?? `${paneId.slice(0, -2)}${String(appPid).slice(-2)}`; }
         let plan = plannedTiming(stage, startedAt.get(entry.caseId), clock);
         plan = timing?.(entry, plan, { startedAt: startedAt.get(entry.caseId) }) ?? plan;
         if (stage?.reply === 'start') startedAt.set(entry.caseId, plan.actionAt);

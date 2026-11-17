@@ -252,6 +252,7 @@ test('a faithful restore run grades every stage passed across three App processe
         assert.ok(report.observations.every(item => item.result === 'passed'), JSON.stringify(report.observations.filter(item => item.result !== 'passed').map(item => [item.featureId, item.inconclusiveReason])));
         assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
         assert.equal(new Set(frames.map(frame => frame.ownership.app.pid)).size, 4, 'the initial App and one new App per relaunch');
+        assert.deepEqual([...new Set(frames.map(frame => frame.ownership.daemon.ppid))], [frames[0].ownership.app.pid, 1], 'the daemon is its first App\'s child until that App is gone, then init\'s');
         assert.match(report.scope, /quit and started again on the same persistent session/);
     });
 });
