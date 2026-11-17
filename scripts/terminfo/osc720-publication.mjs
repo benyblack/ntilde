@@ -10,9 +10,9 @@ export const measuredScriptsRevision = '6dcfc318148c96b18b73d264837a8c5b62b11b01
 /** The measured App build revision (stamped into the sidecar assembly). The retained selected-source manifest independently pins the measured scripts; these human-readable labels are not binary-to-source attestation. */
 export const measuredAppRevision = '85efa784607f1e98b36c52c1538a30d25c6f9000';
 const scope = 'Pinned terminfo.dev@4.0.0 paths for extensions.osc720-scroll-up preserved: the terminal path (two writes, a cursor-position query and unverifiedEffect; always inconclusive, evidence "consumed", and the path the '
-    + 'stock collector grades) and the termless function (thirty fed lines, two scrollback reads and the bare OSC 720 BEL; replayed UNCHANGED over a parent-built scrollback context mapped from the App view position, which is not a '
+    + 'stock collector grades) and the termless function (thirty fed lines, two scrollback reads and the bare OSC 720 BEL, which carries no `;` and so is not dispatched by urxvt either; replayed UNCHANGED over a parent-built scrollback context mapped from the App view position, which is not a '
     + 'termless backend run and not a stock grade), beside a separately identified effect contract graded by an independent oracle written from rxvt-unicode: OSC 720 ; Pt moves the viewing window up Pt lines and, for a zero or '
-    + 'absent Pt (which the pinned bare form is), clears the scrollback (rxvt(7) and src/command.C scr_page / scr_erase_savelines). Observed quantities are the App view scroll position, the stored history (count, generation, '
+    + 'empty Pt, clears the scrollback (rxvt(7) and src/command.C scr_page / scr_erase_savelines); an OSC is dispatched only after a `;`, so the pinned bare form is ignored by urxvt and is expected to change nothing. Observed quantities are the App view scroll position, the stored history (count, generation, '
     + 'evictions and content), the cursor and the screen; the wheel (a routed generated-input notch) and ED 3 are observer controls only and never evidence for OSC 720. No OSC 721, painted pixels, remote/mux, Windows/Linux, '
     + 'stock-score or common-harness claim.';
 function stockObservation(raw, caseId) {

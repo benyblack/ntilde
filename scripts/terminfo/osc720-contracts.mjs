@@ -2,17 +2,19 @@
 //
 // PROTOCOL OWNER (primary source, rxvt-unicode rxvt(7) and src/command.C, case URxvt_view_up / URxvt_view_down):
 //   OSC 720 ; Pt ST  Move viewing window up by Pt lines, or clear scrollback buffer if Pt = 0 (compile frills).   OSC 721 is the same toward the live line.
-//   The reference implementation reads `lines = atoi(str)`; a non-zero count calls scr_page(UP, lines) (the view moves, nothing is erased) and a zero count (which an absent
-//   or empty Pt also is) calls scr_erase_savelines(): the saved lines are erased and the screen and view are left alone.
-//   OSC 720 therefore controls a viewport for a count and MUTATES the retained history for a zero or absent count.
+//   The reference implementation (process_osc_seq) dispatches an OSC only when the character after its digits is `;`. It then reads `lines = atoi(str)`; a non-zero count calls
+//   scr_page(UP, lines) (the view moves, nothing is erased) and a zero count calls scr_erase_savelines() (the saved lines are erased, the screen and view are left alone); an
+//   empty count after the `;` is zero too. The BARE form `ESC ] 720 BEL` has no `;`, so urxvt does not dispatch it at all and it has no effect there.
+//   OSC 720 therefore controls a viewport for a counted `;Pt` and MUTATES the retained history for `;0` or `;`.
 //
-// THE PINNED PROBE (terminfo.dev@4.0.0, read from the bundle) sends the BARE form `ESC ] 720 BEL`, with no count:
+// THE PINNED PROBE (terminfo.dev@4.0.0, read from the bundle) sends the BARE form `ESC ] 720 BEL`, with no `;` and no count:
 //   termless  feeds 30 lines `scroll-<i>\r\n`, reads ctx.getScrollback() (it needs totalLines > screenLines and viewportOffset > 0, else parserStateResult(null)), feeds the bare
 //             form, reads again and passes iff after.viewportOffset < before.viewportOffset. viewportOffset is the absolute buffer row where the viewport starts: at the live view
 //             it is totalLines - screenLines, scrolled to the top it is 0.
 //   terminal  writes `ESC[1;1H ESC[2K ESC]720 BEL`, asks the cursor position and returns unverifiedEffect: always inconclusive, evidence "consumed". It never measures the viewport.
-// The bare form is Pt = 0 in the reference implementation, which erases the saved lines; viewportOffset then drops to 0 as well, so the pinned criterion cannot tell a viewport move
-// from a history erase. This contract keeps those operations apart and never promotes either to the other.
+// The pinned bare form is therefore not a form the protocol owner defines: urxvt itself ignores it, so the pinned criterion cannot pass on its own reference terminal. A terminal that
+// erased its history on `;0` would also drop viewportOffset to 0, so the criterion also cannot tell a viewport move from a history erase. This contract keeps those operations apart,
+// expects no effect for the bare form (the reference behavior) and never promotes either operation to the other.
 //
 // The effect contract below uses its own oracle, written from the rxvt text above, and Ntilde's observation API (the view's own scroll position beside the stored history, cursor and screen).
 // CSI SU, scrollback growth, keyboard/wheel viewport scrolling and ED 3 are DIFFERENT operations: the wheel and ED 3 appear only as observer controls that prove the measured quantities can move.
@@ -65,9 +67,11 @@ const wheel = Object.freeze({ kind: 'view-up-any' });
 /** One experiment: its name (a string), role, setup, probe bytes and rxvt expectation. */
 const spec = (/** @type {string} */ name, role, setup, probe, expected) => ({ name, role, setup, probe, expected });
 const experimentSpecs = [
-    // The pinned bare form: Pt absent is Pt = 0, which erases the saved lines in the reference implementation.
-    spec('pinned-bare', 'protocol', live, osc720Bare, eraseSaved),
+    // The pinned bare form has no `;`, so the reference implementation does not dispatch it: it must change nothing.
+    spec('pinned-bare', 'protocol', live, osc720Bare, none),
     spec('count-zero', 'protocol', live, withCount(0), eraseSaved),
+    // An empty count after the `;` is zero too (atoi of the empty string).
+    spec('count-empty', 'protocol', live, '\x1b]720;\x07', eraseSaved),
     spec('count-3', 'protocol', live, withCount(3), viewUp(3)),
     spec('count-3-st', 'protocol', live, withCount(3, '\x1b\\'), viewUp(3)),
     spec('count-clamped', 'protocol', live, withCount(100000), viewUp(100000)),

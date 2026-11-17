@@ -12,7 +12,7 @@ test('an App that ignores OSC 720 is graded unsupported with the controls held a
     const [item] = report.cases, effect = item.effectContract;
     assert.equal(effect.outcome, 'unsupported');
     assert.equal(effect.controlsHeld, true);
-    assert.deepEqual(effect.protocolExperiments.map(entry => entry.observed), Array(6).fill('none'));
+    assert.deepEqual(effect.protocolExperiments.map(entry => entry.observed), Array(7).fill('none'));
     assert.deepEqual(effect.controlExperiments.map(entry => [entry.name, entry.observed]), [['unmarked', 'none'], ['ed3-control', 'erase-saved'], ['wheel-control', 'view-up']]);
     assert.equal(item.pinned.terminal.observation.outcome, 'inconclusive');
     assert.equal(item.pinned.terminal.observation.evidence, 'consumed');
@@ -23,16 +23,22 @@ test('an App that ignores OSC 720 is graded unsupported with the controls held a
     assert.deepEqual(osc720Counts(report), { 'inconclusive/unsupported': 1 });
 });
 
-test('an App that follows the rxvt text is supported, and the pinned criterion cannot tell its history erase from a view move', () => {
+test('an App that follows the rxvt text is supported, and the pinned termless criterion cannot tell a history erase from a view move', () => {
     const report = build(syntheticOsc720Evidence({ behavior: 'rxvt' }));
     const [item] = report.cases;
     assert.equal(item.effectContract.outcome, 'supported');
-    assert.equal(named(report, 'pinned-bare').observed.kind, 'erase-saved');
+    assert.equal(named(report, 'pinned-bare').observed.kind, 'none', 'urxvt does not dispatch the bare form');
+    assert.equal(named(report, 'count-zero').observed.kind, 'erase-saved');
+    assert.equal(named(report, 'count-empty').observed.kind, 'erase-saved');
     assert.equal(named(report, 'count-3').observed.kind, 'view-up');
     assert.equal(named(report, 'count-clamped').observations[1].scrollOffset, syntheticHistory);
     assert.equal(named(report, 'count-2-from-scrolled').observations[1].scrollOffset, named(report, 'count-2-from-scrolled').observations[0].scrollOffset + 2);
-    // viewportOffset falls to 0 after the erase, so the pinned termless criterion passes although no viewport moved.
-    assert.equal(item.pinned.termless.observation.outcome, 'supported');
+    // The pinned bare form changes nothing in the reference, so the pinned criterion fails on its own protocol owner.
+    assert.equal(item.pinned.termless.observation.outcome, 'unsupported');
+    // Over an erase (`;0`), viewportOffset falls to 0 and the same unchanged criterion would pass although no viewport moved.
+    const [before, after] = named(report, 'count-zero').observations;
+    const facts = record => ({ viewport: { scrollOffset: record.scrollOffset, maxScrollOffset: record.maxScrollOffset }, scrollbackLines: record.scrollbackLines });
+    assert.equal(replayOsc720TermlessStatic(before.rows, facts(before), facts(after)).observation.outcome, 'supported');
 });
 
 test('a partial implementation is inconclusive, never a guess', () => {
@@ -98,9 +104,10 @@ test('every refusal boundary rejects tampered or incomplete evidence', () => {
     assert.throws(mutate(e => { e.run.experiments[1].reads[0].facts.scrollbackLines += 1; }), /read identity changed/);
     assert.throws(mutate(e => { e.run.experiments.at(-1).actions[0].response.notches = []; }), /action record changed/);
     assert.throws(mutate(e => { e.run.experiments.at(-1).actions = []; }), /action record changed/);
+    assert.throws(mutate(e => { e.run.experiments.at(-1).actions[0].response.notches[0].request.paneId = '00000000-0000-4000-8000-000000000001'; }), /action record changed/, 'a wheel request bound to another pane');
     assert.throws(mutate(e => { e.adapter.derivedFromAdapterId = 'x'; }), /Invalid OSC 720 run identity/);
     assert.throws(mutate(e => { e.frames[1].before.metadata.viewport = { scrollOffset: 0, maxScrollOffset: 1 }; }), /./);
     assert.throws(mutate(e => { e.frames.at(-1).before.metadata.buffer.scrollbackLines = 3; }), /./);
-    assert.equal(osc720Experiments(syntheticOsc720Evidence().runId).length, 9);
+    assert.equal(osc720Experiments(syntheticOsc720Evidence().runId).length, 10);
     assert.equal(named(build(syntheticOsc720Evidence()), 'count-3').caseId, `${osc720CaseId}/count-3`);
 });

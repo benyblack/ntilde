@@ -43,7 +43,7 @@ test('retained run independently rederives the complete receipt and published pr
         assert.equal(item.pinned.termlessReplay.observation.outcome, 'unsupported', 'the unchanged pinned termless function over the mapped, unchanged viewport');
         assert.equal(item.stock.outcome, 'inconclusive');
         assert.equal(item.effectContract.controlsHeld, true);
-        assert.deepEqual(item.effectContract.protocolExperiments.map(entry => entry.observed), Array(6).fill('none'));
+        assert.deepEqual(item.effectContract.protocolExperiments.map(entry => entry.observed), Array(7).fill('none'));
         assert.deepEqual(item.effectContract.controlExperiments.map(entry => [entry.name, entry.observed]), [['unmarked', 'none'], ['ed3-control', 'erase-saved'], ['wheel-control', 'view-up']]);
         // The history every experiment started from, the wheel's view move and the ED 3 erase are the retained observed quantities.
         const byName = Object.fromEntries(item.experiments.map(entry => [entry.name, entry]));
