@@ -517,12 +517,6 @@ try {
             if (createHash('sha256').update(osc3008Source).digest('hex') !== config.osc3008BundleSha256) throw new Error('Local OSC 3008 adapter bundle changed.');
             const osc3008Result = await collectOsc3008({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc3008Bundle).href) });
             if (osc3008Result.status === 'complete') writeFileSync(join(config.output, 'ocx-run.json'), JSON.stringify(osc3008Result.run) + '\n', { flag: 'wx', mode: 0o600 });
-        // The layered iTerm2 feature-reporting qualification follows the OSC 3008 suite on the same exclusively owned fence; it changes no color and leaves the baseline title written.
-        const capsSource = readFileSync(config.capsBundle);
-        if (createHash('sha256').update(capsSource).digest('hex') !== config.capsBundleSha256) throw new Error('Local feature-reporting adapter bundle changed.');
-        const capsModule = await import(pathToFileURL(config.capsBundle).href);
-        const capsRun = await collectCapsGrading({ config, fence, owner, gradingModule: capsModule });
-        writeFileSync(join(config.output, 'caps-run.json'), JSON.stringify(capsRun) + '\n', { flag: 'wx', mode: 0o600 });
             // The layered rxvt OSC 720 qualification follows the OSC 3008 suite on the same fence. A typed refusal of its first observation is retained by the parent as its typed
             // marker (written before it answers), so the worker writes nothing and the run continues. It leaves no history, the live view and the blank baseline screen.
             const osc720Source = readFileSync(config.osc720Bundle);
@@ -533,6 +527,12 @@ try {
             if (createHash('sha256').update(osc22Source).digest('hex') !== config.osc22BundleSha256) throw new Error('Local OSC 22 adapter bundle changed.');
             const osc22Result = await collectOsc22({ config, fence, owner, gradingModule: await import(pathToFileURL(config.osc22Bundle).href) });
             if (osc22Result.status === 'complete') writeFileSync(join(config.output, 'ptr-run.json'), JSON.stringify(osc22Result.run) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered iTerm2 feature-reporting qualification follows the OSC 22 suite on the same exclusively owned fence; it changes no color and leaves the baseline title written.
+            const capsSource = readFileSync(config.capsBundle);
+            if (createHash('sha256').update(capsSource).digest('hex') !== config.capsBundleSha256) throw new Error('Local feature-reporting adapter bundle changed.');
+            const capsModule = await import(pathToFileURL(config.capsBundle).href);
+            const capsRun = await collectCapsGrading({ config, fence, owner, gradingModule: capsModule });
+            writeFileSync(join(config.output, 'caps-run.json'), JSON.stringify(capsRun) + '\n', { flag: 'wx', mode: 0o600 });
             const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
             // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
             // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.

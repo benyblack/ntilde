@@ -38,6 +38,12 @@ export const osc5Osc633ScopeV4 = Object.freeze({ ...osc633ScopeV4, deadlineMs: 6
 export const osc5LegacyScopeV4 = Object.freeze({ ...legacyScopeV4, deadlineMs: 600000 });
 export const osc633Scope = Object.freeze({ ...osc633ScopeV4, id: 'owned-osc633-without-notification-suites-v5', deadlineMs: 600000 });
 export const legacyScope = Object.freeze({ ...legacyScopeV4, id: 'owned-pre-osc633-full-selection-v5', deadlineMs: 600000 });
+/**
+ * Not a full-run selection: the Kitty animation suite alone, collected in a persistent (mux-backed, KeepOnClose) tab whose worker is the
+ * multiplexer daemon's child. It has its own receipt (persistent-animation-receipt.json), so no full-receipt scope rule applies to it.
+ */
+export const persistentAnimationScope = Object.freeze({ id: 'owned-kitty-animation-persistent-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-animation']), deadlineMs: 300000 });
+export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope);
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV4) || same(value, osc5Osc633ScopeV4) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
@@ -50,8 +56,7 @@ export const isCellSizeV64Scope = context => isCellSizeAnimationPolicy64(context
     && (same(context.collectionScope, legacyScopeV4) || same(context.collectionScope, osc633ScopeV4));
 const scopePolicyOk = context => {
     const scope = context.collectionScope, policy = context.sourceSnapshotPolicy;
-    if (isHistoricOsc633Scope(scope)) return policy === 'readonly-owned-source-graph-v65' || policy === 'readonly-owned-source-graph-v66' || policy === 'readonly-owned-source-graph-v67'
-        || policy === 'readonly-owned-source-graph-v68' || policy === 'readonly-owned-source-graph-v69';
+    if (isHistoricOsc633Scope(scope)) return policy === 'readonly-owned-source-graph-v61';
     if (same(scope, integratedOsc633Scope) || same(scope, integratedLegacyScope)) {
         const laterFamily = Object.keys(context).some(key => key.startsWith('osc5') || key.startsWith('cellSize') || key.startsWith('kittyAnimation'));
         return (policy === 'readonly-owned-source-graph-v62' && !laterFamily) || isOsc5ForkScope(context);

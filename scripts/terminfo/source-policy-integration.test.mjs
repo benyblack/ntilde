@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { capturedV76SourceFiles,  capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedV71SourceFiles, capturedV72SourceFiles, capturedV73SourceFiles, capturedV74SourceFiles,
+import { capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedV71SourceFiles, capturedV72SourceFiles, capturedV73SourceFiles, capturedV74SourceFiles, capturedV75SourceFiles,
     capturedOsc5ForkV63Files, capturedOsc5ForkV64Files, ownedSourceFiles,
-    isCellSizePolicy63, isKittyAnimationPolicy63, isOsc5Policy63  } from './owned-sources.mjs';
+    isCellSizePolicy63, isKittyAnimationPolicy63, isOsc5Policy63 } from './owned-sources.mjs';
 import { retainedInventory } from './metadata-receipt.mjs';
 import { includesCellSizeEvidence } from './cell-size-receipt.mjs';
 import { includesAnimationEvidence } from './kitty-animation-receipt.mjs';
@@ -21,19 +21,12 @@ const osc5 = () => ({ sourceSnapshotPolicy: policy(63), osc5ContractsSourceSha25
 const cell64 = () => ({ ...cell(), ...kitty(), sourceSnapshotPolicy: policy(64), collectionScope: legacyScopeV4 });
 const osc564 = () => ({ ...osc5(), ...kitty(), sourceSnapshotPolicy: policy(64), collectionScope: osc5LegacyScopeV4 });
 
-<<<<<<< HEAD
-test('seven frozen graphs remain distinct (extended for the caps v76 graph) from the live451-input v67 graph', () => {
+test('frozen graphs remain distinct from the live455-input v68 graph', () => {
     for (const [graph, count] of [[capturedV70SourceFiles, 420], [capturedCellSizeForkV70Files, 425], [capturedOsc5ForkV63Files, 420],
-        [capturedV71SourceFiles, 432], [capturedOsc5ForkV64Files, 427], [capturedV72SourceFiles, 439], [capturedV73SourceFiles, 444], [capturedV74SourceFiles, 451, [capturedV76SourceFiles, 462]]]) assert.equal(Object.keys(graph).length, count);
+        [capturedV71SourceFiles, 432], [capturedOsc5ForkV64Files, 427], [capturedV72SourceFiles, 439], [capturedV73SourceFiles, 444], [capturedV74SourceFiles, 450]]) assert.equal(Object.keys(graph).length, count);
     assert.deepEqual(ownedSourceFiles, capturedV76SourceFiles);
-=======
-test('seven frozen graphs remain distinct from the live452-input v67 graph', () => {
-    for (const [graph, count] of [[capturedV70SourceFiles, 420], [capturedCellSizeForkV70Files, 425], [capturedOsc5ForkV63Files, 420],
-        [capturedV71SourceFiles, 432], [capturedOsc5ForkV64Files, 427], [capturedV72SourceFiles, 439], [capturedV73SourceFiles, 444], [capturedV74SourceFiles, 452]]) assert.equal(Object.keys(graph).length, count);
-    assert.deepEqual(ownedSourceFiles, capturedV74SourceFiles);
->>>>>>> 0a9f08fda (caps: share the query-probe machinery and clear the Sonar findings)
     for (const [context, graph] of [[cell(), capturedCellSizeForkV70Files], [kitty(), capturedV70SourceFiles], [osc5(), capturedOsc5ForkV63Files],
-        [cell64(), capturedV71SourceFiles], [osc564(), capturedOsc5ForkV64Files], [{ sourceSnapshotPolicy: policy(65) }, capturedV72SourceFiles], [{ sourceSnapshotPolicy: policy(66) }, capturedV73SourceFiles], [{ sourceSnapshotPolicy: policy(67) }, capturedV74SourceFiles], [{ sourceSnapshotPolicy: policy(69) }, capturedV76SourceFiles]]) {
+        [cell64(), capturedV71SourceFiles], [osc564(), capturedOsc5ForkV64Files], [{ sourceSnapshotPolicy: policy(65) }, capturedV72SourceFiles], [{ sourceSnapshotPolicy: policy(66) }, capturedV73SourceFiles], [{ sourceSnapshotPolicy: policy(67) }, capturedV74SourceFiles], [{ sourceSnapshotPolicy: policy(68) }, capturedV75SourceFiles], [{ sourceSnapshotPolicy: policy(69) }, capturedV76SourceFiles]]) {
         assert.equal(retainedInventory('', context), graph);
     }
 });
