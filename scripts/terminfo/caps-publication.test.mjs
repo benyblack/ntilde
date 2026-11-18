@@ -11,7 +11,7 @@ import { buildCapsGradingReport } from './caps-grading.mjs';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const publication = { directory: '2026-11-17-osc1337-capabilities', manifestHash: '9f0aa9849233ae9f84dce53c8c72aecbb45d542bc68feac04b087f372f8900d6', revision: measuredScriptsRevision, schema: 77, policy: 70 };
+const publication = { directory: '2026-11-17-osc1337-capabilities', manifestHash: 'eb0c78d4299d457c9761f4055c141c05427b03e8533955c9aa3f84ae9a90f370', revision: measuredScriptsRevision, schema: 77, policy: 70 };
 
 test(`${publication.directory} independently rederives the complete receipt and published projection`, () => {
     const dir = fileURLToPath(new URL(`../../docs/qa/terminfo/${publication.directory}/`, import.meta.url));
@@ -73,7 +73,7 @@ test(`${publication.directory} independently rederives the complete receipt and 
         // Every protocol group matched its demand and left the screen unchanged; every policy group stayed silent as recorded.
         assert.equal(groups.every(([, group]) => group.unchanged), true);
         assert.equal(groups.every(([, group]) => group.matches), true);
-        assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 159, supported: 95, unsupported: 1 });
+        assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 157, supported: 97, unsupported: 1 });
         assert.equal(measuredScriptsRevision, measuredAppRevision);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });

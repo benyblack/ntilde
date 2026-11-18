@@ -161,9 +161,9 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         const measurementPosition = suite.suite === 'ascii-reflow' ? stored.suites.length : stored.suites.indexOf(suite);
         const moved = (gated >= 0 && measurementPosition >= gated ? 1 : 0) + (notice >= 0 && measurementPosition >= notice ? 1 : 0) + (device >= 0 && measurementPosition >= device ? 3 : 0)
             + (mouse >= 0 && measurementPosition >= mouse ? 1 : 0) + (kitty >= 0 && measurementPosition >= kitty ? 1 : 0)
-            + (osc5Live >= 0 && (measurementPosition === osc5Live || measurementPosition === osc3008Live || ['osc720', 'osc22', 'font-size'].includes(suite.suite)) ? 1 : 0)
-            // The read-only font queries move exactly their two pinned stock cases.
-            + (suite.suite === 'font-size' ? 2 : 0)
+            + (osc5Live >= 0 && (measurementPosition === osc5Live || measurementPosition === osc3008Live || ['osc720', 'osc22', 'font-size', 'caps'].includes(suite.suite)) ? 1 : 0)
+            // The read-only font queries move exactly their two pinned stock cases; every suite measured after them carries that movement.
+            + (suite.suite === 'font-size' || suite.suite === 'caps' ? 2 : 0)
             + (suite.suite === 'caps' ? 1 : 0);
         const expected = { ...base.counts, inconclusive: base.counts.inconclusive - moved, supported: base.counts.supported + moved };
         if (suite.stock.basis !== 'carried-forward' && suite.suite !== 'ascii-reflow') assert.deepEqual(suite.stock.counts, expected, suite.suite);

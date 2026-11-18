@@ -4,7 +4,7 @@ Qualifies one pinned terminfo.dev@4.0.0 case (bundle SHA-256 `aa5f2bf9…e1f6`, 
 `OSC 1337 ; RequestCapabilities BEL`. Like the [rxvt special-color batch](2026-11-17-osc5-special-colors-qualification.md), **this batch adds production code**: main did not answer the request (the
 [#1003 policy audit](2026-11-17-term-features-policy.md) recorded the undeclaration and its owning regressions), so a qualification had nothing to measure. The VT now answers the iTerm2
 feature-reporting query with an evidence-backed declaration ([contract](iterm-feature-reporting.md)), and the batch measures it. The batch is restacked on the merged OSC 5, OSC cell-size,
-OSC 3008, OSC 720, OSC 22 and Kitty-animation batches (live source policy v69, receipt schema 76; every earlier publication remains retained).
+OSC 3008, OSC 720, OSC 22, Kitty-animation and font-query batches (live source policy v70, receipt schema 77; every earlier publication remains retained).
 
 ## What the pinned probe can say
 
@@ -32,7 +32,7 @@ writes under its default initial settings; a host that cannot answer omits it (p
 screen unchanged, and the silent forms (an unsolicited `Capabilities=…` assignment, a bare or query `Capabilities`, a suffixed request, both wrong-case spellings) stayed silent with the exact request
 still answered after them.
 
-The stock collector in owned run `46c19e896560dbb0474df63723627443` grades 95 supported / 1 unsupported / 159 inconclusive (`suiteComplete=false`), 255 graded cases. `extensions.osc1337-capabilities`
+The stock collector in owned run `96792c065a93b2b1def8fce8b2e6d9ab` grades 97 supported / 1 unsupported / 157 inconclusive (`suiteComplete=false`), 255 graded cases — the two font-query ids the merged #1033 batch added are supported in the same run. `extensions.osc1337-capabilities`
 is the one case this batch newly moves from inconclusive to supported; the frozen November 9 baseline and every other stock grade stay unchanged. No Core point is added.
 
 ## Production
@@ -75,12 +75,16 @@ pinned verdict.
    `artifacts/terminfo/owned-MLbzEo` (session-local, not committed).
 8. Completed every suite (caps supported, all groups matched) but the exact-query witness recorded unexpected bytes: resolving the restack conflicts dropped the `capabilitiesReport` flag, so the
    witness demanded silence while the App answered the declared reply. Fixed; retained at `artifacts/terminfo/owned-Gv81Xb` (session-local, not committed).
+9. Completed every suite on the pre-font-restack graph (stock 95/159/1, caps supported, witness matched; live source policy v69, schema 76, 463 inputs) and was packaged, then superseded when the
+   merged font-query batch (#1033) claimed the same v69/76 slots; the caps batch renumbered to v70/77/469 inputs; retained at `artifacts/terminfo/owned-ZER5Ix` (session-local, not committed).
+10. Completed every suite but receipt finalization refused: the per-suite checked-in policy lists did not yet admit the v70 source policy (the static-image receipt refused first). Fixed by the
+    same mechanical admission bump every earlier batch applied; retained at `artifacts/terminfo/owned-ivCBrs` (session-local, not committed).
 
 ## Identities
 
-App 0.14.0 (operator supplied) built from `7bfbbdc13415…` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`); measured scripts `7bfbbdc13415…`;
-source policy `readonly-owned-source-graph-v69`; query policy `owned-exact-query-paired-raw-state-v7`; initial settings include `AllowOsc52ClipboardWrite: true` (the `Cw` gate), `AllowTitleReport: on`
-for the title-report suites and `AllowRectangleChecksumReport: on`; receipt schema 76; owned run `46c19e896560dbb0474df63723627443`; collected 2026-11-18T12:00Z on macOS. The build is not
+App 0.14.0 (operator supplied) built from `6d9cac77500c…` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`, app host; the Ntilde.dll payload carries the merged font-query and feature-reporting implementations); measured scripts `6d9cac77500c…`;
+source policy `readonly-owned-source-graph-v70`; query policy `owned-exact-query-paired-raw-state-v7`; initial settings include `AllowOsc52ClipboardWrite: true` (the `Cw` gate), `AllowTitleReport: on`
+for the title-report suites and `AllowRectangleChecksumReport: on`; receipt schema 77; owned run `96792c065a93b2b1def8fce8b2e6d9ab`; collected 2026-11-18T17:35Z on macOS. The build is not
 binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained run and reproduction
@@ -94,4 +98,4 @@ node scripts/terminfo-inventory.mjs --check
 ```
 
 The first command extracts the archive, re-issues the receipt, rebuilds the caps report from the retained journal and compares the published projection; the second re-derives the whole registered
-inventory (148 ids / 150 claims; 145 effect-supported, 95 pinned-and-effect-supported) and compares it to the committed JSON.
+inventory (150 ids / 152 claims; 147 effect-supported, 97 pinned-and-effect-supported) and compares it to the committed JSON.

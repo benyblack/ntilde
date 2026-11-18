@@ -2,9 +2,9 @@
 import { capsCaseIds } from './caps-contracts.mjs';
 import { makeQueryProbePublication } from './probe-suite-shared.mjs';
 
-export const measuredScriptsRevision = '7bfbbdc1341509557780931d1a02f80dec4e80c3';
+export const measuredScriptsRevision = '6d9cac77500ca94deaa5606eb7c2c926e774bebd';
 /** The measured App build revision. The retained selected-source manifest independently pins the measured scripts; these human-readable labels are not binary-to-source attestation. */
-export const measuredAppRevision = '7bfbbdc1341509557780931d1a02f80dec4e80c3';
+export const measuredAppRevision = '6d9cac77500ca94deaa5606eb7c2c926e774bebd';
 
 const scope = 'Pinned terminfo.dev@4.0.0 criterion for extensions.osc1337-capabilities (OSC 1337 ; RequestCapabilities BEL answered by one complete ESC]1337;Capabilities=<characters without BEL or ESC> '
     + 'frame ended by BEL or ST; a query-only probe that can never return unsupported and whose valid pattern accepts any feature string), decided by the unchanged stock collector against the App in this '

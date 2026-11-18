@@ -40,16 +40,16 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 149,
-    "suiteClaims": 151,
+    "uniqueBenchmarkIds": 150,
+    "suiteClaims": 152,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 146,
+    "effectSupportedIds": 147,
     "effectUnsupportedIds": 2,
     "effectOtherIds": 1,
-    "pinnedAndEffectSupportedIds": 96,
+    "pinnedAndEffectSupportedIds": 97,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -106,13 +106,13 @@
       "extensions.osc720-scroll-up",
       "extensions.sixel"
     ],
-    "effectSupportedOfStockInconclusive": 145,
+    "effectSupportedOfStockInconclusive": 146,
     "effectUnsupportedOfStockInconclusive": 2,
-    "pinnedSupportedOfStockInconclusive": 95,
+    "pinnedSupportedOfStockInconclusive": 96,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 96,
+    "pinnedSupportedIds": 97,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -121,11 +121,11 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 23,
+      "effectUnqualified": 22,
       "effectMeasuredUnsupported": 2,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 20,
-      "notPinnedSupported": 73
+      "effectNotMeasured": 19,
+      "notPinnedSupported": 72
     }
   },
   "suites": [
@@ -4260,6 +4260,76 @@
         "command": "node --test scripts/terminfo/osc3008-publication.test.mjs",
         "testSha256": "6e0a47c16e2ae5694b61627f060582f498f78dfc899bcd7f3e506383cf993997"
       }
+    },
+    {
+      "suite": "caps",
+      "suiteId": "ntilde-owned-osc1337-capabilities-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-17-osc1337-capabilities/",
+      "doc": "2026-11-17-osc1337-capabilities-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc1337-capabilities"
+      ],
+      "evidence": {
+        "files": 4,
+        "bytes": 9748560,
+        "sha256": "c802644e8f0a9402f1733368bc4c2af4302b274d8ebefbe349cb04b35acb243b"
+      },
+      "receipt": {
+        "schemaVersion": 77,
+        "runId": "96792c065a93b2b1def8fce8b2e6d9ab",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "1269c4574f727586a3843be1d42d448024756bfc22595b96ef4740cb1b46df50"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc1337-capabilities-graded-v1",
+          "file": "caps-observations.json",
+          "sha256": "c1e709aca07b7e47f1ca34e7995a03821e071500207a88eb27d620fbf5e0ad24",
+          "runFile": "caps-run.json",
+          "runSha256": "1f9be5cfe2bd55b62856b947a77bc4c1f756b7089afd20548dc49ac30b2bf926",
+          "counts": {
+            "supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "96792c065a93b2b1def8fce8b2e6d9ab",
+        "measuredAt": "2026-11-18T17:35:02.350Z",
+        "appRevision": "6d9cac77500ca94deaa5606eb7c2c926e774bebd",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "6d9cac77500ca94deaa5606eb7c2c926e774bebd",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "6cc44511a504f5faf50e1847ee27e1623ea0cdf7a0505c5ec41b951635c1c33d",
+        "gradingAdapterId": "ntilde-owned-osc1337-capabilities-grading-v1",
+        "gradingAdapterBundleSha256": "dd288871aacea2217e90c37a69565f51ba12e79a73a51de0f577282c2b057b85",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v70",
+        "sourceSnapshotManifestSha256": "24c5deab4b3a88b8e21755e3369f6127fb238c54d76ccc82ee1b931da53f3393"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "052ba052f58d6764425f1caa90c8cfc9",
+        "counts": {
+          "inconclusive": 157,
+          "supported": 97,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "b38c542b6bb71ed94ab6dcd249e8fd4f5d725c457cc6e75b174dbe5166ad09c2",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc1337-capabilities from inconclusive to supported."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/caps-publication.test.mjs",
+        "testSha256": "268791d5dc84fc759db4e9e9429c33e3bfc03b9083733e268a6971efc594ca49"
+      }
     }
   ],
   "benchmark": [
@@ -7117,6 +7187,52 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc1337-capabilities",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "caps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "caps",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc1337-capabilities",
+          "suite": "caps",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state"
+          ],
+          "evidenceTag": "owned-raw-replies-and-unchanged-state"
         }
       ]
     },
