@@ -2359,7 +2359,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
-        settings.FontSize = 16; // Prepared query fixture: 12 exact typographic points at unity UI zoom.
+        settings.FontSize = 40 / 3; // Ten points at unity zoom, within the existing full-grid raster budget.
         settings.UiScale = 1;
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
