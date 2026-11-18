@@ -27,6 +27,45 @@ for (const [filter, raw] of [
     [4, [4,10,20,30,30,30,30, 4,60,60,60,30,30,30]],
 ]) test('RGB filter ' + filter, () => assert.deepEqual(decodeCapturePng(png(raw)).pixels, expected));
 
+// The decoder reconstructs each filter type in a loop of its own. This checks it byte for byte against the
+// specification's one-predictor-per-byte form, on rows wide and tall enough to reach every neighbour, for both
+// channel counts and every filter type on a first row and on later rows.
+function referencePixels(raw, width, height, channels) {
+    const bytes = Buffer.from(raw), stride = width * channels, pixels = Buffer.alloc(width * height * 4);
+    for (let y = 0; y < height; y++) {
+        const start = y * (stride + 1) + 1, filter = bytes[start - 1];
+        for (let x = 0; x < stride; x++) {
+            const left = x >= channels ? bytes[start + x - channels] : 0;
+            const up = y > 0 ? bytes[start + x - stride - 1] : 0;
+            const upperLeft = y > 0 && x >= channels ? bytes[start + x - stride - 1 - channels] : 0;
+            const estimate = left + up - upperLeft;
+            const a = Math.abs(estimate - left), b = Math.abs(estimate - up), c = Math.abs(estimate - upperLeft);
+            const predicted = [0, left, up, Math.floor((left + up) / 2), a <= b && a <= c ? left : b <= c ? up : upperLeft][filter];
+            bytes[start + x] = (bytes[start + x] + predicted) & 255;
+        }
+        for (let x = 0; x < width; x++) {
+            for (let k = 0; k < 4; k++) pixels[(y * width + x) * 4 + k] = k < channels ? bytes[start + x * channels + k] : 255;
+        }
+    }
+    return pixels;
+}
+for (const [color, channels] of [[2, 3], [6, 4]]) {
+    test(`every filter type on every row position matches the specification's form (${channels} channels)`, () => {
+        const width = 7, height = 11;
+        let seed = 0x9e3779b9 + channels;
+        const next = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed >>> 24; };
+        // Rows 0-4 put each type on the first row's successors in turn, and the rotation puts each type first too.
+        for (let rotation = 0; rotation < 5; rotation++) {
+            const raw = [];
+            for (let y = 0; y < height; y++) {
+                raw.push((y + rotation) % 5);
+                for (let x = 0; x < width * channels; x++) raw.push(next());
+            }
+            assert.deepEqual(decodeCapturePng(png(raw, { width, height, color })).pixels, referencePixels(raw, width, height, channels));
+        }
+    });
+}
+
 test('RGBA keeps alpha', () => assert.deepEqual(decodeCapturePng(png([0,3,4,5,6],
     { width:1, height:1, color:6 })).pixels, Buffer.from([3,4,5,6])));
 test('rejects CRC corruption', () => {

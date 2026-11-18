@@ -54,5 +54,11 @@ export function copyCellDetails(runs, cells, includeOverline = false, includePro
  * still validates them canonically instead of mistaking protection-split runs for duplicates. */
 export function expandCellDetails(runs, cells, includeOverline = false,
     includeProtection = Array.isArray(runs) && runs.some(run => run?.protected !== undefined)) {
-    return copyCellDetails(runs, cells, includeOverline, includeProtection).flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ ...value })));
+    // A plain loop: these two expansions run for every screen of every suite a receipt admits, and flatMap over
+    // Array.from with a callback per cell cost several times the copies themselves.
+    const result = [];
+    for (const { count, ...value } of copyCellDetails(runs, cells, includeOverline, includeProtection)) {
+        for (let index = 0; index < count; index++) result.push({ ...value });
+    }
+    return result;
 }
