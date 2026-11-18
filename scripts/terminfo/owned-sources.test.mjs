@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { capturedV75SourceFiles, capturedV74SourceFiles, capturedV73SourceFiles, capturedV72SourceFiles, capturedOsc5ForkV63Files, capturedOsc5ForkV64Files, capturedV71SourceFiles, capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedOsc633ForkV61Files, capturedV69SourceFiles, capturedV68SourceFiles, capturedV67SourceFiles, capturedV66SourceFiles, capturedV65SourceFiles, capturedV64SourceFiles, capturedV63SourceFiles, capturedV62SourceFiles, capturedV61SourceFiles, capturedV60SourceFiles, capturedV59SourceFiles, capturedV57SourceFiles, capturedV58SourceFiles, capturedV55SourceFiles, capturedV54SourceFiles, capturedV53SourceFiles, capturedV56SourceFiles, capturedV52SourceFiles, capturedV51SourceFiles, capturedV50SourceFiles, capturedV49SourceFiles, capturedV48SourceFiles, capturedV47SourceFiles, capturedV46SourceFiles, capturedV45SourceFiles, capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, oscTitleReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
+import { capturedV76SourceFiles, capturedV75SourceFiles, capturedV74SourceFiles, capturedV73SourceFiles, capturedV72SourceFiles, capturedOsc5ForkV63Files, capturedOsc5ForkV64Files, capturedV71SourceFiles, capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedOsc633ForkV61Files, capturedV69SourceFiles, capturedV68SourceFiles, capturedV67SourceFiles, capturedV66SourceFiles, capturedV65SourceFiles, capturedV64SourceFiles, capturedV63SourceFiles, capturedV62SourceFiles, capturedV61SourceFiles, capturedV60SourceFiles, capturedV59SourceFiles, capturedV57SourceFiles, capturedV58SourceFiles, capturedV55SourceFiles, capturedV54SourceFiles, capturedV53SourceFiles, capturedV56SourceFiles, capturedV52SourceFiles, capturedV51SourceFiles, capturedV50SourceFiles, capturedV49SourceFiles, capturedV48SourceFiles, capturedV47SourceFiles, capturedV46SourceFiles, capturedV45SourceFiles, capturedV44SourceFiles, capturedV43SourceFiles, capturedV42SourceFiles, capturedV41SourceFiles, capturedV40SourceFiles, capturedV39SourceFiles, capturedV38SourceFiles, capturedV37SourceFiles, capturedV36SourceFiles, capturedV35SourceFiles, capturedV34SourceFiles, capturedV33SourceFiles, capturedV32SourceFiles, capturedV31SourceFiles, capturedV30SourceFiles, capturedV29SourceFiles, capturedV28SourceFiles, capturedV27SourceFiles, capturedV26SourceFiles, capturedV25SourceFiles, capturedV24SourceFiles, capturedV23SourceFiles, capturedV22SourceFiles, capturedV21SourceFiles, capturedV20SourceFiles, capturedV19SourceFiles, capturedV18SourceFiles, capturedV17SourceFiles, capturedV16SourceFiles, capturedV15SourceFiles, capturedV14SourceFiles, capturedV13SourceFiles, capturedV12SourceFiles, capturedV11SourceFiles, privateClipboardReferencePaths, oscTitleReferencePaths, sgrRgbReferencePaths, ownedSourceFiles, ownedSourcePath, assertOwnedSourcesUnchanged, assertRetainedSourceClosure } from './owned-sources.mjs';
 function fixture(action) {
     const root = mkdtempSync(join(tmpdir(), 'nt-source-unit-')), context = {};
     try {
@@ -17,8 +17,8 @@ function fixture(action) {
         action({ root, context });
     } finally { rmSync(root, { recursive: true, force: true }); }
 }
-test('all 455 exact live source/input files still match their initial snapshot', () => fixture(f => {
-    assert.equal(Object.keys(ownedSourceFiles).length, 455); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
+test('all 461 exact live source/input files still match their initial snapshot', () => fixture(f => {
+    assert.equal(Object.keys(ownedSourceFiles).length, 461); assert.doesNotThrow(() => assertOwnedSourcesUnchanged(f.root, f.context));
 }));
 for (const file of ['metadata-state.mjs', 'worker.mjs', 'ownership.mjs', 'terminfo-owned-runner.mjs', 'clipboard-pane-session.cs', 'core-icon-window.cs']) test('rejects post-snapshot live source change: ' + file, () => fixture(f => {
     writeFileSync(ownedSourcePath(f.root, file), '// Changed only in disposable fixture.');
@@ -313,8 +313,13 @@ test('frozen v72 fixed439 integrates both v64 forks without changing either froz
     assert.deepEqual(capturedV72SourceFiles, { ...capturedV71SourceFiles, ...capturedOsc5ForkV64Files });
 });
 
-test('live v75 fixed455 preserves frozen v74 and adds its five modules', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV75SourceFiles);
+test('frozen v75 fixed455 preserves frozen v74 and adds its five modules', () => {
     assert.equal(Object.keys(capturedV75SourceFiles).length, 455);
     assert.deepEqual(Object.fromEntries(Object.entries(capturedV75SourceFiles).filter(([key]) => !key.startsWith('osc22'))), capturedV74SourceFiles);
+});
+
+test('live v76 fixed461 extends frozen455 only by six font modules', () => {
+    assert.deepEqual(ownedSourceFiles, capturedV76SourceFiles);
+    assert.equal(Object.keys(capturedV76SourceFiles).length, 461);
+    assert.deepEqual(Object.fromEntries(Object.entries(capturedV76SourceFiles).filter(([key]) => !key.startsWith('fontSize'))), capturedV75SourceFiles);
 });

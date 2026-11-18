@@ -90,6 +90,10 @@ public sealed class MainWindowAgentMetadataTests : IClassFixture<TestAppDataRoot
         var size = window.ClientSize;
         var observed = Assert.IsType<PaneMetadataResult>(await Read(window, Registration(pane)));
         var geometry = Assert.IsType<PaneCellGeometry>(observed.CellGeometry);
+        var font = Assert.IsType<PaneFontGeometry>(observed.FontGeometry);
+        Assert.Equal(pane.TermView.FontSize, font.FontSizeDip);
+        Assert.Equal(window.ClientSize.Width, font.WindowWidthDip);
+        Assert.Equal(window.ClientSize.Height, font.WindowHeightDip);
         Assert.Equal(pane.TermView.Metrics.CellWidth, geometry.CellWidthDip);
         Assert.Equal(pane.TermView.Metrics.CellHeight, geometry.CellHeightDip);
         Assert.Equal(pane.TermView.Metrics.Ascent, geometry.FontAscentDip);

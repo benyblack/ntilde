@@ -13,6 +13,33 @@ namespace Ntilde.Tests.Controls;
 
 public sealed class OscCellSizeGeometryTests
 {
+    [AvaloniaFact]
+    public void Font_queries_follow_actual_font_and_zoom_but_never_change_the_window_or_font()
+    {
+        var pane = new TerminalPane();
+        var window = new Window { Width = 800, Height = 600, Content = pane };
+        try
+        {
+            pane.CreateAndWireParser(); pane.WireReusedTermViewHandlers(); window.Show();
+            UiScale.Apply(1);
+            var parser = Assert.IsType<AnsiParser>(pane.Parser);
+            var replies = new List<string>(); parser.OnResponse = replies.Add;
+            foreach (double size in new[] { 16.0, 24.0, 20.0, 14.0 })
+            {
+                pane.TermView.FontSize = size; pane.TermView.MeasureCharSize(); Dispatcher.UIThread.RunJobs();
+                var client = window.ClientSize;
+                parser.Process("\x1b]7770;?\a\x1b]7777;?\x1b\\");
+                if (size == 14) Assert.Empty(replies);
+                else Assert.Equal(new[] { $"\x1b]7770;{size * 0.75:0}\a", $"\x1b]7777;{size * 0.75:0}\x1b\\" }, replies);
+                replies.Clear();
+                parser.Process("\x1b]710;xft:Other:pixelsize=40\a\x1b]7770;+2\a\x1b]7777;30\a");
+                Dispatcher.UIThread.RunJobs();
+                Assert.Empty(replies); Assert.Equal(size, pane.TermView.FontSize); Assert.Equal(client, window.ClientSize);
+            }
+        }
+        finally { window.Close(); pane.TermView.Retire(); UiScale.Apply(1); }
+    }
+
     [AvaloniaTheory]
     [InlineData(0)]
     [InlineData(1.25)]
@@ -35,7 +62,7 @@ public sealed class OscCellSizeGeometryTests
                 double zoom = heldScale > 0 ? heldScale : scale;
                 Assert.Equal(1.0, window.RenderScaling);
                 Assert.Equal(zoom, pane.TermView.EffectiveRenderScaling);
-                Assert.Equal(new CellSizeReportMetrics(actual.CellWidth * zoom, actual.CellHeight * zoom, 1, actual.Ascent * zoom), parser.CellSizeReports);
+                Assert.Equal(new CellSizeReportMetrics(actual.CellWidth * zoom, actual.CellHeight * zoom, 1, actual.Ascent * zoom) { FontSizePoints = pane.TermView.FontSize * zoom * 0.75 }, parser.CellSizeReports);
                 var replies = new List<string>();
                 parser.OnResponse = replies.Add;
                 parser.Process("\x1b]1337;ReportCellSize\a\x1b]776;?\a");

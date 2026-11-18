@@ -15,6 +15,18 @@ public partial class AnsiParser
 
     private bool HandleCellSizeReport(string osc, string terminator)
     {
+        if (osc is "7770;?" or "7777;?")
+        {
+            // Mintty reports an unsigned integer point size. Do not round a fractional
+            // host size into a false restorable value, or fabricate headless defaults.
+            if (CellSizeReports is { IsValid: true, FontSizePoints: double points }
+                && double.IsFinite(points) && points >= 1 && points <= 512 && points == Math.Truncate(points))
+            {
+                string code = osc[..4];
+                OnResponse?.Invoke(string.Create(CultureInfo.InvariantCulture, $"\x1b]{code};{points:0}{terminator}"));
+            }
+            return true;
+        }
         if (osc is not ("1337;ReportCellSize" or "776;?")) return false;
         if (CellSizeReports is not { IsValid: true } metrics) return true;
         if (osc == "1337;ReportCellSize")

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { adaptFontSizeCollector, fontSizeAdapterId } from './terminfo/font-size-grading-collector.mjs';
+import { fontSizeNonce, fontSizePrefix, fontSizeSuiteId, fontSizeVersion } from './terminfo/font-size-contracts.mjs';
+import { buildFontSizeReport, fontSizeCounts } from './terminfo/font-size-grading.mjs';
+import { FontSizeObserver } from './terminfo/font-size-capture.mjs';
 import { adaptOscTitleCollector, oscTitleAdapterId } from './terminfo/osc-title-grading-collector.mjs';
 import { oscTitleCaseIds, oscTitleContractsVersion, oscTitlePrefix, oscTitleSuiteId } from './terminfo/osc-title-contracts.mjs';
 import { buildOscTitleReport, matchesOscTitleBaseline, oscTitleCounts, oscTitleObserverPlan } from './terminfo/osc-title-grading.mjs';
@@ -2214,6 +2218,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let notifyEvidence;
     let devqEvidence;
     let cellSizeEvidence;
+    let fontSizeEvidence;
     let xcsEvidence;
     let xssEvidence;
     let xsvEvidence;
@@ -2268,6 +2273,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const cellSizeBundle = join(privateTool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-cell-size-${cellSizeBundleSha256}.mjs`);
         writeFileSync(cellSizeBundle, cellSizeSource, { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'collector-cell-size.mjs'), cellSizeSource, { flag: 'wx', mode: 0o600 });
+        const fontSizeSource = adaptFontSizeCollector(readFileSync(bundle));
+        const fontSizeBundleSha256 = hash(fontSizeSource);
+        const fontSizeBundle = join(privateTool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-font-size-${fontSizeBundleSha256}.mjs`);
+        writeFileSync(fontSizeBundle, fontSizeSource, { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'collector-font-size.mjs'), fontSizeSource, { flag: 'wx', mode: 0o600 });
         const { bundle: gradingBundle, gradingBundleSha256 } = prepareGradingCollector(privateTool, bundle, output);
         const { bundle: sgrColorsBundle, sgrColorsBundleSha256 } = prepareSgrColorsCollector(privateTool, gradingBundle, output);
         const { bundle: sgrRgbBundle, sgrRgbBundleSha256 } = prepareSgrRgbCollector(privateTool, sgrColorsBundle, output);
@@ -2332,7 +2342,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
-            cellSizeBundle, cellSizeBundleSha256,
+            cellSizeBundle, cellSizeBundleSha256, fontSizeBundle, fontSizeBundleSha256,
             ...(collectionScope ? { collectionScope } : {}),
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
@@ -2344,6 +2354,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
+        settings.FontSize = 16; // Prepared query fixture: 12 exact typographic points at unity UI zoom.
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
@@ -2386,6 +2397,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let xtgettcapObserver;
         let devqObserver;
         let cellSizeObserver;
+        let fontSizeObserver;
         let xcsObserver;
         let xssObserver;
         let xsvObserver;
@@ -2503,6 +2515,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             notifyAdapterId, notifySuiteId, notifyBundleSha256, notifyContractsVersion,
             devqAdapterId, devqSuiteId, devqBundleSha256, devqContractsVersion,
             cellSizeAdapterId, cellSizeSuiteId, cellSizeBundleSha256, cellSizeContractsVersion: cellSizeVersion,
+            fontSizeAdapterId, fontSizeSuiteId, fontSizeBundleSha256, fontSizeContractsVersion: fontSizeVersion,
             xcsAdapterId, xcsSuiteId, xcsBundleSha256, xcsContractsVersion,
             xssAdapterId, xssSuiteId, xssBundleSha256, xssContractsVersion,
             xsvAdapterId, xsvSuiteId, xsvBundleSha256, xsvContractsVersion,
@@ -3791,9 +3804,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'cell-size-snapshots.jsonl'), JSON.stringify(cellSizeObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === fontSizePrefix) {
+                if (!cellSizeObserver?.restored) throw new Error('Cell-size suite must restore before font-size observations.');
+                fontSizeObserver ??= new FontSizeObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `${fontSizeNonce}${runId}`, expectedPaneId: cellObserver.paneId });
+                const result = await fontSizeObserver.handle(request, budget);
+                appendFileSync(join(output, 'font-size-snapshots.jsonl'), JSON.stringify(fontSizeObserver.frames.at(-1)) + '\n');
+                return result;
+            }
             if (prefix === xcsPrefix) {
                 // The xterm color-stack suite runs after the device-query suite; a report read also journals the raw reply list bound to its barrier.
-                if (!cellSizeObserver?.restored) throw new Error('Cell-size suite must restore before xterm color-stack observations.');
+                if (!fontSizeObserver?.restored) throw new Error('Font-size suite must restore before xterm color-stack observations.');
                 xcsObserver ??= new XcsObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `${xcsNoncePrefix}${runId}`, expectedPaneId: cellObserver.paneId });
                 const result = await xcsObserver.handle(request, budget);
@@ -4252,6 +4273,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 adapterBundleSha256: cellSizeBundleSha256, contractsVersion: cellSizeVersion,
                 counts: cellSizeCounts(cellSizeReport), provisionalUntil: 'cell-receipt.json' };
             summary.cellSizeEvidence = cellSizeEvidence;
+            const fontSizeRunBytes = readFileSync(join(output, 'font-size-run.json'));
+            const fontSizeFrames = readFileSync(join(output, 'font-size-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            const fontSizeAdapter = { id: fontSizeAdapterId, bundleSha256: fontSizeBundleSha256, upstreamBundleSha256 };
+            const fontSizeReport = buildFontSizeReport(fontSizeFrames, JSON.parse(fontSizeRunBytes), runId, fontSizeAdapter,
+                { replayModule: await import(pathToFileURL(fontSizeBundle).href) });
+            writeJson(join(output, 'font-size-observations.json'), fontSizeReport);
+            fontSizeEvidence = { runId, suiteId: fontSizeSuiteId, file: 'font-size-observations.json',
+                sha256: hash(readFileSync(join(output, 'font-size-observations.json'))), runFile: 'font-size-run.json', runSha256: hash(fontSizeRunBytes),
+                adapterBundleSha256: fontSizeBundleSha256, contractsVersion: fontSizeVersion,
+                counts: fontSizeCounts(fontSizeReport), provisionalUntil: 'cell-receipt.json' };
+            summary.fontSizeEvidence = fontSizeEvidence;
             xcsEvidence = await retainXcsEvidence(output, runId, xcsBundle, upstreamBundleSha256);
             xssEvidence = await retainXssEvidence(output, runId, xssBundle, upstreamBundleSha256);
             xsvEvidence = await retainXsvEvidence(output, runId, xsvBundle, upstreamBundleSha256);
@@ -4398,7 +4430,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, osc5Evidence, osc3008Evidence, osc720Evidence, osc22Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, fontSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, osc5Evidence, osc3008Evidence, osc720Evidence, osc22Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

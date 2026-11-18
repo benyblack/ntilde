@@ -31,7 +31,7 @@ public sealed class VtCapabilityContractTests
 {
     private static void AssertOscCellSize(string request, string expected)
     {
-        var parser = new AnsiParser(new TerminalBuffer(80, 24)) { CellSizeReports = new(8, 18, 2, 13) };
+        var parser = new AnsiParser(new TerminalBuffer(80, 24)) { CellSizeReports = new(8, 18, 2, 13) { FontSizePoints = 12 } };
         var responses = new List<string>();
         parser.OnResponse = responses.Add;
         parser.Process(request);
@@ -95,6 +95,8 @@ public sealed class VtCapabilityContractTests
             ["modify-other-keys-query"] = AssertModifyOtherKeysQuery,
             ["iterm2-cell-size"] = () => AssertOscCellSize("\x1b]1337;ReportCellSize\a", "\x1b]1337;ReportCellSize=18;8;2\x1b\\"),
             ["urxvt-cell-size"] = () => AssertOscCellSize("\x1b]776;?\a", "\x1b]776;16;36;26\a"),
+            ["font-size-7770"] = () => AssertOscCellSize("\x1b]7770;?\a", "\x1b]7770;12\a"),
+            ["font-size-7777"] = () => AssertOscCellSize("\x1b]7777;?\x1b\\", "\x1b]7777;12\x1b\\"),
         };
 
     [Fact]
@@ -169,6 +171,8 @@ public sealed class VtCapabilityContractTests
             ["modify-other-keys-query"] = "\x1b[>4;2m\x1b[?4mA",
             ["iterm2-cell-size"] = "\x1b]1337;ReportCellSize\aA",
             ["urxvt-cell-size"] = "\x1b]776;?\x1b\\A",
+            ["font-size-7770"] = "\x1b]7770;?\aA",
+            ["font-size-7777"] = "\x1b]7777;?\x1b\\A",
         };
 
     /// <summary>Pins the advertised partial text contract without claiming image-plane erasure or protected-cell support.</summary>

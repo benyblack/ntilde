@@ -1,3 +1,4 @@
+import { collectFontSize } from './font-size-collector.mjs';
 import { collectOscTitle } from './osc-title-collector.mjs';
 import { collectTitleStack } from './title-stack-collector.mjs';
 import { collectReverseWide } from './core-reverse-wide.mjs';
@@ -480,6 +481,10 @@ try {
             if (createHash('sha256').update(cellSizeSource).digest('hex') !== config.cellSizeBundleSha256) throw new Error('Cell-size adapter bundle changed.');
             const cellSizeRun = await collectCellSize({ config, fence, owner, module: await import(pathToFileURL(config.cellSizeBundle).href) });
             writeFileSync(join(config.output, 'cell-size-run.json'), JSON.stringify(cellSizeRun) + '\n', { flag: 'wx', mode: 0o600 });
+            const fontSizeSource = readFileSync(config.fontSizeBundle);
+            if (createHash('sha256').update(fontSizeSource).digest('hex') !== config.fontSizeBundleSha256) throw new Error('Font-size adapter bundle changed.');
+            const fontSizeRun = await collectFontSize({ config, fence, owner, module: await import(pathToFileURL(config.fontSizeBundle).href) });
+            writeFileSync(join(config.output, 'font-size-run.json'), JSON.stringify(fontSizeRun) + '\n', { flag: 'wx', mode: 0o600 });
             // The layered xterm color-stack qualification follows the device-query suite on the same fence; it leaves every color reset and the xterm palette stack balanced.
             const xcsSource = readFileSync(config.xcsBundle);
             if (createHash('sha256').update(xcsSource).digest('hex') !== config.xcsBundleSha256) throw new Error('Local xterm color-stack adapter bundle changed.');
