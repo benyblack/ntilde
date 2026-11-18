@@ -3,7 +3,7 @@
   "suiteId": "ntilde-owned-kitty-animation-compose-qualification-v1",
   "carrierSuiteId": "ntilde-owned-kitty-animation-compose-v1",
   "contractsVersion": 1,
-  "runId": "ab2afb750fc19020975ea13a31c2c808",
+  "runId": "d7277dd1ca4e84f9d837c00d84849f33",
   "adapter": {
     "id": "ntilde-owned-kitty-animation-persistent-adapter-v1",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
@@ -12,7 +12,7 @@
       "extensions.kitty-graphics.animation": "4932e05f5f45fe474ebf7df9adf6eb248c04ebe5145b0b5c19fb51a5c72ea25f"
     }
   },
-  "scope": "The Kitty animation frame-composition suite alone in one persistent (KeepOnClose, image policy 4) tab on a disposable macOS sidecar: two cases (whole-frame a=c compositions that replace and blend, and refused compositions that change nothing), over paired original offscreen PNGs and complete cells/modes. No stock collector ran, so there is no stock grade and no Core or common-harness claim; the pinned callbacks are replayed from the retained bundle and stay inconclusive by design. Not measured: an ordinary (non-persistent) tab on the desktop (unit tests only), rectangle offsets and sizes smaller than the image (pinned by unit tests; a partial composition is not one uniform color), a composition source or destination that is a PNG-encoded root (the root image is raw RGBA, f=32; only the added frame is PNG), a second client, remote persistent sessions, other platforms, a restart or reattach after composing.",
+  "scope": "The Kitty animation frame-composition suite alone in one persistent (KeepOnClose, image policy 4) tab on a disposable macOS sidecar: two cases (whole-frame a=c compositions that replace and blend, and refused compositions that change nothing), over paired original offscreen PNGs and complete cells/modes. No stock collector ran, so there is no stock grade and no Core or common-harness claim; the pinned callbacks are replayed from the retained bundle and stay inconclusive by design. Not measured: an ordinary (non-persistent) tab on the desktop in this publication (see the ordinary-tab one), rectangle offsets and sizes smaller than the image (pinned by unit tests; a partial composition is not one uniform color), a composition source or destination that is a PNG-encoded root (the root image is raw RGBA, f=32; only the added frame is PNG), a second client, remote persistent sessions, other platforms, a restart or reattach after composing.",
   "cases": [
     {
       "caseId": "extensions.kitty-graphics.animation",
@@ -188,8 +188,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1795019682425,
-                    "end": 1795019682496
+                    "start": 1795030632392,
+                    "end": 1795030632449
                   }
                 }
               },
@@ -245,12 +245,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019682519,
-                    "latest": 1795019682544
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
                   },
                   "capture": {
-                    "start": 1795019682549,
-                    "end": 1795019682621
+                    "start": 1795030632488,
+                    "end": 1795030632546
                   }
                 }
               },
@@ -316,12 +316,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019682519,
-                    "latest": 1795019682544
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
                   },
                   "capture": {
-                    "start": 1795019682670,
-                    "end": 1795019682737
+                    "start": 1795030632582,
+                    "end": 1795030632635
                   }
                 }
               },
@@ -386,12 +386,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019682519,
-                    "latest": 1795019682544
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
                   },
                   "capture": {
-                    "start": 1795019682772,
-                    "end": 1795019682833
+                    "start": 1795030632666,
+                    "end": 1795030632718
                   }
                 }
               },
@@ -453,12 +453,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019682519,
-                    "latest": 1795019682544
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
                   },
                   "capture": {
-                    "start": 1795019682870,
-                    "end": 1795019682931
+                    "start": 1795030632750,
+                    "end": 1795030632800
                   }
                 }
               },
@@ -508,8 +508,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1795019683061,
-                    "end": 1795019683127
+                    "start": 1795030632910,
+                    "end": 1795030632959
                   }
                 }
               },
@@ -565,12 +565,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019683149,
-                    "latest": 1795019683170
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
                   },
                   "capture": {
-                    "start": 1795019683174,
-                    "end": 1795019683234
+                    "start": 1795030632996,
+                    "end": 1795030633043
                   }
                 }
               },
@@ -636,12 +636,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019683149,
-                    "latest": 1795019683170
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
                   },
                   "capture": {
-                    "start": 1795019683271,
-                    "end": 1795019683333
+                    "start": 1795030633074,
+                    "end": 1795030633121
                   }
                 }
               },
@@ -705,12 +705,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019683149,
-                    "latest": 1795019683170
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
                   },
                   "capture": {
-                    "start": 1795019683370,
-                    "end": 1795019683432
+                    "start": 1795030633152,
+                    "end": 1795030633200
                   }
                 }
               },
@@ -772,12 +772,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1795019683149,
-                    "latest": 1795019683170
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
                   },
                   "capture": {
-                    "start": 1795019683485,
-                    "end": 1795019683545
+                    "start": 1795030633231,
+                    "end": 1795030633278
                   }
                 }
               },

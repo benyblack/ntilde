@@ -26,6 +26,31 @@
           "bytes": 58199
         }
       ]
+    },
+    {
+      "attempt": "owned-ULQVDR",
+      "runId": "ab2afb750fc19020975ea13a31c2c808",
+      "scripts": "ebe82081",
+      "collection": "persistent-compose scope",
+      "outcome": "10/10 passed",
+      "reason": "A complete persistent-tab run (10/10, source policy v68), published first. Its carrier report named a persistent tab in the suite's scope text, which the same suite then shared with the ordinary-tab collection; making that text neutral edits a measured file, so it is superseded by a fresh run on the same App as the ordinary-tab measurement.",
+      "files": [
+        {
+          "file": "owned-ULQVDR/animation-observations.json",
+          "sha256": "ede5e83c3d8f12cac70fde0f26f182894ccb2be4138ccc60c6ebe4f5e3751009",
+          "bytes": 470953
+        },
+        {
+          "file": "owned-ULQVDR/persistent-animation-receipt.json",
+          "sha256": "b14a5ecbd6260f5dad9f13aa6b6460b1ed9c7de515e3a61ccef8cf88f801f964",
+          "bytes": 969
+        },
+        {
+          "file": "owned-ULQVDR/ownership-proof.json",
+          "sha256": "c5497771a56cf2b446116495bf13aac2dfcce3775abe901d6e3870010d871fbd",
+          "bytes": 58077
+        }
+      ]
     }
   ]
 }
