@@ -23,7 +23,9 @@ const bytes = (output, file) => {
 
 export function checkFontSizeEvidence(output, evidence, runId, context) {
     const binding = evidence.fontSizeEvidence;
-    check(context.fontSizeAdapterId === fontSizeAdapterId && context.fontSizeSuiteId === fontSizeSuiteId
+    // Earlier captured workers/source graphs never performed this suite. Appending
+    // coherent artifacts to an old cleanup proof must not manufacture qualification.
+    check(policyNumber(context) >= 69 && context.fontSizeAdapterId === fontSizeAdapterId && context.fontSizeSuiteId === fontSizeSuiteId
         && context.fontSizeContractsVersion === fontSizeVersion && binding?.runId === runId
         && binding.suiteId === fontSizeSuiteId && binding.contractsVersion === fontSizeVersion
         && binding.file === artifacts[3] && binding.runFile === artifacts[1] && binding.provisionalUntil === 'cell-receipt.json');

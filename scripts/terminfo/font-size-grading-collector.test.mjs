@@ -76,6 +76,7 @@ testWithPinnedCollector('real frozen OSC font-size probes preserve their own cri
         assert.equal(includesFontSizeEvidence(root, {}, { sourceSnapshotPolicy: 'readonly-owned-source-graph-v62' }), false);
         for (const [name, bytes] of Object.entries(files)) writeFileSync(join(root, name), bytes);
         assert.doesNotThrow(() => checkFontSizeEvidence(root, evidence, e.runId, context));
+        assert.throws(() => checkFontSizeEvidence(root, evidence, e.runId, { ...context, sourceSnapshotPolicy: 'readonly-owned-source-graph-v68' }));
         assert.throws(() => checkFontSizeEvidence(root, {}, e.runId, context));
         assert.throws(() => checkFontSizeEvidence(root, evidence, 'b'.repeat(32), context));
         assert.throws(() => checkFontSizeEvidence(root, evidence, e.runId, { ...context, fontSizeSuiteId: 'other' }));
