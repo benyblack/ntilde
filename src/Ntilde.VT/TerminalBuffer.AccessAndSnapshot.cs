@@ -508,6 +508,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(_cursorCol, Cols, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteColumnsWritten(Cols);
@@ -534,6 +535,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(0, Math.Min(Cols, _cursorCol + 1), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + 1));
@@ -609,6 +611,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(_cursorCol, (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count)), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)

@@ -155,6 +155,44 @@ public sealed class LineSizeTests
         Assert.Equal(new[] { "", "    X", "Y", "" }, Lines(buffer));
     }
 
+    [Theory]
+    [InlineData("\u001b[X", "abcd")]   // ECH
+    [InlineData("\u001b[P", "abcd")]   // DCH
+    [InlineData("\u001b[@Z", "abcdZ")] // ICH pushes e out, Z takes the last column
+    [InlineData("\u001b[K", "abcd")]   // EL 0
+    [InlineData("\u001b[DZ", "abcZe")] // CUB starts from the last column
+    [InlineData("\bZ", "abcZe")]       // and so does BS
+    public void A_cursor_that_arrives_right_of_the_half_by_a_vertical_move_edits_at_the_last_column(string edit, string expected)
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Esc}[2;1H{Dwl}abcde{Esc}[1;9H{Esc}[B");
+        Assert.Equal((1, 4), (buffer.CursorRow, buffer.CursorCol));
+        parser.Process(edit);
+        Assert.Equal(expected, Lines(buffer)[1]);
+    }
+
+    [Fact]
+    public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Dwl + "abcde" + Swl + "X");
+        Assert.Equal(new[] { "abcdeX", "", "", "" }, Lines(buffer));
+    }
+
+    [Theory]
+    [InlineData("\u001b#5")]
+    [InlineData("\u001b[?69h")]
+    public void Returning_a_line_to_single_width_asks_for_a_redraw(string control)
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Dwl + "ab");
+        int invalidations = 0;
+        buffer.OnInvalidate += () => invalidations++;
+        parser.Process(control);
+        Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
+        Assert.True(invalidations > 0);
+    }
+
     [Fact]
     public void Insert_and_delete_character_work_inside_the_half()
     {

@@ -103,6 +103,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                SnapCursorToLineSizeNoLock();
                 if (!(Modes.IsReverseWrapMode && Modes.IsAutoWrapMode))
                 {
                     _cursorCol = Math.Max(LeftEdgeForCursorNoLock, _cursorCol - count);
@@ -134,6 +135,7 @@ namespace Ntilde.VT
             }
 
             _isPendingWrap = false;
+            SnapCursorToLineSizeNoLock();
             // The left margin stops the cursor while it is at or right of it; left of it, the first column does.
             int leftEdge = LeftEdgeForCursorNoLock;
             if (_cursorCol > leftEdge)
@@ -379,8 +381,7 @@ namespace Ntilde.VT
 
             // A vertical move keeps the column, so the cursor can arrive right of a double-size row's last column:
             // the character lands on that last column, as it would at the right edge of any row.
-            int doubleRowLast = CursorRowLastColumnNoLock;
-            if (doubleRowLast < Cols - 1 && _cursorCol > doubleRowLast) _cursorCol = doubleRowLast;
+            SnapCursorToLineSizeNoLock();
 
             // The right edge is the right margin, or the last column once the cursor is right of the right margin.
             int rightEdge = RightEdgeForCursorNoLock;
@@ -724,6 +725,7 @@ namespace Ntilde.VT
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
             // With horizontal margins ICH acts only between them, from the cursor to the right margin.
             if (!CursorInHorizontalMarginsNoLock) return;
+            SnapCursorToLineSizeNoLock();
             int edge = Math.Min(RightMargin, CursorRowLastColumnNoLock) + 1;
             var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex, false, false, false, false, false, false);
 
@@ -783,6 +785,7 @@ namespace Ntilde.VT
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
             // With horizontal margins DCH acts only between them; blanks enter at the right margin.
             if (!CursorInHorizontalMarginsNoLock) return;
+            SnapCursorToLineSizeNoLock();
             int edge = Math.Min(RightMargin, CursorRowLastColumnNoLock) + 1;
 
             // Clamp to the columns available from the cursor. Without this, a count larger than

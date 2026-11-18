@@ -56,12 +56,15 @@ public partial class TerminalBuffer
             {
                 // Left/right margins and double-size lines do not combine: every line returns to single width,
                 // on the screen that is not showing too, or it would bring double-size lines back under the margins.
+                if (CursorRowLastColumnNoLock < Cols - 1) ReleasePendingWrapOnWiderRowNoLock();
                 ResetLineSizesNoLock(_viewport);
                 ResetLineSizesNoLock(_mainScreen);
                 ResetLineSizesNoLock(_altScreen);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        // A line that was double must be redrawn single even when nothing else follows.
+        if (enable) Invalidate();
     }
 
     /// <summary>
@@ -94,6 +97,7 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
+            SnapCursorToLineSizeNoLock();
             _cursorCol = (int)Math.Min(RightEdgeForCursorNoLock, (long)_cursorCol + Math.Max(0, count));
             _isPendingWrap = false;
         }

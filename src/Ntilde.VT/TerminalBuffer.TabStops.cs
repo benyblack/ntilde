@@ -99,6 +99,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                SnapCursorToLineSizeNoLock();
                 int remaining = System.Math.Max(1, count);
                 int col = System.Math.Clamp(_cursorCol, 0, System.Math.Max(0, Cols - 1));
                 while (remaining-- > 0)

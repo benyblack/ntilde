@@ -11,10 +11,10 @@ public sealed partial class TerminalDrawOperation
 
     /// <summary>
     /// Saves the canvas and installs the transform a double-size row is drawn through, clipped to the row's band so the
-    /// half of a double-height glyph that belongs to the neighbouring row never reaches it. Returns false, leaving the
+    /// half of a double-height glyph that belongs to the neighbouring row never reaches it, and to the columns the row holds. Returns false, leaving the
     /// canvas alone, for a single-width row. The caller restores the canvas when it returns true.
     /// </summary>
-    private bool BeginLineSizeTransform(SKCanvas canvas, LineSize lineSize, float rowTop, float rowHeight)
+    private bool BeginLineSizeTransform(SKCanvas canvas, LineSize lineSize, int cols, float rowTop, float rowHeight)
     {
         if (lineSize == LineSize.SingleWidth) return false;
 
@@ -22,7 +22,9 @@ public sealed partial class TerminalDrawOperation
         float originX = FromDevicePx(_pixelGrid.OriginXPx);
         bool doubleHeight = lineSize is LineSize.DoubleHeightTop or LineSize.DoubleHeightBottom;
         canvas.Save();
-        canvas.ClipRect(new SKRect(float.MinValue / 4, rowTop, float.MaxValue / 4, rowTop + rowHeight));
+        // The row shows its left half only. A resize can leave written cells right of it: they stay out of sight.
+        float rightEdge = FromDevicePx(_pixelGrid.XForCol(2 * TerminalBuffer.ColumnsForLineSize(lineSize, cols)));
+        canvas.ClipRect(new SKRect(float.MinValue / 4, rowTop, rightEdge, rowTop + rowHeight));
         // The bottom half is the lower half of the doubled glyph: the doubled row starts one row height higher.
         canvas.Translate(originX, lineSize == LineSize.DoubleHeightBottom ? rowTop - rowHeight : rowTop);
         canvas.Scale(2f, doubleHeight ? 2f : 1f);

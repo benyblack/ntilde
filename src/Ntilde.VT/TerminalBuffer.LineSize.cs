@@ -16,6 +16,17 @@ public partial class TerminalBuffer
             ? ColumnsForLineSize(_viewport[_cursorRow].LineSize, Cols) - 1
             : Cols - 1;
 
+    /// <summary>
+    /// A vertical move or a scroll keeps the column, so the cursor can sit right of a double-size row's last column.
+    /// It is shown on that last column, and everything that acts at the cursor acts there: this brings the stored
+    /// column back to it before such an operation. A no-op on a single-width row.
+    /// </summary>
+    private void SnapCursorToLineSizeNoLock()
+    {
+        int last = CursorRowLastColumnNoLock;
+        if (last < Cols - 1 && _cursorCol > last) _cursorCol = last;
+    }
+
     /// <summary>The line attribute of the row at an absolute index, history included. Requires the read lock.</summary>
     public LineSize GetLineSizeAbsolute(int absRow)
     {
@@ -44,6 +55,17 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
+    /// The cursor row holds more columns again: a wrap that was pending at its old last column no longer is, and the
+    /// next character goes on the column after it instead of the next line.
+    /// </summary>
+    private void ReleasePendingWrapOnWiderRowNoLock()
+    {
+        if (!_isPendingWrap) return;
+        _isPendingWrap = false;
+        if (_cursorCol < Cols - 1) _cursorCol++;
+    }
+
+    /// <summary>
     /// DECSWL, DECDWL and DECDHL: sets the cursor row's line attribute. Making a single row double loses the characters
     /// right of the centre, as on a VT100, ends any soft wrap out of the row and brings the cursor back inside it.
     /// Returning to single width restores nothing. Ignored while DECLRMM is set: left/right margins and double-size
@@ -60,15 +82,17 @@ public partial class TerminalBuffer
             if (row.LineSize == size) return;
             bool wasSingle = row.LineSize == LineSize.SingleWidth;
             row.LineSize = size;
-            if (size == LineSize.SingleWidth) return;
-
-            if (wasSingle) BlankColumnsPastLineSizeNoLock(_cursorRow);
-            row.IsWrapped = false;
-            int last = CursorRowLastColumnNoLock;
-            if (_cursorCol > last)
+            if (size == LineSize.SingleWidth) ReleasePendingWrapOnWiderRowNoLock();
+            else
             {
-                _cursorCol = last;
-                _isPendingWrap = false;
+                if (wasSingle) BlankColumnsPastLineSizeNoLock(_cursorRow);
+                row.IsWrapped = false;
+                int last = CursorRowLastColumnNoLock;
+                if (_cursorCol > last)
+                {
+                    _cursorCol = last;
+                    _isPendingWrap = false;
+                }
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
@@ -108,6 +132,7 @@ public partial class TerminalBuffer
         {
             if (row < 0 || row >= Rows || _viewport[row].LineSize == LineSize.SingleWidth) return;
             _viewport[row].LineSize = LineSize.SingleWidth;
+            if (row == _cursorRow) ReleasePendingWrapOnWiderRowNoLock();
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();

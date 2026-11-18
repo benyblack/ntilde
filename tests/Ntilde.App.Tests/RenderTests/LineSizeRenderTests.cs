@@ -125,6 +125,17 @@ public sealed class LineSizeRenderTests
     }
 
     [AvaloniaFact]
+    public void Cells_a_narrower_page_leaves_right_of_the_half_are_not_drawn()
+    {
+        using var harness = new DrawPathHarness(Cols, Rows, withRowCache: false);
+        harness.Parser.Process(HideCursor + Dwl + "MMMMMMMMMM");
+        harness.Buffer.Resize(12, Rows);
+        harness.DrawFrame();
+        SKRectI ink = Ink(harness.Pixels());
+        Assert.InRange(ink.Right, Origin + (10 * CellWidth), Origin + (12 * CellWidth));
+    }
+
+    [AvaloniaFact]
     public void The_row_picture_cache_draws_the_same_pixels_and_follows_a_change_of_attribute()
     {
         const string content = HideCursor + Top + "  Banner\r\n" + Bottom + "  Banner\r\n" + Dwl + "wide \u001b[42m ok \u001b[0m\r\nplain";

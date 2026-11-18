@@ -98,7 +98,8 @@ namespace Ntilde.VT
             get
             {
                 bool lockTaken = EnterReadLockIfNeeded();
-                try { return _cursorCol; }
+                // On a double-size row the cursor is on the row's last column at most, wherever a vertical move left it.
+                try { return Math.Min(_cursorCol, Math.Max(0, CursorRowLastColumnNoLock)); }
                 finally { ExitReadLockIfNeeded(Lock, lockTaken); }
             }
             set
