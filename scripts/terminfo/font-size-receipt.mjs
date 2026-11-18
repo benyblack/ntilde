@@ -22,6 +22,7 @@ const bytes = (output, file) => {
 };
 
 export function checkFontSizeEvidence(output, evidence, runId, context) {
+    check(lstatSync(join(output, 'font-size-failed-observations.jsonl'), { throwIfNoEntry: false }) === undefined);
     const binding = evidence.fontSizeEvidence;
     // Earlier captured workers/source graphs never performed this suite. Appending
     // coherent artifacts to an old cleanup proof must not manufacture qualification.
@@ -39,6 +40,8 @@ export function checkFontSizeEvidence(output, evidence, runId, context) {
     const report = JSON.parse(reportBytes), run = JSON.parse(runBytes);
     const frames = bytes(output, artifacts[2]).toString('utf8').trim().split('\n').map(line => JSON.parse(line));
     check(report.adapter.bundleSha256 === binding.adapterBundleSha256 && report.adapter.upstreamBundleSha256 === context.upstreamBundleSha256);
+    const cell = JSON.parse(bytes(output, 'cell-observations.json'));
+    check(typeof frames[0]?.paneId === 'string' && cell.snapshots?.[0]?.paneId === frames[0].paneId);
     const derived = buildFontSizeReport(frames, run, runId, report.adapter);
     check(same(derived, report) && same(frames, report.snapshots) && same(fontSizeCounts(report), binding.counts));
 }

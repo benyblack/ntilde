@@ -37,7 +37,11 @@ export async function collectFontSize({ config, fence, owner, module }) {
             } });
         }
     } catch (error) { primary = error; }
-    try { await owner(`${fontSizePrefix}-finish`, await fence.write(devqReset + '\x1b[?1049l')); }
+    try {
+        const restore = devqReset + '\x1b[?1049l';
+        if (fence.failed) await fence.writeCleanup(restore);
+        else await owner(`${fontSizePrefix}-finish`, await fence.write(restore));
+    }
     catch (error) {
         if (primary) throw new AggregateError([primary, error], 'Font-size collection and restoration failed.');
         throw error;

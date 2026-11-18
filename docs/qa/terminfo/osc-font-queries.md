@@ -43,7 +43,9 @@ callback is independently checked with a context that refuses every access.
 `ntilde-osc-font-size-query-effect-v1` independently checks actual point size and
 exact framing. A disposable fixture explicitly configures 16 DIP at unity zoom
 (12 points). Each ID has two CSI16t delivery controls, its exact pinned request,
-BEL/ST queries, and seven unavailable/malformed/setter forms. Each exchange has
+BEL/ST queries, and seven unavailable/malformed/setter forms. The absolute setter
+control requests 18 points, distinct from the observed 12-point fixture; a baseline
+equal to the setter target is refused. Each exchange has
 its own complete DA barrier and retained raw replies. The parent independently
 reads the actual view FontSize, effective/backing scales, cell metrics, window
 client dimensions and complete stored terminal state. All geometry must remain

@@ -2,6 +2,11 @@ import { collectFontSize } from './font-size-collector.mjs';
 import { FontSizeObserver } from './font-size-capture.mjs';
 import { fontSizeContracts } from './font-size-contracts.mjs';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fontSizePublication } from './font-size-publication.mjs';
 import assert from 'node:assert/strict';
 import { syntheticFontSizeEvidence } from './fixtures/font-size-evidence.mjs';
 import { buildFontSizeReport } from './font-size-grading.mjs';
@@ -51,6 +56,8 @@ test('oracle separates typographic points, logical DIPs, interface zoom and phys
     assert.equal(fontSizeMatches({ protocol: '7770', terminator: '\x07' }, ['\x1b]7770;18\x07'], fontSizeGeometry(geometry, geometry.viewRows, geometry.viewCols)), true);
     assert.equal(fontSizeMatches({ protocol: '7770', terminator: '\x07' }, ['\x1b]7770;48\x07'], geometry), false);
     assert.equal(fontSizeIntegerPoints({ fontSizeDip: 20, renderScaling: 1.4 * 1.5, backingScale: 1.5 }), 21);
+    assert.equal(fontSizeIntegerPoints({ fontSizeDip: 28 + 11 * 2 ** -48, renderScaling: 2.75, backingScale: 2.75 }), 21);
+    assert.equal(fontSizeIntegerPoints({ fontSizeDip: 28, renderScaling: 2.75, backingScale: 2.75 }), 21);
     assert.throws(() => fontSizeIntegerPoints({ fontSizeDip: 28.000001, renderScaling: 1.5, backingScale: 1.5 }));
 });
 
@@ -97,4 +104,76 @@ test('the parent observer journals independent view geometry and refuses stale p
     await assert.rejects(observer.handle({ kind: 'fnt-read', barrier: '\x1b[?1c', report: e.frames[2].report }, () => 1000), /Unbound/);
     observer.options.rpc = async () => ({ paneId: 'stale' });
     await assert.rejects(observer.handle({ kind: 'fnt-bind', barrier: da }, () => 1000), /identity/);
+});
+
+
+test('absolute mutation controls differ from the independently observed baseline', () => {
+    for (const contract of fontSizeContracts) {
+        assert.ok(contract.exchanges.some(item => item.request.endsWith(';18\x07')));
+    }
+    const e = syntheticFontSizeEvidence();
+    for (const frame of e.frames) frame.geometry.fontSizeDip = 24;
+    assert.throws(() => build(e), /setter control must differ/);
+});
+
+test('fatal fencing uses bounded unfenced cleanup without recording a successful finish', async () => {
+    const primary = new Error('fatal reply fence'), cleanup = new Error('cleanup output failed');
+    const calls = [];
+    const fence = { failed: false, write: async sequence => { calls.push(['write', sequence]); return da; },
+        exchange: async () => { fence.failed = true; throw primary; },
+        writeCleanup: async sequence => { calls.push(['cleanup', sequence]); } };
+    const owner = async kind => { calls.push(['owner', kind]); };
+    const collect = () => collectFontSize({ config: { runId: 'a'.repeat(32) }, fence, owner, module: {} });
+    await assert.rejects(collect(), error => error === primary);
+    assert.equal(calls.filter(([kind]) => kind === 'cleanup').length, 1);
+    assert.ok(calls.at(-1)[1].endsWith('\x1b[?1049l'));
+    assert.equal(calls.some(([kind, value]) => kind === 'owner' && value === 'fnt-finish'), false);
+    fence.failed = false;
+    fence.writeCleanup = async () => { throw cleanup; };
+    await assert.rejects(collect(), error => error instanceof AggregateError
+        && error.errors.length === 2 && error.errors[0] === primary && error.errors[1] === cleanup);
+});
+
+for (const kind of ['fnt-read', 'fnt-finish']) test('metadata failure retains partial ' + kind + ' evidence without admitting a successful frame', async () => {
+    const e = syntheticFontSizeEvidence(), frame = kind === 'fnt-read' ? e.frames[2] : e.frames.at(-1);
+    const primary = new Error('metadata RPC failed');
+    const observer = new FontSizeObserver({ appData: '/synthetic', ownerPid: 42, endpoint: () => 'synthetic', rpc: async () => { throw primary; } });
+    observer.cells = { restored: false, frames: [], handle: async () => {
+        observer.cells.frames.push(frame);
+        observer.cells.restored = kind === 'fnt-finish';
+        return { paneId: frame.paneId, screen: frame.screen };
+    } };
+    const request = { kind, barrier: frame.barrier, ...(frame.report ? { report: frame.report } : {}) };
+    await assert.rejects(observer.handle(request, () => 1000), error => error === primary);
+    assert.equal(observer.frames.length, 0);
+    assert.equal(observer.lastAttempt.stage, 'pane-metadata');
+    assert.deepEqual(observer.lastAttempt.snapshot, frame);
+    assert.equal(observer.lastAttempt.barrier, frame.barrier);
+    assert.deepEqual(observer.lastAttempt.report, frame.report);
+    assert.deepEqual(observer.lastAttempt.error, { name: 'Error', message: 'metadata RPC failed' });
+});
+
+test('publication refuses changed raw stock bytes and a coherently rehashed foreign raw run', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nt-font-publication-'));
+    const e = syntheticFontSizeEvidence(), raw = { runId: 'stock-run',
+        observations: e.run.cases.map(item => ({ featureId: item.caseId, outcome: 'supported' })) };
+    const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+    const write = (file, value) => writeFileSync(join(dir, file), JSON.stringify(value));
+    const project = () => fontSizePublication(dir, { appRevision: 'a'.repeat(40), scriptsRevision: 'b'.repeat(40) });
+    try {
+        write('context.json', { runId: e.runId });
+        write('font-size-observations.json', build(e));
+        write('summary.json', { runId: raw.runId, rawSha256: hash(JSON.stringify(raw)), counts: { supported: 2 }, suiteComplete: true });
+        write('raw.json', raw);
+        write('cell-receipt.json', { runId: e.runId, rawSha256: hash(JSON.stringify(raw)) });
+        assert.deepEqual(project().report.cases.map(item => item.stock), raw.observations);
+        write('raw.json', { ...raw, observations: raw.observations.map(item => ({ ...item, outcome: 'unsupported' })) });
+        assert.throws(project, /Unbound/);
+        const foreign = { ...raw, runId: 'foreign-run' };
+        write('raw.json', foreign); write('cell-receipt.json', { runId: e.runId, rawSha256: hash(JSON.stringify(foreign)) });
+        assert.throws(project, /Unbound/);
+        write('raw.json', raw);
+        write('cell-receipt.json', { runId: 'foreign-owned-run', rawSha256: hash(JSON.stringify(raw)) });
+        assert.throws(project, /Unbound/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
 });

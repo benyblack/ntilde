@@ -2,7 +2,7 @@ import { screenSnapshot } from './agent-observer.mjs';
 import { validateGradedJournal, requirePinnedAgreement, requireReplayAgreement } from './graded-plan.mjs';
 import { validateDevqScreen } from './devq-contracts.mjs';
 import { fontSizeContracts, fontSizeEffectId, fontSizeGeometry, fontSizeIds, fontSizeMatches, fontSizeNonce,
-    fontSizePrefix, fontSizeSuiteId, fontSizeVersion, replayFontSizePinned } from './font-size-contracts.mjs';
+    fontSizeIntegerPoints, fontSizeMutationControlPoints, fontSizePrefix, fontSizeSuiteId, fontSizeVersion, replayFontSizePinned } from './font-size-contracts.mjs';
 import { fontSizeAdapterId } from './font-size-grading-collector.mjs';
 import { fontSizeContext } from './font-size-collector.mjs';
 import { validateCellSizeExchange } from './cell-size-frame.mjs';
@@ -22,6 +22,7 @@ export function buildFontSizeReport(frames, run, runId, adapter, { replayModule 
         && /^[a-f\d]{64}$/.test(adapter.upstreamBundleSha256 ?? ''), 'Invalid font-size adapter.');
     check(run?.schemaVersion === 1 && run.runId === runId && run.cases?.length === fontSizeIds.length, 'Invalid font-size run.');
     const geometry = fontSizeGeometry(frames[0].geometry, frames[0].screen.rows, frames[0].screen.cols);
+    check(fontSizeIntegerPoints(geometry) !== fontSizeMutationControlPoints, 'Absolute setter control must differ from the observed baseline.');
     for (const frame of frames) check(same(fontSizeGeometry(frame.geometry, frame.screen.rows, frame.screen.cols), geometry), 'Font geometry changed during the suite.');
     for (const index of [0, 1, frames.length - 1]) check(frames[index].report === undefined, 'Unexpected font-size setup report.');
     let cursor = 2;

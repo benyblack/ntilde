@@ -1,5 +1,6 @@
 // Publication-only projection; the receipt and retained journal are rederived
 // independently before this projection is compared with the published files.
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fontSizeIds } from './font-size-contracts.mjs';
@@ -13,7 +14,14 @@ const scope = 'Read-only exact OSC7770/7777 integer typographic point queries in
 export function fontSizePublication(dir, { appRevision, scriptsRevision }) {
     if (![appRevision, scriptsRevision].every(value => /^[a-f\d]{40}$/.test(value ?? ''))) throw new Error('Missing measured revision identities.');
     const context = json(dir, 'context.json'), receipt = json(dir, 'cell-receipt.json');
-    const measured = json(dir, 'font-size-observations.json'), raw = json(dir, 'raw.json'), stock = json(dir, 'summary.json');
+    const measured = json(dir, 'font-size-observations.json'), stock = json(dir, 'summary.json');
+    const rawBytes = readFileSync(join(dir, 'raw.json')), raw = JSON.parse(rawBytes);
+    // Stock and owned collection intentionally have distinct run IDs. The cleaned
+    // owned receipt binds the stock bytes; its identity must match the owned context.
+    if (createHash('sha256').update(rawBytes).digest('hex') !== receipt.rawSha256
+        || receipt.runId !== context.runId || measured.runId !== context.runId
+        || stock.runId !== raw.runId || stock.rawSha256 !== receipt.rawSha256)
+        throw new Error('Unbound OSC font-size stock raw bytes or run identity.');
     const cases = measured.cases.map(item => {
         const observation = raw.observations.find(entry => entry.featureId === item.caseId);
         if (!observation) throw new Error('Missing OSC font-size stock observation.');

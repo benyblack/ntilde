@@ -14,17 +14,27 @@ export class FontSizeObserver {
     get restored() { return this.cells.restored; }
     async handle(request, budget) {
         if (this.busy || this.restored) throw new Error('Font-size observation busy or complete.');
+        this.lastAttempt = null;
         const report = request.report === undefined ? null : validateCellSizeExchange(request.report);
         if ((request.kind === 'fnt-read') !== Boolean(report) || (report && report.barrier !== request.barrier)) throw new Error('Unbound font-size exchange.');
         this.busy = true;
+        this.lastAttempt = { schemaVersion: 1, kind: request.kind, barrier: request.barrier ?? null,
+            ...(report ? { report } : {}), stage: 'cell-snapshot' };
         try {
             const result = await this.cells.handle(request.kind, budget, request.barrier ?? null);
+            this.lastAttempt.snapshot = this.cells.frames.at(-1);
+            this.lastAttempt.stage = 'pane-metadata';
             const rpc = this.options.rpc ?? agentRequest;
             const metadata = await rpc((this.options.endpoint ?? observerEndpoint)(this.options.appData, this.options.ownerPid), 'readPaneMetadata', { paneId: result.paneId }, Math.min(1000, budget()));
+            this.lastAttempt.stage = 'font-geometry';
             if (metadata.paneId !== result.paneId) throw new Error('Font geometry pane identity changed.');
             const geometry = fontSizeGeometry({ ...metadata.cellGeometry, ...metadata.fontGeometry }, result.screen.rows, result.screen.cols);
             this.frames.push({ ...this.cells.frames.at(-1), geometry, ...(report ? { report } : {}) });
             return result;
+        } catch (error) {
+            this.lastAttempt.error = { name: String(error?.name ?? 'Error').slice(0, 128),
+                message: String(error?.message ?? error).slice(0, 2048) };
+            throw error;
         } finally { this.busy = false; }
     }
 }

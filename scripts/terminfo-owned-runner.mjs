@@ -3809,9 +3809,15 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 if (!cellSizeObserver?.restored) throw new Error('Cell-size suite must restore before font-size observations.');
                 fontSizeObserver ??= new FontSizeObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `${fontSizeNonce}${runId}`, expectedPaneId: cellObserver.paneId });
-                const result = await fontSizeObserver.handle(request, budget);
-                appendFileSync(join(output, 'font-size-snapshots.jsonl'), JSON.stringify(fontSizeObserver.frames.at(-1)) + '\n');
-                return result;
+                try {
+                    const result = await fontSizeObserver.handle(request, budget);
+                    appendFileSync(join(output, 'font-size-snapshots.jsonl'), JSON.stringify(fontSizeObserver.frames.at(-1)) + '\n');
+                    return result;
+                } catch (error) {
+                    if (fontSizeObserver.lastAttempt?.error)
+                        appendFileSync(join(output, 'font-size-failed-observations.jsonl'), JSON.stringify(fontSizeObserver.lastAttempt) + '\n');
+                    throw error;
+                }
             }
             if (prefix === xcsPrefix) {
                 // The xterm color-stack suite runs after the device-query suite; a report read also journals the raw reply list bound to its barrier.

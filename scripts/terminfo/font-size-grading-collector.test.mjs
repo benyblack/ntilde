@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -70,6 +70,7 @@ testWithPinnedCollector('real frozen OSC font-size probes preserve their own cri
         sha256: hash(reportBytes), runSha256: hash(runBytes), adapterBundleSha256: hash(source), counts: fontSizeCounts(report), provisionalUntil: 'cell-receipt.json' };
     const evidence = { fontSizeEvidence: binding };
     const files = { 'collector-adapter.mjs': base, 'collector-font-size.mjs': source, 'font-size-run.json': runBytes,
+        'cell-observations.json': JSON.stringify({ snapshots: [{ paneId: e.frames[0].paneId }] }),
         'font-size-observations.json': reportBytes, 'font-size-snapshots.jsonl': e.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n' };
     try {
         assert.equal(includesFontSizeEvidence(root, {}, { sourceSnapshotPolicy: context.sourceSnapshotPolicy }), true);
@@ -86,6 +87,16 @@ testWithPinnedCollector('real frozen OSC font-size probes preserve their own cri
             assert.throws(() => checkFontSizeEvidence(root, evidence, e.runId, context), name);
             writeFileSync(join(root, name), bytes);
         }
+        writeFileSync(join(root, 'font-size-failed-observations.jsonl'), '{}\n');
+        assert.throws(() => checkFontSizeEvidence(root, evidence, e.runId, context));
+        unlinkSync(join(root, 'font-size-failed-observations.jsonl'));
+        const foreignFrames = structuredClone(e.frames);
+        for (const frame of foreignFrames) frame.paneId = 'foreign-pane';
+        const foreignReport = JSON.stringify(buildFontSizeReport(foreignFrames, e.run, e.runId, e.adapter));
+        writeFileSync(join(root, 'font-size-snapshots.jsonl'), foreignFrames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+        writeFileSync(join(root, binding.file), foreignReport);
+        assert.throws(() => checkFontSizeEvidence(root, { fontSizeEvidence: { ...binding, sha256: hash(foreignReport) } }, e.runId, context));
+        writeFileSync(join(root, 'font-size-snapshots.jsonl'), files['font-size-snapshots.jsonl']);
         const forged = structuredClone(report); forged.cases[0].effectContract.outcome = 'unsupported';
         const forgedBytes = JSON.stringify(forged); writeFileSync(join(root, binding.file), forgedBytes);
         assert.throws(() => checkFontSizeEvidence(root, { fontSizeEvidence: { ...binding, sha256: hash(forgedBytes) } }, e.runId, context));

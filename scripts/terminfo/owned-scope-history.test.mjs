@@ -97,6 +97,7 @@ for (const [name, grow, policy] of [['inventory', true, false], ['policy', false
                     "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v70';"));
             }
             const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
+            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v70' : 'readonly-owned-source-graph-v69');
             assert.equal(Object.keys(sources.capturedV9SourceFiles).length, 60);
             assert.equal(sources.capturedV9SourcePolicy, 'readonly-owned-source-graph-v2');
             assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 462 : 461);
