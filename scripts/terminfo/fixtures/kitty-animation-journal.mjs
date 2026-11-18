@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { initialInputScreen, inputPaneId, inputRunId, inputCapture } from './input-journal.mjs';
 import { pixelCapture } from './pixel-capture.mjs';
 import { imageOwnership, rgbaPng } from './static-images-journal.mjs';
-import { animationCases, animationCasesByVersion, animationExpectedReplies, currentAnimationVersion } from '../kitty-animation-cases.mjs';
+import { animationCasesByVersion, animationExpectedReplies, currentAnimationVersion } from '../kitty-animation-cases.mjs';
 import { animationAppearanceColor } from '../kitty-animation-inputs.mjs';
 import { animationSuites, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix } from '../kitty-animation.mjs';
 import { imageModeReplyHex, imageBackgroundReply } from '../static-images.mjs';
@@ -57,6 +57,24 @@ function plannedTiming(stage, startedAt, clock) {
     return { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
 }
 
+/** The ownership proof at a moment: a direct run names the App; a persistent one also names the daemon the worker hangs from and the last relaunch. */
+function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, version }, at) {
+    const persistent = version !== currentAnimationVersion;
+    return { ...structuredClone(base), app: { ...structuredClone(base.app), pid: appPid },
+        ...(persistent ? { worker: { ...structuredClone(base.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) } : {}),
+        ...(relaunchInfo ? { relaunch: structuredClone(relaunchInfo) } : {}), at: iso(at) };
+}
+
+/** The two captures of a pair: the second may show another appearance (pairDiffer); each is written under its frame index. */
+function pairPixels(output, frameIndex, screen, appearance, { shownOther, bleed }) {
+    return [appearance, shownOther ?? appearance].map((shown, side) => {
+        const capture = syntheticAnimationCapture(screen, shown, { bleed: bleed(side) });
+        const bytes = Buffer.from(capture.pngBase64, 'base64'), { pngBase64, ...facts } = capture;
+        const file = `${animationPixelPrefix}/frame-${String(frameIndex).padStart(3, '0')}-${side}.png`;
+        writeFileSync(join(output, file), bytes); return { ...structuredClone(facts), file, sha256: pngHash(bytes) };
+    });
+}
+
 /**
  * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
  * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry, side) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
@@ -70,15 +88,9 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     // A restore run (version 3) lives in a persistent tab: the worker is the multiplexer daemon's child, and every relaunch stage brings a new App process (and pane).
     const firstApp = baseOwnership.app.pid, daemonRecord = { pid: 700, ppid: firstApp, uid: baseOwnership.app.uid, tty: '??', executable: baseOwnership.app.executable, ...daemon };
     let appPid = baseOwnership.app.pid, currentPane = paneId, relaunchInfo;
-    const stamp = at => ({ ...structuredClone(baseOwnership), app: { ...structuredClone(baseOwnership.app), pid: appPid }, ...(version === currentAnimationVersion ? {} : { worker: { ...structuredClone(baseOwnership.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) }), ...(relaunchInfo ? { relaunch: structuredClone(relaunchInfo) } : {}), at: iso(at) });
+    const stamp = at => ownershipStamp(baseOwnership, { appPid, daemonRecord, relaunchInfo, version }, at);
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
-        const other = pairDiffer?.(entry);
-        const pixels = [appearance, other ?? appearance].map((shown, side) => {
-            const capture = syntheticAnimationCapture(screen, shown, { bleed: bleed?.(entry, side) === true });
-            const bytes = Buffer.from(capture.pngBase64, 'base64'), { pngBase64, ...facts } = capture;
-            const file = `${animationPixelPrefix}/frame-${String(frames.length).padStart(3, '0')}-${side}.png`;
-            writeFileSync(join(output, file), bytes); return { ...structuredClone(facts), file, sha256: pngHash(bytes) };
-        });
+        const pixels = pairPixels(output, frames.length, screen, appearance, { shownOther: pairDiffer?.(entry), bleed: side => bleed?.(entry, side) === true });
         frames.push({ index: frames.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
             paneId: currentPane, screen: structuredClone(screen), afterScreen: structuredClone(screen), sha256: snapshotHash(screen),
             afterSha256: snapshotHash(screen), pixels, pairSpan: { startMs: animationEpoch + span[0], endMs: animationEpoch + span[1] },

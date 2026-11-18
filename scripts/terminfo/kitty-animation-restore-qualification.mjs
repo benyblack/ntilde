@@ -9,7 +9,7 @@ import { snapshotHash } from './agent-observer.mjs';
 import { persistentRestoreScope } from './collection-scope.mjs';
 import { animationCasesByVersion, animationSuiteIds } from './kitty-animation-cases.mjs';
 import { buildAnimationReport, ownedAnimationPolicies } from './kitty-animation.mjs';
-import { gradeEffect, kittyAnimationQualificationIds, pinnedBundleArchive, pinnedSpanDigests, replayPinnedAnimationProbe, upstreamBundleSha256, validityControls } from './kitty-animation-qualification.mjs';
+import { gradeEffect, kittyAnimationQualificationIds, pinnedSpanDigests, replayPinnedAnimationProbe, upstreamBundleSha256, validityControls } from './kitty-animation-qualification.mjs';
 import { checkDaemon, checkRetainedDirectories, checkSources, persistentControls } from './kitty-animation-persistent-qualification.mjs';
 import { pngHash } from './pixels-capture.mjs';
 import { checkImages } from './static-images.mjs';
