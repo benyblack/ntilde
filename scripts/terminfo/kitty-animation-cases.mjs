@@ -78,13 +78,14 @@ const restoreCases = Object.freeze([
         stage('compose', 'overEdit', { reply: 'compose', expect: replies('ok', 'ok') }), clear]) }),
 ]);
 // The composition cases (#1027): whole-frame `a=c` compositions only, so every observation is one uniform color the classifier can name. Rectangle offsets and sizes are pinned by unit tests, not here.
-// compose-replace-blend: frame 3 (blue) replaces frame 2 (C=1), then a half-transparent green PNG frame (built on no base, so it keeps its alpha) is blended onto the red root.
+// compose-replace-blend: a half-transparent green PNG frame 4 (built on no base, so it keeps its alpha) replaces the opaque blue frame 3 with C=1 (the result keeps the source's alpha, so it shows over the terminal
+// background: a blend would have given green over blue instead), then the same frame is blended by default onto the opaque red root (green over red).
 // compose-refused: a missing frame (ENOENT), a rectangle wider than the image (EINVAL) and one frame onto itself with overlapping rectangles (EINVAL) change nothing: frame 2 is still green afterwards.
 const composeReplaceBlendCaseId = 'kitty.animation.compose-replace-blend', composeRefusedCaseId = 'kitty.animation.compose-refused';
 const composeCases = Object.freeze([
     Object.freeze({ id: composeReplaceBlendCaseId, stages: Object.freeze([stage('blank', 'absent'), build,
-        stage('replace', 'third', { reply: 'replace', expect: replies('ok', 'ok') }),
-        stage('blend', 'overRoot', { reply: 'blend', expect: replies('ok', 'ok', 'ok') }), clear]) }),
+        stage('replace', 'overBackground', { reply: 'replace', expect: replies('ok', 'ok', 'ok') }),
+        stage('blend', 'overRoot', { reply: 'blend', expect: replies('ok', 'ok') }), clear]) }),
     Object.freeze({ id: composeRefusedCaseId, stages: Object.freeze([stage('blank', 'absent'), build,
         stage('refuse', 'root', { reply: 'refuse', expect: replies('enoent', 'einval', 'einval') }),
         stage('intact', 'second', { reply: 'intact', expect: replies('ok') }), clear]) }),
@@ -110,8 +111,8 @@ const compositionCommands = Object.freeze({
 });
 
 const composeCommands = Object.freeze({
-    replace: imageId => apc(`a=c,i=${imageId},r=3,c=2,C=1`) + apc(`a=a,i=${imageId},c=2`),
-    blend: imageId => apc(`a=f,f=100,t=d,i=${imageId},z=${animationHoldMs};` + pngData('overRoot')) + apc(`a=c,i=${imageId},r=4,c=1`) + apc(`a=a,i=${imageId},c=1`),
+    replace: imageId => apc(`a=f,f=100,t=d,i=${imageId},z=${animationHoldMs};` + pngData('overRoot')) + apc(`a=c,i=${imageId},r=4,c=3,C=1`) + apc(`a=a,i=${imageId},c=3`),
+    blend: imageId => apc(`a=c,i=${imageId},r=4,c=1`) + apc(`a=a,i=${imageId},c=1`),
     refuse: imageId => apc(`a=c,i=${imageId},r=9,c=2`) + apc(`a=c,i=${imageId},r=1,c=2,w=17`) + apc(`a=c,i=${imageId},r=2,c=2,w=8,X=0,x=4`),
     intact: imageId => apc(`a=a,i=${imageId},c=2`),
 });

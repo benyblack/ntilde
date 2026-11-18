@@ -109,7 +109,9 @@ test('a downgraded, stripped, relaunched or foreign compose run is refused', () 
         mutation(context);
         assert.throws(() => verifyComposeRun(context.copy), message);
     });
-    refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches = []; }), /App process changed|did not run/);
+    refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches = []; }), /relaunched it/);
+    // The captured App process must be the one the launch proof names: a foreign pid, re-bound to the receipt, is refused.
+    refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].app.pid += 1; }), /other than the launched one/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.persistentDaemon; }), /no multiplexer daemon/);
     refuses(context => rebind(context, 'context.json', value => { value.collectionScope = { ...value.collectionScope, suiteVersion: 2 }; }), /declare the persistent compose scope/);
     refuses(context => {

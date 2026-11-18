@@ -7,6 +7,7 @@ import { syntheticAnimationJournal, animationEpoch } from './fixtures/kitty-anim
 import { buildAnimationReport, animationPlan, animationActionCount, animationPlannedStages, animationReply, parseAnimationReplies, animationInputs, animationSuites, animationVersionOfPolicy, ownedAnimationPolicies } from './kitty-animation.mjs';
 import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds } from './kitty-animation-cases.mjs';
 import { inputRunId } from './fixtures/input-journal.mjs';
+import { animationAppearanceColor, composeOver } from './kitty-animation-inputs.mjs';
 
 function withJournal(options, action) {
     const output = mkdtempSync(join(tmpdir(), 'nt-kan-'));
@@ -377,15 +378,17 @@ test('the compose suite plans two whole-frame composition cases that no relaunch
         assert.equal(stage.clock, 'static'); assert.ok(!stage.relaunch); assert.equal(animationSuites[4].relaunches({ kind: 'read', caseId: item.id, stageId: stage.id }), false);
     }
     const apcs = (caseId, stageId) => animationCommand(caseId, stageId, { imageId: 9 }, 4).split('\x1b\\').filter(Boolean);
-    assert.deepEqual(apcs(replaceBlend, 'replace'), ['\x1b_Ga=c,i=9,r=3,c=2,C=1', '\x1b_Ga=a,i=9,c=2']);
-    const blend = apcs(replaceBlend, 'blend'); assert.equal(blend.length, 3);
-    assert.match(blend[0], /^\x1b_Ga=f,f=100,t=d,i=9,z=5000;/); assert.equal(blend[1], '\x1b_Ga=c,i=9,r=4,c=1'); assert.equal(blend[2], '\x1b_Ga=a,i=9,c=1');
+    const replace = apcs(replaceBlend, 'replace'); assert.equal(replace.length, 3);
+    assert.match(replace[0], /^\x1b_Ga=f,f=100,t=d,i=9,z=5000;/); assert.equal(replace[1], '\x1b_Ga=c,i=9,r=4,c=3,C=1'); assert.equal(replace[2], '\x1b_Ga=a,i=9,c=3');
+    assert.deepEqual(apcs(replaceBlend, 'blend'), ['\x1b_Ga=c,i=9,r=4,c=1', '\x1b_Ga=a,i=9,c=1']);
     assert.deepEqual(apcs(refused, 'refuse'), ['\x1b_Ga=c,i=9,r=9,c=2', '\x1b_Ga=c,i=9,r=1,c=2,w=17', '\x1b_Ga=c,i=9,r=2,c=2,w=8,X=0,x=4']);
     assert.deepEqual(apcs(refused, 'intact'), ['\x1b_Ga=a,i=9,c=2']);
     assert.equal(apcs(refused, 'build').length, 4);                              // both cases share the three-frame build
     const replies = (caseId, stageId) => animationExpectedReplies(animationCasesByVersion[4].find(item => item.id === caseId).stages.find(stage => stage.id === stageId), 9);
     assert.deepEqual(replies(refused, 'refuse'), ['\x1b_Gi=9;ENOENT\x1b\\', '\x1b_Gi=9;EINVAL\x1b\\', '\x1b_Gi=9;EINVAL\x1b\\']);
-    assert.deepEqual(replies(replaceBlend, 'blend'), Array(3).fill('\x1b_Gi=9;OK\x1b\\'));
+    assert.deepEqual(replies(replaceBlend, 'replace'), Array(3).fill('\x1b_Gi=9;OK\x1b\\')); assert.deepEqual(replies(replaceBlend, 'blend'), Array(2).fill('\x1b_Gi=9;OK\x1b\\'));
+    // Replacing and blending the same translucent source onto opaque blue must look different, so a terminal that ignores C=1 cannot pass the replace stage.
+    assert.notDeepEqual(animationAppearanceColor('overBackground').color, composeOver([0, 255, 0, 128], [0, 0, 255, 255]));
 });
 
 test('a faithful compose run grades every stage passed, and the refusals count only when they are the named error', () => {
@@ -409,7 +412,7 @@ test('a faithful compose run grades every stage passed, and the refusals count o
 
 test('a composition that did not take effect, or that changed what it refused, fails on its own pixels', () => {
     const paintAs = (caseId, stageId, appearance) => (entry, shown) => (entry.caseId === caseId && entry.stageId === stageId ? appearance : shown);
-    withCompose({ paint: paintAs(replaceBlend, 'replace', 'second') }, ({ build }) => {        // frame 2 still green: the replacement never happened
+    withCompose({ paint: paintAs(replaceBlend, 'replace', 'third') }, ({ build }) => {         // frame 3 still opaque blue: the replacement never happened
         const value = results(build());
         assert.equal(value[replaceBlend + '.replace'], 'failed'); assert.equal(value[replaceBlend + '.blend'], 'inconclusive');
     });
