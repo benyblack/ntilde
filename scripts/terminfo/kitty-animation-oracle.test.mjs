@@ -91,8 +91,10 @@ test('the PNG inputs are independent, pinned, valid 16x16 RGBA PNGs and composed
     // Half-transparent green over the opaque red root, and half-transparent red over the opaque blue edited root.
     assert.deepEqual(composeOver([0, 255, 0, 128], [255, 0, 0, 255]), [127, 128, 0, 255]);
     assert.deepEqual(composeOver([255, 0, 0, 128], [0, 0, 255, 255]), [128, 0, 127, 255]);
-    assert.deepEqual(animationComposedIds, ['overRoot', 'overEdit']);
-    assert.deepEqual(animationAppearanceIds, ['root', 'second', 'third', 'overRoot', 'overEdit']);
+    // A half-transparent frame that replaced an opaque one keeps its alpha, so it shows over the terminal background (16,16,16): 0*.502+16*.498, 255*.502+16*.498.
+    assert.deepEqual(composeOver([0, 255, 0, 128], [16, 16, 16, 255]), [8, 136, 8, 255]);
+    assert.deepEqual(animationComposedIds, ['overRoot', 'overEdit', 'overBackground']);
+    assert.deepEqual(animationAppearanceIds, ['root', 'second', 'third', 'overRoot', 'overEdit', 'overBackground']);
     assert.deepEqual(animationAppearanceColor('overRoot'), { color: [127, 128, 0, 255], tolerance: composedTolerance });
     assert.deepEqual(animationAppearanceColor('root'), { color: [255, 0, 0, 255], tolerance: 0 });
 });

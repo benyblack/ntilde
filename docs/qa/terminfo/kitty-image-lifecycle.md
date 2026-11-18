@@ -123,7 +123,7 @@ whether the root was edited), the playback state (state, current and displayed f
 side resumes its own clock; a restore charges every frame exactly as the source did (8 bytes per pixel, 4 for an edited root), validates the packings and indices without inflating them,
 and decodes the frames when a decoder exists (the displayed placement stays undecoded until then). A snapshot with frames is refused by a session whose policy is below 3 (composition, policy 4, adds no snapshot content).
 A live persistent tab (policy 3, the pane a client of the multiplexer daemon) is measured on the desktop by the owned animation suite ([#1025](2026-11-17-kitty-animation-persistent-qualification.md));
-restoring a tab from a snapshot after the App is killed and started again is measured the same way ([#1030](2026-11-17-kitty-animation-restore-qualification.md)).
+restoring a tab from a snapshot after the App is killed and started again is measured the same way ([#1030](2026-11-17-kitty-animation-restore-qualification.md)), and `a=c` composition in a live policy-4 persistent tab too ([#1027](2026-11-18-kitty-animation-compose-qualification.md)). Why the PNG-only and frame-budget limits stay: [#1026](kitty-persistent-animation-limits.md).
 
 `KittyAnimationTests` (VT) pin the frame store, composition arithmetic, error replies, quotas, the
 playhead on an injected clock and frame retirement; `KittyAnimationRenderTests` check the real view

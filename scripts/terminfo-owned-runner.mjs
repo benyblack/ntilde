@@ -128,7 +128,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
-import { legacyScope, osc633Scope, persistentAnimationScope, persistentRestoreScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
+import { legacyScope, osc633Scope, persistentAnimationScope, persistentRestoreScope, persistentComposeScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -240,7 +240,7 @@ import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
 import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
 import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
 import { OwnedAnimationObserver, animationObserverOf } from './terminfo/kitty-animation-capture.mjs';
-import { animationSuiteId, animationSuiteIds, animationCases, animationCasesByVersion, currentAnimationVersion } from './terminfo/kitty-animation-cases.mjs';
+import { animationSuiteId, animationSuiteIds, animationCases, animationCasesByVersion, currentAnimationVersion, restoreAnimationVersion } from './terminfo/kitty-animation-cases.mjs';
 import { ownedAnimationPolicy, ownedAnimationPolicies, animationPlannedStages, animationSuites } from './terminfo/kitty-animation.mjs';
 import { OwnedCellObserver, agentRequest, observerEndpoint } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
@@ -400,7 +400,7 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2135,7 +2135,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2152,6 +2152,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     const executable = validateInvocation(args);
     if (args[5] === 'persistent-animation') return persistentAnimationMain(args, executable, snapshot, persistentAnimationScope);
     if (args[5] === 'persistent-restore') return persistentAnimationMain(args, executable, snapshot, persistentRestoreScope);
+    if (args[5] === 'persistent-compose') return persistentAnimationMain(args, executable, snapshot, persistentComposeScope);
     const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
@@ -4468,6 +4469,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
 const persistentAnimationAdapterId = 'ntilde-owned-kitty-animation-persistent-adapter-v1';
 export const persistentAnimationReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-receipt-v1';
 export const persistentRestoreReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-restore-receipt-v1';
+export const persistentComposeReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-compose-receipt-v1';
+const persistentReceiptSuiteIds = { 3: persistentRestoreReceiptSuiteId, 4: persistentComposeReceiptSuiteId };
 
 /**
  * The receipt of a persistent-tab animation collection. It binds the one retained suite report, the ownership proof (which records the
@@ -4480,7 +4483,7 @@ function completePersistentAnimationReceipt(output, scratch, evidence) {
     const binding = evidence.animationEvidence;
     if (binding?.runId !== context.runId || binding.suiteId !== context.animationSuiteId || binding.file !== 'animation-observations.json'
         || hash(readFileSync(join(output, binding.file))) !== binding.sha256) throw new Error('Invalid persistent animation receipt binding.');
-    const receipt = { schemaVersion: 1, suiteId: context.collectionScope.suiteVersion === undefined ? persistentAnimationReceiptSuiteId : persistentRestoreReceiptSuiteId, runId: context.runId, collectionScope: context.collectionScope,
+    const receipt = { schemaVersion: 1, suiteId: persistentReceiptSuiteIds[context.collectionScope.suiteVersion] ?? persistentAnimationReceiptSuiteId, runId: context.runId, collectionScope: context.collectionScope,
         animationEvidence: binding, ownershipProofSha256: hash(proofBytes), contextSha256: hash(contextBytes), fixtureRemoved: true, completedAt: new Date().toISOString() };
     writeFileSync(join(output, 'persistent-animation-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     return receipt;
@@ -4529,12 +4532,12 @@ function retainPersistentFirstProof(run, owner, worker, tty, budget) {
     if (run.proofs.length > 0) return;
     run.proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()), workerBirth: processBirth(worker.pid, budget()),
         outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(),
-        kittyAnimation: { policy: ownedAnimationPolicies[run.version] }, ...(run.version === currentAnimationVersion ? {} : { relaunches: run.relaunches }) });
+        kittyAnimation: { policy: ownedAnimationPolicies[run.version] }, ...(run.version === restoreAnimationVersion ? { relaunches: run.relaunches } : {}) });
 }
 
 /** Admit one relaunch request and carry it out: the App is terminated and started again, and the answer follows once the new pane shows the restored screen. */
 async function answerRelaunchRequest(run, request) {
-    if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
+    if (!run.outputModeVerified || run.version !== restoreAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
     admitRelaunch(run, request, animationSuites[run.version]);
     run.relaunchInFlight = relaunchPersistentApp(run);
     // A relaunch that fails after the outgoing App exited leaves nothing to finish the run: reject it with the cause instead of waiting for the deadline.
