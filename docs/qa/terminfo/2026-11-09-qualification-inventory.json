@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 146,
-    "suiteClaims": 148,
+    "uniqueBenchmarkIds": 148,
+    "suiteClaims": 150,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 144,
-    "effectUnsupportedIds": 1,
+    "effectSupportedIds": 145,
+    "effectUnsupportedIds": 2,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 95,
     "effectSupportedPinnedInconclusiveIds": [
@@ -70,6 +70,7 @@
       "extensions.osc1337-cellsize",
       "extensions.osc17-highlight-bg",
       "extensions.osc19-highlight-fg",
+      "extensions.osc22-pointer",
       "extensions.osc3008-context",
       "extensions.osc633-a",
       "extensions.osc633-b",
@@ -102,10 +103,11 @@
       "scrollback.set-region"
     ],
     "effectUnsupportedPinnedInconclusiveIds": [
+      "extensions.osc720-scroll-up",
       "extensions.sixel"
     ],
-    "effectSupportedOfStockInconclusive": 143,
-    "effectUnsupportedOfStockInconclusive": 1,
+    "effectSupportedOfStockInconclusive": 144,
+    "effectUnsupportedOfStockInconclusive": 2,
     "pinnedSupportedOfStockInconclusive": 94,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -119,10 +121,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 25,
-      "effectMeasuredUnsupported": 1,
+      "effectUnqualified": 24,
+      "effectMeasuredUnsupported": 2,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 23,
+      "effectNotMeasured": 21,
       "notPinnedSupported": 74
     }
   },
@@ -3841,6 +3843,146 @@
       }
     },
     {
+      "suite": "osc720",
+      "suiteId": "ntilde-owned-osc720-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-17-osc720/",
+      "doc": "2026-11-17-osc720-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc720-scroll-up"
+      ],
+      "evidence": {
+        "files": 16,
+        "bytes": 165603625,
+        "sha256": "4ab8f61d94eb6b8dab7e19518eb66cefe9c65bb2343ac3917e8c4345585baacb"
+      },
+      "receipt": {
+        "schemaVersion": 74,
+        "runId": "7924727037ace6f3cce045ca63697c17",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "9a93fafe00c70deaf2284413fd3892028252dbafef1bc648ef3c2c0489294fed"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc720-graded-v1",
+          "file": "ovu-observations.json",
+          "sha256": "38ece1af6519444da1925c18d0eeebbe103b4a0409ddc67e8226f6f82b2cf050",
+          "runFile": "ovu-run.json",
+          "runSha256": "94ff48808dc942b40eb89fbb4d634d6cbb6a430b7423d2e69b553ffaad50f636",
+          "counts": {
+            "inconclusive/unsupported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "7924727037ace6f3cce045ca63697c17",
+        "measuredAt": "2026-11-17T16:05:44.381Z",
+        "appRevision": "06ee7177a8ae6fff17b88bcf437c686f17e1bf91",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "06ee7177a8ae6fff17b88bcf437c686f17e1bf91",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "a6e6e77e580f2b08ef520419202374fdb59216c45d9e4e2c5863a84cc5f64dbf",
+        "gradingAdapterId": "ntilde-owned-osc720-grading-v1",
+        "gradingAdapterBundleSha256": "e383cebe2c7fca5b3c20cb510bad3d1e19b461297fd6326170f4c033d7316e28",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v67",
+        "sourceSnapshotManifestSha256": "b47fc78e53df289c35518558607c802ef2c1d7cf07c9f442366180edbe61150f"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "142102417788363f541e2f3b90c19ca6",
+        "counts": {
+          "inconclusive": 160,
+          "supported": 94,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "a17f637740451c76f3c4e74b8cf2aa1d49151b7851a9ba705a6007e3527903aa",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; the OSC 720 effect does not change the stock score."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc720-publication.test.mjs",
+        "testSha256": "a09dbcaa257dd1442bbe89726f1452ad98853039916bba6c661a5ac2042be286"
+      }
+    },
+    {
+      "suite": "osc22",
+      "suiteId": "ntilde-owned-osc22-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-17-osc22/",
+      "doc": "2026-11-17-osc22-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc22-pointer"
+      ],
+      "evidence": {
+        "files": 23,
+        "bytes": 132023720,
+        "sha256": "6c7e4a8b406dc3c6750ab1241e0b594eb9e2cb815ce86b26393566e12533d583"
+      },
+      "receipt": {
+        "schemaVersion": 75,
+        "runId": "b70c675d73b252ff1bedfcfc0fe4aff4",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "d8d774ccaba21e20c1ed4d57cccab11c45352d56eef1347b99aad9b091feda14"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-osc22-graded-v1",
+          "file": "ptr-observations.json",
+          "sha256": "6211de52aab0189408710ec037ebf417285379695ce1404e24d923e3dd1940cc",
+          "runFile": "ptr-run.json",
+          "runSha256": "d2e12fc7bc37fd3b8902ce4e6026a591ff9c305ffe15661be89e7b08d849fe87",
+          "counts": {
+            "inconclusive/supported": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "b70c675d73b252ff1bedfcfc0fe4aff4",
+        "measuredAt": "2026-11-17T18:51:10.023Z",
+        "appRevision": "de218cd705ad8516d61f598fe29fa88648311702",
+        "appVersion": "0.14.0+de218cd705ad8516d61f598fe29fa88648311702",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "7f809a6f7b54fb76fa6a39588700a5286850c0d1",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "e1439b49b14a8e4be8c6cbe3b6edf8e6608c7b0d28760dc9cd7dad5dcb57ffd5",
+        "gradingAdapterId": "ntilde-owned-osc22-grading-v1",
+        "gradingAdapterBundleSha256": "aacee1fb36afedca7712835a0e7ac8baab3cf869df6bad75bd000026c6f6a2b5",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v68",
+        "sourceSnapshotManifestSha256": "f7b57e2fcc3d2b9d87c15e9e243bd71483a492d3b0e230fb5b70031ecfd3a06e"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "d53e66b7de46d82ce7f565d6e2e40f27",
+        "counts": {
+          "inconclusive": 160,
+          "supported": 94,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "810d84f88037518fb02e46c4ad01352ec370d3ceef24e0014667d971e37b714d",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc22-publication.test.mjs",
+        "testSha256": "1c9cb3192f843deec91d36e1c432b2d7a600bc8831f9b64a91721c6b05ab1d73"
+      }
+    },
+    {
       "suite": "kitty-animation",
       "suiteId": "ntilde-owned-kitty-animation-qualification-v2",
       "contractsVersion": 2,
@@ -4061,20 +4203,20 @@
       ],
       "evidence": {
         "files": 4,
-        "bytes": 9481475,
-        "sha256": "9ce22e3876cd770d767aa0d6a6e4674def5ec71eeaa731ba9c4e48b37b638213"
+        "bytes": 9773386,
+        "sha256": "04115ee216b91a0cb1b3a5a9eca791c85a618a09330e289a4d563e90d3f95560"
       },
       "receipt": {
-        "schemaVersion": 74,
-        "runId": "7e3c0ff36105b7d85fbff58cb5f99667",
+        "schemaVersion": 76,
+        "runId": "46c19e896560dbb0474df63723627443",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "ae693d133e7b622e5184e97fdb5e67d8625da6e80e8fd57f1760da84b441357e"
+          "sha256": "874f857f394ddcb9ea3eedc4c45e99b55f3cdd4600d525dde21ae34386eb126c"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-osc1337-capabilities-graded-v1",
           "file": "caps-observations.json",
-          "sha256": "075d309d6271a8e97456a72ba70dc7ed36799f33932d348565d6f8bc564dbce8",
+          "sha256": "3912810f78a4d0255bd8a149e3f7fe458c446d50f4580382a32baf555442eb19",
           "runFile": "caps-run.json",
           "runSha256": "1f9be5cfe2bd55b62856b947a77bc4c1f756b7089afd20548dc49ac30b2bf926",
           "counts": {
@@ -4084,23 +4226,23 @@
         }
       },
       "run": {
-        "ownedRunId": "7e3c0ff36105b7d85fbff58cb5f99667",
-        "measuredAt": "2026-11-17T20:30:57.660Z",
-        "appRevision": "8ed6714ccd651c14732c0dee6211d3180a73b0d8",
+        "ownedRunId": "46c19e896560dbb0474df63723627443",
+        "measuredAt": "2026-11-18T12:00:33.586Z",
+        "appRevision": "7bfbbdc1341509557780931d1a02f80dec4e80c3",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "8ed6714ccd651c14732c0dee6211d3180a73b0d8",
+        "scriptsRevision": "7bfbbdc1341509557780931d1a02f80dec4e80c3",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "cf286a2426cb1197d757e7c0a340a892c551a59c07d17ae8a29df20a329e08a0",
+        "collectorAdapterBundleSha256": "d4fd2fb582bf20b7eb7ca8ac518566f4673d3c94bdd206cff22b60aa507a1de7",
         "gradingAdapterId": "ntilde-owned-osc1337-capabilities-grading-v1",
-        "gradingAdapterBundleSha256": "22b95c2324be3d58b8da49d8ff55c83cf1c886a3f9f432b0f4eeb621a0512ed9",
-        "sourceSnapshotPolicy": "readonly-owned-source-graph-v67",
-        "sourceSnapshotManifestSha256": "8ef081846870993caad7c7db4c950c18a9492d9db5ac1654924253d1e93ae246"
+        "gradingAdapterBundleSha256": "8cb8380b5ae7a215faf768b3df8137a0df759887ff35629d3f786a0df5601125",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v69",
+        "sourceSnapshotManifestSha256": "78801ffcfcf4901199bc44505fa30f1bcf36c6926c23bdb9d65d1cae54fcd009"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "316a7a92e68e9bf34dae982563dfff35",
+        "runId": "072fd3504e671860b264100c2cac0602",
         "counts": {
           "inconclusive": 159,
           "supported": 95,
@@ -4108,14 +4250,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "06f14694a88d077cad1accaec78e2af6723564d7c1eb2fbb56ccaf8e8a870c52",
+        "rawSha256": "b20d8335777aa5b74bf2e2cc4f34fcb0617fcf6037a72059023e23ac9ce4b3ec",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades from the same owned run; the unchanged pinned probe now passes against the App, moving extensions.osc1337-capabilities from inconclusive to supported."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/caps-publication.test.mjs",
-        "testSha256": "f329e08edf8d0bee1ad31afad2b71abf9be1fc00e5334ffd0645dbc09a92eff7"
+        "testSha256": "164d6e58d2f7571ea3cf866d5d825b0155e81fcc1fedd62be6373f090fa9ba9a"
       }
     }
   ],
@@ -7277,6 +7419,58 @@
       ]
     },
     {
+      "id": "extensions.osc22-pointer",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc22",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc22",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc22-pointer",
+          "suite": "osc22",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor response does not measure OSC 22 pointer shape"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-terminal-unmeasured-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Cursor response does not measure OSC 22 pointer shape"
+          },
+          "measuredLayers": [
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
       "id": "extensions.osc3008-context",
       "kind": "benchmark",
       "stockOutcome": "inconclusive",
@@ -7631,6 +7825,59 @@
             "pane-metadata-and-session-status"
           ],
           "evidenceTag": "owned-pane-metadata-and-session-status"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc720-scroll-up",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc720",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "osc720",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc720-scroll-up",
+          "suite": "osc720",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor answered; scrollback viewport was not measured"
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-terminal-preserved-over-owned-observations"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "Cursor answered; scrollback viewport was not measured"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "view-position, stored history, cursor and screen (pane-metadata-and-session-status)"
         }
       ]
     },
