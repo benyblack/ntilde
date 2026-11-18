@@ -85,8 +85,11 @@ public sealed class OscFontSizeQueryTests
     public void Mutation_and_malformed_forms_are_silent_and_leave_the_host_snapshot_unchanged(string tail)
     {
         var replies = new List<string>();
-        var parser = new AnsiParser(new TerminalBuffer(40, 10)) { OnResponse = replies.Add,
-            CellSizeReports = new(8, 18, 2, 12) { FontSizePoints = 12 } };
+        var parser = new AnsiParser(new TerminalBuffer(40, 10))
+        {
+            OnResponse = replies.Add,
+            CellSizeReports = new(8, 18, 2, 12) { FontSizePoints = 12 }
+        };
         var snapshot = parser.CellSizeReports;
         foreach (string code in new[] { "7770", "7777", "710" }) parser.Process("\x1b]" + code + tail + "\a");
         Assert.Empty(replies);
