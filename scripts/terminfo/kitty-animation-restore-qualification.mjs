@@ -3,17 +3,12 @@
 // pinned-probe replay, one separately identified effect contract for the restore, and explicit validity controls over the lineage (App processes, multiplexer daemon,
 // worker). The run has no stock collector, so there is no stock grade, and the pinned verdict, the effect verdict and any other result never merge.
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
-import { isDeepStrictEqual } from 'node:util';
 import { snapshotHash } from './agent-observer.mjs';
 import { persistentRestoreScope } from './collection-scope.mjs';
 import { animationCasesByVersion, animationSuiteIds } from './kitty-animation-cases.mjs';
-import { buildAnimationReport, ownedAnimationPolicies } from './kitty-animation.mjs';
+import { ownedAnimationPolicies } from './kitty-animation.mjs';
 import { gradeEffect, kittyAnimationQualificationIds, pinnedSpanDigests, replayPinnedAnimationProbe, upstreamBundleSha256, validityControls } from './kitty-animation-qualification.mjs';
 import { persistentControls, verifyPersistentSuiteRun } from './kitty-animation-persistent-qualification.mjs';
-import { pngHash } from './pixels-capture.mjs';
-import { checkImages } from './static-images.mjs';
-import { journal, json, present, read } from './static-images-receipt.mjs';
 
 export const restoreQualificationSuiteId = 'ntilde-owned-kitty-animation-restore-qualification-v1';
 export const restoreQualificationVersion = 1;
