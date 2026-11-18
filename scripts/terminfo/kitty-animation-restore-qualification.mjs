@@ -22,7 +22,7 @@ export { pinnedBundleArchive, kittyAnimationQualificationIds, upstreamBundleSha2
 // Measured on the committed tree named here: the Release sidecar was built from the App at this commit and the measured scripts are its tree
 // (later commits are publication, docs, test pins and merges of main only).
 export const measuredAppRevision = '601cd0514a515383b33a27435d5dcb2f3183a9fd';
-export const measuredScriptsRevision = '41dfe4c1ee8ded619708d599f7550d19dba20581';
+export const measuredScriptsRevision = '251e0320f9a7cb8fe2a59ce563ebac254eea5642';
 
 const version = 3, relaunchCount = 3;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');

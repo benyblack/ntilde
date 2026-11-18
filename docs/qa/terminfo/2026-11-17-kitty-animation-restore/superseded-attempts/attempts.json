@@ -151,6 +151,31 @@
           "bytes": 103514
         }
       ]
+    },
+    {
+      "attempt": "owned-Vp00jh",
+      "runId": "9246dd3ea80834ac469fae4cc5fd85f3",
+      "scripts": "41dfe4c1",
+      "collection": "persistent-restore scope",
+      "outcome": "23/23 passed",
+      "reason": "A complete run of the 23-stage plan (source policy v68), published first after the review fixes. A further review found that a relaunch request was admitted on the count of relaunches alone, so one naming the first relaunch stage before the setup stages, or during a capture, would have terminated the App; the admission now requires the observer idle in its admit phase on the requested stage, which edits measured files, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-Vp00jh/animation-observations.json",
+          "sha256": "0f45d9a6652c2e6878b6980c483efdaddb92e20b611b60b793bdf77af75f44ca",
+          "bytes": 924819
+        },
+        {
+          "file": "owned-Vp00jh/persistent-animation-receipt.json",
+          "sha256": "a243cae67deb4709da14c72c6b59667b40692238e3eaf40c3b58b95bdf127fb6",
+          "bytes": 969
+        },
+        {
+          "file": "owned-Vp00jh/ownership-proof.json",
+          "sha256": "8b1edfa8b4b0338982441e2f55d980fdc94cd1cebfad1035e267d3192bd8e69a",
+          "bytes": 106313
+        }
+      ]
     }
   ]
 }
