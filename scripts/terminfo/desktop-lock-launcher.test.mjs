@@ -237,10 +237,8 @@ test('the App is terminated only for the next declared relaunch stage, a failed 
     const runner = readFileSync(real('../terminfo-owned-runner.mjs'), 'utf8');
     const at = (text, within = runner) => { const index = within.indexOf(text); assert.ok(index >= 0, 'missing: ' + text); return index; };
     const answer = runner.slice(at("if (request.kind === 'kan-relaunch') {"), at("if (request.kind.startsWith('kan-')) {"));
-    const [admitted, started, rejected] = ['admitRelaunch(run, request)', 'relaunchPersistentApp(run)', 'run.reject(error)'].map(text => at(text, answer));
+    const [admitted, started, rejected] = ['admitRelaunch(run, request, animationSuites[run.version])', 'relaunchPersistentApp(run)', 'run.reject(error)'].map(text => at(text, answer));
     assert.ok(admitted < started && started < rejected, 'a relaunch is admitted before the App is touched, and its failure rejects the run');
-    const admit = runner.slice(at('function admitRelaunch'), at('/** Answer one lineage-proved owner request'));
-    for (const text of ['run.stopping || run.outgoing', 'suite.plan.filter(suite.relaunches)[run.relaunches.length]', 'request.caseId !== expected.caseId', 'request.stageId !== expected.stageId']) at(text, admit);
     const wait = runner.slice(at('async function waitForReattachedPane'), at('Terminate the App (SIGTERM, not a graceful quit)'));
     assert.equal(wait.match(/if \(run\.stopping\) throw/g).length, 2, 'cancellation is checked before each poll and after the pending reads');
 });

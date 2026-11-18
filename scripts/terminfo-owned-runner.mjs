@@ -217,7 +217,7 @@ import { buildSelectionColorsGradingReport, selectionColorsCounts } from './term
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
-import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists, readPersistentDaemon, persistentDaemonIdentity, terminateRecordedDaemon } from './terminfo/ownership.mjs';
+import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists, readPersistentDaemon, persistentDaemonIdentity, terminateRecordedDaemon, admitRelaunch } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
 import { savedSuiteId, ownedSavedPolicy } from './terminfo/saved-cases.mjs';
@@ -4473,22 +4473,12 @@ function retainPersistentFirstProof(run, owner, worker, tty, budget) {
         kittyAnimation: { policy: ownedAnimationPolicies[run.version] }, ...(run.version === currentAnimationVersion ? {} : { relaunches: run.relaunches }) });
 }
 
-/**
- * Whether the worker may have the App terminated now: after the output proof, in the restore collection, while the run is live and no relaunch is in progress, and only
- * for the next relaunch stage of the plan in order (one admission per stage), so an early, repeated or mislabeled request never takes the App down.
- */
-function admitRelaunch(run, request) {
-    if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
-    if (run.stopping || run.outgoing) throw new Error('A relaunch is not admissible while the run is stopping or another relaunch is in progress.');
-    const suite = animationSuites[run.version], expected = suite.plan.filter(suite.relaunches)[run.relaunches.length];
-    if (!expected || request.caseId !== expected.caseId || request.stageId !== expected.stageId) throw new Error('The relaunch request does not name the next relaunch stage of the plan.');
-}
-
 /** Answer one lineage-proved owner request of the persistent animation collection. */
 async function answerPersistentRequest(run, request, budget, { owner, worker, daemon }) {
     const [proofs, tty] = [run.proofs, request.tty];
     if (request.kind === 'kan-relaunch') {
-        admitRelaunch(run, request);
+        if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
+        admitRelaunch(run, request, animationSuites[run.version]);
         run.relaunchInFlight = relaunchPersistentApp(run);
         // A relaunch that fails after the outgoing App exited leaves nothing to finish the run: reject it with the cause instead of waiting for the deadline.
         try { await run.relaunchInFlight; } catch (error) { run.reject(error); throw error; }

@@ -4,7 +4,8 @@ import { createServer } from 'node:net';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemons, environmentHas, isDaemonCommand, readPersistentDaemon, requestOwner, terminateRecordedDaemon } from './ownership.mjs';
+import { admitRelaunch, assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemons, environmentHas, isDaemonCommand, readPersistentDaemon, requestOwner, terminateRecordedDaemon } from './ownership.mjs';
+import { animationSuites } from './kitty-animation.mjs';
 
 const runId = 'a'.repeat(32), appData = '/private/ntilde-qa/nt-abc123/appdata', executable = '/sidecar/Ntilde';
 const daemonFacts = () => ({
@@ -168,4 +169,25 @@ test('only a relaunch request may take longer than five seconds to be answered',
         assert.equal(slow.kind, 'kan-relaunch');
         await assert.rejects(requestOwner(config, 'kan-read'), /did not respond/);
     } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a relaunch is admitted only between stages, for the next declared relaunch stage, once', () => {
+    const suite = animationSuites[3], relaunchEntries = suite.plan.filter(suite.relaunches), [first, second] = relaunchEntries;
+    const position = entry => suite.plan.indexOf(entry);
+    const run = (overrides = {}, observer = {}) => ({ relaunches: [], animationState: { observer: { suite, phase: 'admit', busy: false, failed: false, next: position(first), ...observer } }, ...overrides });
+    const request = entry => ({ kind: 'kan-relaunch', caseId: entry.caseId, stageId: entry.stageId });
+    assert.doesNotThrow(() => admitRelaunch(run(), request(first), suite));
+    // The second relaunch follows the first (one admitted already) and the observer then stands on the second stage.
+    assert.doesNotThrow(() => admitRelaunch(run({ relaunches: [{}] }, { next: position(second) }), request(second), suite));
+    // Before the setup stages ran (the observer has not reached the relaunch entry) or while it is capturing, starting, sealing, busy or failed.
+    assert.throws(() => admitRelaunch(run({}, { next: 0 }), request(first), suite), /next relaunch stage/);
+    for (const observer of [{ phase: 'capture' }, { phase: 'start' }, { phase: 'seal' }, { busy: true }, { failed: true }]) assert.throws(() => admitRelaunch(run({}, observer), request(first), suite), /idle between stages/, JSON.stringify(observer));
+    assert.throws(() => admitRelaunch({ relaunches: [] }, request(first), suite), /idle between stages/, 'no observer yet');
+    // A repeated request, a request for a later stage than the observer's, a mislabeled one, a stopping run and a relaunch already in progress.
+    assert.throws(() => admitRelaunch(run({ relaunches: [{}] }), request(first), suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run(), request(second), suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run(), { ...request(first), stageId: 'blank' }, suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run({ relaunches: relaunchEntries.map(() => ({})) }, { next: position(first) }), request(first), suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run({ stopping: true }), request(first), suite), /stopping/);
+    assert.throws(() => admitRelaunch(run({ outgoing: {} }), request(first), suite), /in progress/);
 });

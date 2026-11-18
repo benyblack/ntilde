@@ -204,6 +204,20 @@ function preservedOwnerCode(kind, code) {
 
 /** A relaunch (#1030) terminates the App (SIGTERM) and waits for a new one to reattach the pane: it alone may take longer than the five-second owner answer. */
 const relaunchKind = 'kan-relaunch', relaunchTimeoutMs = 90000;
+/**
+ * Whether the worker may have the App terminated now: the run is live and no relaunch is in progress, and the animation observer is healthy and idle in its admit phase
+ * with the next planned entry being exactly the requested relaunch stage, which must also be the next relaunch stage of the plan in order (one admission per stage).
+ * An early, repeated, mislabeled or mid-capture request therefore never takes the App down. `suite` is the animation suite whose plan the observer walks.
+ */
+export function admitRelaunch(run, request, suite) {
+    if (run.stopping || run.outgoing) throw new Error('A relaunch is not admissible while the run is stopping or another relaunch is in progress.');
+    const observer = run.animationState?.observer;
+    if (!observer || observer.failed || observer.busy || observer.phase !== 'admit') throw new Error('A relaunch is only admissible while the observer is idle between stages.');
+    const next = suite.plan[observer.next], expected = suite.plan.filter(suite.relaunches)[run.relaunches.length];
+    const named = entry => entry?.caseId === request.caseId && entry?.stageId === request.stageId;
+    if (!expected || !suite.relaunches(next) || !named(next) || !named(expected)) throw new Error('The relaunch request does not name the next relaunch stage of the plan.');
+}
+
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
