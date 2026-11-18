@@ -244,14 +244,23 @@ public sealed class KittyImageLifecycleTests
         Assert.Equal("\x1b_Gi=1,I=14;OK\x1b\\", Assert.Single(replies)); Assert.Single(buffer.Images);
     }
 
-    // a=f and a=a are implemented (KittyAnimationTests); frame composition is not.
+    // a=f, a=a and a=c are implemented (KittyAnimationTests); an action the protocol has no such letter for is unsupported.
     [Theory]
-    [InlineData("c")]
-    public void Unsupported_animation_actions_have_negative_correlated_replies(string action)
+    [InlineData("x")]
+    [InlineData("z")]
+    public void Unsupported_actions_have_negative_correlated_replies(string action)
     {
         var (buffer, parser, replies) = Create();
         parser.Process(Command($"a={action},i=7", Pixel));
         Assert.Empty(buffer.Images); Assert.StartsWith("\x1b_Gi=7;ENOTSUP:", Assert.Single(replies), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Frame_composition_on_an_unknown_image_is_a_correlated_not_found()
+    {
+        var (buffer, parser, replies) = Create();
+        parser.Process(Command("a=c,i=7,r=1,c=2"));
+        Assert.Empty(buffer.Images); Assert.StartsWith("\x1b_Gi=7;ENOENT:", Assert.Single(replies), StringComparison.Ordinal);
     }
 
     [Theory]
