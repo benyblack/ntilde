@@ -41,7 +41,10 @@ public partial class TerminalBuffer
         try
         {
             _highSurrogateBuffer = null;
-            if (options.Scale == 1 && options.Width == 0 && !options.IsFractional && !HasEmojiSizingBase(text)) WriteContentCore(text);
+            // Sized text and double-size lines do not combine: a sized rectangle is laid out in page columns, a
+            // double-size line holds half of them. On such a line the text is written at the line's own size.
+            if (CursorRowLastColumnNoLock < Cols - 1) WriteContentCore(text);
+            else if (options.Scale == 1 && options.Width == 0 && !options.IsFractional && !HasEmojiSizingBase(text)) WriteContentCore(text);
             else if (options.Width != 0) WriteSizedBlock(text, options, options.Width);
             else
             {

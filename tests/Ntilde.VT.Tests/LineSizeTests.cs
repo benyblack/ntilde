@@ -274,6 +274,27 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_glyph_widened_at_a_double_lines_last_column_writes_nothing_right_of_the_half()
+    {
+        // As at the page's last column on a single-width row: the glyph stays where it is, with no second cell.
+        var (buffer, parser) = Create();
+        parser.Process(Dwl + "abcd\u2764");
+        parser.Process("\uFE0FX");
+        Assert.Equal("X", Lines(buffer)[1]);
+        buffer.Lock.EnterReadLock();
+        try { Assert.False(buffer.GetRowAbsolute(0)!.Cells[5].IsWideContinuation); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void Sized_text_on_a_double_size_line_is_written_at_the_lines_own_size()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Dwl}abcd{Esc}]66;w=2;Y\aX");
+        Assert.Equal(new[] { "abcdY", "X", "", "" }, Lines(buffer));
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();

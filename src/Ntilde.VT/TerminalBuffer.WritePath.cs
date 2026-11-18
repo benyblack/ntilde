@@ -328,7 +328,9 @@ namespace Ntilde.VT
                         if (newWidth >= 2)
                         {
                             cell.IsWide = true;
-                            if (attachCol + 1 < Cols)
+                            // At the last column the row holds (the page's, or a double-size row's half) there is no
+                            // cell for the second half: the glyph stays wide without one, on either kind of row.
+                            if (attachCol + 1 <= CursorRowLastColumnNoLock)
                             {
                                 // Width expansion overwrites the adjacent cell; retire its whole sized rectangle first.
                                 int absoluteRow = TextSizingAbsoluteRow(_cursorRow);
