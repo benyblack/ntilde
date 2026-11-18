@@ -380,6 +380,7 @@ namespace Ntilde.VT
             int width = GetGraphemeWidth(grapheme);
 
             // Handle Pending Wrap State (M1.3)
+            DropStalePendingWrapNoLock();
             // With horizontal margins a wrap returns to the left margin, and the wrapped text is not one reflowable line: no soft-wrap mark.
             if (_isPendingWrap && !isZeroWidthComponent && !_isAfterZwj)
             {

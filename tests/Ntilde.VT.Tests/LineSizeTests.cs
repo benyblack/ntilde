@@ -287,11 +287,49 @@ public sealed class LineSizeTests
     }
 
     [Fact]
-    public void Sized_text_on_a_double_size_line_is_written_at_the_lines_own_size()
+    public void Sized_text_returns_the_lines_it_is_written_on_to_single_width()
     {
         var (buffer, parser) = Create();
         parser.Process($"{Dwl}abcd{Esc}]66;w=2;Y\aX");
-        Assert.Equal(new[] { "abcdY", "X", "", "" }, Lines(buffer));
+        Assert.Equal(new[] { "abcdY X", "", "", "" }, Lines(buffer));
+        Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
+
+        // A rectangle that wraps onto a double-size line, or reaches one from above, does the same.
+        (buffer, parser) = Create();
+        parser.Process($"{Esc}[2;1H{Dwl}{Esc}[1;10H{Esc}]66;w=7;ABCDEFG\a");
+        Assert.Equal(new[] { LineSize.SingleWidth, LineSize.SingleWidth, LineSize.SingleWidth, LineSize.SingleWidth }, Sizes(buffer));
+    }
+
+    [Fact]
+    public void Making_a_line_double_retires_a_sized_rectangle_that_touches_it()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Esc}]66;s=2;A\a{Esc}[H{Dwl}");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Null(buffer.GetTextSizingAbsolute(0, 0));
+            Assert.Null(buffer.GetTextSizingAbsolute(0, 1));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void A_wrap_pending_on_a_full_double_line_is_dropped_when_the_page_grows()
+    {
+        var (buffer, parser) = Create();
+        parser.Process(Dwl + "abcde");
+        buffer.Resize(20, 4);
+        parser.Process("X");
+        Assert.Equal("abcdeX", Lines(buffer)[0]);
+    }
+
+    [Fact]
+    public void A_wrap_pending_on_the_main_screen_is_dropped_when_left_right_margin_mode_widens_its_line_from_the_alternate_screen()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Dwl}abcde{Esc}[?1049h{Esc}[?69h{Esc}[?1049l{Esc}[?69lX");
+        Assert.Equal("abcdeX", Lines(buffer)[0]);
     }
 
     [Fact]

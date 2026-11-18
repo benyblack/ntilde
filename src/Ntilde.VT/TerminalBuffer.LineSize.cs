@@ -66,6 +66,23 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
+    /// A wrap is pending only while the cursor waits at the right edge of its row. A row that has since become wider
+    /// than that (a resize, or a line of the screen that was not showing returned to single width) has room again:
+    /// the next character goes on the column after the cursor.
+    /// </summary>
+    private void DropStalePendingWrapNoLock()
+    {
+        if (_isPendingWrap && _cursorCol < RightEdgeForCursorNoLock) ReleasePendingWrapOnWiderRowNoLock();
+    }
+
+    private void ReturnRowToSingleWidthForSizedTextNoLock(int viewportRow)
+    {
+        if (viewportRow < 0 || viewportRow >= Rows || _viewport[viewportRow].LineSize == LineSize.SingleWidth) return;
+        _viewport[viewportRow].LineSize = LineSize.SingleWidth;
+        if (viewportRow == _cursorRow) ReleasePendingWrapOnWiderRowNoLock();
+    }
+
+    /// <summary>
     /// DECSWL, DECDWL and DECDHL: sets the cursor row's line attribute. Making a single row double loses the characters
     /// right of the centre, as on a VT100, ends any soft wrap out of the row and brings the cursor back inside it.
     /// Returning to single width restores nothing. Ignored while DECLRMM is set: left/right margins and double-size
@@ -85,7 +102,14 @@ public partial class TerminalBuffer
             if (size == LineSize.SingleWidth) ReleasePendingWrapOnWiderRowNoLock();
             else
             {
-                if (wasSingle) BlankColumnsPastLineSizeNoLock(_cursorRow);
+                if (wasSingle)
+                {
+                    // A sized rectangle is laid out in page columns and may span rows: one that touches this row is
+                    // retired whole rather than left with one row drawn at twice the width of the others.
+                    int abs = TextSizingAbsoluteRow(_cursorRow);
+                    EraseTextSizingRange(0, Cols, abs, abs + 1);
+                    BlankColumnsPastLineSizeNoLock(_cursorRow);
+                }
                 row.IsWrapped = false;
                 int last = CursorRowLastColumnNoLock;
                 if (_cursorCol > last)

@@ -41,10 +41,7 @@ public partial class TerminalBuffer
         try
         {
             _highSurrogateBuffer = null;
-            // Sized text and double-size lines do not combine: a sized rectangle is laid out in page columns, a
-            // double-size line holds half of them. On such a line the text is written at the line's own size.
-            if (CursorRowLastColumnNoLock < Cols - 1) WriteContentCore(text);
-            else if (options.Scale == 1 && options.Width == 0 && !options.IsFractional && !HasEmojiSizingBase(text)) WriteContentCore(text);
+            if (options.Scale == 1 && options.Width == 0 && !options.IsFractional && !HasEmojiSizingBase(text)) WriteContentCore(text);
             else if (options.Width != 0) WriteSizedBlock(text, options, options.Width);
             else
             {
@@ -131,10 +128,14 @@ public partial class TerminalBuffer
         int availableHeight = _cursorRow < ScrollTop || _cursorRow > ScrollBottom
             ? Rows : ScrollBottom - ScrollTop + 1;
         if (width > Cols || height > availableHeight) return;
+        // Sized text and double-size lines do not combine: a sized rectangle is laid out in page columns, and a
+        // double-size line holds half of them. Every line the rectangle is written on returns to single width.
+        ReturnRowToSingleWidthForSizedTextNoLock(_cursorRow);
         var block = new TextSizingBlock(text, options, baseWidth);
         if (!ReserveTextSizing(block, _cursorCol, TextSizingAbsoluteRow(_cursorRow), !Modes.IsInsertMode && IsTextSizingTargetStable(block))) return;
         FindTextSizingWritePosition(width);
         FitTextSizingHeight(height);
+        for (int dy = 0; dy < height; dy++) ReturnRowToSingleWidthForSizedTextNoLock(_cursorRow + dy);
         if (Modes.IsInsertMode) InsertTextSizingRectangle(width, height);
         int absTop = TextSizingAbsoluteRow(_cursorRow);
         EraseTextSizingRange(_cursorCol, _cursorCol + width, absTop, absTop + height);
@@ -203,6 +204,7 @@ public partial class TerminalBuffer
     {
         while (true)
         {
+            DropStalePendingWrapNoLock();
             if (_isPendingWrap || _cursorCol + width > Cols)
             {
                 if (Modes.IsAutoWrapMode || LowerTextSizingEnd(Math.Max(0, Cols - width), width) >= 0)
