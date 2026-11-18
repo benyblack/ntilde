@@ -20,7 +20,7 @@ public partial class AnsiParser
             // Mintty reports an unsigned integer point size. Do not round a fractional
             // host size into a false restorable value, or fabricate headless defaults.
             if (CellSizeReports is { IsValid: true, FontSizePoints: double points }
-                && double.IsFinite(points) && points >= 1 && points <= 512 && points == Math.Truncate(points))
+                && double.IsFinite(points) && points >= 1 && points <= 512 && double.IsInteger(points))
             {
                 string code = osc[..4];
                 OnResponse?.Invoke(string.Create(CultureInfo.InvariantCulture, $"\x1b]{code};{points:0}{terminator}"));
