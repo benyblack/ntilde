@@ -2355,6 +2355,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
         settings.FontSize = 16; // Prepared query fixture: 12 exact typographic points at unity UI zoom.
+        settings.UiScale = 1;
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
