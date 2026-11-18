@@ -71,32 +71,46 @@ function paeth(left, up, upperLeft) {
     return upperLeft;
 }
 
+/** Type 1: each byte adds the same channel of the pixel to its left. */
+function reconstructSub(raw, start, end, channels) {
+    for (let at = start + channels; at < end; at++) raw[at] = (raw[at] + raw[at - channels]) & 255;
+}
+
+/** Type 2: each byte adds the byte above it; a first row has none. */
+function reconstructUp(raw, start, end, back) {
+    for (let at = start; at < end; at++) raw[at] = (raw[at] + raw[at - back]) & 255;
+}
+
+/** Type 3: each byte adds the floored mean of its left and upper neighbours. */
+function reconstructAverage(raw, start, end, channels, back, hasPrevious) {
+    const first = start + channels;
+    for (let at = start; at < end; at++) {
+        const left = at >= first ? raw[at - channels] : 0, up = hasPrevious ? raw[at - back] : 0;
+        raw[at] = (raw[at] + ((left + up) >> 1)) & 255;
+    }
+}
+
+/** Type 4: each byte adds whichever of left, up and upper-left is nearest their linear estimate. */
+function reconstructPaeth(raw, start, end, channels, back, hasPrevious) {
+    const first = start + channels;
+    for (let at = start; at < end; at++) {
+        const left = at >= first ? raw[at - channels] : 0, up = hasPrevious ? raw[at - back] : 0;
+        const upperLeft = hasPrevious && at >= first ? raw[at - back - channels] : 0;
+        raw[at] = (raw[at] + paeth(left, up, upperLeft)) & 255;
+    }
+}
+
 /** One loop per filter type, each reading only the neighbours its predictor uses. A single loop that fetched all three
  * neighbours and dispatched on the type for every byte was a fifth of a receipt rederivation's time; every capture a
  * receipt admits is decoded here, and the rows are mostly type 0 or 2. The arithmetic is the PNG specification's. */
 function reconstructRow(raw, start, stride, channels, hasPrevious) {
-    const filter = raw[start - 1], end = start + stride, first = start + channels, back = stride + 1;
-    switch (filter) {
+    const end = start + stride, back = stride + 1;
+    switch (raw[start - 1]) {
         case 0: return;
-        case 1:
-            for (let at = first; at < end; at++) raw[at] = (raw[at] + raw[at - channels]) & 255;
-            return;
-        case 2:
-            if (hasPrevious) for (let at = start; at < end; at++) raw[at] = (raw[at] + raw[at - back]) & 255;
-            return;
-        case 3:
-            for (let at = start; at < end; at++) {
-                const left = at >= first ? raw[at - channels] : 0, up = hasPrevious ? raw[at - back] : 0;
-                raw[at] = (raw[at] + ((left + up) >> 1)) & 255;
-            }
-            return;
-        case 4:
-            for (let at = start; at < end; at++) {
-                const left = at >= first ? raw[at - channels] : 0, up = hasPrevious ? raw[at - back] : 0;
-                const upperLeft = hasPrevious && at >= first ? raw[at - back - channels] : 0;
-                raw[at] = (raw[at] + paeth(left, up, upperLeft)) & 255;
-            }
-            return;
+        case 1: return reconstructSub(raw, start, end, channels);
+        case 2: return hasPrevious ? reconstructUp(raw, start, end, back) : undefined;
+        case 3: return reconstructAverage(raw, start, end, channels, back, hasPrevious);
+        case 4: return reconstructPaeth(raw, start, end, channels, back, hasPrevious);
         default: throw invalid();
     }
 }
