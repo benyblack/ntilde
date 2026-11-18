@@ -19,7 +19,15 @@ public partial class TerminalBuffer
     private bool CursorInHorizontalMarginsNoLock => _cursorCol >= LeftMargin && _cursorCol <= RightMargin;
 
     /// <summary>The rightmost column a cursor-relative operation may reach: the right margin, or the last column once the cursor is right of it.</summary>
-    private int RightEdgeForCursorNoLock => _cursorCol <= RightMargin ? RightMargin : Cols - 1;
+    /// <remarks>A double-size row ends at its own last column; it never coexists with narrowed margins (see <see cref="SetLineSize"/>).</remarks>
+    private int RightEdgeForCursorNoLock
+    {
+        get
+        {
+            int rowLast = CursorRowLastColumnNoLock;
+            return _cursorCol <= RightMargin ? Math.Min(RightMargin, rowLast) : rowLast;
+        }
+    }
 
     /// <summary>The leftmost column a cursor-relative operation may reach: the left margin, or the first column once the cursor is left of it.</summary>
     private int LeftEdgeForCursorNoLock => _cursorCol >= LeftMargin ? LeftMargin : 0;
@@ -44,6 +52,11 @@ public partial class TerminalBuffer
         {
             Modes.IsLeftRightMarginMode = enable;
             if (!enable) ResetHorizontalMarginsNoLock();
+            else
+            {
+                // Left/right margins and double-size lines do not combine: every line returns to single width.
+                ResetLineSizesNoLock(_viewport);
+            }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
     }

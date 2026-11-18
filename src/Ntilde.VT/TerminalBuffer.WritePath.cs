@@ -371,11 +371,16 @@ namespace Ntilde.VT
             // With horizontal margins a wrap returns to the left margin, and the wrapped text is not one reflowable line: no soft-wrap mark.
             if (_isPendingWrap && !isZeroWidthComponent && !_isAfterZwj)
             {
-                if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins) _viewport[_cursorRow].SetSoftWrap(Cols);
+                if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins && _viewport[_cursorRow].LineSize == LineSize.SingleWidth) _viewport[_cursorRow].SetSoftWrap(Cols);
                 _cursorCol = LeftMargin;
                 AdvanceCursorRowForLineFeed();
                 _isPendingWrap = false;
             }
+
+            // A vertical move keeps the column, so the cursor can arrive right of a double-size row's last column:
+            // the character lands on that last column, as it would at the right edge of any row.
+            int doubleRowLast = CursorRowLastColumnNoLock;
+            if (doubleRowLast < Cols - 1 && _cursorCol > doubleRowLast) _cursorCol = doubleRowLast;
 
             // The right edge is the right margin, or the last column once the cursor is right of the right margin.
             int rightEdge = RightEdgeForCursorNoLock;
@@ -385,7 +390,8 @@ namespace Ntilde.VT
             {
                 if (_cursorCol + width > rightEdge + 1)
                 {
-                    if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins) _viewport[_cursorRow].SetSoftWrap(_cursorCol);
+                    // A double-size row is one physical line of its own: a wrap out of it leaves no soft-wrap mark.
+                    if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins && _viewport[_cursorRow].LineSize == LineSize.SingleWidth) _viewport[_cursorRow].SetSoftWrap(_cursorCol);
                     _cursorCol = LeftMargin;
                     AdvanceCursorRowForLineFeed();
                     _isPendingWrap = false;
@@ -718,7 +724,7 @@ namespace Ntilde.VT
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
             // With horizontal margins ICH acts only between them, from the cursor to the right margin.
             if (!CursorInHorizontalMarginsNoLock) return;
-            int edge = RightMargin + 1;
+            int edge = Math.Min(RightMargin, CursorRowLastColumnNoLock) + 1;
             var empty = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, false, CurrentFgIndex, CurrentBgIndex, false, false, false, false, false, false);
 
             int endCol = Math.Min(_cursorCol + count, edge);
@@ -777,7 +783,7 @@ namespace Ntilde.VT
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
             // With horizontal margins DCH acts only between them; blanks enter at the right margin.
             if (!CursorInHorizontalMarginsNoLock) return;
-            int edge = RightMargin + 1;
+            int edge = Math.Min(RightMargin, CursorRowLastColumnNoLock) + 1;
 
             // Clamp to the columns available from the cursor. Without this, a count larger than
             // the line width (e.g. CSI 9999 P, or the parser's max parameter) makes endCol go

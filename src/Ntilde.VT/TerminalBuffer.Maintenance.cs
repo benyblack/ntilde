@@ -298,9 +298,11 @@ namespace Ntilde.VT
             // TUI apps like Yazi rely on partial redraws — they only redraw rows that changed.
             // If we replace all row objects (new IDs), Yazi's next frame skips unchanged rows,
             // leaving blank row objects on screen instead of re-drawn content.
+            // Every line is erased completely, so each returns to single width (ED 2 on a VT100).
             for (int i = 0; i < Rows; i++)
             {
                 ClearRowInternal(i);
+                _viewport[i].LineSize = LineSize.SingleWidth;
             }
 
             if (resetCursor)
@@ -358,6 +360,7 @@ namespace Ntilde.VT
                         row.Cells[c] = cell;
                     }
                     row.ClearProtection(); // the filled E cells are fresh characters, never protected ones
+                    row.LineSize = LineSize.SingleWidth; // DECALN returns every line to single width (DEC STD 070)
                     row.TouchRevision();
                 }
 
@@ -513,6 +516,7 @@ namespace Ntilde.VT
             foreach (var row in _altScreen)
             {
                 row.IsWrapped = false;
+                row.LineSize = LineSize.SingleWidth;
                 row.WrittenColumns = 0;
                 Array.Fill(row.Cells, blank);
                 row.ClearExtendedText();

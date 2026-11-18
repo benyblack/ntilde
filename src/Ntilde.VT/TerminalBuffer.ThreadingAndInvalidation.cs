@@ -28,6 +28,7 @@ namespace Ntilde.VT
         private readonly object _liveSnapshotStateGate = new();
         private int[] _lastSnapshotAbsRows = Array.Empty<int>();
         private long[] _lastSnapshotRowIds = Array.Empty<long>();
+        private byte[] _lastSnapshotLineSizes = Array.Empty<byte>();
         private uint[] _lastSnapshotRowRevisions = Array.Empty<uint>();
         private RenderCellSnapshot[][] _lastSnapshotRowCells = Array.Empty<RenderCellSnapshot[]>();
         private long[] _cachedRenderRowIds = Array.Empty<long>();
@@ -479,7 +480,8 @@ namespace Ntilde.VT
                         Cols = viewportCols,
                         Cells = cells,
                         ContainsBlink = containsBlink,
-                        RowId = row.Id
+                        RowId = row.Id,
+                        LineSize = row.LineSize
                     };
                     rowId = rowSnapshot.RowId;
                     rowRevision = rowSnapshot.Revision;
@@ -499,7 +501,8 @@ namespace Ntilde.VT
                         Cols = viewportCols,
                         Cells = cells,
                         ContainsBlink = containsBlink,
-                        RowId = absRowId
+                        RowId = absRowId,
+                        LineSize = _scrollback.GetLineSize(absRow)
                     };
                     rowId = rowSnapshot.RowId;
                     rowRevision = rowSnapshot.Revision;
@@ -530,6 +533,8 @@ namespace Ntilde.VT
                                     _lastSnapshotCols != viewportCols ||
                                     _lastSnapshotAbsRows[r] != absRow ||
                                     _lastSnapshotRowIds[r] != rowId ||
+                                    // A line-attribute change re-lays the whole row out, whatever its cell diff says.
+                                    _lastSnapshotLineSizes[r] != (byte)rowSnapshot.LineSize ||
                                     // A theme switch recolors cells in place; the span-diff
                                     // would compare against pre-switch snapshots and miss
                                     // recolored regions, so re-render every row once.
@@ -564,6 +569,7 @@ namespace Ntilde.VT
 
                 _lastSnapshotAbsRows[r] = absRow;
                 _lastSnapshotRowIds[r] = rowId;
+                _lastSnapshotLineSizes[r] = (byte)rowSnapshot.LineSize;
                 _lastSnapshotRowRevisions[r] = rowRevision;
                 _lastSnapshotRowCells[r] = rowSnapshot.Cells;
             }
@@ -601,7 +607,8 @@ namespace Ntilde.VT
                         Cols = viewportCols,
                         Cells = cells,
                         ContainsBlink = containsBlink,
-                        RowId = row.Id
+                        RowId = row.Id,
+                        LineSize = row.LineSize
                     };
                 }
                 else if (!_isAltScreen && absRow < _scrollback.Count)
@@ -616,7 +623,8 @@ namespace Ntilde.VT
                         Cols = viewportCols,
                         Cells = cells,
                         ContainsBlink = containsBlink,
-                        RowId = _scrollback.TotalRowsEvicted + absRow
+                        RowId = _scrollback.TotalRowsEvicted + absRow,
+                        LineSize = _scrollback.GetLineSize(absRow)
                     };
                 }
                 else
@@ -696,6 +704,7 @@ namespace Ntilde.VT
             int newLen = Math.Max(viewportRows, Math.Max(64, _lastSnapshotAbsRows.Length == 0 ? 64 : _lastSnapshotAbsRows.Length * 2));
             Array.Resize(ref _lastSnapshotAbsRows, newLen);
             Array.Resize(ref _lastSnapshotRowIds, newLen);
+            Array.Resize(ref _lastSnapshotLineSizes, newLen);
             Array.Resize(ref _lastSnapshotRowRevisions, newLen);
             Array.Resize(ref _lastSnapshotRowCells, newLen);
             Array.Resize(ref _cachedRenderRowIds, newLen);

@@ -79,7 +79,7 @@ namespace Ntilde.VT
                 int remaining = System.Math.Max(1, count);
                 int col = System.Math.Clamp(_cursorCol, 0, System.Math.Max(0, Cols - 1));
                 // A cursor at or left of the right margin stops there (xterm's TabToNextStop with DECLRMM).
-                int limit = _cursorCol <= RightMargin ? RightMargin : Cols - 1;
+                int limit = RightEdgeForCursorNoLock;
                 while (remaining-- > 0)
                 {
                     col = FindNextTabStopNoLock(col);

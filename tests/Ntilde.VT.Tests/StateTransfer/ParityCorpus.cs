@@ -220,6 +220,11 @@ internal static class ParityCorpus
             "\u001b(0" + "qwertyuiop" + "\u001b(B" + "qwertyuiop" +
             "\u001b)0" + "\u000e" + "asdfgh" + "\u000f" + "asdfgh"));
 
+        yield return ("double-size-lines", Utf8(
+            "\u001b#3double height\r\n\u001b#4double height\r\n" +
+            "\u001b#6double width wraps at the half\r\n" +
+            "\u001b#6back to single\u001b#5\r\nplain"));
+
         yield return ("sgr-256-and-rgb", Utf8(
             "\u001b[38;5;196mindexed fg\u001b[48;5;21m indexed bg" +
             "\u001b[38;2;12;34;56mrgb fg\u001b[48;2;200;100;50m rgb bg" +

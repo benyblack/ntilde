@@ -337,6 +337,7 @@ namespace Ntilde.VT
             {
                 var row = _viewport[i];
                 row.IsWrapped = false;
+                row.LineSize = LineSize.SingleWidth;
                 row.WrittenColumns = 0;
                 for (int c = 0; c < Cols; c++)
                 {
@@ -445,6 +446,7 @@ namespace Ntilde.VT
                 }
 
                 resized[i].IsWrapped = source[i].IsWrapped;
+                resized[i].LineSize = source[i].LineSize;
                 resized[i].WrittenColumns = Math.Min(source[i].WrittenColumns, Cols);
                 resized[i].WrappedColumns = source[i].IsWrapped
                     ? Math.Min(source[i].WrappedColumns ?? source[i].Cells.Length, Cols) : null;
@@ -565,13 +567,18 @@ namespace Ntilde.VT
             OnInvalidate?.Invoke();
         }
 
-        public void EraseLineAll(int rowIndex)
+        /// <param name="rowIndex">The visible row to erase.</param>
+        /// <param name="resetLineSize">
+        /// True when ED erases the line completely, which returns a double-size line to single width. EL never does.
+        /// </param>
+        public void EraseLineAll(int rowIndex, bool resetLineSize = false)
         {
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 if (rowIndex < 0 || rowIndex >= Rows) return;
                 ClearRowInternal(rowIndex);
+                if (resetLineSize) _viewport[rowIndex].LineSize = LineSize.SingleWidth;
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             OnInvalidate?.Invoke();
@@ -787,8 +794,8 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
-                _cursorCol = Math.Clamp(col, 0, Cols - 1);
                 _cursorRow = Math.Clamp(row, 0, Rows - 1);
+                _cursorCol = Math.Clamp(col, 0, Math.Max(0, CursorRowLastColumnNoLock));
                 _isPendingWrap = false;
             }
             finally
@@ -986,6 +993,7 @@ namespace Ntilde.VT
                 AbsRow = absRow,
                 Revision = row.Revision,
                 Cols = bufferCols,
+                LineSize = row.LineSize,
                 Cells = new RenderCellSnapshot[bufferCols],
                 RowId = row.Id
             };

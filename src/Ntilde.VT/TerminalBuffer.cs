@@ -106,7 +106,9 @@ namespace Ntilde.VT
                 bool lockTaken = EnterWriteLockIfNeeded();
                 try
                 {
-                    _cursorCol = value;
+                    // CHA/HPA arrive here already clamped to the page; a double-size row is narrower than that.
+                    int rowLast = CursorRowLastColumnNoLock;
+                    _cursorCol = rowLast < Cols - 1 && value > rowLast ? rowLast : value;
                     _isPendingWrap = false;
                 }
                 finally { ExitWriteLockIfNeeded(Lock, lockTaken); }

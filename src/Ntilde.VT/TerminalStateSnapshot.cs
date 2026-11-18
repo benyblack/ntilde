@@ -334,6 +334,13 @@ namespace Ntilde.VT
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int[]? RowWrittenColumns { get; set; }
 
+        /// <summary>
+        /// The VT100 line attribute of each row, as <see cref="LineSize"/> ordinals; absent when every row is single
+        /// width, which is also how data from before the attribute existed reads.
+        /// </summary>
+        [JsonPropertyName("line_sizes"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int[]? RowLineSizes { get; set; }
+
         /// <summary>Extended grapheme clusters keyed by <c>row * cols + col</c>.</summary>
         [JsonPropertyName("ext")] public Dictionary<int, string>? ExtendedText { get; set; }
 

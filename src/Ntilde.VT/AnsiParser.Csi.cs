@@ -735,11 +735,13 @@ namespace Ntilde.VT
         {
             if (displayMode == 0) // Erase from cursor to end of screen
             {
+                // A line ED erases completely returns to single width; the cursor line is one only from its first column.
+                if (_buffer.CursorCol == 0) _buffer.ResetLineSize(_buffer.CursorRow);
                 _buffer.EraseLineToEnd(); // Clear rest of current line
                                           // Clear all lines below cursor
                 for (int r = _buffer.CursorRow + 1; r < _buffer.Rows; r++)
                 {
-                    _buffer.EraseLineAll(r);
+                    _buffer.EraseLineAll(r, resetLineSize: true);
                 }
             }
             else if (displayMode == 1) // Erase from start of screen to cursor
@@ -747,7 +749,7 @@ namespace Ntilde.VT
                 // Clear all lines above cursor
                 for (int r = 0; r < _buffer.CursorRow; r++)
                 {
-                    _buffer.EraseLineAll(r);
+                    _buffer.EraseLineAll(r, resetLineSize: true);
                 }
                 _buffer.EraseLineFromStart(); // Clear start of current line
             }
