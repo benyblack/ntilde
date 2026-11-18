@@ -351,6 +351,56 @@ public sealed class PersistentKittyAnimationTests
         Assert.Equal(Json(client), Json(restored));
     }
 
+    /// <summary>Kitty commands for one transfer of <paramref name="data"/>, in 4 KiB base64 chunks the way a real client sends a large frame.</summary>
+    private static string Chunked(string controls, byte[] data)
+    {
+        string base64 = Convert.ToBase64String(data);
+        var commands = new System.Text.StringBuilder();
+        for (int at = 0; at < base64.Length; at += 4096)
+        {
+            string chunk = base64.Substring(at, Math.Min(4096, base64.Length - at)), more = at + 4096 < base64.Length ? "1" : "0";
+            commands.Append(Kitty((at == 0 ? controls + "," : "") + "m=" + more, chunk));
+        }
+        return commands.ToString();
+    }
+
+    private static byte[] Noise(int pixels, uint seed)
+    {
+        var bytes = new byte[pixels * 4];
+        for (int i = 0; i < bytes.Length; i++) { seed = seed * 1664525 + 1013904223; bytes[i] = (byte)(seed >> 24); }
+        return bytes;
+    }
+
+    /// <summary>
+    /// The measured premise of the #1026 decision: for frames that do not pack (noise costs 4.008 bytes per pixel) the 32 MiB image-source budget and the 64 MiB per-screen
+    /// pixel quota (8 bytes per frame pixel) allow the same number of frames, so the budget never refuses or evicts before the quota refuses, unless other retained images share it.
+    /// At 640x480 both allow 26 frames beside the root: the 27th is refused by the quota and every one of the 26 still has its pixels.
+    /// </summary>
+    [Fact]
+    public void Noise_frames_fill_the_pixel_quota_exactly_when_they_fill_the_source_budget_so_nothing_is_evicted_first()
+    {
+        const int width = 640, height = 480, pixels = width * height;
+        var side = new Side(decoder: null, policy: Composing);
+        side.Send(Chunked($"a=t,f=32,s={width},v={height},i=1", Noise(pixels, 1)));
+        Assert.EndsWith(";OK\x1b\\", Assert.Single(side.Replies), StringComparison.Ordinal);
+        int accepted = 0;
+        for (uint seed = 2; seed < 40; seed++)
+        {
+            side.Replies.Clear();
+            side.Send(Chunked($"a=f,f=32,s={width},v={height},i=1", Noise(pixels, seed)));
+            if (!side.Replies[0].EndsWith(";OK\x1b\\", StringComparison.Ordinal)) break;
+            accepted++;
+        }
+        Assert.Equal(26, accepted);
+        Assert.Contains(";ENOSPC:Animation frame storage exceeded", side.Replies[0], StringComparison.Ordinal);
+        TerminalKittyAnimationState animation = Assert.Single(side.Buffer.ExportState(int.MaxValue).KittyImages!).Animation!;
+        Assert.Equal(1 + 26, animation.Frames.Count);
+        Assert.Empty(animation.Frames[0].Data);                                                                        // an unedited root carries no packing of its own: its pixels are the image's retained bytes
+        Assert.All(animation.Frames.Skip(1), frame => Assert.NotEmpty(frame.Data));                                    // nothing was evicted: every later frame still has its pixels
+        Assert.True(side.Buffer.ImageSources.RetainedBytes <= ImageSourceBudget.DefaultMaxBytes);
+        Assert.InRange(side.Buffer.ImageSources.RetainedBytes, ImageSourceBudget.DefaultMaxBytes - 1_000_000, ImageSourceBudget.DefaultMaxBytes);   // and the budget is all but full
+    }
+
     [Fact]
     public void Deleting_the_image_releases_every_frame_source_and_a_replacement_releases_the_replaced_frame()
     {
