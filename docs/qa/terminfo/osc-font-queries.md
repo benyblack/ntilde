@@ -42,7 +42,8 @@ callback is independently checked with a context that refuses every access.
 
 `ntilde-osc-font-size-query-effect-v1` independently checks actual point size and
 exact framing. A disposable fixture explicitly configures 16 DIP at unity zoom
-(12 points). Each ID has two CSI16t delivery controls, its exact pinned request,
+(12 points). Before any suite reads its baseline, the owner prepares the required
+40×140 grid on that disposable pane and checks it against the kernel PTY. Each ID has two CSI16t delivery controls, its exact pinned request,
 BEL/ST queries, and seven unavailable/malformed/setter forms. The absolute setter
 control requests 18 points, distinct from the observed 12-point fixture; a baseline
 equal to the setter target is refused. Each exchange has

@@ -68,7 +68,7 @@ import { charEditContractsVersion, charEditSuiteId } from './terminfo/char-edit-
 import { buildCharEditGradingReport } from './terminfo/char-edit-grading.mjs';
 import { adaptEraseDisplayCollector, eraseDisplayAdapterId } from './terminfo/erase-display-grading-collector.mjs';
 import { adaptLineEditCollector, lineEditAdapterId } from './terminfo/line-edit-grading-collector.mjs';
-import { eraseDisplayContractsVersion, eraseDisplaySuiteId } from './terminfo/erase-display-contracts.mjs';
+import { eraseDisplayContractsVersion, eraseDisplayGeometry, eraseDisplaySuiteId } from './terminfo/erase-display-contracts.mjs';
 import { lineEditContractsVersion, lineEditSuiteId } from './terminfo/line-edit-contracts.mjs';
 import { buildEraseDisplayGradingReport } from './terminfo/erase-display-grading.mjs';
 import { buildLineEditGradingReport } from './terminfo/line-edit-grading.mjs';
@@ -261,7 +261,7 @@ import { OwnedHistoryObserver } from './terminfo/history-capture.mjs';
 import { historySuiteId } from './terminfo/history-cases.mjs';
 import { buildHistoryReport } from './terminfo/history.mjs';
 import { completeOwnedReceipt } from './terminfo/receipt.mjs';
-import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode } from './terminfo/terminal-output.mjs';
+import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode, validateOutputGeometry } from './terminfo/terminal-output.mjs';
 
 import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateClipboardEvidenceJson } from './terminfo/private-clipboard.mjs';
 import { OwnedPrivateClipboardObserver, privateClipboardScreen } from './terminfo/private-clipboard-capture.mjs';
@@ -4033,11 +4033,27 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
                 workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, asciiReflow: { policy: ownedAsciiReflowPolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, kittyAnimation: { policy: ownedAnimationPolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
         };
-        /** Bind one kernel-observed output-mode proof to the already verified worker. */
-        const attestOutputMode = (request, budget) => {
-            if (outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
+        /** Prepare the fixed collection grid before baseline snapshots, using only the proved private pane. */
+        const attestOutputMode = async (request, budget, worker) => {
+            const proof = proofs[0];
+            if (outputModeVerified || !proof || proof.fontFixtureGeometry) throw new Error('Unexpected private PTY output proof.');
+            const reader = new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, nonce: config.cellNonce });
+            const { rows, cols } = eraseDisplayGeometry;
+            const before = await reader.session(budget);
+            proof.fontFixtureGeometry = { before: { paneId: before.paneId, rows: before.rows, cols: before.cols }, target: { rows, cols } };
+            if (before.rows !== rows || before.cols !== cols) {
+                const action = await resizeOwnedPane({ app, appData, executable, runId, paneId: before.paneId,
+                    uid: worker.uid, workerPid: worker.pid, tty: request.tty }, rows, cols, budget);
+                proof.fontFixtureGeometry.resize = action;
+                if (action.app?.exact !== true || action.app.layoutSettled !== true || action.app.rows !== rows || action.app.cols !== cols)
+                    throw new Error('Font fixture could not prepare the required 40×140 grid.');
+            }
+            reader.paneId = before.paneId;
+            const after = await reader.session(budget);
+            if (after.rows !== rows || after.cols !== cols) throw new Error('Prepared font fixture grid differs from the contract.');
             const mode = readOwnedOutputMode(request.tty, budget());
-            proofs[0].terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
+            validateOutputGeometry(mode.description, rows, cols);
+            proof.terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
             outputModeVerified = true;
         };
         const observeImageRequest = (request, budget, owner, worker, observe = observeImages) => {
@@ -4076,12 +4092,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             return null;
         };
         /** Handle proof/done/failure only after lineage verification; done additionally requires close and exact termios. */
-        const controlOwnedWorker = (request, queryTimeout, owner, worker) => {
+        const controlOwnedWorker = async (request, queryTimeout, owner, worker) => {
             if (request.kind === 'prove') {
                 // Retain the measured proof, never the capability token.
                 retainFirstProof(owner, worker, request.tty, queryTimeout);
             } else if (request.kind === 'raw-output') {
-                attestOutputMode(request, queryTimeout);
+                await attestOutputMode(request, queryTimeout, worker);
             } else if (request.kind === 'done') {
                 if (isOsc633Scope(collectionScope) && (osc9State !== undefined || notifyState !== undefined)) throw new Error('Omitted notification suites ran in the scoped collection.');
                 requireInputCompletion(inputState);
@@ -4132,7 +4148,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     workerIdentity ??= worker;
                     const observation = await routeOwnedObservation(request, queryTimeout, owner, worker);
                     if (observation) { socket.end(JSON.stringify(observation) + '\n'); return; }
-                    socket.end(JSON.stringify(controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
+                    socket.end(JSON.stringify(await controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
                 } catch (error) {
                     if (authenticated && privateClipboardState?.observer) {
                         rejectDone(error);
