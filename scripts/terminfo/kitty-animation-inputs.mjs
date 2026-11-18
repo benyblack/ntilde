@@ -87,6 +87,8 @@ const root = frames.root.color;
 const composed = Object.freeze({
     overRoot: Object.freeze(composeOver(pngFrames.overRoot.color, root)),
     overEdit: Object.freeze(composeOver(pngFrames.overEdit.color, frames.third.color)),
+    // A half-transparent frame that replaced an opaque one (a=c,C=1) keeps its alpha, so it shows over the terminal background, not over the frame it replaced.
+    overBackground: Object.freeze(composeOver(pngFrames.overRoot.color, animationBackground)),
 });
 export const animationComposedIds = Object.freeze(Object.keys(composed));
 export const animationAppearanceIds = Object.freeze([...animationFrameIds, ...animationComposedIds]);

@@ -113,6 +113,44 @@ export function verifyPersistentAnimationRun(dir) {
     return { receipt, context, proof, report, observationBytes, frames };
 }
 
+/**
+ * Re-derive everything a persistent-tab suite run claims from its retained bytes: the receipt binding, the persistent settings, the measured sources, the daemon
+ * lineage, the whole carrier report (from its journals, under the suite version's own epoch rules) and the retained directories. The caller adds what is specific
+ * to its suite (the restore's chain of App processes, the compose suite's single one) on top of the returned run.
+ */
+export function verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, suiteId, policy, noun }) {
+    const check = (ok, message) => { if (!ok) throw new Error(`kitty animation ${noun} qualification: ${message}`); };
+    const receipt = json(dir, 'persistent-animation-receipt.json'), context = json(dir, 'context.json'), proofBytes = read(dir, 'ownership-proof.json'), proof = JSON.parse(proofBytes);
+    const observationBytes = read(dir, 'animation-observations.json'), settings = json(dir, 'initial-settings.json');
+    const original = proof.proofs?.[0], marker = original?.kittyAnimation, binding = receipt.animationEvidence;
+    check(receipt.schemaVersion === 1 && receipt.suiteId === receiptSuiteId && receipt.fixtureRemoved === true && receipt.runId === context.runId
+        && /^[a-f\d]{32}$/.test(context.runId) && isDeepStrictEqual(receipt.collectionScope, scope) && isDeepStrictEqual(context.collectionScope, scope),
+        `the receipt does not declare the persistent ${noun} scope of this run`);
+    check(receipt.ownershipProofSha256 === sha(proofBytes) && receipt.contextSha256 === sha(read(dir, 'context.json')), 'the receipt does not bind the retained proof and context');
+    check(settings.SessionPersistence === 'KeepOnClose' && context.initialSettingsSha256 === sha(read(dir, 'initial-settings.json')), 'the run was not configured for a persistent tab');
+    check(proof.completed === true && proof.cleanedUpAt && !proof.cleanupError && proof.sourceSnapshot?.removedAt, 'the ownership proof has no completed cleanup');
+    check(binding?.runId === context.runId && binding.suiteId === suiteId && binding.file === 'animation-observations.json' && binding.sha256 === pngHash(observationBytes),
+        'the receipt does not bind the retained animation report');
+    check(context.animationSuiteId === suiteId && context.ownedAnimationPolicy === policy && marker?.policy === policy
+        && !present(join(dir, 'animation-failed-observation.json')) && !present(join(dir, 'animation-unavailable.json')) && !present(join(dir, 'animation-raw-failure.json')),
+        `the carrier did not run the ${noun} suite under its paired raw render policy without failure`);
+    checkSources(dir, context);
+    const frames = journal(dir, 'animation-snapshots.jsonl'), actions = journal(dir, 'animation-actions.jsonl'), report = JSON.parse(observationBytes);
+    check(snapshotHash(actions) === snapshotHash(marker.actions), 'the journaled actions differ from the proof');
+    const derived = buildAnimationReport(frames, actions, marker.seal, context.runId, dir, [], version);
+    check(snapshotHash(report) === snapshotHash(derived) && snapshotHash(marker.geometry) === snapshotHash({ rows: frames[0].screen.rows, cols: frames[0].screen.cols }),
+        'the retained report does not re-derive from its journals');
+    check(marker.paneId === frames[0].paneId, 'the recorded pane is not the first App\'s pane');
+    check(Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt), 'the seal postdates cleanup');
+    checkDaemon(proof, context, frames);
+    const counts = {};
+    for (const item of derived.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
+    check(snapshotHash(counts) === snapshotHash(binding.counts), 'the receipt counts differ from the re-derived stages');
+    checkRetainedDirectories(dir, frames, version);
+    checkImages(frames.length === derived.snapshots.length);
+    return { receipt, context, proof, report, observationBytes, frames, original };
+}
+
 /** Validity controls specific to the persistent tab, each re-checkable from the retained proof. */
 export function persistentControls({ context, proof, frames }) {
     const daemon = proof.persistentDaemon;
