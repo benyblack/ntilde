@@ -39,7 +39,7 @@ export async function collectFontSize({ config, fence, owner, module }) {
     } catch (error) { primary = error; }
     try { await owner(`${fontSizePrefix}-finish`, await fence.write(devqReset + '\x1b[?1049l')); }
     catch (error) {
-        if (primary) throw new AggregateError([primary, error], 'Cell-size collection and restoration failed.');
+        if (primary) throw new AggregateError([primary, error], 'Font-size collection and restoration failed.');
         throw error;
     }
     if (primary) throw primary;

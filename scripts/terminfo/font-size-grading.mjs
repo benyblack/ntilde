@@ -27,12 +27,12 @@ export function buildFontSizeReport(frames, run, runId, adapter, { replayModule 
     let cursor = 2;
     const cases = fontSizeContracts.map((contract, index) => {
         const recorded = run.cases[index];
-        check(recorded.caseId === contract.caseId && recorded.exchanges?.length === contract.exchanges.length, 'Cell-size case order differs.');
+        check(recorded.caseId === contract.caseId && recorded.exchanges?.length === contract.exchanges.length, 'Font-size case order differs.');
         const exchanges = contract.exchanges.map((item, position) => {
             const record = recorded.exchanges[position], frame = frames[cursor++];
             const report = validateCellSizeExchange(frame.report);
             check(record.id === item.id && record.request === item.request && same(record.report, report)
-                && report.barrier === frame.barrier, 'Cell-size request or paired exchange differs.');
+                && report.barrier === frame.barrier, 'Font-size request or paired exchange differs.');
             check(frame.sha256 === frames[1].sha256, 'A font-size query altered stored terminal state.');
             return { ...item, snapshot: frame.index, report, matches: fontSizeMatches(item, report.replies, geometry) };
         });

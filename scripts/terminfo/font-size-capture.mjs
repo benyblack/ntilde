@@ -13,7 +13,7 @@ export class FontSizeObserver {
     }
     get restored() { return this.cells.restored; }
     async handle(request, budget) {
-        if (this.busy || this.restored) throw new Error('Cell-size observation busy or complete.');
+        if (this.busy || this.restored) throw new Error('Font-size observation busy or complete.');
         const report = request.report === undefined ? null : validateCellSizeExchange(request.report);
         if ((request.kind === 'fnt-read') !== Boolean(report) || (report && report.barrier !== request.barrier)) throw new Error('Unbound font-size exchange.');
         this.busy = true;
