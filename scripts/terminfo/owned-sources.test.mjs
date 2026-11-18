@@ -319,7 +319,7 @@ test('frozen v75 fixed455 preserves frozen v74 and adds its five modules', () =>
 });
 
 test('live v76 fixed461 extends frozen455 only by six font modules', () => {
-    assert.deepEqual(ownedSourceFiles, capturedV76SourceFiles);
+    assert.deepEqual(Object.entries(ownedSourceFiles), Object.entries(capturedV76SourceFiles));
     assert.equal(Object.keys(capturedV76SourceFiles).length, 461);
     assert.deepEqual(Object.fromEntries(Object.entries(capturedV76SourceFiles).filter(([key]) => !key.startsWith('fontSize'))), capturedV75SourceFiles);
 });

@@ -36,6 +36,17 @@ public sealed class OscCellSizeGeometryTests
                 Dispatcher.UIThread.RunJobs();
                 Assert.Empty(replies); Assert.Equal(size, pane.TermView.FontSize); Assert.Equal(client, window.ClientSize);
             }
+            pane.TermView.FontSize = 16;
+            foreach (double zoom in new[] { 1.0, 1.5 })
+            {
+                UiScale.Apply(zoom); pane.TermView.MeasureCharSize(); Dispatcher.UIThread.RunJobs();
+                var client = window.ClientSize;
+                parser.Process("\x1b]7770;?\a\x1b]7777;?\x1b\\");
+                int points = zoom == 1 ? 12 : 18;
+                Assert.Equal(new[] { $"\x1b]7770;{points}\a", $"\x1b]7777;{points}\x1b\\" }, replies);
+                Assert.Equal(16, pane.TermView.FontSize); Assert.Equal(client, window.ClientSize);
+                replies.Clear();
+            }
         }
         finally { window.Close(); pane.TermView.Retire(); UiScale.Apply(1); }
     }

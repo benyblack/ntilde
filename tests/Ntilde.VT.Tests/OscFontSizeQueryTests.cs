@@ -41,15 +41,15 @@ public sealed class OscFontSizeQueryTests
         // A real host conversion:20DIP,140% UI zoom,150% backing scale.
         double effective = 1.4 * 1.5;
         double points = 20 * (effective / 1.5) * 72 / 96;
-        foreach (double value in new[] { points, Math.BitDecrement(21), Math.BitIncrement(21) })
+        double ulp = Math.BitIncrement(21) - 21;
+        foreach (double value in new[] { points, Math.BitDecrement(21), Math.BitIncrement(21), 21 + 8 * ulp, 21 - 8 * ulp })
         {
             parser.CellSizeReports = new(8, 18, 1.5, 12) { FontSizePoints = value };
             parser.Process("\x1b]7770;?\a\x1b]7777;?\a");
+            Assert.Equal(new[] { "\x1b]7770;21\a", "\x1b]7777;21\a" }, replies);
+            replies.Clear();
         }
-        Assert.Equal(6, replies.Count);
-        Assert.All(replies, reply => Assert.Contains(";21\a", reply));
-        replies.Clear();
-        foreach (double value in new[] { 21.000001, 20.999999, 21.5 })
+        foreach (double value in new[] { 21 + 9 * ulp, 21 - 9 * ulp, 21.000001, 20.999999, 21.5 })
         {
             parser.CellSizeReports = new(8, 18, 1.5, 12) { FontSizePoints = value };
             parser.Process("\x1b]7770;?\a\x1b]7777;?\a");

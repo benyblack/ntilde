@@ -99,6 +99,17 @@ public sealed class VtCapabilityContractTests
             ["font-size-7777"] = () => AssertOscCellSize("\x1b]7777;?\x1b\\", "\x1b]7777;12\x1b\\"),
         };
 
+    [Theory]
+    [InlineData("OSC:7770:?", "font-size-7770")]
+    [InlineData("OSC:7777:?", "font-size-7777")]
+    public void Partial_font_size_catalogue_entries_have_exact_executable_reply_contracts(string key, string contract)
+    {
+        var capability = Assert.Single(VtCapabilityCatalog.All, item => item.Key == key);
+        Assert.Equal(VtSupport.Partial, capability.Support);
+        Assert.Equal(contract, capability.ContractCase);
+        ContractCases[contract]();
+    }
+
     [Fact]
     public void Partial_osc5_special_color_catalogue_entry_has_an_executable_contract()
     {

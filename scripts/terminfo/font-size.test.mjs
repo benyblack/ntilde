@@ -66,7 +66,7 @@ test('the worker driver executes every exact request and restores after both suc
     const evidence = syntheticFontSizeEvidence(), calls = [], requests = [];
     let caseIndex = 0, exchangeIndex = 0;
     const owner = async kind => { calls.push(kind); return {}; };
-    const fence = { write: async () => da, exchange: async request => {
+    const fence = { write: async sequence => { calls.push(sequence); return da; }, exchange: async request => {
         const contract = evidence.run.cases[caseIndex], exchange = contract.exchanges[exchangeIndex++];
         assert.equal(request, exchange.request); requests.push(request);
         if (exchangeIndex === contract.exchanges.length) { caseIndex++; exchangeIndex = 0; }
@@ -80,9 +80,11 @@ test('the worker driver executes every exact request and restores after both suc
     assert.deepEqual(run, evidence.run);
     assert.deepEqual(requests, fontSizeContracts.flatMap(contract => contract.exchanges.map(item => item.request)));
     assert.equal(calls.at(-1), 'fnt-finish');
+    assert.ok(calls.at(-2).endsWith('\x1b[?1049l'));
     const broken = { ...fence, exchange: async () => { throw new Error('primary'); } };
     await assert.rejects(collectFontSize({ config: { runId: evidence.runId }, fence: broken, owner, module }), /primary/);
     assert.equal(calls.at(-1), 'fnt-finish');
+    assert.ok(calls.at(-2).endsWith('\x1b[?1049l'));
     await assert.rejects(collectFontSize({ config: { runId: evidence.runId }, fence: broken,
         owner: async kind => { if (kind === 'fnt-finish') throw new Error('cleanup'); }, module }), AggregateError);
 });
@@ -146,6 +148,7 @@ for (const kind of ['fnt-read', 'fnt-finish']) test('metadata failure retains pa
     const request = { kind, barrier: frame.barrier, ...(frame.report ? { report: frame.report } : {}) };
     await assert.rejects(observer.handle(request, () => 1000), error => error === primary);
     assert.equal(observer.frames.length, 0);
+    assert.equal(Boolean(observer.restored), false);
     assert.equal(observer.lastAttempt.stage, 'pane-metadata');
     assert.deepEqual(observer.lastAttempt.snapshot, frame);
     assert.equal(observer.lastAttempt.barrier, frame.barrier);
@@ -176,4 +179,20 @@ test('publication refuses changed raw stock bytes and a coherently rehashed fore
         write('cell-receipt.json', { runId: 'foreign-owned-run', rawSha256: hash(JSON.stringify(raw)) });
         assert.throws(project, /Unbound/);
     } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+for (const restored of [true, false]) test('aborted binding retains observed main-screen restoration=' + restored + ' without successful completion', async () => {
+    const e = syntheticFontSizeEvidence(), baseline = e.frames[0].screen;
+    const observer = new FontSizeObserver({});
+    const screen = structuredClone(baseline);
+    if (!restored) screen.cursorCol++;
+    observer.cells = { baseline, paneId: e.frames[0].paneId, bound: false,
+        capture: async () => screen, frames: [], handle: async () => assert.fail('cannot admit unbound finish') };
+    await assert.rejects(observer.handle({ kind: 'fnt-finish', barrier: da }, () => 1000), /Aborted font fixture/);
+    assert.equal(observer.lastAttempt.stage, 'aborted-restoration');
+    assert.equal(observer.lastAttempt.restoredMainScreen, restored);
+    assert.deepEqual(observer.lastAttempt.snapshot.screen, screen);
+    assert.equal(Boolean(observer.restored), false);
+    assert.equal(observer.frames.length, 0);
 });

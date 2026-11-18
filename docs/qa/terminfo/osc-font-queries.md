@@ -5,7 +5,7 @@ size; they do not establish rendered glyphs or runtime font mutation.
 
 | ID | Owner and exact form | Criterion and selected policy |
 |---|---|---|
-| `extensions.osc710-font-normal` | urxvt `OSC 710 ; font-description BEL/ST`; `;?` queries its normal font description, gated by its insecure option | Frozen probe has no termless callback and its terminal callback performs no operation, returning inconclusive. Ntilde leaves the X11/Xft font-selection service unavailable, including its query. No effect grade or inventory entry is invented. |
+| `extensions.osc710-font-normal` | urxvt `OSC 710 ; font-description BEL/ST`; `;?` queries its normal font description; when its insecure option is off it still replies with an empty payload (`OSC 710 ; BEL/ST`) | Frozen probe has no termless callback and its terminal callback performs no operation, returning inconclusive. Ntilde leaves the X11/Xft font-selection service unavailable, including its query. No effect grade or inventory entry is invented. |
 | `extensions.osc7770-font-size` | Mintty `OSC 7770 ; ? BEL/ST` → `OSC 7770 ; integer-size BEL/ST` | Query-only subset, integer typographic points. No font mutation. |
 | `extensions.osc7777-font-window-size` | Mintty `OSC 7777 ; ? BEL/ST` → `OSC 7777 ; integer-size BEL/ST` | Query-only subset. Its reply contains the current font size, **not window dimensions**. The owner's mutation forms adapt the window to preserve character geometry where possible; that behavior remains unavailable. |
 
@@ -18,7 +18,7 @@ its negative pixel-size configuration is a different applicability case. Ntilde
 implements positive point-size queries only. The request terminator is mirrored.
 
 The direct App supplies one atomic host snapshot. Font size in typographic points
-is `view.FontSize × effectiveRenderScaling / backingScale × 72/96`, distinguishing
+is `view.FontSize × (effectiveRenderScaling / backingScale) × 72 / 96`, distinguishing
 Avalonia DIPs, interface zoom and physical pixel density. VT does no UI access.
 Missing, invalid, meaningfully fractional or out-of-range (1–512 points) values
 stay silent. Only binary64 conversion roundoff within eight ULPs at the nearest

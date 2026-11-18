@@ -1,4 +1,4 @@
-import { OwnedCellObserver, agentRequest, observerEndpoint } from './agent-observer.mjs';
+import { OwnedCellObserver, agentRequest, observerEndpoint, snapshotHash } from './agent-observer.mjs';
 import { fontSizeGeometry, fontSizePrefix } from './font-size-contracts.mjs';
 import { validateCellSizeExchange } from './cell-size-frame.mjs';
 
@@ -11,7 +11,21 @@ export class FontSizeObserver {
         this.frames = [];
         this.busy = false;
     }
-    get restored() { return this.cells.restored; }
+    get restored() { return Boolean(this.cells.restored && this.frames.at(-1)?.kind === 'fnt-finish'); }
+    async observeCells(request, budget) {
+        if (request.kind !== 'fnt-finish' || !this.cells.baseline || this.cells.bound)
+            return this.cells.handle(request.kind, budget, request.barrier ?? null);
+        if (typeof request.barrier !== 'string' || request.barrier.length > 128 || !/^\x1b\[\?[\d;]+c$/.test(request.barrier))
+            throw new Error('Missing aborted font restoration ordering barrier.');
+        const screen = await this.cells.capture(budget);
+        this.lastAttempt.snapshot = { kind: request.kind, paneId: this.cells.paneId,
+            barrier: request.barrier, screen, sha256: snapshotHash(screen) };
+        this.lastAttempt.stage = 'aborted-restoration';
+        this.lastAttempt.restoredMainScreen = snapshotHash(screen) === snapshotHash(this.cells.baseline);
+        throw new Error(this.lastAttempt.restoredMainScreen
+            ? 'Aborted font fixture main screen restored; nonce binding never completed.'
+            : 'Aborted font fixture main-screen restoration failed.');
+    }
     async handle(request, budget) {
         if (this.busy || this.restored) throw new Error('Font-size observation busy or complete.');
         this.lastAttempt = null;
@@ -21,7 +35,7 @@ export class FontSizeObserver {
         this.lastAttempt = { schemaVersion: 1, kind: request.kind, barrier: request.barrier ?? null,
             ...(report ? { report } : {}), stage: 'cell-snapshot' };
         try {
-            const result = await this.cells.handle(request.kind, budget, request.barrier ?? null);
+            const result = await this.observeCells(request, budget);
             this.lastAttempt.snapshot = this.cells.frames.at(-1);
             this.lastAttempt.stage = 'pane-metadata';
             const rpc = this.options.rpc ?? agentRequest;
