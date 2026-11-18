@@ -4,11 +4,11 @@ import { join } from 'node:path';
 import { rawInputCapture } from './input-bytes.mjs';
 import { imageModeQueries, imageRestore, checkImages } from './static-images.mjs';
 import { write } from './static-images-collector.mjs';
-import { animationPlan, animationPriorCap } from './kitty-animation.mjs';
-import { animationCases } from './kitty-animation-cases.mjs';
+import { animationSuites, animationPriorCap } from './kitty-animation.mjs';
+import { animationCasesByVersion, currentAnimationVersion } from './kitty-animation-cases.mjs';
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const stageOf = entry => animationCases.find(item => item.id === entry.caseId)?.stages.find(item => item.id === entry.stageId);
+const stageOf = (entry, version) => animationCasesByVersion[version].find(item => item.id === entry.caseId)?.stages.find(item => item.id === entry.stageId);
 
 /**
  * How long to wait before admitting a read so its capture lands where the stage plans it. A hold waits out its
@@ -25,7 +25,8 @@ export function animationWait(stage, { now, previousEnd, startAdmitted, lastRead
 }
 
 /** One exclusive byte reader after the static-image reader is sealed; no retries or native input. */
-export async function collectAnimation({ config, owner, fence, detachFence = false, input = process.stdin, output = process.stdout, sleep = delay, now = Date.now }) {
+export async function collectAnimation({ config, owner, fence, detachFence = false, input = process.stdin, output = process.stdout, sleep = delay, now = Date.now, version = currentAnimationVersion }) {
+    const { plan } = animationSuites[version];
     let initial;
     try { initial = await owner('kan-start'); }
     catch (error) {
@@ -46,11 +47,17 @@ export async function collectAnimation({ config, owner, fence, detachFence = fal
     let attempts = 0, previousEnd = now(), lastReadMs = 2500;
     const startAdmitted = new Map();
     try {
-        await animationPlan.reduce((previous, entry) => previous.then(async () => {
+        await plan.reduce((previous, entry) => previous.then(async () => {
             const extra = { ...(entry.caseId ? { caseId: entry.caseId } : {}), ...(entry.stageId ? { stageId: entry.stageId } : {}) };
-            const stage = entry.kind === 'read' ? stageOf(entry) : null;
+            const stage = entry.kind === 'read' ? stageOf(entry, version) : null;
             const wait = animationWait(stage, { now: now(), previousEnd, startAdmitted: startAdmitted.get(entry.caseId) ?? null, lastReadMs });
             if (wait > 0) await sleep(wait);
+            // A relaunch stage: the parent terminates the App (SIGTERM) and starts it again on the same persistent session before the stage's command is admitted.
+            if (stage?.relaunch) {
+                const begin = stage.relaunchAtMs === undefined ? undefined : startAdmitted.get(entry.caseId);
+                if (begin !== undefined) await sleep(Math.max(0, begin + stage.relaunchAtMs - now()));
+                await owner('kan-relaunch', null, extra);
+            }
             const began = now();
             const action = await owner('kan-admit', null, extra);
             checkImages(typeof action.commandHex === 'string' && /^[a-f\d]*$/.test(action.commandHex)

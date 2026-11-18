@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemons, environmentHas, isDaemonCommand, readPersistentDaemon, terminateRecordedDaemon } from './ownership.mjs';
+import { createServer } from 'node:net';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { admitRelaunch, assertPersistentDaemon, assertProcessOwnership, discoverPersistentDaemons, environmentHas, isDaemonCommand, readPersistentDaemon, requestOwner, terminateRecordedDaemon } from './ownership.mjs';
+import { animationSuites } from './kitty-animation.mjs';
 
 const runId = 'a'.repeat(32), appData = '/private/ntilde-qa/nt-abc123/appdata', executable = '/sidecar/Ntilde';
 const daemonFacts = () => ({
@@ -131,4 +136,58 @@ test('a daemon that never published its descriptor is still found by its environ
 test('a failed process scan is a failed cleanup, never an empty result', async () => {
     assert.throws(() => discoverPersistentDaemons(context, { run: () => { throw new Error('ps failed'); }, uid: 501 }), /ps failed/);
     await assert.rejects(terminateRecordedDaemon(undefined, context, { stop: () => {}, discover: () => { throw new Error('ps failed'); } }), /ps failed/);
+});
+
+test('after a relaunch the daemon is compared with the App that first started it, not the new one', () => {
+    const facts = { record: () => ({ pid: 300, ppid: 1, uid: 501, tty: '??', executable }), birth: pid => (pid === 300 ? 'Tue Nov 17 16:07:30 2026' : 'Tue Nov 17 16:09:00 2026'),
+        canonical: path => path, run: () => `${executable} mux serve x NTILDE_APPDATA_ROOT=${appData}\n`, status: () => ({ isFile: () => true, isSymbolicLink: () => false }),
+        read: () => JSON.stringify({ pid: 300, processName: 'Ntilde', endpoint: appData + '/mux/sock' }) };
+    const relaunched = readPersistentDaemon(300, 101, appData, 1000, facts);
+    assert.throws(() => assertPersistentDaemon({ app: { uid: 501 }, worker: { ppid: 300 }, daemon: { ...relaunched, text: `${executable} mux serve NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId}` }, executable, uid: 501, runId, appData }), /predates/);
+    const first = readPersistentDaemon(300, 101, appData, 1000, { ...facts, firstAppBirth: 'Tue Nov 17 16:07:29 2026' });
+    assert.doesNotThrow(() => assertPersistentDaemon({ app: { uid: 501 }, worker: { ppid: 300 }, daemon: { ...first, text: `${executable} mux serve NTILDE_APPDATA_ROOT=${appData} TERMINFO_RUN_ID=${runId}` }, executable, uid: 501, runId, appData }));
+});
+
+test('only a relaunch request may take longer than five seconds to be answered', { skip: process.platform === 'win32' ? 'Requires Unix sockets' : false }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ntilde-owner-relaunch-'));
+    // A stream may deliver a request in several chunks: answer only once its first line is complete.
+    const server = createServer(socket => {
+        let buffer = '';
+        socket.on('data', chunk => {
+            buffer += chunk;
+            if (!buffer.includes('\n')) return;
+            socket.removeAllListeners('data');
+            const { kind } = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
+            setTimeout(() => socket.end(JSON.stringify({ ok: true, kind }) + '\n'), 5400);
+        });
+    });
+    try {
+        // Listening is part of the guarded setup: a bind failure rejects here and still removes the directory.
+        await new Promise((resolve, reject) => { server.once('error', reject); server.listen(join(dir, 's.sock'), resolve); });
+        const config = { socket: join(dir, 's.sock'), token: 't', runId };
+        const slow = await requestOwner(config, 'kan-relaunch');
+        assert.equal(slow.kind, 'kan-relaunch');
+        await assert.rejects(requestOwner(config, 'kan-read'), /did not respond/);
+    } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a relaunch is admitted only between stages, for the next declared relaunch stage, once', () => {
+    const suite = animationSuites[3], relaunchEntries = suite.plan.filter(suite.relaunches), [first, second] = relaunchEntries;
+    const position = entry => suite.plan.indexOf(entry);
+    const run = (overrides = {}, observer = {}) => ({ relaunches: [], animationState: { observer: { suite, phase: 'admit', busy: false, failed: false, next: position(first), ...observer } }, ...overrides });
+    const request = entry => ({ kind: 'kan-relaunch', caseId: entry.caseId, stageId: entry.stageId });
+    assert.doesNotThrow(() => admitRelaunch(run(), request(first), suite));
+    // The second relaunch follows the first (one admitted already) and the observer then stands on the second stage.
+    assert.doesNotThrow(() => admitRelaunch(run({ relaunches: [{}] }, { next: position(second) }), request(second), suite));
+    // Before the setup stages ran (the observer has not reached the relaunch entry) or while it is capturing, starting, sealing, busy or failed.
+    assert.throws(() => admitRelaunch(run({}, { next: 0 }), request(first), suite), /next relaunch stage/);
+    for (const observer of [{ phase: 'capture' }, { phase: 'start' }, { phase: 'seal' }, { busy: true }, { failed: true }]) assert.throws(() => admitRelaunch(run({}, observer), request(first), suite), /idle between stages/, JSON.stringify(observer));
+    assert.throws(() => admitRelaunch({ relaunches: [] }, request(first), suite), /idle between stages/, 'no observer yet');
+    // A repeated request, a request for a later stage than the observer's, a mislabeled one, a stopping run and a relaunch already in progress.
+    assert.throws(() => admitRelaunch(run({ relaunches: [{}] }), request(first), suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run(), request(second), suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run(), { ...request(first), stageId: 'blank' }, suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run({ relaunches: relaunchEntries.map(() => ({})) }, { next: position(first) }), request(first), suite), /next relaunch stage/);
+    assert.throws(() => admitRelaunch(run({ stopping: true }), request(first), suite), /stopping/);
+    assert.throws(() => admitRelaunch(run({ outgoing: {} }), request(first), suite), /in progress/);
 });

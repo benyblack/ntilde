@@ -200,3 +200,20 @@ test('without a start, a hold must outlast the root gap since the frame was buil
     assert.match(evaluateAnimationTiming(hold, { capture: { start: 56_000, end: 57_000 } }).reason, /outlast the root hold/);
     assert.deepEqual(evaluateAnimationTiming(stageOf('kitty.animation.playback', 'blank'), {}), { valid: true, reason: null });
 });
+
+test('after a relaunch a read must differ from what a playhead the App restarted or resumed would show', () => {
+    const original = { earliest: 0, latest: 200 }, window = (start, end) => ({ start, end });
+    const timeline = { clock: 'running', appearance: 'timeline' };
+    // The original start gives the second frame at 9.4 s, and so would a playhead restarted anywhere in 4-9 s: the read cannot tell a restore from a restart.
+    assert.match(evaluateAnimationTiming(timeline, { start: original, relaunch: { earliest: 4000, latest: 9000 }, capture: window(9400, 9600) }).reason, /restarted by the relaunch could show the second frame/);
+    // Back by 5.7 s, a restart shows the root at 5.8-6.2 s, the restored playhead the second frame.
+    assert.deepEqual(evaluateAnimationTiming(timeline, { start: original, relaunch: { earliest: 4000, latest: 5700 }, capture: window(5800, 6200) }), { valid: true, reason: null });
+    // A stopped animation stays on its second frame past a hold; a playhead resumed from that frame when the App came back would have moved on at 14.7 s but shows it again a cycle later.
+    const hold = { clock: 'frozen', appearance: 'second', waitMs: 6000 }, stop = { earliest: 6200, latest: 6300 }, relaunch = { earliest: 6400, latest: 8200 };
+    assert.deepEqual(evaluateAnimationTiming(hold, { start: original, stop, relaunch, capture: window(14_700, 14_860) }), { valid: true, reason: null });
+    assert.match(evaluateAnimationTiming(hold, { start: original, stop, relaunch, capture: window(26_000, 26_200) }).reason, /resumed from the frozen frame by the relaunch could still show second/);
+    // The first read after the relaunch of a stopped animation must rule out a playhead restarted from the root: a prompt capture shows the root for it, a delayed one could show the second frame.
+    const reattach = { clock: 'frozen', appearance: 'second', relaunch: true };
+    assert.deepEqual(evaluateAnimationTiming(reattach, { start: original, stop, relaunch, capture: window(7600, 7700) }), { valid: true, reason: null });
+    assert.match(evaluateAnimationTiming(reattach, { start: original, stop, relaunch, capture: window(13_000, 13_100) }).reason, /restarted from the root by the relaunch could show the second frame/);
+});

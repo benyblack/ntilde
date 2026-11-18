@@ -38,8 +38,8 @@ export const persistentEffectContract = Object.freeze({
 });
 
 /** The retained carrier input and pixel directories hold exactly the files the journal names, as real directories. */
-function checkRetainedDirectories(dir, frames) {
-    for (const [directory, expected] of [['animation-inputs', animationInputs(version).map(value => value.file.split('/')[1])],
+export function checkRetainedDirectories(dir, frames, suiteVersion = version) {
+    for (const [directory, expected] of [['animation-inputs', animationInputs(suiteVersion).map(value => value.file.split('/')[1])],
         ['animation-pixels', frames.flatMap(frame => frame.pixels.map(pixel => pixel.file.split('/')[1]))]]) {
         const stat = lstatSync(join(dir, directory)); checkImages(stat.isDirectory() && !stat.isSymbolicLink());
         const members = readdirSync(join(dir, directory)); checkImages(members.length === expected.length && members.every(file => expected.includes(file)));
@@ -50,7 +50,7 @@ function checkRetainedDirectories(dir, frames) {
  * The measured sources are the launcher's captured set: the retained manifest is the one the context names (by digest), under the context's own policy,
  * covers exactly the policy's inventory, and each retained source is the file that manifest and the context both digest.
  */
-function checkSources(dir, context) {
+export function checkSources(dir, context) {
     const inventory = retainedInventory(dir, context), manifestBytes = read(dir, 'source-snapshot.json'), manifest = JSON.parse(manifestBytes);
     check(sha(manifestBytes) === context.sourceSnapshotManifestSha256 && manifest.schemaVersion === 1 && manifest.policy === context.sourceSnapshotPolicy,
         'the retained source manifest is not the one the run names');
@@ -62,7 +62,7 @@ function checkSources(dir, context) {
 }
 
 /** The recorded multiplexer daemon is the executable serving the run's private root, started after the App, and the worker's parent. */
-function checkDaemon(proof, context, frames) {
+export function checkDaemon(proof, context, frames) {
     const daemon = proof.persistentDaemon, original = proof.proofs?.[0];
     check(daemon?.identity && daemon.descriptor && daemon.appData, 'the ownership proof records no multiplexer daemon');
     check(daemon.command === `${context.executable} mux serve`, 'the daemon is not the launched executable serving');

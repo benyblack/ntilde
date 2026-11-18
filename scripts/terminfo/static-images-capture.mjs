@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest } from './agent-observer.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
-import { checkImages, imageBoundScreen, staticImageSuite, validateImageOwnership, validateImageSeal,
+import { checkImages, imageBoundScreen, staticImageSuite, validateImageOwnership, validateImageSeal, validateEpochChange,
     imageRawReplies, validateImageCapture, stableImageContext, pristineImageBaseline } from './static-images.mjs';
 
 /**
@@ -72,13 +72,27 @@ export class OwnedStaticImageObserver {
         checkImages(request.kind === this.suite.prefix + kind && request.caseId === entry.caseId && request.stageId === entry.stageId);
         return entry;
     }
+    /**
+     * The ownership the current App process is held to. A relaunch stage brings a new App process under the same persistent session (and must): its observers
+     * are then bound to that process and forget the old pane (the new pane's id is learned at the first capture).
+     */
+    adoptOwnership(ownership, entry) {
+        const changed = ownership?.app?.pid !== this.epoch.app.pid;
+        checkImages(changed === (this.suite.relaunches?.(entry) === true)); // a declared relaunch must bring a new App process, and nothing else may
+        if (changed) {
+            validateEpochChange(ownership, this.epoch);
+            this.epoch = ownership;
+            for (const observer of [this.before, this.after]) Object.assign(observer, { ownerPid: ownership.app.pid, paneId: undefined });
+        }
+        validateImageOwnership(ownership, this.epoch, this.baseline);
+    }
     admit(ownership) {
-        validateImageOwnership(ownership, this.frames[0].ownership, this.baseline);
+        this.adoptOwnership(ownership, this.suite.plan[this.next]);
         const action = { ...this.action(), ownership: structuredClone(ownership) }; this.actions.push(action); this.phase = 'capture';
         return structuredClone(action);
     }
     sealCapture(request, ownership) {
-        validateImageOwnership(ownership, this.frames[0].ownership, this.baseline);
+        validateImageOwnership(ownership, this.epoch, this.baseline);
         this.seal = { ...structuredClone(request.captureStatus), ownership: structuredClone(ownership) };
         validateImageSeal(this.frames, this.seal, this.suite, this.output);
         this.phase = 'sealed';
@@ -119,19 +133,19 @@ export class OwnedStaticImageObserver {
     async handle(request, budget, ownership) {
         const entry = this.validateRequest(request);
         this.busy = true; this.lastAttempt = { kind: request.kind, caseId: request.caseId ?? null, stageId: request.stageId ?? null,
-            capture: structuredClone(request.capture ?? null) };
+            capture: structuredClone(request.capture ?? null), ownership: structuredClone(ownership ?? null) };
         try {
             if (this.phase === 'admit') return this.admit(ownership);
             if (this.phase === 'seal') return this.sealCapture(request, ownership);
             if (this.phase !== 'start') this.acceptRaw(request, entry);
             const pair = await this.capture(budget); this.lastAttempt.pair = structuredClone(pair);
-            validateImageOwnership(ownership, this.frames[0]?.ownership ?? ownership, pair.screen);
+            validateImageOwnership(ownership, this.epoch ?? ownership, pair.screen);
             this.acceptPair(pair, entry);
             this.frames.push({ index: this.frames.length, kind: request.kind, paneId: this.paneId, ...pair,
                 caseId: request.caseId ?? null, stageId: request.stageId ?? null,
                 ownership: structuredClone(ownership),
                 actionIndex: this.phase === 'start' ? null : this.actions.at(-1).index, capture: structuredClone(request.capture ?? null) });
-            if (this.phase === 'start') this.phase = 'admit';
+            if (this.phase === 'start') { this.epoch = ownership; this.phase = 'admit'; }
             else { this.next++; this.phase = this.next === this.suite.plan.length ? 'seal' : 'admit'; }
             return { paneId: this.paneId, screen: pair.screen, priorChallenges: this.priorChallenges };
         } catch (error) { this.failed = true; this.lastAttempt.error = String(error.message ?? error); throw error; }
