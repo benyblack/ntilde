@@ -133,7 +133,7 @@ test('a downgraded, stripped, unchained or foreign restore run is refused', () =
     });
     refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches.pop(); }), /relaunches/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches[1].from += 1; }), /ordered chain/);
-    refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches[2].to = proof.proofs[0].relaunches[0].to; }), /ordered chain|did not observe|App process/);
+    refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches[2].to = proof.proofs[0].relaunches[0].to; }), /ordered chain|did not observe|App process|not dated inside the run/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.proofs[0].relaunches; }), /relaunches/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.persistentDaemon; }), /no multiplexer daemon/);
     refuses(context => rebind(context, 'context.json', value => { value.collectionScope = { ...value.collectionScope, suiteVersion: 2 }; }), /declare the persistent restore scope/);

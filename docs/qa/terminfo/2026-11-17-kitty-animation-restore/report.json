@@ -3,7 +3,7 @@
   "suiteId": "ntilde-owned-kitty-animation-restore-qualification-v1",
   "carrierSuiteId": "ntilde-owned-kitty-animation-restore-v1",
   "contractsVersion": 1,
-  "runId": "f8ee33cbd3592763820728adae67934f",
+  "runId": "9246dd3ea80834ac469fae4cc5fd85f3",
   "adapter": {
     "id": "ntilde-owned-kitty-animation-persistent-adapter-v1",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
@@ -51,7 +51,7 @@
       "effectContract": {
         "id": "ntilde-kitty-animation-persistent-restore-effect-v1",
         "version": 1,
-        "statement": "In a persistent tab, after the App is quit and started again on the same persistent session (the daemon and the shell keep running), the pane shows the animation state that was in effect, read by paired offscreen captures against the App's wall clock: a running animation shows the frame its original start time gives (the root, then the third frame at about 12.5 s, the root again at about 17.5 s), not one restarted from the moment the App came back; an animation stopped on its second frame stays on it past a hold that would have advanced it; and edited frames survive: the root edited by a=f,r=1 still shows its edit, and a half-transparent PNG frame built over it afterwards shows the protocol's blend of the edited pixels. Every write is acknowledged OK and every cleared target is blank again.",
+        "statement": "In a persistent tab, after the App is terminated with SIGTERM and started again on the same persistent session (the daemon and the shell keep running), the pane shows the animation state that was in effect, read by paired offscreen captures against the App's wall clock: a running animation shows the frame its original start time gives (the root, then the third frame at about 12.5 s, the root again at about 17.5 s), not one restarted from the moment the App came back; an animation stopped on its second frame stays on it past a hold that would have advanced it; and edited frames survive: the root edited by a=f,r=1 still shows its edit, and a half-transparent PNG frame built over it afterwards shows the protocol's blend of the edited pixels. Every write is acknowledged OK and every cleared target is blank again.",
         "primary": "https://sw.kovidgoyal.net/kitty/graphics-protocol/#animation",
         "carrierCases": [
           "kitty.animation.restore-playing",
@@ -67,7 +67,7 @@
           {
             "name": "carrier-policy",
             "held": true,
-            "detail": "the retained report is the paired raw render policy v2 animation report of this run"
+            "detail": "the retained report is the owned-kitty-animation-paired-raw-render-restore-v1 animation report of this run"
           },
           {
             "name": "raw-reader-healthy",
@@ -127,7 +127,7 @@
           {
             "name": "three-relaunches-one-chain",
             "held": true,
-            "detail": "the App was quit and started again three times, each new process starting from the previous one"
+            "detail": "the App was terminated with SIGTERM and started again three times, each new process starting from the previous one"
           },
           {
             "name": "same-session-reattached",
@@ -198,8 +198,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794945892785,
-                    "end": 1794945892949
+                    "start": 1795001519997,
+                    "end": 1795001520065
                   }
                 }
               },
@@ -255,12 +255,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945893047,
-                    "latest": 1794945893106
+                    "earliest": 1795001520083,
+                    "latest": 1795001520112
                   },
                   "capture": {
-                    "start": 1794945893154,
-                    "end": 1794945893514
+                    "start": 1795001520116,
+                    "end": 1795001520185
                   }
                 }
               },
@@ -324,16 +324,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945893047,
-                    "latest": 1794945893106
+                    "earliest": 1795001520083,
+                    "latest": 1795001520112
                   },
                   "start": {
-                    "earliest": 1794945893589,
-                    "latest": 1794945893637
+                    "earliest": 1795001520201,
+                    "latest": 1795001520215
                   },
                   "capture": {
-                    "start": 1794945893646,
-                    "end": 1794945894025
+                    "start": 1795001520219,
+                    "end": 1795001520282
                   }
                 }
               },
@@ -395,20 +395,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945893047,
-                    "latest": 1794945893106
+                    "earliest": 1795001520083,
+                    "latest": 1795001520112
                   },
                   "start": {
-                    "earliest": 1794945893589,
-                    "latest": 1794945893637
+                    "earliest": 1795001520201,
+                    "latest": 1795001520215
                   },
                   "relaunch": {
-                    "earliest": 1794945897634,
-                    "latest": 1794945899333
+                    "earliest": 1795001524229,
+                    "latest": 1795001525233
                   },
                   "capture": {
-                    "start": 1794945899452,
-                    "end": 1794945899867
+                    "start": 1795001525413,
+                    "end": 1795001525508
                   }
                 }
               },
@@ -470,20 +470,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945893047,
-                    "latest": 1794945893106
+                    "earliest": 1795001520083,
+                    "latest": 1795001520112
                   },
                   "start": {
-                    "earliest": 1794945893589,
-                    "latest": 1794945893637
+                    "earliest": 1795001520201,
+                    "latest": 1795001520215
                   },
                   "relaunch": {
-                    "earliest": 1794945897634,
-                    "latest": 1794945899333
+                    "earliest": 1795001524229,
+                    "latest": 1795001525233
                   },
                   "capture": {
-                    "start": 1794945905805,
-                    "end": 1794945905924
+                    "start": 1795001532580,
+                    "end": 1795001532650
                   }
                 }
               },
@@ -545,20 +545,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945893047,
-                    "latest": 1794945893106
+                    "earliest": 1795001520083,
+                    "latest": 1795001520112
                   },
                   "start": {
-                    "earliest": 1794945893589,
-                    "latest": 1794945893637
+                    "earliest": 1795001520201,
+                    "latest": 1795001520215
                   },
                   "relaunch": {
-                    "earliest": 1794945897634,
-                    "latest": 1794945899333
+                    "earliest": 1795001524229,
+                    "latest": 1795001525233
                   },
                   "capture": {
-                    "start": 1794945911049,
-                    "end": 1794945911208
+                    "start": 1795001537676,
+                    "end": 1795001537744
                   }
                 }
               },
@@ -620,20 +620,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945893047,
-                    "latest": 1794945893106
+                    "earliest": 1795001520083,
+                    "latest": 1795001520112
                   },
                   "start": {
-                    "earliest": 1794945893589,
-                    "latest": 1794945893637
+                    "earliest": 1795001520201,
+                    "latest": 1795001520215
                   },
                   "relaunch": {
-                    "earliest": 1794945897634,
-                    "latest": 1794945899333
+                    "earliest": 1795001524229,
+                    "latest": 1795001525233
                   },
                   "capture": {
-                    "start": 1794945911490,
-                    "end": 1794945911661
+                    "start": 1795001537783,
+                    "end": 1795001537846
                   }
                 }
               },
@@ -683,8 +683,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794945912322,
-                    "end": 1794945912707
+                    "start": 1795001537972,
+                    "end": 1795001538030
                   }
                 }
               },
@@ -740,12 +740,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945912878,
-                    "latest": 1794945912918
+                    "earliest": 1795001538046,
+                    "latest": 1795001538064
                   },
                   "capture": {
-                    "start": 1794945912943,
-                    "end": 1794945913171
+                    "start": 1795001538067,
+                    "end": 1795001538124
                   }
                 }
               },
@@ -809,16 +809,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945912878,
-                    "latest": 1794945912918
+                    "earliest": 1795001538046,
+                    "latest": 1795001538064
                   },
                   "start": {
-                    "earliest": 1794945913220,
-                    "latest": 1794945913246
+                    "earliest": 1795001538138,
+                    "latest": 1795001538151
                   },
                   "capture": {
-                    "start": 1794945913261,
-                    "end": 1794945913535
+                    "start": 1795001538154,
+                    "end": 1795001538211
                   }
                 }
               },
@@ -880,16 +880,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945912878,
-                    "latest": 1794945912918
+                    "earliest": 1795001538046,
+                    "latest": 1795001538064
                   },
                   "start": {
-                    "earliest": 1794945913220,
-                    "latest": 1794945913246
+                    "earliest": 1795001538138,
+                    "latest": 1795001538151
                   },
                   "capture": {
-                    "start": 1794945919264,
-                    "end": 1794945919383
+                    "start": 1795001544337,
+                    "end": 1795001544400
                   }
                 }
               },
@@ -953,20 +953,20 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945912878,
-                    "latest": 1794945912918
+                    "earliest": 1795001538046,
+                    "latest": 1795001538064
                   },
                   "start": {
-                    "earliest": 1794945913220,
-                    "latest": 1794945913246
+                    "earliest": 1795001538138,
+                    "latest": 1795001538151
                   },
                   "stop": {
-                    "earliest": 1794945919414,
-                    "latest": 1794945919445
+                    "earliest": 1795001544417,
+                    "latest": 1795001544431
                   },
                   "capture": {
-                    "start": 1794945919451,
-                    "end": 1794945919581
+                    "start": 1795001544433,
+                    "end": 1795001544490
                   }
                 }
               },
@@ -1028,24 +1028,24 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945912878,
-                    "latest": 1794945912918
+                    "earliest": 1795001538046,
+                    "latest": 1795001538064
                   },
                   "start": {
-                    "earliest": 1794945913220,
-                    "latest": 1794945913246
+                    "earliest": 1795001538138,
+                    "latest": 1795001538151
                   },
                   "stop": {
-                    "earliest": 1794945919414,
-                    "latest": 1794945919445
+                    "earliest": 1795001544417,
+                    "latest": 1795001544431
                   },
                   "relaunch": {
-                    "earliest": 1794945919697,
-                    "latest": 1794945921255
+                    "earliest": 1795001544515,
+                    "latest": 1795001545542
                   },
                   "capture": {
-                    "start": 1794945921466,
-                    "end": 1794945921814
+                    "start": 1795001545688,
+                    "end": 1795001545778
                   }
                 }
               },
@@ -1107,24 +1107,24 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945912878,
-                    "latest": 1794945912918
+                    "earliest": 1795001538046,
+                    "latest": 1795001538064
                   },
                   "start": {
-                    "earliest": 1794945913220,
-                    "latest": 1794945913246
+                    "earliest": 1795001538138,
+                    "latest": 1795001538151
                   },
                   "stop": {
-                    "earliest": 1794945919414,
-                    "latest": 1794945919445
+                    "earliest": 1795001544417,
+                    "latest": 1795001544431
                   },
                   "relaunch": {
-                    "earliest": 1794945919697,
-                    "latest": 1794945921255
+                    "earliest": 1795001544515,
+                    "latest": 1795001545542
                   },
                   "capture": {
-                    "start": 1794945927948,
-                    "end": 1794945928101
+                    "start": 1795001551832,
+                    "end": 1795001551900
                   }
                 }
               },
@@ -1186,24 +1186,24 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945912878,
-                    "latest": 1794945912918
+                    "earliest": 1795001538046,
+                    "latest": 1795001538064
                   },
                   "start": {
-                    "earliest": 1794945913220,
-                    "latest": 1794945913246
+                    "earliest": 1795001538138,
+                    "latest": 1795001538151
                   },
                   "stop": {
-                    "earliest": 1794945919414,
-                    "latest": 1794945919445
+                    "earliest": 1795001544417,
+                    "latest": 1795001544431
                   },
                   "relaunch": {
-                    "earliest": 1794945919697,
-                    "latest": 1794945921255
+                    "earliest": 1795001544515,
+                    "latest": 1795001545542
                   },
                   "capture": {
-                    "start": 1794945928448,
-                    "end": 1794945928628
+                    "start": 1795001551938,
+                    "end": 1795001551998
                   }
                 }
               },
@@ -1253,8 +1253,8 @@
                 "reason": null,
                 "facts": {
                   "capture": {
-                    "start": 1794945929462,
-                    "end": 1794945929770
+                    "start": 1795001552124,
+                    "end": 1795001552182
                   }
                 }
               },
@@ -1308,12 +1308,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945929924,
-                    "latest": 1794945930025
+                    "earliest": 1795001552198,
+                    "latest": 1795001552216
                   },
                   "capture": {
-                    "start": 1794945930115,
-                    "end": 1794945930326
+                    "start": 1795001552220,
+                    "end": 1795001552279
                   }
                 }
               },
@@ -1377,12 +1377,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945929924,
-                    "latest": 1794945930025
+                    "earliest": 1795001552198,
+                    "latest": 1795001552216
                   },
                   "capture": {
-                    "start": 1794945930450,
-                    "end": 1794945930584
+                    "start": 1795001552311,
+                    "end": 1795001552370
                   }
                 }
               },
@@ -1447,12 +1447,12 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945929924,
-                    "latest": 1794945930025
+                    "earliest": 1795001552198,
+                    "latest": 1795001552216
                   },
                   "capture": {
-                    "start": 1794945930945,
-                    "end": 1794945931096
+                    "start": 1795001552402,
+                    "end": 1795001552460
                   }
                 }
               },
@@ -1514,16 +1514,89 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945929924,
-                    "latest": 1794945930025
+                    "earliest": 1795001552198,
+                    "latest": 1795001552216
                   },
                   "relaunch": {
-                    "earliest": 1794945931348,
-                    "latest": 1794945933126
+                    "earliest": 1795001552486,
+                    "latest": 1795001553448
                   },
                   "capture": {
-                    "start": 1794945933293,
-                    "end": 1794945933730
+                    "start": 1795001553617,
+                    "end": 1795001553715
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.restore-frames.again",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the overRoot frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.restore-frames.blank",
+                  "snapshot": 19,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.restore-frames.reattach",
+                  "snapshot": 23,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "overRoot",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795001552198,
+                    "latest": 1795001552216
+                  },
+                  "relaunch": {
+                    "earliest": 1795001552486,
+                    "latest": 1795001553448
+                  },
+                  "capture": {
+                    "start": 1795001553763,
+                    "end": 1795001553826
                   }
                 }
               },
@@ -1571,8 +1644,8 @@
                   "passed": true
                 },
                 {
-                  "featureId": "kitty.animation.restore-frames.reattach",
-                  "snapshot": 23,
+                  "featureId": "kitty.animation.restore-frames.again",
+                  "snapshot": 24,
                   "result": "passed",
                   "passed": true
                 }
@@ -1588,16 +1661,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945929924,
-                    "latest": 1794945930025
+                    "earliest": 1795001552198,
+                    "latest": 1795001552216
                   },
                   "relaunch": {
-                    "earliest": 1794945931348,
-                    "latest": 1794945933126
+                    "earliest": 1795001552486,
+                    "latest": 1795001553448
                   },
                   "capture": {
-                    "start": 1794945933951,
-                    "end": 1794945934138
+                    "start": 1795001553865,
+                    "end": 1795001553927
                   }
                 }
               },
@@ -1643,7 +1716,7 @@
                 },
                 {
                   "featureId": "kitty.animation.restore-frames.compose",
-                  "snapshot": 24,
+                  "snapshot": 25,
                   "result": "passed",
                   "passed": true
                 }
@@ -1659,16 +1732,16 @@
                 "reason": null,
                 "facts": {
                   "build": {
-                    "earliest": 1794945929924,
-                    "latest": 1794945930025
+                    "earliest": 1795001552198,
+                    "latest": 1795001552216
                   },
                   "relaunch": {
-                    "earliest": 1794945931348,
-                    "latest": 1794945933126
+                    "earliest": 1795001552486,
+                    "latest": 1795001553448
                   },
                   "capture": {
-                    "start": 1794945934307,
-                    "end": 1794945934567
+                    "start": 1795001553970,
+                    "end": 1795001554038
                   }
                 }
               },
