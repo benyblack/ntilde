@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import { capsCaseIds } from './caps-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
-export const measuredScriptsRevision = 'fd9b0ab99023bb29dcbb6fbe646bd4ec0ae0ddd6';
+export const measuredScriptsRevision = '7bfbbdc1341509557780931d1a02f80dec4e80c3';
 /** The measured App build revision. The retained selected-source manifest independently pins the measured scripts; these human-readable labels are not binary-to-source attestation. */
-export const measuredAppRevision = 'fd9b0ab99023bb29dcbb6fbe646bd4ec0ae0ddd6';
+export const measuredAppRevision = '7bfbbdc1341509557780931d1a02f80dec4e80c3';
 const scope = 'Pinned terminfo.dev@4.0.0 criterion for extensions.osc1337-capabilities (OSC 1337 ; RequestCapabilities BEL answered by one complete ESC]1337;Capabilities=<characters without BEL or ESC> '
     + 'frame ended by BEL or ST; a query-only probe that can never return unsupported and whose valid pattern accepts any feature string), decided by the unchanged stock collector against the App in this '
     + 'owned run, corroborated by the exact-query witness (query policy v7) and replayed byte-exactly on both pinned paths over the journaled raw reply of its own fenced exchange, beside a separately '
