@@ -414,7 +414,8 @@ namespace Ntilde.VT
         /// </remarks>
         private static bool IsRowPadding(TerminalRow row)
         {
-            if (row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells) return false;
+            // A double-size line is not padding even when blank: discarding it would lose the attribute.
+            if (row.LineSize != LineSize.SingleWidth || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells) return false;
             bool rowHasLinks = row.GetHyperlinkMap() is { Count: > 0 };
             var cells = row.Cells;
 

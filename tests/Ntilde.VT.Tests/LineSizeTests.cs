@@ -203,6 +203,23 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Selective_erase_with_something_protected_starts_at_the_column_the_cursor_is_shown_on()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Esc}[1\"qP{Esc}[0\"q{Esc}[2;1H{Dwl}abcde{Esc}[1;9H{Esc}[B{Esc}[?J");
+        Assert.Equal(new[] { "P", "abcd", "", "" }, Lines(buffer));
+    }
+
+    [Fact]
+    public void A_blank_double_size_line_survives_a_shrink_in_height()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Esc}[4;1H{Dwl}{Esc}[H");
+        buffer.Resize(10, 3);
+        Assert.Contains(LineSize.DoubleWidth, AllSizes(buffer));
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();
