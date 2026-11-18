@@ -427,3 +427,16 @@ test('a composition that did not take effect, or that changed what it refused, f
         assert.equal(results(build())[refused + '.refuse'], 'failed');
     });
 });
+
+test('the compose suite also grades as it runs in an ordinary tab: the worker the App\'s own child, no daemon anywhere in the lineage', () => {
+    withCompose({ direct: true }, ({ build, frames, actions }) => {
+        const report = build();
+        assert.ok(report.observations.every(item => item.result === 'passed'));
+        assert.ok(frames.every(frame => frame.ownership.daemon === undefined && frame.ownership.worker.ppid === frame.ownership.app.pid), 'an ordinary-tab journal names no daemon');
+        assert.ok(actions.every(action => action.ownership.daemon === undefined));
+    });
+    // The same suite still fails on its own evidence there: a composition that did not take effect.
+    withCompose({ direct: true, paint: (entry, shown) => (entry.caseId === replaceBlend && entry.stageId === 'blend' ? 'root' : shown) }, ({ build }) => {
+        assert.equal(results(build())[replaceBlend + '.blend'], 'failed');
+    });
+});

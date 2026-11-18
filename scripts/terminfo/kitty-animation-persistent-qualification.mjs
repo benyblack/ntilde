@@ -119,6 +119,7 @@ export function verifyPersistentAnimationRun(dir) {
  * to its suite (the restore's chain of App processes, the compose suite's single one) on top of the returned run.
  */
 export function verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, suiteId, policy, noun }) {
+    const persistent = scope.persistence === 'KeepOnClose';
     const check = (ok, message) => { if (!ok) throw new Error(`kitty animation ${noun} qualification: ${message}`); };
     const receipt = json(dir, 'persistent-animation-receipt.json'), context = json(dir, 'context.json'), proofBytes = read(dir, 'ownership-proof.json'), proof = JSON.parse(proofBytes);
     const observationBytes = read(dir, 'animation-observations.json'), settings = json(dir, 'initial-settings.json');
@@ -127,7 +128,7 @@ export function verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, 
         && /^[a-f\d]{32}$/.test(context.runId) && isDeepStrictEqual(receipt.collectionScope, scope) && isDeepStrictEqual(context.collectionScope, scope),
         `the receipt does not declare the persistent ${noun} scope of this run`);
     check(receipt.ownershipProofSha256 === sha(proofBytes) && receipt.contextSha256 === sha(read(dir, 'context.json')), 'the receipt does not bind the retained proof and context');
-    check(settings.SessionPersistence === 'KeepOnClose' && context.initialSettingsSha256 === sha(read(dir, 'initial-settings.json')), 'the run was not configured for a persistent tab');
+    check(settings.SessionPersistence === scope.persistence && context.initialSettingsSha256 === sha(read(dir, 'initial-settings.json')), `the run was not configured for ${persistent ? 'a persistent' : 'an ordinary'} tab`);
     check(proof.completed === true && proof.cleanedUpAt && !proof.cleanupError && proof.sourceSnapshot?.removedAt, 'the ownership proof has no completed cleanup');
     check(binding?.runId === context.runId && binding.suiteId === suiteId && binding.file === 'animation-observations.json' && binding.sha256 === pngHash(observationBytes),
         'the receipt does not bind the retained animation report');
@@ -142,7 +143,8 @@ export function verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, 
         'the retained report does not re-derive from its journals');
     check(marker.paneId === frames[0].paneId, 'the recorded pane is not the first App\'s pane');
     check(Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt), 'the seal postdates cleanup');
-    checkDaemon(proof, context, frames);
+    if (persistent) checkDaemon(proof, context, frames);
+    else check(proof.persistentDaemon === undefined && frames.every(frame => frame.ownership.daemon === undefined && frame.ownership.worker.ppid === frame.ownership.app.pid), 'an ordinary-tab run has a multiplexer daemon in its proof or a worker that is not the App\'s own child');
     const counts = {};
     for (const item of derived.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
     check(snapshotHash(counts) === snapshotHash(binding.counts), 'the receipt counts differ from the re-derived stages');
@@ -163,6 +165,20 @@ export function persistentControls({ context, proof, frames }) {
             'the daemon is the launched sidecar serving this run\'s private app-data root, advertised through that root\'s descriptor'],
         ['daemon-stopped', proof.completed === true && Boolean(proof.cleanedUpAt) && !proof.cleanupError,
             'cleanup stopped the daemon and verified it gone before the receipt'],
+    ].map(([name, held, detail]) => ({ name, held, detail }));
+}
+
+/** Validity controls specific to an ordinary (non-persistent) tab, each re-checkable from the retained proof: the lineage a full collection has, with no daemon. */
+export function directControls({ context, proof, frames }) {
+    return [
+        ['ordinary-tab-configured', context.collectionScope.persistence === 'Off' && frames.length > 0,
+            'the run set SessionPersistence Off in its private settings, so the local pane is the App\'s own pty and no multiplexer daemon runs'],
+        ['worker-is-the-apps-child', frames.every(frame => frame.ownership.worker.ppid === frame.ownership.app.pid && frame.ownership.daemon === undefined),
+            'every observation proved the worker a direct child of the launched App, with no daemon in its lineage'],
+        ['no-multiplexer-daemon', proof.persistentDaemon === undefined,
+            'the ownership proof records no multiplexer daemon: nothing hosted the shell but the App'],
+        ['cleanup-verified', proof.completed === true && Boolean(proof.cleanedUpAt) && !proof.cleanupError,
+            'cleanup stopped the worker and the App and verified every process carrying the run marker gone before the receipt'],
     ].map(([name, held, detail]) => ({ name, held, detail }));
 }
 

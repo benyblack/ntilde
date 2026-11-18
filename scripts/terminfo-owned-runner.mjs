@@ -128,7 +128,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
-import { legacyScope, osc633Scope, persistentAnimationScope, persistentRestoreScope, persistentComposeScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
+import { legacyScope, osc633Scope, persistentAnimationScope, persistentRestoreScope, persistentComposeScope, directComposeScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -400,7 +400,7 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2135,7 +2135,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2153,6 +2153,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (args[5] === 'persistent-animation') return persistentAnimationMain(args, executable, snapshot, persistentAnimationScope);
     if (args[5] === 'persistent-restore') return persistentAnimationMain(args, executable, snapshot, persistentRestoreScope);
     if (args[5] === 'persistent-compose') return persistentAnimationMain(args, executable, snapshot, persistentComposeScope);
+    if (args[5] === 'direct-compose') return persistentAnimationMain(args, executable, snapshot, directComposeScope);
     const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
@@ -4470,20 +4471,25 @@ const persistentAnimationAdapterId = 'ntilde-owned-kitty-animation-persistent-ad
 export const persistentAnimationReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-receipt-v1';
 export const persistentRestoreReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-restore-receipt-v1';
 export const persistentComposeReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-compose-receipt-v1';
-const persistentReceiptSuiteIds = { 3: persistentRestoreReceiptSuiteId, 4: persistentComposeReceiptSuiteId };
+export const directComposeReceiptSuiteId = 'ntilde-owned-kitty-animation-direct-compose-receipt-v1';
+// By scope, not suite version: the compose suite (4) runs in a persistent and in an ordinary tab, each with its own receipt.
+const animationReceiptSuiteIds = { [persistentRestoreScope.id]: persistentRestoreReceiptSuiteId, [persistentComposeScope.id]: persistentComposeReceiptSuiteId, [directComposeScope.id]: directComposeReceiptSuiteId };
 
 /**
  * The receipt of a persistent-tab animation collection. It binds the one retained suite report, the ownership proof (which records the
  * multiplexer daemon) and the context to this run after cleanup is verified; the publication re-derives the report from the retained journals.
  */
+/** Whether the collection's tab is a persistent one (a multiplexer daemon hosts the worker); the ordinary-tab composition collection has none. */
+const isPersistentScope = scope => scope.persistence === 'KeepOnClose';
+
 function completePersistentAnimationReceipt(output, scratch, evidence) {
     const proofBytes = readFileSync(join(output, 'ownership-proof.json')), proof = JSON.parse(proofBytes);
-    if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || !proof.persistentDaemon || existsSync(scratch)) throw new Error('Persistent animation evidence has no completed cleanup.');
+    if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || (isPersistentScope(context.collectionScope) && !proof.persistentDaemon) || existsSync(scratch)) throw new Error('Animation-only evidence has no completed cleanup.');
     const contextBytes = readFileSync(join(output, 'context.json')), context = JSON.parse(contextBytes);
     const binding = evidence.animationEvidence;
     if (binding?.runId !== context.runId || binding.suiteId !== context.animationSuiteId || binding.file !== 'animation-observations.json'
         || hash(readFileSync(join(output, binding.file))) !== binding.sha256) throw new Error('Invalid persistent animation receipt binding.');
-    const receipt = { schemaVersion: 1, suiteId: persistentReceiptSuiteIds[context.collectionScope.suiteVersion] ?? persistentAnimationReceiptSuiteId, runId: context.runId, collectionScope: context.collectionScope,
+    const receipt = { schemaVersion: 1, suiteId: animationReceiptSuiteIds[context.collectionScope.id] ?? persistentAnimationReceiptSuiteId, runId: context.runId, collectionScope: context.collectionScope,
         animationEvidence: binding, ownershipProofSha256: hash(proofBytes), contextSha256: hash(contextBytes), fixtureRemoved: true, completedAt: new Date().toISOString() };
     writeFileSync(join(output, 'persistent-animation-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     return receipt;
@@ -4553,7 +4559,7 @@ async function answerPersistentRequest(run, request, budget, { owner, worker, da
         if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
         const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
         if (!matchesRecordedWorker(worker, run.identities.worker, workerCommand, run.runId)) throw new Error('Recorded animation worker identity or marker changed.');
-        return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, daemon: daemon.record, tty, at: new Date().toISOString(),
+        return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, ...(daemon ? { daemon: daemon.record } : {}), tty, at: new Date().toISOString(),
             terminalOutput: readOwnedOutputMode(tty, budget()), ...(run.relaunches?.length ? { relaunch: run.relaunches.at(-1) } : {}) });
     }
     switch (request.kind) {
@@ -4589,14 +4595,17 @@ async function handlePersistentRequest(run, text) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
     assertExecutableUnchanged(executable, run.image);
     const budget = createProcessBudget(4000), owner = processRecord(app.pid, budget()), worker = processRecord(request.workerPid, budget());
-    const daemon = readPersistentDaemon(worker.ppid, app.pid, appData, budget(), { firstAppBirth: run.proofs[0]?.privateClipboard?.appBirth });
-    if (run.identities.daemon && run.identities.daemon.pid !== daemon.record.pid) throw new Error('Another multiplexer daemon tried to use this run.');
+    // An ordinary tab has no daemon: the worker must be the App's own child (assertProcessOwnership checks that when no daemon is passed).
+    const daemon = isPersistentScope(run.collectionScope) ? readPersistentDaemon(worker.ppid, app.pid, appData, budget(), { firstAppBirth: run.proofs[0]?.privateClipboard?.appBirth }) : undefined;
+    if (daemon && run.identities.daemon && run.identities.daemon.pid !== daemon.record.pid) throw new Error('Another multiplexer daemon tried to use this run.');
     assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker, ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: request.tty, daemon, appData,
         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 }) });
     if (run.identities.worker && run.identities.worker.pid !== worker.pid) throw new Error('Another worker tried to use this run.');
     run.identities.worker ??= worker;
-    run.identities.daemon ??= persistentDaemonIdentity(daemon);
-    run.daemonProof ??= { identity: run.identities.daemon, appData, command: `${daemon.record.executable} mux serve`, birth: daemon.birth, appBirth: daemon.appBirth, descriptor: daemon.descriptor };
+    if (daemon) {
+        run.identities.daemon ??= persistentDaemonIdentity(daemon);
+        run.daemonProof ??= { identity: run.identities.daemon, appData, command: `${daemon.record.executable} mux serve`, birth: daemon.birth, appBirth: daemon.appBirth, descriptor: daemon.descriptor };
+    }
     return { ok: true, ownerPid: app.pid, ...(await answerPersistentRequest(run, request, budget, { owner, worker, daemon })) };
 }
 
@@ -4676,7 +4685,7 @@ async function collectPersistentAnimation(run, server) {
     startPersistentApp(run);
     writeJson(join(output, 'context.json'), { ...run.context, ownerPid: run.app.pid });
     run.deadline = setTimeout(() => run.reject(new Error(`Persistent animation collection exceeded ${collectionScope.deadlineMs / 60000} minutes.`)), collectionScope.deadlineMs);
-    console.log(`Collecting in disposable Ntilde pid ${run.app.pid} (persistent tab); results: ${output}`);
+    console.log(`Collecting in disposable Ntilde pid ${run.app.pid} (${isPersistentScope(collectionScope) ? 'persistent' : 'ordinary'} tab); results: ${output}`);
     await run.done;
     assertOwnedSourcesUnchanged(sourceRepo, run.context);
     if (run.animationState?.unavailable) throw new Error('Persistent animation fixture was unavailable: ' + run.animationState.unavailable.reason);

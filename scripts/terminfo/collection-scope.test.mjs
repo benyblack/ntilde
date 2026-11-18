@@ -125,3 +125,17 @@ test('the pinned full predecessor reissues its actual receipt; modified archive 
         assert.throws(() => verifyScopePredecessor(root, completeOwnedReceipt), /archive changed/);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('the animation-only scopes are exact, distinct, and only the compose suite runs in both kinds of tab', async () => {
+    const { directComposeScope, persistentAnimationScope, persistentComposeScope, persistentRestoreScope, isAnimationOnlyScope, isDirectComposeScope, isPersistentAnimationScope } = await import('./collection-scope.mjs');
+    assert.equal(directComposeScope.persistence, 'Off'); assert.equal(persistentComposeScope.persistence, 'KeepOnClose');
+    assert.equal(directComposeScope.suiteVersion, persistentComposeScope.suiteVersion);
+    assert.notEqual(directComposeScope.id, persistentComposeScope.id);
+    for (const scope of [directComposeScope, persistentComposeScope, persistentRestoreScope, persistentAnimationScope]) assert.equal(isAnimationOnlyScope(scope), true, scope.id);
+    // The ordinary-tab collection is animation-only but not a persistent one: the persistent predicate must not claim it, nor may a lookalike pass.
+    assert.equal(isDirectComposeScope(directComposeScope), true); assert.equal(isPersistentAnimationScope(directComposeScope), false);
+    assert.equal(isDirectComposeScope(persistentComposeScope), false);
+    assert.equal(isAnimationOnlyScope({ ...directComposeScope, persistence: 'KeepOnClose' }), false);
+    assert.equal(isAnimationOnlyScope({ ...directComposeScope, deadlineMs: directComposeScope.deadlineMs + 1 }), false);
+    assert.equal(isAnimationOnlyScope(undefined), false);
+});
