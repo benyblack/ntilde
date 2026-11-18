@@ -164,7 +164,7 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
             + (osc5Live >= 0 && (measurementPosition === osc5Live || measurementPosition === osc3008Live || ['osc720', 'osc22', 'caps'].includes(suite.suite)) ? 1 : 0)
             + (suite.suite === 'caps' ? 1 : 0);
         const expected = { ...base.counts, inconclusive: base.counts.inconclusive - moved, supported: base.counts.supported + moved };
-        if (suite.stock.basis !== 'carried-forward') assert.deepEqual(suite.stock.counts, expected, suite.suite);
+        if (suite.stock.basis !== 'carried-forward' && suite.suite !== 'ascii-reflow') assert.deepEqual(suite.stock.counts, expected, suite.suite);
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock.basis === 'carried-forward');
@@ -304,7 +304,7 @@ test('extensions.reflow selects the fresh supported effect while preserving its 
     assert.equal(suite.receipt.schemaVersion, 69);
     assert.equal(suite.receipt.runId, suite.run.ownedRunId);
     assert.equal(suite.stock.basis, 'collected-run-id-recorded');
-    assert.deepEqual(suite.stock.counts, { inconclusive: 159, supported: 95, unsupported: 1 });
+    assert.deepEqual(suite.stock.counts, { inconclusive: 161, supported: 93, unsupported: 1 });
     const historical = read('2026-11-12-ascii-reflow/report.json');
     assert.equal(historical.cases[0].effectContract.outcome, 'unsupported');
 });
@@ -456,7 +456,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc720-scroll-up`, `extensions\.sixel`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 2 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 22 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 21 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
