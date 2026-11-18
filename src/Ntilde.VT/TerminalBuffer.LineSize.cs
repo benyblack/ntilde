@@ -46,6 +46,27 @@ public partial class TerminalBuffer
         finally { ExitReadLockIfNeeded(Lock, lockTaken); }
     }
 
+    /// <summary>
+    /// The visible rows' line attributes for a viewport-only recording checkpoint, or null when every row is single
+    /// width, so that a recording without double-size lines is written as before.
+    /// </summary>
+    public int[]? ExportViewportLineSizes()
+    {
+        bool lockTaken = EnterReadLockIfNeeded();
+        try
+        {
+            int[]? sizes = null;
+            for (int r = 0; r < Rows; r++)
+            {
+                if (_viewport[r].LineSize == LineSize.SingleWidth) continue;
+                sizes ??= new int[Rows];
+                sizes[r] = (int)_viewport[r].LineSize;
+            }
+            return sizes;
+        }
+        finally { ExitReadLockIfNeeded(Lock, lockTaken); }
+    }
+
     /// <summary>The line attribute of a visible row.</summary>
     public LineSize GetLineSize(int row)
     {

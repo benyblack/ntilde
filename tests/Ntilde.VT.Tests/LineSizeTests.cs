@@ -342,6 +342,42 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public async Task A_viewport_only_recording_checkpoint_carries_line_attributes()
+    {
+        var (source, sourceParser) = Create();
+        sourceParser.Process(Dwl + "abc");
+        string path = Path.GetTempFileName();
+        try
+        {
+            using (var recorder = new PtyRecorder(path, 10, 4)) recorder.RecordSnapshot(source);
+            var (buffer, parser) = Create();
+            bool applied = false;
+            await new ReplayRunner(path).RunAsync(_ => Task.CompletedTask,
+                onSnapshotCallback: snapshot =>
+                {
+                    Assert.Null(snapshot.State);
+                    ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
+                    applied = true;
+                    return Task.CompletedTask;
+                }, ct: TestContext.Current.CancellationToken);
+            Assert.True(applied);
+            parser.Process("def");
+            Assert.Equal(new[] { "abcde", "f", "", "" }, Lines(buffer));
+            Assert.Equal(LineSize.DoubleWidth, buffer.GetLineSize(0));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void A_refused_sized_block_leaves_a_double_size_line_alone()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Dwl}ab{Esc}]66;w=7:s=7;X\a"); // taller than the page: refused
+        Assert.Equal(LineSize.DoubleWidth, buffer.GetLineSize(0));
+        Assert.Equal((0, 2), (buffer.CursorRow, buffer.CursorCol));
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();

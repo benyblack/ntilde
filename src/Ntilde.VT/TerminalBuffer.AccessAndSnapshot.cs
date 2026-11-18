@@ -1194,8 +1194,12 @@ namespace Ntilde.VT
                 // Cells
                 if (legacyCells != null)
                 {
-                    // A viewport-only checkpoint predates line attributes: its rows are single width.
+                    // A viewport-only checkpoint carries line attributes only when a row had one; a value read
+                    // from disk that no control could have set is single width.
                     ResetLineSizesNoLock(_viewport);
+                    if (snapshot.RowLineSizes is { } lineSizes)
+                        for (int r = 0; r < Math.Min(lineSizes.Length, _viewport.Length); r++)
+                            if (lineSizes[r] is >= 1 and <= 3) _viewport[r].LineSize = (LineSize)lineSizes[r];
                     var cellSpan = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(legacyCells.AsSpan());
 
                     int expectedCells = snapshot.Cols * snapshot.Rows;

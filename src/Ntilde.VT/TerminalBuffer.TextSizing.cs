@@ -128,11 +128,12 @@ public partial class TerminalBuffer
         int availableHeight = _cursorRow < ScrollTop || _cursorRow > ScrollBottom
             ? Rows : ScrollBottom - ScrollTop + 1;
         if (width > Cols || height > availableHeight) return;
-        // Sized text and double-size lines do not combine: a sized rectangle is laid out in page columns, and a
-        // double-size line holds half of them. Every line the rectangle is written on returns to single width.
-        ReturnRowToSingleWidthForSizedTextNoLock(_cursorRow);
         var block = new TextSizingBlock(text, options, baseWidth);
         if (!ReserveTextSizing(block, _cursorCol, TextSizingAbsoluteRow(_cursorRow), !Modes.IsInsertMode && IsTextSizingTargetStable(block))) return;
+        // Sized text and double-size lines do not combine: a sized rectangle is laid out in page columns, and a
+        // double-size line holds half of them. Every line the rectangle is written on returns to single width,
+        // once the write is certain: a refused block changes nothing.
+        ReturnRowToSingleWidthForSizedTextNoLock(_cursorRow);
         FindTextSizingWritePosition(width);
         FitTextSizingHeight(height);
         for (int dy = 0; dy < height; dy++) ReturnRowToSingleWidthForSizedTextNoLock(_cursorRow + dy);
