@@ -13,7 +13,7 @@ public partial class AnsiParser
             || csi.Separators.Contains(':') || _buffer.Rows < 1 || _buffer.Cols < 1) return;
         int code = csi.Args.Length > 0 ? csi.Args[0] : 0;
         char fill;
-        if (code >= 32 && code <= 126) fill = _charsets[_gl] == Charset.DecSpecialGraphics ? MapDecSpecialGraphics((char)code) : (char)code;
+        if (code >= 32 && code <= 126) fill = MapCharset(_charsets[_gl], (char)code);
         else if (code >= 160 && code <= 255) fill = (char)code;
         else return;
         ReadOnlySpan<int> borders = csi.Args.Length > 1 ? csi.Args[1..] : default;

@@ -24,6 +24,23 @@ namespace Ntilde.VT
         /// </summary>
         public string? TerminalTypeName { get; set; }
 
+        /// <summary>The primary DA reply, which DECID (<c>ESC Z</c>) shares: VT220 with Sixel and ANSI color.</summary>
+        private const string PrimaryDeviceAttributesReply = "\x1b[?62;4;22c";
+
+        /// <summary>
+        /// DECREQTPARM, bare <c>CSI Ps x</c>. Ps 0 (or omitted) and 1 are answered with DECREPTPARM,
+        /// <c>CSI sol ; 1 ; 1 ; 128 ; 128 ; 1 ; 0 x</c>, where sol is Ps + 2: no parity, eight bits, 38400 baud each
+        /// way, clock multiplier 1 and no flags - the fixed values xterm reports, since there is no serial line.
+        /// Any other Ps, more than one parameter or a subparameter is ignored. Ungated, as primary DA is.
+        /// </summary>
+        private void ReportTerminalParameters(in CsiSequence csi)
+        {
+            if (csi.Args.Length > 1 || csi.Separators.Contains(':')) return;
+            int request = csi.Args.Length > 0 ? csi.Args[0] : 0;
+            if (request is not (0 or 1)) return;
+            OnResponse?.Invoke(request == 0 ? "\x1b[2;1;1;128;128;1;0x" : "\x1b[3;1;1;128;128;1;0x");
+        }
+
         /// <summary>The only X resource XTGETXRES answers.</summary>
         internal const string XtgetxresTermNameResource = "termName";
 
