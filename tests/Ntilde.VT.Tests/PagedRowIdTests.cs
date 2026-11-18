@@ -51,6 +51,32 @@ public sealed class PagedRowIdTests
         Assert.Equal(before, after.RowsData.Array!.Take(3).Select(row => row.RowId).ToArray());
     }
 
+    [Fact]
+    public void Clearing_history_changes_the_cache_identity_of_the_row_that_takes_its_place()
+    {
+        var buffer = new TerminalBuffer(20, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("AAAA\r\n\r\n\r\n\r\n");
+        long oldId;
+        uint oldRevision;
+        using (var before = buffer.CaptureRenderSnapshot(Request(scrollOffset: 1, isolated: false), out _))
+        {
+            var row = before.RowsData.Array![0];
+            Assert.Equal('A', row.Cells[0].Character);
+            (oldId, oldRevision) = (row.RowId, row.Revision);
+        }
+
+        // CSI 3J resets the history's row counters, so the next line into history sits at the
+        // position, and takes the id, the cleared line had.
+        parser.Process("\x1b[3J\x1b[2J\x1b[HBBBB\r\n\r\n\r\n\r\n");
+        Assert.Equal(1, buffer.Scrollback.Count);
+        using var after = buffer.CaptureRenderSnapshot(Request(scrollOffset: 1, isolated: false), out _);
+        var replaced = after.RowsData.Array![0];
+        Assert.Equal('B', replaced.Cells[0].Character);
+        Assert.True(replaced.RowId != oldId || replaced.Revision != oldRevision,
+            "a row picture cached for the cleared line would be served for the new one");
+    }
+
     private static RenderSnapshotRequest Request(int scrollOffset, bool isolated)
         => new() { ViewportRows = 4, ViewportCols = 20, ScrollOffset = scrollOffset, Isolated = isolated };
 }

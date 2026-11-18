@@ -46,6 +46,29 @@ public sealed class ScrollbackFirstRowRenderTests
         AssertTopRowHasInk(harness.Pixels());
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_cleared_history_line_is_not_drawn_in_place_of_the_line_that_replaces_it(bool withRowCache)
+    {
+        using var expected = new DrawPathHarness(Cols, Rows, withRowCache);
+        expected.Parser.Process("....\r\n\r\n\r\n\r\n");
+        expected.ScrollOffset = 1;
+        expected.DrawFrame();
+
+        using var harness = new DrawPathHarness(Cols, Rows, withRowCache);
+        harness.Parser.Process("MMMM\r\n\r\n\r\n\r\n");
+        harness.ScrollOffset = 1;
+        harness.DrawFrame();
+        AssertTopRowHasInk(harness.Pixels());
+
+        // CSI 3J resets the history's row counters: the next line into history takes the cleared line's id.
+        harness.Parser.Process("\x1b[3J\x1b[2J\x1b[H....\r\n\r\n\r\n\r\n");
+        Assert.Equal(1, harness.Buffer.Scrollback.Count);
+        harness.DrawFrame();
+        Assert.Equal(expected.Pixels(), harness.Pixels());
+    }
+
     /// <summary>The top row's band differs from the blank row's band under it.</summary>
     private static void AssertTopRowHasInk(byte[] pixels)
     {

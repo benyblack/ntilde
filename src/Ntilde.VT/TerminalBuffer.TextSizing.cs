@@ -8,7 +8,11 @@ public partial class TerminalBuffer
     private HashSet<TextSizingBlock>? _textSizingBlocks;
     private long _textSizingStorage;
     private uint _textSizingHistoryRevision;
-    private uint PagedRenderRevision => unchecked((uint)_renderThemeEpoch + _textSizingHistoryRevision);
+    // Everything that can change what a paged row's id draws: the theme, a sizing edit of retained
+    // rows, and the history's generation. Clearing history (CSI 3J, RIS, clear buffer) restarts its
+    // row counters, so the next line in takes a cleared line's id; the generation is what tells
+    // them apart. Each term only grows for one buffer, so the sum changes whenever one of them does.
+    private uint PagedRenderRevision => unchecked((uint)_renderThemeEpoch + _textSizingHistoryRevision + (uint)_scrollback.Generation);
     private bool _textSizingPruneRequired = true;
     private (long Generation, long Evicted) _textSizingPrunedHistory;
 
