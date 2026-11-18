@@ -316,53 +316,49 @@ export function retainedArtifactReader(output, label) {
 
 /** The publication projection of one query-probe suite's cleaned-up owned run: admits only files bound to this
  *  receipt, requires the exact-query witness, and binds the stock collector's own run identity beside the run's
- *  context and receipt. `deps` must provide { label, caseIds, witnessId, note, observationsFile, evidenceKey }. */
-export function makeQueryProbePublication({ label, caseIds, witnessId, note, observationsFile, evidenceKey }) {
+ *  context and receipt. The plan carries the suite's identity: { label, caseIds, witnessId, observationsFile,
+ *  evidenceKey, scope, note, revisions }, where `revisions` supplies the caller's default app/scripts revisions. */
+export function makeQueryProbePublication({ label, caseIds, witnessId, observationsFile, evidenceKey, scope, note, revisions = {} }) {
     if (typeof label !== 'string' || !label || !Array.isArray(caseIds) || caseIds.length === 0
-        || typeof witnessId !== 'string' || typeof note !== 'string' || typeof observationsFile !== 'string'
-        || typeof evidenceKey !== 'string') {
-        fail('makeQueryProbePublication requires label, caseIds, witnessId, note, observationsFile and evidenceKey.');
+        || typeof witnessId !== 'string' || typeof observationsFile !== 'string' || typeof evidenceKey !== 'string'
+        || typeof scope !== 'string' || typeof note !== 'string') {
+        fail('makeQueryProbePublication requires label, caseIds, witnessId, observationsFile, evidenceKey, scope and note.');
     }
-    const readJson = (dir, file) => JSON.parse(readFileSync(join(dir, file), 'utf8'));
-    const digest = (dir, file) => hashOf(readFileSync(join(dir, file)));
-    const stockObservation = (raw, caseId) => {
-        const observation = raw.observations.find(entry => entry.featureId === caseId);
-        if (observation === undefined) fail(`Missing stock outcome: ${caseId}`);
-        return observation;
-    };
-    const queryWitness = dir => {
-        const observations = readJson(dir, 'query-observations.json').observations;
-        const witness = observations.find(item => item.id === witnessId);
+    const fileDigest = (dir, name) => hashOf(readFileSync(join(dir, name)));
+    return (dir, { appRevision = revisions.appRevision, scriptsRevision = revisions.scriptsRevision } = {}) => {
+        // One read per projected file; the suite's observations file takes the `suite` slot so nothing is parsed twice.
+        const slots = { context: 'context.json', stock: 'summary.json', receipt: 'cell-receipt.json', raw: 'raw.json', query: 'query-observations.json', suite: observationsFile };
+        const data = Object.fromEntries(Object.entries(slots).map(([slot, name]) => [slot, JSON.parse(readFileSync(join(dir, name), 'utf8'))]));
+        const { context, stock, receipt, raw, query, suite } = data;
+        const outOfBand = () => fail(`Inconsistent ${label} publication run or receipt binding.`);
+        if (receipt.fixtureRemoved !== true || receipt.runId !== context.runId || suite.runId !== context.runId) outOfBand();
+        for (const [name, field] of [['context.json', 'contextSha256'], ['raw.json', 'rawSha256'], ['ownership-proof.json', 'ownershipProofSha256']])
+            if (receipt[field] !== fileDigest(dir, name)) outOfBand();
+        // Each retained suite artifact is admitted through its own receipt field naming the file it binds.
+        const declared = { [evidenceKey]: observationsFile, queryEvidence: 'query-observations.json' };
+        for (const [field, name] of Object.entries(declared)) {
+            const binding = receipt[field];
+            if (binding?.runId !== context.runId || binding?.file !== name || binding?.sha256 !== fileDigest(dir, name)) outOfBand();
+        }
+        if (query.runId !== context.runId) outOfBand();
+        const tally = {};
+        for (const item of raw.observations) tally[item.outcome] = (tally[item.outcome] ?? 0) + 1;
+        if (stock.runId !== raw.runId || stock.rawSha256 !== receipt.rawSha256 || !sameJson(stock.counts, tally)
+            || stock.observations !== raw.observations.length || stock.suiteComplete !== raw.suiteComplete
+            || stock.measuredAt !== raw.measuredAt) outOfBand();
+        const witness = query.observations.find(item => item.id === witnessId);
         if (witness === undefined) fail(`Missing the ${label} exact-query witness.`);
-        return { id: witness.id, expectedEvidence: witness.expectedEvidence, receivedHex: witness.receivedHex, contractMatched: witness.contractMatched };
-    };
-    const publishedCase = (item, raw, witness) => ({ caseId: item.caseId, pinnedCriterion: item.pinnedCriterion, pinnedScript: item.pinnedScript,
-        effectContract: item.effectContract, observed: item.observed, pinned: item.pinned, contractResult: item.contractResult,
-        stock: stockObservation(raw, item.caseId), queryWitness: witness,
-        ...(item.divergence !== undefined ? { divergence: item.divergence } : {}), conclusion: item.conclusion });
-    return (dir, revisions = {}) => {
-        const context = readJson(dir, 'context.json'), stock = readJson(dir, 'summary.json');
-        const measured = readJson(dir, observationsFile), raw = readJson(dir, 'raw.json'), receipt = readJson(dir, 'cell-receipt.json');
-        const check = value => { if (!value) fail(`Inconsistent ${label} publication run or receipt binding.`); };
-        check(receipt.fixtureRemoved === true && receipt.runId === context.runId && measured.runId === context.runId);
-        check(receipt.contextSha256 === digest(dir, 'context.json') && receipt.rawSha256 === digest(dir, 'raw.json')
-            && receipt.ownershipProofSha256 === digest(dir, 'ownership-proof.json'));
-        const suiteBinding = receipt[evidenceKey];
-        check(suiteBinding?.runId === context.runId && suiteBinding.file === observationsFile
-            && suiteBinding.sha256 === digest(dir, observationsFile));
-        const query = readJson(dir, 'query-observations.json');
-        check(query.runId === context.runId && receipt.queryEvidence?.runId === context.runId && receipt.queryEvidence.file === 'query-observations.json'
-            && receipt.queryEvidence.sha256 === digest(dir, 'query-observations.json'));
-        const counts = raw.observations.reduce((out, item) => ({ ...out, [item.outcome]: (out[item.outcome] ?? 0) + 1 }), {});
-        check(stock.runId === raw.runId && stock.rawSha256 === receipt.rawSha256 && sameJson(stock.counts, counts)
-            && stock.observations === raw.observations.length && stock.suiteComplete === raw.suiteComplete && stock.measuredAt === raw.measuredAt);
-        const cases = measured.cases.map(item => publishedCase(item, raw, queryWitness(dir)));
+        const projectedWitness = { id: witness.id, expectedEvidence: witness.expectedEvidence, receivedHex: witness.receivedHex, contractMatched: witness.contractMatched };
+        const projectCase = item => ({ caseId: item.caseId, pinnedCriterion: item.pinnedCriterion, pinnedScript: item.pinnedScript, effectContract: item.effectContract,
+            observed: item.observed, pinned: item.pinned, contractResult: item.contractResult,
+            stock: raw.observations.find(entry => entry.featureId === item.caseId) ?? fail(`Missing stock outcome: ${item.caseId}`),
+            queryWitness: projectedWitness,
+            ...(item.divergence !== undefined ? { divergence: item.divergence } : {}), conclusion: item.conclusion });
+        const cases = suite.cases.map(projectCase);
         if (JSON.stringify(cases.map(item => item.caseId)) !== JSON.stringify([...caseIds])) fail('The published cases differ from the contracted cases.');
-        const report = { schemaVersion: 1, suiteId: measured.suiteId, contractsVersion: measured.contractsVersion, runId: measured.runId, adapter: measured.adapter, note, cases };
-        const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId,
-            appRevision: revisions.appRevision, scriptsRevision: revisions.scriptsRevision, context, receipt,
-            stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash,
-                sourceRevision: raw.sourceRevision, note } };
+        const report = { schemaVersion: 1, suiteId: suite.suiteId, contractsVersion: suite.contractsVersion, runId: suite.runId, adapter: suite.adapter, scope, cases };
+        const summary = { schemaVersion: 1, measuredAt: stock.measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision, scriptsRevision, context, receipt,
+            stockCollector: { counts: stock.counts, suiteComplete: stock.suiteComplete, rawSha256: stock.rawSha256, probeHash: raw.probeHash, sourceRevision: raw.sourceRevision, note } };
         return { summary, report };
     };
 }
