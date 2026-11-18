@@ -71,25 +71,33 @@ function paeth(left, up, upperLeft) {
     return upperLeft;
 }
 
-function predictor(filter, left, up, upperLeft) {
-    switch (filter) {
-        case 0: return 0;
-        case 1: return left;
-        case 2: return up;
-        case 3: return Math.floor((left + up) / 2);
-        case 4: return paeth(left, up, upperLeft);
-        default: throw invalid();
-    }
-}
-
+/** One loop per filter type, each reading only the neighbours its predictor uses. A single loop that fetched all three
+ * neighbours and dispatched on the type for every byte was a fifth of a receipt rederivation's time; every capture a
+ * receipt admits is decoded here, and the rows are mostly type 0 or 2. The arithmetic is the PNG specification's. */
 function reconstructRow(raw, start, stride, channels, hasPrevious) {
-    const filter = raw[start - 1];
-    if (filter > 4) throw invalid();
-    for (let x = 0; x < stride; x++) {
-        const left = x >= channels ? raw[start + x - channels] : 0;
-        const up = hasPrevious ? raw[start + x - stride - 1] : 0;
-        const upperLeft = hasPrevious && x >= channels ? raw[start + x - stride - 1 - channels] : 0;
-        raw[start + x] = (raw[start + x] + predictor(filter, left, up, upperLeft)) & 255;
+    const filter = raw[start - 1], end = start + stride, first = start + channels, back = stride + 1;
+    switch (filter) {
+        case 0: return;
+        case 1:
+            for (let at = first; at < end; at++) raw[at] = (raw[at] + raw[at - channels]) & 255;
+            return;
+        case 2:
+            if (hasPrevious) for (let at = start; at < end; at++) raw[at] = (raw[at] + raw[at - back]) & 255;
+            return;
+        case 3:
+            for (let at = start; at < end; at++) {
+                const left = at >= first ? raw[at - channels] : 0, up = hasPrevious ? raw[at - back] : 0;
+                raw[at] = (raw[at] + ((left + up) >> 1)) & 255;
+            }
+            return;
+        case 4:
+            for (let at = start; at < end; at++) {
+                const left = at >= first ? raw[at - channels] : 0, up = hasPrevious ? raw[at - back] : 0;
+                const upperLeft = hasPrevious && at >= first ? raw[at - back - channels] : 0;
+                raw[at] = (raw[at] + paeth(left, up, upperLeft)) & 255;
+            }
+            return;
+        default: throw invalid();
     }
 }
 

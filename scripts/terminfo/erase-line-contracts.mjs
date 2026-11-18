@@ -30,7 +30,7 @@
 // observations, not these fixtures and not benchmark grades. erase.display.*, erase.characters.*, selective
 // erasure (DECSEL), ICH/DCH/IL/DL editing and the ED3 saved-lines case are different cases and are not substituted.
 import { planFeed, planRead, planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
-import { sgrAttrsCellAt, sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen, sgrAttrsPredicates } from './sgr-attrs-contracts.mjs';
+import { sgrAttrsCellAt, sgrAttrsExpand, sgrAttrsReset, sgrAttrsClear, validateSgrAttrsScreen, sgrAttrsPredicates } from './sgr-attrs-contracts.mjs';
 import { expandCellDetails } from './cell-details.mjs';
 
 const { neutral } = sgrAttrsPredicates;
@@ -139,11 +139,15 @@ export function eraseLineInk(screen) {
     const total = screen.rows * screen.cols;
     const details = expandCellDetails(screen.cellDetails, total, true);
     const ink = [];
+    // Expanded once for the whole screen, and only when a cell carries ink: left to sgrAttrsCellAt's default this
+    // expanded the full viewport again for every inked cell, which was most of a receipt rederivation's time.
+    let expanded;
     for (let position = 0; position < total; position++) {
         const row = Math.floor(position / screen.cols), col = position % screen.cols;
         const char = (screen.lines[row] ?? '')[col] ?? ' ';
         if (char === ' ' && defaultDetail(details[position])) continue;
-        ink.push({ row, col, ...sgrAttrsCellAt(screen, row, col) });
+        expanded ??= sgrAttrsExpand(screen);
+        ink.push({ row, col, ...sgrAttrsCellAt(screen, row, col, expanded) });
     }
     return ink;
 }
