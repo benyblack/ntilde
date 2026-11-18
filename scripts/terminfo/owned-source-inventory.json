@@ -459,5 +459,13 @@
   "fontSizeCollectorSourceSha256": "font-size-collector.mjs",
   "fontSizeCaptureSourceSha256": "font-size-capture.mjs",
   "fontSizeGradingSourceSha256": "font-size-grading.mjs",
-  "fontSizeReceiptSourceSha256": "font-size-receipt.mjs"
+  "fontSizeReceiptSourceSha256": "font-size-receipt.mjs",
+  "probeSuiteSharedSourceSha256": "probe-suite-shared.mjs",
+  "capsReportSourceSha256": "caps-report.mjs",
+  "capsContractsSourceSha256": "caps-contracts.mjs",
+  "capsCaptureSourceSha256": "caps-capture.mjs",
+  "capsCollectorSourceSha256": "caps-collector.mjs",
+  "capsGradingSourceSha256": "caps-grading.mjs",
+  "capsGradingCollectorSourceSha256": "caps-grading-collector.mjs",
+  "capsReceiptSourceSha256": "caps-receipt.mjs"
 }

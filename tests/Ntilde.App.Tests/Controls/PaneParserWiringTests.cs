@@ -630,9 +630,10 @@ public class PaneParserWiringTests
 
     /// <summary>
     /// The native PTY layer never writes <c>TERM_FEATURES</c> on either spawn path: a child inherits the user's
-    /// environment plus only TERM, COLORTERM and TERM_PROGRAM, so Ntilde makes no iTerm2 feature-reporting
-    /// declaration and the <c>device.term-features</c> probe has nothing Ntilde-made to observe. A declaration
-    /// would need owning evidence for every advertised feature. Policy audit:
+    /// environment plus only TERM, COLORTERM and TERM_PROGRAM. The iTerm2 feature-reporting declaration is made
+    /// through the OSC 1337 reply only (see <c>docs/qa/terminfo/iterm-feature-reporting.md</c>); the environment
+    /// variable stays unset, so the <c>device.term-features</c> probe has nothing Ntilde-made to observe. A
+    /// declaration would need owning evidence for every advertised feature. Policy audit:
     /// docs/qa/terminfo/2026-11-17-term-features-policy.md.
     /// </summary>
     [Fact]

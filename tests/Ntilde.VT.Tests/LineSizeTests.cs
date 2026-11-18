@@ -295,6 +295,15 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_protected_glyph_widened_at_a_double_lines_last_column_stays_protected()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Dwl}{Esc}[1\"qabcd\u2764");
+        parser.Process($"\uFE0F{Esc}[0\"q{Esc}[?2J");
+        Assert.StartsWith("abcd\u2764", Lines(buffer)[0]);
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();

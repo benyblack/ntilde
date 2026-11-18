@@ -503,6 +503,15 @@
       "contractCase": "iterm2-cell-size"
     },
     {
+      "key": "OSC:1337:RequestCapabilities",
+      "mnemonic": "iTerm2 feature reporting",
+      "support": "supported",
+      "description": "Answer the exact OSC 1337 RequestCapabilities query with one ST-terminated Capabilities reply declaring only capabilities implemented with owning tests; clipboard writing (Cw) is declared only while the host accepts OSC 52 writes, the same gate as XTGETTCAP Ms. Aw, Uw and Sx stay undeclared.",
+      "matrixFeature": "iTerm2 feature reporting",
+      "evidencePath": "tests/Ntilde.VT.Tests/VtCapabilityContractTests.cs",
+      "contractCase": "iterm2-capabilities"
+    },
+    {
       "key": "OSC:776:?",
       "mnemonic": "urxvt cell size",
       "support": "supported",

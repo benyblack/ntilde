@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v69';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v70';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Frozen forks are selected only by valid own-family source digests and absence of every other family's marker.
 const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
@@ -933,11 +933,25 @@ export const capturedV76SourceFiles = Object.freeze({
     fontSizeReceiptSourceSha256: 'font-size-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v76 inventory and manifest environment pin before trusting any captured source. */
+// The iTerm2 feature-reporting batch adds the shared query-probe machinery and its seven suite scripts to
+// the integrated v69 graph; the frozen v76 graph above stays exactly as published.
+export const capturedV77SourceFiles = Object.freeze({
+    ...capturedV76SourceFiles,
+    probeSuiteSharedSourceSha256: 'probe-suite-shared.mjs',
+    capsReportSourceSha256: 'caps-report.mjs',
+    capsContractsSourceSha256: 'caps-contracts.mjs',
+    capsCaptureSourceSha256: 'caps-capture.mjs',
+    capsCollectorSourceSha256: 'caps-collector.mjs',
+    capsGradingSourceSha256: 'caps-grading.mjs',
+    capsGradingCollectorSourceSha256: 'caps-grading-collector.mjs',
+    capsReceiptSourceSha256: 'caps-receipt.mjs',
+});
+
+/** Bind the private temporary root, exact v77 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV76SourceFiles)) throw new Error('Invalid current v76 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV77SourceFiles)) throw new Error('Invalid current v77 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

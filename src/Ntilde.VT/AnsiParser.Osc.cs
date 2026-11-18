@@ -46,6 +46,7 @@ namespace Ntilde.VT
         {
             if (string.IsNullOrEmpty(osc)) return;
             if (HandleCellSizeReport(osc, terminator)) return;
+            if (HandleCapabilitiesRequest(osc)) return;
             if (osc.StartsWith("1337;File=", StringComparison.Ordinal))
             {
                 HandleITerm2Image(osc);
