@@ -119,6 +119,7 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/AnsiParser.RectangleChecksum.cs",
             "src/Ntilde.VT/AnsiParser.DeviceReports.cs",
             "src/Ntilde.VT/AnsiParser.CellSizeReports.cs",
+            "src/Ntilde.VT/AnsiParser.CapabilityReport.cs",
             "src/Ntilde.VT/AnsiParser.ColorScheme.cs",
             "src/Ntilde.VT/AnsiParser.Colors.cs",
             "src/Ntilde.VT/AnsiParser.KittyColors.cs",

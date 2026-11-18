@@ -1374,3 +1374,13 @@ The [OSC 22 batch](terminfo/2026-11-17-osc22-qualification.md) implements bounde
 ### OSC 7770 and OSC 7777 font-size queries (#994)
 
 The [font query qualification](terminfo/2026-11-18-osc-font-queries-qualification.md) measures exact replies for both read-only integer-point queries on the disposable direct-local macOS App. The App returned 10 points with matching BEL and ST framing. Independent font/window readback, two delivery controls per case, unchanged stored state and confirmed restoration support both effects. Both pinned paths and fresh stock support each query. The separate OSC 710 audit records its no-operation pinned probe and unqualified X11 font-description service.
+### iTerm2 feature reporting (OSC 1337 RequestCapabilities)
+
+The [feature-reporting batch](terminfo/2026-11-17-osc1337-capabilities-qualification.md) implements the response half of iTerm2's
+[feature-reporting specification](https://iterm2.com/feature-reporting): `OSC 1337 ; RequestCapabilities` is answered with one ST-terminated
+`Capabilities = T3CwLrMSc7UTs3BFGsGoSyHNoP` reply declaring exactly the codes with owning implementation and test evidence ([contract](terminfo/iterm-feature-reporting.md); `Cw` only while the host
+accepts OSC 52 writes, the XTGETTCAP `Ms` gate; `Aw`, `Uw` and the measured-unsupported `Sx` stay undeclared; unsolicited `Capabilities` forms stay silent — the [#1003 policy audit](terminfo/2026-11-17-term-features-policy.md)
+regressions are retained). The pinned probe's valid pattern accepts any feature string, so the graded conclusion is the separately identified effect contract `ntilde-osc1337-capabilities-effect-v1`,
+which demands the specification-table literal: **supported**, with the exact-query witness (query policy v7) matching byte for byte. The stock grade moves from inconclusive to **supported**
+(95/159/1). Receipt schema 77 and source policy v70 bind 469 inputs; the inventory adds one pinned-and-effect-supported ID and no Core, Modern or common-harness score increase. The
+[TERM_FEATURES environment declaration](terminfo/2026-11-17-term-features-policy.md) stays unset.

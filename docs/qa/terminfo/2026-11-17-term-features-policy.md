@@ -53,20 +53,27 @@ Ntilde does not implement feature reporting and declares nothing. The native PTY
 each direct pane child's environment by inheriting the user's environment and setting only
 `TERM=xterm-256color`, `COLORTERM=truecolor` and `TERM_PROGRAM=Ntilde` (both the Windows env
 block and the Unix `CommandBuilder` spawn path; the SSH options set `TERM` only). It never
-sets or clears `TERM_FEATURES`. The VT answers only the implemented OSC 1337 forms —
-`ReportCellSize`, `File=` inline images and the multipart transfer — and every other
-`1337;` payload, including `Capabilities` in any spelling, is ignored without a reply
-(regression-tested beside an answered `ReportCellSize` control). An inherited
-`TERM_FEATURES` is never Ntilde's declaration. It is most often an outer terminal's
-advertisement leaking inward — Ntilde itself can run inside a terminal that implements the
-protocol, and both spawn paths inherit that value — or a user export; a child cannot
-attribute the value to its author. Because the child's actual terminal is the enclosing
-Ntilde pane, a leaked value can claim features that pane does not provide, and programs may
-enable behavior Ntilde cannot honor. Ntilde currently neither sets, clears nor reports the
-variable: clearing inherited values is a behavior change that belongs to the future
-declaration policy (applied across the PTY, SSH and mux spawn paths), not to this audit.
-The source-scan regression pins only that Ntilde never writes the variable; it does not
-endorse a leaked advertisement.
+sets or clears `TERM_FEATURES`. At this audit's base the VT answered only the implemented OSC
+1337 forms — `ReportCellSize`, `File=` inline images and the multipart transfer — and ignored
+every other `1337;` payload, including `Capabilities` in any spelling (regression-tested beside
+an answered `ReportCellSize` control). An inherited `TERM_FEATURES` is never Ntilde's
+declaration. It is most often an outer terminal's advertisement leaking inward — Ntilde itself
+can run inside a terminal that implements the protocol, and both spawn paths inherit that
+value — or a user export; a child cannot attribute the value to its author. Because the child's
+actual terminal is the enclosing Ntilde pane, a leaked value can claim features that pane does
+not provide, and programs may enable behavior Ntilde cannot honor. Ntilde currently neither
+sets, clears nor reports the variable: clearing inherited values is a behavior change that
+belongs to the future declaration policy (applied across the PTY, SSH and mux spawn paths), not
+to this audit. The source-scan regression pins only that Ntilde never writes the variable; it
+does not endorse a leaked advertisement.
+
+> Update 2026-11-17, issue #995: the control-sequence half of the feature-reporting protocol is
+> now implemented — `OSC 1337 ; RequestCapabilities` is answered with the specification-framed
+> `Capabilities` reply declaring exactly the codes with owning implementation and test evidence
+> ([iterm-feature-reporting.md](iterm-feature-reporting.md)). The environment-variable half stays
+> undeclared: the native layer still never writes `TERM_FEATURES`, this audit's inapplicable
+> pinned-probe disposition for `device.term-features` is unchanged, and the unsolicited
+> `Capabilities` forms remain silent (their regression is retained).
 
 The disposition is therefore inapplicable/deferred rather than a measured unsupported
 behavior: the pinned probe emits no request to answer and observes no Ntilde-made

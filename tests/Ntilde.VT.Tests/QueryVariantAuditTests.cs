@@ -4,16 +4,17 @@ namespace Ntilde.VT.Tests;
 /// Exact spellings unanswered with default settings, not an assertion that their feature families are absent. DECRQCRA and the
 /// <c>CSI 20 t</c> / <c>CSI 21 t</c> title reports are implemented behind the off-by-default
 /// <see cref="AnsiParser.AllowRectangleChecksumReport"/> and <see cref="AnsiParser.AllowTitleReport"/> gates, so with the default
-/// parser those rows are the witnesses that the gates start off. XTREPORTCOLORS and XTGETXRES are answered
-/// (<c>DeviceReportTests</c>), OSC 21 is answered (<c>KittyColorTests</c>) and the rxvt special colors are
-/// answered (<c>Osc5SpecialColorTests</c>); none belongs here.
+/// parser those rows are the witnesses that the gates start off. <c>OSC 1337 ; ReportCellSize</c> stays silent without host
+/// metrics, so its row is the witness that headless parsers start without them. XTREPORTCOLORS and XTGETXRES are answered
+/// (<c>DeviceReportTests</c>), OSC 21 is answered (<c>KittyColorTests</c>), the rxvt special colors are answered
+/// (<c>Osc5SpecialColorTests</c>) and the iTerm2 feature-reporting query is answered
+/// (<c>ITerm2CapabilitiesReplyTests</c>); none belongs here.
 /// </summary>
 public sealed class QueryVariantAuditTests
 {
     public static TheoryData<string, string> UnavailableVariants => new()
     {
         { "extensions.osc1337-cellsize", "\u001b]1337;ReportCellSize\u0007" },
-        { "extensions.osc1337-capabilities", "\u001b]1337;RequestCapabilities\u0007" },
         { "extensions.osc7770-font-size", "\u001b]7770;?\u0007" },
         { "extensions.osc7777-font-window-size", "\u001b]7777;?\u0007" },
         { "extensions.osc701-locale", "\u001b]701;?\u0007" },

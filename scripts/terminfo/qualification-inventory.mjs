@@ -99,6 +99,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('cell-size', '2026-11-17-osc-cell-size-integrated', '2026-11-17-osc-cell-size-integrated-qualification.md'), module: 'cell-size-contracts.mjs', exports: ['cellSizeSuiteId', 'cellSizeVersion', 'cellSizeIds'], test: 'cell-size-integrated-publication.test.mjs' },
     // OSC 3008 hierarchical contexts (#997): the pinned probe is inconclusive by construction; the effect contract is a recorded divergence.
     { ...directory('osc3008', '2026-11-17-osc3008', '2026-11-17-osc3008-qualification.md'), module: 'osc3008-inventory.mjs', exports: ['osc3008SuiteId', 'osc3008ContractsVersion', 'osc3008CaseIds'], test: 'osc3008-publication.test.mjs' },
+    // iTerm2 feature reporting (#995): the pinned query accepts any feature string and the effect contract demands the specification-framed declaration; pinned, effect and stock are all supported.
+    { ...directory('caps', '2026-11-17-osc1337-capabilities', '2026-11-17-osc1337-capabilities-qualification.md'), module: 'caps-inventory.mjs', exports: ['capsSuiteId', 'capsContractsVersion', 'capsCaseIds'], test: 'caps-publication.test.mjs' },
 ]);
 
 /**
